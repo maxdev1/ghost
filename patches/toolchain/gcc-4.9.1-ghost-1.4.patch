@@ -1,0 +1,125 @@
+diff -Nur gcc-4.9.1/config.sub gcc-4.9.1-ghost/config.sub
+--- gcc-4.9.1/config.sub	2013-10-01 18:50:56.000000000 +0200
++++ gcc-4.9.1-ghost/config.sub	2015-05-22 21:57:28.000000000 +0200
+@@ -1356,7 +1356,7 @@
+ 	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
+ 	      | -sym* | -kopensolaris* | -plan9* \
+ 	      | -amigaos* | -amigados* | -msdos* | -newsos* | -unicos* | -aof* \
+-	      | -aos* | -aros* \
++	      | -aos* | -ghost* | -aros* \
+ 	      | -nindy* | -vxsim* | -vxworks* | -ebmon* | -hms* | -mvs* \
+ 	      | -clix* | -riscos* | -uniplus* | -iris* | -rtu* | -xenix* \
+ 	      | -hiux* | -386bsd* | -knetbsd* | -mirbsd* | -netbsd* \
+diff -Nur gcc-4.9.1/fixincludes/mkfixinc.sh gcc-4.9.1-ghost/fixincludes/mkfixinc.sh
+--- gcc-4.9.1/fixincludes/mkfixinc.sh	2012-10-28 22:42:48.000000000 +0100
++++ gcc-4.9.1-ghost/fixincludes/mkfixinc.sh	2015-05-22 21:57:28.000000000 +0200
+@@ -11,6 +11,7 @@
+ 
+ # Check for special fix rules for particular targets
+ case $machine in
++    *-ghost* | \
+     i?86-*-cygwin* | \
+     i?86-*-mingw32* | \
+     x86_64-*-mingw32* | \
+diff -Nur gcc-4.9.1/gcc/config/ghost.h gcc-4.9.1-ghost/gcc/config/ghost.h
+--- gcc-4.9.1/gcc/config/ghost.h	1970-01-01 01:00:00.000000000 +0100
++++ gcc-4.9.1-ghost/gcc/config/ghost.h	2015-05-22 21:57:42.000000000 +0200
+@@ -0,0 +1,32 @@
++// built-in defines
++#undef TARGET_OS_CPP_BUILTINS
++#define TARGET_OS_CPP_BUILTINS()		\
++do {									\
++	builtin_define_std ("_GHOST_");		\
++	builtin_define_std ("unix");		\
++	builtin_assert ("system=ghost");	\
++	builtin_assert ("system=unix");		\
++} while(0);
++
++// for Ghost-specific changes on GCC
++#undef	TARGET_GHOST
++#define	TARGET_GHOST 1
++
++// don't automatically add extern "C" { } around header files
++#undef	NO_IMPLICIT_EXTERN_C
++#define	NO_IMPLICIT_EXTERN_C 1
++
++// define the default library specifications
++#undef	LIB_SPEC
++#define	LIB_SPEC "--start-group -lghostapi -lm -lc --end-group"
++
++// start and end files
++#undef	STARTFILE_SPEC
++#define	STARTFILE_SPEC "crt0.o%s crti.o%s crtbegin.o%s"
++
++#undef  ENDFILE_SPEC
++#define ENDFILE_SPEC "crtend.o%s crtn.o%s"
++
++// modify location of the start files
++#undef	STANDARD_STARTFILE_PREFIX
++#define	STANDARD_STARTFILE_PREFIX "/system/lib/"
+diff -Nur gcc-4.9.1/gcc/config.gcc gcc-4.9.1-ghost/gcc/config.gcc
+--- gcc-4.9.1/gcc/config.gcc	2014-06-16 10:15:35.000000000 +0200
++++ gcc-4.9.1-ghost/gcc/config.gcc	2015-05-22 21:57:28.000000000 +0200
+@@ -616,6 +616,14 @@
+ 
+ # Common parts for widely ported systems.
+ case ${target} in
++*-*-ghost*)
++  extra_parts="crtbegin.o crtend.o"
++  gas=yes
++  gnu_ld=yes
++  default_use_cxa_atexit=yes
++  use_gcc_stdint=none
++  native_system_header_dir=/system/include
++  ;;
+ *-*-darwin*)
+   tmake_file="t-darwin ${cpu_type}/t-darwin"
+   tm_file="${tm_file} darwin.h"
+@@ -875,6 +883,13 @@
+ esac
+ 
+ case ${target} in
++
++i[34567]86-*-ghost*)
++	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h i386/i386elf.h ghost.h glibc-stdint.h"
++	;;
++x86_64-*-ghost*)
++	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h i386/i386elf.h i386/x86-64.h ghost.h glibc-stdint.h"
++	;;
+ aarch64*-*-elf)
+ 	tm_file="${tm_file} dbxelf.h elfos.h newlib-stdint.h"
+ 	tm_file="${tm_file} aarch64/aarch64-elf.h aarch64/aarch64-elf-raw.h"
+diff -Nur gcc-4.9.1/libgcc/config.host gcc-4.9.1-ghost/libgcc/config.host
+--- gcc-4.9.1/libgcc/config.host	2014-03-27 16:40:31.000000000 +0100
++++ gcc-4.9.1-ghost/libgcc/config.host	2015-05-22 21:57:28.000000000 +0200
+@@ -314,6 +314,14 @@
+ esac
+ 
+ case ${host} in
++i[34567]86-*-ghost*)
++	extra_parts="$extra_parts crtbegin.o crtend.o"
++	tmake_file="$tmake_file i386/t-crtstuff t-crtstuff-pic t-libgcc-pic"
++	;;
++x86_64-*-ghost*)
++	extra_parts="$extra_parts crtbegin.o crtend.o"
++	tmake_file="$tmake_file i386/t-crtstuff t-crtstuff-pic t-libgcc-pic"
++	;;
+ aarch64*-*-elf)
+ 	extra_parts="$extra_parts crtbegin.o crtend.o crti.o crtn.o"
+ 	tmake_file="${tmake_file} ${cpu_type}/t-aarch64"
+diff -Nur gcc-4.9.1/libstdc++-v3/crossconfig.m4 gcc-4.9.1-ghost/libstdc++-v3/crossconfig.m4
+--- gcc-4.9.1/libstdc++-v3/crossconfig.m4	2014-03-20 19:57:07.000000000 +0100
++++ gcc-4.9.1-ghost/libstdc++-v3/crossconfig.m4	2015-05-22 21:57:28.000000000 +0200
+@@ -5,6 +5,12 @@
+ AC_DEFUN([GLIBCXX_CROSSCONFIG],[
+ # Base decisions on target environment.
+ case "${host}" in
++  *-ghost*)
++    GLIBCXX_CHECK_COMPILER_FEATURES
++    GLIBCXX_CHECK_LINKER_FEATURES
++    GLIBCXX_CHECK_MATH_SUPPORT
++    GLIBCXX_CHECK_STDLIB_SUPPORT
++    ;;
+   arm*-*-symbianelf*)
+     # This is a freestanding configuration; there is nothing to do here.
+     ;;

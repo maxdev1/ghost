@@ -1,0 +1,7 @@
+To debug the kernel or applications, run the "qemu-debug-gdb" target. Then open
+gdb, read in the binary file to debug, set an appropriate breakpoint and connect:
+
+	file /ghost/sysroot/applications/tester.bin
+	break main	
+	target remote :1234
+	continue

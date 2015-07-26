@@ -1,0 +1,113 @@
+diff -Nur binutils-2.24/bfd/config.bfd binutils-2.24-ghost/bfd/config.bfd
+--- binutils-2.24/bfd/config.bfd	2013-11-04 16:33:37.000000000 +0100
++++ binutils-2.24-ghost/bfd/config.bfd	2014-10-05 16:54:59.000000000 +0200
+@@ -247,6 +247,19 @@
+     ;;
+ #endif /* BFD64 */
+ 
++  i[3-7]86-*-ghost*)
++    targ_defvec=bfd_elf32_i386_vec
++    targ_selvecs=
++    targ64_selvecs=bfd_elf64_x86_64_vec
++    ;;
++#ifdef BFD64
++  x86_64-*-ghost*)
++    targ_defvec=bfd_elf64_x86_64_vec
++    targ_selvecs=bfd_elf32_i386_vec
++    want64=true
++    ;;
++#endif
++
+   am34-*-linux* | am33_2.0-*-linux*)
+     targ_defvec=bfd_elf32_am33lin_vec
+     ;;
+diff -Nur binutils-2.24/config.sub binutils-2.24-ghost/config.sub
+--- binutils-2.24/config.sub	2013-11-26 12:37:33.000000000 +0100
++++ binutils-2.24-ghost/config.sub	2014-10-05 16:54:59.000000000 +0200
+@@ -1356,7 +1356,7 @@
+ 	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
+ 	      | -sym* | -kopensolaris* | -plan9* \
+ 	      | -amigaos* | -amigados* | -msdos* | -newsos* | -unicos* | -aof* \
+-	      | -aos* | -aros* \
++	      | -aos* | -aros* | -ghost* \
+ 	      | -nindy* | -vxsim* | -vxworks* | -ebmon* | -hms* | -mvs* \
+ 	      | -clix* | -riscos* | -uniplus* | -iris* | -rtu* | -xenix* \
+ 	      | -hiux* | -386bsd* | -knetbsd* | -mirbsd* | -netbsd* \
+diff -Nur binutils-2.24/gas/configure.tgt binutils-2.24-ghost/gas/configure.tgt
+--- binutils-2.24/gas/configure.tgt	2013-11-04 16:33:37.000000000 +0100
++++ binutils-2.24-ghost/gas/configure.tgt	2014-10-05 16:54:59.000000000 +0200
+@@ -116,6 +116,8 @@
+ generic_target=${cpu_type}-$vendor-$os
+ # Note: This table is alpha-sorted, please try to keep it that way.
+ case ${generic_target} in
++
++  i386-*-ghost*)             fmt=elf ;;
+   aarch64*-*-elf)			fmt=elf;;
+   aarch64*-*-linux*)			fmt=elf em=linux ;;
+ 
+diff -Nur binutils-2.24/ld/Makefile.am binutils-2.24-ghost/ld/Makefile.am
+--- binutils-2.24/ld/Makefile.am	2013-11-26 12:37:33.000000000 +0100
++++ binutils-2.24-ghost/ld/Makefile.am	2014-10-05 16:57:15.000000000 +0200
+@@ -266,6 +266,7 @@
+ 	eelf_i386_be.c \
+ 	eelf_i386_chaos.c \
+ 	eelf_i386_fbsd.c \
++	eelf_i386_ghost.c \
+ 	eelf_i386_ldso.c \
+ 	eelf_i386_nacl.c \
+ 	eelf_i386_sol2.c \
+@@ -526,6 +527,7 @@
+ 	eelf_x86_64_fbsd.c \
+ 	eelf_x86_64_nacl.c \
+ 	eelf_x86_64_sol2.c \
++	eelf_x86_64_ghost.c \
+ 	ehppa64linux.c \
+ 	emmo.c \
+ 	eshelf64.c \
+@@ -1071,6 +1073,15 @@
+   $(srcdir)/emulparams/elf32frv.sh \
+   $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
+ 	${GENSCRIPTS} elf32frvfd "$(tdir_frv)"
++
++# Ghost specific adaptions
++eelf_i386_ghost.c: $(srcdir)/emulparams/elf_i386_ghost.sh \
++  $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
++	${GENSCRIPTS} elf_i386_ghost "$(tdir_elf_i386_ghost)"
++eelf_x86_64_ghost.c: $(srcdir)/emulparams/elf_x86_64_ghost.sh \
++  $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
++	${GENSCRIPTS} elf_x86_64_ghost "$(tdir_elf_x86_64_ghost)"
++
+ eelf32i370.c: $(srcdir)/emulparams/elf32i370.sh \
+   $(ELF_DEPS) $(srcdir)/scripttempl/elfi370.sc ${GEN_DEPENDS}
+ 	${GENSCRIPTS} elf32i370 "$(tdir_elf32i370)"
+diff -Nur binutils-2.24/ld/configure.tgt binutils-2.24-ghost/ld/configure.tgt
+--- binutils-2.24/ld/configure.tgt	2013-11-26 12:37:33.000000000 +0100
++++ binutils-2.24-ghost/ld/configure.tgt	2014-10-05 16:54:59.000000000 +0200
+@@ -45,6 +45,15 @@
+ # architecture variants should be kept together even if their names
+ # break the alpha sorting.
+ case "${targ}" in
++i[3-7]86-*-ghost*)
++			targ_emul=elf_i386_ghost
++			targ_extra_emuls=elf_i386
++			targ64_extra_emuls="elf_x86_64_ghost elf_x86_64"
++			;;
++x86_64-*-ghost*)
++			targ_emul=elf_x86_64_ghost
++			targ_extra_emuls=elf_i386_ghost elf_x86_64 elf_i386
++			;;
+ aarch64_be-*-elf)	targ_emul=aarch64elfb
+ 			targ_extra_emuls="aarch64elf aarch64elf32 aarch64elf32b armelfb armelf" ;;
+ aarch64-*-elf)		targ_emul=aarch64elf
+diff -Nur binutils-2.24/ld/emulparams/elf_i386_ghost.sh binutils-2.24-ghost/ld/emulparams/elf_i386_ghost.sh
+--- binutils-2.24/ld/emulparams/elf_i386_ghost.sh	1970-01-01 01:00:00.000000000 +0100
++++ binutils-2.24-ghost/ld/emulparams/elf_i386_ghost.sh	2014-10-05 16:54:59.000000000 +0200
+@@ -0,0 +1,3 @@
++. ${srcdir}/emulparams/elf_i386.sh
++GENERATE_SHLIB_SCRIPT=yes
++GENERATE_PIE_SCRIPT=yes
+diff -Nur binutils-2.24/ld/emulparams/elf_x86_64_ghost.sh binutils-2.24-ghost/ld/emulparams/elf_x86_64_ghost.sh
+--- binutils-2.24/ld/emulparams/elf_x86_64_ghost.sh	1970-01-01 01:00:00.000000000 +0100
++++ binutils-2.24-ghost/ld/emulparams/elf_x86_64_ghost.sh	2014-10-05 16:54:59.000000000 +0200
+@@ -0,0 +1 @@
++. ${srcdir}/emulparams/elf_x86_64.sh

@@ -1,0 +1,12 @@
+diff -Nur pixman-0.32.6/config.sub pixman-0.32.6-ghost/config.sub
+--- pixman-0.32.6/config.sub	2013-01-12 12:26:18.000000000 +0100
++++ pixman-0.32.6-ghost/config.sub	2014-11-10 13:08:15.788935200 +0100
+@@ -1342,7 +1342,7 @@
+ 	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
+ 	      | -sym* | -kopensolaris* \
+ 	      | -amigaos* | -amigados* | -msdos* | -newsos* | -unicos* | -aof* \
+-	      | -aos* | -aros* \
++	      | -aos* | -aros* | -ghost* \
+ 	      | -nindy* | -vxsim* | -vxworks* | -ebmon* | -hms* | -mvs* \
+ 	      | -clix* | -riscos* | -uniplus* | -iris* | -rtu* | -xenix* \
+ 	      | -hiux* | -386bsd* | -knetbsd* | -mirbsd* | -netbsd* \
