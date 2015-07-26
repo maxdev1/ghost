@@ -1,0 +1,86 @@
+diff -Naur binutils-2.24/bfd/config.bfd binutils-2.24-ghost/bfd/config.bfd
+--- binutils-2.24/bfd/config.bfd	2013-11-04 16:33:37.000000000 +0100
++++ binutils-2.24-ghost/bfd/config.bfd	2014-06-03 15:36:01.182190700 +0200
+@@ -247,6 +247,11 @@
+     ;;
+ #endif /* BFD64 */
+ 
++  i[3-7]86-*-ghost*)
++    targ_defvec=bfd_elf32_i386_vec
++    targ_selvecs=i386coff_vec
++    ;;
++
+   am34-*-linux* | am33_2.0-*-linux*)
+     targ_defvec=bfd_elf32_am33lin_vec
+     ;;
+diff -Naur binutils-2.24/config.sub binutils-2.24-ghost/config.sub
+--- binutils-2.24/config.sub	2013-11-26 12:37:33.000000000 +0100
++++ binutils-2.24-ghost/config.sub	2014-06-03 15:35:33.780450800 +0200
+@@ -1356,7 +1356,7 @@
+ 	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
+ 	      | -sym* | -kopensolaris* | -plan9* \
+ 	      | -amigaos* | -amigados* | -msdos* | -newsos* | -unicos* | -aof* \
+-	      | -aos* | -aros* \
++	      | -aos* | -aros* | -ghost* \
+ 	      | -nindy* | -vxsim* | -vxworks* | -ebmon* | -hms* | -mvs* \
+ 	      | -clix* | -riscos* | -uniplus* | -iris* | -rtu* | -xenix* \
+ 	      | -hiux* | -386bsd* | -knetbsd* | -mirbsd* | -netbsd* \
+diff -Naur binutils-2.24/gas/configure.tgt binutils-2.24-ghost/gas/configure.tgt
+--- binutils-2.24/gas/configure.tgt	2013-11-04 16:33:37.000000000 +0100
++++ binutils-2.24-ghost/gas/configure.tgt	2014-06-03 15:36:26.630735300 +0200
+@@ -116,6 +116,8 @@
+ generic_target=${cpu_type}-$vendor-$os
+ # Note: This table is alpha-sorted, please try to keep it that way.
+ case ${generic_target} in
++
++  i386-*-ghost*)             fmt=elf ;;
+   aarch64*-*-elf)			fmt=elf;;
+   aarch64*-*-linux*)			fmt=elf em=linux ;;
+ 
+diff -Naur binutils-2.24/ld/configure.tgt binutils-2.24-ghost/ld/configure.tgt
+--- binutils-2.24/ld/configure.tgt	2013-11-26 12:37:33.000000000 +0100
++++ binutils-2.24-ghost/ld/configure.tgt	2014-06-03 15:36:50.919163900 +0200
+@@ -70,6 +70,7 @@
+ alpha*-*-openbsd*)	targ_emul=elf64alpha ;;
+ alpha*-*-*vms*)		targ_emul=alphavms
+ 			;;
++i[3-7]86-*-ghost*)    targ_emul=ghost_i386 ;;
+ arc-*-elf*)		targ_emul=arcelf
+ 			;;
+ arm-epoc-pe)		targ_emul=arm_epoc_pe ;	targ_extra_ofiles="deffilep.o pe-dll.o" ;;
+diff -Naur binutils-2.24/ld/emulparams/ghost_i386.sh binutils-2.24-ghost/ld/emulparams/ghost_i386.sh
+--- binutils-2.24/ld/emulparams/ghost_i386.sh	1970-01-01 01:00:00.000000000 +0100
++++ binutils-2.24-ghost/ld/emulparams/ghost_i386.sh	2014-06-10 08:44:49.840041700 +0200
+@@ -0,0 +1,20 @@
++SCRIPT_NAME=elf
++OUTPUT_FORMAT=elf32-i386
++
++TEXT_START_ADDR=0x8000000
++
++MAXPAGESIZE="CONSTANT (MAXPAGESIZE)"
++COMMONPAGEPSIZE="CONSTANT (COMMONPAGESIZE)"
++
++ARCH=i386
++MACHINE=
++
++NOP=0x90909090
++
++TEMPLATE_NAME=elf32
++
++GENERATE_SHLIB_SCRIPT=yes
++GENERATE_PIE_SCRIPT=yes
++
++NO_SMALL_DATA=yes
++SEPERATE_GOTPLT=12
+diff -Naur binutils-2.24/ld/Makefile.in binutils-2.24-ghost/ld/Makefile.in
+--- binutils-2.24/ld/Makefile.in	2013-11-26 12:37:33.000000000 +0100
++++ binutils-2.24-ghost/ld/Makefile.in	2014-06-03 15:37:40.361107600 +0200
+@@ -2752,6 +2752,8 @@
+ eelf_i386.c: $(srcdir)/emulparams/elf_i386.sh \
+   $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
+ 	${GENSCRIPTS} elf_i386 "$(tdir_elf_i386)"
++eghost_i386.c: $(srcdir)/emulparams/ghost_i386.sh $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
++	${GENSCRIPTS} ghost_i386 "$(tdir_ghost_i386)"
+ eelf_i386_be.c: $(srcdir)/emulparams/elf_i386_be.sh \
+   $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
+ 	${GENSCRIPTS} elf_i386_be "$(tdir_elf_i386_be)"

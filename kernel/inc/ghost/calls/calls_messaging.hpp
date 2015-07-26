@@ -1,0 +1,83 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+#ifndef GHOST_API_CALLS_MESSAGING_CALLS
+#define GHOST_API_CALLS_MESSAGING_CALLS
+
+#include "ghost/ipc.h"
+
+/**
+ * @field taskId
+ * 		the task id of the target task
+ *
+ * @field message
+ * 		the message to send
+ *
+ * @field sendResult
+ * 		the result of sending
+ *
+ * @security-level APPLICATION
+ */
+typedef struct {
+	uint32_t taskId;
+	g_message* message;
+
+	g_message_send_status sendResult;
+}__attribute__((packed)) g_syscall_send_msg;
+
+/**
+ * @field taskId
+ * 		the task id which's messages should be received
+ *
+ * @field message
+ * 		the message to write to
+ *
+ * @security-level APPLICATION
+ */
+typedef struct {
+	uint32_t taskId;
+	g_message* message;
+	g_message_receive_mode mode;
+
+	g_message_receive_status receiveResult;
+}__attribute__((packed)) g_syscall_recv_msg;
+
+/**
+ * @field taskId
+ * 		the task id which's messages should be received
+ *
+ * @field message
+ * 		the message to write to
+ *
+ * @field topic
+ * 		the topic to read from
+ *
+ * @security-level APPLICATION
+ */
+typedef struct {
+	uint32_t taskId;
+	g_message* message;
+	uint32_t topic;
+	g_message_receive_mode mode;
+
+	g_message_receive_status receiveResult;
+}__attribute__((packed)) g_syscall_recv_topic_msg;
+
+#endif

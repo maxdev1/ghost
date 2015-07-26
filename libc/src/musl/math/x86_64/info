@@ -1,0 +1,3 @@
+I removed all files for other architectures, because the
+build process doesn't do different architectures.
+Maybe one day when Ghost is ported to x86_64 we'll need this.

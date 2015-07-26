@@ -1,0 +1,14 @@
+
+	ghost-libc
+	
+This is the C standard library implementation for the Ghost operating
+system.
+
+    http://www.ghostkernel.org/
+
+
+Parts of this library are taken from the musl libc and modified to fit
+into the Ghost libc. Consider the respective files headers and the
+included MUSL-COPYRIGHT file. musl can be found on the website:
+
+    http://www.musl-libc.org/

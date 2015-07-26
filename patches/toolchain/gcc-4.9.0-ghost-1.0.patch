@@ -1,0 +1,97 @@
+diff -Naur gcc-4.9.0/config.sub gcc-4.9.0-ghost/config.sub
+--- gcc-4.9.0/config.sub	2013-10-01 18:50:56.000000000 +0200
++++ gcc-4.9.0-ghost/config.sub	2014-06-03 15:39:02.997370400 +0200
+@@ -1356,7 +1356,7 @@
+ 	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
+ 	      | -sym* | -kopensolaris* | -plan9* \
+ 	      | -amigaos* | -amigados* | -msdos* | -newsos* | -unicos* | -aof* \
+-	      | -aos* | -aros* \
++	      | -aos* | -aros* | -ghost* \
+ 	      | -nindy* | -vxsim* | -vxworks* | -ebmon* | -hms* | -mvs* \
+ 	      | -clix* | -riscos* | -uniplus* | -iris* | -rtu* | -xenix* \
+ 	      | -hiux* | -386bsd* | -knetbsd* | -mirbsd* | -netbsd* \
+diff -Naur gcc-4.9.0/gcc/config/ghost.h gcc-4.9.0-ghost/gcc/config/ghost.h
+--- gcc-4.9.0/gcc/config/ghost.h	1970-01-01 01:00:00.000000000 +0100
++++ gcc-4.9.0-ghost/gcc/config/ghost.h	2014-06-10 11:01:37.713717000 +0200
+@@ -0,0 +1,20 @@
++#undef TARGET_OS_CPP_BUILTINS
++#define TARGET_OS_CPP_BUILTINS()      \
++do {                                \
++builtin_define_std ("_GHOST_");      \
++builtin_define_std ("unix");      \
++builtin_assert ("system=ghost");   \
++builtin_assert ("system=unix");   \
++} while(0);
++
++// Define the default library specifications
++#undef LIB_SPEC
++#define LIB_SPEC "--start-group -lghostapi -lm -lc --end-group"
++
++
++#undef STARTFILE_SPEC
++#define STARTFILE_SPEC "crt0.o%s crti.o%s crtbegin.o%s"
++
++/* Objects automatically appended to the link link command line. */
++#undef  ENDFILE_SPEC
++#define ENDFILE_SPEC "crtend.o%s crtn.o%s"
+\ Kein Zeilenumbruch am Dateiende.
+diff -Naur gcc-4.9.0/gcc/config.gcc gcc-4.9.0-ghost/gcc/config.gcc
+--- gcc-4.9.0/gcc/config.gcc	2014-03-12 11:13:07.000000000 +0100
++++ gcc-4.9.0-ghost/gcc/config.gcc	2014-06-03 15:43:02.829351200 +0200
+@@ -616,6 +616,12 @@
+ 
+ # Common parts for widely ported systems.
+ case ${target} in
++*-*-ghost*)
++  extra_parts="crtbegin.o crtend.o"
++  gas=yes
++  gnu_ld=yes
++  default_use_cxa_atexit=yes
++  ;;
+ *-*-darwin*)
+   tmake_file="t-darwin ${cpu_type}/t-darwin"
+   tm_file="${tm_file} darwin.h"
+@@ -875,6 +881,11 @@
+ esac
+ 
+ case ${target} in
++i[3-7]86-*-ghost*)
++	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h i386/i386elf.h ghost.h"
++	tmake_file="i386/t-i386elf t-svr4"
++	use_fixproto=yes
++	;;
+ aarch64*-*-elf)
+ 	tm_file="${tm_file} dbxelf.h elfos.h newlib-stdint.h"
+ 	tm_file="${tm_file} aarch64/aarch64-elf.h aarch64/aarch64-elf-raw.h"
+diff -Naur gcc-4.9.0/libgcc/config.host gcc-4.9.0-ghost/libgcc/config.host
+--- gcc-4.9.0/libgcc/config.host	2014-03-27 16:40:31.000000000 +0100
++++ gcc-4.9.0-ghost/libgcc/config.host	2014-06-03 15:44:52.792346400 +0200
+@@ -1230,6 +1230,10 @@
+ 	tmake_file="mep/t-mep t-fdpbit"
+ 	extra_parts="crtbegin.o crtend.o"
+ 	;;
++i[3-7]86-*-ghost*)
++   extra_parts="crtbegin.o crtend.o"
++   tmake_file="$tmake_file i386/t-crtstuff"
++   ;;
+ *)
+ 	echo "*** Configuration ${host} not supported" 1>&2
+ 	exit 1
+diff -Naur gcc-4.9.0/libstdc++-v3/crossconfig.m4 gcc-4.9.0-ghost/libstdc++-v3/crossconfig.m4
+--- gcc-4.9.0/libstdc++-v3/crossconfig.m4	2014-03-20 19:57:07.000000000 +0100
++++ gcc-4.9.0-ghost/libstdc++-v3/crossconfig.m4	2014-06-03 15:46:54.428508800 +0200
+@@ -45,7 +45,13 @@
+     #GCC_CHECK_TLS
+     AM_ICONV
+     ;;
+-
++	 
++  *-ghost*)
++    AC_CHECK_HEADERS([sys/types.h locale.h float.h])
++    GLIBCXX_CHECK_BUILTIN_MATH_SUPPORT
++    GLIBCXX_CHECK_COMPLEX_MATH_SUPPORT
++    GLIBCXX_CHECK_STDLIB_SUPPORT
++    ;;
+   *-darwin*)
+     # Darwin versions vary, but the linker should work in a cross environment,
+     # so we just check for all the features here.
