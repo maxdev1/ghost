@@ -30,7 +30,7 @@
 G_SYSCALL_HANDLER(ramdisk_find) {
 	g_syscall_ramdisk_find* data = (g_syscall_ramdisk_find*) G_SYSCALL_DATA(state);
 
-	g_ramdisk_entry* entry = g_kernel::getRamdisk()->findAbsolute(data->path);
+	g_ramdisk_entry* entry = g_kernel_ramdisk->findAbsolute(data->path);
 	if (entry) {
 		data->nodeId = entry->id;
 	} else {
@@ -47,10 +47,10 @@ G_SYSCALL_HANDLER(ramdisk_find_child) {
 	g_syscall_ramdisk_find_child* data = (g_syscall_ramdisk_find_child*) G_SYSCALL_DATA(state);
 	data->nodeId = -1;
 
-	g_ramdisk_entry* parent = g_kernel::getRamdisk()->findById(data->parentId);
+	g_ramdisk_entry* parent = g_kernel_ramdisk->findById(data->parentId);
 	if (parent) {
 
-		g_ramdisk_entry* entry = g_kernel::getRamdisk()->findRelative(parent, data->childName);
+		g_ramdisk_entry* entry = g_kernel_ramdisk->findRelative(parent, data->childName);
 		if (entry) {
 			data->nodeId = entry->id;
 		}
@@ -65,7 +65,7 @@ G_SYSCALL_HANDLER(ramdisk_find_child) {
 G_SYSCALL_HANDLER(ramdisk_info) {
 	g_syscall_ramdisk_info* data = (g_syscall_ramdisk_info*) G_SYSCALL_DATA(state);
 
-	g_ramdisk_entry* entry = g_kernel::getRamdisk()->findById(data->nodeId);
+	g_ramdisk_entry* entry = g_kernel_ramdisk->findById(data->nodeId);
 	if (entry) {
 		data->length = entry->datalength;
 
@@ -87,7 +87,7 @@ G_SYSCALL_HANDLER(ramdisk_info) {
 G_SYSCALL_HANDLER(ramdisk_read) {
 	g_syscall_ramdisk_read* data = (g_syscall_ramdisk_read*) G_SYSCALL_DATA(state);
 
-	g_ramdisk_entry* entry = g_kernel::getRamdisk()->findById(data->nodeId);
+	g_ramdisk_entry* entry = g_kernel_ramdisk->findById(data->nodeId);
 	if (entry && entry->type == G_RAMDISK_ENTRY_TYPE_FILE) {
 		int bytesFromOffset = entry->datalength - ((int32_t) data->offset);
 		if (bytesFromOffset < 0) {
@@ -117,7 +117,7 @@ G_SYSCALL_HANDLER(ramdisk_read) {
 G_SYSCALL_HANDLER(ramdisk_child_count) {
 	g_syscall_ramdisk_child_count* data = (g_syscall_ramdisk_child_count*) G_SYSCALL_DATA(state);
 
-	data->count = g_kernel::getRamdisk()->getChildCount(data->nodeId);
+	data->count = g_kernel_ramdisk->getChildCount(data->nodeId);
 
 	return state;
 }
@@ -128,7 +128,7 @@ G_SYSCALL_HANDLER(ramdisk_child_count) {
 G_SYSCALL_HANDLER(ramdisk_child_at) {
 	g_syscall_ramdisk_child_at* data = (g_syscall_ramdisk_child_at*) G_SYSCALL_DATA(state);
 
-	g_ramdisk_entry* entry = g_kernel::getRamdisk()->getChildAt(data->nodeId, data->index);
+	g_ramdisk_entry* entry = g_kernel_ramdisk->getChildAt(data->nodeId, data->index);
 
 	if (entry) {
 		data->childId = entry->id;

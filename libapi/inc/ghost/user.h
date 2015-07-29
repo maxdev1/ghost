@@ -486,6 +486,19 @@ g_message_receive_status g_recv_topic_msg(uint32_t tid, uint32_t topic, g_messag
 g_message_receive_status g_recv_topic_msg_m(uint32_t tid, uint32_t topic, g_message* message, g_message_receive_mode mode);
 
 /**
+ * TODO variable sized messaging
+ */
+g_message_send_status g_send_message(g_tid target, void* message, size_t max);
+g_message_send_status g_send_message_m(g_tid target, void* message, size_t max, g_message_send_mode mode);
+g_message_send_status g_send_message_t(g_tid tid, void* buf, size_t len, g_message_transaction tx);
+g_message_send_status g_send_message_tm(g_tid tid, void* buf, size_t len, g_message_transaction tx, g_message_send_mode mode);
+
+g_message_receive_status g_receive_message(void* buf, size_t max);
+g_message_receive_status g_receive_message_m(void* buf, size_t max, g_message_receive_mode mode);
+g_message_receive_status g_receive_message_t(void* buf, size_t max, g_message_transaction tx);
+g_message_receive_status g_receive_message_tm(void* buf, size_t max, g_message_transaction tx, g_message_receive_mode mode);
+
+/**
  * Registers the executing task for the given identifier.
  *
  * @param identifier

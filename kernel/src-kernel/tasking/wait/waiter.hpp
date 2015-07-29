@@ -21,7 +21,7 @@
 #ifndef GHOST_MULTITASKING_WAIT_MANAGER
 #define GHOST_MULTITASKING_WAIT_MANAGER
 
-class g_thread;
+#include "tasking/thread.hpp"
 
 /**
  *

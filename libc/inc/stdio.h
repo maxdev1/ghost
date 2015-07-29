@@ -631,6 +631,16 @@ void klog(const char* format, ...);
  */
 void kvlog(const char* format, va_list args);
 
+/**
+ * TODO
+ */
+FILE* popen(const char* command, const char* mode);
+
+/**
+ * TODO
+ */
+int pclose(FILE* stream);
+
 __END_C
 
 #endif

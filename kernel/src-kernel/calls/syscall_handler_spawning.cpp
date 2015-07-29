@@ -319,7 +319,7 @@ G_SYSCALL_HANDLER(ramdisk_spawn) {
 	g_syscall_ramdisk_spawn* data = (g_syscall_ramdisk_spawn*) G_SYSCALL_DATA(state);
 
 	if (process->securityLevel == G_SECURITY_LEVEL_KERNEL) {
-		g_ramdisk_entry* file = g_kernel::getRamdisk()->findAbsolute(data->path);
+		g_ramdisk_entry* file = g_kernel_ramdisk->findAbsolute(data->path);
 
 		if (file) {
 			g_thread* spawnedThread;

@@ -18,25 +18,26 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <tasking/thread_manager.hpp>
+#include "tasking/thread_manager.hpp"
 
-#include <kernel.hpp>
+#include "kernel.hpp"
 #include "ghost/kernel.h"
-#include <logger/logger.hpp>
-#include <memory/memory.hpp>
-#include <memory/address_space.hpp>
-#include <memory/collections/address_stack.hpp>
-#include <memory/physical/pp_allocator.hpp>
-#include <memory/physical/pp_reference_tracker.hpp>
-#include <memory/temporary_paging_util.hpp>
-#include <memory/collections/address_range_pool.hpp>
-#include <memory/constants.hpp>
-#include <memory/lower_heap.hpp>
-#include <system/interrupts/descriptors/ivt.hpp>
-#include <utils/string.hpp>
-#include <tasking/tasking.hpp>
-#include <tasking/process.hpp>
+#include "logger/logger.hpp"
+#include "memory/memory.hpp"
+#include "memory/address_space.hpp"
+#include "memory/collections/address_stack.hpp"
+#include "memory/physical/pp_allocator.hpp"
+#include "memory/physical/pp_reference_tracker.hpp"
+#include "memory/temporary_paging_util.hpp"
+#include "memory/collections/address_range_pool.hpp"
+#include "memory/constants.hpp"
+#include "memory/lower_heap.hpp"
+#include "system/interrupts/descriptors/ivt.hpp"
+#include "utils/string.hpp"
+#include "tasking/tasking.hpp"
+#include "tasking/process.hpp"
 #include "filesystem/filesystem.hpp"
+#include "tasking/communication/message_controller.hpp"
 
 /**
  *
@@ -510,6 +511,9 @@ void g_thread_manager::deleteTask(g_thread* task) {
 	// TODO
 	// g_log_info("%! delete task %i", "taskmgr", task->id);
 
+	// clear message queues
+	g_message_controller::clear(task->id);
+
 	if (task->type == g_thread_type::THREAD) {
 
 		/**
@@ -551,7 +555,7 @@ void g_thread_manager::deleteTask(g_thread* task) {
 		 */
 		g_process* process = task->process;
 
-		// Close all file descriptors
+		// tell the filesystem to clean up
 		g_filesystem::process_closed(task->id);
 
 		// XXX TEMPORARY SWITCH XXX {

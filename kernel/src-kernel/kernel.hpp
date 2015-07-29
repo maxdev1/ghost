@@ -28,6 +28,7 @@
 #include <tasking/thread.hpp>
 
 extern g_address_range_pool* g_kernel_virt_addr_ranges;
+extern g_ramdisk* g_kernel_ramdisk;
 
 /**
  * The kernel class
@@ -37,7 +38,7 @@ private:
 	/**
 	 *
 	 */
-	static void printHeader(g_setup_information* info);
+	static void print_header(g_setup_information* info);
 
 	/**
 	 *
@@ -61,6 +62,11 @@ public:
 	static void run(g_setup_information* info);
 
 	/**
+	 * BSP setup routine
+	 */
+	static void run_bsp(g_physical_address initial_pd_physical);
+
+	/**
 	 * AP setup routine
 	 */
 	static void run_ap();
@@ -82,15 +88,6 @@ public:
 	 */
 	static void panic(const char* message, ...);
 
-	/**
-	 * @return the kernels virtual range pool
-	 */
-	static g_address_range_pool* getVirtualRanges();
-
-	/**
-	 * @return the main ramdisk
-	 */
-	static g_ramdisk* getRamdisk();
 };
 
 #endif

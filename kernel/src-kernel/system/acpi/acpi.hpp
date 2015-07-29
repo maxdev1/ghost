@@ -23,6 +23,7 @@
 
 #include "ghost/stdint.h"
 #include "ghost/kernel.h"
+#include "ghost/types.h"
 #include <system/acpi/acpi_table_header.hpp>
 #include <system/acpi/acpi_entry.hpp>
 #include <system/acpi/RSDP.hpp>

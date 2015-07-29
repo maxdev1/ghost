@@ -35,23 +35,20 @@ g_address_stack::g_address_stack() {
  *
  */
 void g_address_stack::push(g_address address) {
+
+	// first ever? create current
 	if (current == 0) {
-		current = new g_address_stack_chunk;
-		current->previous = 0;
-		current->next = 0;
+		current = new g_address_stack_frame;
 	}
 
-	current->entries[position] = address;
-	++position;
+	// put address on frame
+	current->entries[position++] = address;
 
-	if (position == ADDRESS_STACK_CHUNK_ENTRIES) {
-		if (current->next == 0) {
-			// Allocate new frame
-			current->next = new g_address_stack_chunk;
-			current->next->previous = current;
-		}
+	// create new frame when at the end
+	if (position == G_ADDRESS_STACK_FRAME_ENTRIES) {
+		current->next = new g_address_stack_frame;
+		current->next->previous = current;
 		current = current->next;
-
 		position = 0;
 	}
 }
@@ -61,30 +58,26 @@ void g_address_stack::push(g_address address) {
  */
 g_address g_address_stack::pop() {
 
-	// This happens if the last push exceeded a frame
-	if (position == 0) {
-		position = ADDRESS_STACK_CHUNK_ENTRIES;
-		current = current->previous;
-	}
-
+	// if no frames, return nothing
 	if (current == 0) {
-		g_log_warn("%! critical: no pages left in address stack", "addrstack");
 		return 0;
 	}
 
-	--position;
-	uint32_t address = current->entries[position];
+	// if at foot of frame, try to jump back
+	if(position == 0) {
 
-	if (position == 0) {
-		current = current->previous;
-		position = ADDRESS_STACK_CHUNK_ENTRIES - 1;
-
-		if (current != 0) {
-			// Delete unused frame
-			delete current->next;
-			current->next = 0;
+		// return nothing if no previous frame
+		if(current->previous == 0) {
+			return 0;
 		}
+
+		// remove frame
+		current = current->previous;
+		delete current->next;
+		current->next = 0;
+
+		position = G_ADDRESS_STACK_FRAME_ENTRIES;
 	}
 
-	return address;
+	return current->entries[--position];
 }

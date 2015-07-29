@@ -22,6 +22,8 @@
 #define GHOST_GLOBAL_IPC_MESSAGE
 
 #include "ghost/common.h"
+#include "ghost/kernel.h"
+#include "ghost/stdint.h"
 
 __BEGIN_C
 
@@ -47,6 +49,31 @@ typedef struct {
 // creates an empty message
 #define g_message_empty(name)	g_message name = { .type = 0, .sender = 0, .topic = 0, .parameterA = 0, .parameterB = 0, .parameterC = 0, .parameterD = 0 };
 
+// message topic
+typedef uint32_t g_message_transaction;
+#define G_MESSAGE_TRANSACTION_NONE			0
+#define G_MESSAGE_TRANSACTION_FIRST			1
+
+// message header
+typedef struct _g_message_header {
+	g_tid sender;
+	g_message_transaction transaction;
+	size_t length;
+	struct _g_message_header* previous;
+	struct _g_message_header* next;
+}__attribute__((packed)) g_message_header;
+
+#define G_MESSAGE_CONTENT(message)			(((uint8_t*) message) + sizeof(g_message_header))
+
+// messaging bounds
+#define G_MESSAGE_MAXIMUM_LENGTH			(2048)
+#define G_MESSAGE_MAXIMUM_QUEUE_CONTENT		(2048 * 32)
+
+// modes for message sending
+typedef int g_message_send_mode;
+static const g_message_send_mode G_MESSAGE_SEND_MODE_BLOCKING = 0;
+static const g_message_send_mode G_MESSAGE_SEND_MODE_NON_BLOCKING = 1;
+
 // modes for message receiving
 typedef int g_message_receive_mode;
 static const g_message_receive_mode G_MESSAGE_RECEIVE_MODE_BLOCKING = 0;
@@ -57,6 +84,7 @@ typedef int g_message_send_status;
 static const g_message_send_status G_MESSAGE_SEND_STATUS_SUCCESSFUL = 1;
 static const g_message_send_status G_MESSAGE_SEND_STATUS_QUEUE_FULL = 2;
 static const g_message_send_status G_MESSAGE_SEND_STATUS_FAILED = 3;
+static const g_message_send_status G_MESSAGE_SEND_STATUS_EXCEEDS_MAXIMUM = 4;
 
 // status for message receiving
 typedef int g_message_receive_status;
@@ -64,6 +92,7 @@ static const g_message_receive_status G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL = 1;
 static const g_message_receive_status G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY = 2;
 static const g_message_receive_status G_MESSAGE_RECEIVE_STATUS_FAILED = 3;
 static const g_message_receive_status G_MESSAGE_RECEIVE_STATUS_FAILED_NOT_PERMITTED = 4;
+static const g_message_receive_status G_MESSAGE_RECEIVE_STATUS_EXCEEDS_BUFFER_SIZE = 5;
 
 __END_C
 

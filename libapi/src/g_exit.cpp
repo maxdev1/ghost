@@ -28,7 +28,7 @@ extern "C" void _fini();
 /**
  *
  */
-void g_exit(int code) {
+void __attribute__((no_return)) g_exit(int code) {
 	_fini();
 	g_syscall_exit data;
 	data.code = code;

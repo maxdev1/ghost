@@ -25,6 +25,7 @@
 #include <utils/string.hpp>
 #include <memory/address_space.hpp>
 #include <system/acpi/MADT.hpp>
+#include "ghost/types.h"
 
 /**
  * Remembers the root header and whether its an XSDT

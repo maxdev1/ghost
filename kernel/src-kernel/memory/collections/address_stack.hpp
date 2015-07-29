@@ -25,15 +25,15 @@
 #include <memory/paging.hpp>
 #include <memory/memory.hpp>
 
-#define ADDRESS_STACK_CHUNK_ENTRIES		128
+#define G_ADDRESS_STACK_FRAME_ENTRIES		128
 
 /**
  *
  */
-struct g_address_stack_chunk {
-	g_address_stack_chunk* previous;
-	g_address_stack_chunk* next;
-	g_address entries[ADDRESS_STACK_CHUNK_ENTRIES];
+struct g_address_stack_frame {
+	g_address_stack_frame* previous = 0;
+	g_address_stack_frame* next = 0;
+	g_address entries[G_ADDRESS_STACK_FRAME_ENTRIES];
 };
 
 /**
@@ -41,7 +41,7 @@ struct g_address_stack_chunk {
  */
 class g_address_stack {
 private:
-	g_address_stack_chunk* current;
+	g_address_stack_frame* current;
 	uint32_t position;
 
 public:

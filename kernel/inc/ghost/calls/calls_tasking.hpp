@@ -22,6 +22,7 @@
 #define GHOST_API_CALLS_TASKINGCALLS
 
 #include "ghost/kernel.h"
+#include "ghost/system.h"
 
 /**
  * @field code

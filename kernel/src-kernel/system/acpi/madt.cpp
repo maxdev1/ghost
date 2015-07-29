@@ -49,8 +49,12 @@ void g_madt::parse(g_acpi_table_header* madtSdtHeader) {
 
 		if (entryHeader->deviceType == 0) {	// Local APIC
 			g_madt_lapic_entry* entry = (g_madt_lapic_entry*) entryHeader;
-			g_log_info("%# lapic, id: %i, processorId: %i", entry->apicId, entry->processorId);
-			g_system::createCpu(entry->apicId);
+			g_log_info("%# lapic, id: %i, processorId: %i, flags: %i", entry->apicId, entry->processorId, entry->flags);
+
+			// only useable if entry flag 1
+			if (entry->flags == 1) {
+				g_system::createCpu(entry->apicId);
+			}
 
 		} else if (entryHeader->deviceType == 1) { // IO APIC
 			g_madt_ioapic_entry* entry = (g_madt_ioapic_entry*) entryHeader;
@@ -59,8 +63,7 @@ void g_madt::parse(g_acpi_table_header* madtSdtHeader) {
 
 		} else if (entryHeader->deviceType == 2) { // Interrupt Source Override
 			g_madt_interrupt_src_override_entry* entry = (g_madt_interrupt_src_override_entry*) entryHeader;
-			g_log_info("%# int src override, irqSource: %i, globInt: %i, busSource: %i", entry->irqSource, entry->globalSystemInterrupt,
-					entry->busSource);
+			g_log_info("%# int src override, irqSource: %i, globInt: %i, busSource: %i", entry->irqSource, entry->globalSystemInterrupt, entry->busSource);
 
 		} else {
 			g_log_warn("%# device of unknown type %i", entryHeader->deviceType);
