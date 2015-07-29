@@ -77,6 +77,8 @@ private:
 	static g_cpu_state* send_msg(g_cpu_state* state);
 	static g_cpu_state* recv_msg(g_cpu_state* state);
 	static g_cpu_state* recv_topic_msg(g_cpu_state* state);
+	static g_cpu_state* send_message(g_cpu_state* state);
+	static g_cpu_state* receive_message(g_cpu_state* state);
 
 	static g_cpu_state* alloc_mem(g_cpu_state* state);
 	static g_cpu_state* share_mem(g_cpu_state* state);

@@ -22,6 +22,11 @@
 #define __GHOST_LIBC_SYS_STAT__
 
 #include "ghost/stdint.h"
+#include "ghost/common.h"
+#include "sys/types.h"
+#include "time.h"
+
+__BEGIN_C
 
 typedef uint32_t mode_t;
 
@@ -39,5 +44,27 @@ typedef uint32_t mode_t;
 #define S_IWUSR 0200
 #define S_IRUSR 0400
 #define S_IRWXU 0700
+
+struct stat {
+	dev_t st_dev;
+	ino_t st_ino;
+	mode_t st_mode;
+	nlink_t st_nlink;
+	uid_t st_uid;
+	gid_t st_gid;
+	off_t st_size;
+	time_t st_atime;
+	time_t st_mtime;
+	time_t st_ctime;
+	blksize_t st_blksize;
+	blkcnt_t st_blocks;
+};
+
+/**
+ * TODO
+ */
+int stat(const char *pathname, struct stat *buf);
+
+__END_C
 
 #endif

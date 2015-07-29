@@ -61,13 +61,13 @@ g_fs_transaction_id g_fs_delegate_ramdisk::request_discovery(g_thread* requester
 	// find on ramdisk
 	g_ramdisk_entry* ramdisk_parent;
 	if (parent->type == G_FS_NODE_TYPE_MOUNTPOINT) {
-		ramdisk_parent = g_kernel::getRamdisk()->getRoot();
+		ramdisk_parent = g_kernel_ramdisk->getRoot();
 	} else {
-		ramdisk_parent = g_kernel::getRamdisk()->findById(parent->phys_fs_id);
+		ramdisk_parent = g_kernel_ramdisk->findById(parent->phys_fs_id);
 	}
 
 	if (ramdisk_parent) {
-		g_ramdisk_entry* ramdisk_node = g_kernel::getRamdisk()->findChild(ramdisk_parent, child);
+		g_ramdisk_entry* ramdisk_node = g_kernel_ramdisk->findChild(ramdisk_parent, child);
 
 		if (ramdisk_node) {
 			// create the vfs node
@@ -106,7 +106,7 @@ g_fs_transaction_id g_fs_delegate_ramdisk::request_read(g_thread* requester, g_f
 		id = g_fs_transaction_store::next_transaction();
 	}
 
-	g_ramdisk_entry* ramdisk_node = g_kernel::getRamdisk()->findById(node->phys_fs_id);
+	g_ramdisk_entry* ramdisk_node = g_kernel_ramdisk->findById(node->phys_fs_id);
 	if (ramdisk_node == 0) {
 		handler->status = G_FS_READ_INVALID_FD;
 
@@ -164,7 +164,7 @@ g_fs_transaction_id g_fs_delegate_ramdisk::request_get_length(g_thread* requeste
 	// the ramdisk handler is doing it's work immediately and doesn't request another process
 	g_fs_transaction_id id = g_fs_transaction_store::next_transaction();
 
-	g_ramdisk_entry* ramdisk_node = g_kernel::getRamdisk()->findById(node->phys_fs_id);
+	g_ramdisk_entry* ramdisk_node = g_kernel_ramdisk->findById(node->phys_fs_id);
 	if (ramdisk_node == 0) {
 		handler->status = G_FS_LENGTH_NOT_FOUND;
 		handler->length = 0;
@@ -192,12 +192,12 @@ g_fs_transaction_id g_fs_delegate_ramdisk::request_read_directory(g_thread* requ
 
 	g_fs_transaction_id id = g_fs_transaction_store::next_transaction();
 
-	g_ramdisk_entry* rd_parent = g_kernel::getRamdisk()->findById(fs_parent->phys_fs_id);
+	g_ramdisk_entry* rd_parent = g_kernel_ramdisk->findById(fs_parent->phys_fs_id);
 	if (rd_parent == 0) {
 		handler->status = G_FS_READ_DIRECTORY_ERROR;
 
 	} else {
-		g_ramdisk_entry* rd_child = g_kernel::getRamdisk()->getChildAt(fs_parent->phys_fs_id, position);
+		g_ramdisk_entry* rd_child = g_kernel_ramdisk->getChildAt(fs_parent->phys_fs_id, position);
 		if (rd_child) {
 			// get real path to parent
 			g_local<char> absolute(new char[G_PATH_MAX]);

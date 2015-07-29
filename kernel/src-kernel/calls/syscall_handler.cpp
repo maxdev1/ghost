@@ -75,9 +75,14 @@ G_SYSCALL_HANDLER(handle) {
 		link(G_SYSCALL_GET_THREAD_ENTRY, get_thread_entry);
 		link(G_SYSCALL_REGISTER_TASK_IDENTIFIER, task_id_register);
 		link(G_SYSCALL_GET_TASK_FOR_IDENTIFIER, task_id_get);
+
 		link(G_SYSCALL_MAILBOX_SEND, send_msg);
 		link(G_SYSCALL_MAILBOX_RECEIVE, recv_msg);
 		link(G_SYSCALL_MAILBOX_RECEIVE_WITH_IDENT, recv_topic_msg);
+
+		link(G_SYSCALL_MESSAGE_SEND, send_message);
+		link(G_SYSCALL_MESSAGE_RECEIVE, receive_message);
+
 		link(G_SYSCALL_WAIT_FOR_IRQ, wait_for_irq);
 		link(G_SYSCALL_ALLOCATE_MEMORY, alloc_mem);
 		link(G_SYSCALL_SHARE_MEMORY, share_mem);

@@ -110,7 +110,7 @@ g_fs_transaction_id g_fs_delegate_tasked::request_discovery(g_thread* requester,
 		request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_DISCOVER;
 		request.parameterA = id;
 
-		int send_status = g_message_controller::send(delegate_thread->id, request);
+		int send_status = g_message_controller::send(delegate_thread->id, &request);
 
 		if (send_status == G_MESSAGE_SEND_STATUS_SUCCESSFUL) {
 			// task was requested, wait for answer
@@ -209,7 +209,7 @@ g_fs_transaction_id g_fs_delegate_tasked::request_read(g_thread* requester, g_fs
 	request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_READ;
 	request.parameterA = id;
 
-	g_message_send_status send_status = g_message_controller::send(delegate_thread->id, request);
+	g_message_send_status send_status = g_message_controller::send(delegate_thread->id, &request);
 	if (send_status == G_MESSAGE_SEND_STATUS_SUCCESSFUL) {
 		// set transaction status
 		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_WAITING);
@@ -320,7 +320,7 @@ g_fs_transaction_id g_fs_delegate_tasked::request_write(g_thread* requester, g_f
 	request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_WRITE;
 	request.parameterA = id;
 
-	g_message_send_status send_status = g_message_controller::send(delegate_thread->id, request);
+	g_message_send_status send_status = g_message_controller::send(delegate_thread->id, &request);
 	if (send_status == G_MESSAGE_SEND_STATUS_SUCCESSFUL) {
 
 		// set transaction status
@@ -397,7 +397,7 @@ g_fs_transaction_id g_fs_delegate_tasked::request_get_length(g_thread* requester
 	request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_GET_LENGTH;
 	request.parameterA = id;
 
-	int send_status = g_message_controller::send(delegate_thread->id, request);
+	int send_status = g_message_controller::send(delegate_thread->id, &request);
 
 	if (send_status == G_MESSAGE_SEND_STATUS_SUCCESSFUL) {
 		// task was requested, wait for answer
@@ -466,7 +466,7 @@ g_fs_transaction_id g_fs_delegate_tasked::request_read_directory(g_thread* reque
 	request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_READ_DIRECTORY;
 	request.parameterA = id;
 
-	int send_status = g_message_controller::send(delegate_thread->id, request);
+	int send_status = g_message_controller::send(delegate_thread->id, &request);
 
 	if (send_status == G_MESSAGE_SEND_STATUS_SUCCESSFUL) {
 		// task was requested, wait for answer

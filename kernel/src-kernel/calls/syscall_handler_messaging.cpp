@@ -26,6 +26,59 @@
 #include <tasking/thread_manager.hpp>
 #include <tasking/wait/waiter_recv_msg.hpp>
 #include <tasking/wait/waiter_recv_topic_msg.hpp>
+#include <tasking/wait/waiter_send_message.hpp>
+#include <tasking/wait/waiter_receive_message.hpp>
+
+/**
+ *
+ */
+G_SYSCALL_HANDLER(send_message) {
+
+	g_thread* task = g_tasking::getCurrentThread();
+	g_syscall_send_message* data = (g_syscall_send_message*) G_SYSCALL_DATA(state);
+
+	// send the message
+	data->status = g_message_controller::send_message(data->receiver, task->id, data->buffer, data->length, data->transaction);
+
+	// check if block
+	if (data->mode == G_MESSAGE_SEND_MODE_BLOCKING && data->status == G_MESSAGE_SEND_STATUS_QUEUE_FULL) {
+		task->wait(new g_waiter_send_message(data));
+		return g_tasking::switchTask(state);
+	}
+
+	return state;
+}
+
+/**
+ *
+ */
+G_SYSCALL_HANDLER(receive_message) {
+
+	g_thread* task = g_tasking::getCurrentThread();
+	g_syscall_receive_message* data = (g_syscall_receive_message*) G_SYSCALL_DATA(state);
+
+	data->status = g_message_controller::receive_message(task->id, data->buffer, data->maximum, data->transaction);
+
+	if (data->status == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
+		// there was a message, immediate return
+		return state;
+	}
+
+	if (data->status == G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY) {
+		// check mode to see what to do
+		if (data->mode == G_MESSAGE_RECEIVE_MODE_NON_BLOCKING) {
+			return state;
+		}
+
+		// perform blocking
+		task->wait(new g_waiter_receive_message(data));
+		return g_tasking::switchTask(state);
+	}
+
+	// something went wrong, immediate return
+	data->status = G_MESSAGE_RECEIVE_STATUS_FAILED;
+	return state;
+}
 
 /**
  * Sends a message to the task with the "taskId", reading the contents from
@@ -36,15 +89,11 @@ G_SYSCALL_HANDLER(send_msg) {
 	g_thread* task = g_tasking::getCurrentThread();
 	g_syscall_send_msg* data = (g_syscall_send_msg*) G_SYSCALL_DATA(state);
 
-	// Copy the message
-	g_message message;
-	message = *data->message;
-
 	// Get executing task id and store it in the data
-	message.sender = task->id;
+	data->message->sender = task->id;
 
 	// Send the message
-	data->sendResult = g_message_controller::send(data->taskId, message);
+	data->sendResult = g_message_controller::send(data->taskId, data->message);
 
 	return state;
 }

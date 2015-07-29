@@ -24,13 +24,13 @@
 #include "ghost/kernel.h"
 #include "ghost/calls/calls.h"
 #include "ghost/signal.h"
-#include <memory/paging.hpp>
-#include <system/cpu_state.hpp>
-#include <memory/collections/address_range_pool.hpp>
-#include <tasking/wait/waiter.hpp>
+#include "memory/paging.hpp"
+#include "system/cpu_state.hpp"
+#include "memory/collections/address_range_pool.hpp"
 
-// Forward declaration of Process
+// forward declarations
 class g_process;
+class g_waiter;
 
 /**
  * Task types

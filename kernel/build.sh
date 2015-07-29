@@ -31,7 +31,7 @@ AP_STARTUP_SRC=src-ap/ap_startup.asm
 AP_STARTUP_OBJ=$BIN/ap_startup.o
 AP_STARTUP_TGT=$SYSROOT/system/lib/apstartup.o
 
-LDFLAGS="-nostdlib"
+LDFLAGS="-nostdlib -nostartfiles"
 CFLAGS="-std=c++11 -D_GHOST_KERNEL_=1 -D_ARCH_X86_=1 -O0 -g -nostdinc -Wall -Wno-unused-but-set-variable -ffreestanding -fno-exceptions -fno-rtti"
 
 QEMU=qemu-system-i386

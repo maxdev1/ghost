@@ -24,7 +24,6 @@
 #include <ghostuser/tasking/ipc.hpp>
 #include <ghostuser/utils/logger.hpp>
 
-
 static uint32_t mouseTopic = -1;
 
 /**
@@ -39,10 +38,9 @@ void g_mouse::registerMouse() {
 
 	mouseTopic = g_ipc_next_topic();
 
-	g_message_empty(request);
-	request.topic = mouseTopic;
-	request.type = G_PS2_COMMAND_REGISTER_MOUSE;
-	g_send_msg(ps2driverid, &request);
+	g_ps2_register_request request;
+	request.command = G_PS2_COMMAND_REGISTER_MOUSE;
+	g_send_message_t(ps2driverid, &request, sizeof(g_ps2_register_request), mouseTopic);
 }
 
 /**
@@ -54,14 +52,18 @@ g_mouse_info g_mouse::readMouse() {
 		registerMouse();
 	}
 
-	g_message_empty(message);
-	g_recv_topic_msg(g_get_tid(), mouseTopic, &message);
+	size_t buflen = sizeof(g_message_header) + sizeof(g_ps2_mouse_packet);
+	uint8_t buf[buflen];
 
 	g_mouse_info e;
-	e.x = (int16_t) ((message.parameterA >> 16) & 0xFFFF);
-	e.y = (int16_t) (message.parameterA & 0xFFFF);
-	e.button1 = (message.parameterB & (1 << 0));
-	e.button2 = (message.parameterB & (1 << 1));
-	e.button3 = (message.parameterB & (1 << 2));
+	if (g_receive_message_t(buf, buflen, mouseTopic) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
+		g_ps2_mouse_packet* packet = (g_ps2_mouse_packet*) G_MESSAGE_CONTENT(buf);
+
+		e.x = packet->x;
+		e.y = packet->y;
+		e.button1 = (packet->flags & (1 << 0));
+		e.button2 = (packet->flags & (1 << 1));
+		e.button3 = (packet->flags & (1 << 2));
+	}
 	return e;
 }

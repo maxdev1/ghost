@@ -37,7 +37,7 @@
  */
 #define G_VERSION_MAJOR									0
 #define G_VERSION_MINOR									4
-#define G_VERSION_PATCH									1
+#define G_VERSION_PATCH									2
 
 /**
  * Name of the initialization binary that the kernel loads on startup

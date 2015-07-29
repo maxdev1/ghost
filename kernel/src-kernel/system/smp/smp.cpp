@@ -68,7 +68,7 @@ void g_smp::initialize(g_physical_address initialPageDirectoryPhysical) {
 
 	// Copy start object from ramdisk to lower memory
 	const char* ap_startup_location = "system/lib/apstartup.o";
-	g_ramdisk_entry* startupObject = g_kernel::getRamdisk()->findAbsolute(ap_startup_location);
+	g_ramdisk_entry* startupObject = g_kernel_ramdisk->findAbsolute(ap_startup_location);
 	if (startupObject == 0) {
 		g_log_info("%*%! could not initialize due to missing apstartup object at '%s'", 0x0C, "smp", ap_startup_location);
 		return;
@@ -106,7 +106,7 @@ void g_smp::initializeProcessor(g_cpu* cpu) {
 	g_lapic::write(APIC_REGISTER_INT_COMMAND_HIGH, cpu->apic << 24);
 	g_lapic::write(APIC_REGISTER_INT_COMMAND_LOW, vectorValue | APIC_ICR_DELMOD_SIPI | APIC_ICR_LEVEL_ASSERT);
 
-	// Sleep 200�s
+	// Sleep 200µs
 	g_pit::prepareSleep(200);
 	g_pit::performSleep();
 
@@ -114,7 +114,7 @@ void g_smp::initializeProcessor(g_cpu* cpu) {
 	g_lapic::write(APIC_REGISTER_INT_COMMAND_HIGH, cpu->apic << 24);
 	g_lapic::write(APIC_REGISTER_INT_COMMAND_LOW, vectorValue | APIC_ICR_DELMOD_SIPI | APIC_ICR_LEVEL_ASSERT);
 
-	// Sleep 200�s
+	// Sleep 200µs
 	g_pit::prepareSleep(200);
 	g_pit::performSleep();
 }

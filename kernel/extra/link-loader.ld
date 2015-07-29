@@ -23,14 +23,10 @@ SECTIONS
 	rodataSectionStart = .;
 	.rodata BLOCK(4K) : ALIGN(4K)
 	{
-		startConstructors = .;
-		*(.ctor*)
-		endConstructors = .;
-		
-		startDestructors = .;
-		*(.dtor*)
-		endDestructors = .;
-		
+        startConstructors = .;
+        *(SORT(.ctors*))
+        endConstructors = .;
+        
 		*(.rodata)
 	}
 	rodataSectionEnd = .;

@@ -28,17 +28,56 @@
 
 __BEGIN_C
 
+// constants for use with <access>
+#define	F_OK		0	// file existence
+#define	X_OK		1	// execute or search permission
+#define	W_OK		2	// write permission
+#define	R_OK		3	// read permission
+
+/**
+ * POSIX wrapper for <g_read>
+ */
 ssize_t read(int fd, void* buf, size_t count);
 
+/**
+ * POSIX wrapper for <g_write>
+ */
 ssize_t write(int fd, const void* buf, size_t count);
 
+/**
+ * POSIX wrapper for <g_seek>
+ */
 off_t lseek(int fd, off_t offset, int whence);
 
+/**
+ * POSIX wrapper for <g_tell>
+ */
 long int tell(int filedes);
 
+/**
+ * POSIX wrapper for <g_close>
+ */
 int close(int filedes);
 
+/**
+ * POSIX wrapper for <g_sbrk>
+ */
 void* sbrk(intptr_t increment);
+
+/**
+ * TODO
+ */
+int isatty(int fd);
+
+/**
+ * TODO
+ */
+int access(const char* pathname, int mode);
+
+/**
+ * POSIX wrapper for <g_sleep>, but with seconds instead of milliseconds
+ */
+unsigned sleep(unsigned seconds);
 
 __END_C
 

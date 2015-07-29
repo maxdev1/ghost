@@ -54,3 +54,10 @@ void g_global_lock::unlock() {
 bool g_global_lock::isLocked() {
 	return atom;
 }
+
+/**
+ *
+ */
+void g_global_lock::quiet(int val) {
+	atom = val;
+}

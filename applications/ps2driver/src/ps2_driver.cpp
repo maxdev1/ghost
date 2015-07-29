@@ -63,22 +63,28 @@ int main() {
 	g_register_irq_handler(12, irq_handler);
 
 	// wait for control requests
-	g_message_empty(msg);
+	size_t buflen = sizeof(g_message_header) + sizeof(g_ps2_register_request);
+	uint8_t buf[buflen];
 	g_tid tid = g_get_tid();
 	while (true) {
-		g_recv_msg(tid, &msg);
+		g_message_receive_status stat = g_receive_message(buf, buflen);
 
-		if (msg.type == G_PS2_COMMAND_REGISTER_KEYBOARD) {
-			keyboard_receiver_tid = msg.sender;
-			keyboard_receiver_transaction = msg.topic;
+		if (stat == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
+			g_message_header* mes = (g_message_header*) buf;
+			g_ps2_register_request* req =
+					(g_ps2_register_request*) G_MESSAGE_CONTENT(buf);
 
-		} else if (msg.type == G_PS2_COMMAND_REGISTER_MOUSE) {
-			mouse_receiver_tid = msg.sender;
-			mouse_receiver_transaction = msg.topic;
+			if (req->command == G_PS2_COMMAND_REGISTER_KEYBOARD) {
+				keyboard_receiver_tid = mes->sender;
+				keyboard_receiver_transaction = mes->transaction;
 
-		} else {
-			g_logger::log("ps2driver: received unknown message with type %i",
-					msg.type);
+			} else if (req->command == G_PS2_COMMAND_REGISTER_MOUSE) {
+				mouse_receiver_tid = mes->sender;
+				mouse_receiver_transaction = mes->transaction;
+
+			} else {
+				g_logger::log("received unknown command: %i", req->command);
+			}
 		}
 	}
 }
@@ -141,11 +147,12 @@ void handle_mouse_data(uint8_t b) {
 			int16_t offX = valX - ((flags << 4) & 0x100);
 			int16_t offY = valY - ((flags << 3) & 0x100);
 
-			g_message_empty(message);
-			message.topic = mouse_receiver_transaction;
-			message.parameterA = (((uint16_t) offX) << 16) | ((uint16_t) offY);
-			message.parameterB = flags;
-			g_send_msg(mouse_receiver_tid, &message);
+			g_ps2_mouse_packet packet;
+			packet.x = offX;
+			packet.y = offY;
+			packet.flags = flags;
+			g_send_message_t(mouse_receiver_tid, &packet,
+					sizeof(g_ps2_mouse_packet), mouse_receiver_transaction);
 		}
 
 		mouse_packet_number = 0;
@@ -158,11 +165,10 @@ void handle_mouse_data(uint8_t b) {
  */
 void handle_keyboard_data(uint8_t b) {
 
-	g_message_empty(message);
-	message.topic = keyboard_receiver_transaction;
-	message.type = 1;
-	message.parameterA = b;
-	g_send_msg(keyboard_receiver_tid, &message);
+	g_ps2_keyboard_packet packet;
+	packet.scancode = b;
+	g_send_message_t(keyboard_receiver_tid, &packet,
+			sizeof(g_ps2_keyboard_packet), keyboard_receiver_transaction);
 }
 
 /**

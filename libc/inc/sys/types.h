@@ -21,15 +21,24 @@
 #ifndef __GHOST_LIBC_TYPES__
 #define __GHOST_LIBC_TYPES__
 
+#include "ghost.h"
 #include "ghost/common.h"
-#include "ghost/kernel.h"
-#include "ghost/stdint.h"
 
 __BEGIN_C
 
 typedef g_pid pid_t;
 typedef int64_t off_t;
 typedef int64_t ssize_t;
+
+typedef g_fs_virt_id ino_t; // a file is identified by its virtual id
+typedef g_fs_virt_id dev_t; // a device is identified by the virtual id of the mountpoint
+
+// TODO
+typedef int nlink_t;
+typedef int uid_t;
+typedef int gid_t;
+typedef int blksize_t;
+typedef int blkcnt_t;
 
 __END_C
 

@@ -59,10 +59,9 @@ void g_keyboard::registerKeyboard() {
 	keyboardTopic = g_ipc_next_topic();
 	keyboardRegisteredTask = g_get_tid();
 
-	g_message_empty(request);
-	request.topic = keyboardTopic;
-	request.type = G_PS2_COMMAND_REGISTER_KEYBOARD;
-	g_send_msg(ps2driverid, &request);
+	g_ps2_register_request request;
+	request.command = G_PS2_COMMAND_REGISTER_KEYBOARD;
+	g_send_message_t(ps2driverid, &request, sizeof(g_ps2_register_request), keyboardTopic);
 }
 
 /**
@@ -79,9 +78,14 @@ g_key_info g_keyboard::readKey() {
 		registerKeyboard();
 	}
 
-	g_message_empty(message);
-	g_recv_topic_msg(task_id, keyboardTopic, &message);
-	return keyForScancode(message.parameterA);
+	size_t buflen = sizeof(g_message_header) + sizeof(g_ps2_keyboard_packet);
+	uint8_t buf[buflen];
+
+	if (g_receive_message_t(buf, buflen, keyboardTopic) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
+		g_ps2_keyboard_packet* packet = (g_ps2_keyboard_packet*) G_MESSAGE_CONTENT(buf);
+		return keyForScancode(packet->scancode);
+	}
+	return g_key_info();
 }
 
 /**

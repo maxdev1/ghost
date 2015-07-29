@@ -18,62 +18,239 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <kernel.hpp>
-
-#include <memory/gdt/gdt_manager.hpp>
-
-#include <memory/kernel_heap.hpp>
-#include <memory/physical/pp_allocator.hpp>
-#include <memory/paging.hpp>
-#include <memory/address_space.hpp>
-#include <memory/temporary_paging_util.hpp>
-#include <memory/lower_heap.hpp>
-#include <memory/constants.hpp>
+#include "kernel.hpp"
+#include "kernelloader/setup_information.hpp"
+#include "multiboot/multiboot_util.hpp"
 
 #include "ghost/stdint.h"
-#include <logger/logger.hpp>
-#include <kernelloader/setup_information.hpp>
-#include <video/console_video.hpp>
+#include "logger/logger.hpp"
+#include "video/console_video.hpp"
 
-#include <multiboot/multiboot_util.hpp>
-#include <executable/elf32_loader.hpp>
-#include <memory/collections/address_range_pool.hpp>
+#include "system/system.hpp"
+#include "system/smp/global_lock.hpp"
+#include "tasking/tasking.hpp"
+#include "filesystem/filesystem.hpp"
 
-#include <system/system.hpp>
-#include <system/smp/global_lock.hpp>
-#include <tasking/tasking.hpp>
-#include <filesystem/filesystem.hpp>
+#include "memory/gdt/gdt_manager.hpp"
+#include "memory/kernel_heap.hpp"
+#include "memory/physical/pp_allocator.hpp"
+#include "memory/paging.hpp"
+#include "memory/address_space.hpp"
+#include "memory/temporary_paging_util.hpp"
+#include "memory/lower_heap.hpp"
+#include "memory/constants.hpp"
+#include "memory/collections/address_stack.hpp"
 
-// Ramdisk pointer
-static g_ramdisk* ramdisk;
+#include "executable/elf32_loader.hpp"
+#include "memory/collections/address_range_pool.hpp"
 
-// Virtual range pool for the kernel
+// pointer to the global ramdisk
+g_ramdisk* g_kernel_ramdisk;
+
+// pool of virtual address ranges for the kernel
 g_address_range_pool* g_kernel_virt_addr_ranges;
 
-// Lock for BSP/AP setup
+// BSP/AP setup locks & counter
 static g_global_lock bsp_setup_lock;
+static g_global_lock ap_setup_lock;
+static int waiting_aps;
 
-// Process spawning lock
+// process spawning lock
 static g_global_lock system_process_spawn_lock;
 
 /**
  * 
  */
-g_ramdisk* g_kernel::getRamdisk() {
-	return (ramdisk);
-}
+void g_kernel::pre_setup(g_setup_information* info) {
 
-/**
- * 
- */
-g_address_range_pool* g_kernel::getVirtualRanges() {
-	return (g_kernel_virt_addr_ranges);
+	// initialize COM port logging
+	g_logger::initializeSerial();
+
+	// print header
+	print_header(info);
+
+	// Initialize physical page allocator from bitmap provided by the loader
+	g_pp_allocator::initializeFromBitmap(info->bitmapStart, info->bitmapEnd);
+	g_log_info("%! %i KiB of free memory", "kern", g_pp_allocator::getFreePageCount() * G_PAGE_SIZE / 1024);
+
+	// Initialize the kernel heap
+	g_kernel_heap::initialize(info->heapStart, info->heapEnd);
+
+	// Find ramdisk module
+	g_multiboot_module* rd_module = g_multiboot_util::findModule(info->multibootInformation, "/boot/ramdisk");
+	if (rd_module == 0) {
+		panic("%! ramdisk does not exist", "kern");
+	}
+
+	// Create virtual range pool for kernel ranges
+	g_kernel_virt_addr_ranges = new g_address_range_pool();
+	g_kernel_virt_addr_ranges->initialize(G_CONST_KERNEL_VIRTUAL_RANGES_START, G_CONST_KERNEL_VIRTUAL_RANGES_END);
+
+	// Remap the ramdisk module into the kernels ranges & load the ramdisk
+	load_ramdisk(rd_module);
 }
 
 /**
  *
  */
-void g_kernel::printHeader(g_setup_information* info) {
+void g_kernel::run(g_setup_information* info) {
+
+	// perform initial setup
+	pre_setup(info);
+
+	// copy remaining information from loader information
+	g_physical_address initial_pd_physical = info->initialPageDirectoryPhysical;
+	g_log_debug("%! unmapping old address space area", "kern");
+	for (g_virtual_address i = G_CONST_LOWER_MEMORY_END; i < G_CONST_KERNEL_AREA_START; i += G_PAGE_SIZE) {
+		g_address_space::unmap(i);
+	}
+	// NOTE: pointer to info is now invalid
+
+	// run BSP setup
+	run_bsp(initial_pd_physical);
+}
+
+/**
+ *
+ */
+void g_kernel::run_bsp(g_physical_address initial_pd_physical) {
+
+	// initialize the temporary paging util
+	g_temporary_paging_util::initialize();
+
+	// tell the lower memory allocator which area to use
+	g_lower_heap::addArea(G_CONST_LOWER_HEAP_MEMORY_START, G_CONST_LOWER_HEAP_MEMORY_END);
+
+	// perform bsp initialization
+	bsp_setup_lock.lock();
+	{
+		// Initialize processors & interrupt handling
+		g_system::initializeBsp(initial_pd_physical);
+
+		// Initialize global descriptor table
+		// (AFTER the system, so BSP's id is available)
+		g_gdt_manager::prepare();
+		g_gdt_manager::initialize();
+
+		// Initialize the scheduler
+		g_tasking::initialize();
+
+		// Enable tasking for this core
+		g_tasking::enableForThisCore();
+
+		// Initialize filesystem
+		g_filesystem::initialize();
+
+		// Create initial process
+		load_system_process(G_IDLE_BINARY_NAME, g_thread_priority::IDLE);
+		load_system_process(G_INIT_BINARY_NAME, g_thread_priority::NORMAL);
+	}
+	bsp_setup_lock.unlock();
+	/* BSP INITIALIZATION END */
+
+	// wait for APs
+	waiting_aps = g_system::getCpuCount() - 1;
+	g_log_info("%! waiting for %i application processors", "kern", waiting_aps);
+	while (waiting_aps > 0) {
+		asm("pause");
+	}
+
+	// Enable interrupts and wait until the first interrupt causes the scheduler to switch to the initial process
+	g_log_info("%! leaving initialization", "kern");
+	asm("sti");
+	for (;;) {
+		asm("hlt");
+	}
+}
+
+/**
+ *
+ */
+void g_kernel::run_ap() {
+
+	ap_setup_lock.lock();
+	{
+		uint32_t core = g_system::getCurrentCoreId();
+		g_log_info("%! core %i ready for initialization", "kernap", core);
+
+		// Debug ESP output
+		uint32_t esp;
+		asm("mov %%esp, %0":"=g"(esp));
+		g_log_debug("%! esp is %h", "kernap", esp);
+
+		// Wait for BSP to finish setup
+		g_log_info("%! waiting for bsp to finish setup", "kernap");
+		bsp_setup_lock.lock();
+		g_log_info("%! core %i got ready state from bsp", "kernap", core);
+		bsp_setup_lock.unlock();
+
+		// Initialize GDT
+		g_gdt_manager::initialize();
+
+		// Initialize for AP
+		g_system::initializeAp();
+
+		// Enable tasking for this core
+		g_tasking::enableForThisCore();
+
+		// Leave initialization
+		load_system_process(G_IDLE_BINARY_NAME, g_thread_priority::IDLE);
+
+		// tell bsp that one more is done
+		--waiting_aps;
+	}
+	ap_setup_lock.unlock();
+
+	// wait for APs
+	g_log_info("%! waiting for %i application processors", "kernap", waiting_aps);
+	while (waiting_aps > 0) {
+		asm("pause");
+	}
+
+	// Enable interrupts and wait until the first interrupt causes the scheduler to switch to the initial process
+	g_log_info("%! leaving initialization", "kernap");
+	asm("sti");
+	for (;;) {
+		asm("hlt");
+	}
+}
+
+/**
+ * 
+ */
+void g_kernel::load_system_process(const char* binary_path, g_thread_priority priority) {
+
+	system_process_spawn_lock.lock();
+
+	g_ramdisk_entry* entry = g_kernel_ramdisk->findAbsolute(binary_path);
+	if (entry) {
+		g_thread* systemProcess;
+		g_elf32_spawn_status status = g_elf32_loader::spawnFromRamdisk(entry, G_SECURITY_LEVEL_KERNEL, &systemProcess, 0, true);
+
+		if (status != ELF32_SPAWN_STATUS_SUCCESSFUL) {
+			if (status == ELF32_SPAWN_STATUS_VALIDATION_ERROR) {
+				panic("%! \"%s\" is not a valid elf32 binary", "kern", binary_path);
+
+			} else if (status == ELF32_SPAWN_STATUS_PROCESS_CREATION_FAILED) {
+				panic("%! \"%s\" could not be loaded, error creating process", "kern", binary_path);
+
+			} else {
+				panic("%! \"%s\" could not be loaded", "kern", binary_path);
+			}
+		}
+
+		systemProcess->priority = priority;
+		g_log_info("%! \"%s\" spawned to process %i", "kern", binary_path, systemProcess->id);
+	} else {
+		panic("%! \"%s\" not found", "kern", binary_path);
+	}
+
+	system_process_spawn_lock.unlock();
+}
+/**
+ *
+ */
+void g_kernel::print_header(g_setup_information* info) {
 
 	// Print header
 	g_console_video::clear();
@@ -122,175 +299,9 @@ void g_kernel::load_ramdisk(g_multiboot_module* ramdiskModule) {
 	ramdiskModule->moduleEnd = ramdiskNewLocation + (ramdiskModule->moduleEnd - ramdiskModule->moduleStart);
 	ramdiskModule->moduleStart = ramdiskNewLocation;
 
-	ramdisk = new g_ramdisk();
-	ramdisk->load(ramdiskModule);
+	g_kernel_ramdisk = new g_ramdisk();
+	g_kernel_ramdisk->load(ramdiskModule);
 	g_log_info("%! ramdisk loaded", "kern");
-}
-
-/**
- * 
- */
-void g_kernel::pre_setup(g_setup_information* info) {
-
-	// Initialize COM port logging
-	g_logger::initializeSerial();
-
-	// Print header
-	printHeader(info);
-
-	// Initialize physical page allocator from bitmap provided by the loader
-	g_pp_allocator::initializeFromBitmap(info->bitmapStart, info->bitmapEnd);
-	g_log_info("%! %i KiB of free memory", "kern", g_pp_allocator::getFreePageCount() * G_PAGE_SIZE / 1024);
-
-	// Initialize the kernel heap
-	g_kernel_heap::initialize(info->heapStart, info->heapEnd);
-
-	// Find ramdisk module
-	g_multiboot_module* rd_module = g_multiboot_util::findModule(info->multibootInformation, "/boot/ramdisk");
-	if (rd_module == 0) {
-		panic("%! ramdisk does not exist", "kern");
-	}
-
-	// Create virtual range pool for kernel ranges
-	g_kernel_virt_addr_ranges = new g_address_range_pool();
-	g_kernel_virt_addr_ranges->initialize(G_CONST_KERNEL_VIRTUAL_RANGES_START, G_CONST_KERNEL_VIRTUAL_RANGES_END);
-
-	// Remap the ramdisk module into the kernels ranges & load the ramdisk
-	load_ramdisk(rd_module);
-}
-
-/**
- *
- */
-void g_kernel::run(g_setup_information* info) {
-
-	// Perform initial setup
-	pre_setup(info);
-
-	// Copy remaining information from loader information
-	g_physical_address initial_pd_physical = info->initialPageDirectoryPhysical;
-	g_log_debug("%! unmapping old address space area", "kern");
-	for (g_virtual_address i = G_CONST_LOWER_MEMORY_END; i < G_CONST_KERNEL_AREA_START; i += G_PAGE_SIZE) {
-		g_address_space::unmap(i);
-	}
-	// NOTE: don't use "info" anymore from here!
-
-	// Initialize the temporary paging util
-	g_temporary_paging_util::initialize();
-
-	// Tell the lower memory allocator which area to use
-	g_lower_heap::addArea(G_CONST_LOWER_HEAP_MEMORY_START, G_CONST_LOWER_HEAP_MEMORY_END);
-
-	/* BSP INITIALIZATION START */
-	bsp_setup_lock.lock();
-	{
-		// Initialize processors & interrupt handling
-		g_system::initializeBsp(initial_pd_physical);
-
-		// Initialize global descriptor table
-		// (AFTER the system, so BSP's id is available)
-		g_gdt_manager::prepare();
-		g_gdt_manager::initialize();
-
-		// Initialize the scheduler
-		g_tasking::initialize();
-
-		// Enable tasking for this core
-		g_tasking::enableForThisCore();
-
-		// Initialize filesystem
-		g_filesystem::initialize();
-
-		// Create initial process
-		load_system_process(G_IDLE_BINARY_NAME, g_thread_priority::IDLE);
-		load_system_process(G_INIT_BINARY_NAME, g_thread_priority::NORMAL);
-	}
-	bsp_setup_lock.unlock();
-	/* BSP INITIALIZATION END */
-
-	// Enable interrupts and wait until the first interrupt causes the scheduler to switch to the initial process
-	g_log_info("%! leaving initialization", "kern");
-	asm("sti");
-	for (;;) {
-		asm("hlt");
-	}
-}
-
-/**
- *
- */
-void g_kernel::run_ap() {
-
-	uint32_t core = g_system::getCurrentCoreId();
-	g_log_info("%! core %i ready for initialization", "kernap", core);
-
-	// Debug ESP output
-	uint32_t esp;
-	asm("mov %%esp, %0":"=g"(esp));
-	g_log_debug("%! esp is %h", "kernap", esp);
-
-	// Wait for BSP to finish setup
-	g_log_info("%! waiting for bsp to finish setup", "kernap");
-	bsp_setup_lock.lock();
-	g_log_info("%! core %i got ready state from bsp", "kernap", core);
-	bsp_setup_lock.unlock();
-
-	// Initialize GDT
-	g_gdt_manager::initialize();
-
-	// Initialize for AP
-	g_system::initializeAp();
-
-	// Enable tasking for this core
-	g_tasking::enableForThisCore();
-
-	// TODO in Parallels we have a problem with multiple cores, where
-	// the idle binary is not loaded properly for some reason (presumably
-	// because we enable tasking before, and some other core tries to
-	// add something to the scheduler (due to a bug).
-
-	// Leave initialization
-	load_system_process(G_IDLE_BINARY_NAME, g_thread_priority::IDLE);
-
-	// Enable interrupts and wait until the first interrupt causes the scheduler to switch to the initial process
-	g_log_info("%! leaving initialization", "kernap");
-	asm("sti");
-	for (;;) {
-		asm("hlt");
-	}
-}
-
-/**
- * 
- */
-void g_kernel::load_system_process(const char* binary_path, g_thread_priority priority) {
-
-	system_process_spawn_lock.lock();
-
-	g_ramdisk_entry* entry = g_kernel::getRamdisk()->findAbsolute(binary_path);
-	if (entry) {
-		g_thread* systemProcess;
-		g_elf32_spawn_status status = g_elf32_loader::spawnFromRamdisk(entry, G_SECURITY_LEVEL_KERNEL, &systemProcess, 0, true);
-
-		if (status != ELF32_SPAWN_STATUS_SUCCESSFUL) {
-			if (status == ELF32_SPAWN_STATUS_VALIDATION_ERROR) {
-				panic("%! \"%s\" is not a valid elf32 binary", "kern", binary_path);
-
-			} else if (status == ELF32_SPAWN_STATUS_PROCESS_CREATION_FAILED) {
-				panic("%! \"%s\" could not be loaded, error creating process", "kern", binary_path);
-
-			} else {
-				panic("%! \"%s\" could not be loaded", "kern", binary_path);
-			}
-		}
-
-		systemProcess->priority = priority;
-		g_log_info("%! \"%s\" spawned to process %i", "kern", binary_path, systemProcess->id);
-	} else {
-		panic("%! \"%s\" not found", "kern", binary_path);
-	}
-
-	system_process_spawn_lock.unlock();
 }
 
 /**

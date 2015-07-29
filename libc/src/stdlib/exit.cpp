@@ -24,6 +24,7 @@
 /**
  *
  */
-void exit(int code) {
+void __attribute__((no_return)) exit(int code) {
 	g_exit(code);
+	__builtin_unreachable();
 }

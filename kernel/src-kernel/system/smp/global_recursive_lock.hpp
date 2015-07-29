@@ -28,9 +28,9 @@
  */
 class g_global_recursive_lock {
 private:
-	volatile int atom;
-	int depth;
-	uint32_t owner;
+	volatile int atom = 0;
+	int depth = 0;
+	uint32_t owner = 0;
 
 public:
 	void lock();

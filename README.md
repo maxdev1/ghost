@@ -20,9 +20,10 @@ important features are:
 - virtual 8086 for BIOS calls
 
 ## Status
-This is the bleeding edge source version of July 26, 2015. I am currently
-working on support for variable-sized messages & rewriting the window server
-(hence the two different window-manager applications).
+This is the bleeding edge source version of July 29, 2015. Variable messages
+support has been added, the PS2 driver is already using these now.
+Next big TODO will be rewriting the window server (hence the two different
+window-manager applications).
 
 ## Structure
 - `applications`

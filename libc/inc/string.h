@@ -82,6 +82,8 @@ char* strtok(char* dest, const char* src);
 
 size_t strlen(const char* str);
 
+char* strdup(const char *s);
+
 char* strerror(int errno);
 
 __END_C

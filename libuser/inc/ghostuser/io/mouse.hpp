@@ -29,11 +29,11 @@
  *
  */
 struct g_mouse_info {
-	int16_t x;
-	int16_t y;
-	bool button1;
-	bool button2;
-	bool button3;
+	int16_t x = 0;
+	int16_t y = 0;
+	bool button1 = false;
+	bool button2 = false;
+	bool button3 = false;
 };
 
 /**

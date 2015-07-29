@@ -45,7 +45,6 @@ void g_constructors::call() {
 	g_constructor* end = (g_constructor*) &endConstructors;
 
 	for (g_constructor* current = start; current != end; ++current) {
-		g_log_debug("Called const %h", current);
 		(*current)();
 	}
 }

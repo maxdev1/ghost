@@ -28,7 +28,7 @@ int printf(const char* format, ...) {
 
 	va_list va;
 	va_start(va, format);
-	int res = vfprintf(stdout, format, va);
+	int res = vprintf(format, va);
 	va_end(va);
 	return res;
 }

@@ -28,12 +28,13 @@
  */
 class g_global_lock {
 private:
-	volatile int atom;
+	volatile int atom = 0;
 
 public:
 	void lock();
 	void unlock();
 	bool isLocked();
+	void quiet(int val);
 };
 
 #endif

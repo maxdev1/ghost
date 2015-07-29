@@ -25,10 +25,6 @@
 #include <stddef.h>
 #include "ghost/common.h"
 #include "ghost/stdint.h"
-#include "ghost/ramdisk.h"
-#include "ghost/system.h"
-#include "ghost/fs.h"
-#include "ghost/ipc.h"
 
 __BEGIN_C
 
