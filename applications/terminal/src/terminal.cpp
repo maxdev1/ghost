@@ -172,23 +172,11 @@ void terminal_t::read_working_directory() {
 /**
  *
  */
-void alive_thread(screen_t* screen) {
-	while (true) {
-		g_sleep(1000);
-		screen->write(".", SC_COLOR(SC_BLACK, SC_LGRAY));
-	}
-}
-
-/**
- *
- */
 void terminal_t::run() {
 
 	read_working_directory();
 	screen->clean();
 	screen->activate();
-
-	g_create_thread_d((void*) alive_thread, (void*) screen);
 
 	// print the logo
 	std::ifstream logofile("/system/graphics/logo.oem-us");
