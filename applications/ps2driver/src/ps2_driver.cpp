@@ -167,6 +167,12 @@ void handle_keyboard_data(uint8_t b) {
 
 	g_ps2_keyboard_packet packet;
 	packet.scancode = b;
+
+	// escape key does kernel break
+	if (b == 1) {
+		g_test(1);
+	}
+
 	g_send_message_t(keyboard_receiver_tid, &packet,
 			sizeof(g_ps2_keyboard_packet), keyboard_receiver_transaction);
 }

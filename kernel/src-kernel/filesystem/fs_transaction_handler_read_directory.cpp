@@ -28,17 +28,37 @@
  */
 g_fs_transaction_handler_status g_fs_transaction_handler_read_directory::finish_transaction(g_thread* thread, g_fs_delegate* delegate) {
 
-	if (delegate) {
-		delegate->finish_read_directory(thread, this);
+	// check if it was called after a refresh, and the status of the refresh was good
+	if (causing_handler != nullptr && causing_handler->status != G_FS_DIRECTORY_REFRESH_SUCCESSFUL) {
+		data()->status = G_FS_READ_DIRECTORY_ERROR;
+		return G_FS_TRANSACTION_HANDLING_DONE;
 	}
 
-	data()->status = status;
-	if (status == G_FS_READ_DIRECTORY_SUCCESSFUL) {
-		g_memory::copy(data()->iterator->entry_buffer.name, child->name, g_string::length(child->name) + 1);
-		++data()->iterator->position;
-		data()->iterator->entry_buffer.node_id = child->id;
-		data()->iterator->entry_buffer.type = child->type;
+	// find node at position
+	g_fs_node* item = nullptr;
+
+	int iterpos = 0;
+	auto iter = folder->children;
+	while (iter) {
+		if (iterpos == position) {
+			item = iter->value;
+			break;
+		}
+		iter = iter->next;
+		++iterpos;
 	}
 
+	// EOD if none found
+	if (item == nullptr) {
+		data()->status = G_FS_READ_DIRECTORY_EOD;
+		return G_FS_TRANSACTION_HANDLING_DONE;
+	}
+
+	// copy data to output
+	g_memory::copy(data()->iterator->entry_buffer.name, item->name, g_string::length(item->name) + 1);
+	++data()->iterator->position;
+	data()->iterator->entry_buffer.node_id = item->id;
+	data()->iterator->entry_buffer.type = item->type;
+	data()->status = G_FS_READ_DIRECTORY_SUCCESSFUL;
 	return G_FS_TRANSACTION_HANDLING_DONE;
 }

@@ -203,12 +203,12 @@ public:
 	/**
 	 *
 	 */
-	static void read_directory(g_thread* thread, g_fs_virt_id node_id, int position, g_fs_transaction_handler_read_directory* handler);
+	static void read_directory(g_thread* thread, g_fs_virt_id node_id, int position, g_contextual<g_syscall_fs_read_directory*> data);
 
 	/**
 	 *
 	 */
-	static g_fd clonefd(g_thread* thread, g_fd source_fd, g_pid source_pid, g_fd target_fd, g_pid target_pid, g_fs_clonefd_status* out_status);
+	static g_fd clonefd(g_fd source_fd, g_pid source_pid, g_fd target_fd, g_pid target_pid, g_fs_clonefd_status* out_status);
 
 	/**
 	 *
@@ -219,6 +219,11 @@ public:
 	 *
 	 */
 	static void process_closed(g_pid pid);
+
+	/**
+	 *
+	 */
+	static void process_forked(g_pid source, g_pid fork);
 
 	// TODO
 

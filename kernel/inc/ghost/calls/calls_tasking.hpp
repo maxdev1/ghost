@@ -88,11 +88,19 @@ typedef struct {
  *
  * @field set_on_finish
  * 		whether or not to set the atom once finished
+ *
+ * @field try_only
+ * 		whether or not to only try setting the atom
+ *
+ * @field was_set
+ * 		whether the atom was set, when trying only
  */
 typedef struct {
 	uint8_t* atom;
-	uint8_t set_on_finish;
-}__attribute__((packed)) g_syscall_atomic_wait;
+	uint8_t set_on_finish :1;
+	uint8_t try_only :1;
+	uint8_t was_set :1;
+}__attribute__((packed)) g_syscall_atomic_lock;
 
 /**
  * @field identifier

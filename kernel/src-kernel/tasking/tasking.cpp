@@ -52,7 +52,7 @@ void g_tasking::enableForThisCore() {
 
 	uint32_t coreId = g_system::getCurrentCoreId();
 	schedulers[coreId] = new g_scheduler(coreId);
-	g_log_info("%! enabled for core %i", "tasking", coreId);
+	g_log_info("%! scheduler installed on core %i", "tasking", coreId);
 
 }
 

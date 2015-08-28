@@ -37,7 +37,7 @@
  */
 #define G_VERSION_MAJOR									0
 #define G_VERSION_MINOR									4
-#define G_VERSION_PATCH									2
+#define G_VERSION_PATCH									3
 
 /**
  * Name of the initialization binary that the kernel loads on startup
@@ -51,5 +51,6 @@
 #define G_DEBUG_SYSCALLS								false
 #define G_DEBUG_WHOS_WAITING							false
 #define G_DEBUG_LOCKS_DEADLOCKING						false
+#define G_DEBUG_THREAD_DUMPING							false
 
 #endif

@@ -206,11 +206,14 @@ void g_fs_delegate_pipe::finish_get_length(g_thread* requester, g_fs_transaction
 /**
  *
  */
-g_fs_transaction_id g_fs_delegate_pipe::request_read_directory(g_thread* requester, g_fs_node* node, int position,
-		g_fs_transaction_handler_read_directory* handler) {
+g_fs_transaction_id g_fs_delegate_pipe::request_directory_refresh(g_thread* requester, g_fs_node* folder, g_fs_transaction_handler_directory_refresh* handler) {
 
 	g_fs_transaction_id id = g_fs_transaction_store::next_transaction();
-	handler->status = G_FS_READ_DIRECTORY_NOT_SUPPORTED;
+
+	// pipe has no children
+	folder->contents_valid = true;
+	handler->status = G_FS_DIRECTORY_REFRESH_SUCCESSFUL;
+
 	g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
 	return id;
 }
@@ -218,5 +221,5 @@ g_fs_transaction_id g_fs_delegate_pipe::request_read_directory(g_thread* request
 /**
  *
  */
-void g_fs_delegate_pipe::finish_read_directory(g_thread* requester, g_fs_transaction_handler_read_directory* handler) {
+void g_fs_delegate_pipe::finish_directory_refresh(g_thread* requester, g_fs_transaction_handler_directory_refresh* handler) {
 }

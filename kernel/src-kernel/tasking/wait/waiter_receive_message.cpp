@@ -27,12 +27,20 @@
  */
 bool g_waiter_receive_message::checkWaiting(g_thread* task) {
 
+	// if break is issued, stop sleeping
+	if (data->break_condition != nullptr && *data->break_condition) {
+		data->status = G_MESSAGE_RECEIVE_STATUS_INTERRUPTED;
+		return false;
+	}
+
 	data->status = g_message_controller::receive_message(task->id, data->buffer, data->maximum, data->transaction);
 
+	// if queue is empty, continue sleeping
 	if (data->status == G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY) {
 		return true;
 	}
 
+	// stop sleeping
 	return false;
 }
 

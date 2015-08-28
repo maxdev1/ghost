@@ -25,7 +25,6 @@
 
 #include "ghost/common.h"
 
-
 /**
  *
  */
@@ -38,6 +37,13 @@ public:
 	 */
 	g_local(T* value) :
 			value(value) {
+	}
+
+	/**
+	 *
+	 */
+	g_local() :
+			value(0) {
 	}
 
 	/**
@@ -78,7 +84,7 @@ public:
 
 private:
 
-	T* value;
+	T* value = 0;
 };
 
 #endif

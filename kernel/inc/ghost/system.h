@@ -22,6 +22,8 @@
 #define __GHOST_SYS_SYSTEM__
 
 #include "ghost/common.h"
+#include "ghost/kernel.h"
+#include "ghost/fs.h"
 
 __BEGIN_C
 
@@ -32,7 +34,8 @@ __BEGIN_C
 #define G_SPAWNER_IDENTIFIER		"spawner"
 
 // spawner commands
-#define G_SPAWN_COMMAND_SPAWN		1
+#define G_SPAWN_COMMAND_SPAWN_REQUEST	1
+#define G_SPAWN_COMMAND_SPAWN_RESPONSE	2
 
 // status codes for spawning
 typedef int g_spawn_status;
@@ -41,6 +44,31 @@ typedef int g_spawn_status;
 #define G_SPAWN_STATUS_MEMORY_ERROR		((g_spawn_status) 2)
 #define G_SPAWN_STATUS_FORMAT_ERROR		((g_spawn_status) 3)
 #define G_SPAWN_STATUS_UNKNOWN			((g_spawn_status) 4)
+
+// command structs
+typedef struct {
+	int command;
+}__attribute__((packed)) g_spawn_command_header;
+
+typedef struct {
+	g_spawn_command_header header;
+	g_security_level security_level;
+	size_t path_bytes;
+	size_t args_bytes;
+	size_t workdir_bytes;
+	g_fd stdin;
+	g_fd stdout;
+	g_fd stderr;
+	// followed by: path, args, workdir
+}__attribute__((packed)) g_spawn_command_spawn_request;
+
+typedef struct {
+	g_spawn_status status;
+	g_pid spawned_process_id;
+	g_fd stdin_write;
+	g_fd stdout_read;
+	g_fd stderr_read;
+}__attribute__((packed)) g_spawn_command_spawn_response;
 
 // length of the command line arguments buffer
 #define G_CLIARGS_BUFFER_LENGTH		1024

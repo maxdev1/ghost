@@ -24,8 +24,9 @@
  *
  */
 void g_atomic_block(uint8_t* atom) {
-	g_syscall_atomic_wait data;
+	g_syscall_atomic_lock data;
 	data.atom = atom;
 	data.set_on_finish = false;
-	g_syscall(G_SYSCALL_ATOMIC_WAIT, (uint32_t) &data);
+	data.try_only = false;
+	g_syscall(G_SYSCALL_ATOMIC_LOCK, (uint32_t) &data);
 }

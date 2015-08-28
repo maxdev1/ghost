@@ -79,7 +79,7 @@ size_t __fread_unlocked(const void* ptr, size_t size, size_t nmemb,
 
 		while (done < total) {
 			// call read implementation
-			size_t read = stream->impl_read(&(((uint8_t*) ptr)[done]), total,
+			ssize_t read = stream->impl_read(&(((uint8_t*) ptr)[done]), total,
 					stream);
 
 			if (read == 0) {
@@ -87,7 +87,7 @@ size_t __fread_unlocked(const void* ptr, size_t size, size_t nmemb,
 				res = EOF;
 				break;
 
-			} else if (read < 0) {
+			} else if (read == -1) {
 				stream->flags |= G_FILE_FLAG_ERROR;
 				res = EOF;
 				break;

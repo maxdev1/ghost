@@ -106,7 +106,7 @@ g_fs_transaction_id g_fs_delegate_tasked::request_discovery(g_thread* requester,
 
 	} else {
 		// send message to the task delegate
-		g_message_empty (request);
+		g_message_empty(request);
 		request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_DISCOVER;
 		request.parameterA = id;
 
@@ -174,7 +174,7 @@ g_fs_transaction_id g_fs_delegate_tasked::request_read(g_thread* requester, g_fs
 	g_address_space::switch_to_space(requester->process->pageDirectory);
 
 	int required_pages = PAGE_ALIGN_UP(length) / G_PAGE_SIZE + 1;
-	g_local < g_physical_address > phys_pages(new g_physical_address[required_pages]);
+	g_local<g_physical_address> phys_pages(new g_physical_address[required_pages]);
 	g_virtual_address virt_start = PAGE_ALIGN_DOWN((g_virtual_address ) buffer());
 	uint32_t offset_in_first_page = ((g_virtual_address) buffer()) & G_PAGE_ALIGN_MASK;
 
@@ -205,7 +205,7 @@ g_fs_transaction_id g_fs_delegate_tasked::request_read(g_thread* requester, g_fs
 	g_address_space::switch_to_space(current);
 
 	// send message to the task delegate
-	g_message_empty (request);
+	g_message_empty(request);
 	request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_READ;
 	request.parameterA = id;
 
@@ -285,7 +285,7 @@ g_fs_transaction_id g_fs_delegate_tasked::request_write(g_thread* requester, g_f
 	g_address_space::switch_to_space(requester->process->pageDirectory);
 
 	int required_pages = PAGE_ALIGN_UP(length) / G_PAGE_SIZE + 1;
-	g_local < g_physical_address > phys_pages(new g_physical_address[required_pages]);
+	g_local<g_physical_address> phys_pages(new g_physical_address[required_pages]);
 	g_virtual_address virt_start = PAGE_ALIGN_DOWN((g_virtual_address ) buffer());
 	uint32_t offset_in_first_page = ((g_virtual_address) buffer()) & G_PAGE_ALIGN_MASK;
 
@@ -316,7 +316,7 @@ g_fs_transaction_id g_fs_delegate_tasked::request_write(g_thread* requester, g_f
 	g_address_space::switch_to_space(current);
 
 	// send message to the task delegate
-	g_message_empty (request);
+	g_message_empty(request);
 	request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_WRITE;
 	request.parameterA = id;
 
@@ -393,7 +393,7 @@ g_fs_transaction_id g_fs_delegate_tasked::request_get_length(g_thread* requester
 	g_address_space::switch_to_space(current);
 
 	// update the status / notify delegate thread
-	g_message_empty (request);
+	g_message_empty(request);
 	request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_GET_LENGTH;
 	request.parameterA = id;
 
@@ -444,8 +444,7 @@ void g_fs_delegate_tasked::finish_get_length(g_thread* requester, g_fs_transacti
 /**
  *
  */
-g_fs_transaction_id g_fs_delegate_tasked::request_read_directory(g_thread* requester, g_fs_node* node, int position,
-		g_fs_transaction_handler_read_directory* handler) {
+g_fs_transaction_id g_fs_delegate_tasked::request_directory_refresh(g_thread* requester, g_fs_node* node, g_fs_transaction_handler_directory_refresh* handler) {
 
 	g_fs_transaction_id id = g_fs_transaction_store::next_transaction();
 
@@ -455,14 +454,14 @@ g_fs_transaction_id g_fs_delegate_tasked::request_read_directory(g_thread* reque
 	g_page_directory current = g_address_space::get_current_space();
 	g_address_space::switch_to_space(delegate_thread->process->pageDirectory);
 
-	g_fs_tasked_delegate_transaction_storage_read_directory* disc = (g_fs_tasked_delegate_transaction_storage_read_directory*) transaction_storage();
+	g_fs_tasked_delegate_transaction_storage_directory_refresh* disc = (g_fs_tasked_delegate_transaction_storage_directory_refresh*) transaction_storage();
 	disc->parent_phys_fs_id = node->phys_fs_id;
-	disc->position = position;
+	disc->parent_virt_fs_id = node->id;
 
 	g_address_space::switch_to_space(current);
 
 	// update the status / notify delegate thread
-	g_message_empty (request);
+	g_message_empty(request);
 	request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_READ_DIRECTORY;
 	request.parameterA = id;
 
@@ -474,12 +473,12 @@ g_fs_transaction_id g_fs_delegate_tasked::request_read_directory(g_thread* reque
 
 	} else if (send_status == G_MESSAGE_SEND_STATUS_QUEUE_FULL) {
 		g_log_warn("%! message queue was full when trying to request read-directory on fs delegate", "filesystem");
-		handler->status = G_FS_READ_DIRECTORY_BUSY;
+		handler->status = G_FS_DIRECTORY_REFRESH_BUSY;
 		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
 
 	} else if (send_status == G_MESSAGE_SEND_STATUS_FAILED) {
 		g_log_warn("%! message sending failed when trying to request read-directory on fs delegate", "filesystem");
-		handler->status = G_FS_READ_DIRECTORY_ERROR;
+		handler->status = G_FS_DIRECTORY_REFRESH_ERROR;
 		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
 	}
 
@@ -489,7 +488,7 @@ g_fs_transaction_id g_fs_delegate_tasked::request_read_directory(g_thread* reque
 /**
  *
  */
-void g_fs_delegate_tasked::finish_read_directory(g_thread* requester, g_fs_transaction_handler_read_directory* handler) {
+void g_fs_delegate_tasked::finish_directory_refresh(g_thread* requester, g_fs_transaction_handler_directory_refresh* handler) {
 
 	// save current directory
 	g_page_directory current = g_address_space::get_current_space();
@@ -497,14 +496,19 @@ void g_fs_delegate_tasked::finish_read_directory(g_thread* requester, g_fs_trans
 	// Get values from transaction storage and unmap the mapping
 	g_address_space::switch_to_space(delegate_thread->process->pageDirectory);
 
-	g_fs_tasked_delegate_transaction_storage_read_directory* storage = (g_fs_tasked_delegate_transaction_storage_read_directory*) transaction_storage();
-	g_fs_virt_id virt_id = storage->result_child;
-	g_fs_read_directory_status status = storage->result_status;
+	g_fs_tasked_delegate_transaction_storage_directory_refresh* storage = (g_fs_tasked_delegate_transaction_storage_directory_refresh*) transaction_storage();
+	g_fs_directory_refresh_status status = storage->result_status;
+	g_fs_virt_id parent_id = storage->parent_virt_fs_id;
 
 	// Now switch to the requesters space and copy data there
 	g_address_space::switch_to_space(requester->process->pageDirectory);
 
-	handler->child = g_filesystem::get_node_by_id(virt_id);
+	// update the folder
+	g_fs_node* folder = g_filesystem::get_node_by_id(parent_id);
+	if (folder) {
+		folder->contents_valid = true;
+	}
+
 	handler->status = status;
 
 	g_address_space::switch_to_space(current);

@@ -71,7 +71,9 @@ void g_kernel::pre_setup(g_setup_information* info) {
 
 	// Initialize physical page allocator from bitmap provided by the loader
 	g_pp_allocator::initializeFromBitmap(info->bitmapStart, info->bitmapEnd);
-	g_log_info("%! %i KiB of free memory", "kern", g_pp_allocator::getFreePageCount() * G_PAGE_SIZE / 1024);
+
+	uint32_t mbs = (g_pp_allocator::getFreePageCount() * G_PAGE_SIZE / 1024) / 1024;
+	g_log_info("%! memory: %iMB", "kern", mbs);
 
 	// Initialize the kernel heap
 	g_kernel_heap::initialize(info->heapStart, info->heapEnd);
@@ -171,7 +173,7 @@ void g_kernel::run_ap() {
 	ap_setup_lock.lock();
 	{
 		uint32_t core = g_system::getCurrentCoreId();
-		g_log_info("%! core %i ready for initialization", "kernap", core);
+		g_log_debug("%! core %i ready for initialization", "kernap", core);
 
 		// Debug ESP output
 		uint32_t esp;
@@ -179,9 +181,9 @@ void g_kernel::run_ap() {
 		g_log_debug("%! esp is %h", "kernap", esp);
 
 		// Wait for BSP to finish setup
-		g_log_info("%! waiting for bsp to finish setup", "kernap");
+		g_log_debug("%! waiting for bsp to finish setup", "kernap");
 		bsp_setup_lock.lock();
-		g_log_info("%! core %i got ready state from bsp", "kernap", core);
+		g_log_debug("%! core %i got ready state from bsp", "kernap", core);
 		bsp_setup_lock.unlock();
 
 		// Initialize GDT
@@ -202,13 +204,13 @@ void g_kernel::run_ap() {
 	ap_setup_lock.unlock();
 
 	// wait for APs
-	g_log_info("%! waiting for %i application processors", "kernap", waiting_aps);
+	g_log_debug("%! waiting for %i application processors", "kernap", waiting_aps);
 	while (waiting_aps > 0) {
 		asm("pause");
 	}
 
 	// Enable interrupts and wait until the first interrupt causes the scheduler to switch to the initial process
-	g_log_info("%! leaving initialization", "kernap");
+	g_log_debug("%! leaving initialization", "kernap");
 	asm("sti");
 	for (;;) {
 		asm("hlt");

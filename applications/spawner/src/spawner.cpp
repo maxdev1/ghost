@@ -59,19 +59,32 @@ void receiveRequests() {
 	g_tid tid = g_get_tid();
 	pid = g_get_pid();
 
+	size_t request_len_max = sizeof(g_message_header)
+			+ sizeof(g_spawn_command_spawn_request) + 1024;
+	uint8_t* request_buffer = new uint8_t[request_len_max];
 	for (;;) {
 		// receive incoming request
-		g_message_empty(request);
-		g_recv_msg(tid, &request);
+		g_message_receive_status stat = g_receive_message(request_buffer,
+				request_len_max);
 
-		if (request.type == G_SPAWN_COMMAND_SPAWN) {
-			processSpawnRequest (&request);
+		if (stat != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
+			protocolError("receiving command failed with code %i", stat);
+			continue;
+		}
+
+		g_message_header* header = (g_message_header*) request_buffer;
+		g_spawn_command_header* command_header =
+				(g_spawn_command_header*) G_MESSAGE_CONTENT(header);
+		if (command_header->command == G_SPAWN_COMMAND_SPAWN_REQUEST) {
+			processSpawnRequest((g_spawn_command_spawn_request*) command_header,
+					header->sender, header->transaction);
 
 		} else {
 			protocolError("received unknown command: code %i, task %i",
-					request.type, request.sender);
+					command_header->command, header->sender);
 		}
 	}
+	delete request_buffer;
 }
 
 /**
@@ -88,102 +101,99 @@ void protocolError(std::string msg, ...) {
 /**
  *
  */
-void processSpawnRequest(g_message* request) {
+void processSpawnRequest(g_spawn_command_spawn_request* request,
+		g_tid requester, g_message_transaction tx) {
 
-	uint32_t tx = request->topic;
-	g_fd req_pipe = request->parameterA;
-	g_tid req_tid = request->sender;
-
-	// clone pipe read end from requesting process
-	g_fs_clonefd_status clone_s;
-	g_fd pipe_r = g_clone_fd_s(req_pipe, g_get_pid_for_tid(req_tid), pid,
-			&clone_s);
-	if (clone_s != G_FS_CLONEFD_SUCCESSFUL) {
-		return protocolError("unable to access incoming");
-	}
-
-	// read path and arguments
-	std::string path;
-	if (!g_file_utils::read_string(pipe_r, path)) {
-		g_close(pipe_r);
-		return protocolError("unable to read incoming path argument");
-	}
-
-	std::string args;
-	if (!g_file_utils::read_string(pipe_r, args)) {
-		g_close(pipe_r);
-		return protocolError("unable to read incoming cli-arg argument");
-	}
-
-	// read security level
-	uint8_t sec_lvl_b[4];
-	if (!g_file_utils::read_bytes(pipe_r, sec_lvl_b, 4)) {
-		g_close(pipe_r);
-		return protocolError("unable to read incoming sec-lvl argument");
-	}
-	uint32_t sec_lvl;
-	G_BW_GET_LE_4(sec_lvl_b, sec_lvl);
+	g_security_level sec_lvl = request->security_level;
+	const char* pos = (const char*) request;
+	pos += sizeof(g_spawn_command_spawn_request);
+	const char* path = pos;
+	pos += request->path_bytes;
+	const char* args = pos;
+	pos += request->args_bytes;
+	const char* workdir = pos;
 
 	// parameters ready, perform spawn
 	g_pid o_pid;
 	g_fd o_fd_inw;
 	g_fd o_fd_outr;
-	g_spawn_status spawn_status = spawn(path, args, sec_lvl, &o_pid, &o_fd_inw,
-			&o_fd_outr);
+	g_fd o_fd_errr;
+	g_pid requester_pid = g_get_pid_for_tid(requester);
+	g_spawn_status spawn_status = spawn(path, args, workdir, sec_lvl,
+			requester_pid, &o_pid, &o_fd_inw, &o_fd_outr, &o_fd_errr,
+			request->stdin, request->stdout, request->stderr);
 
 	// send response
-	g_message_empty(response);
-	response.topic = tx;
-	response.parameterA = spawn_status;
-	response.parameterB = o_pid;
-	response.parameterC = o_fd_inw;
-	response.parameterD = o_fd_outr;
-	g_send_msg(req_tid, &response);
+	g_spawn_command_spawn_response response;
+	response.spawned_process_id = o_pid;
+	response.status = spawn_status;
+	response.stdin_write = o_fd_inw;
+	response.stdout_read = o_fd_outr;
+	response.stderr_read = o_fd_errr;
+	g_send_message_t(requester, &response,
+			sizeof(g_spawn_command_spawn_response), tx);
 }
 
 /**
  *
  */
-bool setup_stdio(g_pid pid, g_fd* out_inw, g_fd* out_outr) {
+bool create_pipe(g_pid this_pid, g_pid requester_pid, g_pid target_pid,
+		g_fd source, g_fd* out, g_fd target) {
 
-	// prepare stdio
-	g_fd in[2];
-	g_fd out[2];
-	bool stdio = false;
+	g_fd created = G_FD_NONE;
+	if (source == G_FD_NONE) {
 
-	g_fs_pipe_status in_stat;
-	g_pipe_s(&in[0], &in[1], &in_stat);
-	g_fs_pipe_status out_stat;
-	g_pipe_s(&out[0], &out[1], &out_stat);
+		// create pipe
+		g_fd pipe[2];
+		g_fs_pipe_status pipe_stat;
+		g_pipe_s(&pipe[0], &pipe[1], &pipe_stat);
 
-	if (in_stat == G_FS_PIPE_SUCCESSFUL && out_stat == G_FS_PIPE_SUCCESSFUL) {
+		if (pipe_stat == G_FS_PIPE_SUCCESSFUL) {
+			// map into target & requester
+			created = g_clone_fd_t(pipe[1], this_pid, target, target_pid);
+			*out = g_clone_fd(pipe[0], this_pid, requester_pid);
 
-		uint32_t thispid = g_get_pid();
-
-		// clone pipe fds into created process
-		g_fs_clonefd_status target_stdin_stat;
-		g_fd target_stdin = g_clone_fd_ts(in[1], thispid, STDIN_FILENO, pid,
-				&target_stdin_stat);
-
-		g_fd target_stdout = g_clone_fd_t(out[0], thispid, STDOUT_FILENO, pid);
-		g_fd target_stderr = g_clone_fd_t(out[0], thispid, STDERR_FILENO, pid);
-
-		// map & copy write end of stdin & read end of stdout to output
-		*out_inw = g_clone_fd(in[0], thispid, pid);
-		*out_outr = g_clone_fd(out[1], thispid, pid);
-
-		// close pipe ends in this process
-		g_close(in[0]);
-		g_close(in[1]);
-		g_close(out[0]);
-		g_close(out[1]);
-
-		if (target_stdin != -1 && target_stdout != -1 && target_stderr != -1) {
-			stdio = true;
+			// close pipe here
+			g_close(pipe[0]);
+			g_close(pipe[1]);
 		}
+
+	} else {
+		// map into target
+		created = g_clone_fd_t(source, requester_pid, target, target_pid);
+		*out = source;
 	}
 
-	return stdio;
+	return created != G_FD_NONE;
+}
+
+/**
+ *
+ */
+bool setup_stdio(g_pid created_pid, g_pid requester_pid, g_fd* out_stdin,
+		g_fd* out_stdout, g_fd* out_stderr, g_fd in_stdin, g_fd in_stdout,
+		g_fd in_stderr) {
+
+	uint32_t this_pid = g_get_pid();
+
+	if (!create_pipe(this_pid, requester_pid, created_pid, in_stdin, out_stdin,
+	STDIN_FILENO)) {
+		return false;
+	}
+
+	if (!create_pipe(this_pid, requester_pid, created_pid, in_stdout,
+			out_stdout,
+			STDOUT_FILENO)) {
+		return false;
+	}
+
+	if (!create_pipe(this_pid, requester_pid, created_pid, in_stderr,
+			out_stderr,
+			STDERR_FILENO)) {
+		return false;
+	}
+
+	return true;
 }
 
 /**
@@ -226,31 +236,33 @@ binary_format_t detect_format(g_fd file) {
 /**
  *
  */
-g_spawn_status spawn(std::string path, std::string args,
-		g_security_level sec_lvl, uint32_t* out_pid, int* out_fd_inw,
-		int* out_fd_outr) {
+g_spawn_status spawn(const char* path, const char* args, const char* workdir,
+		g_security_level sec_lvl, g_pid requester_pid, g_pid* out_pid,
+		g_fd* out_stdin, g_fd* out_stdout, g_fd* out_stderr, g_fd in_stdin,
+		g_fd in_stdout, g_fd in_stderr) {
 
 	// open input file
-	g_fd file = g_open(path.c_str());
+	g_fd file = g_open(path);
 	if (file == -1) {
-		g_logger::log("unable to open file: \"" + path + "\"");
+		g_logger::log("unable to open file: \"%s\"", path);
 		return G_SPAWN_STATUS_IO_ERROR;
 	}
 
 	// detect format
 	binary_format_t format = detect_format(file);
 	if (format == BF_UNKNOWN) {
-		g_logger::log("binary has unknown format: \"" + path + "\"");
+		g_logger::log("binary has unknown format: \"%s\"", path);
 		return G_SPAWN_STATUS_FORMAT_ERROR;
 	}
 
 	// create empty target process
 	auto target_proc = g_create_empty_process(sec_lvl);
-	g_pid pid = g_get_created_process_id(target_proc);
+	g_pid target_pid = g_get_created_process_id(target_proc);
 
-	std::stringstream info;
-	info << "loading \"" << path << "\" to process " << pid;
-	g_logger::log(info.str());
+	// TODO make toggle-able
+	// std::stringstream info;
+	// info << "loading \"" << path << "\" to process " << target_pid;
+	// g_logger::log(info.str());
 
 	// create a loader
 	loader_t* loader;
@@ -262,8 +274,9 @@ g_spawn_status spawn(std::string path, std::string args,
 	}
 
 	// setup standard I/O
-	if (!setup_stdio(pid, out_fd_inw, out_fd_outr)) {
-		klog("unable to setup stdio for process %i", pid);
+	if (!setup_stdio(target_pid, requester_pid, out_stdin, out_stdout,
+			out_stderr, in_stdin, in_stdout, in_stderr)) {
+		klog("unable to setup stdio for process %i", target_pid);
 	}
 
 	// perform loading
@@ -275,11 +288,14 @@ g_spawn_status spawn(std::string path, std::string args,
 		// push command line arguments
 		write_cli_args(target_proc, args);
 
+		// set working directory
+		g_set_working_directory_p(workdir, target_proc);
+
 		// attached loaded process
 		g_attach_created_process(target_proc, entry_address);
 
 		// out-set process id
-		*out_pid = pid;
+		*out_pid = target_pid;
 		spawn_stat = G_SPAWN_STATUS_SUCCESSFUL;
 
 	} else {

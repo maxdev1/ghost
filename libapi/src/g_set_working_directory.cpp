@@ -24,8 +24,16 @@
  *
  */
 g_set_working_directory_status g_set_working_directory(const char* path) {
+	g_set_working_directory_p(path, 0);
+}
+
+/**
+ *
+ */
+g_set_working_directory_status g_set_working_directory_p(const char* path, g_process_creation_identifier p) {
 	g_syscall_fs_set_working_directory data;
 	data.path = (char*) path;
+	data.process = p;
 	g_syscall(G_SYSCALL_SET_WORKING_DIRECTORY, (uint32_t) &data);
 	return data.result;
 }

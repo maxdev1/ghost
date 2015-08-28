@@ -28,7 +28,7 @@ static uint8_t g_ipc_next_topic_lock = false;
  *
  */
 uint32_t g_ipc_next_topic() {
-	g_atomic_wait((uint8_t*) &g_ipc_next_topic_lock);
+	g_atomic_lock((uint8_t*) &g_ipc_next_topic_lock);
 	static uint32_t topic_counter = G_MESSAGE_TRANSACTION_FIRST;
 	uint32_t next_topic = topic_counter++;
 	g_ipc_next_topic_lock = false;

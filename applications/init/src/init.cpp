@@ -26,11 +26,13 @@
  */
 int main(int argc, char** argv) {
 
+	g_task_register_id("init");
+
 	// load spawner process
 	g_ramdisk_spawn_status spawner_stat = g_ramdisk_spawn("applications/spawner.bin", G_SECURITY_LEVEL_KERNEL);
 	if (spawner_stat != G_RAMDISK_SPAWN_STATUS_SUCCESSFUL) {
 		g_logger::log("unable to load system spawner process");
-		yield: g_yield();
+		yield: asm("hlt");
 		goto yield;
 	}
 
@@ -42,10 +44,9 @@ int main(int argc, char** argv) {
 
 	// let the spawner load the launch service
 	g_pid ls_pid;
-	g_fd ls_stdio[2];
-	std::string launch_srv_path = "/ramdisk/applications/launch.bin";
+	std::string launch_srv_path = "/applications/launch.bin";
 
-	g_spawn_status stat = g_spawn(launch_srv_path.c_str(), "", G_SECURITY_LEVEL_KERNEL, &ls_pid, ls_stdio);
+	g_spawn_status stat = g_spawn_p(launch_srv_path.c_str(), "", "/", G_SECURITY_LEVEL_KERNEL, &ls_pid);
 	if (stat == G_SPAWN_STATUS_SUCCESSFUL) {
 		g_logger::log("launch service executed in process %i", ls_pid);
 	} else {

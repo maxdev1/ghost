@@ -22,29 +22,35 @@
 
 // redirect
 g_message_receive_status g_receive_message(void* buf, size_t max) {
-	return g_receive_message_tm(buf, max, G_MESSAGE_TRANSACTION_NONE, G_MESSAGE_RECEIVE_MODE_BLOCKING);
+	return g_receive_message_tmb(buf, max, G_MESSAGE_TRANSACTION_NONE, G_MESSAGE_RECEIVE_MODE_BLOCKING, nullptr);
 }
 
 // redirect
 g_message_receive_status g_receive_message_m(void* buf, size_t max, g_message_receive_mode mode) {
-	return g_receive_message_tm(buf, max, G_MESSAGE_TRANSACTION_NONE, mode);
+	return g_receive_message_tmb(buf, max, G_MESSAGE_TRANSACTION_NONE, mode, nullptr);
 }
 
 // redirect
 g_message_receive_status g_receive_message_t(void* buf, size_t max, g_message_transaction tx) {
-	return g_receive_message_tm(buf, max, tx, G_MESSAGE_RECEIVE_MODE_BLOCKING);
+	return g_receive_message_tmb(buf, max, tx, G_MESSAGE_RECEIVE_MODE_BLOCKING, nullptr);
+}
+
+// redirect
+g_message_receive_status g_receive_message_tm(void* buf, size_t max, g_message_transaction tx, g_message_receive_mode mode) {
+	return g_receive_message_tmb(buf, max, tx, mode, nullptr);
 }
 
 /**
  *
  */
-g_message_receive_status g_receive_message_tm(void* buf, size_t max, g_message_transaction tx, g_message_receive_mode mode) {
+g_message_receive_status g_receive_message_tmb(void* buf, size_t max, g_message_transaction tx, g_message_receive_mode mode, uint8_t* break_condition) {
 
 	g_syscall_receive_message data;
 	data.buffer = (g_message_header*) buf;
 	data.maximum = max;
 	data.mode = mode;
 	data.transaction = tx;
+	data.break_condition = break_condition;
 	g_syscall(G_SYSCALL_MESSAGE_RECEIVE, (uint32_t) &data);
 	return data.status;
 }

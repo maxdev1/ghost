@@ -67,7 +67,7 @@ void g_keyboard::registerKeyboard() {
 /**
  *
  */
-g_key_info g_keyboard::readKey() {
+g_key_info g_keyboard::readKey(bool* break_condition) {
 
 	if (keyboardTopic == -1) {
 		registerKeyboard();
@@ -81,7 +81,7 @@ g_key_info g_keyboard::readKey() {
 	size_t buflen = sizeof(g_message_header) + sizeof(g_ps2_keyboard_packet);
 	uint8_t buf[buflen];
 
-	if (g_receive_message_t(buf, buflen, keyboardTopic) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
+	if (g_receive_message_tmb(buf, buflen, keyboardTopic, G_MESSAGE_RECEIVE_MODE_BLOCKING, (uint8_t*) break_condition) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
 		g_ps2_keyboard_packet* packet = (g_ps2_keyboard_packet*) G_MESSAGE_CONTENT(buf);
 		return keyForScancode(packet->scancode);
 	}
@@ -98,6 +98,8 @@ g_key_info g_keyboard::keyForScancode(uint8_t scancode) {
 	// Get "pressed" info from scancode
 	info.pressed = !(scancode & (1 << 7));
 	scancode = scancode & ~(1 << 7); // remove 7th bit
+
+	info.scancode = scancode;
 
 	// Get key from layout map
 	auto pos = scancodeLayout.find(scancode);
@@ -170,14 +172,14 @@ std::string g_keyboard::getCurrentLayout() {
 bool g_keyboard::loadScancodeLayout(std::string iso) {
 
 	// Clear layout and parse file
-	std::ifstream in("/ramdisk/system/keyboard/" + iso + ".layout");
+	std::ifstream in("/system/keyboard/" + iso + ".layout");
 	if (!in.good()) {
 		return false;
 	}
 	g_property_file_parser props(in);
 
 	scancodeLayout.clear();
-	std::map < std::string, std::string > properties = props.getProperties();
+	std::map<std::string, std::string> properties = props.getProperties();
 
 	for (auto entry : properties) {
 		// Convert number from hex
@@ -212,14 +214,14 @@ bool g_keyboard::loadConversionLayout(std::string iso) {
 	std::stringstream conversionLayoutStream;
 
 	// Clear layout and parse file
-	std::ifstream in("/ramdisk/system/keyboard/" + iso + ".conversion");
+	std::ifstream in("/system/keyboard/" + iso + ".conversion");
 	if (!in.good()) {
 		return false;
 	}
 	g_property_file_parser props(in);
 
 	conversionLayout.clear();
-	std::map < std::string, std::string > properties = props.getProperties();
+	std::map<std::string, std::string> properties = props.getProperties();
 
 	for (auto entry : properties) {
 

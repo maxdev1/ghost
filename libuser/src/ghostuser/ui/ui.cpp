@@ -138,7 +138,7 @@ void g_ui::event_dispatch_thread() {
 		g_atomic_block(&event_dispatch_events_empty);
 
 		// lock
-		g_atomic_wait(&event_dispatch_locked);
+		g_atomic_lock(&event_dispatch_locked);
 
 		// call listener
 		g_ui_event_dispatch_data& e = event_dispatch_queue.back();
@@ -246,7 +246,7 @@ g_ui_transaction_id g_ui::send(uint8_t* data, uint32_t length) {
 	static uint8_t sending_locked = false;
 
 	// lock
-	g_atomic_wait(&sending_locked);
+	g_atomic_lock(&sending_locked);
 
 	// create transaction
 	g_ui_transaction_id transaction = next_transaction++;

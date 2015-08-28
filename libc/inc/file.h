@@ -54,8 +54,8 @@ struct FILE {
 	size_t buffered_bytes_read;
 	size_t buffered_bytes_read_offset;
 
-	size_t (*impl_read)(void* buf, size_t len, FILE* stream);
-	size_t (*impl_write)(const void* buf, size_t len, FILE* stream);
+	ssize_t (*impl_read)(void* buf, size_t len, FILE* stream);
+	ssize_t (*impl_write)(const void* buf, size_t len, FILE* stream);
 	int (*impl_seek)(FILE*, off_t, int);
 	off_t (*impl_tell)(FILE*);
 	int (*impl_close)(FILE*);

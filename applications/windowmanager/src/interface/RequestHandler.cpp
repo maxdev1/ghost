@@ -88,7 +88,7 @@ void RequestHandler::run() {
  */
 void RequestHandler::add_process(g_pid process, g_fd output, g_fd input) {
 
-	g_atomic_wait(&process_map_lock);
+	g_atomic_lock(&process_map_lock);
 
 	UIRegisteredProcessData data;
 	data.pid = process;
@@ -104,7 +104,7 @@ void RequestHandler::add_process(g_pid process, g_fd output, g_fd input) {
  */
 void RequestHandler::remove_process(g_pid process) {
 
-	g_atomic_wait(&process_map_lock);
+	g_atomic_lock(&process_map_lock);
 
 	processMap.erase(process);
 
@@ -120,7 +120,7 @@ uint32_t RequestHandler::nextListenerId() {
 	static uint32_t next_id = 0;
 
 	// lock
-	g_atomic_wait(&locked);
+	g_atomic_lock(&locked);
 
 	uint32_t id = next_id++;
 
@@ -136,7 +136,7 @@ uint32_t RequestHandler::nextListenerId() {
 void RequestHandler::send(g_fd out, g_ui_transaction_id transaction, uint8_t* data, uint32_t length) {
 
 	// lock
-	g_atomic_wait(&sending_locked);
+	g_atomic_lock(&sending_locked);
 
 	// write transaction id
 	uint32_t idlen = sizeof(g_ui_transaction_id);
@@ -166,7 +166,7 @@ void RequestHandler::send(g_fd out, g_ui_transaction_id transaction, uint8_t* da
 void RequestHandler::send_event(g_pid process, uint32_t listener_id, uint8_t* data, uint32_t length) {
 
 	// lock
-	g_atomic_wait(&process_map_lock);
+	g_atomic_lock(&process_map_lock);
 
 	if (processMap.count(process) > 0) {
 		UIRegisteredProcessData& procdat = processMap.at(process);
@@ -199,7 +199,7 @@ void RequestHandler::event_dispatch_thread() {
 		g_atomic_block(&event_dispatch_events_empty);
 
 		// lock
-		g_atomic_wait(&sending_locked);
+		g_atomic_lock(&sending_locked);
 
 		// call listener
 		UIEventDispatchData ldata = event_dispatch_queue.back();

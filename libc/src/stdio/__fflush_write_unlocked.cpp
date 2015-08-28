@@ -55,7 +55,7 @@ int __fflush_write_unlocked(FILE* stream) {
 
 	while (done < total) {
 		// call write implementation
-		size_t written = stream->impl_write((void*) (stream->buffer + done),
+		ssize_t written = stream->impl_write((void*) (stream->buffer + done),
 				total, stream);
 
 		if (written == 0) {
@@ -63,7 +63,7 @@ int __fflush_write_unlocked(FILE* stream) {
 			res = EOF;
 			break;
 
-		} else if (written < 0) {
+		} else if (written == -1) {
 			stream->flags |= G_FILE_FLAG_ERROR;
 			res = EOF;
 			break;

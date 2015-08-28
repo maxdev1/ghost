@@ -187,21 +187,26 @@ void g_fs_delegate_ramdisk::finish_get_length(g_thread* requester, g_fs_transact
 /**
  *
  */
-g_fs_transaction_id g_fs_delegate_ramdisk::request_read_directory(g_thread* requester, g_fs_node* fs_parent, int position,
-		g_fs_transaction_handler_read_directory* handler) {
+g_fs_transaction_id g_fs_delegate_ramdisk::request_directory_refresh(g_thread* requester, g_fs_node* folder,
+		g_fs_transaction_handler_directory_refresh* handler) {
 
 	g_fs_transaction_id id = g_fs_transaction_store::next_transaction();
 
-	g_ramdisk_entry* rd_parent = g_kernel_ramdisk->findById(fs_parent->phys_fs_id);
-	if (rd_parent == 0) {
-		handler->status = G_FS_READ_DIRECTORY_ERROR;
+	g_ramdisk_entry* rd_folder = g_kernel_ramdisk->findById(folder->phys_fs_id);
+	if (rd_folder == 0) {
+		handler->status = G_FS_DIRECTORY_REFRESH_ERROR;
 
 	} else {
-		g_ramdisk_entry* rd_child = g_kernel_ramdisk->getChildAt(fs_parent->phys_fs_id, position);
-		if (rd_child) {
+
+		// create all nodes that not yet exist
+		int position = 0;
+		g_ramdisk_entry* rd_child;
+
+		while ((rd_child = g_kernel_ramdisk->getChildAt(folder->phys_fs_id, position++)) != 0) {
+
 			// get real path to parent
 			g_local<char> absolute(new char[G_PATH_MAX]);
-			g_filesystem::get_real_path_to_node(fs_parent, absolute());
+			g_filesystem::get_real_path_to_node(folder, absolute());
 
 			// append child name
 			int abs_cur_len = g_string::length((const char*) absolute());
@@ -218,15 +223,13 @@ g_fs_transaction_id g_fs_delegate_ramdisk::request_read_directory(g_thread* requ
 
 			// if not, create it
 			if (fs_child == 0) {
-				fs_child = create_vfs_node(rd_child, fs_parent);
+				fs_child = create_vfs_node(rd_child, folder);
 			}
-
-			// copy name to output
-			handler->child = fs_child;
-			handler->status = G_FS_READ_DIRECTORY_SUCCESSFUL;
-		} else {
-			handler->status = G_FS_READ_DIRECTORY_EOD;
 		}
+
+		// finish the transaction
+		folder->contents_valid = true;
+		handler->status = G_FS_DIRECTORY_REFRESH_SUCCESSFUL;
 	}
 
 	g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
@@ -236,5 +239,5 @@ g_fs_transaction_id g_fs_delegate_ramdisk::request_read_directory(g_thread* requ
 /**
  *
  */
-void g_fs_delegate_ramdisk::finish_read_directory(g_thread* requester, g_fs_transaction_handler_read_directory* handler) {
+void g_fs_delegate_ramdisk::finish_directory_refresh(g_thread* requester, g_fs_transaction_handler_directory_refresh* handler) {
 }

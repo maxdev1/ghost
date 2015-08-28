@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
 	g_task_register_id("launch");
 
 	// load init script
-	FILE* init_script = fopen("/ramdisk/system/launch/init", "r");
+	FILE* init_script = fopen("/system/launch/init", "r");
 	launchscript_parser_t* parser = new launchscript_parser_t(init_script);
 	ls_document_t* document = parser->document();
 
@@ -115,8 +115,7 @@ void wait(ls_statement_t* stat) {
 g_pid launch_via_spawner(std::string path, std::string args, g_security_level sec_lvl) {
 
 	g_pid pid = -1;
-	g_fd stdio[2];
-	g_spawn_status stat = g_spawn(path.c_str(), args.c_str(), sec_lvl, &pid, stdio);
+	g_spawn_status stat = g_spawn_p(path.c_str(), args.c_str(), "/", sec_lvl, &pid);
 	if (stat != G_SPAWN_STATUS_SUCCESSFUL) {
 		g_logger::log("failed to spawn '" + path + "' with code %i", stat);
 	}

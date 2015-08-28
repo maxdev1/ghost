@@ -25,6 +25,7 @@
 #include "logger/logger.hpp"
 #include "memory/memory.hpp"
 #include "memory/address_space.hpp"
+#include "memory/gdt/gdt_macros.hpp"
 #include "memory/collections/address_stack.hpp"
 #include "memory/physical/pp_allocator.hpp"
 #include "memory/physical/pp_reference_tracker.hpp"
@@ -215,10 +216,26 @@ void g_thread_manager::prepareSpaceForThread(g_page_directory rootProcessPageDir
 /**
  *
  */
-void g_thread_manager::applySecurityLevel(g_thread* task) {
+void g_thread_manager::applySecurityLevel(g_cpu_state* state, g_security_level securityLevel) {
 
-	if (task->process->securityLevel <= G_SECURITY_LEVEL_DRIVER) {
-		task->cpuState->eflags |= 0x3000; // IOPL 3
+	if (securityLevel == G_SECURITY_LEVEL_KERNEL) {
+		state->cs = G_GDT_DESCRIPTOR_KERNEL_CODE | G_SEGMENT_SELECTOR_RING0;
+		state->ss = G_GDT_DESCRIPTOR_KERNEL_DATA | G_SEGMENT_SELECTOR_RING0;
+		state->ds = G_GDT_DESCRIPTOR_KERNEL_DATA | G_SEGMENT_SELECTOR_RING0;
+		state->es = G_GDT_DESCRIPTOR_KERNEL_DATA | G_SEGMENT_SELECTOR_RING0;
+		state->fs = G_GDT_DESCRIPTOR_KERNEL_DATA | G_SEGMENT_SELECTOR_RING0;
+		state->gs = G_GDT_DESCRIPTOR_KERNEL_DATA | G_SEGMENT_SELECTOR_RING0;
+	} else {
+		state->cs = G_GDT_DESCRIPTOR_USER_CODE | G_SEGMENT_SELECTOR_RING3;
+		state->ss = G_GDT_DESCRIPTOR_USER_DATA | G_SEGMENT_SELECTOR_RING3;
+		state->ds = G_GDT_DESCRIPTOR_USER_DATA | G_SEGMENT_SELECTOR_RING3;
+		state->es = G_GDT_DESCRIPTOR_USER_DATA | G_SEGMENT_SELECTOR_RING3;
+		state->fs = G_GDT_DESCRIPTOR_USER_DATA | G_SEGMENT_SELECTOR_RING3;
+		state->gs = G_GDT_DESCRIPTOR_USER_DATA | G_SEGMENT_SELECTOR_RING3;
+	}
+
+	if (securityLevel <= G_SECURITY_LEVEL_DRIVER) {
+		state->eflags |= 0x3000; // IOPL 3
 	}
 }
 
@@ -264,9 +281,6 @@ g_thread* g_thread_manager::fork(g_thread* current) {
 	// Forked process has no virtual ranges // TODO keep shared regions and stuff
 	process->virtualRanges.initialize(G_CONST_USER_VIRTUAL_RANGES_START, userStackVirt);
 
-	// Apply security level
-	applySecurityLevel(thread);
-
 #if G_LOGGING_DEBUG
 	dumpTask(thread);
 #endif
@@ -293,13 +307,10 @@ g_thread* g_thread_manager::createProcess(g_security_level securityLevel) {
 	g_memory::setBytes(state, 0, sizeof(g_cpu_state));
 	state->esp = esp;
 	state->eip = 0;
-	state->cs = 0x1B;
-	state->ss = 0x23;
-	state->ds = 0x23;
-	state->es = 0x23;
-	state->fs = 0x23;
-	state->gs = 0x23;
 	state->eflags = 0x200;
+
+	// Apply process security level on thread
+	applySecurityLevel(state, securityLevel);
 
 	/**
 	 * Create the main thread
@@ -322,9 +333,6 @@ g_thread* g_thread_manager::createProcess(g_security_level securityLevel) {
 	// Initialize the virtual range manager
 	// (gets everything from "value of constant" to start of process stack)
 	process->virtualRanges.initialize(G_CONST_USER_VIRTUAL_RANGES_START, userStackVirt);
-
-	// Apply process security level on thread
-	applySecurityLevel(thread);
 
 #if G_LOGGING_DEBUG
 	dumpTask(thread);
@@ -421,13 +429,9 @@ g_thread* g_thread_manager::createThread(g_process* process) {
 	g_memory::setBytes(state, 0, sizeof(g_cpu_state));
 	state->esp = esp;
 	state->eip = 0;
-	state->cs = 0x1B;
-	state->ss = 0x23;
-	state->ds = 0x23;
-	state->es = 0x23;
-	state->fs = 0x23;
-	state->gs = 0x23;
 	state->eflags = 0x200;
+	// Apply security level
+	applySecurityLevel(state, process->securityLevel);
 
 	// Create the thread
 	g_thread* thread = new g_thread(g_thread_type::THREAD);
@@ -437,9 +441,6 @@ g_thread* g_thread_manager::createThread(g_process* process) {
 	thread->userStack = userStackVirt;
 
 	thread->process = process;
-
-	// Apply security level
-	applySecurityLevel(thread);
 
 	// User-Thread (thread-local-storage etc.)
 	prepare_thread_local_storage(thread);

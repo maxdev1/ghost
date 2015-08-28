@@ -34,27 +34,34 @@
 class g_fs_transaction_handler_discovery_set_cwd: public g_fs_transaction_handler_discovery {
 public:
 	g_contextual<g_syscall_fs_set_working_directory*> data;
+	g_thread* unspawned_target;
 
 	/**
-	 *
+	 * @param unspawned_target
+	 * 		when an unspawned target is supplied, the working directory is set to
+	 * 		the unspawned target process instead of the waiting process.
 	 */
-	g_fs_transaction_handler_discovery_set_cwd(char* absolute_path_in, g_contextual<g_syscall_fs_set_working_directory*> data) :
-			g_fs_transaction_handler_discovery(absolute_path_in), data(data) {
+	g_fs_transaction_handler_discovery_set_cwd(char* absolute_path_in, g_contextual<g_syscall_fs_set_working_directory*> data, g_thread* unspawned_target) :
+			g_fs_transaction_handler_discovery(absolute_path_in), data(data), unspawned_target(unspawned_target) {
 
 	}
 
 	/**
 	 *
 	 */
-	virtual g_fs_transaction_handler_status perform_afterwork(g_thread* thread) {
+	virtual g_fs_transaction_handler_status perform_afterwork(g_thread* task) {
 
 		if (status == G_FS_DISCOVERY_SUCCESSFUL) {
+
 			if (!(node->type == G_FS_NODE_TYPE_PIPE || node->type == G_FS_NODE_TYPE_FILE)) {
 				g_local<char> node_realpath(new char[G_PATH_MAX]);
 				g_filesystem::get_real_path_to_node(node, node_realpath());
-				g_string::copy(thread->process->workingDirectory, node_realpath());
+
+				g_thread* target = (unspawned_target != nullptr ? unspawned_target : task);
+				g_string::copy(target->process->workingDirectory, node_realpath());
 				data()->result = G_SET_WORKING_DIRECTORY_SUCCESSFUL;
-				g_log_info("%! cwd of process %i is now '%s'", "filesystem", thread->process->main->id, thread->process->workingDirectory);
+				g_log_debug("%! cwd of process %i is now '%s'", "filesystem", target->process->main->id, target->process->workingDirectory);
+
 			} else {
 				data()->result = G_SET_WORKING_DIRECTORY_NOT_A_FOLDER;
 				g_log_info("%! could not set current working directory to '%s', not a folder", "filesystem", data()->path);

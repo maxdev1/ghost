@@ -61,7 +61,7 @@ void g_system::initializeBsp(g_physical_address initialPageDirectoryPhysical) {
 	// Gather ACPI information
 	g_acpi::gatherInformation();
 	if (g_acpi::hasEntries()) {
-		g_log_info("%! is available", "acpi");
+		g_log_debug("%! is available", "acpi");
 
 		// Parse the MADT
 		g_acpi_entry* cur = g_acpi::getEntryWithSignature("APIC");
@@ -97,7 +97,7 @@ void g_system::initializeBsp(g_physical_address initialPageDirectoryPhysical) {
 		}
 
 		// Print available CPUs
-		g_log_info("%! available cores: %i", "system", numCores);
+		g_log_info("%! %i available core%s", "system", numCores, (numCores > 1 ? "s" : ""));
 
 		// Initialize multiprocessing
 		g_smp::initialize(initialPageDirectoryPhysical);

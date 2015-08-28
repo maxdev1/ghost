@@ -20,10 +20,22 @@ important features are:
 - virtual 8086 for BIOS calls
 
 ## Status
-This is the bleeding edge source version of July 29, 2015. Variable messages
-support has been added, the PS2 driver is already using these now.
-Next big TODO will be rewriting the window server (hence the two different
-window-manager applications).
+This is the bleeding edge source version of August 28, 2015.
+
+- Idle task uses "HLT" to prevent 100% processor usage
+- stdio is fixed, piping works
+- Directory reading functionality is reworked
+- Spawner and others uses variable messages
+- Color in the terminal, and a fancy start screen
+- Minor bugfixes here and there
+- `g_atomic_wait` is now `g_atomic_lock`
+- `g_spawn` has slightly changed, its not possible to specify
+  in and out descriptors of a process when spawning it
+
+TODOs:
+- Directory reading causes crashes
+- Removing the old recv_msg/send_msg interface
+- Milestone: window server rewrite
 
 ## Structure
 - `applications`

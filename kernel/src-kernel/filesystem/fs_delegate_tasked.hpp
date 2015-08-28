@@ -112,12 +112,12 @@ public:
 	/**
 	 *
 	 */
-	virtual g_fs_transaction_id request_read_directory(g_thread* requester, g_fs_node* node, int position, g_fs_transaction_handler_read_directory* handler);
+	virtual g_fs_transaction_id request_directory_refresh(g_thread* requester, g_fs_node* node, g_fs_transaction_handler_directory_refresh* handler);
 
 	/**
 	 *
 	 */
-	virtual void finish_read_directory(g_thread* requester, g_fs_transaction_handler_read_directory* handler);
+	virtual void finish_directory_refresh(g_thread* requester, g_fs_transaction_handler_directory_refresh* handler);
 
 };
 

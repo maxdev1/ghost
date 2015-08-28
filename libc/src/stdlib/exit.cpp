@@ -20,11 +20,25 @@
 
 #include <ghost.h>
 #include "stdlib.h"
+#include "../main_internal.h"
+
+/**
+ * Global destructor routine
+ */
+extern "C" void _fini();
 
 /**
  *
  */
-void __attribute__((no_return)) exit(int code) {
+void exit(int code) {
+
+	// finalize libc
+	__g_fini_libc();
+
+	// call global destructors
+	_fini();
+
+	// quit task
 	g_exit(code);
 	__builtin_unreachable();
 }

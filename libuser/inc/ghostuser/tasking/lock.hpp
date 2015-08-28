@@ -39,7 +39,7 @@ public:
 	}
 
 	virtual void lock() {
-		g_atomic_wait(&locked);
+		g_atomic_lock(&locked);
 	}
 
 	virtual void unlock() {

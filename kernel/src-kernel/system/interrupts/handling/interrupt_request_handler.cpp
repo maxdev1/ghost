@@ -85,7 +85,10 @@ g_cpu_state* g_interrupt_request_handler::handle(g_cpu_state* cpuState) {
 		if (handler) {
 			g_thread* thread = g_tasking::getTaskById(handler->thread_id);
 			if (thread != nullptr) {
+				// let the thread enter the irq handler
 				thread->enter_irq_handler(handler->handler, irq, handler->callback);
+				// it could be the current thread, so we have to switch
+				cpuState = g_tasking::switchTask(cpuState);
 			}
 
 		} else {

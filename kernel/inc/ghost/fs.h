@@ -34,6 +34,8 @@ typedef int32_t g_fd; // a file descriptor
 typedef uint32_t g_fs_virt_id; // a vfs node id
 typedef uint64_t g_fs_phys_id; // a physical filesystem node identifier
 
+#define G_FD_NONE		((g_fd) -1)
+
 /**
  * Limit constants
  */
@@ -223,9 +225,12 @@ static const g_fs_open_directory_status G_FS_OPEN_DIRECTORY_ERROR = 2;
 typedef int g_fs_read_directory_status;
 static const g_fs_read_directory_status G_FS_READ_DIRECTORY_SUCCESSFUL = 0;
 static const g_fs_read_directory_status G_FS_READ_DIRECTORY_EOD = 1;
-static const g_fs_read_directory_status G_FS_READ_DIRECTORY_NOT_SUPPORTED = 2;
-static const g_fs_read_directory_status G_FS_READ_DIRECTORY_ERROR = 3;
-static const g_fs_read_directory_status G_FS_READ_DIRECTORY_BUSY = 4;
+static const g_fs_read_directory_status G_FS_READ_DIRECTORY_ERROR = 2;
+
+typedef int g_fs_directory_refresh_status;
+static const g_fs_directory_refresh_status G_FS_DIRECTORY_REFRESH_SUCCESSFUL = 0;
+static const g_fs_directory_refresh_status G_FS_DIRECTORY_REFRESH_ERROR = 1;
+static const g_fs_directory_refresh_status G_FS_DIRECTORY_REFRESH_BUSY = 2;
 
 typedef struct {
 	g_fs_virt_id node_id;
@@ -282,11 +287,10 @@ typedef struct {
 
 typedef struct {
 	g_fs_phys_id parent_phys_fs_id;
-	int position;
+	g_fs_phys_id parent_virt_fs_id;
 
-	g_fs_virt_id result_child;
-	g_fs_read_directory_status result_status;
-} g_fs_tasked_delegate_transaction_storage_read_directory;
+	g_fs_directory_refresh_status result_status;
+} g_fs_tasked_delegate_transaction_storage_directory_refresh;
 
 __END_C
 

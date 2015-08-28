@@ -31,6 +31,37 @@
 /**
  *
  */
+typedef uint8_t screen_color_t;
+
+#define SC_BLACK		0x0
+#define SC_BLUE			0x1
+#define SC_GREEN		0x2
+#define SC_CYAN			0x3
+#define SC_RED			0x4
+#define SC_MAGENTA		0x5
+#define SC_BROWN		0x6
+#define SC_LGRAY		0x7
+#define SC_DARKGRAY		0x8
+#define SC_LBLUE		0x9
+#define SC_LGREEN		0xA
+#define SC_LCYAN		0xB
+#define SC_LRED			0xC
+#define SC_LMAGENTA		0xD
+#define SC_YELLOW		0xE
+#define SC_WHITE		0xF
+
+#define SC_COLOR(ba, fo)	(fo | (ba << 4))
+#define SC_DEFAULT_COLOR	SC_COLOR(SC_BLACK, SC_WHITE)
+#define SC_ERROR_COLOR		SC_COLOR(SC_BLACK, SC_RED)
+
+/**
+ * OEM-US special characters
+ */
+#define OEMUS_CHAR_UE	((char) 0x81) /*ü*/
+
+/**
+ *
+ */
 class screen_t {
 private:
 	uint32_t id;
@@ -42,7 +73,7 @@ private:
 
 	uint32_t activeProcessId;
 	uint8_t lock;
-	void writeChar(char c);
+	void writeChar(char c, screen_color_t color);
 	void normalize();
 
 public:
@@ -53,7 +84,7 @@ public:
 	void activate();
 
 	void backspace();
-	void write(std::string message);
+	void write(std::string message, screen_color_t color = SC_DEFAULT_COLOR);
 	void updateCursor();
 	void moveCursor(uint16_t x, uint16_t y);
 };

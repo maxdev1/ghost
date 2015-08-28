@@ -37,7 +37,7 @@
 void run_tests() {
 
 	// Start MagicFS-driver
-	launch_via_spawner("/ramdisk/applications/example-fs-driver.bin", "",
+	launch_via_spawner("/applications/example-fs-driver.bin", "",
 	G_SECURITY_LEVEL_DRIVER);
 	g_sleep(100);
 
@@ -56,7 +56,7 @@ void run_tests() {
 	}
 	{
 		g_fs_open_directory_status open_dir_stat;
-		g_fs_directory_iterator* iter = g_open_directory_s("/ramdisk/i/am/hidden", &open_dir_stat);
+		g_fs_directory_iterator* iter = g_open_directory_s("/i/am/hidden", &open_dir_stat);
 		g_logger::log("g_open_directory: result: %i, node: %i, position: %i", open_dir_stat, iter->node_id, iter->position);
 
 		g_fs_directory_entry* entry;
@@ -68,7 +68,7 @@ void run_tests() {
 	}
 	{
 		g_fs_open_directory_status open_dir_stat;
-		g_fs_directory_iterator* iter = g_open_directory_s("/ramdisk/i/am/hidden", &open_dir_stat);
+		g_fs_directory_iterator* iter = g_open_directory_s("/i/am/hidden", &open_dir_stat);
 		g_logger::log("g_open_directory: result: %i, node: %i, position: %i", open_dir_stat, iter->node_id, iter->position);
 
 		g_fs_directory_entry* entry;
@@ -104,9 +104,9 @@ void run_tests() {
 	}
 
 	// g_open test
-	g_logger::log("g_open: return %i", g_open("/ramdisk/test"));
-	g_logger::log("g_open: return %i", g_open("/ramdisk/test.image"));
-	g_logger::log("g_open: return %i", g_open("/ramdisk/applications/idle.bin"));
+	g_logger::log("g_open: return %i", g_open("/test"));
+	g_logger::log("g_open: return %i", g_open("/test.image"));
+	g_logger::log("g_open: return %i", g_open("/applications/idle.bin"));
 
 	char* cwd = new char[G_PATH_MAX];
 	g_get_working_directory(cwd);
@@ -114,7 +114,7 @@ void run_tests() {
 	s1 << "my 1. wd: '" << cwd << "'";
 	g_logger::log(s1.str());
 
-	g_set_working_directory("/ramdisk/applications");
+	g_set_working_directory("/applications");
 	g_get_working_directory(cwd);
 	std::stringstream s2;
 	s2 << "my 2. wd: '" << cwd << "'";
@@ -130,7 +130,7 @@ void run_tests() {
 
 		g_logger::log("ramdisk: starting read test");
 		g_fs_open_status open_status;
-		g_fd test_file = g_open_fs("/ramdisk/system/keyboard/de-DE.layout", 0, &open_status);
+		g_fd test_file = g_open_fs("/system/keyboard/de-DE.layout", 0, &open_status);
 		g_logger::log("ramdisk: file opened: %i, status: %i", test_file, open_status);
 
 		// and again
@@ -150,8 +150,8 @@ void run_tests() {
 
 		// get length of ramdisk file:
 		g_logger::log("length: %i", g_length(test_file));
-		g_logger::log("length: %i", g_flength("/ramdisk/system/keyboard/de-DE.layout"));
-		g_logger::log("length: %i", g_flength_s("/ramdisk/system/keyboard/de-DE.layout", false));
+		g_logger::log("length: %i", g_flength("/system/keyboard/de-DE.layout"));
+		g_logger::log("length: %i", g_flength_s("/system/keyboard/de-DE.layout", false));
 
 		g_fs_close_status closestatus;
 		int32_t closeres = g_close_s(test_file, &closestatus);
@@ -162,7 +162,7 @@ void run_tests() {
 
 		g_logger::log("ramdisk: starting seek-end test");
 		g_fs_open_status open_status;
-		g_fd test_file = g_open_fs("/ramdisk/system/keyboard/de-DE.layout", 0, &open_status);
+		g_fd test_file = g_open_fs("/system/keyboard/de-DE.layout", 0, &open_status);
 		g_logger::log("ramdisk: file opened: %i, status: %i", test_file, open_status);
 		g_seek(test_file, 0, G_FS_SEEK_END);
 		g_logger::log("ramdisk: file length is %i", g_tell(test_file));
@@ -176,7 +176,7 @@ void run_tests() {
 
 		g_logger::log("ramdisk: ### starting clone-fd test");
 		g_fs_open_status open_status;
-		g_fd test_file = g_open_fs("/ramdisk/system/keyboard/de-DE.layout", 0, &open_status);
+		g_fd test_file = g_open_fs("/system/keyboard/de-DE.layout", 0, &open_status);
 		g_logger::log("ramdisk: file opened: %i, status: %i", test_file, open_status);
 
 		g_fd clone = g_clone_fd(test_file, g_get_pid(), g_get_pid());
@@ -210,8 +210,8 @@ void run_tests() {
 
 		// get length of ramdisk file:
 		g_logger::log("length: %i", g_length(test_file));
-		g_logger::log("length: %i", g_flength("/ramdisk/system/keyboard/de-DE.layout"));
-		g_logger::log("length: %i", g_flength_s("/ramdisk/system/keyboard/de-DE.layout", false));
+		g_logger::log("length: %i", g_flength("/system/keyboard/de-DE.layout"));
+		g_logger::log("length: %i", g_flength_s("/system/keyboard/de-DE.layout", false));
 
 		g_fs_close_status closestatus;
 		int32_t closeres = g_close_s(test_file, &closestatus);

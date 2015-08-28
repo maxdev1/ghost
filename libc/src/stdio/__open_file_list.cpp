@@ -42,7 +42,7 @@ void __open_file_list_add(FILE* file) {
  *
  */
 void __open_file_list_lock() {
-	g_atomic_wait(&open_file_list_lockatom);
+	g_atomic_lock(&open_file_list_lockatom);
 }
 
 /**

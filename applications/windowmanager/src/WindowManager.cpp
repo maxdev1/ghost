@@ -140,8 +140,8 @@ void WindowManager::systemLoop() {
 	g_create_thread((void*) runRequestHandler);
 
 	// Create the cursor
-	Cursor::load("/ramdisk/system/graphics/cursor/default.cursor");
-	Cursor::load("/ramdisk/system/graphics/cursor/text.cursor");
+	Cursor::load("/system/graphics/cursor/default.cursor");
+	Cursor::load("/system/graphics/cursor/text.cursor");
 	Cursor::set("default");
 	Cursor::focusedComponent = screen;
 
@@ -197,7 +197,7 @@ void WindowManager::systemLoop() {
 		outputDirty(screen->grabInvalid(), screenBounds, global.getBuffer());
 
 		// Wait until another render is requested
-		g_atomic_wait(&renderAtom);
+		g_atomic_lock(&renderAtom);
 	}
 }
 

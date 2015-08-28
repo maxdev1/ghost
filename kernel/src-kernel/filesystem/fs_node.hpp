@@ -50,6 +50,7 @@ public:
 	void add_child(g_fs_node* child);
 
 	bool is_blocking;
+	bool contents_valid;
 
 	g_fs_node* find_child(char* name);
 };
