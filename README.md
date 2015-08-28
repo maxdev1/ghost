@@ -29,7 +29,7 @@ This is the bleeding edge source version of August 28, 2015.
 - Color in the terminal, and a fancy start screen
 - Minor bugfixes here and there
 - `g_atomic_wait` is now `g_atomic_lock`
-- `g_spawn` has slightly changed, its not possible to specify
+- `g_spawn` has slightly changed, its now possible to specify
   in and out descriptors of a process when spawning it
 
 TODOs:
