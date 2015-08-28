@@ -51,14 +51,13 @@ int __g_main() {
 	int argc;
 	char** args;
 	if (parseargs(&argc, &args) == 0) {
-		ret = main(2, args);
+		ret = main(argc, args);
+	} else {
+		g_log("failed to parse command line arguments");
 	}
 
-	// finalize libc
-	__g_fini_libc();
-
-	// leave (calls dtors)
-	g_exit(ret);
+	// leave
+	exit(ret);
 }
 
 /**

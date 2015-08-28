@@ -78,8 +78,8 @@ void __clearerr_unlocked(FILE* stream);
 
 // default implementations, always accessed as "unlocked"
 int __stdio_impl_close(FILE* stream);
-size_t __stdio_impl_read(void* buf, size_t len, FILE* stream);
-size_t __stdio_impl_write(const void* buf, size_t len, FILE* stream);
+ssize_t __stdio_impl_read(void* buf, size_t len, FILE* stream);
+ssize_t __stdio_impl_write(const void* buf, size_t len, FILE* stream);
 int __stdio_impl_seek(FILE* stream, off_t offset, int whence);
 off_t __stdio_impl_tell(FILE* stream);
 int __stdio_impl_fileno(FILE* stream);

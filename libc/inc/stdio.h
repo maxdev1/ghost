@@ -251,10 +251,10 @@ int printf(const char* format, ...);
  * 		optional list of arguments
  */
 int vcbprintf(void* param,
-		size_t (*callback)(void* param, const char* buf, size_t maximum),
+		ssize_t (*callback)(void* param, const char* buf, size_t maximum),
 		const char *format, va_list arglist);
 int cbprintf(void* param,
-		size_t (*callback)(void* param, const char* buf, size_t maximum),
+		ssize_t (*callback)(void* param, const char* buf, size_t maximum),
 		const char *format, ...);
 
 /**

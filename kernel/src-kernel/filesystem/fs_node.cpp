@@ -25,7 +25,7 @@
  *
  */
 g_fs_node::g_fs_node() :
-		delegate(0), type(G_FS_NODE_TYPE_NONE), id(0), phys_fs_id(0), name(0), parent(0), children(0), is_blocking(true) {
+		delegate(0), type(G_FS_NODE_TYPE_NONE), id(0), phys_fs_id(0), name(0), parent(0), children(0), is_blocking(true), contents_valid(false) {
 }
 
 /**

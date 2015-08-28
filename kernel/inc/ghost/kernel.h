@@ -36,7 +36,7 @@ typedef void* g_process_creation_identifier;
 /**
  * Thread & process ids
  */
-typedef uint32_t g_tid;
+typedef int32_t g_tid;
 typedef g_tid g_pid;
 
 /**

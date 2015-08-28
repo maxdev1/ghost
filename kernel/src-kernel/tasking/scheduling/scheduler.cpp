@@ -63,6 +63,7 @@ g_cpu_state* g_scheduler::switchTask(g_cpu_state* cpuState) {
 	do {
 		selectNext();
 	} while (!applySwitch());
+	++current->value->rounds;
 
 	unlock();
 
@@ -106,7 +107,8 @@ bool g_scheduler::killAllThreadsOf(g_process* process) {
 		entry = entry->next;
 	}
 
-	g_log_debug("%! waiting for all threads of process %i to exit: %s", "scheduler", current->value->id, (still_has_living_threads ? "all finished" : "still waiting"));
+	g_log_debug("%! waiting for all threads of process %i to exit: %s", "scheduler", current->value->id,
+			(still_has_living_threads ? "all finished" : "still waiting"));
 
 	unlock();
 	return still_has_living_threads;
@@ -141,6 +143,24 @@ uint32_t g_scheduler::getLoad() {
  */
 void g_scheduler::updateMilliseconds() {
 	milliseconds += APIC_MILLISECONDS_PER_TICK;
+
+#if G_DEBUG_THREAD_DUMPING
+	// debug dump
+	static uint64_t last_debugout_millis = 0;
+	if (milliseconds - last_debugout_millis > 10000) {
+		last_debugout_millis = milliseconds;
+
+		g_list_entry<g_thread*> *entry = taskList;
+		g_log_info("%! core %i thread list:", "scheduler", this->coreId);
+		while (entry) {
+			g_thread* thr = entry->value;
+			g_log_info("%# - %i:%i, eip: %h, waiter: %s, name: %s, rounds: %i", thr->process->main->id, thr->id, thr->cpuState->eip,
+					(thr->waitManager == nullptr ? "-" : thr->waitManager->debug_name()), (thr->getIdentifier() == 0 ? "-" : thr->getIdentifier()),
+					thr->rounds);
+			entry = entry->next;
+		}
+	}
+#endif
 }
 
 /**

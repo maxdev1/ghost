@@ -37,6 +37,7 @@ g_thread::g_thread(g_thread_type _type) {
 	priority = g_thread_priority::NORMAL;
 
 	waitCount = 0;
+	rounds = 0;
 
 	alive = true;
 	cpuState = 0;

@@ -32,7 +32,8 @@ class screen_t;
  */
 struct standard_out_thread_data_t {
 	bool stop;
-	uint32_t stdout_read_end;
+	bool err;
+	g_fd stdout_read_end;
 	screen_t* screen;
 };
 
@@ -41,8 +42,8 @@ struct standard_out_thread_data_t {
  */
 struct standard_in_thread_data_t {
 	bool stop;
-	uint32_t stdin_write_end;
-	g_pid pid;
+	g_fd stdin_write_end;
+	g_pid int_pid = -1; // process to interrupt on Ctrl+C
 	terminal_t* terminal;
 };
 

@@ -76,21 +76,21 @@ void g_gdt_manager::initialize() {
 
 	// TSS descriptor, position 0x28
 	g_gdt::createGate(&thisGdt->entry[5], (uint32_t) &thisGdt->tss, sizeof(g_tss), G_ACCESS_BYTE__TSS_386_SEGMENT, 0x40);
-	thisGdt->tss.ss0 = 0x10; // Kernel data segment
+	thisGdt->tss.ss0 = G_GDT_DESCRIPTOR_KERNEL_DATA; // Kernel data segment
 	thisGdt->tss.esp0 = 0; // will later be initialized by the scheduler
 
 	// User thread pointer segment 0x30
 	g_gdt::createGate(&thisGdt->entry[6], 0, 0xFFFFFFFF, G_ACCESS_BYTE__USER_DATA_SEGMENT, 0xCF);
 
 	// Load GDT
-	g_log_debug("%! BSP descriptor table lays at %h", "gdt", &thisGdt->entry);g_log_debug("%! pointer lays at %h, base %h, limit %h", "gdt", &thisGdt->ptr, thisGdt->ptr.base, thisGdt->ptr.limit);
+	g_log_debug("%! BSP descriptor table lays at %h", "gdt", &thisGdt->entry);
+	g_log_debug("%! pointer lays at %h, base %h, limit %h", "gdt", &thisGdt->ptr, thisGdt->ptr.base, thisGdt->ptr.limit);
 	_loadGdt((uint32_t) &thisGdt->ptr);
 	g_log_debug("%! initialized", "gdt");
 
 	// Load TSS
-	uint16_t tssDescriptorIndex = 0x28;
-	g_log_debug("%! descriptor index %h", "tss", tssDescriptorIndex);
-	_loadTss(tssDescriptorIndex);
+	g_log_debug("%! descriptor index %h", "tss", G_GDT_DESCRIPTOR_TSS);
+	_loadTss(G_GDT_DESCRIPTOR_TSS);
 	g_log_debug("%! initialized", "tss");
 }
 

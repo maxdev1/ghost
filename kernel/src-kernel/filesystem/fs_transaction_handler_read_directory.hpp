@@ -22,6 +22,7 @@
 #define GHOST_FILESYSTEM_TRANSACTION_HANDLER_READ_DIRECTORY
 
 #include "filesystem/fs_transaction_handler.hpp"
+#include "filesystem/fs_transaction_handler_directory_refresh.hpp"
 #include "filesystem/fs_node.hpp"
 #include "filesystem/fs_descriptors.hpp"
 #include "memory/contextual.hpp"
@@ -31,16 +32,17 @@
  */
 class g_fs_transaction_handler_read_directory: public g_fs_transaction_handler {
 public:
-	g_fs_read_directory_status status = G_FS_READ_DIRECTORY_ERROR;
-	g_fs_node* child;
-
+	g_fs_node* folder;
+	int position;
 	g_contextual<g_syscall_fs_read_directory*> data;
+
+	g_fs_transaction_handler_directory_refresh* causing_handler = 0;
 
 	/**
 	 *
 	 */
-	g_fs_transaction_handler_read_directory(g_contextual<g_syscall_fs_read_directory*> data) :
-			child(0), data(data) {
+	g_fs_transaction_handler_read_directory(g_fs_node* folder, int position, g_contextual<g_syscall_fs_read_directory*> data) :
+			folder(folder), position(position), data(data) {
 	}
 
 	/**

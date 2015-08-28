@@ -17,7 +17,7 @@ g_font* Fonts::getFontAtPath(std::string path, std::string name) {
  *
  */
 g_font* Fonts::getSystemFont(std::string name) {
-	return getFontAtPath("/ramdisk/system/graphics/fonts/" + name + ".ttf", name);
+	return getFontAtPath("/system/graphics/fonts/" + name + ".ttf", name);
 }
 
 /**
@@ -37,5 +37,5 @@ g_font* Fonts::get(std::string name) {
  *
  */
 g_font* Fonts::getDefault() {
-	return getFontAtPath("/ramdisk/system/graphics/fonts/default.ttf", "default");
+	return getFontAtPath("/system/graphics/fonts/default.ttf", "default");
 }

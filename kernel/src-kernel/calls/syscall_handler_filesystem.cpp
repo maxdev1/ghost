@@ -42,16 +42,33 @@ G_SYSCALL_HANDLER(set_working_directory) {
 	g_thread* task = g_tasking::getCurrentThread();
 	g_syscall_fs_set_working_directory* data = (g_syscall_fs_set_working_directory*) G_SYSCALL_DATA(state);
 
-	// get absolute path for the requested path, relative to process working directory
-	g_local<char> absolute_path(new char[G_PATH_MAX]);
-	g_filesystem::concat_as_absolute_path(task->process->workingDirectory, data->path, absolute_path());
+	g_thread* target = nullptr;
+	if (data->process == 0) {
+		target = task;
 
-	// perform discovery, perform setting of working directory once finished
-	g_contextual<g_syscall_fs_set_working_directory*> bound_data(data, task->process->pageDirectory);
-	g_fs_transaction_handler_discovery_set_cwd* handler = new g_fs_transaction_handler_discovery_set_cwd(absolute_path(), bound_data);
+	} else if (task->process->securityLevel <= G_SECURITY_LEVEL_KERNEL) {
+		// only kernel level task (spawner for example) is allowed to do this for other processes
+		target = (g_thread*) data->process;
 
-	g_filesystem::discover_absolute_path(task, absolute_path(), handler);
-	return g_tasking::switchTask(state);
+	}
+
+	if (target != nullptr) {
+		// get the absolute path to the new working directory
+		g_local<char> workdir_abs(new char[G_PATH_MAX]);
+		g_filesystem::concat_as_absolute_path(target->process->workingDirectory, data->path, workdir_abs());
+
+		// if the executor sets the working directory for another thread (that is not yet attached),
+		// we must supply this thread as the "unspawned target" to the transaction handler.
+		g_thread* unspawned_target = (target == task) ? 0 : target;
+
+		// perform discovery, perform setting of working directory once finished
+		g_contextual<g_syscall_fs_set_working_directory*> bound_data(data, task->process->pageDirectory);
+		g_fs_transaction_handler_discovery_set_cwd* handler = new g_fs_transaction_handler_discovery_set_cwd(workdir_abs(), bound_data, unspawned_target);
+		g_filesystem::discover_absolute_path(task, workdir_abs(), handler);
+		return g_tasking::switchTask(state);
+	}
+
+	return state;
 }
 
 /**
@@ -327,7 +344,7 @@ G_SYSCALL_HANDLER(fs_clonefd) {
 	g_thread* task = g_tasking::getCurrentThread();
 
 	g_syscall_fs_clonefd* data = (g_syscall_fs_clonefd*) G_SYSCALL_DATA(state);
-	data->result = g_filesystem::clonefd(task, data->source_fd, data->source_pid, data->target_fd, data->target_pid, &data->status);
+	data->result = g_filesystem::clonefd(data->source_fd, data->source_pid, data->target_fd, data->target_pid, &data->status);
 
 	return state;
 }
@@ -374,9 +391,8 @@ G_SYSCALL_HANDLER(fs_read_directory) {
 
 	// create handler
 	g_contextual<g_syscall_fs_read_directory*> bound_data(data, task->process->pageDirectory);
-	g_fs_transaction_handler_read_directory* handler = new g_fs_transaction_handler_read_directory(bound_data);
 
-	g_filesystem::read_directory(task, data->iterator->node_id, data->iterator->position, handler);
+	g_filesystem::read_directory(task, data->iterator->node_id, data->iterator->position, bound_data);
 	return g_tasking::switchTask(state);
 }
 

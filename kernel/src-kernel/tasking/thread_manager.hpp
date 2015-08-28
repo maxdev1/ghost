@@ -43,7 +43,7 @@ public:
 	static g_thread* getTaskForIdentifier(const char* identifier);
 
 private:
-	static void applySecurityLevel(g_thread* task);
+	static void applySecurityLevel(g_cpu_state* state, g_security_level securityLevel);
 
 	static g_physical_address prepareSpaceForProcess(g_virtual_address kernelStack, g_virtual_address userStack = 0);
 	static g_physical_address prepareSpaceForFork(g_thread* current, g_virtual_address kernelStack, g_virtual_address userStack = 0);

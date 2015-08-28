@@ -35,7 +35,7 @@ typedef struct {
 /**
  *
  */
-static size_t vcbprintf_vsnprintf_callback(void* param, const char* str,
+static ssize_t vcbprintf_vsnprintf_callback(void* param, const char* str,
 		size_t len) {
 
 	vcbprintf_vsnprintf_callback_data_t* data =

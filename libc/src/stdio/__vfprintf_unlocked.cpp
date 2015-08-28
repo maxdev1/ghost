@@ -26,7 +26,7 @@
 /**
  *
  */
-static size_t vcbprintf_vfprintf_callback(void* param, const char* string,
+static ssize_t vcbprintf_vfprintf_callback(void* param, const char* string,
 		size_t stringlen) {
 
 	return __fwrite_unlocked(string, 1, stringlen, (FILE*) param);

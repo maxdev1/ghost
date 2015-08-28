@@ -79,7 +79,7 @@ size_t __fwrite_unlocked(const void* ptr, size_t size, size_t nmemb,
 
 		while (done < total) {
 			// call write implementation
-			size_t written = stream->impl_write(&(((uint8_t*) ptr)[done]),
+			ssize_t written = stream->impl_write(&(((uint8_t*) ptr)[done]),
 					total, stream);
 
 			if (written == 0) {
@@ -87,7 +87,7 @@ size_t __fwrite_unlocked(const void* ptr, size_t size, size_t nmemb,
 				res = EOF;
 				break;
 
-			} else if (written < 0) {
+			} else if (written == -1) {
 				stream->flags |= G_FILE_FLAG_ERROR;
 				res = EOF;
 				break;

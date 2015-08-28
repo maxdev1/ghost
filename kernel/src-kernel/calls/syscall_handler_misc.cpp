@@ -84,6 +84,7 @@ G_SYSCALL_HANDLER(test) {
 
 	if (data->test == 1) {
 		data->result = g_pp_allocator::getFreePageCount();
+		g_log_info("free pages: %i", data->result);
 	} else {
 		data->result = 0;
 	}

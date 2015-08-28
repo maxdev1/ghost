@@ -27,7 +27,7 @@
 int main() {
 	signal(SIGINT, SIG_IGN);
 
-	again: g_yield();
+	again: asm("hlt");
 	goto again;
 }
 

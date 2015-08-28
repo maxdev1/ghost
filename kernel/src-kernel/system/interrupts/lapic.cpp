@@ -39,22 +39,14 @@ static g_virtual_address virtualBase;
  */
 void g_lapic::initialize() {
 
-	// Get ID
-	uint32_t localId = getCurrentId();
-
 	// Read version
 	uint32_t apicVersionRegVal = read(APIC_REGISTER_VERSION);
-	uint8_t apicVersion = apicVersionRegVal & 0xFF;
-	uint16_t maxLvtIndex = (apicVersionRegVal >> 16) & 0xFF;
-	g_log_info("%! id %i, version %h (%s), maxlvtindex: %i", "lapic", localId,
-			apicVersion,
-			(apicVersion < 0x10 ? "82489DX discrete" : "integrated"),
+	g_log_debug("%! id %i, version %h (%s), maxlvtindex: %i", "lapic", localId, apicVersion, (apicVersion < 0x10 ? "82489DX discrete" : "integrated"),
 			maxLvtIndex);
 
 	// Initialize APIC to well-known state
 	write(APIC_REGISTER_DEST_FORMAT, 0xFFFFFFFF);
-	write(APIC_REGISTER_LOGICAL_DEST,
-			(read(APIC_REGISTER_LOGICAL_DEST) & 0x00FFFFFF) | 1);
+	write(APIC_REGISTER_LOGICAL_DEST, (read(APIC_REGISTER_LOGICAL_DEST) & 0x00FFFFFF) | 1);
 	write(APIC_REGISTER_LVT_TIMER, APIC_LVT_INT_MASKED);
 	write(APIC_REGISTER_LVT_PERFMON, APIC_LVT_DELIVERY_MODE_NMI);
 	write(APIC_REGISTER_LVT_LINT0, APIC_LVT_INT_MASKED);
@@ -77,8 +69,7 @@ void g_lapic::prepare(g_physical_address lapicAddress) {
 
 	// Warn if APIC not at expected location
 	if (physicalBase != G_EXPECTED_APIC_PHYSICAL_ADDRESS) {
-		g_log_warn("%! is at %h, not %h as expected", "lapic", physicalBase,
-				G_EXPECTED_APIC_PHYSICAL_ADDRESS);
+		g_log_warn("%! is at %h, not %h as expected", "lapic", physicalBase, G_EXPECTED_APIC_PHYSICAL_ADDRESS);
 	}
 	g_log_debug("%! base is %h", "lapic", physicalBase);
 
@@ -172,8 +163,7 @@ void g_lapic::sendEoi() {
  *
  */
 void g_lapic::waitForIcrSend() {
-	while (APIC_LVT_GET_DELIVERY_STATUS(read(APIC_REGISTER_INT_COMMAND_HIGH))
-			== APIC_ICR_DELIVS_SEND_PENDING) {
+	while (APIC_LVT_GET_DELIVERY_STATUS(read(APIC_REGISTER_INT_COMMAND_HIGH)) == APIC_ICR_DELIVS_SEND_PENDING) {
 	}
 }
 

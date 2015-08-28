@@ -44,10 +44,10 @@ screen_t::screen_t() {
  *
  */
 void screen_t::clean() {
-	g_atomic_wait(&lock);
+	g_atomic_lock(&lock);
 	for (uint32_t off = 0; off < SCREEN_HEIGHT * SCREEN_WIDTH * 2; off += 2) {
 		output_buffer[off] = ' ';
-		output_buffer[off + 1] = 0x0F;
+		output_buffer[off + 1] = SC_DEFAULT_COLOR;
 	}
 	offset = 0;
 	lock = false;
@@ -57,7 +57,7 @@ void screen_t::clean() {
  *
  */
 void screen_t::activate() {
-	g_atomic_wait(&lock);
+	g_atomic_lock(&lock);
 	memcpy((uint8_t*) VIDEO_MEMORY, output_buffer,
 	SCREEN_HEIGHT * SCREEN_WIDTH * 2);
 	output_current = output_video_direct;
@@ -68,7 +68,7 @@ void screen_t::activate() {
  *
  */
 void screen_t::deactivate() {
-	g_atomic_wait(&lock);
+	g_atomic_lock(&lock);
 	memcpy(output_buffer, (uint8_t*) VIDEO_MEMORY,
 	SCREEN_HEIGHT * SCREEN_WIDTH * 2);
 	output_current = output_buffer;
@@ -79,7 +79,7 @@ void screen_t::deactivate() {
  *
  */
 void screen_t::moveCursor(uint16_t x, uint16_t y) {
-	g_atomic_wait(&lock);
+	g_atomic_lock(&lock);
 	uint16_t position = (y * SCREEN_WIDTH) + x;
 
 	g_utils::outportByte(0x3D4, 0x0F);
@@ -99,15 +99,15 @@ void screen_t::updateCursor() {
 /**
  *
  */
-void screen_t::writeChar(char c) {
+void screen_t::writeChar(char c, screen_color_t color) {
 	if (c == '\n') {
-		writeChar(' ');
+		writeChar(' ', color);
 		while ((offset % ( SCREEN_WIDTH * 2)) != 0) {
-			writeChar(' ');
+			writeChar(' ', color);
 		}
 	} else {
 		output_current[offset++] = c;
-		output_current[offset++] = 0x0F;
+		output_current[offset++] = (uint8_t) color;
 	}
 
 	normalize();
@@ -117,10 +117,10 @@ void screen_t::writeChar(char c) {
  *
  */
 void screen_t::backspace() {
-	g_atomic_wait(&lock);
+	g_atomic_lock(&lock);
 	offset -= 2;
 	output_current[offset++] = ' ';
-	output_current[offset++] = 0x0F;
+	++offset; // keep color
 	offset -= 2;
 	lock = false;
 }
@@ -128,12 +128,12 @@ void screen_t::backspace() {
 /**
  *
  */
-void screen_t::write(std::string message) {
+void screen_t::write(std::string message, screen_color_t color) {
 
-	g_atomic_wait(&lock);
+	g_atomic_lock(&lock);
 	char* p = (char*) message.c_str();
 	while (*p) {
-		writeChar(*p++);
+		writeChar(*p++, color);
 	}
 	lock = false;
 }
@@ -153,7 +153,8 @@ void screen_t::normalize() {
 
 		for (uint32_t i = 0; i < SCREEN_WIDTH * 2; i += 2) {
 			output_current[screenSize - lineBytes + i] = ' ';
-			output_current[screenSize - lineBytes + i + 1] = 0x0F;
+			output_current[screenSize - lineBytes + i + 1] = SC_DEFAULT_COLOR;
 		}
 	}
 }
+

@@ -81,7 +81,7 @@ static size_t _integer_to_string(char* out, uintmax_t value, uintmax_t base,
  *
  */
 int vcbprintf(void* param,
-		size_t (*callback)(void* param, const char* buf, size_t maximum),
+		ssize_t (*callback)(void* param, const char* buf, size_t maximum),
 		const char *format, va_list arglist) {
 
 	const char* s = format;
@@ -100,7 +100,8 @@ int vcbprintf(void* param,
 
 			// early exit on '%'
 			if (*s == '%') {
-				if (callback(param, s, 1) != 1) return -1;
+				if (callback(param, s, 1) != 1)
+					return -1;
 				++written;
 				STEP;
 				continue;
@@ -322,7 +323,7 @@ int vcbprintf(void* param,
 					digits = "0123456789";
 				}
 
-				size_t len = _integer_to_string(number_buffer,
+				ssize_t len = _integer_to_string(number_buffer,
 						(isnegative ? -((intmax_t) value) : value), base,
 						digits);
 
@@ -351,29 +352,34 @@ int vcbprintf(void* param,
 				// left padding with spaces
 				if (!flag_left_justify && !flag_left_pad_zeroes) {
 					for (int i = 0; i < width - len - additionalslen; i++) {
-						if (callback(param, " ", 1) != 1) return -1;
+						if (callback(param, " ", 1) != 1)
+							return -1;
 						++written;
 					}
 				}
 
 				// sign
 				if (isnegative) {
-					if (callback(param, "-", 1) != 1) return -1;
+					if (callback(param, "-", 1) != 1)
+						return -1;
 					++written;
 
 				} else if (flag_always_prepend_sign) {
-					if (callback(param, "+", 1) != 1) return -1;
+					if (callback(param, "+", 1) != 1)
+						return -1;
 					++written;
 
 				} else if (flag_always_prepend_space_plussign) {
-					if (callback(param, " ", 1) != 1) return -1;
+					if (callback(param, " ", 1) != 1)
+						return -1;
 					++written;
 				}
 
 				// left padding with zeroes
 				if (!flag_left_justify && flag_left_pad_zeroes) {
 					for (int i = 0; i < width - len - additionalslen; i++) {
-						if (callback(param, "0", 1) != 1) return -1;
+						if (callback(param, "0", 1) != 1)
+							return -1;
 						++written;
 					}
 				}
@@ -381,28 +387,34 @@ int vcbprintf(void* param,
 				// additionals
 				if (flag_force_0x_or_dec
 						&& (specifier == 'x' || specifier == 'X')) {
-					if (callback(param, "0", 1) != 1) return -1;
+					if (callback(param, "0", 1) != 1)
+						return -1;
 					++written;
 
 					if (specifier == 'x') {
-						if (callback(param, "x", 1) != 1) return -1;
+						if (callback(param, "x", 1) != 1)
+							return -1;
 					} else {
-						if (callback(param, "X", 1) != 1) return -1;
+						if (callback(param, "X", 1) != 1)
+							return -1;
 					}
 					++written;
 				} else if (flag_force_0x_or_dec && specifier == 'o') {
-					if (callback(param, "0", 1) != 1) return -1;
+					if (callback(param, "0", 1) != 1)
+						return -1;
 					++written;
 				}
 
 				// write number
-				if (callback(param, number_buffer, len) != len) return -1;
+				if (callback(param, number_buffer, len) != len)
+					return -1;
 				written += len;
 
 				// right padding
 				if (flag_left_justify) {
 					for (int i = 0; i < width - len - additionalslen; i++) {
-						if (callback(param, " ", 1) != 1) return -1;
+						if (callback(param, " ", 1) != 1)
+							return -1;
 						++written;
 					}
 				}
@@ -494,22 +506,26 @@ int vcbprintf(void* param,
 					for (int i = 0;
 							i < width - len_int - additionalslen - precision;
 							i++) {
-						if (callback(param, " ", 1) != 1) return -1;
+						if (callback(param, " ", 1) != 1)
+							return -1;
 						++written;
 					}
 				}
 
 				// sign
 				if (isnegative) {
-					if (callback(param, "-", 1) != 1) return -1;
+					if (callback(param, "-", 1) != 1)
+						return -1;
 					++written;
 
 				} else if (flag_always_prepend_sign) {
-					if (callback(param, "+", 1) != 1) return -1;
+					if (callback(param, "+", 1) != 1)
+						return -1;
 					++written;
 
 				} else if (flag_always_prepend_space_plussign) {
-					if (callback(param, " ", 1) != 1) return -1;
+					if (callback(param, " ", 1) != 1)
+						return -1;
 					++written;
 				}
 
@@ -518,29 +534,34 @@ int vcbprintf(void* param,
 					for (int i = 0;
 							i < width - len_int - additionalslen - precision;
 							i++) {
-						if (callback(param, "0", 1) != 1) return -1;
+						if (callback(param, "0", 1) != 1)
+							return -1;
 						++written;
 					}
 				}
 
 				// write integer part
-				if (callback(param, number_buffer, len_int) != len_int) return -1;
+				if (callback(param, number_buffer, len_int) != len_int)
+					return -1;
 				written += len_int;
 
 				if (flag_force_0x_or_dec || value_fractional != 0) {
-					if (callback(param, ".", 1) != 1) return -1;
+					if (callback(param, ".", 1) != 1)
+						return -1;
 					++written;
 
 					// write fractional part
 					if (callback(param, precision_buffer, len_fract)
-							!= len_fract) return -1;
+							!= len_fract)
+						return -1;
 					written += len_fract;
 
 					// write precision filling zeroes
 					for (size_t i = 0;
 							i < (len_fract == 0 ? 1 : precision - len_fract);
 							i++) {
-						if (callback(param, "0", 1) != 1) return -1;
+						if (callback(param, "0", 1) != 1)
+							return -1;
 						++written;
 					}
 				}
@@ -550,7 +571,8 @@ int vcbprintf(void* param,
 					for (int i = 0;
 							i < width - len_int - additionalslen - precision;
 							i++) {
-						if (callback(param, " ", 1) != 1) return -1;
+						if (callback(param, " ", 1) != 1)
+							return -1;
 						++written;
 					}
 				}
@@ -575,19 +597,22 @@ int vcbprintf(void* param,
 				// left padding
 				if (!flag_left_justify) {
 					for (int i = 0; i < width - 1; i++) {
-						if (callback(param, " ", 1) != 1) return -1;
+						if (callback(param, " ", 1) != 1)
+							return -1;
 						++written;
 					}
 				}
 
 				// print character TODO wchar_t?
-				if (callback(param, &value, 1) != 1) return -1;
+				if (callback(param, &value, 1) != 1)
+					return -1;
 				++written;
 
 				// right padding
 				if (flag_left_justify) {
 					for (int i = 0; i < width - 1; i++) {
-						if (callback(param, " ", 1) != 1) return -1;
+						if (callback(param, " ", 1) != 1)
+							return -1;
 						++written;
 					}
 				}
@@ -619,19 +644,22 @@ int vcbprintf(void* param,
 				// left padding
 				if (!flag_left_justify) {
 					for (int i = 0; i < width - len; i++) {
-						if (callback(param, " ", 1) != 1) return -1;
+						if (callback(param, " ", 1) != 1)
+							return -1;
 						++written;
 					}
 				}
 
 				// write string TODO wchar_t?
-				if (callback(param, value, len) != len) return -1;
+				if (callback(param, value, len) != len)
+					return -1;
 				written += len;
 
 				// right padding
 				if (flag_left_justify) {
 					for (int i = 0; i < width - len; i++) {
-						if (callback(param, " ", 1) != 1) return -1;
+						if (callback(param, " ", 1) != 1)
+							return -1;
 						++written;
 					}
 				}
@@ -652,7 +680,8 @@ int vcbprintf(void* param,
 			}
 
 		} else {
-			if (callback(param, s, 1) != 1) return -1;
+			if (callback(param, s, 1) != 1)
+				return -1;
 			++written;
 		}
 

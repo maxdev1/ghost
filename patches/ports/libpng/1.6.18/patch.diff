@@ -1,0 +1,12 @@
+diff -Naur libpng-1.6.18/config.sub libpng-1.6.18-ghost/config.sub
+--- libpng-1.6.18/config.sub	2015-02-21 19:26:44.000000000 +0100
++++ libpng-1.6.18-ghost/config.sub	2015-07-29 22:47:56.000000000 +0200
+@@ -1373,7 +1373,7 @@
+ 	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
+ 	      | -sym* | -kopensolaris* | -plan9* \
+ 	      | -amigaos* | -amigados* | -msdos* | -newsos* | -unicos* | -aof* \
+-	      | -aos* | -aros* \
++	      | -aos* | -aros* | -ghost* \
+ 	      | -nindy* | -vxsim* | -vxworks* | -ebmon* | -hms* | -mvs* \
+ 	      | -clix* | -riscos* | -uniplus* | -iris* | -rtu* | -xenix* \
+ 	      | -hiux* | -386bsd* | -knetbsd* | -mirbsd* | -netbsd* \

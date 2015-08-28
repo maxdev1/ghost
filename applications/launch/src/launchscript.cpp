@@ -159,7 +159,7 @@ std::string launchscript_parser_t::value() {
 			esc = false;
 		} else if (c == '\\' && !esc) {
 			esc = true;
-		} else if (isspace(c) && !esc) {
+		} else if (isspace(c) && !instr && !esc) {
 			break;
 		} else {
 			ks << c;

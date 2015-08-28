@@ -39,34 +39,34 @@ void g_madt::parse(g_acpi_table_header* madtSdtHeader) {
 	 * TODO: tuxie mentioned that the value in the ACPI tables might not be trustworthy
 	 * due to GRUB changing the APIC location and not updating the MADT. Check this.
 	 */
-	g_log_info("%! reported LAPIC address %h", "madt", madtHeader->localControllerAddress);
+	g_log_debug("%! reported LAPIC address %h", "madt", madtHeader->localControllerAddress);
 	g_lapic::prepare(madtHeader->localControllerAddress);
 
-	g_log_info("%! listing entries in MADT:", "madt");
+	g_log_debug("%! listing entries in MADT:", "madt");
 	uint32_t pos = 0;
 	while (pos < entriesLength) {
 		g_madt_entry_header* entryHeader = (g_madt_entry_header*) &entriesData[pos];
 
 		if (entryHeader->deviceType == 0) {	// Local APIC
 			g_madt_lapic_entry* entry = (g_madt_lapic_entry*) entryHeader;
-			g_log_info("%# lapic, id: %i, processorId: %i, flags: %i", entry->apicId, entry->processorId, entry->flags);
 
 			// only useable if entry flag 1
 			if (entry->flags == 1) {
+				g_log_debug("%# lapic, id: %i, processorId: %i, flags: %i", entry->apicId, entry->processorId, entry->flags);
 				g_system::createCpu(entry->apicId);
 			}
 
 		} else if (entryHeader->deviceType == 1) { // IO APIC
 			g_madt_ioapic_entry* entry = (g_madt_ioapic_entry*) entryHeader;
-			g_log_info("%# ioapic, id: %i, address: %h", entry->ioapicId, entry->ioapicAddress);
+			g_log_debug("%# ioapic, id: %i, address: %h", entry->ioapicId, entry->ioapicAddress);
 			g_ioapic_manager::create(entry->ioapicId, entry->ioapicAddress, entry->globalSystemInterruptBase);
 
 		} else if (entryHeader->deviceType == 2) { // Interrupt Source Override
 			g_madt_interrupt_src_override_entry* entry = (g_madt_interrupt_src_override_entry*) entryHeader;
-			g_log_info("%# int src override, irqSource: %i, globInt: %i, busSource: %i", entry->irqSource, entry->globalSystemInterrupt, entry->busSource);
+			g_log_debug("%# int src override, irqSource: %i, globInt: %i, busSource: %i", entry->irqSource, entry->globalSystemInterrupt, entry->busSource);
 
 		} else {
-			g_log_warn("%# device of unknown type %i", entryHeader->deviceType);
+			g_log_debug("%# device of unknown type %i", entryHeader->deviceType);
 		}
 
 		pos += entryHeader->recordLength;

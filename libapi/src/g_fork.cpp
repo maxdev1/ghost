@@ -23,15 +23,9 @@
 /**
  *
  */
-uint32_t g_fork() {
+g_tid g_fork() {
 	g_syscall_fork data;
-	g_syscall(G_SYSCALL_CALL_FORK, (uint32_t) &data);
-	uint32_t forkedProcessId = data.forkedId;
-
-	if (forkedProcessId > 0) {
-		// TODO: update in VFS to fork file descriptors
-	}
-
-	return forkedProcessId;
+	g_syscall(G_SYSCALL_FORK, (uint32_t) &data);
+	return data.forkedId;
 }
 

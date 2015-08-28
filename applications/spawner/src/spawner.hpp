@@ -46,21 +46,32 @@ void protocolError(std::string msg, ...);
  *
  * @param request
  * 		incoming message
+ * @param requester
+ * 		tid of requester
+ * @param tx
+ * 		transaction to respond on
  */
-void processSpawnRequest(g_message* request);
+void processSpawnRequest(g_spawn_command_spawn_request* request,
+		g_tid requester, g_message_transaction tx);
 
 /**
  * Creates the standard input & output streams for the process
  * with the id <pid>. Writes the result to the output parameters
  *
- * @param pid
+ * @param created_pid
  * 		target process id
+ * @param requester_pid
+ * 		process id of the requesting task
  * @param out_inw
  * 		write end of stdin of the process
  * @param out_outr
  * 		read end of stdout of the process
+ * @param out_errr
+ * 		read end of stderr of the process
  */
-bool setup_stdio(g_pid pid, g_fd* out_inw, g_fd* out_outr);
+bool setup_stdio(g_pid created_pid, g_pid requester_pid, g_fd* out_inw,
+		g_fd* out_outr, g_fd* out_errr, g_fd in_stdin, g_fd in_stdout,
+		g_fd in_stderr);
 
 /**
  * Places the given command line arguments in the kernel buffer
@@ -88,11 +99,16 @@ binary_format_t detect_format(g_fd file);
  * 		binary path
  * @param args
  * 		command line arguments
+ * @param workdir
+ * 		target working directory
  * @param sec_lvl
  * 		security level
+ * @param requester_pid
+ * 		process id of the requester
  */
-g_spawn_status spawn(std::string path, std::string args,
-		g_security_level sec_lvl, uint32_t* out_pid, int* out_fd_inw,
-		int* out_fd_outr);
+g_spawn_status spawn(const char* path, const char* args, const char* workdir,
+		g_security_level sec_lvl, g_pid requester_pid, g_pid* out_pid,
+		g_fd* out_stdin, g_fd* out_stdout, g_fd* out_stderr, g_fd in_stdin,
+		g_fd in_stdout, g_fd in_stderr);
 
 #endif

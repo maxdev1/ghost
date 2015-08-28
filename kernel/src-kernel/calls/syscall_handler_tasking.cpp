@@ -157,10 +157,21 @@ G_SYSCALL_HANDLER(wait_for_irq) {
 G_SYSCALL_HANDLER(atomic_wait) {
 
 	g_thread* task = g_tasking::getCurrentThread();
-	g_syscall_atomic_wait* data = (g_syscall_atomic_wait*) G_SYSCALL_DATA(state);
+	g_syscall_atomic_lock* data = (g_syscall_atomic_lock*) G_SYSCALL_DATA(state);
 
 	bool* atom = (bool*) data->atom;
 	bool set_on_finish = data->set_on_finish;
+	bool try_only = data->try_only;
+
+	if (try_only) {
+		if (*atom) {
+			data->was_set = false;
+		} else {
+			*atom = true;
+			data->was_set = true;
+		}
+		return state;
+	}
 
 	if (*atom) {
 		task->wait(new g_waiter_atomic_wait(atom, set_on_finish));
@@ -221,9 +232,20 @@ G_SYSCALL_HANDLER(millis) {
 G_SYSCALL_HANDLER(fork) {
 
 	g_syscall_fork* data = (g_syscall_fork*) G_SYSCALL_DATA(state);
+	g_thread* current = g_tasking::getCurrentThread();
 	g_thread* forked = g_tasking::fork();
 	if (forked) {
+		// clone file descriptors
+		g_filesystem::process_forked(current->process->main->id, forked->process->main->id);
+
+		// return forked id in target process
 		data->forkedId = forked->id;
+
+		// switch to clone for a moment, set return value to 0
+		auto cur = g_address_space::get_current_space();
+		g_address_space::switch_to_space(forked->process->pageDirectory);
+		data->forkedId = 0;
+		g_address_space::switch_to_space(cur);
 	} else {
 		data->forkedId = -1;
 	}

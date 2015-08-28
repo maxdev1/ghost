@@ -21,11 +21,28 @@
 #include "ghost.h"
 #include "ghost/bytewise.h"
 #include <string.h>
+#include <ghost/utils/local.hpp>
+
+// redirect
+g_spawn_status g_spawn(const char* path, const char* args, const char* workdir, g_security_level securityLevel) {
+	return g_spawn_poi(path, args, workdir, securityLevel, nullptr, nullptr, nullptr);
+}
+
+// redirect
+g_spawn_status g_spawn_p(const char* path, const char* args, const char* workdir, g_security_level securityLevel, g_pid* pid) {
+	return g_spawn_poi(path, args, workdir, securityLevel, pid, nullptr, nullptr);
+}
+
+// redirect
+g_spawn_status g_spawn_po(const char* path, const char* args, const char* workdir, g_security_level securityLevel, g_pid* pid, g_fd out_stdio[3]) {
+	return g_spawn_poi(path, args, workdir, securityLevel, pid, out_stdio, nullptr);
+}
 
 /**
  *
  */
-g_spawn_status g_spawn(const char* path, const char* args, g_security_level securityLevel, uint32_t* pid, int stdio[2]) {
+g_spawn_status g_spawn_poi(const char* path, const char* args, const char* workdir, g_security_level securityLevel, g_pid* pid, g_fd out_stdio[3],
+		g_fd in_stdio[3]) {
 
 	g_spawn_status res = G_SPAWN_STATUS_UNKNOWN;
 	uint32_t tid = g_get_tid();
@@ -36,53 +53,66 @@ g_spawn_status g_spawn(const char* path, const char* args, g_security_level secu
 		return res;
 	}
 
-	// open streams
-	g_fd pip_w;
-	g_fd pip_r;
-	g_fs_pipe_status s;
-	g_pipe_s(&pip_w, &pip_r, &s);
+	// create transaction
+	g_message_transaction tx = g_ipc_next_topic();
 
-	// pipe was opened?
-	if (s == G_FS_PIPE_SUCCESSFUL) {
+	// create request
+	size_t path_bytes = strlen(path) + 1;
+	size_t args_bytes = strlen(args) + 1;
+	size_t workdir_bytes = strlen(workdir) + 1;
+	size_t requestlen = sizeof(g_spawn_command_spawn_request) + path_bytes + args_bytes + workdir_bytes;
+	g_local<uint8_t> _request(new uint8_t[requestlen]);
+	uint8_t* request = _request();
 
-		// create transaction
-		uint32_t tx = g_ipc_next_topic();
+	// copy request contents
+	g_spawn_command_spawn_request* req = (g_spawn_command_spawn_request*) request;
+	req->header.command = G_SPAWN_COMMAND_SPAWN_REQUEST;
+	req->security_level = securityLevel;
+	req->path_bytes = path_bytes;
+	req->args_bytes = args_bytes;
+	req->workdir_bytes = workdir_bytes;
 
-		// prepare spawn request
-		g_message_empty(request);
-		request.type = G_SPAWN_COMMAND_SPAWN;
-		request.topic = tx;
-		request.parameterA = pip_r;
+	if (in_stdio != nullptr) {
+		req->stdin = in_stdio[0];
+		req->stdout = in_stdio[1];
+		req->stderr = in_stdio[2];
+	} else {
+		req->stdin = G_FD_NONE;
+		req->stdout = G_FD_NONE;
+		req->stderr = G_FD_NONE;
+	}
 
-		// send request to spawner
-		g_send_msg(spawner_tid, &request);
+	uint8_t* insert = request;
+	insert += sizeof(g_spawn_command_spawn_request);
+	memcpy(insert, path, path_bytes);
+	insert += path_bytes;
+	memcpy(insert, args, args_bytes);
+	insert += args_bytes;
+	memcpy(insert, workdir, workdir_bytes);
 
-		// write arguments to stream
-		g_write(pip_w, path, strlen(path) + 1);
-		g_write(pip_w, args, strlen(args) + 1);
+	// send request to spawner
+	g_send_message_t(spawner_tid, request, requestlen, tx);
 
-		uint8_t sec_lvl_bytes[4];
-		G_BW_PUT_LE_4(sec_lvl_bytes, securityLevel);
-		g_write(pip_w, sec_lvl_bytes, 4);
+	// receive response
+	size_t resp_len = sizeof(g_message_header) + sizeof(g_spawn_command_spawn_response);
+	g_local<uint8_t> resp_buf(new uint8_t[resp_len]);
+	g_receive_message_t(resp_buf(), resp_len, tx);
 
-		// receive response
-		g_message_empty(response);
-		g_recv_topic_msg(tid, tx, &response);
+	g_spawn_command_spawn_response* response = (g_spawn_command_spawn_response*) G_MESSAGE_CONTENT(resp_buf());
 
-		// response contains status code
-		res = (g_spawn_status) response.parameterA;
+	// if successful, take response parameters
+	if (response->status == G_SPAWN_STATUS_SUCCESSFUL) {
 
-		// if successful, take response parameters
-		if (res == G_SPAWN_STATUS_SUCCESSFUL) {
-			*pid = response.parameterB;
-			stdio[0] = response.parameterC;
-			stdio[1] = response.parameterD;
+		if (pid != nullptr) {
+			*pid = response->spawned_process_id;
+		}
+
+		if (out_stdio != nullptr) {
+			out_stdio[0] = response->stdin_write;
+			out_stdio[1] = response->stdout_read;
+			out_stdio[2] = response->stderr_read;
 		}
 	}
 
-	// close pipe
-	g_close(pip_w);
-	g_close(pip_r);
-
-	return res;
+	return response->status;
 }

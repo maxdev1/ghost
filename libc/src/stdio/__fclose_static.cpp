@@ -30,7 +30,7 @@
  */
 int __fclose_static(FILE* stream) {
 
-	g_atomic_wait(&stream->lock);
+	g_atomic_lock(&stream->lock);
 	int res = __fclose_static_unlocked(stream);
 	stream->lock = 0;
 	return res;

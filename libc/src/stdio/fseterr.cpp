@@ -26,7 +26,7 @@
  */
 void fseterr(FILE* stream) {
 
-	g_atomic_wait(&stream->lock);
+	g_atomic_lock(&stream->lock);
 	if (stream->impl_seterr) {
 		stream->impl_seterr(stream);
 	} else {

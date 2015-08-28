@@ -37,7 +37,6 @@ const terminal_input_status_t TERMINAL_INPUT_STATUS_EXIT = 1;
 const terminal_input_status_t TERMINAL_INPUT_STATUS_SCREEN_SWITCH = 2;
 const terminal_input_status_t TERMINAL_INPUT_STATUS_SCREEN_CREATE = 3;
 
-#define BUILTIN_COMMAND_LS			"ls"
 #define BUILTIN_COMMAND_CD			"cd "
 #define BUILTIN_COMMAND_SLEEP		"sleep "
 #define BUILTIN_COMMAND_CLEAR		"clear"
@@ -48,6 +47,7 @@ const terminal_input_status_t TERMINAL_INPUT_STATUS_SCREEN_CREATE = 3;
 #define BUILTIN_COMMAND_READ		"read "
 #define BUILTIN_COMMAND_KBD_SET		"keyboard set "
 #define BUILTIN_COMMAND_KBD_INFO	"keyboard info"
+#define BUILTIN_COMMAND_SCANCODE	"scancode"
 #define BUILTIN_COMMAND_HELP		"help"
 
 /**
@@ -85,7 +85,15 @@ public:
 	/**
 	 *
 	 */
-	void execute(std::string path, std::string args, bool background);
+	void run_command(std::string command);
+	bool run_term_command(std::string command, g_fd* term_in, g_fd* term_out,
+			g_fd* term_err, g_pid* int_pid);
+
+	/**
+	 *
+	 */
+	bool execute(std::string shortpath, std::string args, g_pid* out_pid,
+			g_fd out_stdio[3], g_fd in_stdio[3]);
 
 	g_set_working_directory_status write_working_directory();
 	void read_working_directory();

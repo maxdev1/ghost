@@ -190,10 +190,10 @@ g_cpu_state* g_interrupt_exception_handler::handlePageFault(g_cpu_state* cpuStat
 	// raise SIGSEGV in thread
 	thread->raise_signal(SIGSEGV);
 	g_log_info("%! (core %i) raised SIGSEGV in thread %i", "pagefault", g_system::getCurrentCoreId(), thread->id);
+	dump(cpuState);
 
 	// old stuff:
 	//  // Unhandled
-	//  dump(cpuState);
 	//  g_log_info("%# mapping: virtual %h, physical %h", accessedVirtual, accessedPhysical);
 	//  // Kill process, return with a switch
 	//  g_thread* main = thread->process->main;

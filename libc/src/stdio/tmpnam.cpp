@@ -34,7 +34,7 @@ uint64_t tmpnam_next = 0;
 char* tmpnam(char* buf) {
 
 	// lock tmpnam
-	g_atomic_wait(&tmpnam_lock);
+	g_atomic_lock(&tmpnam_lock);
 
 	// set buffers
 	if (buf == NULL) {

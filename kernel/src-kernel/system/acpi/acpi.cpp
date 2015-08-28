@@ -71,7 +71,7 @@ g_acpi_entry* g_acpi::getEntryWithSignature(const char* signature) {
  */
 void g_acpi::gatherInformation() {
 
-	g_log_info("%! gathering information", "acpi");
+	g_log_debug("%! gathering information", "acpi");
 
 	// Find root table pointer
 	g_rsdp_descriptor* rsdp = g_rsdp_lookup_util::findRSDP();

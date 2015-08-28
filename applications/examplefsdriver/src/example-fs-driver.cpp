@@ -192,8 +192,8 @@ int main(int argc, char* argv[]) {
 
 			} else if (request.type
 					== G_FS_TASKED_DELEGATE_REQUEST_TYPE_READ_DIRECTORY) {
-				g_fs_tasked_delegate_transaction_storage_read_directory* storage =
-						(g_fs_tasked_delegate_transaction_storage_read_directory*) transaction_storage;
+				g_fs_tasked_delegate_transaction_storage_directory_refresh* storage =
+						(g_fs_tasked_delegate_transaction_storage_directory_refresh*) transaction_storage;
 
 				if (storage->position < 10) {
 					phys_node_t* parent = phys_nodes[storage->parent_phys_fs_id];

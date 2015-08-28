@@ -93,6 +93,7 @@ static const g_message_receive_status G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY = 2;
 static const g_message_receive_status G_MESSAGE_RECEIVE_STATUS_FAILED = 3;
 static const g_message_receive_status G_MESSAGE_RECEIVE_STATUS_FAILED_NOT_PERMITTED = 4;
 static const g_message_receive_status G_MESSAGE_RECEIVE_STATUS_EXCEEDS_BUFFER_SIZE = 5;
+static const g_message_receive_status G_MESSAGE_RECEIVE_STATUS_INTERRUPTED = 6;
 
 __END_C
 

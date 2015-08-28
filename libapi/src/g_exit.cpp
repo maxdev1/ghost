@@ -21,16 +21,11 @@
 #include "ghost/user.h"
 
 /**
- * Global destructor routine
- */
-extern "C" void _fini();
-
-/**
  *
  */
-void __attribute__((no_return)) g_exit(int code) {
-	_fini();
+void g_exit(int code) {
 	g_syscall_exit data;
 	data.code = code;
 	g_syscall(G_SYSCALL_EXIT, (uint32_t) &data);
+	__builtin_unreachable();
 }

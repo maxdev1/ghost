@@ -25,7 +25,7 @@
  *
  */
 int cbprintf(void* param,
-		size_t (*callback)(void* param, const char* buf, size_t maximum),
+		ssize_t (*callback)(void* param, const char* buf, size_t maximum),
 		const char *format, ...) {
 
 	va_list va;

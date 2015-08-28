@@ -104,6 +104,8 @@ public:
 	g_waiter* waitManager;
 	uint32_t waitCount;
 
+	uint64_t rounds;
+
 	void* userData;
 	void* threadEntry;
 

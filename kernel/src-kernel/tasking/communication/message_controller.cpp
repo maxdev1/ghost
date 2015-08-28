@@ -107,7 +107,29 @@ void release(g_message_header* m) {
  *
  */
 void g_message_controller::clear(g_tid tid) {
-	g_log_info("%! clear messages for %i", "TODO", tid);
+
+	if (queues == 0) {
+		return;
+	}
+
+	// get the queue
+	auto entry = queues->get(tid);
+	if (entry == nullptr) {
+		return;
+	}
+
+	// release all messages
+	g_message_queue_head* head = entry->value;
+	g_message_header* m = head->first;
+	while (m) {
+		g_message_header* after = m->next;
+		release(m);
+		m = after;
+	}
+
+	// release the queue
+	queues->put(tid, 0);
+	delete head;
 }
 
 /**

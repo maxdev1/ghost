@@ -45,12 +45,24 @@ __BEGIN_C
  *
  * @security-level APPLICATION
  */
-void g_atomic_wait(uint8_t* atom);
+void g_atomic_lock(uint8_t* atom);
+
+/**
+ * Trys to perform atomic wait. If the lock is already locked, the function
+ * returns 0. Otherwise, the lock is set as in {g_atomic_lock} and the
+ * function returns 1.
+ *
+ * @param atom
+ * 		the atom to use
+ *
+ * @security-level APPLICATION
+ */
+uint8_t g_atomic_try_lock(uint8_t* atom);
 
 /**
  * Performs an atomic block. If the atom is true, the executing task must
  * wait until the task that owns the atom has finished its work and sets
- * it to false. Different from the {g_atomic_wait}, the atom is not changed.
+ * it to false. Different from the {g_atomic_lock}, the atom is not changed.
  *
  * @param atom
  * 		the atom to use
@@ -66,18 +78,29 @@ void g_atomic_block(uint8_t* atom);
  * 		absolute path of the executable
  * @param args
  * 		unparsed arguments
+ * @param workdir
+ * 		working directory for the execution
  * @param securityLevel
  * 		security level to spawn the process to
  * @param outProcessId
  * 		is filled with the process id
- * @param stdio
- * 		is filled with stdio file descriptors, 0 is write end of stdin, 1 is read end of stdout
+ * @param out_stdio
+ * 		is filled with stdio file descriptors, 0 is write end of stdin,
+ * 		1 is read end of stdout, 2 is read end of stderr
+ * @param in_stdio
+ * 		if supplied, the given descriptors which are valid for the executing process
+ * 		are used as the stdin/out/err for the spawned process; an entry might be -1
+ * 		to be ignored and default behaviour being applied
  *
  * @return one of the {g_spawn_status} codes
  *
  * @security-level APPLICATION
  */
-g_spawn_status g_spawn(const char* path, const char* args, g_security_level securityLevel, uint32_t* pid, int stdio[2]);
+g_spawn_status g_spawn(const char* path, const char* args, const char* workdir, g_security_level securityLevel);
+g_spawn_status g_spawn_p(const char* path, const char* args, const char* workdir, g_security_level securityLevel, g_pid* pid);
+g_spawn_status g_spawn_po(const char* path, const char* args, const char* workdir, g_security_level securityLevel, g_pid* pid, g_fd out_stdio[3]);
+g_spawn_status g_spawn_poi(const char* path, const char* args, const char* workdir, g_security_level securityLevel, g_pid* pid, g_fd out_stdio[3],
+		g_fd in_stdio[3]);
 
 /**
  * Kills a process.
@@ -261,11 +284,15 @@ int64_t g_tell_s(g_fd fd, g_fs_tell_status* out_status);
  * 		buffer of at least {G_PATH_MAX} bytes size
  * 		containing the new working directory
  *
+ * @param process
+ * 		process to set working directory for during spawning
+ *
  * @return one of the {g_set_working_directory_status} codes
  *
- * @security-level APPLICATION
+ * @security-level APPLICATION if no process given, otherwise KERNEL
  */
 g_set_working_directory_status g_set_working_directory(const char* path);
+g_set_working_directory_status g_set_working_directory_p(const char* path, g_process_creation_identifier process);
 
 /**
  * Retrieves the working directory for the current process.
@@ -497,6 +524,7 @@ g_message_receive_status g_receive_message(void* buf, size_t max);
 g_message_receive_status g_receive_message_m(void* buf, size_t max, g_message_receive_mode mode);
 g_message_receive_status g_receive_message_t(void* buf, size_t max, g_message_transaction tx);
 g_message_receive_status g_receive_message_tm(void* buf, size_t max, g_message_transaction tx, g_message_receive_mode mode);
+g_message_receive_status g_receive_message_tmb(void* buf, size_t max, g_message_transaction tx, g_message_receive_mode mode, uint8_t* break_condition);
 
 /**
  * Registers the executing task for the given identifier.
@@ -730,14 +758,13 @@ uint32_t g_test(uint32_t test);
  * Forks the current process.
  * TODO:
  * 	- only works from the main thread
- * 	- does not copy file descriptors yet
  *
  * @return within the executing process the forked processes id is returned,
  * 		within the forked process 0 is returned
  *
  * @security-level APPLICATION
  */
-uint32_t g_fork();
+g_tid g_fork();
 
 /**
  * Joins the task with the given id, making the executing task

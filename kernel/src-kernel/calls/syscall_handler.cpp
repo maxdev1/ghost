@@ -116,9 +116,9 @@ G_SYSCALL_HANDLER(handle) {
 		link(G_SYSCALL_RELEASE_CLI_ARGUMENTS, cli_args_release);
 
 		link(G_SYSCALL_TEST, test);
-		link(G_SYSCALL_ATOMIC_WAIT, atomic_wait);
+		link(G_SYSCALL_ATOMIC_LOCK, atomic_wait);
 		link(G_SYSCALL_GET_MILLISECONDS, millis);
-		link(G_SYSCALL_CALL_FORK, fork);
+		link(G_SYSCALL_FORK, fork);
 		link(G_SYSCALL_JOIN, join);
 		link(G_SYSCALL_GET_WORKING_DIRECTORY, get_working_directory);
 		link(G_SYSCALL_SET_WORKING_DIRECTORY, set_working_directory);

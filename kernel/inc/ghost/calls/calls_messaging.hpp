@@ -124,6 +124,10 @@ typedef struct {
  * @field status
  * 		one of the {g_message_receive_status} codes
  *
+ * @field break_condition
+ * 		when giving, the receiving will wait no more
+ * 		once the condition is true
+ *
  * @security-level APPLICATION
  */
 typedef struct {
@@ -131,6 +135,7 @@ typedef struct {
 	size_t maximum;
 	g_message_receive_mode mode;
 	g_message_transaction transaction;
+	uint8_t* break_condition;
 
 	g_message_receive_status status;
 }__attribute__((packed)) g_syscall_receive_message;

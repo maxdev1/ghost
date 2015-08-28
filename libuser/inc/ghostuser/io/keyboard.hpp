@@ -31,15 +31,15 @@
 class g_key_info {
 public:
 	g_key_info() :
-			key("KEY_NONE"), pressed(false), ctrl(false), alt(false), shift(false) {
+			key("KEY_NONE"), pressed(false), ctrl(false), alt(false), shift(false), scancode(0) {
 	}
 
 	std::string key;
-	bool pressed;
-
-	bool ctrl;
-	bool alt;
-	bool shift;
+	bool pressed :1;
+	bool ctrl :1;
+	bool alt :1;
+	bool shift :1;
+	uint8_t scancode;
 
 	/**
 	 *
@@ -82,7 +82,7 @@ private:
 	static void registerKeyboard();
 
 public:
-	static g_key_info readKey();
+	static g_key_info readKey(bool* break_condition = nullptr);
 
 	static g_key_info keyForScancode(uint8_t scancode);
 	static char charForKey(g_key_info info);
