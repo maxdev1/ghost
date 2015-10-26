@@ -21,23 +21,24 @@
 #ifndef GHOST_INTERRUPTS_EXCEPTION_HANDLER
 #define GHOST_INTERRUPTS_EXCEPTION_HANDLER
 
-#include <system/cpu_state.hpp>
+#include <system/processor_state.hpp>
+#include <tasking/thread.hpp>
 
 /**
  *
  */
 class g_interrupt_exception_handler {
 public:
-	static g_cpu_state* handle(g_cpu_state* cpuState);
+	static g_thread* handle(g_thread* current_thread);
 
-	static g_cpu_state* handleGeneralProtectionFault(g_cpu_state* cpuState);
-	static g_cpu_state* handlePageFault(g_cpu_state* cpuState);
-	static g_cpu_state* handleDivideError(g_cpu_state* cpuState);
-	static g_cpu_state* handleInvalidOperationCode(g_cpu_state* cpuState);
+	static g_thread* handleGeneralProtectionFault(g_thread* current_thread);
+	static g_thread* handlePageFault(g_thread* current_thread);
+	static g_thread* handleDivideError(g_thread* current_thread);
+	static g_thread* handleInvalidOperationCode(g_thread* current_thread);
 
 	static uint32_t getCR2();
-	static void dump(g_cpu_state* cpuState);
-	static void printStackTrace(g_cpu_state* cpuState);
+	static void dump(g_thread* current_thread);
+	static void printStackTrace(g_processor_state* cpuState);
 };
 
 #endif

@@ -35,14 +35,13 @@
  */
 uint8_t mouse_packet_number = 0;
 uint8_t mouse_packet_buffer[3];
-int32_t mouse_position_x = 0;
-int32_t mouse_position_y = 0;
 
 /**
  * Receiver task ids and transaction ids for dispatching incoming packets.
  */
-uint32_t mouse_receiver_tid;
+uint32_t mouse_receiver_tid = -1;
 uint32_t mouse_receiver_transaction;
+
 uint32_t keyboard_receiver_tid;
 uint32_t keyboard_receiver_transaction;
 
@@ -51,6 +50,8 @@ uint32_t keyboard_receiver_transaction;
  */
 uint64_t packets_count = 0;
 
+g_ps2_shared_area* shared_area;
+
 /**
  *
  */
@@ -58,9 +59,22 @@ int main() {
 
 	// register
 	if (!g_task_register_id(G_PS2_DRIVER_IDENTIFIER)) {
-		g_logger::log("failed to register as '%s'",
-				(char*) G_PS2_DRIVER_IDENTIFIER);
+		klog("failed to register as '%s'", (char*) G_PS2_DRIVER_IDENTIFIER);
+		return 1;
 	}
+
+	// set up shared memory
+	shared_area = (g_ps2_shared_area*) g_alloc_mem(sizeof(g_ps2_shared_area));
+	if (shared_area == 0) {
+		klog("failed to allocate transfer memory area");
+		return 1;
+	}
+
+	// initialize memory area
+	shared_area->keyboard.atom_nothing_queued = true;
+	shared_area->keyboard.atom_unhandled = false;
+	shared_area->mouse.atom_nothing_queued = true;
+	shared_area->mouse.atom_unhandled = false;
 
 	// initialize mouse
 	initialize_mouse();
@@ -80,17 +94,17 @@ int main() {
 			g_ps2_register_request* req =
 					(g_ps2_register_request*) G_MESSAGE_CONTENT(buf);
 
-			if (req->command == G_PS2_COMMAND_REGISTER_KEYBOARD) {
-				keyboard_receiver_tid = mes->sender;
-				keyboard_receiver_transaction = mes->transaction;
+			// share area with requester
+			g_pid requester_pid = g_get_pid_for_tid(mes->sender);
+			g_ps2_shared_area* shared_in_target =
+					(g_ps2_shared_area*) g_share_mem((void*) shared_area,
+							sizeof(g_ps2_shared_area), requester_pid);
 
-			} else if (req->command == G_PS2_COMMAND_REGISTER_MOUSE) {
-				mouse_receiver_tid = mes->sender;
-				mouse_receiver_transaction = mes->transaction;
-
-			} else {
-				g_logger::log("received unknown command: %i", req->command);
-			}
+			// send response
+			g_ps2_register_response response;
+			response.area = shared_in_target;
+			g_send_message_t(mes->sender, &response,
+					sizeof(g_ps2_register_response), mes->transaction);
 		}
 	}
 }
@@ -180,12 +194,17 @@ void handle_mouse_data(uint8_t b) {
 			int16_t offX = valX - ((flags << 4) & 0x100);
 			int16_t offY = valY - ((flags << 3) & 0x100);
 
-			g_ps2_mouse_packet packet;
-			packet.x = offX;
-			packet.y = offY;
-			packet.flags = flags;
-			g_send_message_t(mouse_receiver_tid, &packet,
-					sizeof(g_ps2_mouse_packet), mouse_receiver_transaction);
+			// wait for handling and set
+			g_atomic_block(&shared_area->mouse.atom_unhandled);
+
+			// write data
+			shared_area->mouse.move_x = offX;
+			shared_area->mouse.move_y = offY;
+			shared_area->mouse.flags = flags;
+
+			// show waiter that data is queue
+			shared_area->mouse.atom_nothing_queued = false;
+			shared_area->mouse.atom_unhandled = true;
 		}
 
 		mouse_packet_number = 0;
@@ -198,16 +217,15 @@ void handle_mouse_data(uint8_t b) {
  */
 void handle_keyboard_data(uint8_t b) {
 
-	g_ps2_keyboard_packet packet;
-	packet.scancode = b;
+	// wait for handling and set
+	g_atomic_block(&shared_area->keyboard.atom_unhandled);
 
-	// ESC is the test key
-	if (b == 1) {
-		g_test(1);
-	}
+	// write data
+	shared_area->keyboard.scancode = b;
 
-	g_send_message_t(keyboard_receiver_tid, &packet,
-			sizeof(g_ps2_keyboard_packet), keyboard_receiver_transaction);
+	// show waiter that data is queue
+	shared_area->keyboard.atom_nothing_queued = false;
+	shared_area->keyboard.atom_unhandled = true;
 }
 
 /**

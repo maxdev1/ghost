@@ -32,7 +32,7 @@ void g_global_recursive_lock::lock() {
 #endif
 
 	while (!__sync_bool_compare_and_swap(&atom, 0, 1)) {
-		if (owner == g_system::getCurrentCoreId()) {
+		if (owner == g_system::currentProcessorId()) {
 			++depth;
 			return;
 		}
@@ -45,7 +45,7 @@ void g_global_recursive_lock::lock() {
 		}
 #endif
 	}
-	owner = g_system::getCurrentCoreId();
+	owner = g_system::currentProcessorId();
 	depth = 0;
 }
 

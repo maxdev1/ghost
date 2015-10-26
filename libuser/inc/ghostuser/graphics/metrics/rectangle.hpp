@@ -27,7 +27,7 @@
 /**
  *
  */
-class g_rectangle {
+struct g_rectangle {
 public:
 	int x;
 	int y;
@@ -180,6 +180,6 @@ public:
 		}
 		return norm;
 	}
-};
+}__attribute__((packed));
 
 #endif

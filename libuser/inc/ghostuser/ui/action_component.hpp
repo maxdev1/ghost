@@ -33,11 +33,11 @@
  */
 class g_action_component {
 private:
-	uint32_t id;
+	g_ui_component_id id;
 	g_action_listener* listener;
 
 protected:
-	g_action_component(uint32_t id) :
+	g_action_component(g_ui_component_id id) :
 			id(id), listener(0) {
 	}
 
@@ -52,6 +52,13 @@ public:
 	 *
 	 */
 	bool setActionListener(g_action_listener* l);
+
+	/**
+	 *
+	 */
+	g_action_listener* getActionListener() {
+		return listener;
+	}
 
 };
 

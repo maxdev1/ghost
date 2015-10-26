@@ -33,42 +33,7 @@
  *
  */
 g_scheduler::g_scheduler(uint32_t coreId) :
-		milliseconds(0), taskList(0), current(0), coreId(coreId) {
-}
-
-/**
- *
- */
-void g_scheduler::lock() {
-	taskListLock.lock();
-}
-
-/**
- *
- */
-void g_scheduler::unlock() {
-	taskListLock.unlock();
-}
-
-/**
- *
- */
-g_cpu_state* g_scheduler::switchTask(g_cpu_state* cpuState) {
-
-	lock();
-
-	if (current) {
-		current->value->cpuState = cpuState;
-	}
-
-	do {
-		selectNext();
-	} while (!applySwitch());
-	++current->value->rounds;
-
-	unlock();
-
-	return current->value->cpuState;
+		milliseconds(0), coreId(coreId), wait_queue(0), run_queue(0), idle_entry(0), current_entry(0) {
 }
 
 /**
@@ -76,15 +41,29 @@ g_cpu_state* g_scheduler::switchTask(g_cpu_state* cpuState) {
  */
 void g_scheduler::add(g_thread* t) {
 
-	lock();
+	model_lock.lock();
 
-	g_list_entry<g_thread*>* entry = new g_list_entry<g_thread*>;
-	entry->value = t;
-	entry->next = taskList;
-	taskList = entry;
+	// set the scheduler on the task
+	t->scheduler = this;
+
+	// the idle task is not added to a queue
+	if (t->priority == g_thread_priority::IDLE) {
+		g_task_entry* entry = new g_task_entry;
+		entry->value = t;
+		entry->next = 0;
+		idle_entry = entry;
+
+	} else {
+		// add task to run queue
+		g_task_entry* entry = new g_task_entry;
+		entry->value = t;
+		entry->next = run_queue;
+		run_queue = entry;
+	}
+
 	g_log_debug("%! task %i assigned to core %i", "scheduler", t->id, coreId);
 
-	unlock();
+	model_lock.unlock();
 }
 
 /**
@@ -92,50 +71,66 @@ void g_scheduler::add(g_thread* t) {
  */
 bool g_scheduler::killAllThreadsOf(g_process* process) {
 
-	bool still_has_living_threads = false;
-	lock();
+	bool living_threads_remain = false;
+	model_lock.lock();
 
-	// kill all threads
-	auto entry = taskList;
+	// set all threads in run queue to dead
+	auto entry = run_queue;
 	while (entry) {
-		g_thread* thr = entry->value;
-
-		if (thr->process->main->id == process->main->id && thr->alive) {
-			thr->alive = false;
-			still_has_living_threads = true;
+		if ((entry->value->process->main->id == process->main->id) && entry->value->alive) {
+			entry->value->alive = false;
+			living_threads_remain = true;
 		}
 
 		entry = entry->next;
 	}
 
-	g_log_debug("%! waiting for all threads of process %i to exit: %s", "scheduler", current->value->id,
-			(still_has_living_threads ? "all finished" : "still waiting"));
+	// set all threads in wait queue to dead
+	entry = wait_queue;
+	while (entry) {
+		if ((entry->value->process->main->id == process->main->id) && entry->value->alive) {
+			entry->value->alive = false;
+			living_threads_remain = true;
+		}
 
-	unlock();
-	return still_has_living_threads;
+		entry = entry->next;
+	}
+
+	g_log_debug("%! waiting for all threads of process %i to exit: %s", "scheduler", current_entry->value->id,
+			(living_threads_remain ? "still waiting" : "all finished"));
+
+	model_lock.unlock();
+	return living_threads_remain;
 }
 
 /**
  *
  */
 g_thread* g_scheduler::getCurrent() {
-	return current->value;
+	return current_entry->value;
 }
 
 /**
  *
  */
-uint32_t g_scheduler::getLoad() {
+uint32_t g_scheduler::calculateLoad() {
 
 	uint32_t load = 0;
+	model_lock.lock();
 
 	// TODO improve load calculation
-	g_list_entry<g_thread*> *entry = taskList;
+	g_task_entry* entry = run_queue;
+	while (entry) {
+		++load;
+		entry = entry->next;
+	}
+	entry = wait_queue;
 	while (entry) {
 		++load;
 		entry = entry->next;
 	}
 
+	model_lock.unlock();
 	return load;
 }
 
@@ -151,7 +146,7 @@ void g_scheduler::updateMilliseconds() {
 	if (milliseconds - last_debugout_millis > 10000) {
 		last_debugout_millis = milliseconds;
 
-		g_list_entry<g_thread*> *entry = taskList;
+		g_list_entry<g_thread*> *entry = task_list;
 		g_log_info("%! core %i thread list:", "scheduler", this->coreId);
 		while (entry) {
 			g_thread* thr = entry->value;
@@ -168,7 +163,14 @@ void g_scheduler::updateMilliseconds() {
 	if (milliseconds - lastProcessorTimeUpdate > 500) {
 		lastProcessorTimeUpdate = milliseconds;
 
-		g_list_entry<g_thread*> *entry = taskList;
+		g_task_entry* entry = run_queue;
+		while (entry) {
+			g_thread* thr = entry->value;
+			G_DEBUG_INTERFACE_TASK_SET_ROUNDS(thr->id, thr->rounds);
+			thr->rounds = 0;
+			entry = entry->next;
+		}
+		entry = wait_queue;
 		while (entry) {
 			g_thread* thr = entry->value;
 			G_DEBUG_INTERFACE_TASK_SET_ROUNDS(thr->id, thr->rounds);
@@ -189,87 +191,126 @@ uint64_t g_scheduler::getMilliseconds() {
 /**
  *
  */
-void g_scheduler::sleep(g_thread* task, uint64_t sleepies) {
-	if (!task->isWaiting()) {
-		task->wait(new g_waiter_sleep(this, sleepies));
+g_thread* g_scheduler::save(g_processor_state* cpuState) {
+
+	// store processor state in current task
+	if (current_entry) {
+		current_entry->value->cpuState = cpuState;
+		return current_entry->value;
 	}
+
+	return nullptr;
 }
 
 /**
  *
  */
-void g_scheduler::selectNext() {
+g_thread* g_scheduler::schedule() {
 
-	if (current == 0) {
-		current = taskList;
-	} else {
-		current = current->next;
-		if (current == 0) {
-			current = taskList;
+	model_lock.lock();
+
+	// store which entry is running
+	g_task_entry* running_entry = current_entry;
+
+	// process wait queue
+	current_entry = wait_queue;
+	while (current_entry) {
+		g_task_entry* next = current_entry->next;
+
+		// switch to tasks space
+		switchSpace(current_entry->value);
+
+		// remove it if its dead
+		if (eliminateIfDead(current_entry->value)) {
+			current_entry = next;
+			continue;
 		}
+
+		// check its waiting state
+		checkWaitingState(current_entry->value);
+		current_entry = next;
 	}
 
-	// If none could be selected, this is a fatal error
-	if (current == 0) {
-		g_kernel::panic("%! core %i has nothing to do", "scheduler", coreId);
+	// restore the current running entry
+	current_entry = running_entry;
+
+	// select next task to run
+	while (true) {
+		// when scheduling for the first time, there's not current task
+		if (current_entry == 0) {
+			current_entry = run_queue;
+
+		} else {
+			// select next in run queue
+			current_entry = current_entry->next;
+			if (current_entry == 0) {
+				current_entry = run_queue;
+			}
+		}
+
+		// no task in run queue? select idle thread
+		if (current_entry == 0) {
+			current_entry = idle_entry;
+
+			if (current_entry == 0) {
+				g_kernel::panic("%! idle thread does not exist on core %i", "scheduler", coreId);
+			}
+		}
+
+		// sanity check
+		if (current_entry->value->waitManager) {
+			g_kernel::panic("task %i is in run queue had wait manager '%s'", current_entry->value->id, current_entry->value->waitManager->debug_name());
+		}
+
+		// try to switch
+		switchSpace(current_entry->value);
+
+		// remove it task is no more alive
+		if (eliminateIfDead(current_entry->value)) {
+			current_entry = 0;
+			continue;
+		}
+
+		// task was successfully selected & switched to
+		break;
 	}
+
+	// finish the switch
+	finishSwitch(current_entry->value);
+	++current_entry->value->rounds;
+
+	model_lock.unlock();
+	return current_entry->value;
 }
 
 /**
  *
  */
-bool g_scheduler::applySwitch() {
+void g_scheduler::switchSpace(g_thread* thread) {
+	g_address_space::switch_to_space(thread->process->pageDirectory);
+	g_gdt_manager::setTssEsp0(thread->kernelStackEsp0);
+}
 
-	g_address_space::switch_to_space(current->value->process->pageDirectory);
-	g_gdt_manager::setTssEsp0(current->value->kernelStackEsp0);
+bool g_scheduler::eliminateIfDead(g_thread* thread) {
 
 	// Eliminate if dead
-	if (!current->value->alive) {
-
-		// If the current task is not a process, we can immediately remove it.
-		// Otherwise, we have to check if all the processes child threads are dead,
-		// once this is done, the process is also kill.
-		if (current->value->type != g_thread_type::THREAD_MAIN || g_tasking::killAllThreadsOf(current->value->process)) {
+	if (!thread->alive) {
+		// Threads can be deleted immediately. For processes, all associated threads must be deleted first.
+		// This checks if the task is either no main thread, or all associated threads are already dead.
+		if ((thread->type != g_thread_type::THREAD_MAIN) || g_tasking::killAllThreadsOf(thread->process)) {
 			deleteCurrent();
 		}
 
-		return false;
+		return true;
 	}
 
-	/*
-	 TODO
-	 Hier war das Problem, dass wenn ich einen IDLE-Prozess übersprungen hab während alle
-	 anderen "waiting" oder nicht "alive" waren, alles komplett gefreggt ist. Allerdings
-	 hab ich grad keinen Nerv mir das weiter anzuschauen, deswegen bleibt das hier ^-^
-	 */
+	return false;
+}
 
-	// Skip idler if possible
-	if (current->value->priority == g_thread_priority::IDLE) {
-
-		// Check if any other process is available (not idling or waiting)
-		g_list_entry<g_thread*> *n = taskList;
-		while (n) {
-			if (n->value->priority != g_thread_priority::IDLE && n->value->alive && !n->value->isWaiting()) {
-				// skip the idler
-				return false;
-			}
-
-			n = n->next;
-		}
-	}
-
-	// Waiting must be done after the switch because it accesses userspace data
-	bool keepWaiting = handleWaiting();
-	if (keepWaiting) {
-		return false;
-	}
-
+void g_scheduler::finishSwitch(g_thread* thread) {
 	// Set segments for user thread, set segment to user segment
-	g_gdt_manager::setUserThreadAddress(current->value->user_thread_addr);
-	current->value->cpuState->gs = 0x30; // User pointer segment
-
-	// Switch successful
-	return true;
+	g_gdt_manager::setUserThreadAddress(thread->user_thread_addr);
+	thread->cpuState->gs = 0x30; // User pointer segment
 }
 
 /**
@@ -277,71 +318,65 @@ bool g_scheduler::applySwitch() {
  */
 void g_scheduler::deleteCurrent() {
 
-	g_list_entry<g_thread*> *oldEntry = current;
+	g_task_entry* entry_to_remove = current_entry;
+	g_thread* thread = entry_to_remove->value;
 
-	// Remove it from the task list
-	if (taskList == oldEntry) {
-		taskList = oldEntry->next;
+	// remove from run queue
+	g_task_entry* entry_from_run_queue = removeFromQueue(&run_queue, thread);
 
-	} else {
+	// remove from wait queue
+	if (entry_from_run_queue == 0) {
+		g_task_entry* entry_from_wait_queue = removeFromQueue(&wait_queue, thread);
 
-		g_list_entry<g_thread*> *entry = taskList;
-		do {
-			if (entry->next == oldEntry) {
-				entry->next = oldEntry->next;
-			}
-		} while ((entry = entry->next) != 0);
+		if (entry_from_wait_queue == 0) {
+			g_log_warn("%! failed to properly delete thread %i, was not assigned to a queue", "scheduler", thread->id);
+			return;
+		}
 	}
 
-	current = oldEntry->next;
+	// delete the task
+	g_thread_manager::deleteTask(thread);
+	delete entry_to_remove;
 
-	// Delete the task
-	g_thread_manager::deleteTask(oldEntry->value);
-	delete oldEntry;
+	// let scheduling choose new one next time
+	current_entry = 0;
 }
 
 /**
  * 
  */
-void g_scheduler::print_waiter_deadlock_warning() {
+void g_scheduler::printWaiterDeadlockWarning() {
 
 	char* taskName = (char*) "?";
-	if (current->value->getIdentifier() != 0) {
-		taskName = (char*) current->value->getIdentifier();
+	if (current_entry->value->getIdentifier() != 0) {
+		taskName = (char*) current_entry->value->getIdentifier();
 	}
 
-	g_log_debug("%! thread %i (process %i, named '%s') waits for '%s'", "deadlock-detector", current->value->id, current->value->process->main->id, taskName,
-			current->value->waitManager->debug_name());
+	g_log_debug("%! thread %i (process %i, named '%s') waits for '%s'", "deadlock-detector", current_entry->value->id, current_entry->value->process->main->id,
+			taskName, current_entry->value->waitManager->debug_name());
 }
 
 /**
  *
  */
-bool g_scheduler::handleWaiting() {
+void g_scheduler::checkWaitingState(g_thread* thread) {
 
-	// check if the current task must wait
-	if (current->value->isWaiting()) {
+	// check if task must continue waiting
+	if (thread->waitManager != nullptr) {
 
-		// call the wait handler
-		bool keepWaiting = current->value->checkWaiting();
-		if (keepWaiting) {
-
+		if (thread->checkWaiting()) {
 			// increase wait counter for deadlock warnings
-			current->value->waitCount++;
-			if (current->value->waitCount % 500000 == 0) {
-				print_waiter_deadlock_warning();
+			thread->waitCount++;
+			if (thread->waitCount % 500000 == 0) {
+				printWaiterDeadlockWarning();
 			}
-			return true;
-		} else {
 
+		} else {
 			// reset wait counter & remove wait handler
-			current->value->waitCount = 0;
-			current->value->unwait();
-			return false;
+			thread->waitCount = 0;
+			thread->unwait();
 		}
 	}
-
-	return false;
 }
 
 /**
@@ -350,19 +385,29 @@ bool g_scheduler::handleWaiting() {
 g_thread* g_scheduler::getTaskById(g_tid id) {
 
 	g_thread* thr = 0;
-	lock();
+	model_lock.lock();
 
-	g_list_entry<g_thread*>* entry = taskList;
+	g_task_entry* entry = run_queue;
 	while (entry) {
 		if (entry->value->alive && entry->value->id == id) {
 			thr = entry->value;
 			break;
 		}
-
 		entry = entry->next;
 	}
 
-	unlock();
+	if (thr == 0) {
+		entry = wait_queue;
+		while (entry) {
+			if (entry->value->alive && entry->value->id == id) {
+				thr = entry->value;
+				break;
+			}
+			entry = entry->next;
+		}
+	}
+
+	model_lock.unlock();
 	return thr;
 }
 
@@ -372,9 +417,9 @@ g_thread* g_scheduler::getTaskById(g_tid id) {
 g_thread* g_scheduler::getTaskByIdentifier(const char* identifier) {
 
 	g_thread* thr = 0;
-	lock();
+	model_lock.lock();
 
-	g_list_entry<g_thread*>* entry = taskList;
+	g_task_entry* entry = run_queue;
 	while (entry) {
 		if (entry->value->alive) {
 			const char* taskIdentifier = entry->value->getIdentifier();
@@ -386,6 +431,104 @@ g_thread* g_scheduler::getTaskByIdentifier(const char* identifier) {
 		entry = entry->next;
 	}
 
-	unlock();
+	if (thr == 0) {
+		entry = wait_queue;
+		while (entry) {
+
+			if (entry->value->alive) {
+				const char* taskIdentifier = entry->value->getIdentifier();
+				if (taskIdentifier != 0 && g_string::equals(taskIdentifier, identifier)) {
+					thr = entry->value;
+					break;
+				}
+			}
+			entry = entry->next;
+		}
+	}
+
+	model_lock.unlock();
 	return thr;
+}
+
+/**
+ *
+ */
+g_task_entry* g_scheduler::removeFromQueue(g_task_entry** queue_head, g_thread* thread) {
+
+	g_task_entry* removed_entry = 0;
+	g_task_entry* entry = *queue_head;
+
+	// if queue is empty, entry can't be removed
+	if (entry == 0) {
+		return 0;
+	}
+
+	// if it's the head of the queue, replace it
+	if (entry->value == thread) {
+		removed_entry = entry;
+		*queue_head = removed_entry->next;
+
+	} else {
+		// otherwise, find entry before it and replace it
+		g_task_entry* previous = 0;
+		while (entry) {
+			if (entry->value == thread) {
+				removed_entry = entry;
+				previous->next = removed_entry->next;
+				break;
+			}
+			previous = entry;
+			entry = entry->next;
+		}
+	}
+
+	return removed_entry;
+}
+
+/**
+ *
+ */
+void g_scheduler::moveToRunQueue(g_thread* thread) {
+
+	g_task_entry* move_entry = removeFromQueue(&wait_queue, thread);
+
+	if (move_entry == 0) {
+		// entry is already in run queue
+		return;
+	}
+
+	// put to start of run queue
+	move_entry->next = run_queue;
+	run_queue = move_entry;
+}
+
+void g_scheduler::moveToWaitQueue(g_thread* thread) {
+
+	g_task_entry* move_entry = removeFromQueue(&run_queue, thread);
+
+	if (move_entry == 0) {
+		// entry is already in wait queue
+		return;
+	}
+
+	// put to start of wait queue
+	move_entry->next = wait_queue;
+	wait_queue = move_entry;
+
+	// may no more be the running entry
+	if (move_entry == current_entry) {
+		current_entry = nullptr;
+	}
+}
+
+/**
+ *
+ */
+void g_scheduler::pushInWait(g_thread* thread) {
+	g_task_entry* entry = removeFromQueue(&wait_queue, thread);
+
+	if (entry) {
+		entry->next = wait_queue;
+		wait_queue = entry;
+	}
 }

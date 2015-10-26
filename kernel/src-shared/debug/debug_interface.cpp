@@ -24,9 +24,11 @@
 bool g_debug_interface_initialized = false;
 static uint16_t serialPort;
 
+#if G_DEBUG_INTERFACE_MODE == G_DEBUG_INTERFACE_MODE_FULL
 static const int logBufferLength = 512;
 static char logBuffer[logBufferLength];
 static int logBuffered = 0;
+#endif
 
 /**
  *

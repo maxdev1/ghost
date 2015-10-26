@@ -26,5 +26,5 @@
  *
  */
 g_button* g_button::create() {
-	return createComponent<g_button, G_UI_COMPONENT_BUTTON>();
+	return createComponent<g_button, G_UI_COMPONENT_TYPE_BUTTON>();
 }

@@ -20,6 +20,7 @@
 
 #include <ghost.h>
 #include <signal.h>
+#include <stdio.h>
 
 /**
  *
@@ -27,7 +28,20 @@
 int main() {
 	signal(SIGINT, SIG_IGN);
 
-	again: asm("hlt");
+	uint32_t idles = 0;
+	uint64_t last = 0;
+
+	again:
+
+	uint64_t now = g_millis();
+	if (now - last > 1000) {
+		last = now;
+		klog("%i idles per second", idles);
+		idles = 0;
+	}
+	++idles;
+
+	asm("hlt");
 	goto again;
 }
 

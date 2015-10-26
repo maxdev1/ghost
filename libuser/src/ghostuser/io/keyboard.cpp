@@ -21,6 +21,7 @@
 #include <ghost.h>
 #include <ghostuser/io/files/file_utils.hpp>
 #include <ghostuser/io/keyboard.hpp>
+#include <ghostuser/io/ps2.hpp>
 #include <ghostuser/io/ps2_driver_constants.hpp>
 #include <ghostuser/tasking/ipc.hpp>
 #include <ghostuser/utils/logger.hpp>
@@ -49,43 +50,26 @@ static std::string currentLayout;
 /**
  *
  */
-void g_keyboard::registerKeyboard() {
-
-	uint32_t ps2driverid = g_task_get_id(G_PS2_DRIVER_IDENTIFIER);
-	if (ps2driverid == -1) {
-		return;
-	}
-
-	keyboardTopic = g_ipc_next_topic();
-	keyboardRegisteredTask = g_get_tid();
-
-	g_ps2_register_request request;
-	request.command = G_PS2_COMMAND_REGISTER_KEYBOARD;
-	g_send_message_t(ps2driverid, &request, sizeof(g_ps2_register_request), keyboardTopic);
-}
-
-/**
- *
- */
 g_key_info g_keyboard::readKey(bool* break_condition) {
 
-	if (keyboardTopic == -1) {
-		registerKeyboard();
+	if (!g_ps2_is_registered) {
+		if (!g_ps2::registerSelf()) {
+			return g_key_info();
+		}
 	}
 
-	uint32_t task_id = g_get_tid();
-	if (keyboardRegisteredTask != task_id) {
-		registerKeyboard();
-	}
+	// wait until incoming data is here (and the driver unsets the atom)
+	g_atomic_block(&g_ps2_area->keyboard.atom_nothing_queued);
 
-	size_t buflen = sizeof(g_message_header) + sizeof(g_ps2_keyboard_packet);
-	uint8_t buf[buflen];
+	// take info from the shared memory
+	uint8_t scancode = g_ps2_area->keyboard.scancode;
 
-	if (g_receive_message_tmb(buf, buflen, keyboardTopic, G_MESSAGE_RECEIVE_MODE_BLOCKING, (uint8_t*) break_condition) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
-		g_ps2_keyboard_packet* packet = (g_ps2_keyboard_packet*) G_MESSAGE_CONTENT(buf);
-		return keyForScancode(packet->scancode);
-	}
-	return g_key_info();
+	// tell driver that we've handled it
+	g_ps2_area->keyboard.atom_nothing_queued = true;
+	g_ps2_area->keyboard.atom_unhandled = false;
+
+	// read and convert data
+	return keyForScancode(scancode);
 }
 
 /**
@@ -179,7 +163,7 @@ bool g_keyboard::loadScancodeLayout(std::string iso) {
 	g_property_file_parser props(in);
 
 	scancodeLayout.clear();
-	std::map<std::string, std::string> properties = props.getProperties();
+	std::map < std::string, std::string > properties = props.getProperties();
 
 	for (auto entry : properties) {
 		// Convert number from hex
@@ -221,7 +205,7 @@ bool g_keyboard::loadConversionLayout(std::string iso) {
 	g_property_file_parser props(in);
 
 	conversionLayout.clear();
-	std::map<std::string, std::string> properties = props.getProperties();
+	std::map < std::string, std::string > properties = props.getProperties();
 
 	for (auto entry : properties) {
 

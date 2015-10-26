@@ -1,9 +1,27 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include <system/system.hpp>
 #include <logger/logger.hpp>
-#include <system/cpu.hpp>
 #include <system/acpi/acpi.hpp>
 #include <system/acpi/MADT.hpp>
-#include <system/cpu.hpp>
 #include <system/interrupts/pic.hpp>
 #include <system/interrupts/lapic.hpp>
 #include <system/interrupts/ioapic.hpp>
@@ -11,29 +29,31 @@
 #include <system/interrupts/descriptors/idt.hpp>
 #include <system/smp/smp.hpp>
 #include <kernel.hpp>
+#include <system/processor.hpp>
+#include <system/processor.hpp>
 
-static g_cpu* first = 0;
-static uint32_t numCores = 0;
+static g_processor* processor_list = 0;
+static uint32_t processors_available = 0;
 
 /**
  *
  */
-g_cpu* g_system::getCpus() {
-	return first;
+g_processor* g_system::getProcessorList() {
+	return processor_list;
 }
 
 /**
  *
  */
-uint32_t g_system::getCpuCount() {
-	return numCores;
+uint32_t g_system::getNumberOfProcessors() {
+	return processors_available;
 }
 
 /**
  *
  */
-uint32_t g_system::getCurrentCoreId() {
-	return g_lapic::getCurrentId();
+uint32_t g_system::currentProcessorId() {
+	return g_lapic::read_id();
 }
 
 /**
@@ -42,17 +62,17 @@ uint32_t g_system::getCurrentCoreId() {
 void g_system::initializeBsp(g_physical_address initialPageDirectoryPhysical) {
 
 	// Check if the required CPU features are available
-	if (g_cpu::supportsCpuid()) {
+	if (g_processor::supportsCpuid()) {
 		g_log_debug("%! supports CPUID", "cpu");
 	} else {
 		g_kernel::panic("%! no CPUID support", "cpu");
 	}
 
 	// Do some CPU info output
-	g_cpu::printInformation();
+	g_processor::printInformation();
 
 	// APIC must be available
-	if (g_cpu::hasFeature(CPUIDStandardEdxFeature::APIC)) {
+	if (g_processor::hasFeature(g_cpuid_standard_edx_feature::APIC)) {
 		g_log_debug("%! APIC available", "cpu");
 	} else {
 		g_kernel::panic("%! no APIC available", "cpu");
@@ -76,7 +96,7 @@ void g_system::initializeBsp(g_physical_address initialPageDirectoryPhysical) {
 	}
 
 	// Initialize the interrupt controllers
-	if (g_lapic::isPrepared() && g_ioapic_manager::areAvailable() && first) {
+	if (g_lapic::isPrepared() && g_ioapic_manager::areAvailable() && processor_list) {
 
 		// Initialize the interrupt descriptor table
 		g_idt::prepare();
@@ -97,7 +117,7 @@ void g_system::initializeBsp(g_physical_address initialPageDirectoryPhysical) {
 		}
 
 		// Print available CPUs
-		g_log_info("%! %i available core%s", "system", numCores, (numCores > 1 ? "s" : ""));
+		g_log_info("%! %i available core%s", "system", processors_available, (processors_available > 1 ? "s" : ""));
 
 		// Initialize multiprocessing
 		g_smp::initialize(initialPageDirectoryPhysical);
@@ -131,10 +151,10 @@ void g_system::initializeAp() {
 /**
  *
  */
-void g_system::createCpu(uint32_t apicId) {
+void g_system::addProcessor(uint32_t apicId) {
 
 	// Check if ID is in use
-	g_cpu* n = first;
+	g_processor* n = processor_list;
 	while (n) {
 		if (n->apic == apicId) {
 			g_log_warn("%! ignoring core with irregular, duplicate id %i", "system", apicId);
@@ -144,26 +164,26 @@ void g_system::createCpu(uint32_t apicId) {
 	}
 
 	// Create core
-	g_cpu* core = new g_cpu();
+	g_processor* core = new g_processor();
 	core->apic = apicId;
-	core->next = first;
+	core->next = processor_list;
 
 	// This function is called by the BSP only, therefore we can do:
-	if (apicId == g_lapic::getCurrentId()) {
+	if (apicId == g_lapic::read_id()) {
 		core->bsp = true;
 	}
 
-	first = core;
+	processor_list = core;
 
-	++numCores;
+	++processors_available;
 }
 
 /**
  *
  */
-g_cpu* g_system::getCpu(uint32_t coreId) {
+g_processor* g_system::getProcessorById(uint32_t coreId) {
 
-	g_cpu* n = first;
+	g_processor* n = processor_list;
 	while (n) {
 		if (n->apic == coreId) {
 			return n;

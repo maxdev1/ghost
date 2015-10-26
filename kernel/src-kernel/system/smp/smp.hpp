@@ -21,14 +21,14 @@
 #ifndef GHOST_SYSTEM_SMP
 #define GHOST_SYSTEM_SMP
 
-#include <system/cpu.hpp>
+#include <system/processor.hpp>
 
 /**
  *
  */
 class g_smp {
 private:
-	static void initializeProcessor(g_cpu* cpu);
+	static void initialize_core(g_processor* cpu);
 public:
 	static void initialize(g_physical_address initialPageDirectoryPhysical);
 };

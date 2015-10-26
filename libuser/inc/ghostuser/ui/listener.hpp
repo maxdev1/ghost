@@ -28,22 +28,9 @@
  *
  */
 class g_listener {
-private:
-	uint32_t listener_id;
-
 public:
 	virtual ~g_listener() {
 	}
-
-	void setListenerId(uint32_t listener_id) {
-		this->listener_id = listener_id;
-	}
-
-	uint32_t getListenerId() const {
-		return this->listener_id;
-	}
-
-	virtual void event_received(uint8_t* data, uint32_t length) = 0;
 };
 
 #endif

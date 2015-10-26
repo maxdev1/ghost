@@ -21,16 +21,18 @@
 #ifndef GHOST_MULTITASKING_THREAD
 #define GHOST_MULTITASKING_THREAD
 
+#include <system/processor_state.hpp>
+
 #include "ghost/kernel.h"
 #include "ghost/calls/calls.h"
 #include "ghost/signal.h"
 #include "memory/paging.hpp"
-#include "system/cpu_state.hpp"
 #include "memory/collections/address_range_pool.hpp"
 
 // forward declarations
 class g_process;
 class g_waiter;
+class g_scheduler;
 
 /**
  * Task types
@@ -74,8 +76,8 @@ enum class g_thread_interruption_info_type
  */
 class g_thread_interruption_info {
 public:
-	g_cpu_state cpuState;
-	g_cpu_state* cpuStateAddress;
+	g_processor_state cpuState;
+	g_processor_state* cpuStateAddress;
 	g_waiter* waitManager;
 
 	g_thread_interruption_info_type type = g_thread_interruption_info_type::NONE;
@@ -100,6 +102,7 @@ public:
 	g_thread_type type;
 	g_thread_priority priority;
 	g_process* process;
+	g_scheduler* scheduler;
 
 	g_waiter* waitManager;
 	uint32_t waitCount;
@@ -109,7 +112,7 @@ public:
 	void* userData;
 	void* threadEntry;
 
-	g_cpu_state* cpuState;
+	g_processor_state* cpuState;
 	g_virtual_address kernelStack;
 
 	g_virtual_address kernelStackEsp0;
@@ -124,7 +127,6 @@ public:
 	const char* getIdentifier();
 	void setIdentifier(const char* newIdentifier);
 
-	bool isWaiting();
 	void wait(g_waiter* waitManager);
 	void unwait();
 	bool checkWaiting();

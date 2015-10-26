@@ -37,7 +37,7 @@ static g_gdt_list_entry** gdtList;
 void g_gdt_manager::prepare() {
 
 	// Create enough space for each core
-	uint32_t numCores = g_system::getCpuCount();
+	uint32_t numCores = g_system::getNumberOfProcessors();
 	gdtList = new g_gdt_list_entry*[numCores];
 
 	// Create one GDT per core
@@ -53,7 +53,7 @@ void g_gdt_manager::prepare() {
 void g_gdt_manager::initialize() {
 
 	// Initialize local GDT
-	g_gdt_list_entry* thisGdt = gdtList[g_system::getCurrentCoreId()];
+	g_gdt_list_entry* thisGdt = gdtList[g_system::currentProcessorId()];
 
 	// Create the GDT pointer
 	thisGdt->ptr.limit = (sizeof(g_gdt_entry) * G_GDT_NUM_ENTRIES) - 1;
@@ -99,13 +99,13 @@ void g_gdt_manager::initialize() {
  * to use when switching from ring 3 to ring 0.
  */
 void g_gdt_manager::setTssEsp0(uint32_t esp0) {
-	gdtList[g_system::getCurrentCoreId()]->tss.esp0 = esp0;
+	gdtList[g_system::currentProcessorId()]->tss.esp0 = esp0;
 }
 
 /**
  *
  */
 void g_gdt_manager::setUserThreadAddress(g_virtual_address user_thread_addr) {
-	g_gdt_list_entry* list_entry = gdtList[g_system::getCurrentCoreId()];
+	g_gdt_list_entry* list_entry = gdtList[g_system::currentProcessorId()];
 	g_gdt::createGate(&list_entry->entry[6], user_thread_addr, 0xFFFFFFFF, G_ACCESS_BYTE__USER_DATA_SEGMENT, 0xCF);
 }

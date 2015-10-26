@@ -20,12 +20,13 @@
 
 #include <system/interrupts/lapic.hpp>
 
+#include <build_config.hpp>
 #include <system/io_ports.hpp>
-#include <system/cpu.hpp>
 #include <logger/logger.hpp>
 #include <memory/address_space.hpp>
 #include <system/timing/pit.hpp>
 #include <kernel.hpp>
+#include <system/processor.hpp>
 #include <system/smp/global_lock.hpp>
 
 static bool prepared = false;
@@ -41,8 +42,16 @@ void g_lapic::initialize() {
 
 	// Read version
 	uint32_t apicVersionRegVal = read(APIC_REGISTER_VERSION);
-	g_log_debug("%! id %i, version %h (%s), maxlvtindex: %i", "lapic", localId, apicVersion, (apicVersion < 0x10 ? "82489DX discrete" : "integrated"),
+
+#if G_LOGGING_DEBUG
+	uint32_t localId = read_id();
+	uint8_t apicVersion = apicVersionRegVal & 0xFF;
+	uint16_t maxLvtIndex = (apicVersionRegVal >> 16) & 0xFF;
+	g_log_debug("%! id %i, version %h (%s), maxlvtindex: %i", "lapic", localId,
+			apicVersion,
+			(apicVersion < 0x10 ? "82489DX discrete" : "integrated"),
 			maxLvtIndex);
+#endif
 
 	// Initialize APIC to well-known state
 	write(APIC_REGISTER_DEST_FORMAT, 0xFFFFFFFF);
@@ -148,21 +157,21 @@ void g_lapic::startTimer() {
 /**
  *
  */
-uint32_t g_lapic::getCurrentId() {
+uint32_t g_lapic::read_id() {
 	return (read(APIC_REGISTER_ID) >> 24) & 0xFF;
 }
 
 /**
  *
  */
-void g_lapic::sendEoi() {
+void g_lapic::send_eoi() {
 	write(APIC_REGISTER_EOI, 0);
 }
 
 /**
  *
  */
-void g_lapic::waitForIcrSend() {
+void g_lapic::wait_for_icr_send() {
 	while (APIC_LVT_GET_DELIVERY_STATUS(read(APIC_REGISTER_INT_COMMAND_HIGH)) == APIC_ICR_DELIVS_SEND_PENDING) {
 	}
 }

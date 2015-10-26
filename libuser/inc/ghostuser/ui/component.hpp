@@ -26,19 +26,30 @@
 #include <ghost/utils/local.hpp>
 #include <ghostuser/graphics/metrics/rectangle.hpp>
 #include <ghostuser/ui/interface_specification.hpp>
+#include <ghostuser/ui/component_registry.hpp>
 #include <ghostuser/ui/ui.hpp>
 #include <ghostuser/utils/logger.hpp>
 #include <ghostuser/utils/value_placer.hpp>
+#include <stdio.h>
 
 /**
  *
  */
 class g_component {
 protected:
-	uint32_t id;
+	g_ui_component_id id;
 
-	g_component(uint32_t id) :
+	/**
+	 *
+	 */
+	g_component(g_ui_component_id id) :
 			id(id) {
+	}
+
+	/**
+	 *
+	 */
+	virtual ~g_component() {
 	}
 
 	/**
@@ -46,7 +57,7 @@ protected:
 	 */
 	template<typename T>
 	struct g_concrete: T {
-		g_concrete(uint32_t id) :
+		g_concrete(g_ui_component_id id) :
 				T(id) {
 		}
 	};
@@ -54,36 +65,37 @@ protected:
 	/**
 	 *
 	 */
-	template<typename COMPONENT_TYPE, uint32_t COMPONENT_CONSTANT>
+	template<typename COMPONENT_TYPE, g_ui_component_type COMPONENT_CONSTANT>
 	static COMPONENT_TYPE* createComponent() {
 
-		if (!g_ui_ready) {
+		if (!g_ui_initialized) {
 			return 0;
 		}
 
-		// write request
-		uint32_t request_length = G_UI_PROTOCOL_HEADER_LENGTH + G_UI_PROTOCOL_CREATE_COMPONENT_REQUEST_LENGTH;
-		uint8_t request[request_length];
-		g_value_placer request_builder(request);
-		request_builder.put<g_ui_protocol_command_id>(G_UI_PROTOCOL_CREATE_COMPONENT);
-		request_builder.put<uint32_t>(COMPONENT_CONSTANT);
-		g_ui_transaction_id transaction = g_ui::send(request, request_length);
+		// send initialization request
+		uint32_t tx = g_ipc_next_topic();
 
-		// wait for response
-		uint32_t response_length;
-		uint8_t* response;
-		if (g_ui::receive(transaction, &response, &response_length)) {
-			g_local<uint8_t> response_deleter(response);
+		g_ui_create_component_request request;
+		request.header.id = G_UI_PROTOCOL_CREATE_COMPONENT;
+		request.type = COMPONENT_CONSTANT;
+		g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_create_component_request), tx);
 
-			g_value_placer response_reader(response);
-			g_ui_protocol_command_id command = response_reader.get<g_ui_protocol_command_id>();
-			g_ui_protocol_status status = response_reader.get<g_ui_protocol_status>();
-			uint32_t component_id = response_reader.get<uint32_t>();
+		// read response
+		size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_create_component_response);
+		uint8_t buffer[bufferSize];
 
-			if (command == G_UI_PROTOCOL_CREATE_COMPONENT && status == G_UI_PROTOCOL_SUCCESS) {
-				return new g_concrete<COMPONENT_TYPE>(component_id);
+		if (g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
+			g_ui_create_component_response* response = (g_ui_create_component_response*) G_MESSAGE_CONTENT(buffer);
+
+			// create the component
+			g_ui_component_id id = response->id;
+			if (response->status == G_UI_PROTOCOL_SUCCESS) {
+				g_concrete<COMPONENT_TYPE>* component = new g_concrete<COMPONENT_TYPE>(id);
+				g_component_registry::add(component);
+				return component;
 			}
 		}
+
 		return 0;
 	}
 
@@ -102,6 +114,13 @@ public:
 	 *
 	 */
 	bool setVisible(bool visible);
+
+	/**
+	 *
+	 */
+	g_ui_component_id getId() {
+		return id;
+	}
 
 };
 

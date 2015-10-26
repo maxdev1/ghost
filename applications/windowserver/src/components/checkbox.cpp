@@ -69,19 +69,24 @@ bool checkbox_t::handle(event_t& e) {
 		if (me->type == MOUSE_EVENT_ENTER) {
 			hovered = true;
 			markFor(COMPONENT_REQUIREMENT_PAINT);
+
 		} else if (me->type == MOUSE_EVENT_LEAVE) {
 			hovered = false;
 			markFor(COMPONENT_REQUIREMENT_PAINT);
+
 		} else if (me->type == MOUSE_EVENT_PRESS) {
 			pressed = true;
 			markFor(COMPONENT_REQUIREMENT_PAINT);
+
 		} else if (me->type == MOUSE_EVENT_RELEASE || me->type == MOUSE_EVENT_DRAG_RELEASE) {
 			pressed = false;
 
 			g_rectangle minbounds = getBounds();
 			minbounds.x = 0;
 			minbounds.y = 0;
+			klog("clicked at: %i, %i IN %i %i %i %i", me->position.x, me->position.y, minbounds.x, minbounds.y, minbounds.width, minbounds.height);
 			if (minbounds.contains(me->position)) {
+				klog("clicked in bounds!");
 				checked = !checked;
 			}
 

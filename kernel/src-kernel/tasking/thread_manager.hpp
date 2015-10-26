@@ -21,9 +21,10 @@
 #ifndef GHOSTKERNEL_TASKING_THREADMANAGER
 #define GHOSTKERNEL_TASKING_THREADMANAGER
 
+#include <system/processor_state.hpp>
+
 #include "ghost/kernel.h"
 #include "ghost/stdint.h"
-#include <system/cpu_state.hpp>
 #include <tasking/thread.hpp>
 
 /**
@@ -35,7 +36,7 @@ public:
 	static g_thread* createProcess(g_security_level securityLevel);
 	static g_thread* createThread(g_process* process);
 	static g_thread* createProcessVm86(uint8_t interrupt, g_vm86_registers& in, g_vm86_registers* out);
-	static void prepare_thread_local_storage(g_thread* thread);
+	static void prepareThreadLocalStorage(g_thread* thread);
 
 	static void deleteTask(g_thread* task);
 
@@ -43,7 +44,7 @@ public:
 	static g_thread* getTaskForIdentifier(const char* identifier);
 
 private:
-	static void applySecurityLevel(g_cpu_state* state, g_security_level securityLevel);
+	static void applySecurityLevel(g_processor_state* state, g_security_level securityLevel);
 
 	static g_physical_address prepareSpaceForProcess(g_virtual_address kernelStack, g_virtual_address userStack = 0);
 	static g_physical_address prepareSpaceForFork(g_thread* current, g_virtual_address kernelStack, g_virtual_address userStack = 0);

@@ -23,7 +23,8 @@
 
 #include <ghostuser/io/keyboard.hpp>
 #include <ghostuser/io/mouse.hpp>
-
+#include <ghostuser/ui/interface_specification.hpp>
+#include <interface/command_message_responder_thread.hpp>
 #include <deque>
 
 #define DEFAULT_MULTICLICK_TIMESPAN	250
@@ -34,19 +35,21 @@
  */
 class event_processor_t {
 public:
-	std::deque<g_key_info> keyEventQueue;
-	std::deque<g_mouse_info> mouseEventQueue;
 	uint32_t multiclickTimespan;
 
 	event_processor_t();
 
-	void queueKeyEvent(g_key_info keyInfo);
-	void queueMouseEvent(g_mouse_info mouseInfo);
+	std::deque<g_key_info> key_info_buffer;
+	void bufferKeyEvent(g_key_info keyInfo);
+
+	std::deque<void*> command_message_buffer;
+	void bufferCommandMessage(void* commandMessage);
 
 	void process();
+	void process_command(g_ui_message_header* request_header, command_message_response_t& response_out);
 
 	void translateKeyEvent(g_key_info& info);
-	void translateMouseEvent(g_mouse_info& info);
+	void processMouseState();
 
 };
 

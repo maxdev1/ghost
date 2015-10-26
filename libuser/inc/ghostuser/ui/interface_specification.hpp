@@ -22,87 +22,210 @@
 #define GHOSTLIBRARY_UI_INTERFACESPECIFICATION
 
 #include <ghost.h>
+#include <ghostuser/graphics/metrics/rectangle.hpp>
 
 /**
  * This UI interface specification defines the messages
  * that the active window manager must understand.
  */
-#define G_WINDOW_MANAGER_IDENTIFIER					"windowmanager"
+#define G_UI_REGISTRATION_THREAD_IDENTIFIER			"windowserver/registration"
+
+/**
+ * Size of the largest expected message
+ */
+#define G_UI_MAXIMUM_MESSAGE_SIZE					4096
+
+#define G_UI_COMPONENT_TITLE_MAXIMUM				1024
 
 /**
  * Declared in the UI unit
  */
-extern bool g_ui_ready;
+extern bool g_ui_initialized;
 
 /**
- * Transactions
+ * ID for a UI component
  */
-typedef uint32_t g_ui_transaction_id;
-
-struct g_ui_transaction_data {
-	uint8_t waiting;
-	uint8_t* data;
-	uint32_t length;
-};
+typedef int32_t g_ui_component_id;
 
 /**
- * Commands
+ * ID for a listener
  */
-#define G_UI_COMMAND_OPEN_REQUEST					1
-#define G_UI_COMMAND_OPEN_RESPONSE					2
+typedef int32_t g_ui_listener_id;
 
 /**
  * A protocol message always starts with the header, the message id
  */
 typedef uint8_t g_ui_protocol_command_id;
-#define G_UI_PROTOCOL_HEADER_LENGTH									(sizeof(g_ui_protocol_command_id))
-const g_ui_protocol_command_id G_UI_PROTOCOL_READY = 1;
-const g_ui_protocol_command_id G_UI_PROTOCOL_CREATE_WINDOW = 2;
-const g_ui_protocol_command_id G_UI_PROTOCOL_CREATE_COMPONENT = 3;
-const g_ui_protocol_command_id G_UI_PROTOCOL_ADD_COMPONENT = 4;
-const g_ui_protocol_command_id G_UI_PROTOCOL_SET_TITLE = 5;
-const g_ui_protocol_command_id G_UI_PROTOCOL_GET_TITLE = 6;
-const g_ui_protocol_command_id G_UI_PROTOCOL_SET_BOUNDS = 7;
-const g_ui_protocol_command_id G_UI_PROTOCOL_SET_VISIBLE = 8;
-const g_ui_protocol_command_id G_UI_PROTOCOL_SET_ACTION_LISTENER = 9;
+const g_ui_protocol_command_id G_UI_PROTOCOL_INITIALIZATION = 1;
+const g_ui_protocol_command_id G_UI_PROTOCOL_CREATE_COMPONENT = 2;
+const g_ui_protocol_command_id G_UI_PROTOCOL_ADD_COMPONENT = 3;
+const g_ui_protocol_command_id G_UI_PROTOCOL_SET_TITLE = 4;
+const g_ui_protocol_command_id G_UI_PROTOCOL_GET_TITLE = 5;
+const g_ui_protocol_command_id G_UI_PROTOCOL_SET_BOUNDS = 6;
+const g_ui_protocol_command_id G_UI_PROTOCOL_SET_VISIBLE = 7;
+const g_ui_protocol_command_id G_UI_PROTOCOL_SET_ACTION_LISTENER = 8;
 
+/**
+ * Common status for requests
+ */
 typedef uint8_t g_ui_protocol_status;
-#define G_UI_PROTOCOL_STATUS_LENGTH									(sizeof(g_ui_protocol_status))
 const g_ui_protocol_status G_UI_PROTOCOL_SUCCESS = 0;
 const g_ui_protocol_status G_UI_PROTOCOL_FAIL = 1;
 
 /**
- * Lengths of the data parts of each message type
- */
-#define G_UI_PROTOCOL_CREATE_WINDOW_REQUEST_LENGTH			0 // 0
-#define G_UI_PROTOCOL_CREATE_WINDOW_RESPONSE_LENGTH			5 // 1: status, 4: window-id
-
-#define G_UI_PROTOCOL_CREATE_COMPONENT_REQUEST_LENGTH		4 // 4: component type
-#define G_UI_PROTOCOL_CREATE_COMPONENT_RESPONSE_LENGTH		5 // 1: status, 4: component-id
-
-#define G_UI_PROTOCOL_ADD_COMPONENT_REQUEST_LENGTH			8 // 4: parent, 4: child
-#define G_UI_PROTOCOL_ADD_COMPONENT_RESPONSE_LENGTH			1 // 1: status
-
-#define G_UI_PROTOCOL_SET_TITLE_REQUEST_LENGTH				8 // 4: component-id, 4: length, ?: title
-#define G_UI_PROTOCOL_SET_TITLE_RESPONSE_LENGTH				1 // 1: status
-
-#define G_UI_PROTOCOL_GET_TITLE_REQUEST_LENGTH				4 // 4: component-id
-#define G_UI_PROTOCOL_GET_TITLE_RESPONSE_LENGTH				5 // 1: status, 4: length, ?: title
-
-#define G_UI_PROTOCOL_SET_BOUNDS_REQUEST_LENGTH				(4 /*comp-id*/ + 4 /*x*/ + 4 /*y*/ + 4 /*w*/ + 4 /*h*/)
-#define G_UI_PROTOCOL_SET_BOUNDS_RESPONSE_LENGTH			1 // 1: status
-
-#define G_UI_PROTOCOL_SET_VISIBLE_REQUEST_LENGTH			(4 /*comp-id*/ + 1 /*visible*/)
-#define G_UI_PROTOCOL_SET_VISIBLE_RESPONSE_LENGTH			1 // 1: status
-
-#define G_UI_PROTOCOL_SET_ACTION_LISTENER_REQUEST_LENGTH	(4 /*comp-id*/)
-#define G_UI_PROTOCOL_SET_ACTION_LISTENER_RESPONSE_LENGTH	(1 /*status*/ + 4 /*listener-id*/)
-
-/**
  * Component types
  */
-#define G_UI_COMPONENT_BUTTON								0
-#define G_UI_COMPONENT_LABEL								1
-#define G_UI_COMPONENT_TEXTFIELD							2
+typedef uint32_t g_ui_component_type;
+const g_ui_component_type G_UI_COMPONENT_TYPE_WINDOW = 0;
+const g_ui_component_type G_UI_COMPONENT_TYPE_BUTTON = 1;
+const g_ui_component_type G_UI_COMPONENT_TYPE_LABEL = 2;
+const g_ui_component_type G_UI_COMPONENT_TYPE_TEXTFIELD = 3;
+
+/**
+ *
+ */
+typedef struct {
+	g_ui_protocol_command_id id;
+}__attribute__((packed)) g_ui_message_header;
+
+/**
+ * Request to initialize interface communications. The window server creates a
+ * delegate thread that is responsible for further communications and responds
+ * with a <g_ui_initialize_response>.
+ */
+typedef struct {
+	g_ui_message_header header;
+}__attribute__((packed)) g_ui_initialize_request;
+
+/**
+ * Response for initializing interface communications.
+ *
+ * @field status
+ * 		whether the initialization was successful
+ * @field window_server_delegate_thread
+ * 		id of the thread that is responsible for further window server communication
+ */
+typedef struct {
+	g_ui_message_header header;
+	g_ui_protocol_status status;
+	g_tid window_server_delegate_thread;
+}__attribute__((packed)) g_ui_initialize_response;
+
+/**
+ * Request sent to create a component.
+ */
+typedef struct {
+	g_ui_message_header header;
+	g_ui_component_type type;
+}__attribute__((packed)) g_ui_create_component_request;
+
+/**
+ * Response when creating a component.
+ */
+typedef struct {
+	g_ui_message_header header;
+	g_ui_protocol_status status;
+	g_ui_component_id id;
+}__attribute__((packed)) g_ui_create_component_response;
+
+/**
+ * Request/respones for adding a child
+ */
+typedef struct {
+	g_ui_message_header header;
+	g_ui_component_id parent;
+	g_ui_component_id child;
+}__attribute__((packed)) g_ui_component_add_child_request;
+
+typedef struct {
+	g_ui_message_header header;
+	g_ui_protocol_status status;
+}__attribute__((packed)) g_ui_component_add_child_response;
+
+/**
+ * Request/respones for setting bounds
+ */
+typedef struct {
+	g_ui_message_header header;
+	g_ui_component_id id;
+	g_rectangle bounds;
+}__attribute__((packed)) g_ui_component_set_bounds_request;
+
+typedef struct {
+	g_ui_message_header header;
+	g_ui_protocol_status status;
+}__attribute__((packed)) g_ui_component_set_bounds_response;
+
+/**
+ * Request/respones for setting components (in)visible
+ */
+typedef struct {
+	g_ui_message_header header;
+	g_ui_component_id id;
+	bool visible;
+}__attribute__((packed)) g_ui_component_set_visible_request;
+
+typedef struct {
+	g_ui_message_header header;
+	g_ui_protocol_status status;
+}__attribute__((packed)) g_ui_component_set_visible_response;
+
+/**
+ * Request/respones for setting the title on a titled component
+ */
+typedef struct {
+	g_ui_message_header header;
+	g_ui_component_id id;
+	char title[G_UI_COMPONENT_TITLE_MAXIMUM];
+}__attribute__((packed)) g_ui_component_set_title_request;
+
+typedef struct {
+	g_ui_message_header header;
+	g_ui_protocol_status status;
+}__attribute__((packed)) g_ui_component_set_title_response;
+
+/**
+ * Request/respones for getting the title on a titled component
+ */
+typedef struct {
+	g_ui_message_header header;
+	g_ui_component_id id;
+}__attribute__((packed)) g_ui_component_get_title_request;
+
+typedef struct {
+	g_ui_message_header header;
+	g_ui_protocol_status status;
+	char title[G_UI_COMPONENT_TITLE_MAXIMUM];
+}__attribute__((packed)) g_ui_component_get_title_response;
+
+/**
+ * Event handler registration functions
+ */
+typedef struct {
+	g_ui_message_header header;
+	g_ui_component_id id;
+	g_tid target_thread;
+}__attribute__((packed)) g_ui_component_set_action_handler_request;
+
+typedef struct {
+	g_ui_message_header header;
+	g_ui_protocol_status status;
+}__attribute__((packed)) g_ui_component_set_action_handler_response;
+
+/**
+ * Event structures
+ */
+typedef uint32_t g_ui_component_event_type;
+const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_ACTION = 0;
+
+typedef struct {
+	g_ui_message_header header;
+	g_ui_component_event_type type;
+	g_ui_component_id component_id;
+}__attribute__((packed)) g_ui_component_event_header;
+
+typedef struct {
+	g_ui_component_event_header header;
+}__attribute__((packed)) g_ui_component_action_event;
 
 #endif

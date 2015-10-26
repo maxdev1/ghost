@@ -22,11 +22,11 @@
 
 #include <kernel.hpp>
 #include <logger/logger.hpp>
-#include <system/cpu_state.hpp>
 #include <tasking/scheduling/scheduler.hpp>
 #include <system/system.hpp>
 #include <tasking/thread_manager.hpp>
 #include <debug/debug_interface_kernel.hpp>
+#include <system/processor_state.hpp>
 
 static g_scheduler** schedulers;
 
@@ -36,7 +36,7 @@ static g_scheduler** schedulers;
 void g_tasking::initialize() {
 
 	// Create space for all schedulers
-	uint32_t numCores = g_system::getCpuCount();
+	uint32_t numCores = g_system::getNumberOfProcessors();
 	schedulers = new g_scheduler*[numCores];
 
 	// Zero
@@ -51,7 +51,7 @@ void g_tasking::initialize() {
  */
 void g_tasking::enableForThisCore() {
 
-	uint32_t coreId = g_system::getCurrentCoreId();
+	uint32_t coreId = g_system::currentProcessorId();
 	schedulers[coreId] = new g_scheduler(coreId);
 	g_log_info("%! scheduler installed on core %i", "tasking", coreId);
 
@@ -60,10 +60,45 @@ void g_tasking::enableForThisCore() {
 /**
  * 
  */
-g_cpu_state* g_tasking::switchTask(g_cpu_state* cpuState) {
+void g_tasking::pushInWait(g_thread* proc) {
 
 	// Get scheduler for this core
-	uint32_t coreId = g_system::getCurrentCoreId();
+	uint32_t coreId = g_system::currentProcessorId();
+	g_scheduler* scheduler = schedulers[coreId];
+
+	// Check for errors
+	if (scheduler == 0) {
+		g_kernel::panic("%! no scheduler for core %i", "scheduler", coreId);
+	}
+
+	scheduler->pushInWait(proc);
+}
+
+/**
+ *
+ */
+g_thread* g_tasking::save(g_processor_state* cpuState) {
+
+	// Get scheduler for this core
+	uint32_t coreId = g_system::currentProcessorId();
+	g_scheduler* scheduler = schedulers[coreId];
+
+	// Check for errors
+	if (scheduler == 0) {
+		g_kernel::panic("%! no scheduler for core %i", "scheduler", coreId);
+	}
+
+	// Save state
+	return scheduler->save(cpuState);
+}
+
+/**
+ *
+ */
+g_thread* g_tasking::schedule() {
+
+	// Get scheduler for this core
+	uint32_t coreId = g_system::currentProcessorId();
 	g_scheduler* scheduler = schedulers[coreId];
 
 	// Check for errors
@@ -72,22 +107,20 @@ g_cpu_state* g_tasking::switchTask(g_cpu_state* cpuState) {
 	}
 
 	// Let scheduler do his work
-	return scheduler->switchTask(cpuState);
+	return scheduler->schedule();
 }
 
 /**
  * 
  */
-g_thread* g_tasking::fork() {
+g_thread* g_tasking::fork(g_thread* current_thread) {
 
 	g_thread* clone = 0;
 
-	g_thread* current = getCurrentThread();
-
 	// TODO forking in threads.
-	if (current == current->process->main) {
-		if (current) {
-			clone = g_thread_manager::fork(current);
+	if (current_thread == current_thread->process->main) {
+		if (current_thread) {
+			clone = g_thread_manager::fork(current_thread);
 			if (clone) {
 				addTask(clone);
 			}
@@ -115,11 +148,11 @@ void g_tasking::addTask(g_thread* t, bool enforceCurrentCore) {
 		g_scheduler* lowest = 0;
 		uint32_t lowestLoad = 0;
 
-		for (uint32_t i = 0; i < g_system::getCpuCount(); i++) {
+		for (uint32_t i = 0; i < g_system::getNumberOfProcessors(); i++) {
 			g_scheduler* sched = schedulers[i];
 			if (sched) {
 				// Check if load is lower than others
-				uint32_t load = sched->getLoad();
+				uint32_t load = sched->calculateLoad();
 				if (lowest == 0 || load < lowestLoad) {
 					lowest = sched;
 					lowestLoad = load;
@@ -144,7 +177,7 @@ void g_tasking::addTask(g_thread* t, bool enforceCurrentCore) {
  */
 g_scheduler* g_tasking::getCurrentScheduler() {
 
-	uint32_t coreId = g_system::getCurrentCoreId();
+	uint32_t coreId = g_system::currentProcessorId();
 	g_scheduler* sched = schedulers[coreId];
 
 	// Error check
@@ -168,7 +201,7 @@ g_thread* g_tasking::getCurrentThread() {
  */
 g_thread* g_tasking::getTaskById(uint32_t id) {
 
-	for (uint32_t i = 0; i < g_system::getCpuCount(); i++) {
+	for (uint32_t i = 0; i < g_system::getNumberOfProcessors(); i++) {
 		g_scheduler* sched = schedulers[i];
 
 		if (sched) {
@@ -187,7 +220,7 @@ g_thread* g_tasking::getTaskById(uint32_t id) {
  */
 g_thread* g_tasking::getTaskByIdentifier(const char* identifier) {
 
-	for (uint32_t i = 0; i < g_system::getCpuCount(); i++) {
+	for (uint32_t i = 0; i < g_system::getNumberOfProcessors(); i++) {
 		g_scheduler* sched = schedulers[i];
 
 		if (sched) {
@@ -228,7 +261,7 @@ bool g_tasking::killAllThreadsOf(g_process* process) {
 
 	bool still_has_living_threads = true;
 
-	for (uint32_t i = 0; i < g_system::getCpuCount(); i++) {
+	for (uint32_t i = 0; i < g_system::getNumberOfProcessors(); i++) {
 		g_scheduler* sched = schedulers[i];
 
 		if (sched && sched->killAllThreadsOf(process)) {

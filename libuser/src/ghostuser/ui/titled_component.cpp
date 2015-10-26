@@ -24,79 +24,80 @@
 #include <ghostuser/ui/titled_component.hpp>
 #include <ghostuser/ui/ui.hpp>
 #include <ghostuser/utils/value_placer.hpp>
+#include <ghost/utils/local.hpp>
+#include <stdio.h>
 
 /**
  *
  */
 bool g_titled_component::setTitle(std::string title) {
 
-	if (!g_ui_ready) {
-		return false;
+	if (!g_ui_initialized) {
+		return 0;
 	}
 
-	// write request
-	uint32_t title_len = title.length() + 1;
-	uint32_t request_length = G_UI_PROTOCOL_HEADER_LENGTH + G_UI_PROTOCOL_SET_TITLE_REQUEST_LENGTH + title_len;
-	g_local<uint8_t> request(new uint8_t[request_length]);
+	// send initialization request
+	uint32_t tx = g_ipc_next_topic();
 
-	g_value_placer request_writer(request());
-	request_writer.put(G_UI_PROTOCOL_SET_TITLE);
-	request_writer.put(id);
-	request_writer.put(title_len);
-	request_writer.put((uint8_t*) title.c_str(), title_len);
-	g_ui_transaction_id transaction = g_ui::send(request(), request_length);
+	g_local<g_ui_component_set_title_request> request(new g_ui_component_set_title_request());
+	request()->header.id = G_UI_PROTOCOL_SET_TITLE;
+	request()->id = this->id;
 
-	// wait for response
-	uint32_t response_length;
-	uint8_t* response;
-	if (g_ui::receive(transaction, &response, &response_length)) {
-		g_local<uint8_t> response_deleter(response);
+	// fill text (truncate if necessary)
+	const char* title_str = title.c_str();
+	size_t title_len;
+	if (title.length() >= G_UI_COMPONENT_TITLE_MAXIMUM) {
+		title_len = G_UI_COMPONENT_TITLE_MAXIMUM;
+	} else {
+		title_len = title.length();
+	}
+	memcpy(request()->title, title.c_str(), title_len);
+	request()->title[title_len] = 0;
 
-		g_value_placer response_reader(response);
-		g_ui_protocol_command_id command = response_reader.get<g_ui_protocol_command_id>();
-		g_ui_protocol_status status = response_reader.get<g_ui_protocol_status>();
+	g_send_message_t(g_ui_delegate_tid, request(), sizeof(g_ui_component_set_title_request), tx);
 
-		if (command == G_UI_PROTOCOL_SET_TITLE && status == G_UI_PROTOCOL_SUCCESS) {
+	// read response
+	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_set_title_response);
+	uint8_t buffer[bufferSize];
+
+	if (g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
+		g_ui_component_set_title_response* response = (g_ui_component_set_title_response*) G_MESSAGE_CONTENT(buffer);
+		if (response->status == G_UI_PROTOCOL_SUCCESS) {
 			return true;
 		}
 	}
+
 	return false;
+
 }
 /**
  *
  */
 std::string g_titled_component::getTitle() {
 
-	if (!g_ui_ready) {
-		return "";
+	if (!g_ui_initialized) {
+		return 0;
 	}
 
-	// write request
-	uint32_t request_length = G_UI_PROTOCOL_HEADER_LENGTH + G_UI_PROTOCOL_GET_TITLE_REQUEST_LENGTH;
-	g_local<uint8_t> request(new uint8_t[request_length]);
+	// send initialization request
+	uint32_t tx = g_ipc_next_topic();
 
-	g_value_placer request_writer(request());
-	request_writer.put(G_UI_PROTOCOL_GET_TITLE);
-	request_writer.put(id);
-	g_ui_transaction_id transaction = g_ui::send(request(), request_length);
+	g_ui_component_get_title_request request;
+	request.header.id = G_UI_PROTOCOL_SET_TITLE;
+	request.id = this->id;
+	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_get_title_request), tx);
 
-	// wait for response
-	uint32_t response_length;
-	uint8_t* response;
-	if (g_ui::receive(transaction, &response, &response_length)) {
-		g_local<uint8_t> response_deleter(response);
+	// read response
+	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_get_title_response);
+	g_local<uint8_t> buffer(new uint8_t[bufferSize]);
 
-		g_value_placer response_reader(response);
-		g_ui_protocol_command_id command = response_reader.get<g_ui_protocol_command_id>();
-		g_ui_protocol_status status = response_reader.get<g_ui_protocol_status>();
-
-		uint32_t title_length = response_reader.get<uint32_t>();
-		g_local<char> title(new char[title_length]);
-		response_reader.get((uint8_t*) title(), title_length);
-
-		if (command == G_UI_PROTOCOL_GET_TITLE && status == G_UI_PROTOCOL_SUCCESS) {
-			return std::string(title());
+	if (g_receive_message_t(buffer(), bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
+		g_ui_component_get_title_response* response = (g_ui_component_get_title_response*) G_MESSAGE_CONTENT(buffer());
+		if (response->status == G_UI_PROTOCOL_SUCCESS) {
+			return std::string(response->title);
 		}
 	}
-	return "";
+
+	return std::string();
+
 }

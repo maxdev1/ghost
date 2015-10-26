@@ -27,7 +27,7 @@
 /**
  * CPUID.1 feature flags
  */
-enum class CPUIDStandardEdxFeature {
+enum class g_cpuid_standard_edx_feature {
 
 	FPU = 1 << 0, // Onboard x87 FPU
 	VME = 1 << 1, // Virtual 8086 supported
@@ -65,7 +65,7 @@ enum class CPUIDStandardEdxFeature {
 /**
  * CPUID.1 feature flags
  */
-enum class CPUIDExtendedEcxFeature {
+enum class g_cpuid_extended_ecx_feature {
 
 	SSE3 = 1 << 0,
 	PCLMUL = 1 << 1,
@@ -109,13 +109,13 @@ extern "C" bool _checkForCPUID();
 /**
  *
  */
-class g_cpu {
+class g_processor {
 public:
 	uint32_t apic;
-	g_cpu* next;
+	g_processor* next;
 	bool bsp;
 
-	g_cpu() :
+	g_processor() :
 			apic(-1), next(0), bsp(false) {
 	}
 
@@ -126,8 +126,8 @@ public:
 	static bool supportsCpuid();
 	static void cpuid(uint32_t code, uint32_t* outA, uint32_t* outB, uint32_t* outC, uint32_t* outD);
 
-	static bool hasFeature(CPUIDStandardEdxFeature feature);
-	static bool hasFeature(CPUIDExtendedEcxFeature feature);
+	static bool hasFeature(g_cpuid_standard_edx_feature feature);
+	static bool hasFeature(g_cpuid_extended_ecx_feature feature);
 
 	static void printInformation();
 

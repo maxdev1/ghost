@@ -27,6 +27,7 @@
 #include "output/video_output.hpp"
 #include <ghostuser/graphics/painter.hpp>
 #include <ghostuser/graphics/graphics.hpp>
+#include "interface/command_message_responder_thread.hpp"
 
 #define BENCHMARKING 0
 
@@ -38,10 +39,7 @@ public:
 	video_output_t* video_output;
 	event_processor_t* event_processor;
 	screen_t* screen;
-
-	struct {
-		uint8_t lock;
-	} execution_state;
+	command_message_responder_thread_t* responder_thread;
 
 	/**
 	 * Sets up the windowing system by configuring a video output, setting up the
@@ -51,14 +49,14 @@ public:
 	void launch();
 
 	/**
-	 * Unlocks the execution state, so the main loop performs the next step.
+	 *
 	 */
-	void request_step();
+	void mainLoop(g_rectangle screenBounds);
 
 	/**
-	 * Renders the current component state.
+	 * Blits the component state.
 	 */
-	void render(g_graphics* graphics, g_painter* painter);
+	void blit(g_graphics* graphics);
 
 	/**
 	 * Dispatches the given event to the component.
@@ -83,6 +81,12 @@ public:
 	 * TODO remove
 	 */
 	void createTestComponents();
+
+	/**
+	 *
+	 */
+	void loadCursor();
+
 };
 
 #endif
