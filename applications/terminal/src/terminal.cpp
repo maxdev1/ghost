@@ -305,7 +305,9 @@ void terminal_t::run_command(std::string command) {
 	in_data.int_pid = last_pid;
 
 	// wait for process to exit
+	klog("terminal waits for %i to die", last_pid);
 	g_join(last_pid);
+	klog("terminal got woken up");
 	in_data.stop = true;
 	out_data.stop = true;
 	err_data.stop = true;
@@ -654,7 +656,9 @@ void terminal_t::standard_in_thread(standard_in_thread_data_t* data) {
 
 		} else if (stat == TERMINAL_INPUT_STATUS_DEFAULT) {
 			data->terminal->screen->write("\n");
+			data->terminal->screen->updateCursor();
 			line += "\n";
+
 			const char* lineContent = line.c_str();
 			int lineLength = strlen(lineContent);
 

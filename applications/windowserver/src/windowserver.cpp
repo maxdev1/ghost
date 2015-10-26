@@ -23,6 +23,7 @@
 #include "input/input_receiver.hpp"
 #include "events/event.hpp"
 #include "events/locatable.hpp"
+#include "interface/registration_thread.hpp"
 
 #include <components/background.hpp>
 #include <components/cursor.hpp>
@@ -81,6 +82,9 @@ void windowserver_t::launch() {
 		klog(("failed to load keyboard layout '" + keyLayout + "', no keyboard input available").c_str());
 	}
 
+	// create the cursor
+	loadCursor();
+
 	// perform main loop
 	g_dimension resolution = video_output->getResolution();
 	g_rectangle screenBounds(0, 0, resolution.width, resolution.height);
@@ -91,14 +95,24 @@ void windowserver_t::launch() {
 	background_t background(screenBounds);
 	screen->addChild(&background);
 
-	// Create the cursor
-	cursor_t::load("/system/graphics/cursor/default.cursor");
-	cursor_t::load("/system/graphics/cursor/text.cursor");
-	cursor_t::set("default");
-	cursor_t::focusedComponent = screen;
-
 	// create test components
 	createTestComponents();
+
+	// start interface
+	registration_thread_t* registration_thread = new registration_thread_t();
+	registration_thread->start();
+
+	responder_thread = new command_message_responder_thread_t();
+	responder_thread->start();
+
+	// execute the main loop
+	mainLoop(screenBounds);
+}
+
+/**
+ *
+ */
+void windowserver_t::mainLoop(g_rectangle screenBounds) {
 
 	g_graphics global;
 	g_painter globalPainter(global);
@@ -106,11 +120,12 @@ void windowserver_t::launch() {
 
 	while (true) {
 
+		uint64_t render_start = g_millis();
+		event_processor->processMouseState();
+
 #if BENCHMARKING
 		rounds++;
 #endif
-		// set the lock so it can be unset later
-		execution_state.lock = true;
 
 		// do event processing
 #if BENCHMARKING
@@ -122,10 +137,34 @@ void windowserver_t::launch() {
 #endif
 
 		// render the screen
-		render(&global, &globalPainter);
+#if BENCHMARKING
+		uint64_t time_component_processing = g_millis();
+#endif
+		// make the root component resolve all requirements
+		screen->resolveRequirement(COMPONENT_REQUIREMENT_UPDATE);
+		screen->resolveRequirement(COMPONENT_REQUIREMENT_LAYOUT);
+		screen->resolveRequirement(COMPONENT_REQUIREMENT_PAINT);
 
-		// block until rendering is requested
-		g_atomic_lock(&execution_state.lock);
+		// blit the root component to the buffer
+		screen->blit(global.getBuffer(), screenBounds, screenBounds, g_point(0, 0));
+#if BENCHMARKING
+		total_component_processing += (g_millis() - time_component_processing);
+#endif
+
+		// paint the cursor
+		cursor_t::paint(&globalPainter);
+
+		// blit output
+		blit(&global);
+
+		// try to create 60 fps
+		int64_t render_time = g_millis() - render_start;
+		int64_t sleep_time = (1000 / 60) - render_time;
+		if (sleep_time > 0) {
+			g_sleep(sleep_time);
+		} else {
+			g_yield();
+		}
 
 		// print output
 #if BENCHMARKING
@@ -140,33 +179,15 @@ void windowserver_t::launch() {
 /**
  *
  */
-void windowserver_t::render(g_graphics* graphics, g_painter* painter) {
+void windowserver_t::blit(g_graphics* graphics) {
 
-	g_color_argb* buffer = graphics->getBuffer();
-
-	// do component processing
-#if BENCHMARKING
-	uint64_t time_component_processing = g_millis();
-#endif
-	// make the root component resolve all requirements
-	screen->resolveRequirement(COMPONENT_REQUIREMENT_UPDATE);
-	screen->resolveRequirement(COMPONENT_REQUIREMENT_LAYOUT);
-	screen->resolveRequirement(COMPONENT_REQUIREMENT_PAINT);
-
-	// blit the root component to the buffer
 	g_dimension resolution = video_output->getResolution();
 	g_rectangle screenBounds(0, 0, resolution.width, resolution.height);
-	screen->blit(buffer, screenBounds, screenBounds, g_point(0, 0));
-#if BENCHMARKING
-	total_component_processing += (g_millis() - time_component_processing);
-#endif
+	g_color_argb* buffer = graphics->getBuffer();
 
-	// paint the cursor
-	cursor_t::paint(painter);
-
+	// get invalid output
 	g_rectangle invalid = screen->grabInvalid();
 
-	// quit if nothing to blit
 	if (invalid.width == 0 && invalid.height == 0) {
 		return;
 	}
@@ -179,6 +200,16 @@ void windowserver_t::render(g_graphics* graphics, g_painter* painter) {
 #if BENCHMARKING
 	total_blitting += (g_millis() - time_blitting);
 #endif
+}
+
+/**
+ *
+ */
+void windowserver_t::loadCursor() {
+	cursor_t::load("/system/graphics/cursor/default.cursor");
+	cursor_t::load("/system/graphics/cursor/text.cursor");
+	cursor_t::set("default");
+	cursor_t::focusedComponent = screen;
 }
 
 /**
@@ -205,7 +236,7 @@ void windowserver_t::createTestComponents() {
 	layoutedWindow->addChild(label1);
 
 	label_t* label2 = new label_t();
-	label2->setTitle("These labels float!");
+	label2->setTitle("Ghost: WindowServer 2.0!");
 	layoutedWindow->addChild(label2);
 
 	label_t* label3 = new label_t();
@@ -295,13 +326,6 @@ bool windowserver_t::dispatch(component_t* component, event_t& event) {
 
 	dispatch_lock.unlock();
 	return handled;
-}
-
-/**
- *
- */
-void windowserver_t::request_step() {
-	execution_state.lock = false;
 }
 
 /**

@@ -26,10 +26,13 @@
 #include <system/interrupts/pic.hpp>
 #include <system/interrupts/lapic.hpp>
 
-#include <system/smp/global_lock.hpp>
-#include <system/cpu_state.hpp>
+#include <kernel.hpp>
 #include <logger/logger.hpp>
+#include <tasking/tasking.hpp>
 #include <system/io_ports.hpp>
+#include <system/processor_state.hpp>
+#include <system/smp/global_lock.hpp>
+#include <tasking/wait/waiter.hpp>
 
 /**
  * Interrupt handler routine, called by the interrupt stubs (assembly file)
@@ -37,7 +40,7 @@
  * @param cpuState	the current CPU state
  * @return the CPU state to be applied
  */
-extern "C" g_cpu_state* _interruptHandler(g_cpu_state* cpuState) {
+extern "C" g_processor_state* _interruptHandler(g_processor_state* cpuState) {
 	return g_interrupt_dispatcher::handle(cpuState);
 }
 
@@ -46,26 +49,40 @@ static g_global_lock handlingLock;
 /**
  * 
  */
-g_cpu_state* g_interrupt_dispatcher::handle(g_cpu_state* cpuState) {
+g_processor_state* g_interrupt_dispatcher::handle(g_processor_state* cpuState) {
 
 	// TODO not global lock, lock per operation
 	handlingLock.lock();
+
+	// save current task state
+	g_thread* current_thread = g_tasking::save(cpuState);
+
+	if(current_thread == nullptr) {
+		current_thread = g_tasking::schedule();
+	}
 
 	/*
 	 Exceptions (interrupts below 0x20) are redirected to the exception handler,
 	 while requests are redirected to the request handler.
 	 */
 	if (cpuState->intr < 0x20) {
-		cpuState = g_interrupt_exception_handler::handle(cpuState);
+		current_thread = g_interrupt_exception_handler::handle(current_thread);
 	} else {
-		cpuState = g_interrupt_request_handler::handle(cpuState);
+		current_thread = g_interrupt_request_handler::handle(current_thread);
 	}
 
-	g_lapic::sendEoi();
+	// sanity check
+	if (current_thread->waitManager != nullptr) {
+		g_kernel::panic("scheduled thread %i had a wait manager ('%s')", current_thread->id, current_thread->waitManager->debug_name());
+	}
 
+	// send end of interrupt
+	g_lapic::send_eoi();
+
+	// TODO
 	handlingLock.unlock();
 
-	return cpuState;
+	return current_thread->cpuState;
 }
 
 /**

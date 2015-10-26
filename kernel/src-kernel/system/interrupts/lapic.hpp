@@ -130,10 +130,10 @@ public:
 
 	static uint32_t read(uint32_t reg);
 	static void write(uint32_t reg, uint32_t value);
-	static void waitForIcrSend();
+	static void wait_for_icr_send();
 
-	static void sendEoi();
-	static uint32_t getCurrentId();
+	static void send_eoi();
+	static uint32_t read_id();
 
 	static void prepare(g_physical_address lapicAddress);
 	static bool isPrepared();

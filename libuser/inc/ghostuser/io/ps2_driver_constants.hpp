@@ -21,24 +21,57 @@
 #ifndef GHOSTLIBRARY_IO_PS2DRIVERCONSTANTS
 #define GHOSTLIBRARY_IO_PS2DRIVERCONSTANTS
 
+#include <stdint.h>
+
 #define G_PS2_DRIVER_IDENTIFIER							"ps2driver"
 
-typedef int g_ps2_command;
-const g_ps2_command G_PS2_COMMAND_REGISTER_KEYBOARD = 0;
-const g_ps2_command G_PS2_COMMAND_REGISTER_MOUSE = 1;
-
+/**
+ * Shared memory area that is used for transferring PS/2 input data
+ * to a process that handles this data.
+ */
 typedef struct {
-	g_ps2_command command;
+	struct {
+		/**
+		 * This atom remains set, until the driver has data to transfer.
+		 * The driver delegate must wait until the atom is unset, and then
+		 * set it again.
+		 */
+		uint8_t atom_nothing_queued;
+
+		/**
+		 * This atom is set by the driver, once it has written data that
+		 * the delegate is yet to read. Once the data is read, the delegate
+		 * must unset the atom.
+		 */
+		uint8_t atom_unhandled;
+
+		int16_t move_x;
+		int16_t move_y;
+		uint16_t flags;
+	} mouse;
+
+	struct {
+		uint8_t atom_nothing_queued;
+		uint8_t atom_unhandled;
+
+		uint8_t scancode;
+	} keyboard;
+}__attribute__((packed)) g_ps2_shared_area;
+
+/**
+ * Request sent to register the sender thread as the
+ * PS/2 data handler.
+ */
+typedef struct {
+	// empty request
 }__attribute__((packed)) g_ps2_register_request;
 
+/**
+ * Response sent to a registering thread, containing the
+ * shared memory area to use.
+ */
 typedef struct {
-	int16_t x;
-	int16_t y;
-	int32_t flags;
-}__attribute__((packed)) g_ps2_mouse_packet;
-
-typedef struct {
-	uint8_t scancode;
-}__attribute__((packed)) g_ps2_keyboard_packet;
+	g_ps2_shared_area* area;
+}__attribute__((packed)) g_ps2_register_response;
 
 #endif

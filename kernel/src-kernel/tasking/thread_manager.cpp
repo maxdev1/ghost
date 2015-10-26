@@ -216,7 +216,7 @@ void g_thread_manager::prepareSpaceForThread(g_page_directory rootProcessPageDir
 /**
  *
  */
-void g_thread_manager::applySecurityLevel(g_cpu_state* state, g_security_level securityLevel) {
+void g_thread_manager::applySecurityLevel(g_processor_state* state, g_security_level securityLevel) {
 
 	if (securityLevel == G_SECURITY_LEVEL_KERNEL) {
 		state->cs = G_GDT_DESCRIPTOR_KERNEL_CODE | G_SEGMENT_SELECTOR_RING0;
@@ -257,7 +257,7 @@ g_thread* g_thread_manager::fork(g_thread* current) {
 	g_virtual_address esp0 = kernelStackVirt + G_PAGE_SIZE;
 
 	g_thread* thread = new g_thread(g_thread_type::THREAD_MAIN);
-	thread->cpuState = (g_cpu_state*) (esp0 - sizeof(g_cpu_state));
+	thread->cpuState = (g_processor_state*) (esp0 - sizeof(g_processor_state));
 	thread->kernelStackEsp0 = esp0;
 
 	thread->kernelStack = kernelStackVirt;
@@ -303,8 +303,8 @@ g_thread* g_thread_manager::createProcess(g_security_level securityLevel) {
 	g_virtual_address esp0 = kernelStackVirt + G_PAGE_SIZE;
 	g_virtual_address esp = userStackVirt + G_PAGE_SIZE;
 
-	g_cpu_state* state = (g_cpu_state*) (esp0 - sizeof(g_cpu_state));
-	g_memory::setBytes(state, 0, sizeof(g_cpu_state));
+	g_processor_state* state = (g_processor_state*) (esp0 - sizeof(g_processor_state));
+	g_memory::setBytes(state, 0, sizeof(g_processor_state));
 	state->esp = esp;
 	state->eip = 0;
 	state->eflags = 0x200;
@@ -357,8 +357,8 @@ g_thread* g_thread_manager::createProcessVm86(uint8_t interrupt, g_vm86_register
 	 */
 	g_virtual_address esp0 = kernelStackVirt + G_PAGE_SIZE;
 
-	g_cpu_state_vm86* state = (g_cpu_state_vm86*) (esp0 - sizeof(g_cpu_state_vm86));
-	g_memory::setBytes(state, 0, sizeof(g_cpu_state_vm86));
+	g_processor_state_vm86* state = (g_processor_state_vm86*) (esp0 - sizeof(g_processor_state_vm86));
+	g_memory::setBytes(state, 0, sizeof(g_processor_state_vm86));
 	state->defaultFrame.eax = in.ax;
 	state->defaultFrame.ebx = in.bx;
 	state->defaultFrame.ecx = in.cx;
@@ -382,7 +382,7 @@ g_thread* g_thread_manager::createProcessVm86(uint8_t interrupt, g_vm86_register
 	 * Create the VM86 main thread
 	 */
 	g_thread* thread = new g_thread(g_thread_type::THREAD_VM86);
-	thread->cpuState = (g_cpu_state*) state;
+	thread->cpuState = (g_processor_state*) state;
 	thread->kernelStackEsp0 = esp0;
 
 	thread->kernelStack = kernelStackVirt;
@@ -425,8 +425,8 @@ g_thread* g_thread_manager::createThread(g_process* process) {
 	g_virtual_address esp0 = kernelStackVirt + G_PAGE_SIZE;
 	g_virtual_address esp = userStackVirt + G_PAGE_SIZE;
 
-	g_cpu_state* state = (g_cpu_state*) (esp0 - sizeof(g_cpu_state));
-	g_memory::setBytes(state, 0, sizeof(g_cpu_state));
+	g_processor_state* state = (g_processor_state*) (esp0 - sizeof(g_processor_state));
+	g_memory::setBytes(state, 0, sizeof(g_processor_state));
 	state->esp = esp;
 	state->eip = 0;
 	state->eflags = 0x200;
@@ -443,7 +443,7 @@ g_thread* g_thread_manager::createThread(g_process* process) {
 	thread->process = process;
 
 	// User-Thread (thread-local-storage etc.)
-	prepare_thread_local_storage(thread);
+	prepareThreadLocalStorage(thread);
 
 #if G_LOGGING_DEBUG
 	dumpTask(thread);
@@ -454,7 +454,7 @@ g_thread* g_thread_manager::createThread(g_process* process) {
 /**
  *
  */
-void g_thread_manager::prepare_thread_local_storage(g_thread* thread) {
+void g_thread_manager::prepareThreadLocalStorage(g_thread* thread) {
 
 	// if tls master copy available, copy it to thread
 	g_process* process = thread->process;
@@ -517,7 +517,7 @@ void g_thread_manager::deleteTask(g_thread* task) {
 
 		// Here we free everything that the thread has created and that is no more
 		// needed by anyone.
-		g_process* process = task->process;
+		//g_process* process = task->process;
 
 		// TODO
 
@@ -525,7 +525,7 @@ void g_thread_manager::deleteTask(g_thread* task) {
 
 		// Here we free everything that the process has created and that is no more
 		// needed by anyone.
-		g_process* process = task->process;
+		//g_process* process = task->process;
 
 		// tell the filesystem to clean up
 		g_filesystem::process_closed(task->id);

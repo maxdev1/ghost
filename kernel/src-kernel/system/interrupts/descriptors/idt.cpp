@@ -73,6 +73,6 @@ void g_idt::load() {
 	// Load the IDT
 	g_log_debug("%! descriptor table lays at %h", "idt", &idt); g_log_debug("%! pointer at %h, base %h, limit %h", "idt", &idtPointer, idtPointer.base, idtPointer.limit);
 	_loadIdt((uint32_t) & idtPointer);
-	g_log_debug("%! loaded on core %i", "idt", g_system::getCurrentCoreId());
+	g_log_debug("%! loaded on core %i", "idt", g_system::currentProcessorId());
 }
 

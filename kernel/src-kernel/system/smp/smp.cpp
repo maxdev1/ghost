@@ -45,7 +45,7 @@ void g_smp::initialize(g_physical_address initialPageDirectoryPhysical) {
 
 	// Create enough stacks for all APs
 	g_physical_address* stackArray = (g_physical_address*) G_CONST_SMP_STARTUP_AREA_AP_STACK_ARRAY;
-	for (uint32_t i = 0; i < g_system::getCpuCount(); i++) {
+	for (uint32_t i = 0; i < g_system::getNumberOfProcessors(); i++) {
 
 		g_physical_address stackPhysical = g_pp_allocator::allocate();
 		if (stackPhysical == 0) {
@@ -76,10 +76,10 @@ void g_smp::initialize(g_physical_address initialPageDirectoryPhysical) {
 	g_memory::copy((uint8_t*) G_CONST_SMP_STARTUP_AREA_CODE_START, (uint8_t*) startupObject->data, startupObject->datalength);
 
 	// Start APs
-	g_cpu* n = g_system::getCpus();
+	g_processor* n = g_system::getProcessorList();
 	while (n) {
 		if (!n->bsp) {
-			initializeProcessor(n);
+			initialize_core(n);
 		}
 		n = n->next;
 	}
@@ -88,7 +88,7 @@ void g_smp::initialize(g_physical_address initialPageDirectoryPhysical) {
 /**
  *
  */
-void g_smp::initializeProcessor(g_cpu* cpu) {
+void g_smp::initialize_core(g_processor* cpu) {
 
 	// Calculate the vector value for the code start
 	uint32_t vectorValue = (G_CONST_SMP_STARTUP_AREA_CODE_START >> 12) & 0xFF;
@@ -96,7 +96,7 @@ void g_smp::initializeProcessor(g_cpu* cpu) {
 	// Send INIT
 	g_lapic::write(APIC_REGISTER_INT_COMMAND_HIGH, cpu->apic << 24);
 	g_lapic::write(APIC_REGISTER_INT_COMMAND_LOW, APIC_ICR_DELMOD_INIT | APIC_ICR_LEVEL_ASSERT);
-	g_lapic::waitForIcrSend();
+	g_lapic::wait_for_icr_send();
 
 	// Sleep 10 milliseconds
 	g_pit::prepareSleep(10000);

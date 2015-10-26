@@ -40,13 +40,8 @@ struct g_mouse_info {
  *
  */
 class g_mouse {
-private:
-	static void registerMouse();
-
 public:
 	static g_mouse_info readMouse();
-
-	static uint32_t getMousePort();
 };
 
 #endif

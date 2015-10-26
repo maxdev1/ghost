@@ -30,15 +30,15 @@
  */
 class g_waiter_sleep: public g_waiter {
 private:
-	uint32_t startMs;
-	uint64_t time;
-	g_scheduler* measuringScheduler;
+	uint64_t time_start;
+	uint64_t time_sleep;
+	g_scheduler* timing_scheduler;
 
 public:
-	g_waiter_sleep(g_scheduler* _measuringScheduler, uint64_t _time) {
-		time = _time;
-		measuringScheduler = _measuringScheduler;
-		startMs = measuringScheduler->getMilliseconds();
+	g_waiter_sleep(g_thread* task, uint64_t ms) {
+		time_sleep = ms;
+		timing_scheduler = task->scheduler;
+		time_start = timing_scheduler->getMilliseconds();
 	}
 
 	/**
@@ -46,8 +46,8 @@ public:
 	 */
 	virtual bool checkWaiting(g_thread* task) {
 
-		uint64_t diff = measuringScheduler->getMilliseconds() - startMs;
-		if (diff < time) {
+		uint64_t diff = timing_scheduler->getMilliseconds() - time_start;
+		if (diff < time_sleep) {
 			// Keep sleeping
 			return true;
 		}

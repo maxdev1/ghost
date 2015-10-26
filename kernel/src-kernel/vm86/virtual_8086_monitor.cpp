@@ -29,7 +29,7 @@
 /**
  *
  */
-g_virtual_monitor_handling_result g_virtual_8086_monitor::handleGpf(g_cpu_state_vm86* ctx) {
+g_virtual_monitor_handling_result g_virtual_8086_monitor::handleGpf(g_processor_state_vm86* ctx) {
 	uint8_t* ip = (uint8_t*) G_SEGOFF_TO_LINEAR(ctx->defaultFrame.cs, ctx->defaultFrame.eip);
 	uint16_t* sp = (uint16_t*) G_SEGOFF_TO_LINEAR(ctx->defaultFrame.ss, ctx->defaultFrame.esp);
 	uint32_t* esp = (uint32_t*) sp;

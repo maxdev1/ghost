@@ -18,28 +18,28 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <system/cpu.hpp>
 #include <logger/logger.hpp>
 #include <kernel.hpp>
+#include <system/processor.hpp>
 
 /**
  *
  */
-bool g_cpu::supportsCpuid() {
+bool g_processor::supportsCpuid() {
 	return _checkForCPUID();
 }
 
 /**
  *
  */
-void g_cpu::cpuid(uint32_t code, uint32_t* outA, uint32_t* outB, uint32_t* outC, uint32_t* outD) {
+void g_processor::cpuid(uint32_t code, uint32_t* outA, uint32_t* outB, uint32_t* outC, uint32_t* outD) {
 	asm volatile("cpuid" : "=a"(*outA), "=b"(*outB), "=c"(*outC), "=d"(*outD) : "a"(code));
 }
 
 /**
  *
  */
-bool g_cpu::hasFeature(CPUIDStandardEdxFeature feature) {
+bool g_processor::hasFeature(g_cpuid_standard_edx_feature feature) {
 	uint32_t eax;
 	uint32_t ebx;
 	uint32_t ecx;
@@ -51,7 +51,7 @@ bool g_cpu::hasFeature(CPUIDStandardEdxFeature feature) {
 /**
  *
  */
-bool g_cpu::hasFeature(CPUIDExtendedEcxFeature feature) {
+bool g_processor::hasFeature(g_cpuid_extended_ecx_feature feature) {
 	uint32_t eax;
 	uint32_t ebx;
 	uint32_t ecx;
@@ -63,7 +63,7 @@ bool g_cpu::hasFeature(CPUIDExtendedEcxFeature feature) {
 /**
  *
  */
-void g_cpu::getVendor(char* out) {
+void g_processor::getVendor(char* out) {
 	uint32_t eax;
 	uint32_t ebx;
 	uint32_t ecx;
@@ -79,9 +79,9 @@ void g_cpu::getVendor(char* out) {
 /**
  *
  */
-void g_cpu::printInformation() {
+void g_processor::printInformation() {
 	char vendor[13];
-	g_cpu::getVendor(vendor);
+	g_processor::getVendor(vendor);
 	vendor[12] = 0;
 	g_log_info("%! vendor: '%s'", "cpu", vendor);
 
@@ -92,16 +92,16 @@ void g_cpu::printInformation() {
 	cpuid(1, &eax, &ebx, &ecx, &edx);
 
 	g_log_debugn("%! advanced features:", "cpu");
-	if (edx & (int64_t) CPUIDStandardEdxFeature::PAE) {
+	if (edx & (int64_t) g_cpuid_standard_edx_feature::PAE) {
 		g_log_debugn(" PAE");
 	}
-	if (edx & (int64_t) CPUIDStandardEdxFeature::MMX) {
+	if (edx & (int64_t) g_cpuid_standard_edx_feature::MMX) {
 		g_log_debugn(" MMX");
 	}
-	if (edx & (int64_t) CPUIDStandardEdxFeature::SSE) {
+	if (edx & (int64_t) g_cpuid_standard_edx_feature::SSE) {
 		g_log_debugn(" SSE");
 	}
-	if (edx & (int64_t) CPUIDStandardEdxFeature::SSE2) {
+	if (edx & (int64_t) g_cpuid_standard_edx_feature::SSE2) {
 		g_log_debugn(" SSE2");
 	}
 
@@ -111,14 +111,14 @@ void g_cpu::printInformation() {
 /**
  * 
  */
-void g_cpu::readMsr(uint32_t msr, uint32_t *lo, uint32_t *hi) {
+void g_processor::readMsr(uint32_t msr, uint32_t *lo, uint32_t *hi) {
 	asm volatile("rdmsr" : "=a"(*lo), "=d"(*hi) : "c"(msr));
 }
 
 /**
  * 
  */
-void g_cpu::writeMsr(uint32_t msr, uint32_t lo, uint32_t hi) {
+void g_processor::writeMsr(uint32_t msr, uint32_t lo, uint32_t hi) {
 	asm volatile("wrmsr" : : "a"(lo), "d"(hi), "c"(msr));
 }
 

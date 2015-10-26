@@ -21,9 +21,10 @@
 #ifndef GHOST_TASKING_TASKING
 #define GHOST_TASKING_TASKING
 
+#include <system/processor_state.hpp>
+
 #include "ghost/kernel.h"
 #include "ghost/stdint.h"
-#include <system/cpu_state.hpp>
 #include <tasking/thread.hpp>
 #include <tasking/process.hpp>
 #include <tasking/scheduling/scheduler.hpp>
@@ -45,14 +46,24 @@ public:
 	static void enableForThisCore();
 
 	/**
-	 * Called by the timer for switching
+	 * Saves the current CPU state and returns the current thread.
 	 */
-	static g_cpu_state* switchTask(g_cpu_state* cpuState);
+	static g_thread* save(g_processor_state* cpuState);
+
+	/**
+	 * Called to switch tasks. Function returns the task to execute next.
+	 */
+	static g_thread* schedule();
 
 	/**
 	 * Adds the task to the least loaded cores scheduler
 	 */
 	static void addTask(g_thread* proc, bool enforceCurrentCore = false);
+
+	/**
+	 * Pushes the given thread to the top of the wait queue.
+	 */
+	static void pushInWait(g_thread* proc);
 
 	/**
 	 * Returns the current task on the current core
@@ -88,7 +99,7 @@ public:
 	/**
 	 *
 	 */
-	static g_thread* fork();
+	static g_thread* fork(g_thread* current_thread);
 
 };
 

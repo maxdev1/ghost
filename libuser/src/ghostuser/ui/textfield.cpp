@@ -26,5 +26,5 @@
  *
  */
 g_textfield* g_textfield::create() {
-	return createComponent<g_textfield, G_UI_COMPONENT_TEXTFIELD>();
+	return createComponent<g_textfield, G_UI_COMPONENT_TYPE_TEXTFIELD>();
 }

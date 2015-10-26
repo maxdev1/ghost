@@ -43,20 +43,28 @@ struct g_ui_event_dispatch_data {
 };
 
 /**
+ * ID of the thread that the window server creates when
+ * initializing the UI communication.
+ */
+extern g_tid g_ui_delegate_tid;
+
+/**
+ * ID of the event dispatcher thread that is continuously waiting
+ * for events from the window manager to fire the respective listener
+ * that was attached.
+ */
+extern g_tid g_ui_event_dispatcher_tid;
+
+/**
  *
  */
 class g_ui {
 private:
-	static void asynchronous_receiver_thread();
-
 	static void event_dispatch_thread();
 	static void event_dispatch_queue_add(const g_ui_event_dispatch_data& data);
 
 public:
 	static g_ui_open_status open();
-
-	static g_ui_transaction_id send(uint8_t* request, uint32_t length);
-	static bool receive(g_ui_transaction_id transaction, uint8_t** out_data, uint32_t* out_length);
 
 	static void add_listener(g_listener* l);
 	static void remove_listener(g_listener* l);

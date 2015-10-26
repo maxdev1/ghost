@@ -37,8 +37,8 @@
 /**
  * Spawns a ramdisk file as a process.
  */
-g_elf32_spawn_status g_elf32_loader::spawnFromRamdisk(g_ramdisk_entry* entry, g_security_level securityLevel, g_thread** target, const char* arguments,
-		bool enforceCurrentCore) {
+g_elf32_spawn_status g_elf32_loader::spawnFromRamdisk(g_ramdisk_entry* entry, g_security_level securityLevel, g_thread** target, bool enforceCurrentCore,
+		g_thread_priority priority) {
 
 	// Check file
 	if (entry == 0 || entry->type != G_RAMDISK_ENTRY_TYPE_FILE) {
@@ -64,20 +64,14 @@ g_elf32_spawn_status g_elf32_loader::spawnFromRamdisk(g_ramdisk_entry* entry, g_
 
 		g_address_space::switch_to_space(process->pageDirectory);
 		loadBinaryToCurrentAddressSpace(header, process);
-		g_thread_manager::prepare_thread_local_storage(mainThread);
+		g_thread_manager::prepareThreadLocalStorage(mainThread);
 		g_address_space::switch_to_space(thisPageDirectory);
 
 		// Set the tasks entry point
 		mainThread->cpuState->eip = header->e_entry;
 
-		// Give CLI
-		if (arguments) {
-			process->cliArguments = new char[G_CLIARGS_BUFFER_LENGTH];
-			uint32_t argsLen = g_string::length(arguments);
-			g_memory::copy(process->cliArguments, arguments, argsLen);
-			process->cliArguments[argsLen] = 0;
-			g_log_debug("%! kernel stored cli arguments for task %i", "elf32", process->main->id);
-		}
+		// Set priority
+		mainThread->priority = priority;
 
 		// Add to scheduling list
 		g_tasking::addTask(mainThread, enforceCurrentCore);

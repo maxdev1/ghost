@@ -21,7 +21,7 @@
 #ifndef GHOST_INTERRUPT_HANDLERS
 #define GHOST_INTERRUPT_HANDLERS
 
-#include <system/cpu_state.hpp>
+#include <system/processor_state.hpp>
 
 /**
  * Interrupt handler class
@@ -36,7 +36,7 @@ public:
 	/**
 	 * Dispatches the interrupt handling and EOIs.
 	 */
-	static g_cpu_state* handle(g_cpu_state* state);
+	static g_processor_state* handle(g_processor_state* state);
 
 };
 

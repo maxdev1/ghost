@@ -24,6 +24,7 @@
 #include <ghost.h>
 #include <string>
 #include <list>
+#include <ghostuser/ui/interface_specification.hpp>
 
 /**
  * An action component is capable of being observed by an action listener.
@@ -32,15 +33,15 @@
  */
 class action_component_t {
 private:
-	g_pid process;
-	uint32_t listener_id;
+	g_tid target_thread;
+	g_ui_component_id component_id;
 
 public:
 	/**
 	 *
 	 */
 	action_component_t() :
-			process(-1), listener_id(-1) {
+			target_thread(-1), component_id(-1) {
 	}
 
 	/**
@@ -52,7 +53,7 @@ public:
 	/**
 	 *
 	 */
-	virtual void setActionListener(g_pid process, uint32_t listener_id);
+	virtual void setActionListener(g_tid target_thread, g_ui_component_id component_id);
 
 	/**
 	 *

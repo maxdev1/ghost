@@ -36,11 +36,9 @@
 
 G_SYSCALL_HANDLER(call_vm86) {
 
-	g_thread* task = g_tasking::getCurrentThread();
+	g_syscall_call_vm86* data = (g_syscall_call_vm86*) G_SYSCALL_DATA(current_thread->cpuState);
 
-	g_syscall_call_vm86* data = (g_syscall_call_vm86*) G_SYSCALL_DATA(state);
-
-	if (task->process->securityLevel <= G_SECURITY_LEVEL_DRIVER) {
+	if (current_thread->process->securityLevel <= G_SECURITY_LEVEL_DRIVER) {
 		// Copy in registers
 		g_vm86_registers in = data->in;
 
@@ -50,16 +48,16 @@ G_SYSCALL_HANDLER(call_vm86) {
 		// Create task
 		g_thread* vm86task = g_thread_manager::createProcessVm86(data->interrupt, in, temporaryOut);
 		g_tasking::addTask(vm86task);
-		g_log_debug("%! task %i creates vm86 task %i to call interrupt %h", "syscall", task->id, vm86task->id, data->interrupt);
+		g_log_debug("%! task %i creates vm86 task %i to call interrupt %h", "syscall", current_thread->id, vm86task->id, data->interrupt);
 
 		// Set wait
-		task->wait(new g_waiter_call_vm86(data, temporaryOut, vm86task->id));
+		current_thread->wait(new g_waiter_call_vm86(data, temporaryOut, vm86task->id));
 
 		data->status = G_VM86_CALL_STATUS_SUCCESSFUL;
 	} else {
-		g_log_warn("%! task %i tried to do vm86 call but is not permitted", "syscall", task->id);
+		g_log_warn("%! task %i tried to do vm86 call but is not permitted", "syscall", current_thread->id);
 		data->status = G_VM86_CALL_STATUS_FAILED_NOT_PERMITTED;
 	}
-	return g_tasking::switchTask(state);
+	return g_tasking::schedule();
 }
 

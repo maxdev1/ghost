@@ -160,7 +160,7 @@ void g_kernel::run_bsp(g_physical_address initial_pd_physical) {
 	/* BSP INITIALIZATION END */
 
 	// wait for APs
-	waiting_aps = g_system::getCpuCount() - 1;
+	waiting_aps = g_system::getNumberOfProcessors() - 1;
 	g_log_info("%! waiting for %i application processors", "kern", waiting_aps);
 	while (waiting_aps > 0) {
 		asm("pause");
@@ -181,7 +181,7 @@ void g_kernel::run_ap() {
 
 	ap_setup_lock.lock();
 	{
-		uint32_t core = g_system::getCurrentCoreId();
+		uint32_t core = g_system::currentProcessorId();
 		g_log_debug("%! core %i ready for initialization", "kernap", core);
 
 		// Debug ESP output
@@ -236,7 +236,7 @@ void g_kernel::load_system_process(const char* binary_path, g_thread_priority pr
 	g_ramdisk_entry* entry = g_kernel_ramdisk->findAbsolute(binary_path);
 	if (entry) {
 		g_thread* systemProcess;
-		g_elf32_spawn_status status = g_elf32_loader::spawnFromRamdisk(entry, G_SECURITY_LEVEL_KERNEL, &systemProcess, 0, true);
+		g_elf32_spawn_status status = g_elf32_loader::spawnFromRamdisk(entry, G_SECURITY_LEVEL_KERNEL, &systemProcess, true, priority);
 
 		if (status != ELF32_SPAWN_STATUS_SUCCESSFUL) {
 			if (status == ELF32_SPAWN_STATUS_VALIDATION_ERROR) {
@@ -250,7 +250,6 @@ void g_kernel::load_system_process(const char* binary_path, g_thread_priority pr
 			}
 		}
 
-		systemProcess->priority = priority;
 		g_log_info("%! \"%s\" spawned to process %i", "kern", binary_path, systemProcess->id);
 	} else {
 		panic("%! \"%s\" not found", "kern", binary_path);

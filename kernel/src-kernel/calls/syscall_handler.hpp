@@ -22,105 +22,106 @@
 #define GHOST_SYSTEM_CALLS
 
 #include <utils/string.hpp>
-#include <system/cpu_state.hpp>
 #include <memory/paging.hpp>
 #include <memory/memory.hpp>
+#include <system/processor_state.hpp>
+#include <tasking/thread.hpp>
 
 // Macros for call code and data
 #define G_SYSCALL_CODE(state)				state->eax
 #define G_SYSCALL_DATA(state)				state->ebx
 
 // Call handler macro
-#define G_SYSCALL_HANDLER(handlerName)		g_cpu_state* g_syscall_handler::handlerName(g_cpu_state* state)
+#define G_SYSCALL_HANDLER(handlerName)		g_thread* g_syscall_handler::handlerName(g_thread* current_thread)
 
 /**
  *
  */
 class g_syscall_handler {
 public:
-	static g_cpu_state* handle(g_cpu_state* state);
+	static g_thread* handle(g_thread* state);
 
 private:
-	static g_cpu_state* yield(g_cpu_state* state);
-	static g_cpu_state* exit(g_cpu_state* state);
-	static g_cpu_state* sleep(g_cpu_state* state);
-	static g_cpu_state* get_pid(g_cpu_state* state);
-	static g_cpu_state* get_tid(g_cpu_state* state);
-	static g_cpu_state* get_pid_for_tid(g_cpu_state* state);
-	static g_cpu_state* ramdisk_spawn(g_cpu_state* state);
-	static g_cpu_state* create_thread(g_cpu_state* state);
-	static g_cpu_state* get_thread_entry(g_cpu_state* state);
-	static g_cpu_state* wait_for_irq(g_cpu_state* state);
-	static g_cpu_state* call_vm86(g_cpu_state* state);
-	static g_cpu_state* cli_args_store(g_cpu_state* state);
-	static g_cpu_state* cli_args_release(g_cpu_state* state);
-	static g_cpu_state* millis(g_cpu_state* state);
-	static g_cpu_state* kill(g_cpu_state* state);
-	static g_cpu_state* register_irq_handler(g_cpu_state* state);
-	static g_cpu_state* restore_interrupted_state(g_cpu_state* state);
-	static g_cpu_state* register_signal_handler(g_cpu_state* state);
-	static g_cpu_state* raise_signal(g_cpu_state* state);
+	static g_thread* yield(g_thread* state);
+	static g_thread* exit(g_thread* state);
+	static g_thread* sleep(g_thread* state);
+	static g_thread* get_pid(g_thread* state);
+	static g_thread* get_tid(g_thread* state);
+	static g_thread* get_pid_for_tid(g_thread* state);
+	static g_thread* ramdisk_spawn(g_thread* state);
+	static g_thread* create_thread(g_thread* state);
+	static g_thread* get_thread_entry(g_thread* state);
+	static g_thread* wait_for_irq(g_thread* state);
+	static g_thread* call_vm86(g_thread* state);
+	static g_thread* cli_args_store(g_thread* state);
+	static g_thread* cli_args_release(g_thread* state);
+	static g_thread* millis(g_thread* state);
+	static g_thread* kill(g_thread* state);
+	static g_thread* register_irq_handler(g_thread* state);
+	static g_thread* restore_interrupted_state(g_thread* state);
+	static g_thread* register_signal_handler(g_thread* state);
+	static g_thread* raise_signal(g_thread* state);
 
-	static g_cpu_state* task_id_register(g_cpu_state* state);
-	static g_cpu_state* task_id_get(g_cpu_state* state);
-	static g_cpu_state* fork(g_cpu_state* state);
-	static g_cpu_state* join(g_cpu_state* state);
-	static g_cpu_state* atomic_wait(g_cpu_state* state);
+	static g_thread* task_id_register(g_thread* state);
+	static g_thread* task_id_get(g_thread* state);
+	static g_thread* fork(g_thread* state);
+	static g_thread* join(g_thread* state);
+	static g_thread* atomic_wait(g_thread* state);
 
-	static g_cpu_state* create_empty_process(g_cpu_state* state);
-	static g_cpu_state* create_pages_in_space(g_cpu_state* state);
-	static g_cpu_state* attach_created_process(g_cpu_state* state);
-	static g_cpu_state* cancel_process_creation(g_cpu_state* state);
-	static g_cpu_state* get_created_process_id(g_cpu_state* state);
-	static g_cpu_state* write_tls_master_for_process(g_cpu_state* state);
-	static g_cpu_state* configure_process(g_cpu_state* state);
+	static g_thread* create_empty_process(g_thread* state);
+	static g_thread* create_pages_in_space(g_thread* state);
+	static g_thread* attach_created_process(g_thread* state);
+	static g_thread* cancel_process_creation(g_thread* state);
+	static g_thread* get_created_process_id(g_thread* state);
+	static g_thread* write_tls_master_for_process(g_thread* state);
+	static g_thread* configure_process(g_thread* state);
 
-	static g_cpu_state* send_msg(g_cpu_state* state);
-	static g_cpu_state* recv_msg(g_cpu_state* state);
-	static g_cpu_state* recv_topic_msg(g_cpu_state* state);
-	static g_cpu_state* send_message(g_cpu_state* state);
-	static g_cpu_state* receive_message(g_cpu_state* state);
+	static g_thread* send_msg(g_thread* state);
+	static g_thread* recv_msg(g_thread* state);
+	static g_thread* recv_topic_msg(g_thread* state);
+	static g_thread* send_message(g_thread* state);
+	static g_thread* receive_message(g_thread* state);
 
-	static g_cpu_state* alloc_mem(g_cpu_state* state);
-	static g_cpu_state* share_mem(g_cpu_state* state);
-	static g_cpu_state* map_mmio(g_cpu_state* state);
-	static g_cpu_state* sbrk(g_cpu_state* state);
-	static g_cpu_state* lower_malloc(g_cpu_state* state);
-	static g_cpu_state* lower_free(g_cpu_state* state);
-	static g_cpu_state* unmap(g_cpu_state* state);
+	static g_thread* alloc_mem(g_thread* state);
+	static g_thread* share_mem(g_thread* state);
+	static g_thread* map_mmio(g_thread* state);
+	static g_thread* sbrk(g_thread* state);
+	static g_thread* lower_malloc(g_thread* state);
+	static g_thread* lower_free(g_thread* state);
+	static g_thread* unmap(g_thread* state);
 
-	static g_cpu_state* log(g_cpu_state* state);
-	static g_cpu_state* set_video_log(g_cpu_state* state);
-	static g_cpu_state* test(g_cpu_state* state);
+	static g_thread* log(g_thread* state);
+	static g_thread* set_video_log(g_thread* state);
+	static g_thread* test(g_thread* state);
 
-	static g_cpu_state* ramdisk_find(g_cpu_state* state);
-	static g_cpu_state* ramdisk_find_child(g_cpu_state* state);
-	static g_cpu_state* ramdisk_info(g_cpu_state* state);
-	static g_cpu_state* ramdisk_read(g_cpu_state* state);
-	static g_cpu_state* ramdisk_child_count(g_cpu_state* state);
-	static g_cpu_state* ramdisk_child_at(g_cpu_state* state);
+	static g_thread* ramdisk_find(g_thread* state);
+	static g_thread* ramdisk_find_child(g_thread* state);
+	static g_thread* ramdisk_info(g_thread* state);
+	static g_thread* ramdisk_read(g_thread* state);
+	static g_thread* ramdisk_child_count(g_thread* state);
+	static g_thread* ramdisk_child_at(g_thread* state);
 
-	static g_cpu_state* fs_open(g_cpu_state* state);
-	static g_cpu_state* fs_read(g_cpu_state* state);
-	static g_cpu_state* fs_write(g_cpu_state* state);
-	static g_cpu_state* fs_close(g_cpu_state* state);
-	static g_cpu_state* fs_seek(g_cpu_state* state);
-	static g_cpu_state* fs_length(g_cpu_state* state);
+	static g_thread* fs_open(g_thread* state);
+	static g_thread* fs_read(g_thread* state);
+	static g_thread* fs_write(g_thread* state);
+	static g_thread* fs_close(g_thread* state);
+	static g_thread* fs_seek(g_thread* state);
+	static g_thread* fs_length(g_thread* state);
 
-	static g_cpu_state* fs_stat(g_cpu_state* state);
-	static g_cpu_state* fs_fstat(g_cpu_state* state);
-	static g_cpu_state* fs_clonefd(g_cpu_state* state);
-	static g_cpu_state* fs_pipe(g_cpu_state* state);
-	static g_cpu_state* fs_tell(g_cpu_state* state);
-	static g_cpu_state* fs_open_directory(g_cpu_state* state);
-	static g_cpu_state* fs_read_directory(g_cpu_state* state);
+	static g_thread* fs_stat(g_thread* state);
+	static g_thread* fs_fstat(g_thread* state);
+	static g_thread* fs_clonefd(g_thread* state);
+	static g_thread* fs_pipe(g_thread* state);
+	static g_thread* fs_tell(g_thread* state);
+	static g_thread* fs_open_directory(g_thread* state);
+	static g_thread* fs_read_directory(g_thread* state);
 
-	static g_cpu_state* get_working_directory(g_cpu_state* state);
-	static g_cpu_state* set_working_directory(g_cpu_state* state);
+	static g_thread* get_working_directory(g_thread* state);
+	static g_thread* set_working_directory(g_thread* state);
 
-	static g_cpu_state* fs_register_as_delegate(g_cpu_state* state);
-	static g_cpu_state* fs_set_transaction_status(g_cpu_state* state);
-	static g_cpu_state* fs_create_node(g_cpu_state* state);
+	static g_thread* fs_register_as_delegate(g_thread* state);
+	static g_thread* fs_set_transaction_status(g_thread* state);
+	static g_thread* fs_create_node(g_thread* state);
 
 };
 

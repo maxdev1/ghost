@@ -40,7 +40,6 @@ public:
 	virtual ~g_action_listener() {
 	}
 
-	virtual void event_received(uint8_t* data, uint32_t length);
 	virtual void handle_action(g_action_event e) = 0;
 };
 

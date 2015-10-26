@@ -26,5 +26,5 @@
  *
  */
 g_label* g_label::create() {
-	return createComponent<g_label, G_UI_COMPONENT_LABEL>();
+	return createComponent<g_label, G_UI_COMPONENT_TYPE_LABEL>();
 }

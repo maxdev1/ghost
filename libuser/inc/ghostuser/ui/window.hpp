@@ -22,15 +22,16 @@
 #define GHOSTLIBRARY_UI_WINDOW
 
 #include <ghostuser/ui/component.hpp>
+#include <ghostuser/ui/titled_component.hpp>
 #include <cstdint>
 
 /**
  *
  */
-class g_window: public g_component {
-private:
+class g_window: public g_component, public g_titled_component {
+protected:
 	g_window(uint32_t id) :
-			g_component(id) {
+			g_component(id), g_titled_component(id) {
 	}
 
 public:

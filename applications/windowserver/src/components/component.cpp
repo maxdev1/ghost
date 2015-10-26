@@ -317,8 +317,6 @@ void component_t::markFor(component_requirement_t req) {
 	if (parent) {
 		parent->markChildsFor(req);
 	}
-
-	windowserver_t::instance()->request_step();
 }
 
 /**

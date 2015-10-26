@@ -31,9 +31,8 @@
  * Writes a message to the system log.
  */
 G_SYSCALL_HANDLER(log) {
-	g_thread* task = g_tasking::getCurrentThread();
-	g_process* process = task->process;
-	g_syscall_log* data = (g_syscall_log*) G_SYSCALL_DATA(state);
+	g_process* process = current_thread->process;
+	g_syscall_log* data = (g_syscall_log*) G_SYSCALL_DATA(current_thread->cpuState);
 
 	// % signs are not permitted, because the internal logger would get confused.
 	uint32_t len = g_string::length(data->message);
@@ -43,9 +42,9 @@ G_SYSCALL_HANDLER(log) {
 		}
 	}
 
-	const char* task_ident = task->getIdentifier();
+	const char* task_ident = current_thread->getIdentifier();
 	if (task_ident == 0) {
-		task_ident = task->process->main->getIdentifier();
+		task_ident = current_thread->process->main->getIdentifier();
 	}
 
 	// If the task has an identifier, do log with name:
@@ -56,23 +55,23 @@ G_SYSCALL_HANDLER(log) {
 		char loggie[header_len + ident_len + 1];
 		g_string::concat(prefix, task_ident, loggie);
 
-		g_log_info("%! (%i:%i) %s", loggie, process->main->id, task->id, data->message);
+		g_log_info("%! (%i:%i) %s", loggie, process->main->id, current_thread->id, data->message);
 	} else {
-		g_log_info("%! (%i:%i) %s", prefix, process->main->id, task->id, data->message);
+		g_log_info("%! (%i:%i) %s", prefix, process->main->id, current_thread->id, data->message);
 	}
 
-	return state;
+	return current_thread;
 }
 
 /**
  * Sets the log output to the screen enabled or disabled.
  */
 G_SYSCALL_HANDLER(set_video_log) {
-	g_syscall_set_video_log* data = (g_syscall_set_video_log*) G_SYSCALL_DATA(state);
+	g_syscall_set_video_log* data = (g_syscall_set_video_log*) G_SYSCALL_DATA(current_thread->cpuState);
 
 	g_logger::setVideo(data->enabled);
 
-	return state;
+	return current_thread;
 }
 
 /**
@@ -80,7 +79,7 @@ G_SYSCALL_HANDLER(set_video_log) {
  */
 G_SYSCALL_HANDLER(test) {
 
-	g_syscall_test* data = (g_syscall_test*) G_SYSCALL_DATA(state);
+	g_syscall_test* data = (g_syscall_test*) G_SYSCALL_DATA(current_thread->cpuState);
 
 	if (data->test == 1) {
 		data->result = g_pp_allocator::getFreePageCount();
@@ -89,6 +88,6 @@ G_SYSCALL_HANDLER(test) {
 		data->result = 0;
 	}
 
-	return state;
+	return current_thread;
 }
 

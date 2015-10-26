@@ -53,7 +53,7 @@ void g_madt::parse(g_acpi_table_header* madtSdtHeader) {
 			// only useable if entry flag 1
 			if (entry->flags == 1) {
 				g_log_debug("%# lapic, id: %i, processorId: %i, flags: %i", entry->apicId, entry->processorId, entry->flags);
-				g_system::createCpu(entry->apicId);
+				g_system::addProcessor(entry->apicId);
 			}
 
 		} else if (entryHeader->deviceType == 1) { // IO APIC

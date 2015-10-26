@@ -69,13 +69,13 @@ uint32_t g_interrupt_exception_handler::getCR2() {
 /**
  * Dumps the current CPU state to the log file
  */
-void g_interrupt_exception_handler::dump(g_cpu_state* cpuState) {
-	g_thread* task = g_tasking::getCurrentThread();
-	g_process* process = task->process;
-	g_log_info("%! %s in task %i (process %i)", "exception", EXCEPTION_NAMES[cpuState->intr], task->id, process->main->id);
+void g_interrupt_exception_handler::dump(g_thread* current_thread) {
+	g_processor_state* cpuState = current_thread->cpuState;
+	g_process* process = current_thread->process;
+	g_log_info("%! %s in task %i (process %i)", "exception", EXCEPTION_NAMES[cpuState->intr], current_thread->id, process->main->id);
 
-	if (task->getIdentifier() != 0) {
-		g_log_info("%# task identified as '%s'", task->getIdentifier());
+	if (current_thread->getIdentifier() != 0) {
+		g_log_info("%# task identified as '%s'", current_thread->getIdentifier());
 	}
 
 	if (cpuState->intr == 0x0E) { // Page fault
@@ -92,40 +92,38 @@ void g_interrupt_exception_handler::dump(g_cpu_state* cpuState) {
  * Handles a general protection fault. If the current task is a VM86 task, the fault is redirected
  * to the Virtual8086 monitor.
  */
-g_cpu_state* g_interrupt_exception_handler::handleGeneralProtectionFault(g_cpu_state* cpuState) {
+g_thread* g_interrupt_exception_handler::handleGeneralProtectionFault(g_thread* current_thread) {
 
-	g_thread* task = g_tasking::getCurrentThread();
+	if (current_thread->type == g_thread_type::THREAD_VM86) {
 
-	if (task->type == g_thread_type::THREAD_VM86) {
-
-		g_virtual_monitor_handling_result result = g_virtual_8086_monitor::handleGpf((g_cpu_state_vm86*) cpuState);
+		g_virtual_monitor_handling_result result = g_virtual_8086_monitor::handleGpf((g_processor_state_vm86*) current_thread->cpuState);
 
 		if (result == VIRTUAL_MONITOR_HANDLING_RESULT_SUCCESSFUL) {
-			return cpuState;
+			return current_thread;
 
 		} else if (result == VIRTUAL_MONITOR_HANDLING_RESULT_FINISHED) {
-			task->alive = false;
-			return g_tasking::switchTask(cpuState);
+			current_thread->alive = false;
+			return g_tasking::schedule();
 
 		} else if (result == VIRTUAL_MONITOR_HANDLING_RESULT_UNHANDLED_OPCODE) {
-			g_log_info("%! %i unable to handle gpf for vm86 task", "exception", g_system::getCurrentCoreId());
-			task->alive = false;
-			return g_tasking::switchTask(cpuState);
+			g_log_info("%! %i unable to handle gpf for vm86 task", "exception", g_system::currentProcessorId());
+			current_thread->alive = false;
+			return g_tasking::schedule();
 		}
 	}
 
 	// Kill process, return with a switch
-	g_thread* main = task->process->main;
+	g_thread* main = current_thread->process->main;
 	main->alive = false;
-	dump(cpuState);
-	g_log_info("%! #%i process %i killed due to general protection fault", "exception", g_system::getCurrentCoreId(), main->id);
-	return g_tasking::switchTask(cpuState);
+	dump(current_thread);
+	g_log_info("%! #%i process %i killed due to general protection fault", "exception", g_system::currentProcessorId(), main->id);
+	return g_tasking::schedule();
 }
 
 /**
  *
  */
-void g_interrupt_exception_handler::printStackTrace(g_cpu_state* state) {
+void g_interrupt_exception_handler::printStackTrace(g_processor_state* state) {
 
 	// This function is not very safe, use with caution.
 	// Disallowed in anything but debug mode.
@@ -149,15 +147,14 @@ void g_interrupt_exception_handler::printStackTrace(g_cpu_state* state) {
 /**
  * Handles a page fault
  */
-g_cpu_state* g_interrupt_exception_handler::handlePageFault(g_cpu_state* cpuState) {
+g_thread* g_interrupt_exception_handler::handlePageFault(g_thread* current_thread) {
 
-	g_thread* thread = g_tasking::getCurrentThread();
 	g_virtual_address accessedVirtual = PAGE_ALIGN_DOWN(getCR2());
 	g_physical_address accessedPhysical = g_address_space::virtual_to_physical(accessedVirtual);
 
 	// Copy-on-write?
 	// Check if within binary image range
-	if (accessedVirtual >= thread->process->imageStart && accessedVirtual <= thread->process->imageEnd) {
+	if (accessedVirtual >= current_thread->process->imageStart && accessedVirtual <= current_thread->process->imageEnd) {
 
 		uint32_t ti = TABLE_IN_DIRECTORY_INDEX(accessedVirtual);
 		uint32_t pi = PAGE_IN_TABLE_INDEX(accessedVirtual);
@@ -182,15 +179,15 @@ g_cpu_state* g_interrupt_exception_handler::handlePageFault(g_cpu_state* cpuStat
 				g_pp_allocator::free(accessedPhysical);
 			}
 
-			g_log_debug("%! (%i:%i) entry %i/%i copied", "cow", thread->process->main->id, thread->id, ti, pi);
-			return cpuState;
+			g_log_debug("%! (%i:%i) entry %i/%i copied", "cow", current_thread->process->main->id, current_thread->id, ti, pi);
+			return current_thread;
 		}
 	}
 
 	// raise SIGSEGV in thread
-	thread->raise_signal(SIGSEGV);
-	g_log_info("%! (core %i) raised SIGSEGV in thread %i", "pagefault", g_system::getCurrentCoreId(), thread->id);
-	dump(cpuState);
+	current_thread->raise_signal(SIGSEGV);
+	g_log_info("%! (core %i) raised SIGSEGV in thread %i", "pagefault", g_system::currentProcessorId(), current_thread->id);
+	dump(current_thread);
 
 	// old stuff:
 	//  // Unhandled
@@ -199,65 +196,65 @@ g_cpu_state* g_interrupt_exception_handler::handlePageFault(g_cpu_state* cpuStat
 	//  g_thread* main = thread->process->main;
 	//  main->alive = false;
 
-	return g_tasking::switchTask(cpuState);
+	return g_tasking::schedule();
 }
 
 /**
  * Handles a divide error
  */
-g_cpu_state* g_interrupt_exception_handler::handleDivideError(g_cpu_state* cpuState) {
+g_thread* g_interrupt_exception_handler::handleDivideError(g_thread* current_thread) {
 
-	dump(cpuState);
+	dump(current_thread);
 
 	// Let process run, but skip the faulty instruction
-	g_thread* current = g_tasking::getCurrentThread();
-	++current->cpuState->eip;
-	g_log_info("%! #%i process %i had a divide error", "exception", g_system::getCurrentCoreId(), current->id);
-	return g_tasking::switchTask(cpuState);
+	++current_thread->cpuState->eip;
+	g_log_info("%! #%i thread %i had a divide error", "exception", g_system::currentProcessorId(), current_thread->id);
+	return g_tasking::schedule();
 }
 
 /**
  * Handles a invalid operation code
  */
-g_cpu_state* g_interrupt_exception_handler::handleInvalidOperationCode(g_cpu_state* cpuState) {
+g_thread* g_interrupt_exception_handler::handleInvalidOperationCode(g_thread* current_thread) {
 
-	dump(cpuState);
+	dump(current_thread);
 
-	// Kill process, return with a switch
-	g_thread* task = g_tasking::getCurrentThread();
-	g_thread* main = task->process->main;
+	// kill thread and process, return with a switch
+	g_thread* main = current_thread->process->main;
 	main->alive = false;
-	g_log_info("%! #%i process %i killed due to invalid operation code %h", "exception", g_system::getCurrentCoreId(), main->id, *((uint8_t* ) cpuState->eip));
-	return g_tasking::switchTask(cpuState);
+	current_thread->alive = false;
+	g_log_info("%! #%i process %i killed due to invalid operation code %h in thread %i", "exception", g_system::currentProcessorId(), main->id,
+			*((uint8_t* ) current_thread->cpuState->eip), current_thread->id);
+	return g_tasking::schedule();
 }
 
 /**
  *
  */
-g_cpu_state* g_interrupt_exception_handler::handle(g_cpu_state* cpuState) {
+g_thread* g_interrupt_exception_handler::handle(g_thread* current_thread) {
 
 	g_logger::manualLock();
 
 	bool resolved = false;
 
-	switch (cpuState->intr) {
+	switch (current_thread->cpuState->intr) {
 	case 0x00: { // Divide error
-		cpuState = handleDivideError(cpuState);
+		current_thread = handleDivideError(current_thread);
 		resolved = true;
 		break;
 	}
 	case 0x0E: { // Page fault
-		cpuState = handlePageFault(cpuState);
+		current_thread = handlePageFault(current_thread);
 		resolved = true;
 		break;
 	}
 	case 0x0D: { // General protection fault
-		cpuState = handleGeneralProtectionFault(cpuState);
+		current_thread = handleGeneralProtectionFault(current_thread);
 		resolved = true;
 		break;
 	}
 	case 0x06: { // Invalid operation code
-		cpuState = handleInvalidOperationCode(cpuState);
+		current_thread = handleInvalidOperationCode(current_thread);
 		resolved = true;
 		break;
 	}
@@ -265,12 +262,12 @@ g_cpu_state* g_interrupt_exception_handler::handle(g_cpu_state* cpuState) {
 
 	if (resolved) {
 		g_logger::manualUnlock();
-		return cpuState;
+		return current_thread;
 	}
 
 	// No resolution
 	g_log_info("%*%! no resolution, hanging system", 0x0C, "exception");
-	dump(cpuState);
+	dump(current_thread);
 	for (;;) {
 		asm("hlt");
 	}

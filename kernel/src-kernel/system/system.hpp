@@ -21,8 +21,9 @@
 #ifndef GHOST_SHARED_SYSTEM_SYSTEM
 #define GHOST_SHARED_SYSTEM_SYSTEM
 
+#include <system/processor.hpp>
+
 #include "ghost/stdint.h"
-#include <system/cpu.hpp>
 
 /**
  * System class for processor and interrupt controller handling
@@ -46,27 +47,27 @@ public:
 	/**
 	 *
 	 */
-	static g_cpu* getCpus();
+	static g_processor* getProcessorList();
 
 	/**
 	 *
 	 */
-	static uint32_t getCpuCount();
+	static uint32_t getNumberOfProcessors();
 
 	/**
 	 * Returns the identifier to use for core identification
 	 */
-	static uint32_t getCurrentCoreId();
+	static uint32_t currentProcessorId();
 
 	/**
 	 * Creates a core
 	 */
-	static void createCpu(uint32_t apicId);
+	static void addProcessor(uint32_t apicId);
 
 	/**
 	 *
 	 */
-	static g_cpu* getCpu(uint32_t coreId);
+	static g_processor* getProcessorById(uint32_t coreId);
 
 };
 

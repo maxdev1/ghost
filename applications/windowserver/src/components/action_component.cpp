@@ -19,13 +19,14 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <components/action_component.hpp>
+#include <stdio.h>
 
 /**
  *
  */
-void action_component_t::setActionListener(g_pid process, uint32_t listener_id) {
-	this->process = process;
-	this->listener_id = listener_id;
+void action_component_t::setActionListener(g_tid target_thread, g_ui_component_id component_id) {
+	this->target_thread = target_thread;
+	this->component_id = component_id;
 }
 
 /**
@@ -33,10 +34,10 @@ void action_component_t::setActionListener(g_pid process, uint32_t listener_id) 
  */
 void action_component_t::fireAction() {
 
-	if (this->process != -1) {
-		uint8_t* data = new uint8_t[0];
-
-		// TODO send event
-		//RequestHandler::send_event(this->process, this->listener_id, data, 0);
+	if (this->target_thread != -1) {
+		g_ui_component_action_event action_event;
+		action_event.header.type = G_UI_COMPONENT_EVENT_TYPE_ACTION;
+		action_event.header.component_id = this->component_id;
+		g_send_message(this->target_thread, &action_event, sizeof(g_ui_component_action_event));
 	}
 }

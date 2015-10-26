@@ -18,16 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#define TEST_MESSAGING		0
-#define TEST_UI				1
-#define TEST_OLD_MESSAGING	2
+#include "tester.hpp"
 
-#define SELECTED_TEST		TEST_UI
-
-#if SELECTED_TEST == TEST_MESSAGING
-#include "../testsrc/messaging.cpp"
-#elif SELECTED_TEST == TEST_OLD_MESSAGING
-#include "../testsrc/old_messaging.cpp"
-#elif SELECTED_TEST == TEST_UI
-#include "../testsrc/ui.cpp"
-#endif
+/**
+ *
+ */
+int main(int argc, char** argv) {
+	run_test(argc, argv);
+}
