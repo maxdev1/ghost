@@ -18,6 +18,7 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <debug/debug_interface_kernel.hpp>
 #include "calls/syscall_handler.hpp"
 
 #include "filesystem/filesystem.hpp"
@@ -130,6 +131,7 @@ G_SYSCALL_HANDLER(fs_create_node) {
 			node->name = new char[g_string::length(data->name) + 1];
 			g_string::copy(node->name, data->name);
 			parent->add_child(node);
+			G_DEBUG_INTERFACE_FILESYSTEM_UPDATE_NODE(node);
 
 			data->result = G_FS_CREATE_NODE_STATUS_CREATED;
 		}

@@ -21,9 +21,68 @@
 #ifndef __WINDOWSERVER__
 #define __WINDOWSERVER__
 
+#include <components/component.hpp>
+#include <components/screen.hpp>
+#include <events/event_processor.hpp>
+#include "output/video_output.hpp"
+#include <ghostuser/graphics/painter.hpp>
+#include <ghostuser/graphics/graphics.hpp>
+
+#define BENCHMARKING 0
+
+/**
+ *
+ */
 class windowserver_t {
 public:
+	video_output_t* video_output;
+	event_processor_t* event_processor;
+	screen_t* screen;
+
+	struct {
+		uint8_t lock;
+	} execution_state;
+
+	/**
+	 * Sets up the windowing system by configuring a video output, setting up the
+	 * event processor and running the main loop. Each step of the main loop includes
+	 * a event handling and rendering sequence.
+	 */
 	void launch();
+
+	/**
+	 * Unlocks the execution state, so the main loop performs the next step.
+	 */
+	void request_step();
+
+	/**
+	 * Renders the current component state.
+	 */
+	void render(g_graphics* graphics, g_painter* painter);
+
+	/**
+	 * Dispatches the given event to the component.
+	 *
+	 * @return whether the event was handled
+	 */
+	bool dispatch(component_t* component, event_t& event);
+
+	/**
+	 * Dispatches the given event upwards the component tree.
+	 */
+	component_t* dispatchUpwards(component_t* component, event_t& event);
+
+	/**
+	 * Returns the singleton instance of the window server.
+	 *
+	 * @return the instance
+	 */
+	static windowserver_t* instance();
+
+	/**
+	 * TODO remove
+	 */
+	void createTestComponents();
 };
 
 #endif

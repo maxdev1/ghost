@@ -38,6 +38,8 @@ static std::vector<terminal_t*> terminals;
 static std::vector<g_tid> terminal_threads;
 static terminal_t* active_terminal = 0;
 
+int terminal_index = 0;
+
 /**
  *
  */
@@ -48,7 +50,10 @@ int main(int argc, char* argv[]) {
 	}
 
 	terminal_t::prepare();
-	terminal_t::create_terminal();
+
+	create_terminal_info_t* inf = new create_terminal_info_t;
+	inf->number = terminal_index++;
+	terminal_t::create_terminal(inf);
 
 	// join all terminals
 	while (terminal_threads.size() > 0) {
@@ -81,15 +86,16 @@ void terminal_t::prepare() {
 /**
  *
  */
-void terminal_t::create_terminal() {
-	g_tid term = g_create_thread((void*) &terminal_t::add_terminal);
+void terminal_t::create_terminal(create_terminal_info_t* inf) {
+	g_tid term = g_create_thread_d((void*) &terminal_t::add_terminal,
+			(void*) inf);
 	terminal_threads.push_back(term);
 }
 
 /**
  *
  */
-void terminal_t::add_terminal() {
+void terminal_t::add_terminal(create_terminal_info_t* inf) {
 	terminal_t* terminal = new terminal_t();
 	terminals.push_back(terminal);
 
@@ -98,7 +104,7 @@ void terminal_t::add_terminal() {
 	}
 
 	switch_to(terminal);
-	terminal->run();
+	terminal->run(inf);
 }
 
 /**
@@ -172,30 +178,41 @@ void terminal_t::read_working_directory() {
 /**
  *
  */
-void terminal_t::run() {
+void terminal_t::run(create_terminal_info_t* inf) {
 
 	read_working_directory();
 	screen->clean();
 	screen->activate();
 
-	// print the logo
-	std::ifstream logofile("/system/graphics/logo.oem-us");
-	screen->write("\n");
-	if (logofile.good()) {
-		std::string logo((std::istreambuf_iterator<char>(logofile)),
-				std::istreambuf_iterator<char>());
-		screen->write(logo, SC_COLOR(SC_BLACK, SC_LBLUE));
+	if (inf->number == 0) {
+		// print the logo
+		std::ifstream logofile("/system/graphics/logo.oem-us");
+		screen->write("\n");
+		if (logofile.good()) {
+			std::string logo((std::istreambuf_iterator<char>(logofile)),
+					std::istreambuf_iterator<char>());
+			screen->write(logo, SC_COLOR(SC_BLACK, SC_LBLUE));
+		}
+
+		std::stringstream msg1;
+		msg1 << std::endl;
+		msg1 << " Copyright (c) 2012-2015 Max Schl" << OEMUS_CHAR_UE << "ssel"
+				<< std::endl;
+		screen->write(msg1.str(), SC_COLOR(SC_BLACK, SC_LGRAY));
+		std::stringstream msg2;
+		msg2 << " Enter '" << BUILTIN_COMMAND_HELP
+				<< "' for a brief introduction.";
+		msg2 << std::endl << std::endl;
+		screen->write(msg2.str());
+
+	} else {
+		std::stringstream msg;
+		msg << "terminal " << inf->number << std::endl;
+		screen->write(msg.str());
 	}
 
-	std::stringstream msg1;
-	msg1 << std::endl;
-	msg1 << " Copyright (c) 2012-2015 Max Schl" << OEMUS_CHAR_UE << "ssel"
-			<< std::endl;
-	screen->write(msg1.str(), SC_COLOR(SC_BLACK, SC_LGRAY));
-	std::stringstream msg2;
-	msg2 << " Enter '" << BUILTIN_COMMAND_HELP << "' for a brief introduction.";
-	msg2 << std::endl << std::endl;
-	screen->write(msg2.str());
+	// delete info
+	delete inf;
 
 	std::string command;
 
@@ -225,7 +242,10 @@ void terminal_t::run() {
 			write_header = false;
 
 		} else if (status == TERMINAL_INPUT_STATUS_SCREEN_CREATE) {
-			create_terminal();
+
+			create_terminal_info_t* inf = new create_terminal_info_t;
+			inf->number = terminal_index++;
+			create_terminal(inf);
 			write_header = false;
 
 		} else if (status == TERMINAL_INPUT_STATUS_EXIT) {
@@ -457,50 +477,6 @@ bool terminal_t::handle_builtin(std::string command) {
 		return true;
 
 	} else if (command.substr(0,
-			std::string(BUILTIN_COMMAND_READ).length()) == BUILTIN_COMMAND_READ) {
-		command = command.substr(std::string(BUILTIN_COMMAND_READ).length());
-
-		FILE* file = fopen(command.c_str(), "r");
-
-		if (file == NULL) {
-			screen->write("file '" + command + "' not found\n");
-		} else {
-			bool end = false;
-			int lines = 0;
-			while (true) {
-				char c = fgetc(file);
-				if (c == '\n' && !end) {
-
-					if (lines == 8) {
-						lines = 0;
-						while (true) {
-							auto info = g_keyboard::readKey();
-							if (info.key == "KEY_ESC") {
-								end = true;
-								break;
-							}
-							if (info.pressed) {
-								break;
-							}
-						}
-					}
-				}
-
-				if (isprint(c) || c == '\n') {
-					screen->write(std::string("") + c);
-				} else if (c == '\t') {
-					screen->write("    ");
-				}
-				if (feof(file)) {
-					break;
-				}
-			}
-
-			fclose(file);
-		}
-		return true;
-
-	} else if (command.substr(0,
 			std::string(BUILTIN_COMMAND_BACKGROUND).length()) == BUILTIN_COMMAND_BACKGROUND) {
 		command = command.substr(
 				std::string(BUILTIN_COMMAND_BACKGROUND).length());
@@ -607,7 +583,10 @@ bool terminal_t::handle_builtin(std::string command) {
 		return true;
 
 	} else if (command == BUILTIN_COMMAND_TERM) {
-		create_terminal();
+
+		create_terminal_info_t* inf = new create_terminal_info_t;
+		inf->number = terminal_index++;
+		create_terminal(inf);
 		return true;
 
 	}
@@ -630,12 +609,18 @@ void terminal_t::standard_out_thread(standard_out_thread_data_t* data) {
 		if (stat == G_FS_READ_SUCCESSFUL) {
 			std::stringstream o;
 			for (int i = 0; i < r; i++) {
-				o << buf[i];
+				char c = buf[i];
+				if (c == '\r') {
+					continue;
+				} else if (c == '\t') {
+					o << "    ";
+				} else {
+					o << c;
+				}
 			}
 
-			data->screen->write(o.str(), data->err ?
-			SC_ERROR_COLOR :
-														SC_DEFAULT_COLOR);
+			uint8_t color = (data->err ? SC_ERROR_COLOR : SC_DEFAULT_COLOR);
+			data->screen->write(o.str(), color);
 			data->screen->updateCursor();
 		}
 	}

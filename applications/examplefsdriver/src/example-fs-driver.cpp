@@ -23,6 +23,7 @@
 #include <map>
 #include <string>
 #include <ghostuser/utils/logger.hpp>
+#include <stdio.h>
 
 /**
  *
@@ -135,7 +136,7 @@ int main(int argc, char* argv[]) {
 							child->phys_id, &created_vfs_node_id);
 					child->virt_id = created_vfs_node_id;
 					g_logger::log(
-							"discovered child of %i (phys %lli) named %s, virt %i, phys %lli",
+							"discovered child of %i (phys %i) named %s, virt %i, phys %i",
 							parent->virt_id, parent->phys_id, disc->name,
 							child->virt_id, child->phys_id);
 
@@ -153,12 +154,15 @@ int main(int argc, char* argv[]) {
 				g_fs_tasked_delegate_transaction_storage_read* storage =
 						(g_fs_tasked_delegate_transaction_storage_read*) transaction_storage;
 
-				int readable = 1024 - storage->offset;
-				for (int i = 0; i < readable; i++) {
+				// this is a dummy method, driver has exactly 1024 random files
+				int toread = 1024 - storage->offset;
+				int requested = storage->length;
+				toread = toread < requested ? toread : requested;
+				for (int i = 0; i < toread; i++) {
 					((char*) storage->mapped_buffer)[i] = (char) ('a'
 							+ (i % ('z' - 'a')));
 				}
-				storage->result_read = readable;
+				storage->result_read = toread;
 				storage->result_status = G_FS_READ_SUCCESSFUL;
 				g_fs_set_transaction_status(request.parameterA,
 						G_FS_TRANSACTION_FINISHED);
@@ -195,12 +199,14 @@ int main(int argc, char* argv[]) {
 				g_fs_tasked_delegate_transaction_storage_directory_refresh* storage =
 						(g_fs_tasked_delegate_transaction_storage_directory_refresh*) transaction_storage;
 
-				if (storage->position < 10) {
+				klog("got read directory request");
+
+				for(int position = 0; position < 10; position++) {
 					phys_node_t* parent = phys_nodes[storage->parent_phys_fs_id];
 
 					// prepare name
 					std::stringstream filenames;
-					filenames << "file" << storage->position;
+					filenames << "file" << position;
 					std::string filename = filenames.str();
 
 					// find existing node at position
@@ -209,7 +215,7 @@ int main(int argc, char* argv[]) {
 					int index = 0;
 					for (auto entry : phys_nodes) {
 						if (entry.second->parent->phys_id == parent->phys_id) {
-							if (index == storage->position) {
+							if (index == position) {
 								child = entry.second;
 								break;
 							}
@@ -220,7 +226,10 @@ int main(int argc, char* argv[]) {
 					// otherwise create node
 					if (child == 0) {
 						child = fake_discovery(parent, filename.c_str());
+						klog("- creating fake child: %s", filename.c_str());
 					}
+
+					klog("- fake child: %s", filename.c_str());
 
 					// create/update node
 					g_fs_virt_id vfs_node_id;
@@ -237,16 +246,13 @@ int main(int argc, char* argv[]) {
 						g_logger::log("failed on node when reading dir");
 					}
 
-					storage->result_child = vfs_node_id;
 					storage->result_status = G_FS_READ_DIRECTORY_SUCCESSFUL;
-				} else {
-					storage->result_status = G_FS_READ_DIRECTORY_EOD;
 				}
 
 				g_fs_set_transaction_status(request.parameterA,
 						G_FS_TRANSACTION_FINISHED);
-
 			}
+
 		}
 
 	} else {

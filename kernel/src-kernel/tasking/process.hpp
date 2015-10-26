@@ -67,6 +67,7 @@ public:
 	g_page_directory pageDirectory;
 	char* cliArguments;
 	char* workingDirectory;
+	char* source_path;
 
 	g_address_range_pool virtualRanges;
 

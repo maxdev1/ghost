@@ -27,6 +27,7 @@
 #include <memory/gdt/gdt_manager.hpp>
 #include <utils/string.hpp>
 #include <kernel.hpp>
+#include "debug/debug_interface_kernel.hpp"
 
 /**
  *
@@ -157,6 +158,21 @@ void g_scheduler::updateMilliseconds() {
 			g_log_info("%# - %i:%i, eip: %h, waiter: %s, name: %s, rounds: %i", thr->process->main->id, thr->id, thr->cpuState->eip,
 					(thr->waitManager == nullptr ? "-" : thr->waitManager->debug_name()), (thr->getIdentifier() == 0 ? "-" : thr->getIdentifier()),
 					thr->rounds);
+			entry = entry->next;
+		}
+	}
+#endif
+
+#if G_DEBUG_INTERFACE_MODE == G_DEBUG_INTERFACE_MODE_FULL
+	static uint64_t lastProcessorTimeUpdate = 0;
+	if (milliseconds - lastProcessorTimeUpdate > 500) {
+		lastProcessorTimeUpdate = milliseconds;
+
+		g_list_entry<g_thread*> *entry = taskList;
+		while (entry) {
+			g_thread* thr = entry->value;
+			G_DEBUG_INTERFACE_TASK_SET_ROUNDS(thr->id, thr->rounds);
+			thr->rounds = 0;
 			entry = entry->next;
 		}
 	}

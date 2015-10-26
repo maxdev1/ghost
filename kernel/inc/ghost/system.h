@@ -70,8 +70,8 @@ typedef struct {
 	g_fd stderr_read;
 }__attribute__((packed)) g_spawn_command_spawn_response;
 
-// length of the command line arguments buffer
-#define G_CLIARGS_BUFFER_LENGTH		1024
+// process configuration buffer lengths
+#define G_CLIARGS_BUFFER_LENGTH			1024
 
 // for <g_register_irq_handler>
 typedef uint8_t g_register_irq_handler_status;

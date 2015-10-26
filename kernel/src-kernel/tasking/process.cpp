@@ -36,8 +36,9 @@ g_process::g_process(g_security_level securityLevel) :
 	heapBreak = 0;
 	heapPages = 0;
 
-	// set no cli arguments
+	// empty string fields
 	cliArguments = 0;
+	source_path = 0;
 
 	// set default working directory
 	workingDirectory = new char[G_PATH_MAX];
@@ -57,6 +58,10 @@ g_process::~g_process() {
 
 	if (cliArguments) {
 		delete cliArguments;
+	}
+
+	if (source_path) {
+		delete source_path;
 	}
 
 }

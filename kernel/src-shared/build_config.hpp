@@ -22,6 +22,7 @@
 #define GHOST_BUILDCONFIGURATION
 
 #include <logger/log_level.hpp>
+#include "debug/debug_interface_mode.hpp"
 
 #if !(defined(_ARCH_X86_) || defined(_ARCH_X86_64_))
 #error "No architecture defined for build. Need to specify _ARCH_X86_ or _ARCH_x86_64_"
@@ -52,5 +53,10 @@
 #define G_DEBUG_WHOS_WAITING							false
 #define G_DEBUG_LOCKS_DEADLOCKING						false
 #define G_DEBUG_THREAD_DUMPING							false
+
+/**
+ * Debug interface mode
+ */
+#define G_DEBUG_INTERFACE_MODE							G_DEBUG_INTERFACE_MODE_PLAIN_LOG
 
 #endif

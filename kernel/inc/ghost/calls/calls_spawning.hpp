@@ -136,6 +136,30 @@ typedef struct {
 }__attribute__((packed)) g_syscall_write_tls_master_for_process;
 
 /**
+ * Used for process configuration on spawning.
+ */
+typedef struct {
+	char* source_path;
+}__attribute__((packed)) g_process_configuration;
+
+/**
+ * @field processObject
+ * 		handle to the target process
+ *
+ * @field configuration
+ * 		configuration content
+ *
+ * @field result
+ * 		whether configuration was successful
+ */
+typedef struct {
+	g_process_creation_identifier processObject;
+	g_process_configuration configuration;
+
+	uint8_t result;
+}__attribute__((packed)) g_syscall_configure_process;
+
+/**
  * @field eip
  * 		the start instruction address
  *

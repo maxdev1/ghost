@@ -44,6 +44,7 @@ static g_hash_map<g_fs_virt_id, g_fs_node*>* nodes;
 
 static g_fs_node* root;
 static g_fs_node* pipe_root;
+static g_fs_node* mount_root;
 
 /**
  *
@@ -59,11 +60,12 @@ void g_filesystem::initialize() {
 	root->type = G_FS_NODE_TYPE_ROOT;
 
 	// mount root
-	g_fs_node* mount_root = create_node();
+	mount_root = create_node();
 	mount_root->set_delegate(new g_fs_delegate_mount());
 	mount_root->name = (char*) "mount";
 	mount_root->type = G_FS_NODE_TYPE_MOUNTPOINT;
 	root->add_child(mount_root);
+	G_DEBUG_INTERFACE_FILESYSTEM_UPDATE_NODE(mount_root);
 
 	// ramdisk root
 	g_fs_node* ramdisk_root = create_node();
@@ -72,6 +74,7 @@ void g_filesystem::initialize() {
 	ramdisk_root->name = (char*) "ramdisk";
 	ramdisk_root->type = G_FS_NODE_TYPE_MOUNTPOINT;
 	mount_root->add_child(ramdisk_root);
+	G_DEBUG_INTERFACE_FILESYSTEM_UPDATE_NODE(ramdisk_root);
 
 	// pipe root
 	pipe_root = create_node();
@@ -79,6 +82,7 @@ void g_filesystem::initialize() {
 	pipe_root->name = (char*) "pipe";
 	pipe_root->type = G_FS_NODE_TYPE_MOUNTPOINT;
 	mount_root->add_child(pipe_root);
+	G_DEBUG_INTERFACE_FILESYSTEM_UPDATE_NODE(pipe_root);
 
 	// ramdisk is root
 	root->set_delegate(ramdisk_delegate);
@@ -361,7 +365,8 @@ g_fs_register_as_delegate_status g_filesystem::create_delegate(g_thread* thread,
 	g_string::copy(mountpoint->name, name);
 	mountpoint->type = G_FS_NODE_TYPE_MOUNTPOINT;
 	mountpoint->phys_fs_id = phys_mountpoint_id;
-	root->add_child(mountpoint);
+	mount_root->add_child(mountpoint);
+	G_DEBUG_INTERFACE_FILESYSTEM_UPDATE_NODE(mountpoint);
 
 	// copy mountpoint id
 	*out_mountpoint_id = mountpoint->id;

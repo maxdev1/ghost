@@ -259,10 +259,10 @@ g_spawn_status spawn(const char* path, const char* args, const char* workdir,
 	auto target_proc = g_create_empty_process(sec_lvl);
 	g_pid target_pid = g_get_created_process_id(target_proc);
 
-	// TODO make toggle-able
-	// std::stringstream info;
-	// info << "loading \"" << path << "\" to process " << target_pid;
-	// g_logger::log(info.str());
+	// apply configuration
+	g_process_configuration configuration;
+	configuration.source_path = (char*) path;
+	g_configure_process(target_proc, configuration);
 
 	// create a loader
 	loader_t* loader;

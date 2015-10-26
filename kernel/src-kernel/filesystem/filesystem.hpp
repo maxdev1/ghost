@@ -32,6 +32,7 @@
 
 #include "ghost/stdint.h"
 #include <tasking/tasking.hpp>
+#include "debug/debug_interface_kernel.hpp"
 
 /**
  *

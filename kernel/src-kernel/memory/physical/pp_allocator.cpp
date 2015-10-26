@@ -23,6 +23,7 @@
 #include <memory/bitmap/bitmap_page_allocator.hpp>
 #include <logger/logger.hpp>
 #include <kernel.hpp>
+#include "debug/debug_interface_kernel.hpp"
 
 static uint32_t freePageCount = 0;
 
@@ -67,6 +68,8 @@ void g_pp_allocator::initializeFromBitmap(g_physical_address bitmapStart, g_phys
 		}
 	}
 
+	G_DEBUG_INTERFACE_SYSTEM_INFORMATION("memory.freePageCount", freePageCount);
+
 	g_log_debug("%! bitmap analyzed, got %i free pages", "ppa", freePageCount);
 }
 
@@ -77,6 +80,8 @@ void g_pp_allocator::free(g_physical_address page) {
 	physicalAllocator.markFree(page);
 
 	++freePageCount;
+
+	G_DEBUG_INTERFACE_MEMORY_SET_PAGE_USAGE(page, 0);
 }
 
 /**
@@ -91,5 +96,7 @@ g_physical_address g_pp_allocator::allocate() {
 	}
 
 	--freePageCount;
+
+	G_DEBUG_INTERFACE_MEMORY_SET_PAGE_USAGE(page, 1);
 	return page;
 }

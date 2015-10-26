@@ -26,6 +26,7 @@
 #include <tasking/scheduling/scheduler.hpp>
 #include <system/system.hpp>
 #include <tasking/thread_manager.hpp>
+#include <debug/debug_interface_kernel.hpp>
 
 static g_scheduler** schedulers;
 
@@ -214,6 +215,8 @@ bool g_tasking::registerTaskForIdentifier(g_thread* task, const char* newIdentif
 
 	// Set the identifier
 	task->setIdentifier(newIdentifier);
+
+	G_DEBUG_INTERFACE_TASK_SET_IDENTIFIER(task->id, newIdentifier);
 	g_log_debug("%! task %i registered as '%s'", "tasking", task->id, newIdentifier);
 	return true;
 }

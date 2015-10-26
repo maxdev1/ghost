@@ -28,6 +28,8 @@
 
 #include "system/system.hpp"
 #include "system/smp/global_lock.hpp"
+#include "system/serial/serial_port.hpp"
+#include "system/bios_data_area.hpp"
 #include "tasking/tasking.hpp"
 #include "filesystem/filesystem.hpp"
 
@@ -63,8 +65,15 @@ static g_global_lock system_process_spawn_lock;
  */
 void g_kernel::pre_setup(g_setup_information* info) {
 
-	// initialize COM port logging
-	g_logger::initializeSerial();
+	// initialize COM port
+	g_com_port_information comPortInfo = biosDataArea->comPortInfo;
+	if (comPortInfo.com1 > 0) {
+		g_serial_port::initializePort(comPortInfo.com1, false); // Initialize in poll mode
+		g_logger::enableSerialPortLogging();
+		g_debug_interface::initialize(comPortInfo.com1);
+	} else {
+		g_logger::println("%! COM1 port not available for serial debug output", "logger");
+	}
 
 	// print header
 	print_header(info);
