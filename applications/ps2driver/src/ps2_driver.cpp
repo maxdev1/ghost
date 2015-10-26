@@ -18,10 +18,9 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <ps2_driver.hpp>
+#include "ps2_driver.hpp"
 
 #include <math.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <ghost.h>
@@ -31,17 +30,26 @@
 #include <ghostuser/utils/logger.hpp>
 #include <ghostuser/io/ps2_driver_constants.hpp>
 
+/**
+ *
+ */
 uint8_t mouse_packet_number = 0;
 uint8_t mouse_packet_buffer[3];
 int32_t mouse_position_x = 0;
 int32_t mouse_position_y = 0;
 
+/**
+ * Receiver task ids and transaction ids for dispatching incoming packets.
+ */
 uint32_t mouse_receiver_tid;
 uint32_t mouse_receiver_transaction;
 uint32_t keyboard_receiver_tid;
 uint32_t keyboard_receiver_transaction;
 
-uint32_t packets_count;
+/**
+ *
+ */
+uint64_t packets_count = 0;
 
 /**
  *
@@ -58,9 +66,7 @@ int main() {
 	initialize_mouse();
 
 	// start receiver threads
-	g_logger::log("registering irq handlers");
-	g_register_irq_handler(1, irq_handler);
-	g_register_irq_handler(12, irq_handler);
+	register_operation_mode();
 
 	// wait for control requests
 	size_t buflen = sizeof(g_message_header) + sizeof(g_ps2_register_request);
@@ -92,23 +98,50 @@ int main() {
 /**
  *
  */
-void irq_handler(uint8_t irq) {
+void initialize_mouse() {
 
 	uint8_t status;
-	while (((status = g_utils::inportByte(0x64)) & 1) != 0) {
-		uint8_t value = g_utils::inportByte(0x60);
 
-		bool fromKeyboard = ((status & (1 << 5)) == 0);
-
-		if (fromKeyboard) {
-			handle_keyboard_data(value);
-		} else {
-			handle_mouse_data(value);
-		}
-
-		++packets_count;
+	// empty input buffer
+	while (g_utils::inportByte(0x64) & 0x01) {
+		g_utils::inportByte(0x60);
 	}
 
+	// activate mouse device
+	wait_for_buffer(PS2_OUT);
+	g_utils::outportByte(0x64, 0xA8);
+
+	// get commando-byte, set bit 1 (enables IRQ12), send back
+	wait_for_buffer(PS2_OUT);
+	g_utils::outportByte(0x64, 0x20);
+
+	wait_for_buffer(PS2_IN);
+	status = g_utils::inportByte(0x60) | (1 << 1);
+
+	wait_for_buffer(PS2_OUT);
+	g_utils::outportByte(0x64, 0x60);
+	wait_for_buffer(PS2_OUT);
+	g_utils::outportByte(0x60, status);
+
+	// send set-default-settings command to mouse
+	write_to_mouse(0xF6);
+
+	wait_for_buffer(PS2_IN);
+	status = g_utils::inportByte(0x60);
+	if (status != 0xFA) {
+		g_logger::log("mouse did not ack set-default-settings command");
+		return;
+	}
+
+	// enable the mouse
+	write_to_mouse(0xF4);
+
+	wait_for_buffer(PS2_IN);
+	status = g_utils::inportByte(0x60);
+	if (status != 0xFA) {
+		g_logger::log("mouse did not ack enable-mouse command");
+		return;
+	}
 }
 
 /**
@@ -168,7 +201,7 @@ void handle_keyboard_data(uint8_t b) {
 	g_ps2_keyboard_packet packet;
 	packet.scancode = b;
 
-	// escape key does kernel break
+	// ESC is the test key
 	if (b == 1) {
 		g_test(1);
 	}
@@ -197,55 +230,6 @@ void wait_for_buffer(ps2_buffer_t buffer) {
 				return;
 			}
 		}
-	}
-}
-
-/**
- *
- */
-void initialize_mouse() {
-
-	uint8_t status;
-
-	// empty input buffer
-	while (g_utils::inportByte(0x64) & 0x01) {
-		g_utils::inportByte(0x60);
-	}
-
-	// activate mouse device
-	wait_for_buffer(PS2_OUT);
-	g_utils::outportByte(0x64, 0xA8);
-
-	// get commando-byte, set bit 1 (enables IRQ12), send back
-	wait_for_buffer(PS2_OUT);
-	g_utils::outportByte(0x64, 0x20);
-
-	wait_for_buffer(PS2_IN);
-	status = g_utils::inportByte(0x60) | (1 << 1);
-
-	wait_for_buffer(PS2_OUT);
-	g_utils::outportByte(0x64, 0x60);
-	wait_for_buffer(PS2_OUT);
-	g_utils::outportByte(0x60, status);
-
-	// send set-default-settings command to mouse
-	write_to_mouse(0xF6);
-
-	wait_for_buffer(PS2_IN);
-	status = g_utils::inportByte(0x60);
-	if (status != 0xFA) {
-		g_logger::log("mouse did not ack set-default-settings command");
-		return;
-	}
-
-	// enable the mouse
-	write_to_mouse(0xF4);
-
-	wait_for_buffer(PS2_IN);
-	status = g_utils::inportByte(0x60);
-	if (status != 0xFA) {
-		g_logger::log("mouse did not ack enable-mouse command");
-		return;
 	}
 }
 

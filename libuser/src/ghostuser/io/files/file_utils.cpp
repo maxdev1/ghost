@@ -50,11 +50,12 @@ bool g_file_utils::read_string(g_fd fd, std::string& out) {
  */
 bool g_file_utils::read_bytes(g_fd fd, uint8_t* buffer, size_t len) {
 
-	uint32_t remain = len;
+	ssize_t remain = len;
 
+	g_fs_read_status status;
 	while (remain) {
-		size_t read = g_read(fd, &buffer[len - remain], remain);
-		if (read == 0) {
+		ssize_t read = g_read_s(fd, &buffer[len - remain], remain, &status);
+		if (status != G_FS_READ_SUCCESSFUL || read <= 0) {
 			return false;
 		}
 		remain -= read;

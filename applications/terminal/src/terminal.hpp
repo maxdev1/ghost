@@ -44,11 +44,19 @@ const terminal_input_status_t TERMINAL_INPUT_STATUS_SCREEN_CREATE = 3;
 #define BUILTIN_COMMAND_TERM_P		"terminal "
 #define BUILTIN_COMMAND_TERMS		"terminals"
 #define BUILTIN_COMMAND_BACKGROUND	"background "
-#define BUILTIN_COMMAND_READ		"read "
 #define BUILTIN_COMMAND_KBD_SET		"keyboard set "
 #define BUILTIN_COMMAND_KBD_INFO	"keyboard info"
 #define BUILTIN_COMMAND_SCANCODE	"scancode"
 #define BUILTIN_COMMAND_HELP		"help"
+
+/**
+ *
+ */
+typedef struct {
+	int number;
+} create_terminal_info_t;
+
+extern int terminal_index;
 
 /**
  *
@@ -63,14 +71,14 @@ public:
 	/**
 	 * Creates a terminal.
 	 */
-	static void create_terminal();
+	static void create_terminal(create_terminal_info_t* inf);
 
 	/**
 	 * Main loop of the terminal. Reads the entered commands, tries to
 	 * handle them as built-in commands and otherwise tries to execute the
 	 * executable in the current directory.
 	 */
-	void run();
+	void run(create_terminal_info_t* inf);
 
 	/**
 	 * Tries to handle the command as a built-in command.
@@ -114,7 +122,7 @@ private:
 	screen_t* screen;
 	uint8_t inactive;
 
-	static void add_terminal();
+	static void add_terminal(create_terminal_info_t* inf);
 	terminal_t();
 
 	static screen_t* addScreen();

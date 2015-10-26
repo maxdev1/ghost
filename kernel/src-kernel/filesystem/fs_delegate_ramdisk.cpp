@@ -46,6 +46,7 @@ g_fs_node* g_fs_delegate_ramdisk::create_vfs_node(g_ramdisk_entry* ramdisk_node,
 
 	// add it to the parent
 	parent->add_child(node);
+	G_DEBUG_INTERFACE_FILESYSTEM_UPDATE_NODE(node);
 
 	return node;
 }

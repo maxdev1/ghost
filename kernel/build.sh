@@ -145,7 +145,14 @@ target_qemu() {
 	if [ -e serial.log ]; then
 		rm -f serial.log
 	fi
-	qemu-system-i386 -cdrom $ISO_TGT -s -m 1024 -serial file:serial.log
+	
+	echo "Debug interface mode: Make sure the debug application is running!"
+	qemu-system-i386 -cdrom $ISO_TGT -s -m 1024 -serial tcp::25000
+	
+	if [ $? == 1 ]; then
+		echo "WARNING: Failed to connect to debug application! Redirecting output to file"
+		qemu-system-i386 -cdrom $ISO_TGT -s -m 1024 -serial file:serial.log
+	fi
 }
 
 target_qemu_debug_gdb() {
@@ -163,10 +170,19 @@ target_all() {
 	target_make_iso
 }
 
+target_repack() {
+	target_ramdisk
+	target_make_iso
+}
+
 
 # execute targets
 if [[ $TARGET == "all" ]]; then
 	target_all
+
+elif [[ $TARGET == "repack" ]]; then
+	target_repack
+	target_qemu
 	
 elif [[ $TARGET == "qemu" ]]; then
 	target_qemu

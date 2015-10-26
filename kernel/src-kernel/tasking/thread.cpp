@@ -18,12 +18,13 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <tasking/thread.hpp>
-#include <tasking/process.hpp>
-#include <utils/string.hpp>
-#include <kernel.hpp>
-#include <logger/logger.hpp>
-#include <tasking/wait/waiter_perform_interruption.hpp>
+#include "tasking/thread.hpp"
+#include "tasking/process.hpp"
+#include "utils/string.hpp"
+#include "kernel.hpp"
+#include "logger/logger.hpp"
+#include "tasking/wait/waiter_perform_interruption.hpp"
+#include "debug/debug_interface_kernel.hpp"
 
 static g_tid taskIdCounter = 0;
 
@@ -101,6 +102,8 @@ void g_thread::setIdentifier(const char* newIdentifier) {
 	identifier = new char[identLen + 1];
 	g_memory::copy(identifier, newIdentifier, identLen);
 	identifier[identLen] = 0;
+
+	G_DEBUG_INTERFACE_TASK_SET_IDENTIFIER(this->id, identifier);
 }
 
 /**
@@ -147,6 +150,7 @@ void g_thread::wait(g_waiter* newWaitManager) {
 	}
 
 	waitManager = newWaitManager;
+	G_DEBUG_INTERFACE_TASK_SET_STATUS(this->id, newWaitManager->debug_name());
 }
 
 /**
@@ -154,6 +158,7 @@ void g_thread::wait(g_waiter* newWaitManager) {
  */
 void g_thread::unwait() {
 
+	G_DEBUG_INTERFACE_TASK_SET_STATUS(this->id, "normal");
 	if (waitManager) {
 		delete waitManager;
 		waitManager = 0;
@@ -202,6 +207,7 @@ void g_thread::enter_irq_handler(uintptr_t address, uint8_t irq, uintptr_t callb
 	interruption_info->type = g_thread_interruption_info_type::IRQ;
 	interruption_info->handled_irq = irq;
 
+	G_DEBUG_INTERFACE_TASK_SET_STATUS(this->id, "irq-handling");
 	finish_prepare_interruption(address, callback);
 }
 
@@ -218,6 +224,7 @@ void g_thread::enter_signal_handler(uintptr_t address, int signal, uintptr_t cal
 	interruption_info->type = g_thread_interruption_info_type::SIGNAL;
 	interruption_info->handled_signal = signal;
 
+	G_DEBUG_INTERFACE_TASK_SET_STATUS(this->id, "signal-handling");
 	finish_prepare_interruption(address, callback);
 }
 
@@ -247,6 +254,7 @@ void g_thread::restore_interrupted_state() {
 	// remove interruption info
 	delete interruption_info;
 	interruption_info = 0;
+	G_DEBUG_INTERFACE_TASK_SET_STATUS(this->id, "quitting-interruption");
 }
 
 /**
@@ -277,6 +285,7 @@ void g_thread::raise_signal(int signal) {
 
 		if (signal == SIGSEGV) {
 			kill = true;
+			G_DEBUG_INTERFACE_TASK_SET_STATUS(this->id, "sigsegv");
 		}
 
 		if (kill) {

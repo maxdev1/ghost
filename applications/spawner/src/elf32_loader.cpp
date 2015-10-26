@@ -23,6 +23,7 @@
 #include <string.h>
 #include <ghostuser/utils/logger.hpp>
 #include <ghostuser/io/files/file_utils.hpp>
+#include <stdio.h>
 
 /**
  *

@@ -68,6 +68,24 @@ public:
  */
 int main(int argc, char* argv[]) {
 
+	std::stringstream pause;
+	bool hasPause = false;
+	if(argc == 2) {
+		pause << argv[1];
+		hasPause = true;
+	}
+
+	if(hasPause) {
+		int time;
+		pause >> time;
+		std::cout << "pausing for " << time << "ms before attempting to open UI" << std::endl;
+		if(time >= 0 && time < 30000) {
+			g_sleep(time);
+		}
+	} else {
+		std::cout << "no pause requested (" << argc << " args supplied)" << std::endl;
+	}
+
 	g_ui_open_status open_stat = g_ui::open();
 
 	if (open_stat == G_UI_OPEN_STATUS_SUCCESSFUL) {

@@ -23,6 +23,7 @@
 #include <video/console_video.hpp>
 #include <system/serial/serial_port.hpp>
 #include <system/bios_data_area.hpp>
+#include "debug/debug_interface.hpp"
 
 /**
  * Width of a log entry header
@@ -33,25 +34,13 @@ static const uint32_t HEADER_WIDTH = 15;
  * g_logger variables
  */
 static bool logSerial = false;
-static uint16_t logSerialPort = 0;
 static bool logVideo = true;
 
 /**
  * 
  */
-void g_logger::initializeSerial() {
-
-	g_com_port_information comPortInfo = biosDataArea->comPortInfo;
-
-	if (comPortInfo.com1 > 0) {
-		g_serial_port::initializePort(comPortInfo.com1, false); // Initialize in poll mode
-		logSerial = true;
-		logSerialPort = comPortInfo.com1;
-
-	} else {
-		logSerial = false;
-		g_logger::println("%! COM1 port not available for serial debug output", "logger");
-	}
+void g_logger::enableSerialPortLogging() {
+	logSerial = true;
 }
 
 /**
@@ -202,6 +191,6 @@ void g_logger::printCharacter(char c) {
 	}
 
 	if (logSerial) {
-		g_serial_port::write(logSerialPort, c);
+		g_debug_interface::writeLogCharacter(c);
 	}
 }

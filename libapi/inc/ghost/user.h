@@ -870,6 +870,18 @@ void g_cli_args_release(char* buffer);
 g_process_creation_identifier g_create_empty_process(g_security_level securityLevel);
 
 /**
+ * Configures the created empty process during spawning.
+ *
+ * @param process
+ * 		process creation identifier for the target process
+ * @param configuration
+ * 		the configuration structure
+ *
+ * @security-level KERNEL
+ */
+void g_configure_process(g_process_creation_identifier process, g_process_configuration configuration);
+
+/**
  * Creates pages in a process during process creation and maps the created pages in the
  * executing processes address space.
  *

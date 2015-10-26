@@ -73,6 +73,7 @@ private:
 	static g_cpu_state* cancel_process_creation(g_cpu_state* state);
 	static g_cpu_state* get_created_process_id(g_cpu_state* state);
 	static g_cpu_state* write_tls_master_for_process(g_cpu_state* state);
+	static g_cpu_state* configure_process(g_cpu_state* state);
 
 	static g_cpu_state* send_msg(g_cpu_state* state);
 	static g_cpu_state* recv_msg(g_cpu_state* state);

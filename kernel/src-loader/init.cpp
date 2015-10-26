@@ -24,6 +24,8 @@
 #include <logger/logger.hpp>
 #include <video/console_video.hpp>
 #include <system/serial/serial_port.hpp>
+#include "system/bios_data_area.hpp"
+#include "debug/debug_interface.hpp"
 
 /**
  * Initialization function, called from the loader assembly. Checks the
@@ -37,8 +39,15 @@ extern "C" void initializeLoader(g_multiboot_information* multibootStruct, uint3
 
 	g_constructors::call();
 
-	// Initialize COM port logging
-	g_logger::initializeSerial();
+	// initialize COM port
+	g_com_port_information comPortInfo = biosDataArea->comPortInfo;
+	if (comPortInfo.com1 > 0) {
+		g_serial_port::initializePort(comPortInfo.com1, false); // Initialize in poll mode
+		g_logger::enableSerialPortLogging();
+		g_debug_interface::initialize(comPortInfo.com1);
+	} else {
+		g_logger::println("%! COM1 port not available for serial debug output", "logger");
+	}
 
 	// Clear the console and print the header colored
 	g_console_video::clear();

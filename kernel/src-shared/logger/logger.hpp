@@ -42,9 +42,9 @@ public:
 	static void manualUnlock();
 
 	/**
-	 * Initializes the serial output.
+	 *
 	 */
-	static void initializeSerial();
+	static void enableSerialPortLogging();
 
 	/**
 	 * Enables or disables the serial output.

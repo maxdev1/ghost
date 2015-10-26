@@ -105,6 +105,7 @@ G_SYSCALL_HANDLER(handle) {
 		link(G_SYSCALL_RESTORE_INTERRUPTED_STATE, restore_interrupted_state);
 		link(G_SYSCALL_REGISTER_SIGNAL_HANDLER, register_signal_handler);
 		link(G_SYSCALL_RAISE_SIGNAL, raise_signal);
+		link(G_SYSCALL_CONFIGURE_PROCESS, configure_process);
 
 		link(G_SYSCALL_CREATE_EMPTY_PROCESS, create_empty_process);
 		link(G_SYSCALL_CREATE_PAGES_IN_SPACE, create_pages_in_space);

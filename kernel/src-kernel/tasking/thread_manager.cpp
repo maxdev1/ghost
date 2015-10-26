@@ -509,128 +509,28 @@ void g_thread_manager::prepare_thread_local_storage(g_thread* thread) {
  */
 void g_thread_manager::deleteTask(g_thread* task) {
 
-	// TODO
-	// g_log_info("%! delete task %i", "taskmgr", task->id);
-
+	G_DEBUG_INTERFACE_TASK_SET_STATUS(task->id, "dead");
 	// clear message queues
 	g_message_controller::clear(task->id);
 
 	if (task->type == g_thread_type::THREAD) {
 
-		/**
-		 * Here we free everything that the thread has created and that is no more
-		 * needed by anyone.
-		 */
+		// Here we free everything that the thread has created and that is no more
+		// needed by anyone.
 		g_process* process = task->process;
 
-		// XXX TEMPORARY SWITCH XXX {
-		g_page_directory thisPageDirectory = g_address_space::get_current_space();
-		g_address_space::switch_to_space(process->pageDirectory);
-
-		/**
-		 * Free user stack:
-		 * We also need to unmap it from the processes address space.
-		 */
-		g_virtual_address userStackAddr = task->userStack;
-		process->virtualRanges.free(userStackAddr);
-		g_pp_allocator::free(g_address_space::virtual_to_physical(userStackAddr));
-		g_address_space::unmap(userStackAddr);
-
-		/**
-		 * Free kernel stack:
-		 * We also need to unmap it from the processes address space.
-		 */
-		g_virtual_address kernelStackAddr = task->kernelStack;
-		g_kernel_virt_addr_ranges->free(kernelStackAddr);
-		g_pp_allocator::free(g_address_space::virtual_to_physical(kernelStackAddr));
-		g_address_space::unmap(kernelStackAddr);
-
-		g_address_space::switch_to_space(thisPageDirectory);
-		// } XXX
+		// TODO
 
 	} else if (task->type == g_thread_type::THREAD_MAIN) {
 
-		/**
-		 * Here we free everything that the process has created and that is no more
-		 * needed by anyone.
-		 */
+		// Here we free everything that the process has created and that is no more
+		// needed by anyone.
 		g_process* process = task->process;
 
 		// tell the filesystem to clean up
 		g_filesystem::process_closed(task->id);
 
-		// XXX TEMPORARY SWITCH XXX {
-		g_page_directory thisPageDirectory = g_address_space::get_current_space();
-		g_address_space::switch_to_space(process->pageDirectory);
-
-		/**
-		 * Free user stack:
-		 * We don't need to unmap it, because the page directory is deleted anyway
-		 */
-		g_pp_allocator::free(g_address_space::virtual_to_physical(task->userStack));
-
-		/**
-		 * Free kernel stack
-		 */
-		g_virtual_address kernelStackAddr = task->kernelStack;
-		g_kernel_virt_addr_ranges->free(kernelStackAddr);
-		g_pp_allocator::free(g_address_space::virtual_to_physical(kernelStackAddr));
-		g_address_space::unmap(kernelStackAddr);
-
-		/**
-		 * Free the heap of this process
-		 */
-		for (g_virtual_address addr = process->heapStart; addr < process->heapStart + process->heapPages * G_PAGE_SIZE; addr += G_PAGE_SIZE) {
-
-			// decrement the reference counter, if its zero we can free the page
-			g_physical_address phys = g_address_space::virtual_to_physical(addr);
-
-			if (g_pp_reference_tracker::decrement(phys) == 0) {
-				g_pp_allocator::free(phys);
-			}
-		}
-
-		/**
-		 * Free the image of this process
-		 */
-		for (g_virtual_address addr = process->imageStart; addr < process->imageEnd; addr += G_PAGE_SIZE) {
-
-			// decrement the reference counter, if its zero we can free the page
-			g_physical_address phys = g_address_space::virtual_to_physical(addr);
-
-			if (g_pp_reference_tracker::decrement(phys) == 0) {
-				g_pp_allocator::free(phys);
-			}
-		}
-
-		/**
-		 * Free the stuff thats mapped to the virtual ranges
-		 */
-		g_address_range* range = process->virtualRanges.getRanges();
-		while (range) {
-			if (range->used) {
-				if (range->flags & G_PROC_VIRTUAL_RANGE_FLAG_PHYSICAL_OWNER) {
-					// TODO Same as in SystemCallHandler.Memory.unmap
-				}
-			}
-			range = range->next;
-		}
-
-		g_address_space::switch_to_space(thisPageDirectory);
-		// } XXX
-
-		delete process;
-
-		// TODO:
-		// when deleting a process:
-		// - delete tls master copy
-		// - free owned streams
-		// - free binary image
-		// - free heap
-		// - free stacks
-		// - free the physical pages that are mapped from end
-		//   of lower memory to start of process virtual ranges
-		//   and that are owned by this process
+		// TODO
 
 	} else if (task->type == g_thread_type::THREAD_VM86) {
 
@@ -644,73 +544,6 @@ void g_thread_manager::deleteTask(g_thread* task) {
 	g_log_debug("%! task %i has died, now %i free phys pages", "taskmgr", task->id, g_pp_allocator::getFreePageCount());
 	delete task;
 	return;
-
-	// -----------------------------------------------------------------
-
-	/*// Switch to the tasks space
-	 PageDirectory thisTaskPd = PagingUtil::get_current_space();
-	 PagingUtil::switch_to_space(task->pageDirectory);
-
-	 // Free the user stack
-	 if (task->type == TASK_TYPE_PROCESS_VM86) {
-	 LowerMemory::free((void*) task->userStack);
-	 } else {
-	 physical_address userStackPhys = PagingUtil::virtualToPhysical(task->userStack);
-	 PhysicalPageAllocator::free(userStackPhys);
-	 }
-
-	 // Free the kernel stack
-	 physical_address kernelStackPhys = PagingUtil::virtualToPhysical(task->kernelStack);
-	 PhysicalPageAllocator::free(kernelStackPhys);
-	 Kernel::getVirtualRanges()->free(task->kernelStack);
-	 PagingUtil::unmapPage(task->kernelStack);
-
-	 if (task->type == TASK_TYPE_PROCESS) {
-	 // TODO free everything in userspace, like binary image and heap
-	 // -> free the physical pages that are mapped from end of lower memory
-	 // to start of process virtual ranges
-
-	 // Remove virtual ranges and free their physical addresses if possible
-	 g_address_range* range = task->virtualRanges->getRanges();
-	 while (range != 0) {
-	 if (range->used && (range->flags & PROCESS_VIRTUAL_RANGE_FLAG_PHYSICAL_OWNER)) {
-
-	 if (range->flags & PROCESS_VIRTUAL_RANGE_FLAG_PHYSICALLY_CONTIGUOUS) {
-	 physical_address phys = PagingUtil::virtualToPhysical(range->base);
-	 PhysicalPageAllocator::free(phys);
-
-	 } else {
-	 for (virtual_address virt = range->base; virt < range->base + range->pages * PAGE_SIZE; virt += PAGE_SIZE) {
-	 physical_address phys = PagingUtil::virtualToPhysical(virt);
-
-	 PhysicalPageAllocator::free(phys);
-	 }
-	 }
-	 }
-
-	 range = range->next;
-	 }
-
-	 // Free the tables
-	 PageDirectory dir = (PageDirectory) CONSTANTS_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
-	 for (uint32_t i = 1; i < 1024; i++) {
-	 if ((dir[i] & PAGE_TABLE_USERSPACE) > 0) {
-	 physical_address tablePhys = dir[i] & ~PAGE_ALIGN_MASK;
-
-	 PhysicalPageAllocator::free(tablePhys);
-	 }
-	 }
-
-	 // Free the page directory
-	 PhysicalPageAllocator::free((physical_address) task->pageDirectory);
-	 }
-
-	 // Switch back
-	 PagingUtil::switch_to_space(thisTaskPd);
-
-	 // TODO more
-
-	 delete task;*/
 }
 
 /**

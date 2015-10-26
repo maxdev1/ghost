@@ -33,6 +33,7 @@
 #include <memory/physical/pp_allocator.hpp>
 #include <memory/physical/pp_reference_tracker.hpp>
 #include <executable/elf32_loader.hpp>
+#include "debug/debug_interface_kernel.hpp"
 
 #define CREATE_PAGE_IN_SPACE_MAXIMUM_PAGES 100
 
@@ -278,7 +279,7 @@ G_SYSCALL_HANDLER(write_tls_master_for_process) {
 		g_virtual_address tls_master_virt = target_process->virtualRanges.allocate(required_pages, G_PROC_VIRTUAL_RANGE_FLAG_PHYSICAL_OWNER);
 
 		// Temporarily copy master contents to kernel heap because we switch directories
-		g_local < uint8_t > temporary_store(new uint8_t[data->copysize]);
+		g_local<uint8_t> temporary_store(new uint8_t[data->copysize]);
 		g_memory::copy(temporary_store(), data->content, data->copysize);
 		uint32_t temporary_copy_size = data->copysize;
 
@@ -402,5 +403,41 @@ G_SYSCALL_HANDLER(create_thread) {
 
 	// A process is forced to give away time when creating a thread
 	return g_tasking::switchTask(state);
+}
+/**
+ *
+ */
+G_SYSCALL_HANDLER(configure_process) {
+
+	g_thread* thread = g_tasking::getCurrentThread();
+	g_process* process = thread->process;
+
+	g_syscall_configure_process* data = (g_syscall_configure_process*) G_SYSCALL_DATA(state);
+	data->result = false;
+
+	// Only on kernel level
+	if (process->securityLevel == G_SECURITY_LEVEL_KERNEL) {
+		g_thread* target_thread = (g_thread*) data->processObject;
+		g_process* target_proc = (target_thread)->process;
+
+		// store source path in a buffer
+		target_proc->source_path = new char[G_PATH_MAX];
+		if (target_proc->source_path == nullptr) {
+			g_log_info("%! (%i:%i) error: went out of memory when trying to allocate a source path buffer", "syscall", process->main->id, thread->id);
+
+		} else {
+			// copy path
+			uint32_t source_path_len = g_string::length(data->configuration.source_path);
+			g_memory::copy(target_proc->source_path, data->configuration.source_path, source_path_len);
+			target_proc->source_path[source_path_len] = 0;
+			data->result = true;
+
+			G_DEBUG_INTERFACE_TASK_SET_SOURCE_PATH(target_thread->id, data->configuration.source_path);
+		}
+	} else {
+		g_log_warn("%! (%i:%i) error: insufficient permissions: configure process", "syscall", process->main->id, thread->id);
+	}
+
+	return state;
 }
 

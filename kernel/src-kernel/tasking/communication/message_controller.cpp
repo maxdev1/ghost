@@ -128,7 +128,7 @@ void g_message_controller::clear(g_tid tid) {
 	}
 
 	// release the queue
-	queues->put(tid, 0);
+	queues->remove(tid);
 	delete head;
 }
 
@@ -208,6 +208,10 @@ g_message_receive_status g_message_controller::receive_message(g_tid target, g_m
 		return G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY;
 	} else {
 		queue = entry->value;
+	}
+
+	if(queue == nullptr) {
+		return G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY;
 	}
 
 	// find message

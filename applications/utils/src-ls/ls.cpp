@@ -20,17 +20,33 @@
 
 #include <stdio.h>
 #include <ghost.h>
+#include <string.h>
 
 /**
  *
  */
 int main(int argc, char** argv) {
 
-	g_fs_open_directory_status stat;
-	char* workdir = new char[G_PATH_MAX];
-	g_get_working_directory(workdir);
-	auto* iter = g_open_directory_s(workdir, &stat);
+	// decide which directory to read
+	char* directory;
+	if (argc > 1) {
+		char* argument = argv[1];
+		if (strlen(argument) < G_PATH_MAX) {
+			directory = argument;
+		} else {
+			fprintf(stderr, "given argument is not a valid path name\n");
+			return 1;
+		}
+	} else {
+		directory = new char[G_PATH_MAX];
+		g_get_working_directory(directory);
+	}
 
+	// open the directory
+	g_fs_open_directory_status stat;
+	auto* iter = g_open_directory_s(directory, &stat);
+
+	// check for errors
 	if (stat != G_FS_OPEN_DIRECTORY_SUCCESSFUL) {
 		fprintf(stderr, "failed to read directory\n");
 		return 1;

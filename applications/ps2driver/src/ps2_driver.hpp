@@ -18,27 +18,85 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef PS2_DRIVER_HPP_
-#define PS2_DRIVER_HPP_
+#ifndef __PS2_DRIVER__
+#define __PS2_DRIVER__
 
 #include <stdint.h>
 
 /**
+ * The operation mode declares whether the IRQs shall be handled by polling the kernel
+ * or by registering a handler that is called upon interrupt receival.
  *
+ * The polling mode might create higher latency due to the kernel being involved more,
+ * but is more stable as the interrupt is handled on kernel side.
+ *
+ * Default operation mode is the IRQ-triggered mode.
+ */
+#define DRIVER_OPERATION_MODE_IRQ_TRIGGERED		0
+#define DRIVER_OPERATION_MODE_POLLING			1
+
+#define DRIVER_OPERATION_MODE					DRIVER_OPERATION_MODE_IRQ_TRIGGERED
+
+/**
+ * Operation mode specific header files
+ */
+#if DRIVER_OPERATION_MODE == DRIVER_OPERATION_MODE_POLLING
+#include "ps2_driver_polling.hpp"
+#elif DRIVER_OPERATION_MODE == DRIVER_OPERATION_MODE_IRQ_TRIGGERED
+#include "ps2_driver_irq_triggered.hpp"
+#endif
+
+/**
+ * Counter for the absolute number of packages that where received from the devices.
+ */
+extern uint64_t packets_count;
+
+/**
+ * Used when waiting for a buffer to determine whether the driver
+ * shall wait for the input or output buffer of the device.
  */
 enum ps2_buffer_t {
 	PS2_OUT, PS2_IN
 };
 
+/**
+ * Initializes the mouse by resetting it to the defaults and enabling it. This involves
+ * a series of commands that are written to the device.
+ */
 void initialize_mouse();
-void install();
 
-extern "C" void irq_handler(uint8_t irq);
-
+/**
+ * Waits for the PS2 input or output buffer by querying the flags in the status byte.
+ */
 void wait_for_buffer(ps2_buffer_t mode);
-void write_to_mouse(uint8_t v);
 
+/**
+ * Writes a byte to the mouse.
+ *
+ * @param b
+ * 		byte to write
+ */
+void write_to_mouse(uint8_t b);
+
+/**
+ * Registers operation mode specific handling logic.
+ */
+void register_operation_mode();
+
+/**
+ * Handles an incoming byte from the mouse.
+ *
+ * @param b
+ * 		value received from the mouse
+ */
 void handle_mouse_data(uint8_t b);
+
+/**
+ * Handles an incoming byte from the keyboard.
+ *
+ * @param b
+ * 		value received from the keyboard
+ */
 void handle_keyboard_data(uint8_t b);
 
 #endif

@@ -68,6 +68,7 @@
 		<configuration configurationName="bin">
 			<resource resourceType="PROJECT" workspacePath="/${ProjName}"/>
 		</configuration>
+		<configuration configurationName="build"/>
 	</storageModule>
 	<storageModule moduleId="scannerConfiguration">
 		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
@@ -87,4 +88,5 @@
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
 		<project id="windowserver.null.1086304282" name="windowserver"/>
 	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
 </cproject>
