@@ -20,22 +20,17 @@ important features are:
 - virtual 8086 for BIOS calls
 
 ## Status
-This is the bleeding edge source version of August 28, 2015.
+This is the bleeding edge source version of Octobre 26, 2015.
+Version 0.5.1
 
-- Idle task uses "HLT" to prevent 100% processor usage
-- stdio is fixed, piping works
-- Directory reading functionality is reworked
-- Spawner and others uses variable messages
-- Color in the terminal, and a fancy start screen
-- Minor bugfixes here and there
-- `g_atomic_wait` is now `g_atomic_lock`
-- `g_spawn` has slightly changed, its now possible to specify
-  in and out descriptors of a process when spawning it
-
-TODOs:
-- Directory reading causes crashes
-- Removing the old recv_msg/send_msg interface
-- Milestone: window server rewrite
+- New scheduler implementation temporarily moved to branch
+  for some bugfixing
+- Own malloc implementation used until `dlmalloc` is
+  integrated with proper thread-safety
+- Various enhancements in the window server interface
+- A calculator
+- Some kernel modifications
+- A login screen
 
 ## Structure
 - `applications`
@@ -68,4 +63,4 @@ feel free to contact me at:
 
 	lokoxe@gmail.com
 	
--Max SchlÃ¼ssel
+-Max Schlüssel
