@@ -46,6 +46,7 @@ __BEGIN_C
  * @security-level APPLICATION
  */
 void g_atomic_lock(uint8_t* atom);
+void g_atomic_lock_2(uint8_t* atom_1, uint8_t* atom_2);
 
 /**
  * Trys to perform atomic wait. If the lock is already locked, the function
@@ -58,6 +59,7 @@ void g_atomic_lock(uint8_t* atom);
  * @security-level APPLICATION
  */
 uint8_t g_atomic_try_lock(uint8_t* atom);
+uint8_t g_atomic_try_lock_2(uint8_t* atom_1, uint8_t* atom_2);
 
 /**
  * Performs an atomic block. If the atom is true, the executing task must
@@ -70,6 +72,7 @@ uint8_t g_atomic_try_lock(uint8_t* atom);
  * @security-level APPLICATION
  */
 void g_atomic_block(uint8_t* atom);
+void g_atomic_block_2(uint8_t* atom_1, uint8_t* atom_2);
 
 /**
  * Spawns a program binary.

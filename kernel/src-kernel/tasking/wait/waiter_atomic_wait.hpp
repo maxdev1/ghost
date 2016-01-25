@@ -29,7 +29,8 @@
  */
 class g_waiter_atomic_wait: public g_waiter {
 private:
-	bool* atom;
+	uint8_t* atom_1;
+	uint8_t* atom_2;
 	bool set_on_finish;
 
 public:
@@ -37,8 +38,8 @@ public:
 	/**
 	 *
 	 */
-	g_waiter_atomic_wait(bool* atom, bool set_on_finish) :
-			atom(atom), set_on_finish(set_on_finish) {
+	g_waiter_atomic_wait(uint8_t* atom_1, uint8_t* atom_2, bool set_on_finish) :
+			atom_1(atom_1), atom_2(atom_2), set_on_finish(set_on_finish) {
 	}
 
 	/**
@@ -46,11 +47,14 @@ public:
 	 */
 	virtual bool checkWaiting(g_thread* task) {
 
-		bool keepWaiting = *atom;
+		bool keepWaiting = *atom_1 && (!atom_2 || *atom_2);
 
 		// once waiting is finished, set the atom if required
 		if (!keepWaiting && set_on_finish) {
-			*atom = true;
+			*atom_1 = true;
+			if (atom_2) {
+				*atom_2 = true;
+			}
 		}
 
 		return keepWaiting;

@@ -22,6 +22,9 @@
 #define __WINDOW__
 
 #include <components/component.hpp>
+#include <components/label.hpp>
+#include <components/titled_component.hpp>
+#include <components/panel.hpp>
 
 /**
  * constants for border sizes
@@ -34,6 +37,7 @@
  */
 enum window_resize_mode_t {
 	RESIZE_MODE_NONE,
+	RESIZE_MODE_MOVE,
 	RESIZE_MODE_TOP,
 	RESIZE_MODE_TOP_RIGHT,
 	RESIZE_MODE_RIGHT,
@@ -47,11 +51,15 @@ enum window_resize_mode_t {
 /**
  *
  */
-class window_t: public component_t {
+class window_t: public component_t, public titled_component_t {
 private:
 	int borderWidth;
 	int cornerSize;
 	g_color_argb backgroundColor;
+	bool resizable;
+
+	label_t label;
+	panel_t panel;
 
 public:
 	window_t();
@@ -77,6 +85,16 @@ public:
 	/**
 	 *
 	 */
+	virtual void addChild(component_t* component);
+
+	/**
+	 *
+	 */
+	virtual void layout();
+
+	/**
+	 *
+	 */
 	virtual void paint();
 
 	/**
@@ -88,6 +106,27 @@ public:
 	 *
 	 */
 	virtual bool handle(event_t& e);
+
+	/**
+	 *
+	 */
+	virtual bool getBoolProperty(int property, bool* out);
+
+	/**
+	 *
+	 */
+	virtual bool setBoolProperty(int property, bool value);
+
+	/**
+	 *
+	 */
+	virtual void setTitle(std::string title);
+
+	/**
+	 *
+	 */
+	virtual std::string getTitle();
+
 };
 
 #endif

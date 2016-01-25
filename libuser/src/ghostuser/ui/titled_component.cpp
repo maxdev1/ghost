@@ -83,7 +83,7 @@ std::string g_titled_component::getTitle() {
 	uint32_t tx = g_ipc_next_topic();
 
 	g_ui_component_get_title_request request;
-	request.header.id = G_UI_PROTOCOL_SET_TITLE;
+	request.header.id = G_UI_PROTOCOL_GET_TITLE;
 	request.id = this->id;
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_get_title_request), tx);
 

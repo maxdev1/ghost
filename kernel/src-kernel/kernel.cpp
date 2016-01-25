@@ -236,7 +236,7 @@ void g_kernel::load_system_process(const char* binary_path, g_thread_priority pr
 	g_ramdisk_entry* entry = g_kernel_ramdisk->findAbsolute(binary_path);
 	if (entry) {
 		g_thread* systemProcess;
-		g_elf32_spawn_status status = g_elf32_loader::spawnFromRamdisk(entry, G_SECURITY_LEVEL_KERNEL, &systemProcess, true, priority);
+		g_elf32_spawn_status status = g_elf32_loader::spawnFromRamdisk(entry, G_SECURITY_LEVEL_KERNEL, &systemProcess, 0, true);
 
 		if (status != ELF32_SPAWN_STATUS_SUCCESSFUL) {
 			if (status == ELF32_SPAWN_STATUS_VALIDATION_ERROR) {
@@ -250,6 +250,7 @@ void g_kernel::load_system_process(const char* binary_path, g_thread_priority pr
 			}
 		}
 
+		systemProcess->priority = priority;
 		g_log_info("%! \"%s\" spawned to process %i", "kern", binary_path, systemProcess->id);
 	} else {
 		panic("%! \"%s\" not found", "kern", binary_path);
@@ -272,7 +273,7 @@ void g_kernel::print_header(g_setup_information* info) {
 	g_console_video::setColor(0x0F);
 	g_log_info(" Version %i.%i.%i", G_VERSION_MAJOR, G_VERSION_MINOR, G_VERSION_PATCH);
 	g_log_info("");
-	g_log_info("  Copyright (C) 2014, Max Schluessel <lokoxe@gmail.com>");
+	g_log_info("  Copyright (C) 2016, Max Schluessel <lokoxe@gmail.com>");
 	g_log_info("");
 	g_log_info("%! loading", "prekern");
 

@@ -21,9 +21,10 @@
 #ifndef GHOSTLIBRARY_UI_ACTIONLISTENER
 #define GHOSTLIBRARY_UI_ACTIONLISTENER
 
-#include <ghostuser/ui/component.hpp>
 #include <ghostuser/ui/listener.hpp>
 #include <cstdint>
+
+class g_component;
 
 /**
  *
@@ -40,7 +41,11 @@ public:
 	virtual ~g_action_listener() {
 	}
 
-	virtual void handle_action(g_action_event e) = 0;
+	virtual void process(g_ui_component_event_header* header) {
+		handle_action();
+	}
+
+	virtual void handle_action() = 0;
 };
 
 #endif

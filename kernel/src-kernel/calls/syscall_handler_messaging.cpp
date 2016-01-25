@@ -34,25 +34,19 @@
  */
 G_SYSCALL_HANDLER(send_message) {
 
-	g_syscall_send_message* data = (g_syscall_send_message*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* task = g_tasking::getCurrentThread();
+	g_syscall_send_message* data = (g_syscall_send_message*) G_SYSCALL_DATA(state);
 
 	// send the message
-	data->status = g_message_controller::send_message(data->receiver, current_thread->id, data->buffer, data->length, data->transaction);
+	data->status = g_message_controller::send_message(data->receiver, task->id, data->buffer, data->length, data->transaction);
 
-	// move receiver to top of wait queue
-	if (data->status == G_MESSAGE_SEND_STATUS_SUCCESSFUL) {
-		g_thread* receiver = g_tasking::getTaskById(data->receiver);
-		if (receiver) {
-			g_tasking::pushInWait(receiver);
-		}
-
-		// check if block
-	} else if (data->mode == G_MESSAGE_SEND_MODE_BLOCKING && data->status == G_MESSAGE_SEND_STATUS_QUEUE_FULL) {
-		current_thread->wait(new g_waiter_send_message(data));
-		return g_tasking::schedule();
+	// check if block
+	if (data->mode == G_MESSAGE_SEND_MODE_BLOCKING && data->status == G_MESSAGE_SEND_STATUS_QUEUE_FULL) {
+		task->wait(new g_waiter_send_message(data));
+		return g_tasking::schedule(state);
 	}
 
-	return current_thread;
+	return state;
 }
 
 /**
@@ -60,28 +54,29 @@ G_SYSCALL_HANDLER(send_message) {
  */
 G_SYSCALL_HANDLER(receive_message) {
 
-	g_syscall_receive_message* data = (g_syscall_receive_message*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* task = g_tasking::getCurrentThread();
+	g_syscall_receive_message* data = (g_syscall_receive_message*) G_SYSCALL_DATA(state);
 
-	data->status = g_message_controller::receive_message(current_thread->id, data->buffer, data->maximum, data->transaction);
+	data->status = g_message_controller::receive_message(task->id, data->buffer, data->maximum, data->transaction);
 
 	if (data->status == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
 		// there was a message, immediate return
-		return current_thread;
+		return state;
 	}
 
 	if (data->status == G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY) {
 		// check mode to see what to do
 		if (data->mode == G_MESSAGE_RECEIVE_MODE_NON_BLOCKING) {
-			return current_thread;
+			return state;
 		}
 
 		// perform blocking
-		current_thread->wait(new g_waiter_receive_message(data));
-		return g_tasking::schedule();
+		task->wait(new g_waiter_receive_message(data));
+		return g_tasking::schedule(state);
 	}
 
 	// something went wrong, immediate return
-	return current_thread;
+	return state;
 }
 
 /**
@@ -90,15 +85,16 @@ G_SYSCALL_HANDLER(receive_message) {
  */
 G_SYSCALL_HANDLER(send_msg) {
 
-	g_syscall_send_msg* data = (g_syscall_send_msg*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* task = g_tasking::getCurrentThread();
+	g_syscall_send_msg* data = (g_syscall_send_msg*) G_SYSCALL_DATA(state);
 
 	// Get executing task id and store it in the data
-	data->message->sender = current_thread->id;
+	data->message->sender = task->id;
 
 	// Send the message
 	data->sendResult = g_message_controller::send(data->taskId, data->message);
 
-	return current_thread;
+	return state;
 }
 
 /**
@@ -108,13 +104,14 @@ G_SYSCALL_HANDLER(send_msg) {
  */
 G_SYSCALL_HANDLER(recv_msg) {
 
-	g_process* process = current_thread->process;
-	g_syscall_recv_msg* data = (g_syscall_recv_msg*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* task = g_tasking::getCurrentThread();
+	g_process* process = task->process;
+	g_syscall_recv_msg* data = (g_syscall_recv_msg*) G_SYSCALL_DATA(state);
 
 	uint32_t requestedTaskId = data->taskId;
 
 	// Check if this task is allowed to receive the message
-	if (requestedTaskId == current_thread->id || requestedTaskId == process->main->id) {
+	if (requestedTaskId == task->id || requestedTaskId == process->main->id) {
 
 		g_message message;
 		int status = g_message_controller::receive(requestedTaskId, message);
@@ -123,30 +120,31 @@ G_SYSCALL_HANDLER(recv_msg) {
 			// There was a message - immediate return
 			*data->message = message;
 			data->receiveResult = G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL;
-			return current_thread;
+			return state;
 
 		} else if (status == G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY) {
 
 			// check mode to see what to do
 			if (data->mode == G_MESSAGE_RECEIVE_MODE_NON_BLOCKING) {
 				data->receiveResult = G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY;
-				return current_thread;
+				return state;
 
 			} else {
 				// append wait info and switch
-				current_thread->wait(new g_waiter_recv_msg(data));
-				return g_tasking::schedule();
+				g_thread* task = g_tasking::getCurrentThread();
+				task->wait(new g_waiter_recv_msg(data));
+				return g_tasking::schedule(state);
 			}
 
 		} else {
 			// Something went wrong, immediate return
 			data->receiveResult = G_MESSAGE_RECEIVE_STATUS_FAILED;
-			return current_thread;
+			return state;
 		}
 	} else {
 		// Not permitted
 		data->receiveResult = G_MESSAGE_RECEIVE_STATUS_FAILED_NOT_PERMITTED;
-		return current_thread;
+		return state;
 	}
 }
 
@@ -157,13 +155,14 @@ G_SYSCALL_HANDLER(recv_msg) {
  */
 G_SYSCALL_HANDLER(recv_topic_msg) {
 
-	g_process* process = current_thread->process;
-	g_syscall_recv_topic_msg* data = (g_syscall_recv_topic_msg*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* task = g_tasking::getCurrentThread();
+	g_process* process = task->process;
+	g_syscall_recv_topic_msg* data = (g_syscall_recv_topic_msg*) G_SYSCALL_DATA(state);
 
 	uint32_t requestedTaskId = data->taskId;
 
 	// Check if this task is allowed to receive the message
-	if (requestedTaskId == current_thread->id || requestedTaskId == process->main->id) {
+	if (requestedTaskId == task->id || requestedTaskId == process->main->id) {
 
 		g_message message;
 		int status = g_message_controller::receiveWithTopic(requestedTaskId, data->topic, message);
@@ -172,30 +171,31 @@ G_SYSCALL_HANDLER(recv_topic_msg) {
 			// There was a message - immediate return
 			*data->message = message;
 			data->receiveResult = G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL;
-			return current_thread;
+			return state;
 
 		} else if (status == G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY) {
 
 			// check mode to see what to do
 			if (data->mode == G_MESSAGE_RECEIVE_MODE_NON_BLOCKING) {
 				data->receiveResult = G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY;
-				return current_thread;
+				return state;
 
 			} else {
 				// append wait info and switch
-				current_thread->wait(new g_waiter_recv_topic_msg(data));
-				return g_tasking::schedule();
+				g_thread* task = g_tasking::getCurrentThread();
+				task->wait(new g_waiter_recv_topic_msg(data));
+				return g_tasking::schedule(state);
 			}
 
 		} else {
 			// Something went wrong, immediate return
 			data->receiveResult = G_MESSAGE_RECEIVE_STATUS_FAILED;
-			return current_thread;
+			return state;
 		}
 	} else {
 		// Not permitted
 		data->receiveResult = G_MESSAGE_RECEIVE_STATUS_FAILED_NOT_PERMITTED;
-		return current_thread;
+		return state;
 	}
 }
 

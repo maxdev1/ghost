@@ -96,7 +96,7 @@ void windowserver_t::launch() {
 	screen->addChild(&background);
 
 	// create test components
-	createTestComponents();
+	// createTestComponents();
 
 	// start interface
 	registration_thread_t* registration_thread = new registration_thread_t();
@@ -117,6 +117,8 @@ void windowserver_t::mainLoop(g_rectangle screenBounds) {
 	g_graphics global;
 	g_painter globalPainter(global);
 	global.resize(screenBounds.width, screenBounds.height);
+
+	cursor_t::nextPosition = g_point(screenBounds.width / 2, screenBounds.height / 2);
 
 	while (true) {
 
@@ -158,13 +160,7 @@ void windowserver_t::mainLoop(g_rectangle screenBounds) {
 		blit(&global);
 
 		// try to create 60 fps
-		int64_t render_time = g_millis() - render_start;
-		int64_t sleep_time = (1000 / 60) - render_time;
-		if (sleep_time > 0) {
-			g_sleep(sleep_time);
-		} else {
-			g_yield();
-		}
+		g_sleep(1000 / 100);
 
 		// print output
 #if BENCHMARKING
@@ -289,6 +285,7 @@ void windowserver_t::createTestComponents() {
 
 	ghostInfoWindow->setVisible(true);
 }
+
 /**
  *
  */

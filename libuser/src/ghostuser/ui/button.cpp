@@ -20,6 +20,7 @@
 
 #include <ghost.h>
 #include <ghostuser/ui/button.hpp>
+#include <ghostuser/ui/properties.hpp>
 #include <ghostuser/ui/interface_specification.hpp>
 
 /**
@@ -27,4 +28,20 @@
  */
 g_button* g_button::create() {
 	return createComponent<g_button, G_UI_COMPONENT_TYPE_BUTTON>();
+}
+
+/**
+ *
+ */
+void g_button::setEnabled(bool enabled) {
+	g_component::setBoolProperty(G_UI_PROPERTY_ENABLED, enabled);
+}
+
+/**
+ *
+ */
+bool g_button::isEnabled() {
+	bool enabled;
+	g_component::getBoolProperty(G_UI_PROPERTY_ENABLED, &enabled);
+	return enabled;
 }

@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <ghost.h>
+#include <ghostuser/ui/component.hpp>
 #include <ghostuser/ui/action_component.hpp>
 #include <ghostuser/ui/interface_specification.hpp>
 #include <ghostuser/ui/ui.hpp>
@@ -30,37 +31,5 @@
  */
 bool g_action_component::setActionListener(g_action_listener* new_listener) {
 
-	if (!g_ui_initialized) {
-		return false;
-	}
-
-	// set new
-	listener = new_listener;
-
-	// check
-	if (listener == 0) {
-		return false;
-	}
-
-	// send request
-	uint32_t tx = g_ipc_next_topic();
-
-	g_ui_component_set_action_handler_request request;
-	request.header.id = G_UI_PROTOCOL_SET_ACTION_LISTENER;
-	request.id = this->id;
-	request.target_thread = g_ui_event_dispatcher_tid;
-	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_set_action_handler_request), tx);
-
-	// read response
-	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_set_action_handler_response);
-	uint8_t buffer[bufferSize];
-
-	if (g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
-		g_ui_component_set_action_handler_response* response = (g_ui_component_set_action_handler_response*) G_MESSAGE_CONTENT(buffer);
-		if (response->status == G_UI_PROTOCOL_SUCCESS) {
-			return true;
-		}
-	}
-
-	return false;
+	return self->setListener(G_UI_COMPONENT_EVENT_TYPE_ACTION, new_listener);
 }

@@ -63,7 +63,11 @@ const g_ui_protocol_command_id G_UI_PROTOCOL_SET_TITLE = 4;
 const g_ui_protocol_command_id G_UI_PROTOCOL_GET_TITLE = 5;
 const g_ui_protocol_command_id G_UI_PROTOCOL_SET_BOUNDS = 6;
 const g_ui_protocol_command_id G_UI_PROTOCOL_SET_VISIBLE = 7;
-const g_ui_protocol_command_id G_UI_PROTOCOL_SET_ACTION_LISTENER = 8;
+const g_ui_protocol_command_id G_UI_PROTOCOL_SET_LISTENER = 8;
+const g_ui_protocol_command_id G_UI_PROTOCOL_SET_BOOL_PROPERTY = 9;
+const g_ui_protocol_command_id G_UI_PROTOCOL_GET_BOOL_PROPERTY = 10;
+const g_ui_protocol_command_id G_UI_PROTOCOL_GET_CANVAS_BUFFER_REQUEST = 11;
+const g_ui_protocol_command_id G_UI_PROTOCOL_GET_BOUNDS = 12;
 
 /**
  * Common status for requests
@@ -80,6 +84,14 @@ const g_ui_component_type G_UI_COMPONENT_TYPE_WINDOW = 0;
 const g_ui_component_type G_UI_COMPONENT_TYPE_BUTTON = 1;
 const g_ui_component_type G_UI_COMPONENT_TYPE_LABEL = 2;
 const g_ui_component_type G_UI_COMPONENT_TYPE_TEXTFIELD = 3;
+const g_ui_component_type G_UI_COMPONENT_TYPE_CANVAS = 4;
+
+/**
+ * Types of events that can be listened to
+ */
+typedef uint32_t g_ui_component_event_type;
+const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_ACTION = 0;
+const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_BOUNDS = 1;
 
 /**
  *
@@ -129,7 +141,7 @@ typedef struct {
 }__attribute__((packed)) g_ui_create_component_response;
 
 /**
- * Request/respones for adding a child
+ * Request/response for adding a child
  */
 typedef struct {
 	g_ui_message_header header;
@@ -143,7 +155,7 @@ typedef struct {
 }__attribute__((packed)) g_ui_component_add_child_response;
 
 /**
- * Request/respones for setting bounds
+ * Request/response for setting bounds
  */
 typedef struct {
 	g_ui_message_header header;
@@ -157,7 +169,21 @@ typedef struct {
 }__attribute__((packed)) g_ui_component_set_bounds_response;
 
 /**
- * Request/respones for setting components (in)visible
+ * Request/response for getting bounds
+ */
+typedef struct {
+	g_ui_message_header header;
+	g_ui_component_id id;
+}__attribute__((packed)) g_ui_component_get_bounds_request;
+
+typedef struct {
+	g_ui_message_header header;
+	g_ui_protocol_status status;
+	g_rectangle bounds;
+}__attribute__((packed)) g_ui_component_get_bounds_response;
+
+/**
+ * Request/response for setting components (in)visible
  */
 typedef struct {
 	g_ui_message_header header;
@@ -171,7 +197,7 @@ typedef struct {
 }__attribute__((packed)) g_ui_component_set_visible_response;
 
 /**
- * Request/respones for setting the title on a titled component
+ * Request/response for setting the title on a titled component
  */
 typedef struct {
 	g_ui_message_header header;
@@ -185,7 +211,7 @@ typedef struct {
 }__attribute__((packed)) g_ui_component_set_title_response;
 
 /**
- * Request/respones for getting the title on a titled component
+ * Request/response for getting the title on a titled component
  */
 typedef struct {
 	g_ui_message_header header;
@@ -199,25 +225,69 @@ typedef struct {
 }__attribute__((packed)) g_ui_component_get_title_response;
 
 /**
+ * Request/response for getting a bool property
+ */
+typedef struct {
+	g_ui_message_header header;
+	g_ui_component_id id;
+	int property;
+}__attribute__((packed)) g_ui_component_get_bool_property_request;
+
+typedef struct {
+	g_ui_message_header header;
+	g_ui_protocol_status status;
+	uint8_t value;
+}__attribute__((packed)) g_ui_component_get_bool_property_response;
+
+/**
+ * Request/response for setting a bool property
+ */
+typedef struct {
+	g_ui_message_header header;
+	g_ui_component_id id;
+	int property;
+	uint8_t value;
+}__attribute__((packed)) g_ui_component_set_bool_property_request;
+
+typedef struct {
+	g_ui_message_header header;
+	g_ui_protocol_status status;
+}__attribute__((packed)) g_ui_component_set_bool_property_response;
+
+/**
+ * Request/response for getting the buffer of a canvas
+ */
+typedef struct {
+	g_ui_message_header header;
+	g_ui_component_id id;
+}__attribute__((packed)) g_ui_component_get_canvas_buffer_request;
+
+typedef struct {
+	g_ui_message_header header;
+	g_ui_protocol_status status;
+	uint8_t* buffer;
+	uint16_t bufferWidth;
+	uint16_t bufferHeight;
+}__attribute__((packed)) g_ui_component_get_canvas_buffer_response;
+
+/**
  * Event handler registration functions
  */
 typedef struct {
 	g_ui_message_header header;
 	g_ui_component_id id;
+	g_ui_component_event_type event_type;
 	g_tid target_thread;
-}__attribute__((packed)) g_ui_component_set_action_handler_request;
+}__attribute__((packed)) g_ui_component_set_listener_request;
 
 typedef struct {
 	g_ui_message_header header;
 	g_ui_protocol_status status;
-}__attribute__((packed)) g_ui_component_set_action_handler_response;
+}__attribute__((packed)) g_ui_component_set_listener_response;
 
 /**
  * Event structures
  */
-typedef uint32_t g_ui_component_event_type;
-const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_ACTION = 0;
-
 typedef struct {
 	g_ui_message_header header;
 	g_ui_component_event_type type;
@@ -227,5 +297,10 @@ typedef struct {
 typedef struct {
 	g_ui_component_event_header header;
 }__attribute__((packed)) g_ui_component_action_event;
+
+typedef struct {
+	g_ui_component_event_header header;
+	g_rectangle bounds;
+}__attribute__((packed)) g_ui_component_bounds_event;
 
 #endif

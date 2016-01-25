@@ -29,16 +29,17 @@
 #include <ghostuser/utils/value_placer.hpp>
 
 /**
- *
+ * Component that is capable of receiving action events
  */
 class g_action_component {
 private:
 	g_ui_component_id id;
-	g_action_listener* listener;
 
 protected:
-	g_action_component(g_ui_component_id id) :
-			id(id), listener(0) {
+	g_component* self;
+
+	g_action_component(g_component* self, g_ui_component_id id) :
+			self(self), id(id) {
 	}
 
 public:
@@ -52,13 +53,6 @@ public:
 	 *
 	 */
 	bool setActionListener(g_action_listener* l);
-
-	/**
-	 *
-	 */
-	g_action_listener* getActionListener() {
-		return listener;
-	}
 
 };
 

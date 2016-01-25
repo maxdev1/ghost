@@ -59,7 +59,7 @@ g_key_info g_keyboard::readKey(bool* break_condition) {
 	}
 
 	// wait until incoming data is here (and the driver unsets the atom)
-	g_atomic_block(&g_ps2_area->keyboard.atom_nothing_queued);
+	g_atomic_block_2(&g_ps2_area->keyboard.atom_nothing_queued, (uint8_t*) break_condition);
 
 	// take info from the shared memory
 	uint8_t scancode = g_ps2_area->keyboard.scancode;
@@ -163,7 +163,7 @@ bool g_keyboard::loadScancodeLayout(std::string iso) {
 	g_property_file_parser props(in);
 
 	scancodeLayout.clear();
-	std::map < std::string, std::string > properties = props.getProperties();
+	std::map<std::string, std::string> properties = props.getProperties();
 
 	for (auto entry : properties) {
 		// Convert number from hex
@@ -204,27 +204,28 @@ bool g_keyboard::loadConversionLayout(std::string iso) {
 	}
 	g_property_file_parser props(in);
 
+	// empty existing conversion layout
 	conversionLayout.clear();
-	std::map < std::string, std::string > properties = props.getProperties();
 
+	std::map<std::string, std::string> properties = props.getProperties();
 	for (auto entry : properties) {
 
+		// create key info value
 		g_key_info info;
 
-		// We want chars on press
+		// they shall be triggered on press
 		info.pressed = true;
 
-		// Take the key and split if necessary
+		// take the key and split if necessary
 		std::string keyName = entry.first;
-
-		// Split key if necessary
 		int spacePos = keyName.find(' ');
+
 		if (spacePos != -1) {
 			std::string flags = keyName.substr(spacePos + 1);
 			keyName = keyName.substr(0, spacePos);
 
 			// Handle the flags
-			for (uint32_t i = 0; i < flags.length(); i++) {
+			for (int i = 0; i < flags.length(); i++) {
 
 				if (flags[i] == 's') {
 					info.shift = true;
@@ -238,7 +239,7 @@ bool g_keyboard::loadConversionLayout(std::string iso) {
 				} else {
 					std::stringstream msg;
 					msg << "unknown flag in conversion mapping: ";
-					msg << (uint32_t) flags[i];
+					msg << flags[i];
 					g_logger::log(msg.str());
 				}
 			}
@@ -249,8 +250,24 @@ bool g_keyboard::loadConversionLayout(std::string iso) {
 
 		// Push the mapping
 		char c = -1;
-		if (entry.second.length() > 0) {
-			c = entry.second[0];
+		std::string value = entry.second;
+		if (value.length() > 0) {
+			c = value[0];
+
+			// Escaped numeric values
+			if (c == '\\') {
+				if (value.length() > 1) {
+					std::stringstream conv;
+					conv << value.substr(1);
+					uint32_t num;
+					conv >> num;
+					c = num;
+
+				} else {
+					g_logger::log("skipping value '" + value + "' in key " + keyName + ", illegal format");
+					continue;
+				}
+			}
 		}
 		conversionLayout[info] = c;
 	}

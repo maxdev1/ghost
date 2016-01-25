@@ -37,6 +37,9 @@ protected:
 public:
 	static g_window* create();
 
+	bool isResizable();
+	void setResizable(bool resizable);
+
 };
 
 #endif

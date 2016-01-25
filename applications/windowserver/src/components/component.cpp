@@ -51,9 +51,11 @@ void component_t::setBounds(const g_rectangle& newBounds) {
 		graphics.resize(newBounds.width, newBounds.height);
 		markFor(COMPONENT_REQUIREMENT_LAYOUT);
 		markFor(COMPONENT_REQUIREMENT_UPDATE);
+
+		handleBoundChange(oldBounds);
 	}
 
-	handleBoundChange(oldBounds);
+	fireBoundsChange(bounds);
 }
 
 /**
@@ -97,24 +99,26 @@ void component_t::markDirty(g_rectangle rect) {
 /**
  *
  */
-void component_t::blit(g_color_argb* out, g_rectangle& outBounds, g_rectangle absoluteClip, g_point offset) {
+void component_t::blit(g_color_argb* out, g_rectangle& outBounds, g_rectangle absClip, g_point position) {
 
 	if (this->visible) {
 		if (graphics.getBuffer() != 0) {
-			graphics.blitTo(out, outBounds, absoluteClip, offset);
+			graphics.blitTo(out, outBounds, absClip, position);
 		}
 
-		g_rectangle thisBounds = getBounds();
-		thisBounds.x += absoluteClip.x;
-		thisBounds.y += absoluteClip.y;
-		int newTop = thisBounds.getTop() < absoluteClip.getTop() ? absoluteClip.getTop() : thisBounds.getTop();
-		int newBottom = thisBounds.getBottom() > absoluteClip.getBottom() ? absoluteClip.getBottom() : thisBounds.getBottom();
-		int newLeft = thisBounds.getLeft() < absoluteClip.getLeft() ? absoluteClip.getLeft() : thisBounds.getLeft();
-		int newRight = thisBounds.getRight() > absoluteClip.getRight() ? absoluteClip.getRight() : thisBounds.getRight();
+		g_rectangle absBounds = getBounds();
+		absBounds.x = position.x;
+		absBounds.y = position.y;
+		int newTop = absClip.getTop() > absBounds.getTop() ? absClip.getTop() : absBounds.getTop();
+		int newBottom = absClip.getBottom() < absBounds.getBottom() ? absClip.getBottom() : absBounds.getBottom();
+		int newLeft = absClip.getLeft() > absBounds.getLeft() ? absClip.getLeft() : absBounds.getLeft();
+		int newRight = absClip.getRight() < absBounds.getRight() ? absClip.getRight() : absBounds.getRight();
 
-		g_rectangle subClip = g_rectangle(newLeft, newTop, newRight - newLeft, newBottom - newTop);
+		g_rectangle thisClip = g_rectangle(newLeft, newTop, newRight - newLeft, newBottom - newTop);
 		for (component_t* c : children) {
-			c->blit(out, outBounds, subClip, g_point(offset.x + c->bounds.x, offset.y + c->bounds.y));
+			if (c->visible) {
+				c->blit(out, outBounds, thisClip, g_point(position.x + c->bounds.x, position.y + c->bounds.y));
+			}
 		}
 	}
 }
@@ -376,4 +380,26 @@ void component_t::resolveRequirement(component_requirement_t req) {
 		requirements &= ~req;
 	}
 
+}
+
+/**
+ *
+ */
+void component_t::setListener(g_ui_component_event_type eventType, g_tid target_thread, g_ui_component_id id) {
+	event_listener_info_t info;
+	info.target_thread = target_thread;
+	info.component_id = id;
+	listeners[eventType] = info;
+}
+
+/**
+ *
+ */
+bool component_t::getListener(g_ui_component_event_type eventType, event_listener_info_t& out) {
+
+	if (listeners.count(eventType)) {
+		out = listeners[eventType];
+		return true;
+	}
+	return false;
 }

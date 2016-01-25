@@ -32,10 +32,13 @@
 class g_button: public g_component, public g_titled_component, public g_action_component {
 protected:
 	g_button(uint32_t id) :
-			g_component(id), g_titled_component(id), g_action_component(id) {
+			g_component(id), g_titled_component(id), g_action_component(this, id) {
 	}
 public:
 	static g_button* create();
+
+	void setEnabled(bool enabled);
+	bool isEnabled();
 };
 
 #endif

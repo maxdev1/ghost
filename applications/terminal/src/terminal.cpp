@@ -232,9 +232,8 @@ void terminal_t::run(create_terminal_info_t* inf) {
 		}
 
 		// read line
-		bool break_condition = false;
 		terminal_input_status_t status;
-		command = read_input(command, screen, &status, &break_condition);
+		command = read_input(command, screen, &status, 0);
 
 		// handle input
 		if (status == TERMINAL_INPUT_STATUS_SCREEN_SWITCH) {
@@ -280,7 +279,7 @@ void terminal_t::run_command(std::string command) {
 	}
 
 	standard_in_thread_data_t in_data;
-	in_data.stop = false;
+	in_data.continue_input = true;
 	in_data.stdin_write_end = term_in;
 	in_data.terminal = this;
 	g_tid rin = g_create_thread_d((void*) &standard_in_thread,
@@ -305,10 +304,8 @@ void terminal_t::run_command(std::string command) {
 	in_data.int_pid = last_pid;
 
 	// wait for process to exit
-	klog("terminal waits for %i to die", last_pid);
 	g_join(last_pid);
-	klog("terminal got woken up");
-	in_data.stop = true;
+	in_data.continue_input = false;
 	out_data.stop = true;
 	err_data.stop = true;
 
@@ -604,7 +601,7 @@ void terminal_t::standard_out_thread(standard_out_thread_data_t* data) {
 	int buflen = 512;
 	char* buf = new char[buflen];
 
-	while (!data->stop) {
+	while (true) {
 		g_fs_read_status stat;
 		int r = g_read_s(data->stdout_read_end, buf, buflen, &stat);
 
@@ -624,6 +621,8 @@ void terminal_t::standard_out_thread(standard_out_thread_data_t* data) {
 			uint8_t color = (data->err ? SC_ERROR_COLOR : SC_DEFAULT_COLOR);
 			data->screen->write(o.str(), color);
 			data->screen->updateCursor();
+		} else {
+			break;
 		}
 	}
 	data->screen->updateCursor();
@@ -638,12 +637,12 @@ void terminal_t::standard_in_thread(standard_in_thread_data_t* data) {
 
 	std::string line;
 
-	while (!data->stop) {
+	while (data->continue_input) {
 		terminal_input_status_t stat;
 
 		// we add up the line because it might contain content already
 		line = terminal_t::read_input(line, data->terminal->screen, &stat,
-				&data->stop);
+				&data->continue_input);
 
 		if (stat == TERMINAL_INPUT_STATUS_EXIT) {
 			if (data->int_pid != -1) {
@@ -752,11 +751,11 @@ bool terminal_t::execute(std::string shortpath, std::string args,
  *
  */
 std::string terminal_t::read_input(std::string there, screen_t* screen,
-		terminal_input_status_t* out_status, bool* do_break) {
+		terminal_input_status_t* out_status, bool* continue_input) {
 
 	std::string line = there;
-	while (!*do_break) {
-		g_key_info key = g_keyboard::readKey(do_break);
+	while (continue_input == 0 || *continue_input) {
+		g_key_info key = g_keyboard::readKey(continue_input);
 
 		if (key.pressed) {
 			if ((key.ctrl && key.key == "KEY_C") || (key.key == "KEY_ESC")) {

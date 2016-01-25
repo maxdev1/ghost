@@ -49,6 +49,7 @@ private:
 	button_state_t state;
 	label_t label;
 	g_insets insets;
+	bool enabled;
 
 public:
 	/**
@@ -69,6 +70,17 @@ public:
 	label_t& getLabel() {
 		return label;
 	}
+
+	/**
+	 *
+	 */
+	virtual bool getBoolProperty(int property, bool* out);
+
+	/**
+	 *
+	 */
+	virtual bool setBoolProperty(int property, bool value);
+
 };
 
 #endif

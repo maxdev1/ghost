@@ -28,8 +28,6 @@
 #include <tasking/thread.hpp>
 #include <system/smp/global_recursive_lock.hpp>
 
-typedef g_list_entry<g_thread*> g_task_entry;
-
 /**
  * The scheduler is responsible for determining which task is the next one to
  * be scheduled and to apply the actual switching.
@@ -37,43 +35,30 @@ typedef g_list_entry<g_thread*> g_task_entry;
 class g_scheduler {
 private:
 	uint64_t milliseconds;
-	uint32_t coreId;
 
 	g_global_recursive_lock model_lock;
+	g_list_entry<g_thread*>* task_list;
+	g_list_entry<g_thread*>* current_task;
 
-	g_task_entry* wait_queue;
-	g_task_entry* run_queue;
-	g_task_entry* idle_entry;
-	g_task_entry* current_entry;
+	uint32_t coreId;
 
 	void selectNextTask();
 	bool applyTaskSwitch();
 
-	void checkWaitingState(g_thread* thread);
+	bool checkWaitingState();
 	void deleteCurrent();
 
 public:
 	g_scheduler(uint32_t coreId);
 
-	g_thread* save(g_processor_state* cpuState);
-	g_thread* schedule();
+	g_processor_state* schedule(g_processor_state* cpuState);
 	void add(g_thread* t);
-
-	void pushInWait(g_thread* thread);
 
 	uint32_t calculateLoad();
 
 	g_thread* getCurrent();
 	g_thread* getTaskById(g_tid id);
 	g_thread* getTaskByIdentifier(const char* identifier);
-
-	void switchSpace(g_thread* thread);
-	bool eliminateIfDead(g_thread* thread);
-	void finishSwitch(g_thread* thread);
-
-	void moveToRunQueue(g_thread* thread);
-	void moveToWaitQueue(g_thread* thread);
-	g_task_entry* removeFromQueue(g_task_entry** queue_head, g_thread* thread);
 
 	/**
 	 * Sets all threads of the given process to !alive and returns

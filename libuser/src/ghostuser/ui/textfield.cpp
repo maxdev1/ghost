@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <ghost.h>
+#include <ghostuser/ui/properties.hpp>
 #include <ghostuser/ui/interface_specification.hpp>
 #include <ghostuser/ui/textfield.hpp>
 
@@ -27,4 +28,20 @@
  */
 g_textfield* g_textfield::create() {
 	return createComponent<g_textfield, G_UI_COMPONENT_TYPE_TEXTFIELD>();
+}
+
+/**
+ *
+ */
+void g_textfield::setSecure(bool secure) {
+	g_component::setBoolProperty(G_UI_PROPERTY_SECURE, secure);
+}
+
+/**
+ *
+ */
+bool g_textfield::isSecure() {
+	bool result;
+	g_component::getBoolProperty(G_UI_PROPERTY_SECURE, &result);
+	return result;
 }

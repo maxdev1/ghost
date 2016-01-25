@@ -44,6 +44,8 @@ public:
 		return bounds;
 	}
 
+	void translate(int x, int y);
+
 };
 
 #endif

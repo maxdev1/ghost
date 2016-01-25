@@ -27,8 +27,10 @@
 /**
  *
  */
-g_graphics::g_graphics(bool transparentBackground) :
-		transparentBackground(transparentBackground), buffer(0), width(0), height(0) {
+g_graphics::g_graphics(bool transparentBackground, g_color_argb* externalBuffer, uint16_t width, uint16_t height) :
+		transparentBackground(transparentBackground), buffer(externalBuffer), width(width), height(height) {
+
+	hasExternalBuffer = (externalBuffer != nullptr);
 	resize(0, 0);
 }
 
@@ -61,14 +63,23 @@ g_color_argb g_graphics::add(g_color_argb a, g_color_argb b) {
  */
 void g_graphics::resize(int newWidth, int newHeight) {
 
-	// Create new buffer
+	// when there is an external buffer, don't do this
+	if (hasExternalBuffer) {
+		return;
+	}
+
+	if (newWidth < 0 || newHeight < 0) {
+		return;
+	}
+
+	// create new buffer
 	g_color_argb* newBuffer = new g_color_argb[newWidth * newHeight];
 
 	if (buffer) {
 		delete buffer;
 	}
 
-	// Set new values
+	// set new values
 	width = newWidth;
 	height = newHeight;
 	buffer = newBuffer;
@@ -120,13 +131,16 @@ g_color_argb g_graphics::getPixel(int x, int y) {
 /**
  *
  */
-void g_graphics::blitTo(g_color_argb* out, g_rectangle outBounds, g_rectangle absoluteClip, g_point offset) {
+void g_graphics::blitTo(g_color_argb* out, const g_rectangle& outBounds, const g_rectangle& absoluteClip, const g_point& offset) {
+
+	int absX;
+	int absY;
 
 	for (int y = 0; y < height; y++) {
-		for (int x = 0; x < width; x++) {
+		absY = (y + offset.y);
 
-			int absX = (x + offset.x);
-			int absY = (y + offset.y);
+		for (int x = 0; x < width; x++) {
+			absX = (x + offset.x);
 
 			if (absX >= absoluteClip.x && absY >= absoluteClip.y && absX < absoluteClip.x + absoluteClip.width && absY < absoluteClip.y + absoluteClip.height) {
 				uint32_t absOff = absY * outBounds.width + absX;

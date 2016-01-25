@@ -21,8 +21,8 @@
 #ifndef GHOSTLIBRARY_UI_LISTENER
 #define GHOSTLIBRARY_UI_LISTENER
 
-#include <ghostuser/ui/component.hpp>
 #include <cstdint>
+#include <ghostuser/ui/interface_specification.hpp>
 
 /**
  *
@@ -31,6 +31,11 @@ class g_listener {
 public:
 	virtual ~g_listener() {
 	}
+
+	/**
+	 * Processes the incoming raw event and translates it to a g_event.
+	 */
+	virtual void process(g_ui_component_event_header* header) = 0;
 };
 
 #endif

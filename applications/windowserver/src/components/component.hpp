@@ -26,6 +26,10 @@
 #include <ghostuser/graphics/graphics.hpp>
 #include <ghostuser/graphics/metrics/rectangle.hpp>
 #include <layout/layout_manager.hpp>
+#include <components/bounds_event_component.hpp>
+#include <components/event_listener_info.hpp>
+#include <stdio.h>
+#include <map>
 
 // forward declarations
 class window_t;
@@ -50,7 +54,7 @@ typedef uint32_t component_requirement_t;
 /**
  *
  */
-class component_t {
+class component_t: public bounds_event_component_t {
 private:
 	g_rectangle bounds;
 	component_t* parent;
@@ -62,6 +66,8 @@ private:
 
 	component_requirement_t requirements;
 	component_requirement_t childRequirements;
+
+	std::map<g_ui_component_event_type, event_listener_info_t> listeners;
 
 protected:
 	layout_manager_t* layoutManager;
@@ -76,7 +82,7 @@ public:
 	 */
 	component_t(bool transparentBackground = false) :
 			graphics(transparentBackground), visible(true), requirements(COMPONENT_REQUIREMENT_ALL), childRequirements(COMPONENT_REQUIREMENT_ALL), parent(0), layoutManager(
-					0) {
+					0), bounds_event_component_t(this) {
 	}
 
 	/**
@@ -182,17 +188,17 @@ public:
 	 *
 	 * @param out		the output buffer
 	 * @param outBounds	bounds of the output buffer
-	 * @param absoluteClip the absolute bounds on the buffer that may not be exceeded
-	 * @param pos		offset to blit to
+	 * @param absClip	absolute bounds that may not be exceeded
+	 * @param position	absolute screen position to blit to
 	 */
-	void blit(g_color_argb* out, g_rectangle& outBounds, g_rectangle absoluteClip, g_point pos);
+	void blit(g_color_argb* out, g_rectangle& outBounds, g_rectangle absClip, g_point position);
 
 	/**
 	 * Adds the given component as a child to this component
 	 *
 	 * @param comp	the component to add
 	 */
-	void addChild(component_t* comp);
+	virtual void addChild(component_t* comp);
 
 	/**
 	 * Removes the given component from this component
@@ -312,6 +318,30 @@ public:
 	 * The component may here repaint itself.
 	 */
 	virtual void paint();
+
+	/**
+	 *
+	 */
+	virtual bool getBoolProperty(int property, bool* out) {
+		return false;
+	}
+
+	/**
+	 *
+	 */
+	virtual bool setBoolProperty(int property, bool value) {
+		return false;
+	}
+
+	/**
+	 *
+	 */
+	void setListener(g_ui_component_event_type eventType, g_tid target_thread, g_ui_component_id id);
+
+	/**
+	 *
+	 */
+	bool getListener(g_ui_component_event_type eventType, event_listener_info_t& out);
 
 };
 

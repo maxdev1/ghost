@@ -51,8 +51,8 @@ enum g_elf32_validation_status {
  */
 class g_elf32_loader {
 public:
-	static g_elf32_spawn_status spawnFromRamdisk(g_ramdisk_entry* binaryFile, g_security_level securityLevel, g_thread** target, bool enforceCurrentCore,
-			g_thread_priority priority);
+	static g_elf32_spawn_status spawnFromRamdisk(g_ramdisk_entry* binaryFile, g_security_level securityLevel, g_thread** target, const char* arguments = 0,
+			bool enforceCurrentCore = false);
 
 private:
 	static g_elf32_validation_status validate(elf32_ehdr* header);
