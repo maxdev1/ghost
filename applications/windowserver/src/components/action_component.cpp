@@ -19,25 +19,19 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <components/action_component.hpp>
+#include <components/component.hpp>
 #include <stdio.h>
-
-/**
- *
- */
-void action_component_t::setActionListener(g_tid target_thread, g_ui_component_id component_id) {
-	this->target_thread = target_thread;
-	this->component_id = component_id;
-}
 
 /**
  *
  */
 void action_component_t::fireAction() {
 
-	if (this->target_thread != -1) {
+	event_listener_info_t listener_info;
+	if (self->getListener(G_UI_COMPONENT_EVENT_TYPE_ACTION, listener_info)) {
 		g_ui_component_action_event action_event;
 		action_event.header.type = G_UI_COMPONENT_EVENT_TYPE_ACTION;
-		action_event.header.component_id = this->component_id;
-		g_send_message(this->target_thread, &action_event, sizeof(g_ui_component_action_event));
+		action_event.header.component_id = listener_info.component_id;
+		g_send_message(listener_info.target_thread, &action_event, sizeof(g_ui_component_action_event));
 	}
 }

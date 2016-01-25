@@ -76,16 +76,50 @@ bool g_component::setBounds(g_rectangle rect) {
 
 	// read response
 	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_set_bounds_response);
-	uint8_t buffer[bufferSize];
+	g_local<uint8_t> buffer(new uint8_t[bufferSize]);
 
-	if (g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
-		g_ui_component_set_bounds_response* response = (g_ui_component_set_bounds_response*) G_MESSAGE_CONTENT(buffer);
+	if (g_receive_message_t(buffer(), bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
+		g_ui_component_set_bounds_response* response = (g_ui_component_set_bounds_response*) G_MESSAGE_CONTENT(buffer());
+
 		if (response->status == G_UI_PROTOCOL_SUCCESS) {
 			return true;
 		}
 	}
 
 	return false;
+
+}
+
+/**
+ *
+ */
+g_rectangle g_component::getBounds() {
+
+	if (!g_ui_initialized) {
+		return g_rectangle();
+	}
+
+	// send initialization request
+	uint32_t tx = g_ipc_next_topic();
+
+	g_ui_component_get_bounds_request request;
+	request.header.id = G_UI_PROTOCOL_GET_BOUNDS;
+	request.id = this->id;
+	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_get_bounds_request), tx);
+
+	// read response
+	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_get_bounds_response);
+	g_local<uint8_t> buffer(new uint8_t[bufferSize]);
+
+	if (g_receive_message_t(buffer(), bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
+		g_ui_component_get_bounds_response* response = (g_ui_component_get_bounds_response*) G_MESSAGE_CONTENT(buffer());
+
+		if (response->status == G_UI_PROTOCOL_SUCCESS) {
+			return response->bounds;
+		}
+	}
+
+	return g_rectangle();
 
 }
 
@@ -120,4 +154,126 @@ bool g_component::setVisible(bool visible) {
 
 	return false;
 
+}
+
+/**
+ *
+ */
+bool g_component::setBoolProperty(int property, bool value) {
+
+	if (!g_ui_initialized) {
+		return false;
+	}
+
+	// send initialization request
+	uint32_t tx = g_ipc_next_topic();
+
+	g_ui_component_set_bool_property_request request;
+	request.header.id = G_UI_PROTOCOL_SET_BOOL_PROPERTY;
+	request.id = this->id;
+	request.property = property;
+	request.value = value;
+	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_set_bool_property_request), tx);
+
+	// read response
+	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_set_bool_property_response);
+	g_local<uint8_t> buffer(new uint8_t[bufferSize]);
+
+	if (g_receive_message_t(buffer(), bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
+		g_ui_component_set_bool_property_response* response = (g_ui_component_set_bool_property_response*) G_MESSAGE_CONTENT(buffer());
+
+		if (response->status == G_UI_PROTOCOL_SUCCESS) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ *
+ */
+bool g_component::getBoolProperty(int property, bool* out) {
+
+	if (!g_ui_initialized) {
+		return false;
+	}
+
+	// send initialization request
+	uint32_t tx = g_ipc_next_topic();
+
+	g_ui_component_get_bool_property_request request;
+	request.header.id = G_UI_PROTOCOL_GET_BOOL_PROPERTY;
+	request.id = this->id;
+	request.property = property;
+	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_get_bool_property_request), tx);
+
+	// read response
+	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_get_bool_property_response);
+	g_local<uint8_t> buffer(new uint8_t[bufferSize]);
+
+	if (g_receive_message_t(buffer(), bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
+		g_ui_component_get_bool_property_response* response = (g_ui_component_get_bool_property_response*) G_MESSAGE_CONTENT(buffer());
+
+		if (response->status == G_UI_PROTOCOL_SUCCESS) {
+			*out = response->value;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ *
+ */
+bool g_component::setListener(g_ui_component_event_type eventType, g_listener* new_listener) {
+
+	if (!g_ui_initialized) {
+		return false;
+	}
+
+	// set new
+	listeners[eventType] = new_listener;
+
+	// check
+	if (new_listener == 0) {
+		return false;
+	}
+
+	// send request
+	uint32_t tx = g_ipc_next_topic();
+
+	g_ui_component_set_listener_request request;
+	request.header.id = G_UI_PROTOCOL_SET_LISTENER;
+	request.id = this->id;
+	request.target_thread = g_ui_event_dispatcher_tid;
+	request.event_type = eventType;
+	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_set_listener_request), tx);
+
+	// read response
+	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_set_listener_response);
+	uint8_t buffer[bufferSize];
+
+	if (g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
+		g_ui_component_set_listener_response* response = (g_ui_component_set_listener_response*) G_MESSAGE_CONTENT(buffer);
+		if (response->status == G_UI_PROTOCOL_SUCCESS) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ *
+ */
+void g_component::handle(g_ui_component_event_header* header) {
+
+	auto eventType = header->type;
+	g_listener* listener = listeners[eventType];
+
+	if (listener != nullptr) {
+		listener->process(header);
+	}
 }

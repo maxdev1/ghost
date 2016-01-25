@@ -27,6 +27,7 @@
 #include <Fonts.hpp>
 
 #include <ghostuser/graphics/text/font_manager.hpp>
+#include <ghostuser/ui/properties.hpp>
 #include <ghostuser/utils/logger.hpp>
 #include <sstream>
 
@@ -34,7 +35,8 @@
  *
  */
 text_field_t::text_field_t() :
-		cursor(0), scrollX(0), focused(false), visualStatus(text_field_visual_status_t::NORMAL), fontSize(10), textColor(RGB(0, 0, 0)), insets(g_insets(5, 5, 5, 5)) {
+		cursor(0), scrollX(0), secure(false), focused(false), visualStatus(text_field_visual_status_t::NORMAL), fontSize(10), textColor(RGB(0, 0, 0)), insets(
+				g_insets(5, 5, 5, 5)) {
 	// Dummy values, if someone forgets to properly setFont
 	heightOfCapitalX = 10;
 	lineHeight = 10;
@@ -65,7 +67,15 @@ void text_field_t::update() {
 	// Perform layouting
 	g_rectangle bounds = getBounds();
 	viewModel = g_layouted_text();
-	g_text_layouter::getInstance()->layout(text, font, fontSize, g_rectangle(0, 0, bounds.width, bounds.height), g_text_alignment::LEFT, viewModel, false);
+
+	std::string visible_text = text;
+	if(secure) {
+		visible_text = "";
+		for(int i = 0; i < text.length(); i++) {
+			visible_text += "*";
+		}
+	}
+	g_text_layouter::getInstance()->layout(visible_text, font, fontSize, g_rectangle(0, 0, bounds.width, bounds.height), g_text_alignment::LEFT, viewModel, false);
 	markFor(COMPONENT_REQUIREMENT_PAINT);
 }
 
@@ -427,4 +437,30 @@ void text_field_t::setFont(g_font* f) {
  */
 g_range text_field_t::getSelectedRange() {
 	return g_range(marker, cursor);
+}
+
+/**
+ *
+ */
+bool text_field_t::getBoolProperty(int property, bool* out) {
+
+	if(property == G_UI_PROPERTY_SECURE) {
+		*out = secure;
+		return true;
+	}
+
+	return false;
+}
+
+/**
+ *
+ */
+bool text_field_t::setBoolProperty(int property, bool value) {
+
+	if(property == G_UI_PROPERTY_SECURE) {
+		secure = value;
+		return true;
+	}
+
+	return false;
 }

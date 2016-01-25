@@ -1,0 +1,84 @@
+#include "stdint.h"
+#include "stdio.h"
+#include "stdlib.h"
+#include "string.h"
+#include "unistd.h"
+
+static uint8_t heap_lock = 0;
+static uint8_t* heap_start = 0;
+static uint8_t* heap_used = 0;
+static uint8_t* heap_end = 0;
+
+/**
+ *
+ */
+typedef struct {
+	size_t size;
+} allocation_header_t;
+
+/**
+ *
+ */
+void free(void* ptr) {
+
+	g_atomic_lock(&heap_lock);
+
+	allocation_header_t* header = (allocation_header_t*) ((uint8_t*) ptr
+			- sizeof(allocation_header_t));
+	memset(ptr, rand(), header->size);
+
+	heap_lock = 0;
+}
+
+/**
+ *
+ */
+void* malloc(size_t size) {
+
+	g_atomic_lock(&heap_lock);
+
+	if (heap_start == 0) {
+		heap_start = (uint8_t*) sbrk(0);
+		heap_end = heap_start;
+		heap_used = heap_start;
+	}
+
+	size_t needed = size + sizeof(allocation_header_t);
+	while (heap_end - heap_used < needed) {
+		heap_end = (uint8_t*) sbrk(4096);
+	}
+
+	allocation_header_t* header = (allocation_header_t*) heap_used;
+	header->size = size;
+	heap_used += needed;
+
+	heap_lock = 0;
+	return ((uint8_t*) header) + sizeof(allocation_header_t);
+}
+
+/**
+ *
+ */
+void* realloc(void* mem, size_t size) {
+
+	allocation_header_t* header = (allocation_header_t*) ((uint8_t*) mem
+			- sizeof(allocation_header_t));
+	void* copy = malloc(size);
+	memcpy(copy, mem, header->size);
+	free(mem);
+	return copy;
+}
+
+/**
+ *
+ */
+void* calloc(size_t num, size_t size) {
+
+	void* mem = malloc(num * size);
+	if (mem == NULL) {
+		return NULL;
+	}
+
+	memset(mem, 0, num * size);
+	return mem;
+}

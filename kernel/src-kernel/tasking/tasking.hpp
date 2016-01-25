@@ -46,24 +46,14 @@ public:
 	static void enableForThisCore();
 
 	/**
-	 * Saves the current CPU state and returns the current thread.
+	 * Called by the timer for switching
 	 */
-	static g_thread* save(g_processor_state* cpuState);
-
-	/**
-	 * Called to switch tasks. Function returns the task to execute next.
-	 */
-	static g_thread* schedule();
+	static g_processor_state* schedule(g_processor_state* cpuState);
 
 	/**
 	 * Adds the task to the least loaded cores scheduler
 	 */
 	static void addTask(g_thread* proc, bool enforceCurrentCore = false);
-
-	/**
-	 * Pushes the given thread to the top of the wait queue.
-	 */
-	static void pushInWait(g_thread* proc);
 
 	/**
 	 * Returns the current task on the current core
@@ -99,7 +89,7 @@ public:
 	/**
 	 *
 	 */
-	static g_thread* fork(g_thread* current_thread);
+	static g_thread* fork();
 
 };
 

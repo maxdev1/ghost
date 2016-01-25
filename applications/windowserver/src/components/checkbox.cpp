@@ -55,7 +55,15 @@ void checkbox_t::paint() {
 
 	if (checked) {
 		p.setColor(RGB(70, 180, 255));
-		p.fill(g_rectangle(4, 4, boxSize - 8, boxSize - 8));
+		g_polygon polygon;
+		polygon.addPoint(5, boxSize / 2 - 3);
+		polygon.addPoint(2, boxSize / 2);
+		polygon.addPoint(boxSize / 2 - 1, boxSize - 4);
+		polygon.addPoint(boxSize, 4);
+		polygon.addPoint(boxSize - 3, 1);
+		polygon.addPoint(boxSize / 2 - 1, boxSize / 2);
+		polygon.translate(-1, 2);
+		p.fill(polygon);
 	}
 }
 
@@ -84,9 +92,7 @@ bool checkbox_t::handle(event_t& e) {
 			g_rectangle minbounds = getBounds();
 			minbounds.x = 0;
 			minbounds.y = 0;
-			klog("clicked at: %i, %i IN %i %i %i %i", me->position.x, me->position.y, minbounds.x, minbounds.y, minbounds.width, minbounds.height);
-			if (minbounds.contains(me->position)) {
-				klog("clicked in bounds!");
+			if (me->type == MOUSE_EVENT_RELEASE && minbounds.contains(me->position)) {
 				checked = !checked;
 			}
 

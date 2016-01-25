@@ -60,42 +60,7 @@ void g_tasking::enableForThisCore() {
 /**
  * 
  */
-void g_tasking::pushInWait(g_thread* proc) {
-
-	// Get scheduler for this core
-	uint32_t coreId = g_system::currentProcessorId();
-	g_scheduler* scheduler = schedulers[coreId];
-
-	// Check for errors
-	if (scheduler == 0) {
-		g_kernel::panic("%! no scheduler for core %i", "scheduler", coreId);
-	}
-
-	scheduler->pushInWait(proc);
-}
-
-/**
- *
- */
-g_thread* g_tasking::save(g_processor_state* cpuState) {
-
-	// Get scheduler for this core
-	uint32_t coreId = g_system::currentProcessorId();
-	g_scheduler* scheduler = schedulers[coreId];
-
-	// Check for errors
-	if (scheduler == 0) {
-		g_kernel::panic("%! no scheduler for core %i", "scheduler", coreId);
-	}
-
-	// Save state
-	return scheduler->save(cpuState);
-}
-
-/**
- *
- */
-g_thread* g_tasking::schedule() {
+g_processor_state* g_tasking::schedule(g_processor_state* cpuState) {
 
 	// Get scheduler for this core
 	uint32_t coreId = g_system::currentProcessorId();
@@ -107,20 +72,22 @@ g_thread* g_tasking::schedule() {
 	}
 
 	// Let scheduler do his work
-	return scheduler->schedule();
+	return scheduler->schedule(cpuState);
 }
 
 /**
  * 
  */
-g_thread* g_tasking::fork(g_thread* current_thread) {
+g_thread* g_tasking::fork() {
 
 	g_thread* clone = 0;
 
+	g_thread* current = getCurrentThread();
+
 	// TODO forking in threads.
-	if (current_thread == current_thread->process->main) {
-		if (current_thread) {
-			clone = g_thread_manager::fork(current_thread);
+	if (current == current->process->main) {
+		if (current) {
+			clone = g_thread_manager::fork(current);
 			if (clone) {
 				addTask(clone);
 			}

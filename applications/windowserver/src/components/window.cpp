@@ -27,6 +27,7 @@
 #include <ghostuser/graphics/text/font_manager.hpp>
 #include <ghostuser/graphics/text/text_layouter.hpp>
 #include <ghostuser/io/files/file_utils.hpp>
+#include <ghostuser/ui/properties.hpp>
 #include <ghostuser/graphics/polygon.hpp>
 
 /**
@@ -35,6 +36,27 @@
 window_t::window_t() :
 		backgroundColor(RGB(240, 240, 240)), borderWidth(DEFAULT_BORDER_WIDTH), cornerSize(DEFAULT_CORNER_SIZE) {
 	this->visible = false;
+	this->resizable = true;
+
+	component_t::addChild(&label);
+	label.setAlignment(g_text_alignment::CENTER);
+	component_t::addChild(&panel);
+}
+
+/**
+ *
+ */
+void window_t::layout() {
+	g_rectangle bounds = getBounds();
+	label.setBounds(g_rectangle(0, 3, bounds.width, 25));
+	panel.setBounds(g_rectangle(1, 31, bounds.width - 2, bounds.height - 32));
+}
+
+/**
+ *
+ */
+void window_t::addChild(component_t* component) {
+	panel.addChild(component);
 }
 
 /**
@@ -44,8 +66,16 @@ void window_t::paint() {
 
 	graphics.clear();
 	g_painter p(graphics);
+
 	p.setColor(backgroundColor);
 	p.fill(g_rectangle(0, 0, getBounds().width, getBounds().height));
+
+	p.setColor(RGB(230, 230, 230));
+	p.fill(g_rectangle(0, 0, getBounds().width, 30));
+
+	p.setColor(RGB(180, 180, 180));
+	p.drawLine(g_point(0, 30), g_point(getBounds().width, 30));
+
 	p.setColor(RGB(80, 80, 80));
 	p.draw(g_rectangle(0, 0, getBounds().width - 1, getBounds().height - 1));
 
@@ -137,7 +167,7 @@ bool window_t::handle(event_t& event) {
 				newBounds.width = pressBounds.width - (pressBounds.x - newLocation.x);
 				newBounds.height = pressBounds.height;
 
-			} else {
+			} else if (resizeMode == RESIZE_MODE_MOVE) {
 				newBounds.x = newLocation.x;
 				newBounds.y = newLocation.y;
 			}
@@ -159,27 +189,33 @@ bool window_t::handle(event_t& event) {
 			pressPoint = mouseEvent->position;
 			pressBounds = getBounds();
 
-			if ((pressPoint.x < cornerSize) && (pressPoint.y < cornerSize)) { // Corner resizing
-				resizeMode = RESIZE_MODE_TOP_LEFT;
-			} else if ((pressPoint.x > getBounds().width - cornerSize) && (pressPoint.y < cornerSize)) {
-				resizeMode = RESIZE_MODE_TOP_RIGHT;
-			} else if ((pressPoint.x < cornerSize) && (pressPoint.y > getBounds().height - cornerSize)) {
-				resizeMode = RESIZE_MODE_BOTTOM_LEFT;
-			} else if ((pressPoint.x > getBounds().width - cornerSize) && (pressPoint.y > getBounds().height - cornerSize)) {
-				resizeMode = RESIZE_MODE_BOTTOM_RIGHT;
+			resizeMode = RESIZE_MODE_NONE;
 
-			} else if (pressPoint.y < borderWidth) {	// Edge resizing
-				resizeMode = RESIZE_MODE_TOP;
-			} else if (pressPoint.x < borderWidth) {
-				resizeMode = RESIZE_MODE_LEFT;
-			} else if (pressPoint.y > getBounds().height - borderWidth) {
-				resizeMode = RESIZE_MODE_BOTTOM;
-			} else if (pressPoint.x > getBounds().width - borderWidth) {
-				resizeMode = RESIZE_MODE_RIGHT;
+			if (resizable) {
+				if ((pressPoint.x < cornerSize) && (pressPoint.y < cornerSize)) { // Corner resizing
+					resizeMode = RESIZE_MODE_TOP_LEFT;
+				} else if ((pressPoint.x > getBounds().width - cornerSize) && (pressPoint.y < cornerSize)) {
+					resizeMode = RESIZE_MODE_TOP_RIGHT;
+				} else if ((pressPoint.x < cornerSize) && (pressPoint.y > getBounds().height - cornerSize)) {
+					resizeMode = RESIZE_MODE_BOTTOM_LEFT;
+				} else if ((pressPoint.x > getBounds().width - cornerSize) && (pressPoint.y > getBounds().height - cornerSize)) {
+					resizeMode = RESIZE_MODE_BOTTOM_RIGHT;
 
-			} else {
-				resizeMode = RESIZE_MODE_NONE;
+				} else if (pressPoint.y < borderWidth) {	// Edge resizing
+					resizeMode = RESIZE_MODE_TOP;
+				} else if (pressPoint.x < borderWidth) {
+					resizeMode = RESIZE_MODE_LEFT;
+				} else if (pressPoint.y > getBounds().height - borderWidth) {
+					resizeMode = RESIZE_MODE_BOTTOM;
+				} else if (pressPoint.x > getBounds().width - borderWidth) {
+					resizeMode = RESIZE_MODE_RIGHT;
+				}
+			}
 
+			if (resizeMode == RESIZE_MODE_NONE) {
+				if (pressPoint.y < 30) {
+					resizeMode = RESIZE_MODE_MOVE;
+				}
 			}
 
 		}
@@ -187,4 +223,44 @@ bool window_t::handle(event_t& event) {
 	}
 
 	return true;
+}
+
+/**
+ *
+ */
+bool window_t::getBoolProperty(int property, bool* out) {
+
+	if (property == G_UI_PROPERTY_RESIZABLE) {
+		*out = resizable;
+		return true;
+	}
+
+	return false;
+}
+
+/**
+ *
+ */
+bool window_t::setBoolProperty(int property, bool value) {
+
+	if (property == G_UI_PROPERTY_RESIZABLE) {
+		resizable = value;
+		return true;
+	}
+
+	return false;
+}
+
+/**
+ *
+ */
+void window_t::setTitle(std::string title) {
+	label.setTitle(title);
+}
+
+/**
+ *
+ */
+std::string window_t::getTitle() {
+	return label.getTitle();
 }

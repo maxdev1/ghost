@@ -41,9 +41,10 @@
  */
 G_SYSCALL_HANDLER(alloc_mem) {
 
-	g_process* process = current_thread->process;
+	g_thread* task = g_tasking::getCurrentThread();
+	g_process* process = task->process;
 
-	g_syscall_alloc_mem* data = (g_syscall_alloc_mem*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_alloc_mem* data = (g_syscall_alloc_mem*) G_SYSCALL_DATA(state);
 	data->virtualResult = 0;
 
 	// Get the number of pages
@@ -92,7 +93,7 @@ G_SYSCALL_HANDLER(alloc_mem) {
 		}
 	}
 
-	return current_thread;
+	return state;
 }
 
 /**
@@ -109,9 +110,10 @@ G_SYSCALL_HANDLER(alloc_mem) {
  */
 G_SYSCALL_HANDLER(share_mem) {
 
-	g_process* process = current_thread->process;
+	g_thread* task = g_tasking::getCurrentThread();
+	g_process* process = task->process;
 
-	g_syscall_share_mem* data = (g_syscall_share_mem*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_share_mem* data = (g_syscall_share_mem*) G_SYSCALL_DATA(state);
 	data->virtualAddress = 0;
 
 	// Get the number of pages
@@ -164,7 +166,7 @@ G_SYSCALL_HANDLER(share_mem) {
 				G_CONST_KERNEL_AREA_START);
 	}
 
-	return current_thread;
+	return state;
 
 }
 
@@ -177,9 +179,10 @@ G_SYSCALL_HANDLER(share_mem) {
  */
 G_SYSCALL_HANDLER(map_mmio) {
 
-	g_process* process = current_thread->process;
+	g_thread* task = g_tasking::getCurrentThread();
+	g_process* process = task->process;
 
-	g_syscall_map_mmio* data = (g_syscall_map_mmio*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_map_mmio* data = (g_syscall_map_mmio*) G_SYSCALL_DATA(state);
 	data->virtualAddress = 0;
 
 	// Only kernel and drivers may do this
@@ -207,7 +210,7 @@ G_SYSCALL_HANDLER(map_mmio) {
 		}
 	}
 
-	return current_thread;
+	return state;
 }
 
 /**
@@ -218,9 +221,10 @@ G_SYSCALL_HANDLER(map_mmio) {
  */
 G_SYSCALL_HANDLER(unmap) {
 
-	g_process* process = current_thread->process;
+	g_thread* task = g_tasking::getCurrentThread();
+	g_process* process = task->process;
 
-	g_syscall_unmap* data = (g_syscall_unmap*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_unmap* data = (g_syscall_unmap*) G_SYSCALL_DATA(state);
 	g_virtual_address base = data->virtualBase;
 
 	// Search for the range
@@ -252,12 +256,12 @@ G_SYSCALL_HANDLER(unmap) {
 
 		// Free the virtual range
 		process->virtualRanges.free(range->base);
-		g_log_debug("%! task %i in process %i unmapped range at %h", "syscall", process->main->id, current_thread->id, base);
+		g_log_debug("%! task %i in process %i unmapped range at %h", "syscall", process->main->id, task->id, base);
 	} else {
-		g_log_warn("%! task %i in process %i tried to unmap range at %h that was never mapped", "syscall", process->main->id, current_thread->id, base);
+		g_log_warn("%! task %i in process %i tried to unmap range at %h that was never mapped", "syscall", process->main->id, task->id, base);
 	}
 
-	return current_thread;
+	return state;
 }
 
 /**
@@ -265,8 +269,9 @@ G_SYSCALL_HANDLER(unmap) {
  */
 G_SYSCALL_HANDLER(sbrk) {
 
-	g_process* process = current_thread->process;
-	g_syscall_sbrk* data = (g_syscall_sbrk*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* task = g_tasking::getCurrentThread();
+	g_process* process = task->process;
+	g_syscall_sbrk* data = (g_syscall_sbrk*) G_SYSCALL_DATA(state);
 
 	// initialize the heap if necessary
 	if (process->heapBreak == 0) {
@@ -323,7 +328,7 @@ G_SYSCALL_HANDLER(sbrk) {
 	g_log_debug("%! <%i> sbrk(%i): %h -> %h (%h -> %h, %i pages)", "syscall", process->main->id, data->amount, data->address, process->heapBreak,
 			process->heapStart, process->heapStart + process->heapPages * G_PAGE_SIZE, process->heapPages);
 
-	return current_thread;
+	return state;
 }
 
 /**
@@ -332,18 +337,19 @@ G_SYSCALL_HANDLER(sbrk) {
  */
 G_SYSCALL_HANDLER(lower_malloc) {
 
-	g_process* process = current_thread->process;
-	g_syscall_lower_malloc* data = (g_syscall_lower_malloc*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* task = g_tasking::getCurrentThread();
+	g_process* process = task->process;
+	g_syscall_lower_malloc* data = (g_syscall_lower_malloc*) G_SYSCALL_DATA(state);
 
 	// check the security
 	if (process->securityLevel <= G_SECURITY_LEVEL_DRIVER) {
 		data->result = g_lower_heap::allocate(data->size);
 	} else {
-		g_log_debug("%! task %i tried to allocate lower memory but does not have permission", "syscall", current_thread->id);
+		g_log_debug("%! task %i tried to allocate lower memory but does not have permission", "syscall", task->id);
 		data->result = 0;
 	}
 
-	return current_thread;
+	return state;
 }
 
 /**
@@ -351,14 +357,15 @@ G_SYSCALL_HANDLER(lower_malloc) {
  */
 G_SYSCALL_HANDLER(lower_free) {
 
-	g_process* process = current_thread->process;
-	g_syscall_lower_free* data = (g_syscall_lower_free*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* task = g_tasking::getCurrentThread();
+	g_process* process = task->process;
+	g_syscall_lower_free* data = (g_syscall_lower_free*) G_SYSCALL_DATA(state);
 
 	if (process->securityLevel <= G_SECURITY_LEVEL_DRIVER) {
 		g_lower_heap::free(data->memory);
 	} else {
-		g_log_debug("%! task %i tried to free lower memory but does not have permission", "syscall", current_thread->id);
+		g_log_debug("%! task %i tried to free lower memory but does not have permission", "syscall", task->id);
 	}
-	return current_thread;
+	return state;
 }
 

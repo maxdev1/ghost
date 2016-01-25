@@ -19,12 +19,14 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <ghost.h>
+#include <ghostuser/ui/component.hpp>
 #include <ghostuser/ui/listener.hpp>
 #include <ghostuser/ui/ui.hpp>
 #include <ghostuser/ui/action_component.hpp>
 #include <ghostuser/ui/action_listener.hpp>
 #include <ghostuser/utils/logger.hpp>
 #include <ghostuser/utils/value_placer.hpp>
+#include <ghost/utils/local.hpp>
 #include <map>
 #include <deque>
 #include <stdio.h>
@@ -110,23 +112,8 @@ void g_ui::event_dispatch_thread() {
 				continue;
 			}
 
-			// tell component about event
-			if (event_header->type == G_UI_COMPONENT_EVENT_TYPE_ACTION) {
-				// make sure it's an action component
-				g_action_component* action_component = dynamic_cast<g_action_component*>(component);
-				if (action_component == 0) {
-					klog("received action event for non-action component %i", event_header->component_id);
-					continue;
-				}
-
-				// notify it's listener
-				g_ui_component_action_event* action_event = (g_ui_component_action_event*) event_header;
-				g_action_listener* listener = action_component->getActionListener();
-				if (listener) {
-					g_action_event e;
-					listener->handle_action(e);
-				}
-			}
+			// tell the component delegate to handle the event
+			component->handle(event_header);
 
 		} else {
 			klog("something went wrong when receiving an event, status code: %i", stat);

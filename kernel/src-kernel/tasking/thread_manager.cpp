@@ -517,7 +517,7 @@ void g_thread_manager::deleteTask(g_thread* task) {
 
 		// Here we free everything that the thread has created and that is no more
 		// needed by anyone.
-		//g_process* process = task->process;
+		g_process* process = task->process;
 
 		// TODO
 
@@ -525,7 +525,7 @@ void g_thread_manager::deleteTask(g_thread* task) {
 
 		// Here we free everything that the process has created and that is no more
 		// needed by anyone.
-		//g_process* process = task->process;
+		g_process* process = task->process;
 
 		// tell the filesystem to clean up
 		g_filesystem::process_closed(task->id);

@@ -20,6 +20,7 @@
 
 #include <ghost.h>
 #include <ghostuser/ui/interface_specification.hpp>
+#include <ghostuser/ui/properties.hpp>
 #include <ghostuser/ui/ui.hpp>
 #include <ghostuser/ui/window.hpp>
 #include <ghostuser/utils/logger.hpp>
@@ -29,4 +30,20 @@
  */
 g_window* g_window::create() {
 	return createComponent<g_window, G_UI_COMPONENT_TYPE_WINDOW>();
+}
+
+/**
+ *
+ */
+bool g_window::isResizable() {
+	bool val;
+	g_component::getBoolProperty(G_UI_PROPERTY_RESIZABLE, &val);
+	return val;
+}
+
+/**
+ *
+ */
+void g_window::setResizable(bool resizable) {
+	g_component::setBoolProperty(G_UI_PROPERTY_RESIZABLE, resizable);
 }

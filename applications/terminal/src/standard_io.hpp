@@ -41,7 +41,7 @@ struct standard_out_thread_data_t {
  *
  */
 struct standard_in_thread_data_t {
-	bool stop;
+	bool continue_input;
 	g_fd stdin_write_end;
 	g_pid int_pid = -1; // process to interrupt on Ctrl+C
 	terminal_t* terminal;

@@ -40,13 +40,14 @@
  */
 G_SYSCALL_HANDLER(set_working_directory) {
 
-	g_syscall_fs_set_working_directory* data = (g_syscall_fs_set_working_directory*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* task = g_tasking::getCurrentThread();
+	g_syscall_fs_set_working_directory* data = (g_syscall_fs_set_working_directory*) G_SYSCALL_DATA(state);
 
 	g_thread* target = nullptr;
 	if (data->process == 0) {
-		target = current_thread;
+		target = task;
 
-	} else if (current_thread->process->securityLevel <= G_SECURITY_LEVEL_KERNEL) {
+	} else if (task->process->securityLevel <= G_SECURITY_LEVEL_KERNEL) {
 		// only kernel level task (spawner for example) is allowed to do this for other processes
 		target = (g_thread*) data->process;
 
@@ -59,16 +60,16 @@ G_SYSCALL_HANDLER(set_working_directory) {
 
 		// if the executor sets the working directory for another thread (that is not yet attached),
 		// we must supply this thread as the "unspawned target" to the transaction handler.
-		g_thread* unspawned_target = (target == current_thread) ? 0 : target;
+		g_thread* unspawned_target = (target == task) ? 0 : target;
 
 		// perform discovery, perform setting of working directory once finished
-		g_contextual<g_syscall_fs_set_working_directory*> bound_data(data, current_thread->process->pageDirectory);
+		g_contextual<g_syscall_fs_set_working_directory*> bound_data(data, task->process->pageDirectory);
 		g_fs_transaction_handler_discovery_set_cwd* handler = new g_fs_transaction_handler_discovery_set_cwd(workdir_abs(), bound_data, unspawned_target);
-		g_filesystem::discover_absolute_path(current_thread, workdir_abs(), handler);
-		return g_tasking::schedule();
+		g_filesystem::discover_absolute_path(task, workdir_abs(), handler);
+		return g_tasking::schedule(state);
 	}
 
-	return current_thread;
+	return state;
 }
 
 /**
@@ -76,10 +77,12 @@ G_SYSCALL_HANDLER(set_working_directory) {
  */
 G_SYSCALL_HANDLER(get_working_directory) {
 
-	g_syscall_fs_get_working_directory* data = (g_syscall_fs_get_working_directory*) G_SYSCALL_DATA(current_thread->cpuState);
-	g_string::copy(data->buffer, current_thread->process->workingDirectory);
+	g_thread* task = g_tasking::getCurrentThread();
+	g_syscall_fs_get_working_directory* data = (g_syscall_fs_get_working_directory*) G_SYSCALL_DATA(state);
 
-	return current_thread;
+	g_string::copy(data->buffer, task->process->workingDirectory);
+
+	return state;
 }
 
 /**
@@ -87,9 +90,10 @@ G_SYSCALL_HANDLER(get_working_directory) {
  */
 G_SYSCALL_HANDLER(fs_register_as_delegate) {
 
-	g_syscall_fs_register_as_delegate* data = (g_syscall_fs_register_as_delegate*) G_SYSCALL_DATA(current_thread->cpuState);
-	data->result = g_filesystem::create_delegate(current_thread, data->name, data->phys_mountpoint_id, &data->mountpoint_id, &data->transaction_storage);
-	return current_thread;
+	g_thread* task = g_tasking::getCurrentThread();
+	g_syscall_fs_register_as_delegate* data = (g_syscall_fs_register_as_delegate*) G_SYSCALL_DATA(state);
+	data->result = g_filesystem::create_delegate(task, data->name, data->phys_mountpoint_id, &data->mountpoint_id, &data->transaction_storage);
+	return state;
 }
 
 /**
@@ -97,9 +101,9 @@ G_SYSCALL_HANDLER(fs_register_as_delegate) {
  */
 G_SYSCALL_HANDLER(fs_set_transaction_status) {
 
-	g_syscall_fs_set_transaction_status* data = (g_syscall_fs_set_transaction_status*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_set_transaction_status* data = (g_syscall_fs_set_transaction_status*) G_SYSCALL_DATA(state);
 	g_fs_transaction_store::set_status(data->transaction, data->status);
-	return current_thread;
+	return state;
 }
 
 /**
@@ -107,7 +111,7 @@ G_SYSCALL_HANDLER(fs_set_transaction_status) {
  */
 G_SYSCALL_HANDLER(fs_create_node) {
 
-	g_syscall_fs_create_node* data = (g_syscall_fs_create_node*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_create_node* data = (g_syscall_fs_create_node*) G_SYSCALL_DATA(state);
 
 	// check for parent
 	g_fs_node* parent = g_filesystem::get_node_by_id(data->parent_id);
@@ -138,7 +142,7 @@ G_SYSCALL_HANDLER(fs_create_node) {
 		data->created_id = node->id;
 	}
 
-	return current_thread;
+	return state;
 }
 
 /**
@@ -146,19 +150,20 @@ G_SYSCALL_HANDLER(fs_create_node) {
  */
 G_SYSCALL_HANDLER(fs_open) {
 
-	g_syscall_fs_open* data = (g_syscall_fs_open*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* task = g_tasking::getCurrentThread();
+	g_syscall_fs_open* data = (g_syscall_fs_open*) G_SYSCALL_DATA(state);
 
 	// get absolute path for the requested path, relative to process working directory
 	g_local<char> absolute_path(new char[G_PATH_MAX]);
-	g_filesystem::concat_as_absolute_path(current_thread->process->workingDirectory, data->path, absolute_path());
+	g_filesystem::concat_as_absolute_path(task->process->workingDirectory, data->path, absolute_path());
 
 	// create handler
-	g_contextual<g_syscall_fs_open*> bound_data(data, current_thread->process->pageDirectory);
+	g_contextual<g_syscall_fs_open*> bound_data(data, task->process->pageDirectory);
 	g_fs_transaction_handler_discovery_open* handler = new g_fs_transaction_handler_discovery_open(absolute_path(), bound_data);
 
 	// discover path and let go
-	g_filesystem::discover_absolute_path(current_thread, absolute_path(), handler);
-	return g_tasking::schedule();
+	g_filesystem::discover_absolute_path(task, absolute_path(), handler);
+	return g_tasking::schedule(state);
 }
 
 /**
@@ -166,31 +171,32 @@ G_SYSCALL_HANDLER(fs_open) {
  */
 G_SYSCALL_HANDLER(fs_read) {
 
-	g_syscall_fs_read* data = (g_syscall_fs_read*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* task = g_tasking::getCurrentThread();
+	g_syscall_fs_read* data = (g_syscall_fs_read*) G_SYSCALL_DATA(state);
 
 	// Find the file descriptor and the matching virtual file system node first:
 	g_fs_node* node;
 	g_file_descriptor_content* fd;
-	if (g_filesystem::node_for_descriptor(current_thread->process->main->id, data->fd, &node, &fd)) {
+	if (g_filesystem::node_for_descriptor(task->process->main->id, data->fd, &node, &fd)) {
 
 		/**
 		 * Create handler for the transaction. The transaction handler is then asked to
 		 * start the transaction. After that, the transaction status is immediately checked
 		 * as it might instantly be finished.
 		 */
-		g_contextual<g_syscall_fs_read*> bound_data(data, current_thread->process->pageDirectory);
+		g_contextual<g_syscall_fs_read*> bound_data(data, task->process->pageDirectory);
 		g_fs_transaction_handler_read* handler = new g_fs_transaction_handler_read(node, fd, bound_data);
-		g_fs_transaction_handler_start_status start_status = handler->start_transaction(current_thread);
+		g_fs_transaction_handler_start_status start_status = handler->start_transaction(task);
 
 		/**
 		 * Depending on what the start of the transaction resulted in, we must either let the
 		 * requesting task wait (a waiter was appended) or let it continue immediately.
 		 */
 		if (start_status == G_FS_TRANSACTION_STARTED_WITH_WAITER) {
-			return g_tasking::schedule();
+			return g_tasking::schedule(state);
 
 		} else if (start_status == G_FS_TRANSACTION_STARTED_AND_FINISHED) {
-			return current_thread;
+			return state;
 
 		} else {
 			g_log_warn("starting read transaction failed with status (%i)", start_status);
@@ -198,7 +204,7 @@ G_SYSCALL_HANDLER(fs_read) {
 	}
 
 	data->status = G_FS_READ_INVALID_FD;
-	return current_thread;
+	return state;
 }
 
 /**
@@ -206,22 +212,23 @@ G_SYSCALL_HANDLER(fs_read) {
  */
 G_SYSCALL_HANDLER(fs_write) {
 
-	g_syscall_fs_write* data = (g_syscall_fs_write*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* task = g_tasking::getCurrentThread();
+	g_syscall_fs_write* data = (g_syscall_fs_write*) G_SYSCALL_DATA(state);
 
 	// See {fs_read} for an explanation
 	g_fs_node* node;
 	g_file_descriptor_content* fd;
-	if (g_filesystem::node_for_descriptor(current_thread->process->main->id, data->fd, &node, &fd)) {
+	if (g_filesystem::node_for_descriptor(task->process->main->id, data->fd, &node, &fd)) {
 
-		g_contextual<g_syscall_fs_write*> bound_data(data, current_thread->process->pageDirectory);
+		g_contextual<g_syscall_fs_write*> bound_data(data, task->process->pageDirectory);
 		g_fs_transaction_handler_write* handler = new g_fs_transaction_handler_write(node, fd, bound_data);
-		g_fs_transaction_handler_start_status start_status = handler->start_transaction(current_thread);
+		g_fs_transaction_handler_start_status start_status = handler->start_transaction(task);
 
 		if (start_status == G_FS_TRANSACTION_STARTED_WITH_WAITER) {
-			return g_tasking::schedule();
+			return g_tasking::schedule(state);
 
 		} else if (start_status == G_FS_TRANSACTION_STARTED_AND_FINISHED) {
-			return current_thread;
+			return state;
 
 		} else {
 			g_log_warn("starting write transaction failed with status (%i)", start_status);
@@ -229,7 +236,7 @@ G_SYSCALL_HANDLER(fs_write) {
 	}
 
 	data->status = G_FS_WRITE_INVALID_FD;
-	return current_thread;
+	return state;
 }
 
 /**
@@ -237,15 +244,16 @@ G_SYSCALL_HANDLER(fs_write) {
  */
 G_SYSCALL_HANDLER(fs_close) {
 
-	g_syscall_fs_close* data = (g_syscall_fs_close*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* task = g_tasking::getCurrentThread();
+	g_syscall_fs_close* data = (g_syscall_fs_close*) G_SYSCALL_DATA(state);
 
 	g_fs_node* node;
 	g_file_descriptor_content* fd;
-	if (g_filesystem::node_for_descriptor(current_thread->process->main->id, data->fd, &node, &fd)) {
-		data->result = g_filesystem::close(current_thread->process->main->id, node, fd, &data->status);
+	if (g_filesystem::node_for_descriptor(task->process->main->id, data->fd, &node, &fd)) {
+		data->result = g_filesystem::close(task->process->main->id, node, fd, &data->status);
 	}
 
-	return current_thread;
+	return state;
 }
 
 /**
@@ -253,19 +261,20 @@ G_SYSCALL_HANDLER(fs_close) {
  */
 G_SYSCALL_HANDLER(fs_seek) {
 
-	g_syscall_fs_seek* data = (g_syscall_fs_seek*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* task = g_tasking::getCurrentThread();
+	g_syscall_fs_seek* data = (g_syscall_fs_seek*) G_SYSCALL_DATA(state);
 
 	g_fs_node* node;
 	g_file_descriptor_content* fd;
-	if (g_filesystem::node_for_descriptor(current_thread->process->main->id, data->fd, &node, &fd)) {
-		g_contextual<g_syscall_fs_seek*> bound_data(data, current_thread->process->pageDirectory);
+	if (g_filesystem::node_for_descriptor(task->process->main->id, data->fd, &node, &fd)) {
+		g_contextual<g_syscall_fs_seek*> bound_data(data, task->process->pageDirectory);
 		g_fs_transaction_handler_get_length_seek* handler = new g_fs_transaction_handler_get_length_seek(fd, bound_data);
 
-		g_filesystem::get_length(current_thread, node, handler);
-		return g_tasking::schedule();
+		g_filesystem::get_length(task, node, handler);
+		return g_tasking::schedule(state);
 	} else {
 		data->status = G_FS_SEEK_INVALID_FD;
-		return current_thread;
+		return state;
 	}
 }
 
@@ -274,36 +283,38 @@ G_SYSCALL_HANDLER(fs_seek) {
  */
 G_SYSCALL_HANDLER(fs_length) {
 
-	g_syscall_fs_length* data = (g_syscall_fs_length*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* task = g_tasking::getCurrentThread();
+
+	g_syscall_fs_length* data = (g_syscall_fs_length*) G_SYSCALL_DATA(state);
 
 	bool by_fd = (data->mode & G_SYSCALL_FS_LENGTH_MODE_BY_MASK) == G_SYSCALL_FS_LENGTH_BY_FD;
 	bool follow_symlinks = (data->mode & G_SYSCALL_FS_LENGTH_MODE_SYMLINK_MASK) == G_SYSCALL_FS_LENGTH_FOLLOW_SYMLINKS;
 
-	g_contextual<g_syscall_fs_length*> bound_data(data, current_thread->process->pageDirectory);
+	g_contextual<g_syscall_fs_length*> bound_data(data, task->process->pageDirectory);
 
 	if (by_fd) {
 		g_fs_node* node;
 		g_file_descriptor_content* fd;
 
-		if (g_filesystem::node_for_descriptor(current_thread->process->main->id, data->fd, &node, &fd)) {
+		if (g_filesystem::node_for_descriptor(task->process->main->id, data->fd, &node, &fd)) {
 			g_fs_transaction_handler_get_length_default* handler = new g_fs_transaction_handler_get_length_default(bound_data);
-			g_filesystem::get_length(current_thread, node, handler);
-			return g_tasking::schedule();
+			g_filesystem::get_length(task, node, handler);
+			return g_tasking::schedule(state);
 		} else {
 			data->status = G_FS_LENGTH_INVALID_FD;
-			return current_thread;
+			return state;
 		}
 	} else {
 		// get absolute path for the requested path, relative to process working directory
 		g_local<char> absolute_path(new char[G_PATH_MAX]);
-		g_filesystem::concat_as_absolute_path(current_thread->process->workingDirectory, data->path, absolute_path());
+		g_filesystem::concat_as_absolute_path(task->process->workingDirectory, data->path, absolute_path());
 
 		g_fs_transaction_handler_discovery_get_length* handler = new g_fs_transaction_handler_discovery_get_length(absolute_path(), bound_data);
-		g_filesystem::discover_absolute_path(current_thread, absolute_path(), handler, follow_symlinks);
-		return g_tasking::schedule();
+		g_filesystem::discover_absolute_path(task, absolute_path(), handler, follow_symlinks);
+		return g_tasking::schedule(state);
 	}
 
-	return current_thread;
+	return state;
 }
 
 /**
@@ -311,19 +322,20 @@ G_SYSCALL_HANDLER(fs_length) {
  */
 G_SYSCALL_HANDLER(fs_tell) {
 
-	g_syscall_fs_tell* data = (g_syscall_fs_tell*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* task = g_tasking::getCurrentThread();
+	g_syscall_fs_tell* data = (g_syscall_fs_tell*) G_SYSCALL_DATA(state);
 
 	g_fs_node* node;
 	g_file_descriptor_content* fd;
 
-	if (g_filesystem::node_for_descriptor(current_thread->process->main->id, data->fd, &node, &fd)) {
+	if (g_filesystem::node_for_descriptor(task->process->main->id, data->fd, &node, &fd)) {
 		data->status = G_FS_TELL_SUCCESSFUL;
 		data->result = fd->offset;
 	} else {
 		data->status = G_FS_TELL_INVALID_FD;
 		data->result = -1;
 	}
-	return current_thread;
+	return state;
 }
 
 /**
@@ -331,10 +343,12 @@ G_SYSCALL_HANDLER(fs_tell) {
  */
 G_SYSCALL_HANDLER(fs_clonefd) {
 
-	g_syscall_fs_clonefd* data = (g_syscall_fs_clonefd*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* task = g_tasking::getCurrentThread();
+
+	g_syscall_fs_clonefd* data = (g_syscall_fs_clonefd*) G_SYSCALL_DATA(state);
 	data->result = g_filesystem::clonefd(data->source_fd, data->source_pid, data->target_fd, data->target_pid, &data->status);
 
-	return current_thread;
+	return state;
 }
 
 /**
@@ -342,9 +356,10 @@ G_SYSCALL_HANDLER(fs_clonefd) {
  */
 G_SYSCALL_HANDLER(fs_pipe) {
 
-	g_syscall_fs_pipe* data = (g_syscall_fs_pipe*) G_SYSCALL_DATA(current_thread->cpuState);
-	data->status = g_filesystem::pipe(current_thread, &data->write_fd, &data->read_fd);
-	return current_thread;
+	g_thread* task = g_tasking::getCurrentThread();
+	g_syscall_fs_pipe* data = (g_syscall_fs_pipe*) G_SYSCALL_DATA(state);
+	data->status = g_filesystem::pipe(task, &data->write_fd, &data->read_fd);
+	return state;
 }
 
 /**
@@ -352,19 +367,20 @@ G_SYSCALL_HANDLER(fs_pipe) {
  */
 G_SYSCALL_HANDLER(fs_open_directory) {
 
-	g_syscall_fs_open_directory* data = (g_syscall_fs_open_directory*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* task = g_tasking::getCurrentThread();
+	g_syscall_fs_open_directory* data = (g_syscall_fs_open_directory*) G_SYSCALL_DATA(state);
 
 	// get absolute path for the requested path, relative to process working directory
 	g_local<char> absolute_path(new char[G_PATH_MAX]);
-	g_filesystem::concat_as_absolute_path(current_thread->process->workingDirectory, data->path, absolute_path());
+	g_filesystem::concat_as_absolute_path(task->process->workingDirectory, data->path, absolute_path());
 
 	// create handler
-	g_contextual<g_syscall_fs_open_directory*> bound_data(data, current_thread->process->pageDirectory);
+	g_contextual<g_syscall_fs_open_directory*> bound_data(data, task->process->pageDirectory);
 	g_fs_transaction_handler_discovery_open_directory* handler = new g_fs_transaction_handler_discovery_open_directory(absolute_path(), bound_data);
 
 	// discover path and let go
-	g_filesystem::discover_absolute_path(current_thread, absolute_path(), handler);
-	return g_tasking::schedule();
+	g_filesystem::discover_absolute_path(task, absolute_path(), handler);
+	return g_tasking::schedule(state);
 }
 
 /**
@@ -372,13 +388,14 @@ G_SYSCALL_HANDLER(fs_open_directory) {
  */
 G_SYSCALL_HANDLER(fs_read_directory) {
 
-	g_syscall_fs_read_directory* data = (g_syscall_fs_read_directory*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* task = g_tasking::getCurrentThread();
+	g_syscall_fs_read_directory* data = (g_syscall_fs_read_directory*) G_SYSCALL_DATA(state);
 
 	// create handler
-	g_contextual<g_syscall_fs_read_directory*> bound_data(data, current_thread->process->pageDirectory);
+	g_contextual<g_syscall_fs_read_directory*> bound_data(data, task->process->pageDirectory);
 
-	g_filesystem::read_directory(current_thread, data->iterator->node_id, data->iterator->position, bound_data);
-	return g_tasking::schedule();
+	g_filesystem::read_directory(task, data->iterator->node_id, data->iterator->position, bound_data);
+	return g_tasking::schedule(state);
 }
 
 /**
@@ -386,9 +403,12 @@ G_SYSCALL_HANDLER(fs_read_directory) {
  */
 G_SYSCALL_HANDLER(fs_stat) {
 
-	g_syscall_fs_stat* data = (g_syscall_fs_stat*) G_SYSCALL_DATA(current_thread->cpuState);
-	g_filesystem::stat(current_thread, data->path, data->follow_symlinks, &data->stats);
-	return current_thread;
+	g_thread* task = g_tasking::getCurrentThread();
+
+	g_syscall_fs_stat* data = (g_syscall_fs_stat*) G_SYSCALL_DATA(state);
+	g_filesystem::stat(task, data->path, data->follow_symlinks, &data->stats);
+
+	return state;
 }
 
 /**
@@ -396,7 +416,10 @@ G_SYSCALL_HANDLER(fs_stat) {
  */
 G_SYSCALL_HANDLER(fs_fstat) {
 
-	g_syscall_fs_fstat* data = (g_syscall_fs_fstat*) G_SYSCALL_DATA(current_thread->cpuState);
-	g_filesystem::fstat(current_thread, data->fd, &data->stats);
-	return current_thread;
+	g_thread* task = g_tasking::getCurrentThread();
+
+	g_syscall_fs_fstat* data = (g_syscall_fs_fstat*) G_SYSCALL_DATA(state);
+	g_filesystem::fstat(task, data->fd, &data->stats);
+
+	return state;
 }

@@ -41,6 +41,8 @@
 
 #include <signal.h>
 
+g_textfield* username_textfield;
+
 class test_action_listener: public g_action_listener {
 public:
 	g_window* window_to_hide;
@@ -52,12 +54,8 @@ public:
 	virtual ~test_action_listener() {
 	}
 
-	virtual void handle_action(g_action_event e) {
+	virtual void handle_action() {
 
-		// TODO
-		klog("handle action!");
-		return;
-		//	window_to_hide->setVisible(false);
 		g_window* logging_in_window = g_window::create();
 
 		g_label* info_label = g_label::create();
@@ -66,7 +64,11 @@ public:
 
 		logging_in_window->setBounds(g_rectangle(100, 100, 220, 160));
 		logging_in_window->setVisible(true);
-		g_logger::log("created window");
+
+		std::string text = username_textfield->getTitle();
+		std::stringstream s;
+		s << "Hello " << text << "!" << std::endl;
+		info_label->setTitle(s.str());
 	}
 };
 
@@ -113,7 +115,7 @@ void run_test(int argc, char** argv) {
 		username_label->setTitle("Username:");
 		login_window->addChild(username_label);
 
-		g_textfield* username_textfield = g_textfield::create();
+		username_textfield = g_textfield::create();
 		username_textfield->setBounds(g_rectangle(90, 45, 120, 30));
 		login_window->addChild(username_textfield);
 

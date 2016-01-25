@@ -83,8 +83,8 @@ typedef struct {
 }__attribute__((packed)) g_syscall_wait_for_irq;
 
 /**
- * @field atom
- * 		the atom
+ * @field atom_#
+ * 		the atoms
  *
  * @field set_on_finish
  * 		whether or not to set the atom once finished
@@ -96,7 +96,8 @@ typedef struct {
  * 		whether the atom was set, when trying only
  */
 typedef struct {
-	uint8_t* atom;
+	uint8_t* atom_1;
+	uint8_t* atom_2;
 	uint8_t set_on_finish :1;
 	uint8_t try_only :1;
 	uint8_t was_set :1;

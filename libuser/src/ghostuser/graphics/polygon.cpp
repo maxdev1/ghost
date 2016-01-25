@@ -38,3 +38,13 @@ void g_polygon::addPoint(int x, int y) {
 		bounds.height = y - bounds.y;
 	}
 }
+
+/**
+ *
+ */
+void g_polygon::translate(int x, int y) {
+	for(auto& point : points) {
+		point.x += x;
+		point.y += y;
+	}
+}

@@ -51,7 +51,7 @@
 #else
 // In normal mode, only call handler
 #define link(val, func)																	\
-	case val: return func(current_thread);
+	case val: return func(state);
 #endif
 
 /**
@@ -61,7 +61,7 @@
  */
 G_SYSCALL_HANDLER(handle) {
 
-	uint32_t call = G_SYSCALL_CODE(current_thread->cpuState);
+	uint32_t call = G_SYSCALL_CODE(state);
 
 	switch (call) {
 		link(G_SYSCALL_YIELD, yield);
@@ -145,7 +145,8 @@ G_SYSCALL_HANDLER(handle) {
 	// The system call could not be handled, this might mean that the
 	// process was compiled for a deprecated/messed up API library and
 	// is therefore not able to run well.
-	g_log_debug("%! process %i tried to use non-existing syscall %i", "syscall", current_thread->id, G_SYSCALL_CODE(current_thread->cpuState));
-	current_thread->alive = false;
-	return g_tasking::schedule();
+	g_thread* task = g_tasking::getCurrentThread();
+	g_log_debug("%! process %i tried to use non-existing syscall %i", "syscall", task->id, G_SYSCALL_CODE(state));
+	task->alive = false;
+	return g_tasking::schedule(state);
 }

@@ -35,6 +35,10 @@ protected:
 	}
 public:
 	static g_textfield* create();
+
+	void setSecure(bool secure);
+
+	bool isSecure();
 };
 
 #endif

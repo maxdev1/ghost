@@ -26,22 +26,23 @@
 #include <list>
 #include <ghostuser/ui/interface_specification.hpp>
 
+class component_t;
+
 /**
  * An action component is capable of being observed by an action listener.
  * The component may fire actions which are dispatched to the registered
  * listener for processing.
  */
 class action_component_t {
-private:
-	g_tid target_thread;
-	g_ui_component_id component_id;
+protected:
+	component_t* self;
 
 public:
 	/**
 	 *
 	 */
-	action_component_t() :
-			target_thread(-1), component_id(-1) {
+	action_component_t(component_t* self) :
+			self(self) {
 	}
 
 	/**
@@ -49,11 +50,6 @@ public:
 	 */
 	virtual ~action_component_t() {
 	}
-
-	/**
-	 *
-	 */
-	virtual void setActionListener(g_tid target_thread, g_ui_component_id component_id);
 
 	/**
 	 *

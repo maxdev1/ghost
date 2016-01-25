@@ -20,7 +20,6 @@
 
 #include <ghost.h>
 #include <signal.h>
-#include <stdio.h>
 
 /**
  *
@@ -28,20 +27,14 @@
 int main() {
 	signal(SIGINT, SIG_IGN);
 
-	uint32_t idles = 0;
-	uint64_t last = 0;
-
 	again:
-
-	uint64_t now = g_millis();
-	if (now - last > 1000) {
-		last = now;
-		klog("%i idles per second", idles);
-		idles = 0;
-	}
-	++idles;
-
-	asm("hlt");
+	g_yield();
+	/**
+	 * TODO The right way would be to not use yielding, but call the HLT instruction.
+	 * The problem with this is, that the scheduler in this branch (old implementation)
+	 * let's the idle process run too often. This wastes time and should be fixed.
+	 */
+	// asm("hlt");
 	goto again;
 }
 

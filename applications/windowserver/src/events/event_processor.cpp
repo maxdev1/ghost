@@ -177,6 +177,22 @@ void event_processor_t::process_command(g_ui_message_header* request_header, com
 		response_out.message = response;
 		response_out.length = sizeof(g_ui_component_set_bounds_response);
 
+	} else if (request_header->id == G_UI_PROTOCOL_GET_BOUNDS) {
+		g_ui_component_get_bounds_request* request = (g_ui_component_get_bounds_request*) request_header;
+		component_t* component = component_registry_t::get(request->id);
+
+		// create response message
+		g_ui_component_get_bounds_response* response = new g_ui_component_get_bounds_response;
+		if (component == 0) {
+			response->status = G_UI_PROTOCOL_FAIL;
+		} else {
+			response->bounds = component->getBounds();
+			response->status = G_UI_PROTOCOL_SUCCESS;
+		}
+
+		response_out.message = response;
+		response_out.length = sizeof(g_ui_component_get_bounds_response);
+
 	} else if (request_header->id == G_UI_PROTOCOL_SET_VISIBLE) {
 		g_ui_component_set_visible_request* request = (g_ui_component_set_visible_request*) request_header;
 		component_t* component = component_registry_t::get(request->id);
@@ -193,27 +209,61 @@ void event_processor_t::process_command(g_ui_message_header* request_header, com
 		response_out.message = response;
 		response_out.length = sizeof(g_ui_component_set_visible_response);
 
-	} else if (request_header->id == G_UI_PROTOCOL_SET_ACTION_LISTENER) {
-		g_ui_component_set_action_handler_request* request = (g_ui_component_set_action_handler_request*) request_header;
+	} else if (request_header->id == G_UI_PROTOCOL_SET_LISTENER) {
+		g_ui_component_set_listener_request* request = (g_ui_component_set_listener_request*) request_header;
 		component_t* component = component_registry_t::get(request->id);
 
 		// create response message
-		g_ui_component_set_action_handler_response* response = new g_ui_component_set_action_handler_response;
+		g_ui_component_set_listener_response* response = new g_ui_component_set_listener_response;
 		if (component == 0) {
 			response->status = G_UI_PROTOCOL_FAIL;
 		} else {
-			action_component_t* action_component = dynamic_cast<action_component_t*>(component);
-			if (action_component == 0) {
-				response->status = G_UI_PROTOCOL_FAIL;
-			} else {
-				action_component->setActionListener(request->target_thread, request->id);
-				klog("task %i registered as action listener for component %i!", request->target_thread, request->id);
+			component->setListener(request->event_type, request->target_thread, request->id);
+			response->status = G_UI_PROTOCOL_SUCCESS;
+		}
+
+		response_out.message = response;
+		response_out.length = sizeof(g_ui_component_set_listener_response);
+
+	} else if (request_header->id == G_UI_PROTOCOL_SET_BOOL_PROPERTY) {
+		g_ui_component_set_bool_property_request* request = (g_ui_component_set_bool_property_request*) request_header;
+		component_t* component = component_registry_t::get(request->id);
+
+		// create response message
+		g_ui_component_set_bool_property_response* response = new g_ui_component_set_bool_property_response;
+		if (component == 0) {
+			response->status = G_UI_PROTOCOL_FAIL;
+		} else {
+			if (component->setBoolProperty(request->property, (bool) request->value)) {
 				response->status = G_UI_PROTOCOL_SUCCESS;
+			} else {
+				response->status = G_UI_PROTOCOL_FAIL;
 			}
 		}
 
 		response_out.message = response;
-		response_out.length = sizeof(g_ui_component_set_action_handler_response);
+		response_out.length = sizeof(g_ui_component_set_bool_property_response);
+
+	} else if (request_header->id == G_UI_PROTOCOL_GET_BOOL_PROPERTY) {
+		g_ui_component_get_bool_property_request* request = (g_ui_component_get_bool_property_request*) request_header;
+		component_t* component = component_registry_t::get(request->id);
+
+		// create response message
+		g_ui_component_get_bool_property_response* response = new g_ui_component_get_bool_property_response;
+		if (component == 0) {
+			response->status = G_UI_PROTOCOL_FAIL;
+		} else {
+			bool out;
+			if (component->getBoolProperty(request->property, &out)) {
+				response->value = out;
+				response->status = G_UI_PROTOCOL_SUCCESS;
+			} else {
+				response->status = G_UI_PROTOCOL_FAIL;
+			}
+		}
+
+		response_out.message = response;
+		response_out.length = sizeof(g_ui_component_get_bool_property_response);
 
 	} else if (request_header->id == G_UI_PROTOCOL_SET_TITLE) {
 		g_ui_component_set_title_request* request = (g_ui_component_set_title_request*) request_header;
@@ -298,15 +348,17 @@ void event_processor_t::processMouseState() {
 	windowserver_t* instance = windowserver_t::instance();
 	screen_t* screen = instance->screen;
 
-	// invalidate old location
-	screen->markDirty(cursor_t::getArea());
+	if (cursor_t::position != cursor_t::nextPosition) {
+		// invalidate old location
+		screen->markDirty(cursor_t::getArea());
 
-	// set new cursor position
-	cursor_t::position.x = cursor_t::nextPosition.x;
-	cursor_t::position.y = cursor_t::nextPosition.y;
+		// set new cursor position
+		cursor_t::position.x = cursor_t::nextPosition.x;
+		cursor_t::position.y = cursor_t::nextPosition.y;
 
-	// Invalidate new location
-	screen->markDirty(cursor_t::getArea());
+		// Invalidate new location
+		screen->markDirty(cursor_t::getArea());
+	}
 
 	// set pressed buttons
 	cursor_t::pressedButtons = cursor_t::nextPressedButtons;

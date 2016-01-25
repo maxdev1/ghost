@@ -141,8 +141,6 @@ void g_thread::wait(g_waiter* newWaitManager) {
 	if (waitManager) {
 		// replace waiter
 		delete waitManager;
-	} else {
-		scheduler->moveToWaitQueue(this);
 	}
 
 	waitManager = newWaitManager;
@@ -158,7 +156,6 @@ void g_thread::unwait() {
 	if (waitManager) {
 		delete waitManager;
 		waitManager = 0;
-		scheduler->moveToRunQueue(this);
 	}
 }
 
@@ -185,8 +182,7 @@ bool g_thread::start_prepare_interruption() {
 void g_thread::finish_prepare_interruption(uintptr_t address, uintptr_t callback) {
 
 	// append the waiter that does interruption
-	waitManager = 0;
-	wait(new g_waiter_perform_interruption(address, callback));
+	waitManager = new g_waiter_perform_interruption(address, callback);
 
 	// the next time this thread is regularly scheduled, the waiter
 	// will store the state and do interruption
@@ -243,7 +239,7 @@ void g_thread::store_for_interruption() {
 void g_thread::restore_interrupted_state() {
 
 	// set the waiter that was on the thread before interruption
-	wait(interruption_info->waitManager);
+	waitManager = interruption_info->waitManager;
 
 	// restore CPU state
 	cpuState = interruption_info->cpuStateAddress;

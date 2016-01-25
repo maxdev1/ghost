@@ -36,6 +36,9 @@ public:
 
 	virtual void paint();
 
+	virtual bool handle() {
+		return false;
+	}
 	void setBackground(g_color_argb color);
 	g_color_argb getBackground();
 };

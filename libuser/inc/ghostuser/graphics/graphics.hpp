@@ -35,14 +35,23 @@ private:
 	int height;
 	g_color_argb* buffer;
 	bool transparentBackground;
+	bool hasExternalBuffer;
 
 	inline g_color_argb add(g_color_argb a, g_color_argb b);
 
 public:
 	/**
-	 * Creates a graphics object
+	 * Creates a graphics object. This is a class that allows painting on a buffer.
+	 * If an <code>externalBuffer</code> is provided, no internal buffer will be
+	 * automatically created.
+	 *
+	 * @param transparentBackground whether the graphics buffer has a transparent background
+	 *
+	 * @param externalBuffer an optional external buffer to use instead of an internal one
+	 * @param width of the externalBuffer
+	 * @param height of the externalBuffer
 	 */
-	g_graphics(bool transparentBackground = false);
+	g_graphics(bool transparentBackground = false, g_color_argb* externalBuffer = nullptr, uint16_t width = 0, uint16_t height = 0);
 
 	/**
 	 *
@@ -93,7 +102,7 @@ public:
 	/**
 	 *
 	 */
-	void blitTo(g_color_argb* out, g_rectangle outBounds, g_rectangle absoluteClip, g_point offset);
+	void blitTo(g_color_argb* out, const g_rectangle& outBounds, const g_rectangle& absoluteClip, const g_point& offset);
 };
 
 #endif

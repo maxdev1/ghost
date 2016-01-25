@@ -22,6 +22,7 @@
 #define __TEXT_FIELD__
 
 #include <components/text/text_component.hpp>
+#include <components/titled_component.hpp>
 #include <ghostuser/graphics/text/font.hpp>
 #include <ghostuser/graphics/text/text_layouter.hpp>
 #include <ghostuser/graphics/painter.hpp>
@@ -41,11 +42,12 @@ enum class text_field_visual_status_t
 /**
  *
  */
-class text_field_t: public text_component_t {
+class text_field_t: public text_component_t, public titled_component_t {
 private:
 	std::string text;
 	text_field_visual_status_t visualStatus;
 	bool focused;
+	bool secure;
 
 	g_font* font;
 	int heightOfCapitalX;
@@ -93,6 +95,20 @@ public:
 	 */
 	virtual std::string getText() {
 		return text;
+	}
+
+	/**
+	 *
+	 */
+	virtual void setTitle(std::string title) {
+		setText(title);
+	}
+
+	/**
+	 *
+	 */
+	virtual std::string getTitle() {
+		return getText();
 	}
 
 	/**
@@ -158,6 +174,16 @@ public:
 	 *
 	 */
 	virtual g_range getSelectedRange();
+
+	/**
+	 *
+	 */
+	virtual bool getBoolProperty(int property, bool* out);
+
+	/**
+	 *
+	 */
+	virtual bool setBoolProperty(int property, bool value);
 
 };
 

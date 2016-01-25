@@ -43,18 +43,18 @@ g_irq_handler* handlers[256] = { };
 /**
  * Performs interrupt request handling.
  */
-g_thread* g_interrupt_request_handler::handle(g_thread* current_thread) {
+g_processor_state* g_interrupt_request_handler::handle(g_processor_state* cpuState) {
 
-	const uint32_t irq = current_thread->cpuState->intr - 0x20;
+	const uint32_t irq = cpuState->intr - 0x20;
 
-	if (current_thread->cpuState->intr == 0x80) {
+	if (cpuState->intr == 0x80) {
 		/*
 		 System call
 		 ===========
 		 If the interrupt request is a system call, its handled by the system
 		 call handler.
 		 */
-		current_thread = g_syscall_handler::handle(current_thread);
+		cpuState = g_syscall_handler::handle(cpuState);
 
 	} else if (irq == 0xFF) {
 		/**
@@ -71,7 +71,7 @@ g_thread* g_interrupt_request_handler::handle(g_thread* current_thread) {
 		 called only on IRQ 0.
 		 */
 		g_tasking::getCurrentScheduler()->updateMilliseconds();
-		current_thread = g_tasking::schedule();
+		cpuState = g_tasking::schedule(cpuState);
 
 	} else if (irq < 256) {
 		/*
@@ -88,7 +88,7 @@ g_thread* g_interrupt_request_handler::handle(g_thread* current_thread) {
 				// let the thread enter the irq handler
 				thread->enter_irq_handler(handler->handler, irq, handler->callback);
 				// it could be the current thread, so we have to switch
-				current_thread = g_tasking::schedule();
+				cpuState = g_tasking::schedule(cpuState);
 			}
 
 		} else {
@@ -102,7 +102,7 @@ g_thread* g_interrupt_request_handler::handle(g_thread* current_thread) {
 		g_log_warn("%! unhandled irq %i", "requests", irq);
 	}
 
-	return current_thread;
+	return cpuState;
 }
 
 /**

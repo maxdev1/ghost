@@ -20,24 +20,22 @@ important features are:
 - virtual 8086 for BIOS calls
 
 ## Status
-This is the bleeding edge source version of Octobre 26, 2015.
-Version 0.5.0
+This is the bleeding edge source version of August 28, 2015.
 
-- major kernel update
-	- new scheduler implementation with waiting/running queues
-	- internal interface of syscall handlers has changed
-	- task state is stored on handler entry
-	- clean-ups and fixes
-- new, cleaned up window server implementation
-- example filesystem driver updated
-- PS/2 driver toggleable for IRQ or polling mode
-- interface for process configuration (tasks now know their executable source path)
-- new utils "lines" and "read"
-- tests cleaned up
-- read-directory fixed
+- Idle task uses "HLT" to prevent 100% processor usage
+- stdio is fixed, piping works
+- Directory reading functionality is reworked
+- Spawner and others uses variable messages
+- Color in the terminal, and a fancy start screen
+- Minor bugfixes here and there
+- `g_atomic_wait` is now `g_atomic_lock`
+- `g_spawn` has slightly changed, its now possible to specify
+  in and out descriptors of a process when spawning it
 
-TODO:
-- bugfix: window server occasionally hangs up on command receival
+TODOs:
+- Directory reading causes crashes
+- Removing the old recv_msg/send_msg interface
+- Milestone: window server rewrite
 
 ## Structure
 - `applications`
@@ -70,4 +68,4 @@ feel free to contact me at:
 
 	lokoxe@gmail.com
 	
--Max Schlüssel
+-Max SchlÃ¼ssel

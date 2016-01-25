@@ -22,7 +22,6 @@
 #define GHOST_INTERRUPTS_REQUEST_HANDLERS
 
 #include <system/processor_state.hpp>
-#include <tasking/thread.hpp>
 
 #include "ghost/stdint.h"
 #include "ghost/kernel.h"
@@ -45,7 +44,7 @@ public:
 	/**
 	 * @see source
 	 */
-	static g_thread* handle(g_thread* current_thread);
+	static g_processor_state* handle(g_processor_state* cpuState);
 
 	/**
 	 * Checks if the given IRQ has happened and was not handled yet.
