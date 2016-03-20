@@ -58,4 +58,4 @@ feel free to contact me at:
 
 	lokoxe@gmail.com
 	
--Max Schl�ssel
+-Max Schlüssel
