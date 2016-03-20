@@ -46,7 +46,7 @@ __BEGIN_C
  * @security-level APPLICATION
  */
 void g_atomic_lock(uint8_t* atom);
-void g_atomic_lock_2(uint8_t* atom_1, uint8_t* atom_2);
+void g_atomic_lock_dual(uint8_t* atom_1, uint8_t* atom_2);
 
 /**
  * Trys to perform atomic wait. If the lock is already locked, the function
@@ -59,7 +59,7 @@ void g_atomic_lock_2(uint8_t* atom_1, uint8_t* atom_2);
  * @security-level APPLICATION
  */
 uint8_t g_atomic_try_lock(uint8_t* atom);
-uint8_t g_atomic_try_lock_2(uint8_t* atom_1, uint8_t* atom_2);
+uint8_t g_atomic_try_lock_dual(uint8_t* atom_1, uint8_t* atom_2);
 
 /**
  * Performs an atomic block. If the atom is true, the executing task must
@@ -72,7 +72,7 @@ uint8_t g_atomic_try_lock_2(uint8_t* atom_1, uint8_t* atom_2);
  * @security-level APPLICATION
  */
 void g_atomic_block(uint8_t* atom);
-void g_atomic_block_2(uint8_t* atom_1, uint8_t* atom_2);
+void g_atomic_block_dual(uint8_t* atom_1, uint8_t* atom_2);
 
 /**
  * Spawns a program binary.
@@ -113,7 +113,7 @@ g_spawn_status g_spawn_poi(const char* path, const char* args, const char* workd
  *
  * @security-level APPLICATION
  */
-void g_kill(g_pid pid);
+g_kill_status g_kill(g_pid pid);
 
 /**
  * Prints a message to the log.
@@ -161,6 +161,7 @@ void g_syscall(uint32_t call, uint32_t data);
 g_fd g_open(const char* path);
 g_fd g_open_f(const char* path, int32_t flags);
 g_fd g_open_fs(const char* path, int32_t flags, g_fs_open_status* out_status);
+g_fd g_open_fms(const char* path, int32_t flags, int32_t mode, g_fs_open_status* out_status);
 
 /**
  * Closes a file.
@@ -306,6 +307,17 @@ g_set_working_directory_status g_set_working_directory_p(const char* path, g_pro
  * @security-level APPLICATION
  */
 void g_get_working_directory(char* buffer);
+
+/**
+ * Retrieves the directory of the executable when available, otherwise an empty
+ * string is written to the buffer.
+ *
+ * @param path
+ * 		buffer of at least {G_PATH_MAX} bytes size
+ *
+ * @security-level APPLICATION
+ */
+void g_get_executable_path(char* buffer);
 
 /**
  * Reads bytes from the file to the buffer.
@@ -1063,6 +1075,23 @@ void* g_register_signal_handler(int signal, void* handler);
  * @return one of the {g_raise_signal_status} codes
  */
 g_raise_signal_status g_raise_signal(g_pid process, int signal);
+
+/**
+ * Executes the given kernquery.
+ *
+ * @param command
+ * 		query command
+ *
+ * @param query
+ * 		input query
+ *
+ * @param outbuffer
+ * 		output buffer
+ *
+ * @return one of the {g_kernquery_status} codes
+ */
+g_kernquery_status g_kernquery(uint16_t command, const uint8_t* query,
+		uint8_t* outbuffer);
 
 __END_C
 

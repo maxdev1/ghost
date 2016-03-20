@@ -48,5 +48,8 @@ int __fclose_static_unlocked(FILE* stream) {
 	// reset contents
 	memset(stream, 0, sizeof(FILE));
 
+	// remove from open file list
+	__open_file_list_remove(stream);
+
 	return 0;
 }

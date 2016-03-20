@@ -91,6 +91,7 @@ g_ramdisk_entry* g_ramdisk::load(g_multiboot_module* module) {
 		ramdiskPosition += namelength;
 
 		// If its a file, load rest
+		header->data_on_ramdisk = true;
 		if (header->type == G_RAMDISK_ENTRY_TYPE_FILE) {
 			// Data length
 			uint32_t* datalengthptr = (uint32_t*) (ramdisk + ramdiskPosition);
@@ -103,6 +104,11 @@ g_ramdisk_entry* g_ramdisk::load(g_multiboot_module* module) {
 		} else {
 			header->datalength = 0;
 			header->data = 0;
+		}
+
+		// start with unused ids after the last one
+		if (header->id > next_unused_id) {
+			next_unused_id = header->id + 1;
 		}
 	}
 
@@ -233,9 +239,33 @@ g_ramdisk_entry* g_ramdisk::getChildAt(uint32_t id, uint32_t index) {
 /**
  *
  */
+g_ramdisk_entry* g_ramdisk::getRoot() const {
+	return root;
+}
+
 /**
  *
  */
-g_ramdisk_entry* g_ramdisk::getRoot() const {
-	return root;
+g_ramdisk_entry* g_ramdisk::createChild(g_ramdisk_entry* parent, char* filename) {
+
+	g_ramdisk_entry* new_node = new g_ramdisk_entry();
+	new_node->next = firstHeader;
+	firstHeader = new_node;
+
+	// copy name
+	int namelen = g_string::length(filename);
+	new_node->name = new char[namelen + 1];
+	g_string::copy(new_node->name, filename);
+
+	new_node->type = G_RAMDISK_ENTRY_TYPE_FILE;
+	new_node->id = next_unused_id++;
+	new_node->parentid = parent->id;
+
+	// set empty buffer
+	new_node->data = nullptr;
+	new_node->datalength = 0;
+	new_node->not_on_rd_buffer_length = 0;
+	new_node->data_on_ramdisk = false;
+
+	return new_node;
 }

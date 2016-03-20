@@ -35,22 +35,6 @@ class g_waiter;
 class g_scheduler;
 
 /**
- * Task types
- */
-enum class g_thread_type
-	: unsigned char {
-		THREAD_MAIN = 0, THREAD = 1, THREAD_VM86 = 2
-};
-
-/**
- * Task priority
- */
-enum class g_thread_priority
-	: unsigned char {
-		NORMAL = 0, IDLE = 1
-};
-
-/**
  * Data used by virtual 8086 processes
  */
 struct g_thread_information_vm86 {
@@ -113,10 +97,10 @@ public:
 	void* threadEntry;
 
 	g_processor_state* cpuState;
-	g_virtual_address kernelStack;
-
+	g_virtual_address kernelStackPageVirt;
 	g_virtual_address kernelStackEsp0;
-	g_virtual_address userStack;
+	g_virtual_address userStackAreaStart;
+	uint8_t userStackPages;
 
 	g_virtual_address user_thread_addr;
 	g_virtual_address tls_copy_virt;

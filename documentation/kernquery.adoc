@@ -1,0 +1,15 @@
+
+KernQuery
+---------
+
+There are various cases where userspace applications need to query the kernel
+for plain data. To have an interface that is flexible and can be reused and
+extended easily, KernQuery is introduced.
+
+It is basically a kind of binary language that allows userspace applications
+to query various information about the system.
+
+
+G_KERNQUERY_PCI_COUNT
+~~~~~~~~~~~~~~~~~~~~~
+Counts the number of PCI devices that can be queried.

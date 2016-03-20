@@ -39,7 +39,7 @@ int open(const char* pathname, int flags, ...) {
 		va_end(ap);
 	}
 
-	// perform opening syscall (TODO: pass mode)
+	// perform opening syscall
 	g_fd fd = g_open_fs(pathname, flags, &status);
 
 	if (status == G_FS_OPEN_SUCCESSFUL) {

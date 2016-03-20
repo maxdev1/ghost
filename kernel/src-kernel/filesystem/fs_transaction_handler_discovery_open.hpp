@@ -26,6 +26,7 @@
 #include "filesystem/fs_descriptors.hpp"
 #include "memory/contextual.hpp"
 #include "logger/logger.hpp"
+#include "filesystem/fs_transaction_handler_open.hpp"
 
 /**
  *
@@ -45,15 +46,31 @@ public:
 	/**
 	 *
 	 */
-	virtual g_fs_transaction_handler_status perform_afterwork(g_thread* thread) {
+	virtual g_fs_transaction_handler_finish_status after_finish_transaction(g_thread* thread) {
 
-		if (status == G_FS_DISCOVERY_SUCCESSFUL) {
-			data()->fd = g_filesystem::open(thread->process->main->id, node, data()->flags);
-			data()->status = G_FS_OPEN_SUCCESSFUL;
+		if (status == G_FS_DISCOVERY_SUCCESSFUL || status == G_FS_DISCOVERY_NOT_FOUND) {
+			// create and start the new handler
+			g_fs_node* discovered_node = nullptr;
+			if (status == G_FS_DISCOVERY_NOT_FOUND) {
+				discovered_node = last_discovered_parent;
+			} else {
+				discovered_node = node;
+			}
 
-		} else if (status == G_FS_DISCOVERY_NOT_FOUND) {
-			data()->fd = -1;
-			data()->status = G_FS_OPEN_NOT_FOUND;
+			g_fs_transaction_handler_open* handler = new g_fs_transaction_handler_open(data, status, discovered_node);
+			auto start_status = handler->start_transaction(thread);
+
+			if (start_status == G_FS_TRANSACTION_START_WITH_WAITER) {
+				return G_FS_TRANSACTION_HANDLING_KEEP_WAITING_WITH_NEW_HANDLER;
+
+			} else if (start_status == G_FS_TRANSACTION_START_IMMEDIATE_FINISH) {
+				return G_FS_TRANSACTION_HANDLING_DONE;
+
+			} else {
+				data()->status = G_FS_OPEN_ERROR;
+				g_log_warn("%! failed to start actual open handler after node discovery", "filesystem");
+				return G_FS_TRANSACTION_HANDLING_DONE;
+			}
 
 		} else if (status == G_FS_DISCOVERY_ERROR || status == G_FS_DISCOVERY_BUSY) {
 			data()->fd = -1;

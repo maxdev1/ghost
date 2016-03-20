@@ -35,7 +35,7 @@ g_thread::g_thread(g_thread_type _type) {
 
 	id = taskIdCounter++;
 	type = _type;
-	priority = g_thread_priority::NORMAL;
+	priority = G_THREAD_PRIORITY_NORMAL;
 
 	waitCount = 0;
 	rounds = 0;
@@ -53,15 +53,15 @@ g_thread::g_thread(g_thread_type _type) {
 
 	tls_copy_virt = 0;
 
-	userStack = 0;
-	kernelStack = 0;
+	userStackAreaStart = 0;
+	kernelStackPageVirt = 0;
 	kernelStackEsp0 = 0;
 
 	waitManager = 0;
 
 	interruption_info = 0;
 
-	if (type == g_thread_type::THREAD_VM86) {
+	if (type == G_THREAD_TYPE_VM86) {
 		vm86Information = new g_thread_information_vm86();
 	} else {
 		vm86Information = 0;
@@ -118,7 +118,7 @@ const char* g_thread::getIdentifier() {
  *
  */
 g_thread_information_vm86* g_thread::getVm86Information() {
-	if (type == g_thread_type::THREAD_VM86 && vm86Information) {
+	if (type == G_THREAD_TYPE_VM86 && vm86Information) {
 		return vm86Information;
 	}
 
@@ -141,6 +141,8 @@ void g_thread::wait(g_waiter* newWaitManager) {
 	if (waitManager) {
 		// replace waiter
 		delete waitManager;
+	} else {
+		scheduler->moveToWaitQueue(this);
 	}
 
 	waitManager = newWaitManager;
@@ -156,6 +158,7 @@ void g_thread::unwait() {
 	if (waitManager) {
 		delete waitManager;
 		waitManager = 0;
+		scheduler->moveToRunQueue(this);
 	}
 }
 
@@ -182,7 +185,8 @@ bool g_thread::start_prepare_interruption() {
 void g_thread::finish_prepare_interruption(uintptr_t address, uintptr_t callback) {
 
 	// append the waiter that does interruption
-	waitManager = new g_waiter_perform_interruption(address, callback);
+	waitManager = 0;
+	wait(new g_waiter_perform_interruption(address, callback));
 
 	// the next time this thread is regularly scheduled, the waiter
 	// will store the state and do interruption
@@ -239,7 +243,7 @@ void g_thread::store_for_interruption() {
 void g_thread::restore_interrupted_state() {
 
 	// set the waiter that was on the thread before interruption
-	waitManager = interruption_info->waitManager;
+	wait(interruption_info->waitManager);
 
 	// restore CPU state
 	cpuState = interruption_info->cpuStateAddress;

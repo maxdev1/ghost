@@ -43,174 +43,210 @@
 /**
  *
  */
-g_physical_address g_thread_manager::prepareSpaceForProcess(g_virtual_address kernelStack, g_virtual_address userStack) {
+g_page_directory g_thread_manager::initializePageDirectoryForProcess() {
 
-	// Setup the page directory
-	g_physical_address newDirPhys = g_pp_allocator::allocate();
+	g_page_directory currentPd = (g_page_directory) G_CONST_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
 
-	// XXX TEMPORARY MAPPING XXX
-	{
-		g_virtual_address tempDirectoryAddress = g_temporary_paging_util::map(newDirPhys);
+	// allocate a page for the directory
+	g_physical_address physPd = g_pp_allocator::allocate();
 
-		g_page_directory tempDirectory = (g_page_directory) tempDirectoryAddress;
-		g_page_directory currentDirectory = (g_page_directory) G_CONST_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
+	// temporarily map it
+	g_page_directory tempPd = (g_page_directory) g_temporary_paging_util::map(physPd);
 
-		// Copy all tables without user-flag
-		for (uint32_t ti = 0; ti < 1024; ti++) {
+	// clone mappings for all tables that are not in user range
+	for (uint32_t ti = 0; ti < 1024; ti++) {
 
-			if (!((currentDirectory[ti] & G_PAGE_ALIGN_MASK) & G_PAGE_TABLE_USERSPACE)) {
-				tempDirectory[ti] = currentDirectory[ti];
-			} else {
-				tempDirectory[ti] = 0;
-			}
+		if (!((currentPd[ti] & G_PAGE_ALIGN_MASK) & G_PAGE_TABLE_USERSPACE)) {
+			tempPd[ti] = currentPd[ti];
+		} else {
+			tempPd[ti] = 0;
 		}
-
-		tempDirectory[0] = currentDirectory[0]; // lowest 4 MiB
-		tempDirectory[1023] = newDirPhys | DEFAULT_KERNEL_TABLE_FLAGS; // recursive-ness
-
-		// User stack is not mandatory here
-		if (userStack != 0) {
-			g_physical_address userStackPhys = g_pp_allocator::allocate();
-			g_address_space::map_to_temporary_mapped_directory(tempDirectory, userStack, userStackPhys, DEFAULT_USER_TABLE_FLAGS,
-			DEFAULT_USER_PAGE_FLAGS);
-		}
-
-		g_temporary_paging_util::unmap(tempDirectoryAddress);
 	}
-	// XXX
 
-	// Map kernel stack
-	g_physical_address kernelStackPhys = g_pp_allocator::allocate();
-	g_address_space::map(kernelStack, kernelStackPhys,
-	DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+	// clone mappings for the lowest 4 MiB
+	tempPd[0] = currentPd[0];
 
-	return newDirPhys;
+	// recursively map to self
+	tempPd[1023] = physPd | DEFAULT_KERNEL_TABLE_FLAGS;
+
+	// remove the temporary mapping
+	g_temporary_paging_util::unmap((g_virtual_address) tempPd);
+
+	return (g_page_directory) physPd;
 }
 
 /**
  *
  */
-g_physical_address g_thread_manager::prepareSpaceForFork(g_thread* current, g_virtual_address newKernelStackVirt, g_virtual_address newUserStackVirt) {
+g_physical_address g_thread_manager::forkCurrentPageDirectory(g_process* process, g_thread* sourceThread, g_virtual_address* outKernelStackVirt,
+		g_virtual_address* outUserStackVirt) {
 
-	g_page_directory curDir = (g_page_directory) G_CONST_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
+	g_page_directory currentPd = (g_page_directory) G_CONST_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
 
-	// Setup the page directory
-	g_physical_address newDirPhys = g_pp_allocator::allocate();
+	// create the directory
+	g_physical_address physPd = g_pp_allocator::allocate();
 
-	// XXX TEMPORARY MAPPING XXX
-	{
-		g_virtual_address newDirTempAddr = g_temporary_paging_util::map(newDirPhys);
+	// temporary map directory
+	g_page_directory tempPd = (g_page_directory) g_temporary_paging_util::map(physPd);
 
-		g_page_directory newDir = (g_page_directory) newDirTempAddr;
-
-		// Copy all tables and pages
-		for (uint32_t ti = 1; ti < 1023; ti++) {
-			if (curDir[ti]) {
-
-				if (ti * 1024 * G_PAGE_SIZE >= G_CONST_KERNEL_AREA_START) { // Kernel tables
-					newDir[ti] = curDir[ti];
-
-				} else if (ti * 1024 * G_PAGE_SIZE >= G_CONST_USER_VIRTUAL_RANGES_START) { // Virtual ranges
-					// TODO: make virtual range tables stay
-					newDir[ti] = 0;
-
-				} else {
-					g_page_table curTbl = G_CONST_RECURSIVE_PAGE_TABLE(ti);
-					uint32_t curTblFlags = curDir[ti] & (G_PAGE_ALIGN_MASK);
-
-					// create a new table
-					g_physical_address newTblPhys = g_pp_allocator::allocate();
-					g_virtual_address newTblTempAddr = g_temporary_paging_util::map(newTblPhys);
-					g_page_table newTbl = (g_page_table) newTblTempAddr;
-
-					// copy page table entries
-					for (uint32_t pi = 0; pi < 1024; pi++) {
-						if (curTbl[pi]) {
-							// map read-only
-							newTbl[pi] = curTbl[pi] & ~G_PAGE_TABLE_READWRITE;
-							g_pp_reference_tracker::increment(PAGE_ALIGN_DOWN(curTbl[pi]));
-						} else {
-							newTbl[pi] = 0;
-						}
-					}
-
-					g_temporary_paging_util::unmap(newTblTempAddr);
-
-					newDir[ti] = newTblPhys | curTblFlags;
-				}
-			} else {
-				newDir[ti] = 0;
-			}
-		}
-
-		newDir[0] = curDir[0]; // lowest 4 MiB
-		newDir[1023] = newDirPhys | DEFAULT_KERNEL_TABLE_FLAGS; // recursive-ness
-
-		// copy user stack
-		g_physical_address newUserStackPhys = g_pp_allocator::allocate();
-		g_address_space::map_to_temporary_mapped_directory(newDir, newUserStackVirt, newUserStackPhys, DEFAULT_USER_TABLE_FLAGS,
-		DEFAULT_USER_PAGE_FLAGS, true);
-
-		g_virtual_address newUserStackTemp = g_temporary_paging_util::map(newUserStackPhys);
-		g_memory::copy((uint8_t*) newUserStackTemp, (uint8_t*) current->userStack, G_PAGE_SIZE);
-		g_temporary_paging_util::unmap(newUserStackTemp);
-
-		g_temporary_paging_util::unmap(newDirTempAddr);
-	}
-	// XXX
-
-	// Copy kernel stack
-	g_physical_address kernelStackPhys = g_pp_allocator::allocate();
-	g_address_space::map(newKernelStackVirt, kernelStackPhys,
-	DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
-	g_memory::copy((uint8_t*) newKernelStackVirt, (uint8_t*) current->kernelStack, G_PAGE_SIZE);
-
-	// Prepare current dir
-	g_page_directory directory = (g_page_directory) G_CONST_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
+	// deep-copy
 	for (uint32_t ti = 1; ti < 1023; ti++) {
-		if (directory[ti]) {
-			if (ti * 1024 * G_PAGE_SIZE < G_CONST_USER_VIRTUAL_RANGES_START) { // Process area
-				// Make all pages of the current process read-only (CoW)
+		if (currentPd[ti]) {
+
+			// copy kernel tables
+			if (ti * 1024 * G_PAGE_SIZE >= G_CONST_KERNEL_AREA_START) {
+				tempPd[ti] = currentPd[ti];
+
+				// TODO make virtual ranges stay
+			} else if (ti * 1024 * G_PAGE_SIZE >= G_CONST_USER_VIRTUAL_RANGES_START) {
+				tempPd[ti] = 0;
+
+				// anything else is deep-copied
+			} else {
+
+				// get address of the table
+				g_page_table table = G_CONST_RECURSIVE_PAGE_TABLE(ti);
+				uint32_t tableFlags = currentPd[ti] & (G_PAGE_ALIGN_MASK);
+
+				// create a new table
+				g_physical_address clonedTablePhys = g_pp_allocator::allocate();
+				g_page_table clonedTableTemp = (g_page_table) g_temporary_paging_util::map(clonedTablePhys);
+
+				// copy page table entries
+				for (uint32_t pi = 0; pi < 1024; pi++) {
+					if (table[pi]) {
+						// clone page mappings as read-onle
+						clonedTableTemp[pi] = table[pi] & ~G_PAGE_TABLE_READWRITE;
+
+						// increment reference count on the physical page
+						g_pp_reference_tracker::increment(PAGE_ALIGN_DOWN(table[pi]));
+
+					} else {
+						clonedTableTemp[pi] = 0;
+					}
+				}
+
+				g_temporary_paging_util::unmap((g_virtual_address) clonedTableTemp);
+
+				// insert into new page directory
+				tempPd[ti] = clonedTablePhys | tableFlags;
+			}
+		} else {
+			tempPd[ti] = 0;
+		}
+	}
+
+	// clone mappings for the lowest 4 MiB
+	tempPd[0] = currentPd[0];
+
+	// recursively map to self
+	tempPd[1023] = physPd | DEFAULT_KERNEL_TABLE_FLAGS;
+
+	// clone entire user stack area
+	g_virtual_address userStackVirtRange = process->virtualRanges.allocate(G_THREAD_USER_STACK_RESERVED_VIRTUAL_PAGES);
+	g_virtual_address userStackStart = userStackVirtRange + (G_THREAD_USER_STACK_RESERVED_VIRTUAL_PAGES - sourceThread->userStackPages) * G_PAGE_SIZE;
+
+	for (uint8_t i = 0; i < sourceThread->userStackPages; i++) {
+		g_physical_address userStackPhys = g_pp_allocator::allocate();
+		g_virtual_address userStackPageOff = userStackStart + i * G_PAGE_SIZE;
+		g_address_space::map_to_temporary_mapped_directory(tempPd, userStackPageOff, userStackPhys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS, true);
+
+		g_virtual_address userStackPageTemp = g_temporary_paging_util::map(userStackPhys);
+		g_memory::copy((uint8_t*) userStackPageTemp, (uint8_t*) (sourceThread->userStackAreaStart + i * G_PAGE_SIZE), G_PAGE_SIZE);
+		g_temporary_paging_util::unmap(userStackPageTemp);
+	}
+
+	// unmap the temporary mapped directory
+	g_temporary_paging_util::unmap((g_virtual_address) tempPd);
+
+	// copy kernel stack
+	g_virtual_address kernelStackVirt = g_kernel_virt_addr_ranges->allocate(1);
+	g_physical_address kernelStackPhys = g_pp_allocator::allocate();
+	g_address_space::map(kernelStackVirt, kernelStackPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+	g_memory::copy((uint8_t*) kernelStackVirt, (uint8_t*) sourceThread->kernelStackPageVirt, G_PAGE_SIZE);
+
+	// modify the forked directory
+	for (uint32_t ti = 1; ti < 1023; ti++) {
+		if (currentPd[ti]) {
+			// process area
+			if (ti * 1024 * G_PAGE_SIZE < G_CONST_USER_VIRTUAL_RANGES_START) {
+				// make all pages in all tables read-only
 				g_page_table table = G_CONST_RECURSIVE_PAGE_TABLE(ti);
 				for (uint32_t pi = 0; pi < 1024; pi++) {
 					table[pi] = table[pi] & ~G_PAGE_TABLE_READWRITE;
 				}
 
-			} else if (ti * 1024 * G_PAGE_SIZE < G_CONST_KERNEL_AREA_START) { // Virtual ranges
-				// TODO: what do with virtual ranges?
+				// virtual ranges
+			} else if (ti * 1024 * G_PAGE_SIZE < G_CONST_KERNEL_AREA_START) {
+				// TODO what to do with virtual ranges?
 
 			}
 		}
 	}
 
-	return newDirPhys;
+	*outKernelStackVirt = kernelStackVirt;
+	*outUserStackVirt = userStackStart;
+
+	return physPd;
 }
 
 /**
  *
  */
-void g_thread_manager::prepareSpaceForThread(g_page_directory rootProcessPageDirectory, g_virtual_address kernelStack, g_virtual_address userStack) {
-	// Physical addresses
-	g_physical_address kernelStackPhys = g_pp_allocator::allocate();
+bool g_thread_manager::createThreadUserStack(g_process* process, g_virtual_address* outUserStackVirt) {
+
+	// prepare user stack virtual range and address
+	g_virtual_address userStackVirtRange = process->virtualRanges.allocate(G_THREAD_USER_STACK_RESERVED_VIRTUAL_PAGES);
+	if (userStackVirtRange == 0) {
+		if (process->main) {
+			g_log_warn("%! thread creation for process %i failed: no virtual ranges available for stack allocation", "threadmgr", process->main->id);
+		} else {
+			g_log_warn("%! main thread creation failed: no virtual ranges available for stack allocation", "threadmgr");
+		}
+		return false;
+	}
+
+	// user stack is at the end of the range
+	g_virtual_address userStackVirt = userStackVirtRange + (G_THREAD_USER_STACK_RESERVED_VIRTUAL_PAGES - 1) * G_PAGE_SIZE;
+
+	// allocate physical locations
 	g_physical_address userStackPhys = g_pp_allocator::allocate();
 
-	uint32_t pd = (uint32_t) rootProcessPageDirectory;
+	// map directory temporary and map user stack
+	g_page_directory tempPd = (g_page_directory) g_temporary_paging_util::map((g_physical_address) process->pageDirectory);
+	g_address_space::map_to_temporary_mapped_directory(tempPd, userStackVirt, userStackPhys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+	g_temporary_paging_util::unmap((g_virtual_address) tempPd);
 
-	// XXX TEMPORARY MAPPING XXX
-	{
-		g_virtual_address tmpPageDirVirt = g_temporary_paging_util::map(pd);
+	// set out parameters
+	*outUserStackVirt = userStackVirt;
+	return true;
+}
 
-		g_page_directory tmpPageDir = (g_page_directory) tmpPageDirVirt;
-		g_address_space::map_to_temporary_mapped_directory(tmpPageDir, userStack, userStackPhys, DEFAULT_USER_TABLE_FLAGS,
-		DEFAULT_USER_PAGE_FLAGS);
+/**
+ *
+ */
+bool g_thread_manager::createThreadKernelStack(g_process* process, g_virtual_address* outKernelStackVirt) {
 
-		g_temporary_paging_util::unmap(tmpPageDirVirt);
+	// perform stack mapping
+	g_virtual_address kernelStackVirt = g_kernel_virt_addr_ranges->allocate(1);
+	if (kernelStackVirt == 0) {
+		if (process->main) {
+			g_log_warn("%! thread creation for process %i failed: kernel virtual ranges are full", "threadmgr", process->main->id);
+		} else {
+			g_log_warn("%! main thread creation failed: kernel virtual ranges are full", "threadmgr");
+		}
+		return false;
 	}
-	// XXX
 
-	// Map kernel stack
-	g_address_space::map(kernelStack, kernelStackPhys,
-	DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+	// allocate physical locations
+	g_physical_address kernelStackPhys = g_pp_allocator::allocate();
+
+	// map kernel stack (global space)
+	g_address_space::map(kernelStackVirt, kernelStackPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+
+	// set out parameters
+	*outKernelStackVirt = kernelStackVirt;
+	return true;
 }
 
 /**
@@ -242,44 +278,39 @@ void g_thread_manager::applySecurityLevel(g_processor_state* state, g_security_l
 /**
  *
  */
-g_thread* g_thread_manager::fork(g_thread* current) {
+g_thread* g_thread_manager::fork(g_thread* source_thread) {
 
-	g_process* parent = current->process;
+	g_process* parent = source_thread->process;
 
-	// Virtual target addresses
-	g_virtual_address kernelStackVirt = g_kernel_virt_addr_ranges->allocate(1);
-	g_virtual_address userStackVirt = G_CONST_KERNEL_AREA_START - G_PAGE_SIZE;
-	g_physical_address pd = prepareSpaceForFork(current, kernelStackVirt, userStackVirt);
-
-	/**
-	 * Create the process
-	 */
-	g_virtual_address esp0 = kernelStackVirt + G_PAGE_SIZE;
-
-	g_thread* thread = new g_thread(g_thread_type::THREAD_MAIN);
-	thread->cpuState = (g_processor_state*) (esp0 - sizeof(g_processor_state));
-	thread->kernelStackEsp0 = esp0;
-
-	thread->kernelStack = kernelStackVirt;
-	thread->userStack = userStackVirt;
-
-	/**
-	 * Create the process
-	 */
 	g_process* process = new g_process(parent->securityLevel);
-	process->parent = parent;
-	process->main = thread;
-	process->pageDirectory = (uint32_t*) pd;
-	thread->process = process;
+	process->virtualRanges.initialize(G_CONST_USER_VIRTUAL_RANGES_START, G_CONST_KERNEL_AREA_START); // TODO clone virtual ranges during forking
 
+	g_virtual_address kernelStackVirt;
+	g_virtual_address userStackVirt;
+	process->pageDirectory = (g_page_directory) forkCurrentPageDirectory(process, source_thread, &kernelStackVirt, &userStackVirt);
+
+	// copy heap information
 	process->heapBreak = parent->heapBreak;
 	process->heapPages = parent->heapPages;
 	process->heapStart = parent->heapStart;
 	process->imageEnd = parent->imageEnd;
 	process->imageStart = parent->imageStart;
 
-	// Forked process has no virtual ranges // TODO keep shared regions and stuff
-	process->virtualRanges.initialize(G_CONST_USER_VIRTUAL_RANGES_START, userStackVirt);
+	// create main thread
+	g_virtual_address esp0 = kernelStackVirt + G_PAGE_SIZE;
+
+	g_thread* thread = new g_thread(G_THREAD_TYPE_MAIN);
+	thread->cpuState = (g_processor_state*) (esp0 - sizeof(g_processor_state));
+	thread->kernelStackEsp0 = esp0;
+
+	thread->kernelStackPageVirt = kernelStackVirt;
+	thread->userStackAreaStart = userStackVirt;
+	thread->userStackPages = source_thread->userStackPages;
+
+	// link thread to process
+	process->parent = parent;
+	process->main = thread;
+	thread->process = process;
 
 #if G_LOGGING_DEBUG
 	dumpTask(thread);
@@ -292,51 +323,82 @@ g_thread* g_thread_manager::fork(g_thread* current) {
  */
 g_thread* g_thread_manager::createProcess(g_security_level securityLevel) {
 
-	// Virtual target addresses
-	g_virtual_address kernelStackVirt = g_kernel_virt_addr_ranges->allocate(1);
-	g_virtual_address userStackVirt = G_CONST_KERNEL_AREA_START - G_PAGE_SIZE;
-	g_physical_address pd = prepareSpaceForProcess(kernelStackVirt, userStackVirt);
+	// create the process
+	g_process* process = new g_process(securityLevel);
+	process->pageDirectory = initializePageDirectoryForProcess();
+	process->virtualRanges.initialize(G_CONST_USER_VIRTUAL_RANGES_START, G_CONST_KERNEL_AREA_START);
 
-	/**
-	 * Create the state
-	 */
-	g_virtual_address esp0 = kernelStackVirt + G_PAGE_SIZE;
-	g_virtual_address esp = userStackVirt + G_PAGE_SIZE;
+	// create main thread
+	g_thread* main_thread = createThread(process, G_THREAD_TYPE_MAIN);
+	process->main = main_thread;
 
+#if G_LOGGING_DEBUG
+	dumpTask(thread);
+#endif
+	return main_thread;
+}
+
+/**
+ *
+ */
+g_thread* g_thread_manager::createSubThread(g_process* process) {
+
+	g_thread* thread = createThread(process, G_THREAD_TYPE_SUB);
+
+#if G_LOGGING_DEBUG
+	dumpTask(thread);
+#endif
+
+	return thread;
+}
+
+/**
+ *
+ */
+g_thread* g_thread_manager::createThread(g_process* process, g_thread_type type) {
+
+	// create the stacks
+	g_virtual_address kernelStackPageVirt;
+	if (!createThreadKernelStack(process, &kernelStackPageVirt)) {
+		return nullptr;
+	}
+
+	g_virtual_address userStackAreaStart;
+	if (!createThreadUserStack(process, &userStackAreaStart)) {
+		return nullptr;
+	}
+
+	// calculate stack locations
+	g_virtual_address esp0 = kernelStackPageVirt + G_PAGE_SIZE;
+	g_virtual_address esp = userStackAreaStart + G_PAGE_SIZE;
+
+	// create initial state on the kernel stack
 	g_processor_state* state = (g_processor_state*) (esp0 - sizeof(g_processor_state));
 	g_memory::setBytes(state, 0, sizeof(g_processor_state));
 	state->esp = esp;
 	state->eip = 0;
 	state->eflags = 0x200;
 
-	// Apply process security level on thread
-	applySecurityLevel(state, securityLevel);
+	// apply security level configuration
+	applySecurityLevel(state, process->securityLevel);
 
-	/**
-	 * Create the main thread
-	 */
-	g_thread* thread = new g_thread(g_thread_type::THREAD_MAIN);
+	// create the thread
+	g_thread* thread = new g_thread(type);
 	thread->cpuState = state;
 	thread->kernelStackEsp0 = esp0;
 
-	thread->kernelStack = kernelStackVirt;
-	thread->userStack = userStackVirt;
+	thread->kernelStackPageVirt = kernelStackPageVirt;
+	thread->userStackAreaStart = userStackAreaStart;
+	thread->userStackPages = 1;
 
-	/**
-	 * Create the process
-	 */
-	g_process* process = new g_process(securityLevel);
-	process->main = thread;
-	process->pageDirectory = (uint32_t*) pd;
+	// link thread to process
 	thread->process = process;
 
-	// Initialize the virtual range manager
-	// (gets everything from "value of constant" to start of process stack)
-	process->virtualRanges.initialize(G_CONST_USER_VIRTUAL_RANGES_START, userStackVirt);
+	// initialize thread local storage for subthreads
+	if (type == G_THREAD_TYPE_SUB) {
+		prepareThreadLocalStorage(thread);
+	}
 
-#if G_LOGGING_DEBUG
-	dumpTask(thread);
-#endif
 	return thread;
 }
 
@@ -345,16 +407,19 @@ g_thread* g_thread_manager::createProcess(g_security_level securityLevel) {
  */
 g_thread* g_thread_manager::createProcessVm86(uint8_t interrupt, g_vm86_registers& in, g_vm86_registers* out) {
 
-	// Virtual target addresses
-	g_virtual_address kernelStackVirt = g_kernel_virt_addr_ranges->allocate(1);
+	g_process* process = new g_process(G_SECURITY_LEVEL_KERNEL);
+	process->pageDirectory = initializePageDirectoryForProcess();
 
-	// Allocate a user stack in lower memory
+	// create kernel stack
+	g_virtual_address kernelStackVirt;
+	if (!createThreadKernelStack(process, &kernelStackVirt)) {
+		return nullptr;
+	}
+
+	// allocate user stack in lower memory
 	g_virtual_address userStackVirt = (uint32_t) g_lower_heap::allocate(0x2000);
-	g_physical_address pageDirPhys = prepareSpaceForProcess(kernelStackVirt);
 
-	/**
-	 * Create the state
-	 */
+	// initialize the state
 	g_virtual_address esp0 = kernelStackVirt + G_PAGE_SIZE;
 
 	g_processor_state_vm86* state = (g_processor_state_vm86*) (esp0 - sizeof(g_processor_state_vm86));
@@ -378,76 +443,25 @@ g_thread* g_thread_manager::createProcessVm86(uint8_t interrupt, g_vm86_register
 	state->es = in.es;
 	state->ds = in.ds;
 
-	/**
-	 * Create the VM86 main thread
-	 */
-	g_thread* thread = new g_thread(g_thread_type::THREAD_VM86);
+	// create main thread
+	g_thread* thread = new g_thread(G_THREAD_TYPE_VM86);
 	thread->cpuState = (g_processor_state*) state;
 	thread->kernelStackEsp0 = esp0;
 
-	thread->kernelStack = kernelStackVirt;
-	thread->userStack = userStackVirt;
+	thread->kernelStackPageVirt = kernelStackVirt;
+	thread->userStackAreaStart = userStackVirt;
+	thread->userStackPages = 1;
 
 	thread->getVm86Information()->out = out;
 
-	/**
-	 * Create the process
-	 */
-	g_process* process = new g_process(G_SECURITY_LEVEL_KERNEL);
+	// assign thread to process
 	process->main = thread;
-	process->pageDirectory = (uint32_t*) pageDirPhys;
 	thread->process = process;
 
 #if G_LOGGING_DEBUG
 	dumpTask(thread);
 #endif
-	return thread;
-}
 
-/**
- *
- */
-g_thread* g_thread_manager::createThread(g_process* process) {
-
-	// Virtual target addresses
-	g_virtual_address userStackVirt = process->virtualRanges.allocate(1);
-	if (userStackVirt == 0) {
-		g_log_warn("%! couldn't create thread in process %i, no free user ranges", "taskmgr", process->main->id);
-		return 0;
-	}
-
-	g_virtual_address kernelStackVirt = g_kernel_virt_addr_ranges->allocate(1);
-	prepareSpaceForThread(process->pageDirectory, kernelStackVirt, userStackVirt);
-
-	/**
-	 * Create the state
-	 */
-	g_virtual_address esp0 = kernelStackVirt + G_PAGE_SIZE;
-	g_virtual_address esp = userStackVirt + G_PAGE_SIZE;
-
-	g_processor_state* state = (g_processor_state*) (esp0 - sizeof(g_processor_state));
-	g_memory::setBytes(state, 0, sizeof(g_processor_state));
-	state->esp = esp;
-	state->eip = 0;
-	state->eflags = 0x200;
-	// Apply security level
-	applySecurityLevel(state, process->securityLevel);
-
-	// Create the thread
-	g_thread* thread = new g_thread(g_thread_type::THREAD);
-	thread->cpuState = state;
-	thread->kernelStackEsp0 = esp0;
-	thread->kernelStack = kernelStackVirt;
-	thread->userStack = userStackVirt;
-
-	thread->process = process;
-
-	// User-Thread (thread-local-storage etc.)
-	prepareThreadLocalStorage(thread);
-
-#if G_LOGGING_DEBUG
-	dumpTask(thread);
-#endif
 	return thread;
 }
 
@@ -460,18 +474,18 @@ void g_thread_manager::prepareThreadLocalStorage(g_thread* thread) {
 	g_process* process = thread->process;
 	if (process->tls_master_in_proc_location) {
 
-		// Calculate size that TLS needs including alignment
+		// calculate size that TLS needs including alignment
 		uint32_t tls_master_aligned_total_size = G_ALIGN_UP(process->tls_master_totalsize, process->tls_master_alignment);
 
-		// Allocate virtual range with aligned size of TLS + size of {g_user_thread}
+		// allocate virtual range with aligned size of TLS + size of {g_user_thread}
 		uint32_t required_size = tls_master_aligned_total_size + sizeof(g_user_thread);
 		uint32_t required_pages = PAGE_ALIGN_UP(required_size) / G_PAGE_SIZE;
 		g_virtual_address tls_copy_virt = process->virtualRanges.allocate(required_pages, G_PROC_VIRTUAL_RANGE_FLAG_PHYSICAL_OWNER);
 
-		// Store executing space
+		// store executing space
 		g_page_directory current = g_address_space::get_current_space();
 
-		// Temporarily switch to target process directory, copy TLS contents
+		// temporarily switch to target process directory, copy TLS contents
 		g_address_space::switch_to_space(process->pageDirectory);
 		for (uint32_t i = 0; i < required_pages; i++) {
 			g_physical_address phys = g_pp_allocator::allocate();
@@ -480,23 +494,23 @@ void g_thread_manager::prepareThreadLocalStorage(g_thread* thread) {
 			g_pp_reference_tracker::increment(phys);
 		}
 
-		// Zero & copy TLS content
+		// zero & copy TLS content
 		g_memory::setBytes((void*) tls_copy_virt, 0, process->tls_master_totalsize);
 		g_memory::copy((void*) tls_copy_virt, (void*) process->tls_master_in_proc_location, process->tls_master_copysize);
 
-		// Fill user thread
+		// fill user thread
 		g_virtual_address user_thread_loc = tls_copy_virt + tls_master_aligned_total_size;
 		g_user_thread* user_thread = (g_user_thread*) user_thread_loc;
 		user_thread->self = user_thread;
 
-		// Switch back
+		// switch back
 		g_address_space::switch_to_space(current);
 
-		// Set threads TLS location
+		// set threads TLS location
 		thread->user_thread_addr = user_thread_loc;
 		thread->tls_copy_virt = tls_copy_virt;
 
-		g_log_debug("%! created tls copy in process %i, thread %i at %h", "taskmgr", process->main->id, thread->id, thread->tls_copy_virt);
+		g_log_debug("%! created tls copy in process %i, thread %i at %h", "threadmgr", process->main->id, thread->id, thread->tls_copy_virt);
 	}
 
 }
@@ -510,38 +524,45 @@ void g_thread_manager::prepareThreadLocalStorage(g_thread* thread) {
 void g_thread_manager::deleteTask(g_thread* task) {
 
 	G_DEBUG_INTERFACE_TASK_SET_STATUS(task->id, "dead");
+
 	// clear message queues
 	g_message_controller::clear(task->id);
 
-	if (task->type == g_thread_type::THREAD) {
-
-		// Here we free everything that the thread has created and that is no more
-		// needed by anyone.
+	if (task->type == G_THREAD_TYPE_SUB) {
 		g_process* process = task->process;
+
+		// remove kernel stack
+		g_pp_allocator::free(g_address_space::virtual_to_physical(task->kernelStackPageVirt));
+
+		// remove user stack
+		g_page_directory currentSpace = g_address_space::get_current_space();
+		g_address_space::switch_to_space(process->pageDirectory);
+		g_pp_allocator::free(g_address_space::virtual_to_physical(task->userStackAreaStart));
+		g_address_space::switch_to_space(currentSpace);
 
 		// TODO
 
-	} else if (task->type == g_thread_type::THREAD_MAIN) {
+	} else if (task->type == G_THREAD_TYPE_MAIN) {
 
 		// Here we free everything that the process has created and that is no more
 		// needed by anyone.
-		g_process* process = task->process;
+		//g_process* process = task->process;
 
 		// tell the filesystem to clean up
 		g_filesystem::process_closed(task->id);
 
 		// TODO
 
-	} else if (task->type == g_thread_type::THREAD_VM86) {
+	} else if (task->type == G_THREAD_TYPE_VM86) {
 
 		// User stack is in memory < 1MB so don't unmap
-		g_lower_heap::free((void*) task->userStack);
+		g_lower_heap::free((void*) task->userStackAreaStart);
 
 		// TODO:
 		// figure out vm86 deletion
 	}
 
-	g_log_debug("%! task %i has died, now %i free phys pages", "taskmgr", task->id, g_pp_allocator::getFreePageCount());
+	g_log_debug("%! task %i has died, now %i free phys pages", "threadmgr", task->id, g_pp_allocator::getFreePageCount());
 	delete task;
 	return;
 }
@@ -551,8 +572,8 @@ void g_thread_manager::deleteTask(g_thread* task) {
  */
 void g_thread_manager::dumpTask(g_thread* task) {
 #if G_LOGGING_DEBUG
-	g_log_debug("%! created %s %i", "taskmgr",
-			(task->type == g_thread_type::THREAD ? "thread" : (task->type == g_thread_type::THREAD_VM86 ? "vm86 process" : "process")), task->id);
+	g_log_debug("%! created %s %i", "threadmgr",
+			(task->type == G_THREAD_TYPE_SUB ? "thread" : (task->type == G_THREAD_TYPE_VM86 ? "vm86 process" : "process")), task->id);
 
 	g_process* process = task->process;
 	g_log_debugn("%#  process: ");
@@ -565,7 +586,7 @@ void g_thread_manager::dumpTask(g_thread* task) {
 	g_log_debug("%#  pagedir:  %h", process->pageDirectory);
 	g_log_debug("%#  security: %h", process->securityLevel);
 	g_log_debug("%#  kernel sp:     %h", task->kernelStackEsp0);
-	if (task->type == g_thread_type::THREAD_VM86) {
+	if (task->type == G_THREAD_TYPE_VM86) {
 		g_log_debug("%#  cs:ip:  %h:%h", task->cpuState->cs, task->cpuState->eip);
 		g_log_debug("%#  ax: %h bx: %h cx: %h dx: %h", task->cpuState->eax, task->cpuState->ebx, task->cpuState->ecx, task->cpuState->edx);g_log_debug(
 				"%#  user sp:  %h:%h", task->cpuState->esp, task->cpuState->ss);
@@ -575,3 +596,14 @@ void g_thread_manager::dumpTask(g_thread* task) {
 #endif
 }
 
+/**
+ *
+ */
+g_virtual_address g_thread_manager::getMemoryUsage(g_thread* task) {
+
+	g_virtual_address total = 0;
+
+	total += (task->process->heapPages * G_PAGE_SIZE);
+
+	return total;
+}

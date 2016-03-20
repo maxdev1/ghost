@@ -514,3 +514,83 @@ void g_fs_delegate_tasked::finish_directory_refresh(g_thread* requester, g_fs_tr
 	g_address_space::switch_to_space(current);
 }
 
+/**
+ *
+ */
+g_fs_transaction_id g_fs_delegate_tasked::request_open(g_thread* requester, g_fs_node* node, char* filename, int32_t flags, int32_t mode,
+		g_fs_transaction_handler_open* handler) {
+
+	// the ramdisk handler is doing it's work immediately and doesn't request another process
+	g_fs_transaction_id id = g_fs_transaction_store::next_transaction();
+	bool configuration_fine = true;
+
+	/**
+	 * Switch to the delegates space and fill the transaction storage.
+	 */
+	g_page_directory current = g_address_space::get_current_space();
+	g_address_space::switch_to_space(delegate_thread->process->pageDirectory);
+
+	g_fs_tasked_delegate_transaction_storage_open* disc = (g_fs_tasked_delegate_transaction_storage_open*) transaction_storage();
+	disc->phys_fs_id = node->phys_fs_id;
+
+	int childlen = g_string::length(filename);
+	if (childlen > G_FILENAME_MAX) {
+		g_log_info("tried to open a node that has a name with an illegal length");
+		configuration_fine = false;
+	} else {
+		g_memory::copy(disc->name, filename, childlen + 1);
+	}
+
+	g_address_space::switch_to_space(current);
+
+	if(!configuration_fine) {
+		handler->status = G_FS_OPEN_ERROR;
+		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
+		return id;
+	}
+
+	// update the status / notify delegate thread
+	g_message_empty(request);
+	request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_OPEN;
+	request.parameterA = id;
+
+	int send_status = g_message_controller::send(delegate_thread->id, &request);
+	if (send_status == G_MESSAGE_SEND_STATUS_SUCCESSFUL) {
+		// task was requested, wait for answer
+		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_WAITING);
+
+	} else if (send_status == G_MESSAGE_SEND_STATUS_QUEUE_FULL) {
+		g_log_warn("%! message queue was full when trying to request open to fs delegate", "filesystem");
+		handler->status = G_FS_OPEN_BUSY;
+		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
+
+	} else if (send_status == G_MESSAGE_SEND_STATUS_FAILED) {
+		g_log_warn("%! message sending failed when trying to request open to fs delegate", "filesystem");
+		handler->status = G_FS_OPEN_ERROR;
+		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
+	}
+
+	return id;
+}
+
+/**
+ *
+ */
+void g_fs_delegate_tasked::finish_open(g_thread* requester, g_fs_transaction_handler_open* handler) {
+
+	// save current directory
+	g_page_directory current = g_address_space::get_current_space();
+
+	// Get values from transaction storage and unmap the mapping
+	g_address_space::switch_to_space(delegate_thread->process->pageDirectory);
+
+	g_fs_tasked_delegate_transaction_storage_open* storage = (g_fs_tasked_delegate_transaction_storage_open*) transaction_storage();
+	g_fs_open_status status = storage->result_status;
+
+	// Now switch to the requesters space and copy data there
+	g_address_space::switch_to_space(requester->process->pageDirectory);
+
+	handler->status = status;
+
+	g_address_space::switch_to_space(current);
+}

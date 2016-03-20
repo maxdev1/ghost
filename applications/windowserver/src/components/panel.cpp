@@ -28,6 +28,10 @@ void panel_t::paint() {
 	g_painter p(graphics);
 	p.setColor(background);
 	p.fill(g_rectangle(0, 0, getBounds().width, getBounds().height));
+
+	if (backgroundImage) {
+		p.drawImage(0, 0, backgroundImage);
+	}
 }
 
 /**
@@ -43,4 +47,19 @@ void panel_t::setBackground(g_color_argb color) {
  */
 g_color_argb panel_t::getBackground() {
 	return background;
+}
+
+/**
+ *
+ */
+void panel_t::setBackgroundImage(g_image* image) {
+	backgroundImage = image;
+	markFor(COMPONENT_REQUIREMENT_PAINT);
+}
+
+/**
+ *
+ */
+g_image* panel_t::getBackgroundImage() {
+	return backgroundImage;
 }

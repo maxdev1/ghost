@@ -23,6 +23,7 @@
 
 #include <fstream>
 #include <stdint.h>
+#include <list>
 
 #define VERSION_MAJOR	1
 #define	VERSION_MINOR	0
@@ -34,8 +35,9 @@ class ghost_ramdisk {
 private:
 	int idCounter;
 	std::ofstream out;
+	std::list<std::string> ignores;
 
-	void writeRecursive(const char* path, const char* name, uint32_t contentLength, uint32_t parentId, bool isFile);
+	void writeRecursive(const char* basePath, const char* path, const char* name, uint32_t contentLength, uint32_t parentId, bool isFile);
 
 public:
 	ghost_ramdisk() :

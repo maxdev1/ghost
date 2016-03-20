@@ -20,12 +20,13 @@
 
 #include <ghost.h>
 #include "stdlib.h"
+#include "stdio.h"
 
 /**
  *
  */
 char* getenv(const char* key) {
 
-	// TODO
-	__G_NOT_IMPLEMENTED("getenv")
+	klog("warning: getenv(\"%s\") not implemented", key);
+	return "";
 }

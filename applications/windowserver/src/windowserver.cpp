@@ -31,9 +31,12 @@
 #include <components/checkbox.hpp>
 #include <components/text/text_field.hpp>
 #include <components/plain_console_panel.hpp>
+#include <components/scrollpane.hpp>
 #include <components/button.hpp>
 #include <layout/flow_layout_manager.hpp>
 #include <layout/grid_layout_manager.hpp>
+
+#include <ghostuser/graphics/images/png_image_format.hpp>
 
 #include <iostream>
 #include <stdio.h>
@@ -98,6 +101,31 @@ void windowserver_t::launch() {
 	// create test components
 	// createTestComponents();
 
+	// scroll pane
+	window_t* testWindow = new window_t;
+	testWindow->setTitle("Test Window");
+	testWindow->setBounds(g_rectangle(10, 10, 500, 500));
+
+	panel_t* testPanelImage = new panel_t;
+	testPanelImage->setBounds(g_rectangle(20, 20, 500, 600));
+	testPanelImage->setBackground(RGB(0, 100, 100));
+
+	FILE* testImageFile = fopen("/salty.png", "r");
+	if (testImageFile != NULL) {
+		g_png_image_format format_png;
+		g_image* testImage = new g_image;
+		if (testImage->load(testImageFile, &format_png) == g_image_load_status::SUCCESSFUL) {
+			testPanelImage->setBackgroundImage(testImage);
+		} else {
+			klog("failed to load image of salty spitoon");
+		}
+		fclose(testImageFile);
+	}
+
+	testWindow->addChild(testPanelImage);
+	screen->addChild(testWindow);
+	testWindow->setVisible(true);
+
 	// start interface
 	registration_thread_t* registration_thread = new registration_thread_t();
 	registration_thread->start();
@@ -120,9 +148,15 @@ void windowserver_t::mainLoop(g_rectangle screenBounds) {
 
 	cursor_t::nextPosition = g_point(screenBounds.width / 2, screenBounds.height / 2);
 
+	// intially set rendering atom
+	render_atom = true;
+
+	uint64_t render_start;
+	uint64_t render_time;
+
 	while (true) {
 
-		uint64_t render_start = g_millis();
+		render_start = g_millis();
 		event_processor->processMouseState();
 
 #if BENCHMARKING
@@ -159,8 +193,14 @@ void windowserver_t::mainLoop(g_rectangle screenBounds) {
 		// blit output
 		blit(&global);
 
-		// try to create 60 fps
-		g_sleep(1000 / 100);
+		// wait for next rendering
+		g_atomic_lock(&render_atom);
+
+		// limit to 60 fps
+		render_time = g_millis() - render_start;
+		if (render_time < (1000 / 60)) {
+			g_sleep((1000 / 60) - render_time);
+		}
 
 		// print output
 #if BENCHMARKING
@@ -331,3 +371,11 @@ bool windowserver_t::dispatch(component_t* component, event_t& event) {
 windowserver_t* windowserver_t::instance() {
 	return server;
 }
+
+/**
+ *
+ */
+void windowserver_t::triggerRender() {
+	render_atom = false;
+}
+

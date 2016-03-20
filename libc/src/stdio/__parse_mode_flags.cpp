@@ -35,10 +35,12 @@ int __parse_mode_flags(const char* mode) {
 		flags = G_FILE_FLAG_MODE_READ;
 		break;
 	case 'w':
-		flags = G_FILE_FLAG_MODE_WRITE;
+		flags = G_FILE_FLAG_MODE_WRITE | G_FILE_FLAG_MODE_CREATE
+				| G_FILE_FLAG_MODE_TRUNCATE;
 		break;
 	case 'a':
-		flags = G_FILE_FLAG_MODE_APPEND;
+		flags = G_FILE_FLAG_MODE_WRITE | G_FILE_FLAG_MODE_CREATE
+				| G_FILE_FLAG_MODE_APPEND;
 		break;
 	default:
 		errno = EINVAL;
@@ -51,11 +53,11 @@ int __parse_mode_flags(const char* mode) {
 			flags |= G_FILE_FLAG_MODE_READ | G_FILE_FLAG_MODE_WRITE;
 			break;
 		case 't':
-			flags &= G_FILE_FLAG_MODE_BINARY;
+			flags &= ~G_FILE_FLAG_MODE_BINARY;
 			flags |= G_FILE_FLAG_MODE_TEXTUAL;
 			break;
 		case 'b':
-			flags &= G_FILE_FLAG_MODE_TEXTUAL;
+			flags &= ~G_FILE_FLAG_MODE_TEXTUAL;
 			flags |= G_FILE_FLAG_MODE_BINARY;
 			break;
 		default:

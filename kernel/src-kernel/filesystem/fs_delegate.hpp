@@ -32,6 +32,7 @@
 #include "filesystem/fs_transaction_handler_write.hpp"
 #include "filesystem/fs_transaction_handler_discovery.hpp"
 #include "filesystem/fs_transaction_handler_get_length.hpp"
+#include "filesystem/fs_transaction_handler_open.hpp"
 #include "memory/contextual.hpp"
 
 /**
@@ -157,14 +158,28 @@ public:
 	virtual void finish_get_length(g_thread* requester, g_fs_transaction_handler_get_length* handler) = 0;
 
 	/**
-	 *
+	 * Refreshing the directory means that the executing delegate shall create all VFS nodes for
+	 * all children of the given node.
 	 */
 	virtual g_fs_transaction_id request_directory_refresh(g_thread* requester, g_fs_node* node, g_fs_transaction_handler_directory_refresh* handler) = 0;
 
 	/**
-	 *
+	 * Finishes the directory refresh transaction, allowing the delegate to fill the results into
+	 * the output
 	 */
 	virtual void finish_directory_refresh(g_thread* requester, g_fs_transaction_handler_directory_refresh* handler) = 0;
+
+	/**
+	 * Used to open a file. The given node can be two things here: if the node was found, it is the actual node.
+	 * Otherwise it is the last discovered parent node and the filename the name of the file that shall be opened.
+	 */
+	virtual g_fs_transaction_id request_open(g_thread* requester, g_fs_node* node, char* filename, int32_t flags, int32_t mode,
+			g_fs_transaction_handler_open* handler) = 0;
+
+	/**
+	 *
+	 */
+	virtual void finish_open(g_thread* requester, g_fs_transaction_handler_open* handler) = 0;
 
 };
 

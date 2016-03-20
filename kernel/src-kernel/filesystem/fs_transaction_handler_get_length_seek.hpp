@@ -38,8 +38,8 @@ public:
 	/**
 	 *
 	 */
-	g_fs_transaction_handler_get_length_seek(g_file_descriptor_content* fd, g_contextual<g_syscall_fs_seek*> data) :
-			fd(fd), data(data) {
+	g_fs_transaction_handler_get_length_seek(g_file_descriptor_content* fd, g_fs_node* node, g_contextual<g_syscall_fs_seek*> data) :
+			g_fs_transaction_handler_get_length(node), fd(fd), data(data) {
 	}
 
 	/**

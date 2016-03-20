@@ -21,23 +21,49 @@
 #include "filesystem/fs_delegate.hpp"
 #include "filesystem/fs_transaction_handler_read.hpp"
 #include "filesystem/filesystem.hpp"
+#include "logger/logger.hpp"
+#include "tasking/wait/waiter_fs_transaction.hpp"
 
 /**
  *
  */
 g_fs_transaction_handler_start_status g_fs_transaction_handler_read::start_transaction(g_thread* thread) {
 
-	// bind the target buffer to the requesters context
+	// create a context-bound wrapper for the data buffer
 	g_contextual<uint8_t*> bound_buffer(data()->buffer, thread->process->pageDirectory);
 
-	// ask the filesystem to perform a read
-	return g_filesystem::read(thread, node, fd, data()->length, bound_buffer, this);
+	// check for the driver delegate
+	g_fs_delegate* delegate = node->get_delegate();
+	if (delegate == 0) {
+		g_log_warn("%! reading of '%i' failed due to missing delegate on underlying node %i", "filesystem", fd->id, node->id);
+		return G_FS_TRANSACTION_START_FAILED;
+	}
+
+	// check if the transaction is repeated only
+	if (wants_repeat_transaction()) {
+		// when a transaction is repeated, the waiter is still on the requesters task
+		delegate->request_read(thread, node, data()->length, bound_buffer, fd, this);
+		return G_FS_TRANSACTION_START_WITH_WAITER;
+	}
+
+	// start transaction by requesting the delegate
+	g_fs_transaction_id transaction = delegate->request_read(thread, node, data()->length, bound_buffer, fd, this);
+
+	// check status for possible immediate finish
+	if (g_waiter_fs_transaction::is_transaction_waiting(thread, this, transaction, delegate)) {
+		// otherwise append waiter
+		thread->wait(new g_waiter_fs_transaction(this, transaction, delegate));
+		return G_FS_TRANSACTION_START_WITH_WAITER;
+	}
+
+	return G_FS_TRANSACTION_START_IMMEDIATE_FINISH;
+
 }
 
 /**
  *
  */
-g_fs_transaction_handler_status g_fs_transaction_handler_read::finish_transaction(g_thread* thread, g_fs_delegate* delegate) {
+g_fs_transaction_handler_finish_status g_fs_transaction_handler_read::finish_transaction(g_thread* thread, g_fs_delegate* delegate) {
 	delegate->finish_read(thread, &status, &result, fd);
 
 	data()->result = result;

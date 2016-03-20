@@ -47,6 +47,7 @@ void command_message_receiver_thread_t::run() {
 			memcpy(messageCopy, buffer, messageTotalSize);
 
 			windowserver_t::instance()->event_processor->bufferCommandMessage(messageCopy);
+			windowserver_t::instance()->triggerRender();
 
 		} else if (stat == G_MESSAGE_RECEIVE_STATUS_EXCEEDS_BUFFER_SIZE) {
 			klog("could not receive an incoming request, message exceeded buffer size");

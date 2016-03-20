@@ -60,34 +60,35 @@ void g_tasking::enableForThisCore() {
 /**
  * 
  */
-g_processor_state* g_tasking::schedule(g_processor_state* cpuState) {
+void g_tasking::increaseWaitPriority(g_thread* thread) {
+	currentScheduler()->increaseWaitPriority(thread);
+}
 
-	// Get scheduler for this core
-	uint32_t coreId = g_system::currentProcessorId();
-	g_scheduler* scheduler = schedulers[coreId];
+/**
+ *
+ */
+g_thread* g_tasking::save(g_processor_state* cpuState) {
+	return currentScheduler()->save(cpuState);
+}
 
-	// Check for errors
-	if (scheduler == 0) {
-		g_kernel::panic("%! no scheduler for core %i", "scheduler", coreId);
-	}
-
-	// Let scheduler do his work
-	return scheduler->schedule(cpuState);
+/**
+ *
+ */
+g_thread* g_tasking::schedule() {
+	return currentScheduler()->schedule();
 }
 
 /**
  * 
  */
-g_thread* g_tasking::fork() {
+g_thread* g_tasking::fork(g_thread* current_thread) {
 
 	g_thread* clone = 0;
 
-	g_thread* current = getCurrentThread();
-
 	// TODO forking in threads.
-	if (current == current->process->main) {
-		if (current) {
-			clone = g_thread_manager::fork(current);
+	if (current_thread == current_thread->process->main) {
+		if (current_thread) {
+			clone = g_thread_manager::fork(current_thread);
 			if (clone) {
 				addTask(clone);
 			}
@@ -108,7 +109,7 @@ void g_tasking::addTask(g_thread* t, bool enforceCurrentCore) {
 
 	// Used by AP's for the idle binary
 	if (enforceCurrentCore) {
-		target = getCurrentScheduler();
+		target = currentScheduler();
 
 	} else {
 		// Find core with lowest load
@@ -142,7 +143,7 @@ void g_tasking::addTask(g_thread* t, bool enforceCurrentCore) {
 /**
  * Returns the current scheduler on the current core
  */
-g_scheduler* g_tasking::getCurrentScheduler() {
+g_scheduler* g_tasking::currentScheduler() {
 
 	uint32_t coreId = g_system::currentProcessorId();
 	g_scheduler* sched = schedulers[coreId];
@@ -156,11 +157,10 @@ g_scheduler* g_tasking::getCurrentScheduler() {
 }
 
 /**
- * 
+ *
  */
-g_thread* g_tasking::getCurrentThread() {
-
-	return getCurrentScheduler()->getCurrent();
+g_thread* g_tasking::lastThread() {
+	return currentScheduler()->lastThread();
 }
 
 /**
@@ -224,18 +224,52 @@ bool g_tasking::registerTaskForIdentifier(g_thread* task, const char* newIdentif
 /**
  *
  */
-bool g_tasking::killAllThreadsOf(g_process* process) {
+void g_tasking::remove_threads(g_process* process) {
 
-	bool still_has_living_threads = true;
-
-	for (uint32_t i = 0; i < g_system::getNumberOfProcessors(); i++) {
+	uint32_t processors = g_system::getNumberOfProcessors();
+	for (uint32_t i = 0; i < processors; i++) {
 		g_scheduler* sched = schedulers[i];
+		if (sched) {
+			sched->remove_threads(process);
+		}
+	}
+}
 
-		if (sched && sched->killAllThreadsOf(process)) {
-			still_has_living_threads = false;
+/**
+ *
+ */
+uint32_t g_tasking::count() {
+	uint32_t total = 0;
+	uint32_t processors = g_system::getNumberOfProcessors();
+	for (uint32_t i = 0; i < processors; i++) {
+		g_scheduler* sched = schedulers[i];
+		if (sched) {
+			total += sched->count();
+		}
+	}
+	return total;
+}
+
+/**
+ *
+ */
+g_thread* g_tasking::getAtPosition(uint32_t position) {
+
+	uint32_t index = 0;
+	uint32_t previous_sched_counts = 0;
+
+	uint32_t processors = g_system::getNumberOfProcessors();
+	for (uint32_t i = 0; i < processors; i++) {
+		g_scheduler* sched = schedulers[i];
+		if (sched) {
+			// check if in this scheduler
+			uint32_t tasks_for_sched = sched->count();
+			if (position < index + tasks_for_sched) {
+				return sched->getAtPosition(position - previous_sched_counts);
+			}
+			previous_sched_counts += tasks_for_sched;
 		}
 	}
 
-	return still_has_living_threads;
+	return nullptr;
 }
-

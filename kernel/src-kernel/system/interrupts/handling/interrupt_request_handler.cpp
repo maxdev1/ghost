@@ -43,18 +43,18 @@ g_irq_handler* handlers[256] = { };
 /**
  * Performs interrupt request handling.
  */
-g_processor_state* g_interrupt_request_handler::handle(g_processor_state* cpuState) {
+g_thread* g_interrupt_request_handler::handle(g_thread* current_thread) {
 
-	const uint32_t irq = cpuState->intr - 0x20;
+	const uint32_t irq = current_thread->cpuState->intr - 0x20;
 
-	if (cpuState->intr == 0x80) {
+	if (current_thread->cpuState->intr == 0x80) {
 		/*
 		 System call
 		 ===========
 		 If the interrupt request is a system call, its handled by the system
 		 call handler.
 		 */
-		cpuState = g_syscall_handler::handle(cpuState);
+		current_thread = g_syscall_handler::handle(current_thread);
 
 	} else if (irq == 0xFF) {
 		/**
@@ -70,8 +70,8 @@ g_processor_state* g_interrupt_request_handler::handle(g_processor_state* cpuSta
 		 method to switch tasks may be called arbitrarily and is not guaranteed to be
 		 called only on IRQ 0.
 		 */
-		g_tasking::getCurrentScheduler()->updateMilliseconds();
-		cpuState = g_tasking::schedule(cpuState);
+		g_tasking::currentScheduler()->updateMilliseconds();
+		current_thread = g_tasking::schedule();
 
 	} else if (irq < 256) {
 		/*
@@ -88,7 +88,7 @@ g_processor_state* g_interrupt_request_handler::handle(g_processor_state* cpuSta
 				// let the thread enter the irq handler
 				thread->enter_irq_handler(handler->handler, irq, handler->callback);
 				// it could be the current thread, so we have to switch
-				cpuState = g_tasking::schedule(cpuState);
+				current_thread = g_tasking::schedule();
 			}
 
 		} else {
@@ -102,7 +102,7 @@ g_processor_state* g_interrupt_request_handler::handle(g_processor_state* cpuSta
 		g_log_warn("%! unhandled irq %i", "requests", irq);
 	}
 
-	return cpuState;
+	return current_thread;
 }
 
 /**

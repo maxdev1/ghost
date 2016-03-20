@@ -21,6 +21,8 @@
 #ifndef GHOST_API_CALLS_MISCCALLS
 #define GHOST_API_CALLS_MISCCALLS
 
+#include "ghost/kernquery.h"
+
 /**
  * @field message
  * 		the message
@@ -49,5 +51,25 @@ typedef struct {
 
 	uint32_t result;
 }__attribute__((packed)) g_syscall_test;
+
+/**
+ * @field command
+ * 		the query command
+ *
+ * @field query
+ * 		input query buffer pointer
+ *
+ * @field outbuffer
+ * 		output buffer pointer
+ *
+ * @field status
+ * 		one of the {g_kernquery_status} status codes
+ */
+typedef struct {
+	uint16_t command;
+	const uint8_t* query;
+	uint8_t* outbuffer;
+	g_kernquery_status status;
+}__attribute__((packed)) g_syscall_kernquery;
 
 #endif

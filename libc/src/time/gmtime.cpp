@@ -21,11 +21,13 @@
 #include "time.h"
 #include "ghost/kernel.h"
 
+static tm timecontainer;
+
 /**
  *
  */
 struct tm* gmtime(const time_t *) {
 
-	// TODO
-	__G_NOT_IMPLEMENTED("gmtime");
+	klog("warning: gmtime not implemented");
+	return &timecontainer;
 }

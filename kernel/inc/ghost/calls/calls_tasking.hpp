@@ -38,6 +38,8 @@ typedef struct {
  */
 typedef struct {
 	g_pid pid;
+
+	g_kill_status status;
 }__attribute__((packed)) g_syscall_kill;
 
 /**

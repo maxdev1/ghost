@@ -83,6 +83,17 @@ public:
 	 */
 	virtual void finish_directory_refresh(g_thread* requester, g_fs_transaction_handler_directory_refresh* handler);
 
+	/**
+	 *
+	 */
+	virtual g_fs_transaction_id request_open(g_thread* requester, g_fs_node* node, char* filename, int32_t flags, int32_t mode,
+			g_fs_transaction_handler_open* handler);
+
+	/**
+	 *
+	 */
+	virtual void finish_open(g_thread* requester, g_fs_transaction_handler_open* handler);
+
 };
 
 #endif

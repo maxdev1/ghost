@@ -33,28 +33,35 @@ class g_fs_transaction_handler_directory_refresh: public g_fs_transaction_handle
 public:
 	g_fs_directory_refresh_status status = G_FS_DIRECTORY_REFRESH_ERROR;
 	g_fs_node* folder;
-	g_fs_transaction_handler* followup_handler;
+	g_contextual<g_syscall_fs_read_directory*> data;
+	g_fs_transaction_handler* unfinished_handler;
 
 	/**
 	 *
 	 */
-	g_fs_transaction_handler_directory_refresh(g_fs_node* folder, g_fs_transaction_handler* followup_handler) :
-			folder(folder), followup_handler(followup_handler) {
+	g_fs_transaction_handler_directory_refresh(g_fs_node* folder, g_contextual<g_syscall_fs_read_directory*> bound_data,
+			g_fs_transaction_handler* followup_handler) :
+			folder(folder), data(bound_data), unfinished_handler(followup_handler) {
 	}
 
 	/**
 	 *
 	 */
 	virtual ~g_fs_transaction_handler_directory_refresh() {
-		if (followup_handler) {
-			delete followup_handler;
+		if (unfinished_handler) {
+			delete unfinished_handler;
 		}
 	}
 
 	/**
 	 *
 	 */
-	virtual g_fs_transaction_handler_status finish_transaction(g_thread* thread, g_fs_delegate* delegate);
+	virtual g_fs_transaction_handler_start_status start_transaction(g_thread* thread);
+
+	/**
+	 *
+	 */
+	virtual g_fs_transaction_handler_finish_status finish_transaction(g_thread* thread, g_fs_delegate* delegate);
 
 };
 

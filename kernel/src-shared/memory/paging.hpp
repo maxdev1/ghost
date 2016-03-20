@@ -50,7 +50,7 @@ const uint32_t G_PAGE_WRITETHROUGH = 8;
 const uint32_t G_PAGE_CACHE_DISABLED = 16;
 const uint32_t G_PAGE_ACCESSED = 32;
 const uint32_t G_PAGE_DIRTY = 64;
-constexpr uint32_t G_PAGE_GLOBAL = 128;
+const uint32_t G_PAGE_GLOBAL = 128;
 
 /**
  * Default flags

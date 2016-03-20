@@ -184,6 +184,9 @@ elif [[ $TARGET == "repack" ]]; then
 	target_repack
 	target_qemu
 	
+elif [[ $TARGET == "ramdisk" ]]; then
+	target_ramdisk
+	
 elif [[ $TARGET == "qemu" ]]; then
 	target_qemu
 	

@@ -40,7 +40,7 @@
 #if G_DEBUG_SYSCALLS
 #define link(val, func)																	\
 	case val: {																			\
-		g_thread* thr = g_tasking::getCurrentThread();									\
+		g_thread* thr = g_tasking::lastThread();									\
 		const char* pident = thr->process->main->getIdentifier();						\
 		const char* tident = thr->getIdentifier();										\
 		g_log_info(#val " ('%s' %i:'%s' %i)", (pident == 0 ? "" : pident),				\
@@ -51,7 +51,7 @@
 #else
 // In normal mode, only call handler
 #define link(val, func)																	\
-	case val: return func(state);
+	case val: return func(current_thread);
 #endif
 
 /**
@@ -61,7 +61,7 @@
  */
 G_SYSCALL_HANDLER(handle) {
 
-	uint32_t call = G_SYSCALL_CODE(state);
+	uint32_t call = G_SYSCALL_CODE(current_thread->cpuState);
 
 	switch (call) {
 		link(G_SYSCALL_YIELD, yield);
@@ -117,11 +117,13 @@ G_SYSCALL_HANDLER(handle) {
 		link(G_SYSCALL_RELEASE_CLI_ARGUMENTS, cli_args_release);
 
 		link(G_SYSCALL_TEST, test);
+		link(G_SYSCALL_KERNQUERY, kernquery);
 		link(G_SYSCALL_ATOMIC_LOCK, atomic_wait);
 		link(G_SYSCALL_GET_MILLISECONDS, millis);
 		link(G_SYSCALL_FORK, fork);
 		link(G_SYSCALL_JOIN, join);
 		link(G_SYSCALL_GET_WORKING_DIRECTORY, get_working_directory);
+		link(G_SYSCALL_GET_EXECUTABLE_PATH, get_executable_path);
 		link(G_SYSCALL_SET_WORKING_DIRECTORY, set_working_directory);
 		link(G_SYSCALL_FS_OPEN, fs_open);
 		link(G_SYSCALL_FS_READ, fs_read);
@@ -145,8 +147,7 @@ G_SYSCALL_HANDLER(handle) {
 	// The system call could not be handled, this might mean that the
 	// process was compiled for a deprecated/messed up API library and
 	// is therefore not able to run well.
-	g_thread* task = g_tasking::getCurrentThread();
-	g_log_debug("%! process %i tried to use non-existing syscall %i", "syscall", task->id, G_SYSCALL_CODE(state));
-	task->alive = false;
-	return g_tasking::schedule(state);
+	g_log_debug("%! process %i tried to use non-existing syscall %i", "syscall", current_thread->id, G_SYSCALL_CODE(current_thread->cpuState));
+	current_thread->alive = false;
+	return g_tasking::schedule();
 }

@@ -88,6 +88,13 @@ typedef uint8_t g_raise_signal_status;
 #define G_RAISE_SIGNAL_STATUS_SUCCESSFUL				((g_raise_signal_status) 0)
 #define G_RAISE_SIGNAL_STATUS_INVALID_SIGNAL 			((g_raise_signal_status) 1)
 #define G_RAISE_SIGNAL_STATUS_INVALID_TARGET 			((g_raise_signal_status) 2)
+
+// for <g_kill>
+typedef uint8_t g_kill_status;
+#define G_KILL_STATUS_SUCCESSFUL						((g_kill_status) 0)
+#define G_KILL_STATUS_NOT_FOUND							((g_kill_status) 1)
+#define G_KILL_STATUS_FAILED					 		((g_kill_status) 2)
+
 __END_C
 
 #endif

@@ -24,13 +24,13 @@
  *
  */
 void g_atomic_lock(uint8_t* atom) {
-	g_atomic_lock_2(atom, 0);
+	g_atomic_lock_dual(atom, 0);
 }
 
 /**
  *
  */
-void g_atomic_lock_2(uint8_t* atom_1, uint8_t* atom_2) {
+void g_atomic_lock_dual(uint8_t* atom_1, uint8_t* atom_2) {
 	g_syscall_atomic_lock data;
 	data.atom_1 = atom_1;
 	data.atom_2 = atom_2;

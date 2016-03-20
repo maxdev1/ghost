@@ -33,7 +33,6 @@
 class g_fs_transaction_handler_read_directory: public g_fs_transaction_handler {
 public:
 	g_fs_node* folder;
-	int position;
 	g_contextual<g_syscall_fs_read_directory*> data;
 
 	g_fs_transaction_handler_directory_refresh* causing_handler = 0;
@@ -41,14 +40,19 @@ public:
 	/**
 	 *
 	 */
-	g_fs_transaction_handler_read_directory(g_fs_node* folder, int position, g_contextual<g_syscall_fs_read_directory*> data) :
-			folder(folder), position(position), data(data) {
+	g_fs_transaction_handler_read_directory(g_fs_node* folder, g_contextual<g_syscall_fs_read_directory*> data) :
+			folder(folder), data(data) {
 	}
 
 	/**
 	 *
 	 */
-	virtual g_fs_transaction_handler_status finish_transaction(g_thread* thread, g_fs_delegate* delegate);
+	virtual g_fs_transaction_handler_start_status start_transaction(g_thread* thread);
+
+	/**
+	 *
+	 */
+	virtual g_fs_transaction_handler_finish_status finish_transaction(g_thread* thread, g_fs_delegate* delegate);
 
 };
 

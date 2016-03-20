@@ -19,10 +19,29 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "tester.hpp"
+#include <stdio.h>
+#include <ghost.h>
+
+uint8_t overflow() {
+	char test[0x2000];
+	test[0] = 244;
+	return test[0];
+}
 
 /**
  *
  */
 int main(int argc, char** argv) {
-	run_test(argc, argv);
+	klog("testing stack overflow...");
+	uint8_t x;
+	klog("stack is: %x", &x);
+
+	uint8_t y = overflow();
+	klog("done %c", y);
+
+	g_tid f = g_fork();
+	klog("i am: %i", f);
+
+	return y;
+	//run_test(argc, argv);
 }

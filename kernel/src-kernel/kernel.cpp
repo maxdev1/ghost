@@ -30,6 +30,7 @@
 #include "system/smp/global_lock.hpp"
 #include "system/serial/serial_port.hpp"
 #include "system/bios_data_area.hpp"
+#include "system/pci/pci.hpp"
 #include "tasking/tasking.hpp"
 #include "filesystem/filesystem.hpp"
 
@@ -152,9 +153,12 @@ void g_kernel::run_bsp(g_physical_address initial_pd_physical) {
 		// Initialize filesystem
 		g_filesystem::initialize();
 
+		// Set up PCI
+		g_pci::initialize();
+
 		// Create initial process
-		load_system_process(G_IDLE_BINARY_NAME, g_thread_priority::IDLE);
-		load_system_process(G_INIT_BINARY_NAME, g_thread_priority::NORMAL);
+		load_system_process(G_IDLE_BINARY_NAME, G_THREAD_PRIORITY_IDLE);
+		load_system_process(G_INIT_BINARY_NAME, G_THREAD_PRIORITY_NORMAL);
 	}
 	bsp_setup_lock.unlock();
 	/* BSP INITIALIZATION END */
@@ -205,7 +209,7 @@ void g_kernel::run_ap() {
 		g_tasking::enableForThisCore();
 
 		// Leave initialization
-		load_system_process(G_IDLE_BINARY_NAME, g_thread_priority::IDLE);
+		load_system_process(G_IDLE_BINARY_NAME, G_THREAD_PRIORITY_IDLE);
 
 		// tell bsp that one more is done
 		--waiting_aps;
@@ -236,7 +240,7 @@ void g_kernel::load_system_process(const char* binary_path, g_thread_priority pr
 	g_ramdisk_entry* entry = g_kernel_ramdisk->findAbsolute(binary_path);
 	if (entry) {
 		g_thread* systemProcess;
-		g_elf32_spawn_status status = g_elf32_loader::spawnFromRamdisk(entry, G_SECURITY_LEVEL_KERNEL, &systemProcess, 0, true);
+		g_elf32_spawn_status status = g_elf32_loader::spawnFromRamdisk(entry, G_SECURITY_LEVEL_KERNEL, &systemProcess, true, priority);
 
 		if (status != ELF32_SPAWN_STATUS_SUCCESSFUL) {
 			if (status == ELF32_SPAWN_STATUS_VALIDATION_ERROR) {
@@ -250,7 +254,6 @@ void g_kernel::load_system_process(const char* binary_path, g_thread_priority pr
 			}
 		}
 
-		systemProcess->priority = priority;
 		g_log_info("%! \"%s\" spawned to process %i", "kern", binary_path, systemProcess->id);
 	} else {
 		panic("%! \"%s\" not found", "kern", binary_path);

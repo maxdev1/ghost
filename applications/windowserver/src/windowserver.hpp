@@ -40,6 +40,7 @@ public:
 	event_processor_t* event_processor;
 	screen_t* screen;
 	command_message_responder_thread_t* responder_thread;
+	uint8_t render_atom;
 
 	/**
 	 * Sets up the windowing system by configuring a video output, setting up the
@@ -86,6 +87,11 @@ public:
 	 *
 	 */
 	void loadCursor();
+
+	/**
+	 *
+	 */
+	void triggerRender();
 
 };
 

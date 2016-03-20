@@ -21,31 +21,46 @@
 #include <stdio.h>
 #include <ghost.h>
 #include <stdint.h>
+#include <string.h>
 
 /**
  *
  */
 int main(int argc, char** argv) {
 
-	if (argc == 2) {
+	if (argc >= 2) {
 		char* filepath = argv[1];
+
+		bool binaryout = false;
+		if (strcmp(argv[2], "-b") == 0) {
+			binaryout = true;
+		}
 
 		FILE* file = fopen(filepath, "r");
 
 		if (file == NULL) {
-			fprintf(stderr, "file not found");
+			fprintf(stderr, "file not found\n");
 		} else {
 			uint32_t bufsize = 4096;
 			uint8_t* buf = new uint8_t[bufsize];
 
 			ssize_t len;
 			while ((len = fread(buf, 1, bufsize, file)) > 0) {
+				// TODO write buffered
 				for (ssize_t pos = 0; pos < len; pos++) {
-					putc(buf[pos], stdout);
+					if (binaryout) {
+						printf("%x ", buf[pos]);
+					} else {
+						putc(buf[pos], stdout);
+					}
 				}
 			}
+			fflush(stdout);
+
+			fclose(file);
+
 		}
 	} else {
-		fprintf(stderr, "usage: read <filename>");
+		fprintf(stderr, "usage: read <filename>\n");
 	}
 }

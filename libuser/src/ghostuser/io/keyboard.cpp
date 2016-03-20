@@ -59,7 +59,7 @@ g_key_info g_keyboard::readKey(bool* break_condition) {
 	}
 
 	// wait until incoming data is here (and the driver unsets the atom)
-	g_atomic_block_2(&g_ps2_area->keyboard.atom_nothing_queued, (uint8_t*) break_condition);
+	g_atomic_block_dual(&g_ps2_area->keyboard.atom_nothing_queued, (uint8_t*) break_condition);
 
 	// take info from the shared memory
 	uint8_t scancode = g_ps2_area->keyboard.scancode;

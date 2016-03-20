@@ -21,14 +21,15 @@
 #include "time.h"
 #include "errno.h"
 #include "ghost/kernel.h"
+#include "string.h"
 
 /**
  *
  */
-size_t strftime(char *, size_t, const char*, const struct tm *) {
+size_t strftime(char* ptr, size_t maxsize, const char* format,
+		const struct tm* timeptr) {
 
-	// TODO
-	__G_NOT_IMPLEMENTED("strftime");
-	errno = ENOTSUP;
-	return 0;
+	klog("warning: strftime(\"%s\") is not implemented", format);
+	strcpy(ptr, format);
+	return strlen(format);
 }

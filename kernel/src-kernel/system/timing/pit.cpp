@@ -36,12 +36,12 @@ void g_pit::prepareSleep(uint32_t microseconds) {
 	}
 
 	// Disable the speaker
-	uint8_t speakerControlByte = io_ports::readByte(0x61);
+	uint8_t speakerControlByte = g_io_ports::readByte(0x61);
 	speakerControlByte &= ~2; // set bit 1 to 0 (disables speaker output)
-	io_ports::writeByte(0x61, speakerControlByte);
+	g_io_ports::writeByte(0x61, speakerControlByte);
 
 	// Initialize PIT
-	io_ports::writeByte(0x43, PIT_CHANNEL_2 | PIT_OPMODE_0_IOTC | PIT_ACCESS_LOHIBYTE);
+	g_io_ports::writeByte(0x43, PIT_CHANNEL_2 | PIT_OPMODE_0_IOTC | PIT_ACCESS_LOHIBYTE);
 
 	// Configure PIT, calculate divisor for the requested microseconds
 	sleepDivisor = PIT_FREQUENCY / (1000000 / microseconds);
@@ -53,16 +53,16 @@ void g_pit::prepareSleep(uint32_t microseconds) {
 void g_pit::performSleep() {
 
 	// Write the prepared sleep divisor
-	io_ports::writeByte(0x42, sleepDivisor & 0xFF);
-	io_ports::writeByte(0x42, sleepDivisor >> 8);
+	g_io_ports::writeByte(0x42, sleepDivisor & 0xFF);
+	g_io_ports::writeByte(0x42, sleepDivisor >> 8);
 
 	// Reset the PIT counter and let it start
-	uint8_t pitControlByte = io_ports::readByte(0x61);
-	io_ports::writeByte(0x61, (uint8_t) pitControlByte & ~1);	// clear bit 0
-	io_ports::writeByte(0x61, (uint8_t) pitControlByte | 1);		// set bit 0
+	uint8_t pitControlByte = g_io_ports::readByte(0x61);
+	g_io_ports::writeByte(0x61, (uint8_t) pitControlByte & ~1);	// clear bit 0
+	g_io_ports::writeByte(0x61, (uint8_t) pitControlByte | 1);		// set bit 0
 
 	// Wait for PIT counter to reach 0
-	while (!(io_ports::readByte(0x61) & 0x20)) {
+	while (!(g_io_ports::readByte(0x61) & 0x20)) {
 	}
 }
 
@@ -74,9 +74,9 @@ void g_pit::startAsTimer(uint32_t hz) {
 
 	timerClocking = hz;
 	uint32_t divisor = PIT_FREQUENCY / hz; // Calculate the divisor
-	io_ports::writeByte(0x43, PIT_CHANNEL_0 | PIT_ACCESS_LOHIBYTE | PIT_OPMODE_3_SQUARE_WAV);
-	io_ports::writeByte(0x40, divisor & 0xFF); // Set low byte of the divisor
-	io_ports::writeByte(0x40, divisor >> 8); // Set high byte of the divisor
+	g_io_ports::writeByte(0x43, PIT_CHANNEL_0 | PIT_ACCESS_LOHIBYTE | PIT_OPMODE_3_SQUARE_WAV);
+	g_io_ports::writeByte(0x40, divisor & 0xFF); // Set low byte of the divisor
+	g_io_ports::writeByte(0x40, divisor >> 8); // Set high byte of the divisor
 }
 
 /**

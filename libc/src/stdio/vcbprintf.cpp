@@ -160,9 +160,11 @@ int vcbprintf(void* param,
 
 			// precision
 			int precision = 6;
+			bool explicitPrecision = false;
 
 			if (*s == '.') {
 				STEP;
+				explicitPrecision = true;
 
 				if (*s == '*') { // take from argument list
 					precision = va_arg(arglist, int);
@@ -649,11 +651,25 @@ int vcbprintf(void* param,
 						++written;
 					}
 				}
+				
+				// limit the output if a precision was explicitly set
+				if (explicitPrecision && len > precision) {
+					len = precision;
+				}
 
 				// write string TODO wchar_t?
 				if (callback(param, value, len) != len)
 					return -1;
 				written += len;
+
+				// expand output if a precision was explicitly set
+				if (explicitPrecision && len < precision) {
+					for (int i = 0; i < precision - len; i++) {
+						if (callback(param, " ", 1) != 1)
+							return -1;
+						++written;
+					}
+				}
 
 				// right padding
 				if (flag_left_justify) {
