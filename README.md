@@ -20,14 +20,12 @@ important features are:
 - virtual 8086 for BIOS calls
 
 ## Status
-This is the bleeding edge source version of Octobre 26, 2015.
-Version 0.5.1
+This is the bleeding edge source version of March 20, 2016.
+Version 0.5.2
 
-- added PCI configuration scanning
-- added kernquery interface
-
-TODO:
-- bugfix: window server occasionally hangs up on command receival
+This release contains a lot of changes, especially a big bunch
+of refactoring work. The filesystem and the thread setup code
+where cleaned up. Added a changelog that contains details.
 
 ## Structure
 - `applications`
