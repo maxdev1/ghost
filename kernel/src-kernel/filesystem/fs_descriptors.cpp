@@ -51,12 +51,13 @@ g_file_descriptor_content* g_file_descriptors::create_descriptor(g_file_descript
 /**
  *
  */
-g_fd g_file_descriptors::map(g_pid pid, g_fs_virt_id node_id, g_fd fd) {
+g_fd g_file_descriptors::map(g_pid pid, g_fs_virt_id node_id, g_fd fd, int32_t open_flags) {
 
 	g_file_descriptor_table* process_table = get_process_table(pid);
 
 	g_file_descriptor_content* desc = create_descriptor(process_table, fd);
 	desc->node_id = node_id;
+	desc->open_flags = open_flags;
 
 	return desc->id;
 }

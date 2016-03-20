@@ -29,17 +29,18 @@ class g_fs_delegate;
 /**
  * Status for waiter
  */
-typedef int g_fs_transaction_handler_status;
-const g_fs_transaction_handler_status G_FS_TRANSACTION_HANDLING_KEEP_WAITING = 0;
-const g_fs_transaction_handler_status G_FS_TRANSACTION_HANDLING_DONE = 1;
+typedef int g_fs_transaction_handler_finish_status;
+const g_fs_transaction_handler_finish_status G_FS_TRANSACTION_HANDLING_DONE = 0;
+const g_fs_transaction_handler_finish_status G_FS_TRANSACTION_HANDLING_REPEAT_WITH_SAME_HANDLER = 1;
+const g_fs_transaction_handler_finish_status G_FS_TRANSACTION_HANDLING_KEEP_WAITING_WITH_NEW_HANDLER = 2;
 
 /**
  *
  */
 typedef int g_fs_transaction_handler_start_status;
 const g_fs_transaction_handler_start_status G_FS_TRANSACTION_START_FAILED = 0;
-const g_fs_transaction_handler_start_status G_FS_TRANSACTION_STARTED_AND_FINISHED = 1;
-const g_fs_transaction_handler_start_status G_FS_TRANSACTION_STARTED_WITH_WAITER = 2;
+const g_fs_transaction_handler_start_status G_FS_TRANSACTION_START_IMMEDIATE_FINISH = 1;
+const g_fs_transaction_handler_start_status G_FS_TRANSACTION_START_WITH_WAITER = 2;
 
 /**
  * A transaction handler is a temporary object that accompanies a transaction. It holds temporary values
@@ -66,8 +67,13 @@ public:
 	 *
 	 */
 	virtual g_fs_transaction_handler_start_status start_transaction(g_thread* thread) {
-		return G_FS_TRANSACTION_STARTED_AND_FINISHED;
+		return G_FS_TRANSACTION_START_IMMEDIATE_FINISH;
 	}
+
+	/**
+	 *
+	 */
+	virtual g_fs_transaction_handler_finish_status finish_transaction(g_thread* thread, g_fs_delegate* delegate) = 0;
 
 	/**
 	 *
@@ -89,11 +95,6 @@ public:
 	g_fs_transaction_id get_repeated_transaction() {
 		return this->repeat_transaction;
 	}
-
-	/**
-	 *
-	 */
-	virtual g_fs_transaction_handler_status finish_transaction(g_thread* thread, g_fs_delegate* delegate) = 0;
 
 };
 

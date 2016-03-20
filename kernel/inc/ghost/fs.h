@@ -129,6 +129,7 @@ static const g_fs_tasked_delegate_request_type G_FS_TASKED_DELEGATE_REQUEST_TYPE
 static const g_fs_tasked_delegate_request_type G_FS_TASKED_DELEGATE_REQUEST_TYPE_WRITE = 2;
 static const g_fs_tasked_delegate_request_type G_FS_TASKED_DELEGATE_REQUEST_TYPE_GET_LENGTH = 3;
 static const g_fs_tasked_delegate_request_type G_FS_TASKED_DELEGATE_REQUEST_TYPE_READ_DIRECTORY = 4;
+static const g_fs_tasked_delegate_request_type G_FS_TASKED_DELEGATE_REQUEST_TYPE_OPEN = 5;
 
 /**
  * Status codes for the {g_fs_open} system call
@@ -137,6 +138,7 @@ typedef int g_fs_open_status;
 static const g_fs_open_status G_FS_OPEN_SUCCESSFUL = 0;
 static const g_fs_open_status G_FS_OPEN_NOT_FOUND = 1;
 static const g_fs_open_status G_FS_OPEN_ERROR = 2;
+static const g_fs_open_status G_FS_OPEN_BUSY = 3;
 
 /**
  * Status codes for the {g_fs_read} system call
@@ -291,6 +293,13 @@ typedef struct {
 
 	g_fs_directory_refresh_status result_status;
 } g_fs_tasked_delegate_transaction_storage_directory_refresh;
+
+typedef struct {
+	g_fs_phys_id phys_fs_id;
+	char name[G_FILENAME_MAX];
+
+	g_fs_open_status result_status;
+} g_fs_tasked_delegate_transaction_storage_open;
 
 __END_C
 

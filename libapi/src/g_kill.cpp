@@ -24,9 +24,10 @@
 /**
  *
  */
-void g_kill(g_pid pid) {
+g_kill_status g_kill(g_pid pid) {
 
 	g_syscall_kill data;
 	data.pid = pid;
 	g_syscall(G_SYSCALL_KILL, (uint32_t) &data);
+	return data.status;
 }

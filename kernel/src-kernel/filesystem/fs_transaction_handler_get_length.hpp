@@ -31,13 +31,26 @@
  */
 class g_fs_transaction_handler_get_length: public g_fs_transaction_handler {
 public:
+	g_fs_node* node;
 	g_fs_length_status status = G_FS_LENGTH_ERROR;
 	int64_t length;
 
 	/**
 	 *
 	 */
-	virtual g_fs_transaction_handler_status finish_transaction(g_thread* thread, g_fs_delegate* delegate);
+	g_fs_transaction_handler_get_length(g_fs_node* node) :
+			node(node), length(-1) {
+	}
+
+	/**
+	 *
+	 */
+	virtual g_fs_transaction_handler_start_status start_transaction(g_thread* thread);
+
+	/**
+	 *
+	 */
+	virtual g_fs_transaction_handler_finish_status finish_transaction(g_thread* thread, g_fs_delegate* delegate);
 
 	/**
 	 *

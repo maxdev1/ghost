@@ -29,7 +29,8 @@
 /**
  *
  */
-g_virtual_monitor_handling_result g_virtual_8086_monitor::handleGpf(g_processor_state_vm86* ctx) {
+g_virtual_monitor_handling_result g_virtual_8086_monitor::handleGpf(g_thread* current) {
+	g_processor_state_vm86* ctx = (g_processor_state_vm86*) current->cpuState;
 	uint8_t* ip = (uint8_t*) G_SEGOFF_TO_LINEAR(ctx->defaultFrame.cs, ctx->defaultFrame.eip);
 	uint16_t* sp = (uint16_t*) G_SEGOFF_TO_LINEAR(ctx->defaultFrame.ss, ctx->defaultFrame.esp);
 	uint32_t* esp = (uint32_t*) sp;
@@ -37,7 +38,6 @@ g_virtual_monitor_handling_result g_virtual_8086_monitor::handleGpf(g_processor_
 	bool operands32 = false;
 	bool address32 = false;
 
-	g_thread* current = g_tasking::getCurrentThread();
 	while (true) {
 
 		switch (ip[0]) {
@@ -207,7 +207,7 @@ g_virtual_monitor_handling_result g_virtual_8086_monitor::handleGpf(g_processor_
 			 * Output byte in AL to I/O port address in DX.
 			 */
 		case 0xEE: {
-			io_ports::writeByte((uint16_t) ctx->defaultFrame.edx, (uint8_t) ctx->defaultFrame.eax);
+			g_io_ports::writeByte((uint16_t) ctx->defaultFrame.edx, (uint8_t) ctx->defaultFrame.eax);
 			++ctx->defaultFrame.eip;
 			return VIRTUAL_MONITOR_HANDLING_RESULT_SUCCESSFUL;
 		}
@@ -218,7 +218,7 @@ g_virtual_monitor_handling_result g_virtual_8086_monitor::handleGpf(g_processor_
 			 * Output word in AX to I/O port address in DX.
 			 */
 		case 0xEF: {
-			io_ports::writeShort((uint16_t) ctx->defaultFrame.edx, (uint16_t) ctx->defaultFrame.eax);
+			g_io_ports::writeShort((uint16_t) ctx->defaultFrame.edx, (uint16_t) ctx->defaultFrame.eax);
 			++ctx->defaultFrame.eip;
 			return VIRTUAL_MONITOR_HANDLING_RESULT_SUCCESSFUL;
 		}
@@ -230,7 +230,7 @@ g_virtual_monitor_handling_result g_virtual_8086_monitor::handleGpf(g_processor_
 			 * Input byte from I/O port in DX into AL.
 			 */
 		case 0xEC: {
-			uint8_t res = io_ports::readByte((uint16_t) ctx->defaultFrame.edx);
+			uint8_t res = g_io_ports::readByte((uint16_t) ctx->defaultFrame.edx);
 			ctx->defaultFrame.eax &= ~(0xFF);
 			ctx->defaultFrame.eax |= res;
 			++ctx->defaultFrame.eip;
@@ -244,7 +244,7 @@ g_virtual_monitor_handling_result g_virtual_8086_monitor::handleGpf(g_processor_
 			 * Input word from I/O port in DX into AX.
 			 */
 		case 0xED: {
-			uint16_t res = io_ports::readShort((uint16_t) ctx->defaultFrame.edx);
+			uint16_t res = g_io_ports::readShort((uint16_t) ctx->defaultFrame.edx);
 			ctx->defaultFrame.eax &= ~(0xFFFF);
 			ctx->defaultFrame.eax |= res;
 			++ctx->defaultFrame.eip;
@@ -255,7 +255,7 @@ g_virtual_monitor_handling_result g_virtual_8086_monitor::handleGpf(g_processor_
 			 * Unhandled operation
 			 */
 		default: {
-			g_log_warn("%! unhandled opcode %h at linear location %h", "vm86", (uint32_t) ip[0], ip);
+			g_log_warn("%! unhandled opcode %h at linear location %h", "vm86", (uint32_t ) ip[0], ip);
 			return VIRTUAL_MONITOR_HANDLING_RESULT_UNHANDLED_OPCODE;
 		}
 		}

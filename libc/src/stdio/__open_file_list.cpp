@@ -41,6 +41,26 @@ void __open_file_list_add(FILE* file) {
 /**
  *
  */
+void __open_file_list_remove(FILE* file) {
+
+	__open_file_list_lock();
+
+	if (file == __open_file_list) {
+		__open_file_list = file->next;
+	}
+	if (file->prev) {
+		file->prev->next = file->next;
+	}
+	if (file->next) {
+		file->next->prev = file->prev;
+	}
+
+	__open_file_list_unlock();
+}
+
+/**
+ *
+ */
 void __open_file_list_lock() {
 	g_atomic_lock(&open_file_list_lockatom);
 }

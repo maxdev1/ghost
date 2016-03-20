@@ -71,9 +71,8 @@ g_fs_transaction_id g_fs_delegate_ramdisk::request_discovery(g_thread* requester
 		g_ramdisk_entry* ramdisk_node = g_kernel_ramdisk->findChild(ramdisk_parent, child);
 
 		if (ramdisk_node) {
-			// create the vfs node
-			g_fs_node* node = create_vfs_node(ramdisk_node, parent);
-
+			// create the VFS node
+			create_vfs_node(ramdisk_node, parent);
 			handler->status = G_FS_DISCOVERY_SUCCESSFUL;
 		} else {
 			handler->status = G_FS_DISCOVERY_NOT_FOUND;
@@ -110,17 +109,27 @@ g_fs_transaction_id g_fs_delegate_ramdisk::request_read(g_thread* requester, g_f
 	g_ramdisk_entry* ramdisk_node = g_kernel_ramdisk->findById(node->phys_fs_id);
 	if (ramdisk_node == 0) {
 		handler->status = G_FS_READ_INVALID_FD;
-
-	} else {
-		int64_t copy_amount = ((fd->offset + length) >= ramdisk_node->datalength) ? (ramdisk_node->datalength - fd->offset) : length;
-		if (copy_amount > 0) {
-			g_memory::copy(buffer(), &ramdisk_node->data[fd->offset], copy_amount);
-			fd->offset += copy_amount;
-		}
-		handler->result = copy_amount;
-		handler->status = G_FS_READ_SUCCESSFUL;
 		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
+		return id;
 	}
+
+	// check if node is valid
+	if (ramdisk_node->data == nullptr) {
+		g_log_warn("%! tried to read from a node %i that has no buffer", "ramdisk", node->phys_fs_id);
+		handler->status = G_FS_READ_ERROR;
+		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
+		return id;
+	}
+
+	// read data into buffer
+	int64_t copy_amount = ((fd->offset + length) >= ramdisk_node->datalength) ? (ramdisk_node->datalength - fd->offset) : length;
+	if (copy_amount > 0) {
+		g_memory::copy(buffer(), &ramdisk_node->data[fd->offset], copy_amount);
+		fd->offset += copy_amount;
+	}
+	handler->result = copy_amount;
+	handler->status = G_FS_READ_SUCCESSFUL;
+	g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
 
 	return id;
 }
@@ -145,8 +154,52 @@ g_fs_transaction_id g_fs_delegate_ramdisk::request_write(g_thread* requester, g_
 		id = g_fs_transaction_store::next_transaction();
 	}
 
-	handler->status = G_FS_WRITE_NOT_SUPPORTED;
+	g_ramdisk_entry* ramdisk_node = g_kernel_ramdisk->findById(node->phys_fs_id);
+	if (ramdisk_node == 0) {
+		handler->status = G_FS_WRITE_INVALID_FD;
+		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
+		return id;
+	}
 
+	// copy data from ramdisk memory into variable memory
+	if (ramdisk_node->data_on_ramdisk) {
+		uint32_t buflen = ramdisk_node->datalength * 1.2;
+		uint8_t* new_buffer = new uint8_t[buflen];
+		g_memory::copy(new_buffer, ramdisk_node->data, ramdisk_node->datalength);
+		ramdisk_node->data = new_buffer;
+		ramdisk_node->not_on_rd_buffer_length = buflen;
+		ramdisk_node->data_on_ramdisk = false;
+
+	} else if (ramdisk_node->data == nullptr) {
+		uint32_t initbuflen = 32;
+		ramdisk_node->data = new uint8_t[initbuflen];
+		ramdisk_node->not_on_rd_buffer_length = initbuflen;
+	}
+
+	// when file descriptor shall append, set it to the end
+	if (fd->open_flags & G_FILE_FLAG_MODE_APPEND) {
+		fd->offset = ramdisk_node->datalength;
+	}
+
+	// expand buffer until enough space is available
+	uint32_t space;
+	while ((space = ramdisk_node->not_on_rd_buffer_length - fd->offset) < length) {
+
+		uint32_t buflen = ramdisk_node->not_on_rd_buffer_length * 1.2;
+		uint8_t* new_buffer = new uint8_t[buflen];
+		g_memory::copy(new_buffer, ramdisk_node->data, ramdisk_node->datalength);
+		delete ramdisk_node->data;
+		ramdisk_node->data = new_buffer;
+		ramdisk_node->not_on_rd_buffer_length = buflen;
+	}
+
+	// copy data
+	g_memory::copy(&ramdisk_node->data[fd->offset], buffer(), length);
+	ramdisk_node->datalength = fd->offset + length;
+	fd->offset += length;
+
+	handler->result = length;
+	handler->status = G_FS_WRITE_SUCCESSFUL;
 	g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
 	return id;
 }
@@ -241,4 +294,62 @@ g_fs_transaction_id g_fs_delegate_ramdisk::request_directory_refresh(g_thread* r
  *
  */
 void g_fs_delegate_ramdisk::finish_directory_refresh(g_thread* requester, g_fs_transaction_handler_directory_refresh* handler) {
+}
+
+/**
+ *
+ */
+g_fs_transaction_id g_fs_delegate_ramdisk::request_open(g_thread* requester, g_fs_node* node, char* filename, int32_t flags, int32_t mode,
+		g_fs_transaction_handler_open* handler) {
+
+	g_fs_transaction_id id = g_fs_transaction_store::next_transaction();
+
+	g_ramdisk_entry* ramdisk_node = g_kernel_ramdisk->findById(node->phys_fs_id);
+
+	if (handler->discovery_status == G_FS_DISCOVERY_SUCCESSFUL) {
+
+		if (ramdisk_node->type != G_RAMDISK_ENTRY_TYPE_FILE) {
+			g_log_warn("%! only files can be opened, given node was a %i", "filesystem", ramdisk_node->type);
+			handler->status = G_FS_OPEN_ERROR;
+		} else {
+			// truncate file if requested
+			if (flags & G_FILE_FLAG_MODE_TRUNCATE) {
+				// only applies when data no more used from ramdisk memory
+				if (!ramdisk_node->data_on_ramdisk) {
+					// completely remove the buffer
+					ramdisk_node->datalength = 0;
+					ramdisk_node->not_on_rd_buffer_length = 0;
+					delete ramdisk_node->data;
+					ramdisk_node->data = 0;
+				}
+			}
+
+			handler->status = G_FS_OPEN_SUCCESSFUL;
+		}
+
+	} else if (handler->discovery_status == G_FS_DISCOVERY_NOT_FOUND) {
+
+		if (flags & G_FILE_FLAG_MODE_CREATE) {
+			// create the filesystem file
+			g_ramdisk_entry* new_ramdisk_entry = g_kernel_ramdisk->createChild(ramdisk_node, filename);
+
+			handler->node = create_vfs_node(new_ramdisk_entry, node);
+			handler->status = G_FS_OPEN_SUCCESSFUL;
+
+		} else {
+			// return with failure
+			handler->status = G_FS_OPEN_NOT_FOUND;
+		}
+
+	}
+
+	g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
+	return id;
+}
+
+/**
+ *
+ */
+void g_fs_delegate_ramdisk::finish_open(g_thread* requester, g_fs_transaction_handler_open* handler) {
+
 }

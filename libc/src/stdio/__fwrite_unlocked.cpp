@@ -72,8 +72,6 @@ size_t __fwrite_unlocked(const void* ptr, size_t size, size_t nmemb,
 		stream->flags &= ~G_FILE_FLAG_EOF;
 
 		// perform writing
-		size_t res = 0;
-
 		size_t total = size * nmemb;
 		size_t done = 0;
 
@@ -84,13 +82,11 @@ size_t __fwrite_unlocked(const void* ptr, size_t size, size_t nmemb,
 
 			if (written == 0) {
 				stream->flags |= G_FILE_FLAG_EOF;
-				res = EOF;
-				break;
+				return EOF;
 
 			} else if (written == -1) {
 				stream->flags |= G_FILE_FLAG_ERROR;
-				res = EOF;
-				break;
+				return EOF;
 			}
 
 			done += written;

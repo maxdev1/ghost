@@ -19,12 +19,14 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <stdio.h>
+#include <string.h>
 
 /**
  *
  */
 int main(int argc, char** argv) {
 
+	bool newline = true;
 	if (argc == 1) {
 		int c;
 		while ((c = getchar()) > 0) {
@@ -32,11 +34,19 @@ int main(int argc, char** argv) {
 		}
 	} else {
 		for (int i = 1; i < argc; i++) {
-			if (i > 1) {
+			if (i == 1 && strcmp(argv[i], "-n") == 0) {
+				newline = false;
+				continue;
+			}
+
+			if (i > 1 && !(!newline && i == 2)) {
 				printf(" ");
 			}
 			printf("%s", argv[i]);
 		}
 	}
-	printf("\n");
+
+	if (newline) {
+		printf("\n");
+	}
 }

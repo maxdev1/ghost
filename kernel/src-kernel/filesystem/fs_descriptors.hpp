@@ -33,10 +33,12 @@ struct g_file_descriptor_content {
 	g_fd id;
 	int64_t offset;
 	g_fs_virt_id node_id;
+	int32_t open_flags;
 
 	void clone_into(g_file_descriptor_content* other) {
 		other->offset = offset;
 		other->node_id = node_id;
+		other->open_flags = open_flags;
 	}
 };
 
@@ -57,7 +59,7 @@ private:
 public:
 	static void initialize();
 
-	static g_fd map(g_pid pid, g_fs_virt_id node_id, g_fd fd = -1);
+	static g_fd map(g_pid pid, g_fs_virt_id node_id, g_fd fd, int32_t open_flags);
 	static void unmap(g_pid pid, g_fd fd);
 	static void unmap_all(g_pid pid);
 

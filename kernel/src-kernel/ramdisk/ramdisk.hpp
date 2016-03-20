@@ -33,6 +33,7 @@ class g_ramdisk {
 private:
 	g_ramdisk_entry* firstHeader;
 	g_ramdisk_entry* root;
+	uint32_t next_unused_id = 0;
 
 public:
 	/**
@@ -104,6 +105,12 @@ public:
 	 * Returns the root.
 	 */
 	g_ramdisk_entry* getRoot() const;
+
+	/**
+	 *
+	 */
+	g_ramdisk_entry* createChild(g_ramdisk_entry* parent, char* filename);
+
 };
 
 #endif

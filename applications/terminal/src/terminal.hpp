@@ -109,13 +109,13 @@ public:
 	static void switch_to_next();
 	static void switch_to(terminal_t* terminal);
 	static std::string read_input(std::string there, screen_t* screen,
-			terminal_input_status_t* out_status, bool* do_break);
+			terminal_input_status_t* out_status, bool* continue_input);
 
 	static void standard_in_thread(standard_in_thread_data_t* data);
 	static void standard_out_thread(standard_out_thread_data_t* data);
 
 	bool file_exists(std::string path);
-	bool find_in_path(std::string path, std::string& out);
+	bool find_executable(std::string path, std::string& out);
 
 private:
 	std::string working_directory;

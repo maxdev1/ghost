@@ -20,11 +20,39 @@
 
 #include "libgen.h"
 #include "ghost.h"
+#include "string.h"
 
 /**
  *
  */
 char* basename(char* path) {
-	__G_NOT_IMPLEMENTED(__FUNCTION__);
+
+	// return dot if null
+	if (path == NULL) {
+		return ".";
+	}
+
+	// get length of the path
+	int len = strlen(path);
+
+	// return dot if empty
+	if (len == 0) {
+		return ".";
+	}
+
+	// return slash in these two cases
+	if ((len == 1 && path[0] == '/')
+			|| (len == 2 && path[0] == '/' && path[1] == '/')) {
+		return "/";
+	}
+
+	// find base name part
+	char* slashLocation = strrchr(path, '/');
+
+	if (slashLocation == NULL) {
+		return path;
+	}
+
+	return slashLocation + 1;
 }
 

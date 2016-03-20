@@ -33,8 +33,12 @@ struct g_ramdisk_entry {
 	uint32_t parentid;
 
 	char* name;
+
 	uint32_t datalength;
 	uint8_t* data;
+
+	bool data_on_ramdisk;
+	uint32_t not_on_rd_buffer_length;
 };
 
 #endif

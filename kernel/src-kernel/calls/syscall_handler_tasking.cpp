@@ -35,7 +35,7 @@
  * Yields
  */
 G_SYSCALL_HANDLER(yield) {
-	return g_tasking::schedule(state);
+	return g_tasking::schedule();
 }
 
 /**
@@ -44,11 +44,10 @@ G_SYSCALL_HANDLER(yield) {
  */
 G_SYSCALL_HANDLER(exit) {
 
-	g_thread* task = g_tasking::getCurrentThread();
-	task->alive = false;
-	g_log_debug("%! task %i exited faithfully with code %i", "syscall", task->id, ((g_syscall_exit*) G_SYSCALL_DATA(state))->code);
+	current_thread->alive = false;
+	g_log_debug("%! task %i exited faithfully with code %i", "syscall", current_thread->id, ((g_syscall_exit*) G_SYSCALL_DATA(current_thread->cpuState))->code);
 
-	return g_tasking::schedule(state);
+	return g_tasking::schedule();
 }
 
 /**
@@ -56,12 +55,20 @@ G_SYSCALL_HANDLER(exit) {
  */
 G_SYSCALL_HANDLER(kill) {
 
-	g_syscall_kill* data = (g_syscall_kill*) G_SYSCALL_DATA(state);
-	g_thread* thr = g_tasking::getTaskById(data->pid);
-	thr->process->main->alive = false;
+	g_syscall_kill* data = (g_syscall_kill*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* target = g_tasking::getTaskById(data->pid);
+
+	if (target == nullptr) {
+		data->status = G_KILL_STATUS_NOT_FOUND;
+	} else {
+		data->status = G_KILL_STATUS_SUCCESSFUL;
+		target->process->main->alive = false;
+
+		// TODO protected some threads
+	}
 
 	// switch, might be suicide
-	return g_tasking::schedule(state);
+	return g_tasking::schedule();
 }
 
 /**
@@ -70,14 +77,13 @@ G_SYSCALL_HANDLER(kill) {
  */
 G_SYSCALL_HANDLER(sleep) {
 
-	g_thread* task = g_tasking::getCurrentThread();
-	g_syscall_sleep* data = (g_syscall_sleep*) G_SYSCALL_DATA(state);
+	g_syscall_sleep* data = (g_syscall_sleep*) G_SYSCALL_DATA(current_thread->cpuState);
 
 	if (data->milliseconds > 0) {
-		task->wait(new g_waiter_sleep(task, data->milliseconds));
+		current_thread->wait(new g_waiter_sleep(current_thread, data->milliseconds));
 	}
 
-	return g_tasking::schedule(state);
+	return g_tasking::schedule();
 
 }
 
@@ -87,12 +93,10 @@ G_SYSCALL_HANDLER(sleep) {
  */
 G_SYSCALL_HANDLER(get_pid) {
 
-	g_thread* task = g_tasking::getCurrentThread();
-	g_syscall_get_pid* data = (g_syscall_get_pid*) G_SYSCALL_DATA(state);
+	g_syscall_get_pid* data = (g_syscall_get_pid*) G_SYSCALL_DATA(current_thread->cpuState);
+	data->id = current_thread->process->main->id;
 
-	data->id = task->process->main->id;
-
-	return state;
+	return current_thread;
 
 }
 
@@ -101,12 +105,10 @@ G_SYSCALL_HANDLER(get_pid) {
  */
 G_SYSCALL_HANDLER(get_tid) {
 
-	g_thread* task = g_tasking::getCurrentThread();
-	g_syscall_get_pid* data = (g_syscall_get_pid*) G_SYSCALL_DATA(state);
+	g_syscall_get_pid* data = (g_syscall_get_pid*) G_SYSCALL_DATA(current_thread->cpuState);
+	data->id = current_thread->id;
 
-	data->id = task->id;
-
-	return state;
+	return current_thread;
 
 }
 
@@ -115,12 +117,11 @@ G_SYSCALL_HANDLER(get_tid) {
  */
 G_SYSCALL_HANDLER(get_pid_for_tid) {
 
-	g_syscall_get_pid_for_tid* data = (g_syscall_get_pid_for_tid*) G_SYSCALL_DATA(state);
+	g_syscall_get_pid_for_tid* data = (g_syscall_get_pid_for_tid*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* target_task = g_tasking::getTaskById(data->tid);
+	data->pid = target_task->process->main->id;
 
-	g_thread* task = g_tasking::getTaskById(data->tid);
-	data->pid = task->process->main->id;
-
-	return state;
+	return current_thread;
 
 }
 
@@ -131,25 +132,23 @@ G_SYSCALL_HANDLER(get_pid_for_tid) {
  */
 G_SYSCALL_HANDLER(wait_for_irq) {
 
-	g_thread* thread = g_tasking::getCurrentThread();
-	g_process* process = thread->process;
-	g_syscall_wait_for_irq* data = (g_syscall_wait_for_irq*) G_SYSCALL_DATA(state);
+	g_process* process = current_thread->process;
+	g_syscall_wait_for_irq* data = (g_syscall_wait_for_irq*) G_SYSCALL_DATA(current_thread->cpuState);
 
 	// Only driver level
 	if (process->securityLevel == G_SECURITY_LEVEL_DRIVER) {
 		bool fired = g_interrupt_request_handler::pollIrq(data->irq);
 
 		if (fired) {
-			return state;
+			return current_thread;
 
 		} else {
-			g_thread* task = g_tasking::getCurrentThread();
-			task->wait(new g_waiter_wait_for_irq(data->irq));
-			return g_tasking::schedule(state);
+			current_thread->wait(new g_waiter_wait_for_irq(data->irq));
+			return g_tasking::schedule();
 		}
 	}
 
-	return state;
+	return current_thread;
 }
 
 /**
@@ -157,8 +156,7 @@ G_SYSCALL_HANDLER(wait_for_irq) {
  */
 G_SYSCALL_HANDLER(atomic_wait) {
 
-	g_thread* task = g_tasking::getCurrentThread();
-	g_syscall_atomic_lock* data = (g_syscall_atomic_lock*) G_SYSCALL_DATA(state);
+	g_syscall_atomic_lock* data = (g_syscall_atomic_lock*) G_SYSCALL_DATA(current_thread->cpuState);
 
 	uint8_t* atom_1 = (uint8_t*) data->atom_1;
 	uint8_t* atom_2 = (uint8_t*) data->atom_2;
@@ -178,13 +176,13 @@ G_SYSCALL_HANDLER(atomic_wait) {
 			}
 			data->was_set = true;
 		}
-		return state;
+		return current_thread;
 	}
 
 	// check if atom 1 is set and atom 2 is NULL or set
 	if (*atom_1 && (!atom_2 || *atom_2)) {
-		task->wait(new g_waiter_atomic_wait(atom_1, atom_2, set_on_finish));
-		return g_tasking::schedule(state);
+		current_thread->wait(new g_waiter_atomic_wait(atom_1, atom_2, set_on_finish));
+		return g_tasking::schedule();
 	}
 
 	// already unlocked, set atoms
@@ -194,7 +192,7 @@ G_SYSCALL_HANDLER(atomic_wait) {
 			*atom_2 = true;
 		}
 	}
-	return state;
+	return current_thread;
 }
 
 /**
@@ -202,12 +200,10 @@ G_SYSCALL_HANDLER(atomic_wait) {
  */
 G_SYSCALL_HANDLER(task_id_register) {
 
-	g_thread* task = g_tasking::getCurrentThread();
-	g_task_id_register* data = (g_task_id_register*) G_SYSCALL_DATA(state);
+	g_task_id_register* data = (g_task_id_register*) G_SYSCALL_DATA(current_thread->cpuState);
+	data->successful = g_tasking::registerTaskForIdentifier(current_thread, data->identifier);
 
-	data->successful = g_tasking::registerTaskForIdentifier(task, data->identifier);
-
-	return state;
+	return current_thread;
 }
 
 /**
@@ -215,7 +211,7 @@ G_SYSCALL_HANDLER(task_id_register) {
  */
 G_SYSCALL_HANDLER(task_id_get) {
 
-	g_syscall_task_id_get* data = (g_syscall_task_id_get*) G_SYSCALL_DATA(state);
+	g_syscall_task_id_get* data = (g_syscall_task_id_get*) G_SYSCALL_DATA(current_thread->cpuState);
 
 	data->resultTaskId = -1;
 
@@ -224,7 +220,7 @@ G_SYSCALL_HANDLER(task_id_get) {
 		data->resultTaskId = resultTask->id;
 	}
 
-	return state;
+	return current_thread;
 }
 
 /**
@@ -232,11 +228,10 @@ G_SYSCALL_HANDLER(task_id_get) {
  */
 G_SYSCALL_HANDLER(millis) {
 
-	g_syscall_millis* data = (g_syscall_millis*) G_SYSCALL_DATA(state);
+	g_syscall_millis* data = (g_syscall_millis*) G_SYSCALL_DATA(current_thread->cpuState);
+	data->millis = g_tasking::currentScheduler()->getMilliseconds();
 
-	data->millis = g_tasking::getCurrentScheduler()->getMilliseconds();
-
-	return state;
+	return current_thread;
 }
 
 /**
@@ -244,12 +239,12 @@ G_SYSCALL_HANDLER(millis) {
  */
 G_SYSCALL_HANDLER(fork) {
 
-	g_syscall_fork* data = (g_syscall_fork*) G_SYSCALL_DATA(state);
-	g_thread* current = g_tasking::getCurrentThread();
-	g_thread* forked = g_tasking::fork();
+	g_syscall_fork* data = (g_syscall_fork*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* forked = g_tasking::fork(current_thread);
+
 	if (forked) {
 		// clone file descriptors
-		g_filesystem::process_forked(current->process->main->id, forked->process->main->id);
+		g_filesystem::process_forked(current_thread->process->main->id, forked->process->main->id);
 
 		// return forked id in target process
 		data->forkedId = forked->id;
@@ -263,7 +258,7 @@ G_SYSCALL_HANDLER(fork) {
 		data->forkedId = -1;
 	}
 
-	return state;
+	return current_thread;
 }
 
 /**
@@ -271,12 +266,9 @@ G_SYSCALL_HANDLER(fork) {
  */
 G_SYSCALL_HANDLER(join) {
 
-	g_syscall_join* data = (g_syscall_join*) G_SYSCALL_DATA(state);
-
-	g_thread* current = g_tasking::getCurrentThread();
-	current->wait(new g_waiter_join(data->taskId));
-
-	return g_tasking::schedule(state);
+	g_syscall_join* data = (g_syscall_join*) G_SYSCALL_DATA(current_thread->cpuState);
+	current_thread->wait(new g_waiter_join(data->taskId));
+	return g_tasking::schedule();
 }
 
 /**
@@ -284,17 +276,16 @@ G_SYSCALL_HANDLER(join) {
  */
 G_SYSCALL_HANDLER(register_irq_handler) {
 
-	g_syscall_register_irq_handler* data = (g_syscall_register_irq_handler*) G_SYSCALL_DATA(state);
-	g_thread* task = g_tasking::getCurrentThread();
+	g_syscall_register_irq_handler* data = (g_syscall_register_irq_handler*) G_SYSCALL_DATA(current_thread->cpuState);
 
-	if (task->process->securityLevel <= G_SECURITY_LEVEL_DRIVER) {
-		g_interrupt_request_handler::set_handler(data->irq, task->id, data->handler, data->callback);
+	if (current_thread->process->securityLevel <= G_SECURITY_LEVEL_DRIVER) {
+		g_interrupt_request_handler::set_handler(data->irq, current_thread->id, data->handler, data->callback);
 		data->status = G_REGISTER_IRQ_HANDLER_STATUS_SUCCESSFUL;
 	} else {
 		data->status = G_REGISTER_IRQ_HANDLER_STATUS_NOT_PERMITTED;
 	}
 
-	return state;
+	return current_thread;
 }
 
 /**
@@ -302,9 +293,8 @@ G_SYSCALL_HANDLER(register_irq_handler) {
  */
 G_SYSCALL_HANDLER(restore_interrupted_state) {
 
-	g_thread* thread = g_tasking::getCurrentThread();
-	thread->restore_interrupted_state();
-	return g_tasking::schedule(state);
+	current_thread->restore_interrupted_state();
+	return g_tasking::schedule();
 }
 
 /**
@@ -312,17 +302,16 @@ G_SYSCALL_HANDLER(restore_interrupted_state) {
  */
 G_SYSCALL_HANDLER(register_signal_handler) {
 
-	g_syscall_register_signal_handler* data = (g_syscall_register_signal_handler*) G_SYSCALL_DATA(state);
-	g_thread* task = g_tasking::getCurrentThread();
+	g_syscall_register_signal_handler* data = (g_syscall_register_signal_handler*) G_SYSCALL_DATA(current_thread->cpuState);
 
 	if (data->signal >= 0 && data->signal < SIG_COUNT) {
-		g_signal_handler* handler = &(task->process->signal_handlers[data->signal]);
+		g_signal_handler* handler = &(current_thread->process->signal_handlers[data->signal]);
 
 		data->previous_handler = handler->handler;
 
 		handler->handler = data->handler;
 		handler->callback = data->callback;
-		handler->thread_id = task->id;
+		handler->thread_id = current_thread->id;
 
 		data->status = G_REGISTER_SIGNAL_HANDLER_STATUS_SUCCESSFUL;
 		g_log_debug("%! signal handler %h registered for signal %i", "syscall", data->handler, data->signal);
@@ -333,25 +322,24 @@ G_SYSCALL_HANDLER(register_signal_handler) {
 		g_log_debug("%! failed to register signal handler %h for invalid signal %i", "syscall", data->handler, data->signal);
 	}
 
-	return state;
+	return current_thread;
 }
 /**
  *
  */
 G_SYSCALL_HANDLER(raise_signal) {
 
-	g_syscall_raise_signal* data = (g_syscall_raise_signal*) G_SYSCALL_DATA(state);
-	g_thread* thread = g_tasking::getCurrentThread();
+	g_syscall_raise_signal* data = (g_syscall_raise_signal*) G_SYSCALL_DATA(current_thread->cpuState);
 
 	if (data->signal >= 0 && data->signal < SIG_COUNT) {
 
 		// get main thread by id
 		g_thread* target_thread = 0;
 
-		if (thread->id == data->process) {
-			target_thread = thread;
-		} else if (thread->process->main->id == data->process) {
-			target_thread = thread->process->main;
+		if (current_thread->id == data->process) {
+			target_thread = current_thread;
+		} else if (current_thread->process->main->id == data->process) {
+			target_thread = current_thread->process->main;
 		} else {
 			target_thread = g_tasking::getTaskById(data->process);
 		}
@@ -371,6 +359,6 @@ G_SYSCALL_HANDLER(raise_signal) {
 		data->status = G_RAISE_SIGNAL_STATUS_INVALID_SIGNAL;
 	}
 
-	return g_tasking::schedule(state);
+	return g_tasking::schedule();
 }
 

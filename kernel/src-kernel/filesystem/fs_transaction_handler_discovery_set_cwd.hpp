@@ -49,7 +49,7 @@ public:
 	/**
 	 *
 	 */
-	virtual g_fs_transaction_handler_status perform_afterwork(g_thread* task) {
+	virtual g_fs_transaction_handler_finish_status after_finish_transaction(g_thread* task) {
 
 		if (status == G_FS_DISCOVERY_SUCCESSFUL) {
 

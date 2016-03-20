@@ -129,7 +129,7 @@ g_fs_transaction_id g_fs_delegate_mount::request_directory_refresh(g_thread* req
 
 	g_fs_transaction_id id = g_fs_transaction_store::next_transaction();
 
-	// mount must not be refreshed
+	// mount must not be refreshed, contents are always consistent
 	folder->contents_valid = true;
 	handler->status = G_FS_DIRECTORY_REFRESH_SUCCESSFUL;
 
@@ -142,3 +142,26 @@ g_fs_transaction_id g_fs_delegate_mount::request_directory_refresh(g_thread* req
  */
 void g_fs_delegate_mount::finish_directory_refresh(g_thread* requester, g_fs_transaction_handler_directory_refresh* handler) {
 }
+
+/**
+ *
+ */
+g_fs_transaction_id g_fs_delegate_mount::request_open(g_thread* requester, g_fs_node* node, char* filename, int32_t flags, int32_t mode,
+		g_fs_transaction_handler_open* handler) {
+
+	g_fs_transaction_id id = g_fs_transaction_store::next_transaction();
+
+	// mount can't be opened
+	g_log_warn("%! mountpoints can not be opened", "filesystem");
+	handler->status = G_FS_OPEN_ERROR;
+
+	g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
+	return id;
+}
+
+/**
+ *
+ */
+void g_fs_delegate_mount::finish_open(g_thread* requester, g_fs_transaction_handler_open* handler) {
+}
+

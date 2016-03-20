@@ -24,12 +24,19 @@
 #include "ctype.h"
 #include "stdio.h"
 #include "string.h"
+#include "libgen.h"
 
+/**
+ *
+ */
 #define SKIP_WHITESPACE(pos)							\
 	while (*pos && isspace(*pos)) {						\
 		++pos;											\
 	}
 
+/**
+ *
+ */
 #define SKIP_ARGUMENT(pos)								\
 	bool instr = false;									\
 	bool esc = false;									\
@@ -46,6 +53,37 @@
 		}												\
 		++pos;											\
 	}
+
+/**
+ *
+ */
+char* get_executable_name() {
+	// read path for the executable
+	char* absoluteExecPath = (char*) malloc(G_PATH_MAX);
+	g_get_executable_path(absoluteExecPath);
+
+	// find base name
+	char* execBaseName = basename(absoluteExecPath);
+
+	// copy base name into smaller buffer
+	char* execName = 0;
+
+	size_t len = strlen(execBaseName);
+	if (len < G_PATH_MAX) {
+		execName = (char*) malloc(len + 1);
+		strcpy(execName, execBaseName);
+	}
+
+	// free the absolute buffer
+	free(absoluteExecPath);
+
+	// if nothing found...
+	if (execName == 0) {
+		execName = "program";
+	}
+
+	return execName;
+}
 
 /**
  * Prepares command line arguments
@@ -74,8 +112,8 @@ int parseargs(int* out_argc, char*** out_args) {
 		return -1;
 	}
 
-	// put pointers
-	argv[0] = (char*) "program"; // TODO
+	// put executable path as first argument
+	argv[0] = get_executable_name();
 
 	pos = unparsedCommandLine;
 	int argpp = 1;

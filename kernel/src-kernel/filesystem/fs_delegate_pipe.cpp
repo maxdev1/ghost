@@ -25,13 +25,13 @@
 #include "kernel.hpp"
 
 /**
- *
+ * Pipes do not support discovery. We put a warning out though.
  */
 g_fs_transaction_id g_fs_delegate_pipe::request_discovery(g_thread* requester, g_fs_node* parent, char* child, g_fs_transaction_handler_discovery* handler) {
 
 	g_fs_transaction_id id = g_fs_transaction_store::next_transaction();
 	handler->status = G_FS_DISCOVERY_ERROR;
-	g_log_info("discovery is not supported on pipes");
+	g_log_warn("%! no discovery support", "pipes");
 	g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
 	return id;
 }
@@ -57,46 +57,78 @@ g_fs_transaction_id g_fs_delegate_pipe::request_read(g_thread* requester, g_fs_n
 		id = g_fs_transaction_store::next_transaction();
 	}
 
+	// find the right pipe
 	g_pipe* pipe = g_pipes::get(node->phys_fs_id);
-	if (pipe) {
-		length = (pipe->size > length) ? length : pipe->size;
+	if (pipe == nullptr) {
 
-		uint32_t endspc = ((uint32_t) pipe->buffer + pipe->capacity) - (uint32_t) pipe->read;
-
-		if (length > endspc) {
-			uint32_t remain = length - endspc;
-			g_memory::copy(buffer(), pipe->read, endspc);
-			g_memory::copy(&buffer()[endspc], pipe->buffer, remain);
-			pipe->read = (uint8_t*) ((uint32_t) pipe->buffer + remain);
-		} else {
-			g_memory::copy(buffer(), pipe->read, length);
-			pipe->read = (uint8_t*) ((uint32_t) pipe->read + length);
-		}
-
-		if (length > 0) {
-			pipe->size -= length;
-			handler->result = length;
-			handler->status = G_FS_READ_SUCCESSFUL;
-			g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
-		} else {
-			if (node->is_blocking) {
-				// avoid block if no one else has access to pipe
-				if (!g_pipes::has_reference_from_other_process(pipe, requester->process->main->id)) {
-					handler->result = 0;
-					handler->status = G_FS_READ_ERROR;
-					g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
-				} else {
-					g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_REPEAT);
-				}
-			} else {
-				handler->result = 0;
-				handler->status = G_FS_READ_SUCCESSFUL;
-				g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
-			}
-		}
-	} else {
+		// cancel with error if pipe not found
 		handler->result = -1;
 		handler->status = G_FS_READ_ERROR;
+		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
+		return id;
+	}
+
+	// find out what size can be read at maximum
+	length = (pipe->size >= length) ? length : pipe->size;
+
+	// calculate how much space remains until the end of the pipe
+	uint32_t spaceToEnd = ((uint32_t) pipe->buffer + pipe->capacity) - (uint32_t) pipe->read;
+
+	// if we want to read more than remaining
+	if (length > spaceToEnd) {
+
+		// copy bytes from the location of the read pointer
+		g_memory::copy(buffer(), pipe->read, spaceToEnd);
+
+		// copy remaining data
+		uint32_t remaining = length - spaceToEnd;
+		g_memory::copy(&buffer()[spaceToEnd], pipe->buffer, remaining);
+
+		// set the read pointer to it's new location
+		pipe->read = (uint8_t*) ((uint32_t) pipe->buffer + remaining);
+
+	} else {
+		// there are enough bytes left from read pointer, copy it to buffer
+		g_memory::copy(buffer(), pipe->read, length);
+
+		// set the read pointer to it's new location
+		pipe->read = (uint8_t*) ((uint32_t) pipe->read + length);
+	}
+
+	// reset read pointer if end reached
+	if (pipe->read == pipe->buffer + pipe->capacity) {
+		pipe->read = pipe->buffer;
+	}
+
+	// if any bytes could be copied
+	if (length > 0) {
+
+		// decrease pipes remaining bytes
+		pipe->size -= length;
+
+		// finish with success
+		handler->result = length;
+		handler->status = G_FS_READ_SUCCESSFUL;
+		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
+
+		// TODO g_log_info("%! %i: read %i bytes -> size %i, read @%h, write @%h", "pipe", (int32_t ) node->phys_fs_id, (int32_t ) length, pipe->size, pipe->read - pipe->buffer, pipe->write - pipe->buffer);
+
+		// handle blocking nodes
+	} else if (node->is_blocking) {
+
+		// avoid block if no one else has access to pipe
+		if (!g_pipes::has_reference_from_other_process(pipe, requester->process->main->id)) {
+			handler->result = 0;
+			handler->status = G_FS_READ_ERROR;
+			g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
+		} else {
+			g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_REPEAT);
+		}
+
+	} else {
+		// otherwise just finished with successful read status
+		handler->result = 0;
+		handler->status = G_FS_READ_SUCCESSFUL;
 		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
 	}
 
@@ -107,6 +139,7 @@ g_fs_transaction_id g_fs_delegate_pipe::request_read(g_thread* requester, g_fs_n
  *
  */
 void g_fs_delegate_pipe::finish_read(g_thread* requester, g_fs_read_status* out_status, int64_t* out_result, g_file_descriptor_content* fd) {
+	// nothing to do
 }
 
 /**
@@ -123,48 +156,70 @@ g_fs_transaction_id g_fs_delegate_pipe::request_write(g_thread* requester, g_fs_
 		id = g_fs_transaction_store::next_transaction();
 	}
 
+	// find the pipe to write to
 	g_pipe* pipe = g_pipes::get(node->phys_fs_id);
-	if (pipe) {
-		int space = (pipe->capacity - pipe->size);
-
-		if (space > 0) {
-			length = (space > length) ? length : space;
-
-			uint32_t endspc = ((uint32_t) pipe->buffer + pipe->capacity) - (uint32_t) pipe->write;
-
-			if (length > endspc) {
-				uint32_t remain = length - endspc;
-				g_memory::copy(pipe->write, buffer(), endspc);
-				g_memory::copy(pipe->buffer, &buffer()[endspc], remain);
-				pipe->write = (uint8_t*) ((uint32_t) pipe->buffer + remain);
-			} else {
-				g_memory::copy(pipe->write, buffer(), length);
-				pipe->write = (uint8_t*) ((uint32_t) pipe->write + length);
-			}
-
-			pipe->size += length;
-			handler->result = length;
-			handler->status = G_FS_WRITE_SUCCESSFUL;
-			g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
-		} else {
-			if (node->is_blocking) {
-				// avoid block if no one else has access to pipe
-				if (!g_pipes::has_reference_from_other_process(pipe, requester->process->main->id)) {
-					handler->result = 0;
-					handler->status = G_FS_WRITE_ERROR;
-					g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
-				} else {
-					g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_REPEAT);
-				}
-			} else {
-				handler->result = 0;
-				handler->status = G_FS_WRITE_SUCCESSFUL;
-				g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
-			}
-		}
-	} else {
+	if (pipe == nullptr) {
 		handler->result = -1;
 		handler->status = G_FS_WRITE_ERROR;
+		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
+		return id;
+	}
+
+	uint32_t space = (pipe->capacity - pipe->size);
+
+	if (space > 0) {
+		// check how many bytes can be written
+		length = (space >= length) ? length : space;
+
+		// check how many bytes can be written at the write pointer
+		uint32_t spaceToEnd = ((uint32_t) pipe->buffer + pipe->capacity) - (uint32_t) pipe->write;
+
+		if (length > spaceToEnd) {
+			// write bytes at the write pointer
+			g_memory::copy(pipe->write, buffer(), spaceToEnd);
+
+			// write remaining bytes to the start of the pipe
+			uint32_t remain = length - spaceToEnd;
+			g_memory::copy(pipe->buffer, &buffer()[spaceToEnd], remain);
+
+			// set the write pointer to the new location
+			pipe->write = (uint8_t*) ((uint32_t) pipe->buffer + remain);
+
+		} else {
+			// just write bytes at write pointer
+			g_memory::copy(pipe->write, buffer(), length);
+
+			// set the write pointer to the new location
+			pipe->write = (uint8_t*) ((uint32_t) pipe->write + length);
+		}
+
+		// reset write pointer if end reached
+		if (pipe->write == pipe->buffer + pipe->capacity) {
+			pipe->write = pipe->buffer;
+		}
+
+		pipe->size += length;
+		handler->result = length;
+		handler->status = G_FS_WRITE_SUCCESSFUL;
+		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
+
+		// TODO g_log_info("%! %i: wrote %i bytes -> size %i, read @%h, write @%h", "pipe", (int32_t ) node->phys_fs_id, (int32_t )length, pipe->size, pipe->read - pipe->buffer, pipe->write - pipe->buffer);
+
+		// handle blocking
+	} else if (node->is_blocking) {
+
+		// try again later
+		if (g_pipes::has_reference_from_other_process(pipe, requester->process->main->id)) {
+			g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_REPEAT);
+		} else {
+			handler->result = -1;
+			handler->status = G_FS_WRITE_ERROR;
+			g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
+		}
+
+	} else {
+		handler->result = -1;
+		handler->status = G_FS_WRITE_SUCCESSFUL;
 		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
 	}
 
@@ -212,7 +267,7 @@ g_fs_transaction_id g_fs_delegate_pipe::request_directory_refresh(g_thread* requ
 
 	// pipe has no children
 	folder->contents_valid = true;
-	handler->status = G_FS_DIRECTORY_REFRESH_SUCCESSFUL;
+	handler->status = G_FS_DIRECTORY_REFRESH_ERROR;
 
 	g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
 	return id;
@@ -222,4 +277,27 @@ g_fs_transaction_id g_fs_delegate_pipe::request_directory_refresh(g_thread* requ
  *
  */
 void g_fs_delegate_pipe::finish_directory_refresh(g_thread* requester, g_fs_transaction_handler_directory_refresh* handler) {
+}
+
+/**
+ *
+ */
+g_fs_transaction_id g_fs_delegate_pipe::request_open(g_thread* requester, g_fs_node* node, char* filename, int32_t flags, int32_t mode,
+		g_fs_transaction_handler_open* handler) {
+
+	g_fs_transaction_id id = g_fs_transaction_store::next_transaction();
+
+	// pipes can never be opened
+	g_log_warn("%! pipes can not be opened", "filesystem");
+	handler->status = G_FS_OPEN_ERROR;
+
+	g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
+	return id;
+}
+
+/**
+ *
+ */
+void g_fs_delegate_pipe::finish_open(g_thread* requester, g_fs_transaction_handler_open* handler) {
+
 }

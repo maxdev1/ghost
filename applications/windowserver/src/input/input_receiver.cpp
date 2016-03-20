@@ -44,6 +44,8 @@ void input_receiver_t::startReceiveKeyEvents() {
 	while (true) {
 		info = g_keyboard::readKey();
 		event_queue->bufferKeyEvent(info);
+
+		windowserver_t::instance()->triggerRender();
 	}
 }
 
@@ -86,5 +88,7 @@ void input_receiver_t::startReceiveMouseEvents() {
 		if (info.button3) {
 			cursor_t::nextPressedButtons |= MOUSE_BUTTON_3;
 		}
+
+		windowserver_t::instance()->triggerRender();
 	}
 }

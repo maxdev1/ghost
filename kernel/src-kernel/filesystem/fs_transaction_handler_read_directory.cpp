@@ -26,7 +26,14 @@
 /**
  *
  */
-g_fs_transaction_handler_status g_fs_transaction_handler_read_directory::finish_transaction(g_thread* thread, g_fs_delegate* delegate) {
+g_fs_transaction_handler_start_status g_fs_transaction_handler_read_directory::start_transaction(g_thread* thread) {
+	return G_FS_TRANSACTION_START_IMMEDIATE_FINISH;
+}
+
+/**
+ *
+ */
+g_fs_transaction_handler_finish_status g_fs_transaction_handler_read_directory::finish_transaction(g_thread* thread, g_fs_delegate* delegate) {
 
 	// check if it was called after a refresh, and the status of the refresh was good
 	if (causing_handler != nullptr && causing_handler->status != G_FS_DIRECTORY_REFRESH_SUCCESSFUL) {
@@ -36,6 +43,8 @@ g_fs_transaction_handler_status g_fs_transaction_handler_read_directory::finish_
 
 	// find node at position
 	g_fs_node* item = nullptr;
+
+	int position = data()->iterator->position;
 
 	int iterpos = 0;
 	auto iter = folder->children;

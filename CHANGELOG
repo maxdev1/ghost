@@ -1,0 +1,22 @@
+Ghost Development Changelog
+---------------------------
+This changelog is used to keep track of the major system changes for each version.
+
+0.5.2
+- implemented PCI bus parsing
+- added "pcitool" for reading pci information
+- thread manager code heavily refactored
+- terminal executable lookup modified
+- added "write" util that writes its input to the filesystem
+- user stacks are dynamically extended to up to 16 pages when necessary
+- added "proc" util for printing process information & killing tasks
+- added this changelog
+- fixed various bugs in terminal & libc, especially in stdio
+- "g_atomic_*_2" functions renamed to "g_atomic_*_dual"
+- added driver delegate handling for opening files
+- ramdisk is now writable
+- "mode" is passed to the kernel in g_open syscall
+- "g_get_executable_path" added for retrieving current executables source path
+- kernquery syscall interface added
+- "g_kill" returns a status now
+- thread type & priority types moved to public header

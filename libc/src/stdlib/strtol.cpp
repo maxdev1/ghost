@@ -20,12 +20,13 @@
 
 #include "stdlib.h"
 #include "errno.h"
+#include "stdio.h"
 
 /**
  *
  */
 long strtol(const char* str, char** endptr, int base) {
 
-	// TODO
-	__G_NOT_IMPLEMENTED("strtol");
+	klog("warning: strtol is not implemented");
+	return 0;
 }

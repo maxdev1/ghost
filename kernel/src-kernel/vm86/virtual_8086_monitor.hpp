@@ -22,6 +22,7 @@
 #define VM86_VIRTUAL8086_MONITOR
 
 #include <system/processor_state.hpp>
+#include <tasking/thread.hpp>
 
 #define G_EFLAG_IF			(1 << 9)
 #define G_EFLAG_VM			(1 << 17)
@@ -39,7 +40,7 @@ enum g_virtual_monitor_handling_result {
  */
 class g_virtual_8086_monitor {
 public:
-	static g_virtual_monitor_handling_result handleGpf(g_processor_state_vm86* state);
+	static g_virtual_monitor_handling_result handleGpf(g_thread* thread);
 };
 
 #endif

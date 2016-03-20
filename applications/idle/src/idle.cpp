@@ -28,13 +28,7 @@ int main() {
 	signal(SIGINT, SIG_IGN);
 
 	again:
-	g_yield();
-	/**
-	 * TODO The right way would be to not use yielding, but call the HLT instruction.
-	 * The problem with this is, that the scheduler in this branch (old implementation)
-	 * let's the idle process run too often. This wastes time and should be fixed.
-	 */
-	// asm("hlt");
+	asm("hlt");
 	goto again;
 }
 

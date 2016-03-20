@@ -23,14 +23,11 @@ important features are:
 This is the bleeding edge source version of Octobre 26, 2015.
 Version 0.5.1
 
-- New scheduler implementation temporarily moved to branch
-  for some bugfixing
-- Own malloc implementation used until `dlmalloc` is
-  integrated with proper thread-safety
-- Various enhancements in the window server interface
-- A calculator
-- Some kernel modifications
-- A login screen
+- added PCI configuration scanning
+- added kernquery interface
+
+TODO:
+- bugfix: window server occasionally hangs up on command receival
 
 ## Structure
 - `applications`
@@ -63,4 +60,4 @@ feel free to contact me at:
 
 	lokoxe@gmail.com
 	
--Max Schlüssel
+-Max Schlï¿½ssel

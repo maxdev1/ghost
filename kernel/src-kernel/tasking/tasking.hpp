@@ -46,9 +46,14 @@ public:
 	static void enableForThisCore();
 
 	/**
-	 * Called by the timer for switching
+	 * Saves the current CPU state and returns the current thread.
 	 */
-	static g_processor_state* schedule(g_processor_state* cpuState);
+	static g_thread* save(g_processor_state* cpuState);
+
+	/**
+	 * Called to switch tasks. Function returns the task to execute next.
+	 */
+	static g_thread* schedule();
 
 	/**
 	 * Adds the task to the least loaded cores scheduler
@@ -56,20 +61,28 @@ public:
 	static void addTask(g_thread* proc, bool enforceCurrentCore = false);
 
 	/**
+	 * Pushes the given thread to the top of the wait queue.
+	 */
+	static void increaseWaitPriority(g_thread* proc);
+
+	/**
 	 * Returns the current task on the current core
 	 */
-	static g_thread* getCurrentThread();
+	static g_thread* lastThread();
 
 	/**
 	 * Kills all threads of the given process within all schedulers.
 	 * Returns true if all are dead.
+	 *
+	 * @param process
+	 * 		the process of which the threads shall be killed
 	 */
-	static bool killAllThreadsOf(g_process* process);
+	static void remove_threads(g_process* process);
 
 	/**
 	 * Returns the current scheduler on the current core
 	 */
-	static g_scheduler* getCurrentScheduler();
+	static g_scheduler* currentScheduler();
 
 	/**
 	 *
@@ -89,7 +102,17 @@ public:
 	/**
 	 *
 	 */
-	static g_thread* fork();
+	static g_thread* fork(g_thread* current_thread);
+
+	/**
+	 * Counts the number of tasks in all schedulers.
+	 */
+	static uint32_t count();
+
+	/**
+	 *
+	 */
+	static g_thread* getAtPosition(uint32_t position);
 
 };
 

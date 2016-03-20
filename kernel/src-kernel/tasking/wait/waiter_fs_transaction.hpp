@@ -54,46 +54,59 @@ public:
 	 *
 	 */
 	virtual bool checkWaiting(g_thread* task) {
-		return check_transaction_status(task, handler, transaction_id, delegate);
+		return is_transaction_waiting(task, handler, transaction_id, delegate);
 	}
 
 	/**
-	 *
+	 * Used to check what to do with the given transaction.
 	 */
-	static bool check_transaction_status(g_thread* task, g_fs_transaction_handler* handler, g_fs_transaction_id transaction_id, g_fs_delegate* delegate) {
+	static bool is_transaction_waiting(g_thread* task, g_fs_transaction_handler* handler, g_fs_transaction_id transaction_id, g_fs_delegate* delegate) {
 
-		g_fs_transaction_status transaction_status = g_fs_transaction_store::get_status(transaction_id);
+		g_fs_transaction_status status = g_fs_transaction_store::get_status(transaction_id);
 
-		if (transaction_status == G_FS_TRANSACTION_WAITING) {
+		// transaction waits for something
+		if (status == G_FS_TRANSACTION_WAITING) {
 			return true;
 
-		} else if (transaction_status == G_FS_TRANSACTION_REPEAT) {
-			// this now prepares a transaction repeat, which the delegate uses to re-use a transaction
+			// same transaction shall be repeated (could not be fulfilled in the first attempt)
+		} else if (status == G_FS_TRANSACTION_REPEAT) {
+
+			// tell the handler that we will repeat
 			handler->prepare_transaction_repeat(transaction_id);
 
+			// repeat the transaction
 			g_fs_transaction_handler_start_status restart_status = handler->start_transaction(task);
+
 			if (restart_status != G_FS_TRANSACTION_START_FAILED) {
 				// transaction retry successful - let it wait again
 				return true;
 			}
 
 			// could not repeat transaction start, set it finished so it repeats once more and exits
-			g_fs_transaction_store::set_status(transaction_status, G_FS_TRANSACTION_FINISHED);
+			g_fs_transaction_store::set_status(status, G_FS_TRANSACTION_FINISHED);
 			g_log_info("%! problem: failed to repeat a transaction");
 			return true;
 
-		} else if (transaction_status == G_FS_TRANSACTION_FINISHED) {
+			// the transaction has finished
+		} else if (status == G_FS_TRANSACTION_FINISHED) {
 
-			// transaction is finished, tell the handler to do last operations & remove transaction
-			g_fs_transaction_handler_status stat = handler->finish_transaction(task, delegate);
+			// let the delegate do finish operations
+			g_fs_transaction_handler_finish_status stat = handler->finish_transaction(task, delegate);
+
+			// remove the transaction information
 			g_fs_transaction_store::remove_transaction(transaction_id);
 
-			if (stat == G_FS_TRANSACTION_HANDLING_KEEP_WAITING) {
-				// the handler has requested another action from the delegate & a new waiter was created and set
+			// the handler has requested another action from the delegate & a new waiter was created and set
+			if (stat == G_FS_TRANSACTION_HANDLING_REPEAT_WITH_SAME_HANDLER) {
 				return true;
 
-			} else if (stat == G_FS_TRANSACTION_HANDLING_DONE) {
+				// the transaction continues with a different handler, delete the old one
+			} else if (stat == G_FS_TRANSACTION_HANDLING_KEEP_WAITING_WITH_NEW_HANDLER) {
+				delete handler;
+				return true;
+
 				// the transaction is entirely finished and no more work must be done
+			} else if (stat == G_FS_TRANSACTION_HANDLING_DONE) {
 				delete handler;
 				return false;
 
@@ -106,9 +119,9 @@ public:
 			return false;
 		}
 
-		// the transaction finished with an unknown status. this doesn't happen usually
+		// the transaction finished with an unknown status. this should never happen!
 		g_fs_transaction_store::remove_transaction(transaction_id);
-		g_log_info("%! unknown transaction status (%i) while waiting for transaction", "filesystem", transaction_status);
+		g_log_info("%! unknown transaction status (%i) while waiting for transaction", "filesystem", status);
 		delete handler;
 		return false;
 	}

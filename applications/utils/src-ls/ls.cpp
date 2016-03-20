@@ -70,7 +70,12 @@ int main(int argc, char** argv) {
 				printf(" ~ ");
 			}
 			printf("%s\n", entry->name);
+
+		} else if (rstat == G_FS_READ_DIRECTORY_EOD) {
+			break;
+
 		} else {
+			fprintf(stderr, "failed to read directory\n");
 			break;
 		}
 	}

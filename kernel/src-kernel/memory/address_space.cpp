@@ -80,7 +80,7 @@ bool g_address_space::map(g_virtual_address virtual_addr, g_physical_address phy
 		G_INVLPG(virtual_addr);
 		return true;
 	} else {
-		g_thread* failor = g_tasking::getCurrentThread();
+		g_thread* failor = g_tasking::lastThread();
 		if (failor != 0) {
 			const char* ident = failor->getIdentifier();
 			if (ident) {

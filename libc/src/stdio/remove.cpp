@@ -27,8 +27,8 @@
  */
 int remove(const char *filename) {
 
-	// TODO
-	__G_NOT_IMPLEMENTED("remove");
+	klog("warning: remove(\"%s\") is not implemented", filename);
+	return 0;
 }
 
 /**

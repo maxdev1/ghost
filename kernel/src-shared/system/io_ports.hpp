@@ -18,15 +18,15 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef GHOST_SHARED_SYSTEM_IOPORTS
-#define GHOST_SHARED_SYSTEM_IOPORTS
+#ifndef __GHOST_SHARED_SYSTEM_IOPORTS__
+#define __GHOST_SHARED_SYSTEM_IOPORTS__
 
 #include "ghost/stdint.h"
 
 /**
  *
  */
-class io_ports {
+class g_io_ports {
 public:
 	static uint8_t readByte(uint16_t port);
 	static void writeByte(uint16_t port, uint8_t data);

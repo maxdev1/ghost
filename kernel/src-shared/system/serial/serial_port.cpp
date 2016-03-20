@@ -26,14 +26,14 @@
  */
 void g_serial_port::initializePort(uint16_t port, bool interruptsEnabled) {
 	// Disable the interrupts
-	io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_INTERRUPT_ENABLE, 0x00);
+	g_io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_INTERRUPT_ENABLE, 0x00);
 
 	// Set DLAB
-	io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_LINE_CONTROL, 0x80);
+	g_io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_LINE_CONTROL, 0x80);
 
 	// Divisor to 3, baud 38400
-	io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_DIVISOR_LEAST, 0x03); // Low byte
-	io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_DIVISOR_MOST, 0x00); // High byte
+	g_io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_DIVISOR_LEAST, 0x03); // Low byte
+	g_io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_DIVISOR_MOST, 0x00); // High byte
 
 	// Set line control to 0x03. Bits:
 	// 0: 1  Charlen 8
@@ -42,27 +42,27 @@ void g_serial_port::initializePort(uint16_t port, bool interruptsEnabled) {
 	// 3: 0  no parity
 	// 4: 0  ^
 	// 5: 0  ^
-	io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_LINE_CONTROL, 0x03);
+	g_io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_LINE_CONTROL, 0x03);
 
 	if (interruptsEnabled) {
 		// Enable FIFO
-		io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_INT_FIFO, 0xC7);
+		g_io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_INT_FIFO, 0xC7);
 
 		// Enable IRQs with RTS/DSR set
-		io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_MODEM_CONTROL, 0x0B);
+		g_io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_MODEM_CONTROL, 0x0B);
 
 		// Enable the interrupts
 		// 0: 1  Receiver has data interrupt on
 		// 1: 1  Transmitter empty interrupt on
 		// 2: 0  Error/break interrupt off
 		// 3: 0  Status change interrupt off
-		io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_INTERRUPT_ENABLE, 0x02);
+		g_io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_INTERRUPT_ENABLE, 0x02);
 	} else {
 		// Turn off FIFO
-		io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_INT_FIFO, 0x00);
+		g_io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_INT_FIFO, 0x00);
 
 		// Loopback off, no IRQs, not RTS/DTR
-		io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_MODEM_CONTROL, 0x00);
+		g_io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_MODEM_CONTROL, 0x00);
 	}
 }
 
@@ -71,11 +71,11 @@ void g_serial_port::initializePort(uint16_t port, bool interruptsEnabled) {
  */
 uint8_t g_serial_port::read(uint16_t port) {
 	// Wait byte available
-	while ((io_ports::readByte(port + G_SERIAL_PORT_OFFSET_LINE_STATUS) & 0x01) == 0) {
+	while ((g_io_ports::readByte(port + G_SERIAL_PORT_OFFSET_LINE_STATUS) & 0x01) == 0) {
 	}
 
 	// Receive byte
-	return io_ports::readByte(port + G_SERIAL_PORT_OFFSET_DATA_REGISTER);
+	return g_io_ports::readByte(port + G_SERIAL_PORT_OFFSET_DATA_REGISTER);
 }
 
 /**
@@ -83,10 +83,10 @@ uint8_t g_serial_port::read(uint16_t port) {
  */
 void g_serial_port::write(uint16_t port, uint8_t value) {
 	// Wait until ready
-	while ((io_ports::readByte(port + G_SERIAL_PORT_OFFSET_LINE_STATUS) & 0x20) == 0) {
+	while ((g_io_ports::readByte(port + G_SERIAL_PORT_OFFSET_LINE_STATUS) & 0x20) == 0) {
 	}
 
 	// Write byte
-	io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_DATA_REGISTER, value);
+	g_io_ports::writeByte(port + G_SERIAL_PORT_OFFSET_DATA_REGISTER, value);
 }
 

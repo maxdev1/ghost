@@ -239,6 +239,15 @@ int fscanf(FILE* stream, const char* format, ...);
 int printf(const char* format, ...);
 
 /**
+ * The same as <printf>, appending a new-line.
+ *
+ * @return
+ * 		EOF if printing the new-line failed,
+ * 		otherwise see <vprintf>
+ */
+int println(const char* format, ...);
+
+/**
  * Formatted printing using the given callback implementation for output.
  *
  * @param param

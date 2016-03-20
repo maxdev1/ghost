@@ -28,19 +28,31 @@
 #include "utils/string.hpp"
 
 /**
+ * This handler discovers (and creates virtual nodes for) the given absolute path.
  *
+ * This is done by looking up all path elements as virtual nodes top-down.
+ * If all of the path elements already exist as virtual nodes, this function immediately
+ * returns true. Otherwise, the delegate is asked to discover and a {g_waiter_fs_discovery}
+ * is appended to the task. This waiter waits for the discovery transaction to finish.
+ *
+ * The discovery process is called by the waiter itself repeatedly until all path elements
+ * are successfully discovered or discovery fails at some point.
  */
 class g_fs_transaction_handler_discovery: public g_fs_transaction_handler {
 public:
+	bool follow_symlinks;
 	g_fs_discovery_status status = G_FS_DISCOVERY_ERROR;
 	g_fs_node* node = 0;
+	g_fs_node* last_discovered_parent = 0;
+
 	char* absolute_path;
 	bool all_nodes_discovered = false;
 
 	/**
 	 *
 	 */
-	g_fs_transaction_handler_discovery(char* absolute_path_in) {
+	g_fs_transaction_handler_discovery(char* absolute_path_in, bool follow_symlinks = true) :
+			follow_symlinks(follow_symlinks) {
 
 		// clone incoming path
 		int len_abs = g_string::length(absolute_path_in);
@@ -58,12 +70,17 @@ public:
 	/**
 	 *
 	 */
-	virtual g_fs_transaction_handler_status finish_transaction(g_thread* thread, g_fs_delegate* delegate);
+	virtual g_fs_transaction_handler_start_status start_transaction(g_thread* thread);
 
 	/**
 	 *
 	 */
-	virtual g_fs_transaction_handler_status perform_afterwork(g_thread* thread) = 0;
+	virtual g_fs_transaction_handler_finish_status finish_transaction(g_thread* thread, g_fs_delegate* delegate);
+
+	/**
+	 *
+	 */
+	virtual g_fs_transaction_handler_finish_status after_finish_transaction(g_thread* thread) = 0;
 };
 
 #endif

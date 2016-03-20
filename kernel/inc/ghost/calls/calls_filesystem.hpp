@@ -41,6 +41,7 @@
 typedef struct {
 	char* path;
 	int32_t flags;
+	int32_t mode;
 
 	g_fs_open_status status;
 	g_fd fd;
@@ -313,6 +314,16 @@ typedef struct {
 typedef struct {
 	char* buffer;
 }__attribute__((packed)) g_syscall_fs_get_working_directory;
+
+/**
+ * @field buffer
+ * 		buffer with a size of at least {G_PATH_MAX} bytes
+ *
+ * @security-level APPLICATION
+ */
+typedef struct {
+	char* buffer;
+}__attribute__((packed)) g_syscall_fs_get_executable_path;
 
 /**
  * @field name

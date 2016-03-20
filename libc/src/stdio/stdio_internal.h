@@ -35,6 +35,7 @@ void __fini_stdio();
 // open file list functionality
 extern FILE* __open_file_list;
 void __open_file_list_add(FILE* file);
+void __open_file_list_remove(FILE* file);
 void __open_file_list_lock();
 void __open_file_list_unlock();
 

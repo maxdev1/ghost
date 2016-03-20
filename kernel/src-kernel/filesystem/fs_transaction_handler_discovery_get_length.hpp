@@ -37,19 +37,32 @@ public:
 	/**
 	 *
 	 */
-	g_fs_transaction_handler_discovery_get_length(char* absolute_path_in, g_contextual<g_syscall_fs_length*> data) :
-			g_fs_transaction_handler_discovery(absolute_path_in), data(data) {
+	g_fs_transaction_handler_discovery_get_length(char* absolute_path_in, bool follow_symlinks, g_contextual<g_syscall_fs_length*> data) :
+			g_fs_transaction_handler_discovery(absolute_path_in, follow_symlinks), data(data) {
 
 	}
 
 	/**
 	 *
 	 */
-	virtual g_fs_transaction_handler_status perform_afterwork(g_thread* thread) {
+	virtual g_fs_transaction_handler_finish_status after_finish_transaction(g_thread* thread) {
 
 		if (status == G_FS_DISCOVERY_SUCCESSFUL) {
-			g_filesystem::get_length(thread, node, new g_fs_transaction_handler_get_length_default(data));
-			return G_FS_TRANSACTION_HANDLING_KEEP_WAITING;
+			// create and start the new handler
+			g_fs_transaction_handler_get_length_default* handler = new g_fs_transaction_handler_get_length_default(data, node);
+			auto start_status = handler->start_transaction(thread);
+
+			if (start_status == G_FS_TRANSACTION_START_WITH_WAITER) {
+				return G_FS_TRANSACTION_HANDLING_KEEP_WAITING_WITH_NEW_HANDLER;
+
+			} else if (start_status == G_FS_TRANSACTION_START_IMMEDIATE_FINISH) {
+				return G_FS_TRANSACTION_HANDLING_DONE;
+
+			} else {
+				data()->status = G_FS_LENGTH_ERROR;
+				g_log_warn("%! failed to start get-length handler after node discovery", "filesystem");
+				return G_FS_TRANSACTION_HANDLING_DONE;
+			}
 
 		} else {
 			data()->length = -1;

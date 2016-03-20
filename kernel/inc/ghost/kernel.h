@@ -74,6 +74,28 @@ typedef struct {
 	uint16_t es;
 }__attribute__((packed)) g_vm86_registers;
 
+/**
+ * Task types
+ */
+typedef uint8_t g_thread_type;
+
+static const g_thread_type G_THREAD_TYPE_MAIN = 0;
+static const g_thread_type G_THREAD_TYPE_SUB = 1;
+static const g_thread_type G_THREAD_TYPE_VM86 = 2;
+
+/**
+ * Task priority
+ */
+typedef uint8_t g_thread_priority;
+
+static const g_thread_priority G_THREAD_PRIORITY_NORMAL = 0;
+static const g_thread_priority G_THREAD_PRIORITY_IDLE = 1;
+
+/**
+ * Task setup constants
+ */
+#define G_THREAD_USER_STACK_RESERVED_VIRTUAL_PAGES		16
+
 __END_C
 
 #endif

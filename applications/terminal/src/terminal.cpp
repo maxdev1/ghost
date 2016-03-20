@@ -196,7 +196,7 @@ void terminal_t::run(create_terminal_info_t* inf) {
 
 		std::stringstream msg1;
 		msg1 << std::endl;
-		msg1 << " Copyright (c) 2012-2015 Max Schl" << OEMUS_CHAR_UE << "ssel"
+		msg1 << " Copyright (c) 2012-2016 Max Schl" << OEMUS_CHAR_UE << "ssel"
 				<< std::endl;
 		screen->write(msg1.str(), SC_COLOR(SC_BLACK, SC_LGRAY));
 		std::stringstream msg2;
@@ -313,8 +313,6 @@ void terminal_t::run_command(std::string command) {
 	g_join(rin);
 	g_join(rout);
 	g_join(rerr);
-
-	screen->write("\n");
 }
 
 /**
@@ -381,7 +379,7 @@ bool terminal_t::run_term_command(std::string command, g_fd* term_in,
 			g_pipe_s(&err_pipe_w, &err_pipe_r, &pipe_stat);
 			if (pipe_stat != G_FS_PIPE_SUCCESSFUL) {
 				screen->write("unable to create process err pipe",
-				SC_ERROR_COLOR);
+						SC_ERROR_COLOR);
 				return false;
 			}
 			in_stdio[2] = err_pipe_w;
@@ -513,11 +511,11 @@ bool terminal_t::handle_builtin(std::string command) {
 		g_set_working_directory_status stat = write_working_directory();
 
 		if (stat == G_SET_WORKING_DIRECTORY_NOT_A_FOLDER) {
-			screen->write("not a folder\n");
+			screen->write("selected file not a folder\n", SC_ERROR_COLOR);
 		} else if (stat == G_SET_WORKING_DIRECTORY_NOT_FOUND) {
-			screen->write("not found\n");
+			screen->write("directory not found\n", SC_ERROR_COLOR);
 		} else if (stat == G_SET_WORKING_DIRECTORY_ERROR) {
-			screen->write("failed to switch\n");
+			screen->write("unable to switch to the selected directory\n", SC_ERROR_COLOR);
 		}
 
 		read_working_directory();
@@ -598,7 +596,7 @@ bool terminal_t::handle_builtin(std::string command) {
  */
 void terminal_t::standard_out_thread(standard_out_thread_data_t* data) {
 
-	int buflen = 512;
+	int buflen = 1024;
 	char* buf = new char[buflen];
 
 	while (true) {
@@ -625,6 +623,7 @@ void terminal_t::standard_out_thread(standard_out_thread_data_t* data) {
 			break;
 		}
 	}
+
 	data->screen->updateCursor();
 
 	delete buf;
@@ -654,8 +653,6 @@ void terminal_t::standard_in_thread(standard_in_thread_data_t* data) {
 			g_atomic_block(&data->terminal->inactive);
 
 		} else if (stat == TERMINAL_INPUT_STATUS_DEFAULT) {
-			data->terminal->screen->write("\n");
-			data->terminal->screen->updateCursor();
 			line += "\n";
 
 			const char* lineContent = line.c_str();
@@ -693,7 +690,7 @@ bool terminal_t::file_exists(std::string path) {
 /**
  *
  */
-bool terminal_t::find_in_path(std::string path, std::string& out) {
+bool terminal_t::find_executable(std::string path, std::string& out) {
 
 	std::string in_cwd = working_directory + "/" + path;
 	if (file_exists(in_cwd)) {
@@ -706,10 +703,16 @@ bool terminal_t::find_in_path(std::string path, std::string& out) {
 		return true;
 	}
 
+	// TODO really lookup PATH environment variable
 	std::string in_apps = "/applications/" + path;
 	if (file_exists(in_apps)) {
 		out = in_apps;
 		return true;
+	}
+
+	// if not ending with ".bin", append it and search again
+	if(path.length() < 4 || path.substr(path.length() - 4) != ".bin") {
+		return find_executable(path + ".bin", out);
 	}
 
 	return false;
@@ -723,7 +726,7 @@ bool terminal_t::execute(std::string shortpath, std::string args,
 
 	// check for command in path
 	std::string realpath;
-	if (!find_in_path(shortpath, realpath)) {
+	if (!find_executable(shortpath, realpath)) {
 		screen->write(shortpath + ": command not found\n");
 		return false;
 	}

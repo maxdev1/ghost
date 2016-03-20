@@ -28,7 +28,6 @@
 #include "filesystem/fs_delegate_tasked.hpp"
 #include "filesystem/pipes.hpp"
 
-#include "tasking/wait/waiter_fs_transaction.hpp"
 #include "logger/logger.hpp"
 
 #include "ghost/utils/local.hpp"
@@ -88,6 +87,13 @@ void g_filesystem::initialize() {
 	root->set_delegate(ramdisk_delegate);
 
 	g_log_info("%! initial resources created", "filesystem");
+}
+
+/**
+ *
+ */
+g_fs_node* g_filesystem::get_root() {
+	return root;
 }
 
 /**
@@ -196,7 +202,7 @@ void g_filesystem::process_closed(g_pid pid) {
 		auto node_entry = nodes->get(content->node_id);
 		if (node_entry) {
 			g_fs_close_status stat;
-			close(pid, node_entry->value, content, &stat);
+			unmap_file(pid, node_entry->value, content, &stat);
 
 			if (stat == G_FS_CLOSE_SUCCESSFUL) {
 				g_log_debug("%! successfully closed fd %i when exiting process %i", "filesystem", content->id, pid);
@@ -229,14 +235,14 @@ void g_filesystem::process_forked(g_pid source, g_pid fork) {
 /**
  *
  */
-g_fd g_filesystem::open(g_pid pid, g_fs_node* node, int32_t flags, g_fd fd) {
+g_fd g_filesystem::map_file(g_pid pid, g_fs_node* node, int32_t open_flags, g_fd fd) {
 
 	if (node->type == G_FS_NODE_TYPE_FILE) {
-		return g_file_descriptors::map(pid, node->id, fd);
+		return g_file_descriptors::map(pid, node->id, fd, open_flags);
 
 	} else if (node->type == G_FS_NODE_TYPE_PIPE) {
 		g_pipes::add_reference(node->phys_fs_id, pid);
-		return g_file_descriptors::map(pid, node->id, fd);
+		return g_file_descriptors::map(pid, node->id, fd, open_flags);
 	}
 
 	g_log_warn("%! tried to open a node of non-file type %i", "filesystem", node->type);
@@ -246,7 +252,7 @@ g_fd g_filesystem::open(g_pid pid, g_fs_node* node, int32_t flags, g_fd fd) {
 /**
  *
  */
-bool g_filesystem::close(g_pid pid, g_fs_node* node, g_file_descriptor_content* fd, g_fs_close_status* out_status) {
+bool g_filesystem::unmap_file(g_pid pid, g_fs_node* node, g_file_descriptor_content* fd, g_fs_close_status* out_status) {
 
 	if (node->type == G_FS_NODE_TYPE_FILE) {
 		g_file_descriptors::unmap(pid, fd->id);
@@ -379,62 +385,6 @@ g_fs_register_as_delegate_status g_filesystem::create_delegate(g_thread* thread,
 /**
  *
  */
-bool g_filesystem::discover_absolute_path(g_thread* requester, char* absolute_path, g_fs_transaction_handler_discovery* handler, bool follow_symlinks) {
-
-	// check if this node is already discovered
-	g_fs_node* parent = 0;
-	g_fs_node* child = 0;
-	g_local<char> last_name(new char[G_PATH_MAX]);
-	g_filesystem::find_existing(absolute_path, &parent, &child, last_name(), follow_symlinks);
-
-	// if the node already exists, tell the handler that discovery was successful
-	if (child) {
-		handler->status = G_FS_DISCOVERY_SUCCESSFUL;
-		handler->node = child;
-		handler->all_nodes_discovered = true;
-		handler->finish_transaction(requester, child->get_delegate());
-
-	} else {
-		// otherwise, request the driver delegate to discover it and set to sleep
-		g_fs_delegate* delegate = parent->get_delegate();
-		if (delegate) {
-			g_fs_transaction_id transaction = delegate->request_discovery(requester, parent, last_name(), handler);
-			requester->wait(new g_waiter_fs_transaction(handler, transaction, delegate));
-			return false;
-		}
-
-		// if no driver delegate, error
-		if (parent == root) {
-			g_log_warn("%! mountpoint for '%s' does not exist", "filesystem", absolute_path);
-		} else {
-			g_log_warn("%! discovery of '%s' failed due to missing delegate on node %i", "filesystem", absolute_path, parent->id);
-		}
-		handler->status = G_FS_DISCOVERY_ERROR;
-		handler->all_nodes_discovered = true;
-		handler->finish_transaction(requester, 0);
-	}
-
-	return true;
-}
-
-/**
- *
- */
-bool g_filesystem::get_length(g_thread* task, g_fs_node* node, g_fs_transaction_handler_get_length* handler) {
-
-	g_fs_delegate* delegate = node->get_delegate();
-	if (delegate) {
-		g_fs_transaction_id transaction = delegate->request_get_length(task, node, handler);
-		task->wait(new g_waiter_fs_transaction(handler, transaction, delegate));
-		return false;
-	}
-
-	return true;
-}
-
-/**
- *
- */
 bool g_filesystem::node_for_descriptor(g_pid pid, g_fd fd, g_fs_node** out_node, g_file_descriptor_content** out_fd) {
 
 	// find file descriptor
@@ -459,114 +409,6 @@ bool g_filesystem::node_for_descriptor(g_pid pid, g_fd fd, g_fs_node** out_node,
 /**
  *
  */
-g_fs_transaction_handler_start_status g_filesystem::read(g_thread* thread, g_fs_node* node, g_file_descriptor_content* fd, int64_t length,
-		g_contextual<uint8_t*> buffer, g_fs_transaction_handler_read* handler) {
-
-	// get & check the driver delegate
-	g_fs_delegate* delegate = node->get_delegate();
-	if (delegate == 0) {
-		g_log_warn("%! reading of '%i' failed due to missing delegate on underlying node %i", "filesystem", fd->id, node->id);
-		return G_FS_TRANSACTION_START_FAILED;
-	}
-
-	// check if the transaction is repeated only
-	if (handler->wants_repeat_transaction()) {
-		// when a transaction is repeated, the waiter is still on the requesters task
-		delegate->request_read(thread, node, length, buffer, fd, handler);
-		return G_FS_TRANSACTION_STARTED_WITH_WAITER;
-	}
-
-	// start transaction by requesting the delegate
-	g_fs_transaction_id transaction = delegate->request_read(thread, node, length, buffer, fd, handler);
-
-	// check status for possible immediate finish
-	bool keep_waiting = g_waiter_fs_transaction::check_transaction_status(thread, handler, transaction, delegate);
-
-	if (keep_waiting) {
-		// otherwise append waiter
-		thread->wait(new g_waiter_fs_transaction(handler, transaction, delegate));
-		return G_FS_TRANSACTION_STARTED_WITH_WAITER;
-	}
-
-	return G_FS_TRANSACTION_STARTED_AND_FINISHED;
-}
-
-/**
- *
- */
-g_fs_transaction_handler_start_status g_filesystem::write(g_thread* thread, g_fs_node* node, g_file_descriptor_content* fd, int64_t length,
-		g_contextual<uint8_t*> buffer, g_fs_transaction_handler_write* handler) {
-
-	// ask driver delegate to perform operation
-	g_fs_delegate* delegate = node->get_delegate();
-	if (delegate == 0) {
-		g_log_warn("%! writing of '%i' failed due to missing delegate on underlying node %i", "filesystem", fd->id, node->id);
-		return G_FS_TRANSACTION_START_FAILED;
-	}
-
-	// check if the transaction is repeated only
-	if (handler->wants_repeat_transaction()) {
-		// when a transaction is repeated, the waiter is still on the requesters task
-		delegate->request_write(thread, node, length, buffer, fd, handler);
-		return G_FS_TRANSACTION_STARTED_WITH_WAITER;
-	}
-
-	// start transaction by requesting the delegate
-	g_fs_transaction_id transaction = delegate->request_write(thread, node, length, buffer, fd, handler);
-
-	// initially check status
-	bool keep_waiting = g_waiter_fs_transaction::check_transaction_status(thread, handler, transaction, delegate);
-
-	if (keep_waiting) {
-		thread->wait(new g_waiter_fs_transaction(handler, transaction, delegate));
-		return G_FS_TRANSACTION_STARTED_WITH_WAITER;
-	}
-
-	return G_FS_TRANSACTION_STARTED_AND_FINISHED;
-}
-
-/**
- *
- */
-void g_filesystem::read_directory(g_thread* thread, g_fs_virt_id node_id, int position, g_contextual<g_syscall_fs_read_directory*> data) {
-
-	// find the folder to operate on
-	auto folder_entry = nodes->get(node_id);
-	if (folder_entry == 0) {
-		data()->status = G_FS_READ_DIRECTORY_ERROR;
-		return;
-	}
-	g_fs_node* folder = folder_entry->value;
-
-	// handler that actually puts the next node into the iterator
-	g_fs_transaction_handler_read_directory* read_handler = new g_fs_transaction_handler_read_directory(folder, position, data);
-
-	// if directory is already refreshed, finish immediately
-	if (folder->contents_valid) {
-		read_handler->finish_transaction(thread, 0);
-		delete read_handler;
-		return;
-	}
-
-	// take the delegate
-	g_fs_delegate* delegate = folder->get_delegate();
-	if (delegate == nullptr) {
-		data()->status = G_FS_READ_DIRECTORY_ERROR;
-		g_log_warn("%! reading directory failed due to missing delegate on node %i", "filesystem", folder->id);
-		return;
-	}
-
-	// schedule a refresh
-	g_fs_transaction_handler_directory_refresh* refresh_handler = new g_fs_transaction_handler_directory_refresh(folder, read_handler);
-	read_handler->causing_handler = refresh_handler;
-
-	g_fs_transaction_id transaction = delegate->request_directory_refresh(thread, folder, refresh_handler);
-	thread->wait(new g_waiter_fs_transaction(refresh_handler, transaction, delegate));
-}
-
-/**
- *
- */
 g_fd g_filesystem::clonefd(g_fd source_fd, g_pid source_pid, g_fd target_fd, g_pid target_pid, g_fs_clonefd_status* out_status) {
 
 	g_fs_node* source_node;
@@ -584,12 +426,12 @@ g_fd g_filesystem::clonefd(g_fd source_fd, g_pid source_pid, g_fd target_fd, g_p
 		// close old file descriptor if available
 		if (target_node) {
 			g_fs_close_status close_status;
-			close(source_pid, target_node, target_fd_content, &close_status);
+			unmap_file(source_pid, target_node, target_fd_content, &close_status);
 		}
 	}
 
 	// open new file descriptor
-	g_fd created = open(target_pid, source_node, 0, target_fd);
+	g_fd created = map_file(target_pid, source_node, 0, target_fd);
 	if (created != -1) {
 
 		// clone fd contents
@@ -617,19 +459,7 @@ g_fs_pipe_status g_filesystem::pipe(g_thread* thread, g_fd* out_write, g_fd* out
 	pipe_root->add_child(node);
 
 	node->phys_fs_id = g_pipes::create();
-	*out_write = open(thread->process->main->id, node, 0);
-	*out_read = open(thread->process->main->id, node, 0);
+	*out_write = map_file(thread->process->main->id, node, 0);
+	*out_read = map_file(thread->process->main->id, node, 0);
 	return G_FS_PIPE_SUCCESSFUL;
-}
-
-int32_t g_filesystem::stat(g_thread* thread, char* path, bool follow_symlinks, g_fs_stat_attributes* stat) {
-
-	// TODO
-	return -1;
-}
-
-int32_t g_filesystem::fstat(g_thread* thread, g_fd fd, g_fs_stat_attributes* stat) {
-
-	// TODO
-	return -1;
 }

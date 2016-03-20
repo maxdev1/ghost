@@ -37,8 +37,8 @@ public:
 	/**
 	 *
 	 */
-	g_fs_transaction_handler_get_length_default(g_contextual<g_syscall_fs_length*> data) :
-			data(data) {
+	g_fs_transaction_handler_get_length_default(g_contextual<g_syscall_fs_length*> data, g_fs_node* node) :
+			g_fs_transaction_handler_get_length(node), data(data) {
 	}
 
 	/**

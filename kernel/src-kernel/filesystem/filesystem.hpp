@@ -49,6 +49,11 @@ public:
 	/**
 	 *
 	 */
+	static g_fs_node* get_root();
+
+	/**
+	 *
+	 */
 	static g_fs_node* get_node_by_id(g_fs_virt_id id);
 
 	/**
@@ -58,48 +63,6 @@ public:
 	 * @return the created node
 	 */
 	static g_fs_node* create_node();
-
-	/**
-	 * This routine discovers (creates virtual nodes for) the given absolute path.
-	 *
-	 * This is done by looking up all path elements as virtual nodes top-down.
-	 * If all of the path elements already exist as virtual nodes, this function immediately
-	 * returns true. Otherwise, the delegate is asked to discover and a {g_waiter_fs_discovery}
-	 * is appended to the task. This waiter waits for the discovery transaction to finish.
-	 *
-	 * The discovery process is called by the waiter itself repeatedly until all path elements
-	 * are successfully discovered or discovery fails at some point.
-	 *
-	 * @param task
-	 * 		the task that is waiting for the discovery
-	 *
-	 * @param absolute_path
-	 * 		the absolute path to lookup
-	 *
-	 * @param handler
-	 * 		a subtype of {g_fs_transaction_handler_discovery} that is notified on
-	 * 		discovery status updates
-	 *
-	 * @param follow_symlinks
-	 * 		whether or not to follow symbolic links
-	 *
-	 * @return whether the discovery is finished or not
-	 */
-	static bool discover_absolute_path(g_thread* task, char* absolute_path, g_fs_transaction_handler_discovery* handler, bool follow_symlinks = true);
-
-	/**
-	 * Retrieves the length for the given node, notifying the handler once finished.
-	 *
-	 * @param task
-	 * 		the task that is waiting for the length
-	 *
-	 * @param node
-	 * 		the node to get the length from
-	 *
-	 * @param handler
-	 * 		the transaction handler
-	 */
-	static bool get_length(g_thread* task, g_fs_node* node, g_fs_transaction_handler_get_length* handler);
 
 	/**
 	 * Tries to resolve the node with the given absolute path. The buffer behind
@@ -182,29 +145,12 @@ public:
 	 *
 	 * @return a file descriptor
 	 */
-	static g_fd open(g_pid pid, g_fs_node* node, int32_t flags, g_fd fd = -1);
+	static g_fd map_file(g_pid pid, g_fs_node* node, int32_t open_flags, g_fd fd = -1);
 
 	/**
 	 *
 	 */
-	static g_fs_transaction_handler_start_status read(g_thread* thread, g_fs_node* node, g_file_descriptor_content* fd, int64_t length,
-			g_contextual<uint8_t*> buffer, g_fs_transaction_handler_read* handler);
-
-	/**
-	 *
-	 */
-	static g_fs_transaction_handler_start_status write(g_thread* thread, g_fs_node* node, g_file_descriptor_content* fd, int64_t length,
-			g_contextual<uint8_t*> buffer, g_fs_transaction_handler_write* handler);
-
-	/**
-	 *
-	 */
-	static bool close(g_pid pid, g_fs_node* node, g_file_descriptor_content* fd, g_fs_close_status* out_status);
-
-	/**
-	 *
-	 */
-	static void read_directory(g_thread* thread, g_fs_virt_id node_id, int position, g_contextual<g_syscall_fs_read_directory*> data);
+	static bool unmap_file(g_pid pid, g_fs_node* node, g_file_descriptor_content* fd, g_fs_close_status* out_status);
 
 	/**
 	 *
@@ -225,11 +171,6 @@ public:
 	 *
 	 */
 	static void process_forked(g_pid source, g_pid fork);
-
-	// TODO
-
-	static int32_t stat(g_thread* thread, char* path, bool follow_symlinks, g_fs_stat_attributes* stat);
-	static int32_t fstat(g_thread* thread, g_fd fd, g_fs_stat_attributes* stat);
 
 };
 
