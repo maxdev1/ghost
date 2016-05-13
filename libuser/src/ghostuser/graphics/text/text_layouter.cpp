@@ -36,9 +36,9 @@ g_text_layouter* g_text_layouter::getInstance() {
 /**
  *
  */
-void rightAlign(g_layouted_text& text, int line, int lineWidth, g_rectangle& bounds) {
+void rightAlign(g_layouted_text* text, int line, int lineWidth, g_rectangle& bounds) {
 	int difference = bounds.width - bounds.x - lineWidth;
-	for (g_positioned_glyph& g : text.positions) {
+	for (g_positioned_glyph& g : text->positions) {
 		if (g.line == line) {
 			g.position.x += difference;
 		}
@@ -48,9 +48,9 @@ void rightAlign(g_layouted_text& text, int line, int lineWidth, g_rectangle& bou
 /**
  *
  */
-void centerAlign(g_layouted_text& text, int line, int lineWidth, g_rectangle& bounds) {
+void centerAlign(g_layouted_text* text, int line, int lineWidth, g_rectangle& bounds) {
 	int difference = (bounds.width - bounds.x) / 2 - lineWidth / 2;
-	for (g_positioned_glyph& g : text.positions) {
+	for (g_positioned_glyph& g : text->positions) {
 		if (g.line == line) {
 			g.position.x += difference;
 		}
@@ -60,47 +60,95 @@ void centerAlign(g_layouted_text& text, int line, int lineWidth, g_rectangle& bo
 /**
  *
  */
-void g_text_layouter::layout(std::string text, g_font* font, int size, g_rectangle bounds, g_text_alignment alignment, g_layouted_text& out,
+g_layouted_text* g_text_layouter::initializeBuffer() {
+	return new g_layouted_text();
+}
+
+/**
+ *
+ */
+void g_text_layouter::layout(cairo_t* cr, const char* text, g_font* font, int size, g_rectangle bounds, g_text_alignment alignment, g_layouted_text* layout,
 		bool breakOnOverflow) {
 
 	if (font == 0) {
 		return;
 	}
 
+	size_t text_len = strlen(text);
+
+	// starting coordinates
 	int x = bounds.x;
 	int y = bounds.y;
 	int lineStartX = x;
 
+	// created the scaled font face
+	cairo_set_font_face(cr, font->getFace());
+	cairo_set_font_size(cr, size);
+	auto scaled_face = cairo_get_scaled_font(cr);
+
 	int line = 0;
-	int lineHeight = font->getLineHeight(size);
+	int lineHeight = size;
 
-	g_glyph* previous = 0;
-	for (int i = 0; i < text.length(); i++) {
-		char chr = text[i];
+	// create glyphs for the text
+	auto previous_glyph_buffer = layout->glyph_buffer;
+	auto previous_cluster_buffer = layout->cluster_buffer;
 
-		bool invisible = false;
+	cairo_text_cluster_flags_t cluster_flags;
+	cairo_status_t stat = cairo_scaled_font_text_to_glyphs(scaled_face, 0, 0, text, text_len, &layout->glyph_buffer, &layout->glyph_count,
+			&layout->cluster_buffer, &layout->cluster_count, &cluster_flags);
 
-		g_glyph* glyph = font->getGlyph(size, chr);
-		if (glyph != 0) {
-			// Create new position
+	// free old buffer
+	if (previous_glyph_buffer != nullptr && layout->glyph_buffer != previous_glyph_buffer) {
+		free(previous_glyph_buffer);
+	}
+	if (previous_cluster_buffer != nullptr && layout->cluster_buffer != previous_cluster_buffer) {
+		free(previous_cluster_buffer);
+	}
+
+	// clear layout entries
+	layout->positions.clear();
+
+	// perform layouting
+	if (stat == CAIRO_STATUS_SUCCESS) {
+		// positions in bytes and glyphs
+		size_t byte_pos = 0;
+		size_t glyph_pos = 0;
+
+		// text extents
+		cairo_text_extents_t extents;
+
+		for (int i = 0; i < layout->cluster_count; i++) {
+			cairo_text_cluster_t* cluster = &layout->cluster_buffer[i];
+			cairo_glyph_t* glyphs = &layout->glyph_buffer[glyph_pos];
+
+			// create new position
 			g_positioned_glyph positioned;
-			positioned.glyph = glyph;
+			positioned.glyph = glyphs;
+			positioned.glyph_count = cluster->num_glyphs;
+			cairo_scaled_font_glyph_extents(scaled_face, positioned.glyph, positioned.glyph_count, &extents);
 
-			// Add kerning
-			if (previous) {
-				x += font->getKerning(size, previous, glyph).x;
+			positioned.advance.x = extents.x_advance;
+			positioned.advance.y = extents.y_advance;
+			positioned.size.width = extents.width;
+			positioned.size.height = extents.height;
+
+			// check if newline
+			bool isNewline = false;
+			if (cluster->num_bytes == 1 && text[byte_pos] == '\n') {
+				isNewline = true;
 			}
+			bool invisible = false;
 
 			// Wouldn't match in line or is break character? Start next line
-			if (chr == '\n' || (breakOnOverflow && (x + glyph->getBounding().width > bounds.width))) {
-				if (chr == '\n') {
+			if (isNewline || (breakOnOverflow && (x + positioned.size.width > bounds.width))) {
+				if (isNewline) {
 					invisible = true;
 				}
 
 				if (alignment == g_text_alignment::RIGHT) {
-					rightAlign(out, line, x - lineStartX, bounds);
+					rightAlign(layout, line, x - lineStartX, bounds);
 				} else if (alignment == g_text_alignment::CENTER) {
-					centerAlign(out, line, x - lineStartX, bounds);
+					centerAlign(layout, line, x - lineStartX, bounds);
 				}
 
 				++line;
@@ -112,23 +160,26 @@ void g_text_layouter::layout(std::string text, g_font* font, int size, g_rectang
 			if (!invisible) {
 				// Position
 				positioned.line = line;
-				positioned.position.x = x + glyph->getBitmapTopLeftPixel().x;
-				positioned.position.y = y + lineHeight - glyph->getBitmapTopLeftPixel().y;
+				positioned.position.x = x;
+				positioned.position.y = y + lineHeight;
 
 				// Add position
-				out.positions.push_back(positioned);
+				layout->positions.push_back(positioned);
 
 				// Jump to next
-				x += glyph->getAdvance().x;
+				x += positioned.advance.x;
 			}
-			previous = glyph;
+
+			// increase positions
+			glyph_pos += cluster->num_glyphs;
+			byte_pos += cluster->num_bytes;
 		}
 	}
 
 	if (alignment == g_text_alignment::RIGHT) {
-		rightAlign(out, line, x - lineStartX, bounds);
+		rightAlign(layout, line, x - lineStartX, bounds);
 	} else if (alignment == g_text_alignment::CENTER) {
-		centerAlign(out, line, x - lineStartX, bounds);
+		centerAlign(layout, line, x - lineStartX, bounds);
 	}
 
 	// Set text bounds
@@ -138,28 +189,43 @@ void g_text_layouter::layout(std::string text, g_font* font, int size, g_rectang
 	int tbRight = 0;
 	int tbBottom = 0;
 
-	for (g_positioned_glyph& p : out.positions) {
+	for (g_positioned_glyph& p : layout->positions) {
 		if (p.position.x < tbLeft) {
 			tbLeft = p.position.x;
 		}
 		if (p.position.y < tbTop) {
 			tbTop = p.position.y;
 		}
-		int r = p.position.x + p.glyph->getBitmapTopLeftPixel().x + p.glyph->getBitmapSize().width;
+
+		// get extents again
+		int r = p.position.x + p.size.width;
 		if (r > tbRight) {
 			tbRight = r;
 		}
-		int b = p.position.y + p.glyph->getBitmapTopLeftPixel().y + p.glyph->getBitmapSize().height;
+		int b = p.position.y + p.size.height;
 		if (b > tbBottom) {
 			tbBottom = b;
 		}
 	}
 
 	if (tbTop != BOUNDS_EMPTY && tbLeft != BOUNDS_EMPTY) {
-		out.textBounds.x = tbLeft;
-		out.textBounds.y = tbTop;
-		out.textBounds.width = tbRight - tbLeft;
-		out.textBounds.height = tbBottom - tbTop;
+		layout->textBounds.x = tbLeft;
+		layout->textBounds.y = tbTop;
+		layout->textBounds.width = tbRight - tbLeft;
+		layout->textBounds.height = tbBottom - tbTop;
 	}
+}
+
+/**
+ *
+ */
+void g_text_layouter::destroyLayout(g_layouted_text* layout) {
+	if (layout->glyph_buffer) {
+		free(layout->glyph_buffer);
+	}
+	if (layout->cluster_buffer) {
+		free(layout->cluster_buffer);
+	}
+	delete layout;
 }
 

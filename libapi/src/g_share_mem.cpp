@@ -23,7 +23,7 @@
 /**
  *
  */
-void* g_share_mem(void* memory, int32_t size, uint32_t processId) {
+void* g_share_mem(void* memory, int32_t size, g_pid processId) {
 	g_syscall_share_mem data;
 	data.memory = memory;
 	data.processId = processId;

@@ -22,10 +22,8 @@
 
 #include <ghost.h>
 #include <events/mouse_event.hpp>
-#include <ghostuser/graphics/painter.hpp>
 #include <ghostuser/utils/property_file_parser.hpp>
 #include <ghostuser/utils/logger.hpp>
-#include <ghostuser/graphics/images/ghost_image_format.hpp>
 
 static std::map<std::string, cursor_configuration> cursorConfigurations;
 static cursor_configuration* currentConfiguration = 0;
@@ -88,33 +86,51 @@ bool cursor_t::load(std::string cursorPath) {
 	int hitpointY;
 	sty >> hitpointY;
 
-	FILE* cursorImageFile = fopen((cursorPath + "/" + image).c_str(), "r");
-	if (cursorImageFile != NULL) {
-		g_ghost_image_format ghostFormat;
-		g_image cursorImage;
-		g_image_load_status loadStatus = cursorImage.load(cursorImageFile, &ghostFormat);
+	std::string cursorImagePath = (cursorPath + "/" + image);
 
-		cursor_configuration pack;
-		pack.image = cursorImage;
-		pack.hitpoint = g_point(hitpointX, hitpointY);
-		cursorConfigurations[name] = pack;
+	// check if file exists
+	FILE* cursorImageFile = fopen(cursorImagePath.c_str(), "r");
+	if (cursorImageFile == NULL) {
+		return false;
+	}
+	fclose(cursorImageFile);
 
-		g_logger::log("created cursor '" + name + "' with hitpoint %i/%i and image %x", hitpointX, hitpointY, cursorImage.getContent());
-
-		fclose(cursorImageFile);
-		return loadStatus == g_image_load_status::SUCCESSFUL;
+	// load cursor
+	cursor_configuration pack;
+	pack.surface = cairo_image_surface_create_from_png(cursorImagePath.c_str());
+	if (pack.surface == nullptr) {
+		klog("failed to load cursor image at '%s' for configuration '%s'", cursorImagePath.c_str(), cursorPath.c_str());
+		return false;
 	}
 
-	return false;
+	pack.hitpoint = g_point(hitpointX, hitpointY);
+	pack.size = g_dimension(cairo_image_surface_get_width(pack.surface), cairo_image_surface_get_height(pack.surface));
+	cursorConfigurations[name] = pack;
+
+	g_logger::log("created cursor '" + name + "' with hitpoint %i/%i", hitpointX, hitpointY);
+
+	return true;
 }
 
 /**
  *
  */
-void cursor_t::paint(g_painter* global) {
+void cursor_t::paint(g_graphics* global) {
+
+	auto cr = global->getContext();
+	cairo_reset_clip(cr);
 
 	if (currentConfiguration) {
-		global->drawImage(position.x - currentConfiguration->hitpoint.x, position.y - currentConfiguration->hitpoint.y, &currentConfiguration->image);
+		// draw cursor image
+		cairo_set_source_surface(cr, currentConfiguration->surface, position.x - currentConfiguration->hitpoint.x,
+				position.y - currentConfiguration->hitpoint.y);
+		cairo_paint(cr);
+
+	} else {
+		// draw fallback cursor
+		cairo_set_source_rgb(cr, 0, 0, 0);
+		cairo_rectangle(cr, position.x, position.y, FALLBACK_CURSOR_SIZE, FALLBACK_CURSOR_SIZE);
+		cairo_fill(cr);
 	}
 }
 
@@ -123,10 +139,12 @@ void cursor_t::paint(g_painter* global) {
  */
 g_rectangle cursor_t::getArea() {
 
+	// get area for current cursor
 	if (currentConfiguration) {
-		return g_rectangle(position.x - currentConfiguration->hitpoint.x, position.y - currentConfiguration->hitpoint.y, currentConfiguration->image.width,
-				currentConfiguration->image.height);
+		return g_rectangle(position.x - currentConfiguration->hitpoint.x, position.y - currentConfiguration->hitpoint.y, currentConfiguration->size.width,
+				currentConfiguration->size.height);
 	}
 
-	return g_rectangle();
+	// fallback cursor is just a square
+	return g_rectangle(position.x, position.y, FALLBACK_CURSOR_SIZE, FALLBACK_CURSOR_SIZE);
 }

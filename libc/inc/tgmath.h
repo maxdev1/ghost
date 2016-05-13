@@ -21,6 +21,8 @@
 #ifndef __GHOST_LIBC_TGMATH__
 #define __GHOST_LIBC_TGMATH__
 
+// This header originates from the musl C library http://www.musl-libc.org/
+
 /*
  the return types are only correct with gcc (__GNUC__)
  otherwise they are long double or long double complex

@@ -37,7 +37,7 @@ bool g_titled_component::setTitle(std::string title) {
 	}
 
 	// send initialization request
-	uint32_t tx = g_ipc_next_topic();
+	g_message_transaction tx = g_get_message_tx_id();
 
 	g_local<g_ui_component_set_title_request> request(new g_ui_component_set_title_request());
 	request()->header.id = G_UI_PROTOCOL_SET_TITLE;
@@ -80,7 +80,7 @@ std::string g_titled_component::getTitle() {
 	}
 
 	// send initialization request
-	uint32_t tx = g_ipc_next_topic();
+	g_message_transaction tx = g_get_message_tx_id();
 
 	g_ui_component_get_title_request request;
 	request.header.id = G_UI_PROTOCOL_GET_TITLE;

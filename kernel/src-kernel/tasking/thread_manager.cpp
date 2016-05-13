@@ -333,7 +333,7 @@ g_thread* g_thread_manager::createProcess(g_security_level securityLevel) {
 	process->main = main_thread;
 
 #if G_LOGGING_DEBUG
-	dumpTask(thread);
+	dumpTask(main_thread);
 #endif
 	return main_thread;
 }

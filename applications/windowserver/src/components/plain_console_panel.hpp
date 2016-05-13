@@ -23,7 +23,6 @@
 
 #include <components/component.hpp>
 #include <ghostuser/graphics/text/text_alignment.hpp>
-#include <ghostuser/graphics/text/text_layouter.hpp>
 #include <ghostuser/graphics/text/font.hpp>
 #include <string>
 
@@ -33,7 +32,6 @@
 class plain_console_panel_t: public component_t {
 private:
 	g_font* font;
-	g_layouted_text viewModel;
 	std::string content;
 	bool focused;
 

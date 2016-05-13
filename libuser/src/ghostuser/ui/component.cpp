@@ -33,7 +33,7 @@ bool g_component::addChild(g_component* child) {
 	}
 
 	// send initialization request
-	uint32_t tx = g_ipc_next_topic();
+	g_message_transaction tx = g_get_message_tx_id();
 
 	g_ui_component_add_child_request request;
 	request.header.id = G_UI_PROTOCOL_ADD_COMPONENT;
@@ -66,7 +66,7 @@ bool g_component::setBounds(g_rectangle rect) {
 	}
 
 	// send initialization request
-	uint32_t tx = g_ipc_next_topic();
+	g_message_transaction tx = g_get_message_tx_id();
 
 	g_ui_component_set_bounds_request request;
 	request.header.id = G_UI_PROTOCOL_SET_BOUNDS;
@@ -100,7 +100,7 @@ g_rectangle g_component::getBounds() {
 	}
 
 	// send initialization request
-	uint32_t tx = g_ipc_next_topic();
+	g_message_transaction tx = g_get_message_tx_id();
 
 	g_ui_component_get_bounds_request request;
 	request.header.id = G_UI_PROTOCOL_GET_BOUNDS;
@@ -133,7 +133,7 @@ bool g_component::setVisible(bool visible) {
 	}
 
 	// send initialization request
-	uint32_t tx = g_ipc_next_topic();
+	g_message_transaction tx = g_get_message_tx_id();
 
 	g_ui_component_set_visible_request request;
 	request.header.id = G_UI_PROTOCOL_SET_VISIBLE;
@@ -166,7 +166,7 @@ bool g_component::setBoolProperty(int property, bool value) {
 	}
 
 	// send initialization request
-	uint32_t tx = g_ipc_next_topic();
+	g_message_transaction tx = g_get_message_tx_id();
 
 	g_ui_component_set_bool_property_request request;
 	request.header.id = G_UI_PROTOCOL_SET_BOOL_PROPERTY;
@@ -200,7 +200,7 @@ bool g_component::getBoolProperty(int property, bool* out) {
 	}
 
 	// send initialization request
-	uint32_t tx = g_ipc_next_topic();
+	g_message_transaction tx = g_get_message_tx_id();
 
 	g_ui_component_get_bool_property_request request;
 	request.header.id = G_UI_PROTOCOL_GET_BOOL_PROPERTY;
@@ -242,7 +242,7 @@ bool g_component::setListener(g_ui_component_event_type eventType, g_listener* n
 	}
 
 	// send request
-	uint32_t tx = g_ipc_next_topic();
+	g_message_transaction tx = g_get_message_tx_id();
 
 	g_ui_component_set_listener_request request;
 	request.header.id = G_UI_PROTOCOL_SET_LISTENER;

@@ -27,6 +27,17 @@
 #include <ghostuser/ui/interface_specification.hpp>
 
 class component_t;
+class action_component_t;
+
+/**
+ * Used so the window server can itself be the handler for an action component.
+ */
+class internal_action_handler_t {
+public:
+	virtual ~internal_action_handler_t() {
+	}
+	virtual void handle(action_component_t* source) = 0;
+};
 
 /**
  * An action component is capable of being observed by an action listener.
@@ -36,13 +47,14 @@ class component_t;
 class action_component_t {
 protected:
 	component_t* self;
+	internal_action_handler_t* internalHandler;
 
 public:
 	/**
 	 *
 	 */
 	action_component_t(component_t* self) :
-			self(self) {
+			self(self), internalHandler(nullptr) {
 	}
 
 	/**
@@ -55,6 +67,12 @@ public:
 	 *
 	 */
 	virtual void fireAction();
+
+	/**
+	 *
+	 */
+	virtual void setInternalActionHandler(internal_action_handler_t* handler);
+
 };
 
 #endif

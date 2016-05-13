@@ -19,13 +19,13 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <components/label.hpp>
-#include <fonts.hpp>
 #include <events/mouse_event.hpp>
-#include <ghostuser/graphics/painter.hpp>
-#include <ghostuser/utils/Logger.hpp>
+#include <ghostuser/utils/logger.hpp>
 
+#include <cairo/cairo.h>
+#include <cairo/cairo-ft.h>
+#include <fontloader.hpp>
 #include <sstream>
-#include <fonts.hpp>
 #include <ghost.h>
 
 /**
@@ -33,10 +33,19 @@
  */
 label_t::label_t() :
 		component_t(true) {
-	font = Fonts::getDefault();
-	fontSize = 10;
+
+	setFont(font_loader_t::getDefault());
 	alignment = g_text_alignment::LEFT;
 	color = RGB(0, 0, 0);
+}
+
+/**
+ *
+ */
+void label_t::setFont(g_font* newFont) {
+
+	font = newFont;
+	fontSize = 14;
 }
 
 /**
@@ -52,16 +61,17 @@ void label_t::update() {
 		thisBounds.height = 9999;
 	}
 
-	// Reset view model, layout characters
-	viewModel = g_layouted_text();
-	g_text_layouter::getInstance()->layout(text, font, fontSize, thisBounds, alignment, viewModel);
-	g_dimension newPreferred(viewModel.textBounds.width + 3, viewModel.textBounds.height + 3);
+	// get text bounds
+	auto cr = graphics.getContext();
+	cairo_set_font_face(cr, font->getFace());
+	cairo_set_font_size(cr, fontSize);
+	cairo_text_extents(cr, this->text.c_str(), &lastExtents);
+	g_dimension newPreferred(lastExtents.width + 3, lastExtents.height + 3);
 
 	// Set new preferred size
 	if (getPreferredSize() != newPreferred) {
 		setPreferredSize(newPreferred);
 	}
-
 	markFor(COMPONENT_REQUIREMENT_PAINT);
 }
 
@@ -70,16 +80,28 @@ void label_t::update() {
  */
 void label_t::paint() {
 
-	g_rectangle thisBounds(0, 0, getBounds().width, getBounds().height);
+	clearSurface();
 
-	graphics.clear();
-	g_painter p(graphics);
+	auto cr = graphics.getContext();
+	auto bounds = getBounds();
 
-	for (g_positioned_glyph& glyph : viewModel.positions) {
-		g_glyph* current = glyph.glyph;
-		g_dimension bitmapSize = current->getBitmapSize();
-		p.drawColoredBitmap(glyph.position.x, glyph.position.y, current->getBitmap(), color, bitmapSize.width, bitmapSize.height);
+	cairo_set_source_rgb(cr, 0, 0, 0);
+
+	int textLeft;
+	int textBot = (bounds.height / 2 - lastExtents.height / 2) + lastExtents.height;
+
+	if (alignment == g_text_alignment::CENTER) {
+		textLeft = bounds.width / 2 - lastExtents.width / 2;
+	} else if (alignment == g_text_alignment::RIGHT) {
+		textLeft = bounds.width - lastExtents.width;
+	} else {
+		textLeft = 0;
 	}
+
+	cairo_move_to(cr, textLeft, textBot);
+	cairo_set_font_face(cr, font->getFace());
+	cairo_set_font_size(cr, fontSize);
+	cairo_show_text(cr, text.c_str());
 }
 
 /**

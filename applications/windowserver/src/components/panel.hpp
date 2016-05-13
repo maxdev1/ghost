@@ -22,7 +22,6 @@
 #define __PANEL__
 
 #include <components/component.hpp>
-#include <ghostuser/graphics/images/image.hpp>
 
 /**
  *
@@ -30,10 +29,9 @@
 class panel_t: public component_t {
 private:
 	g_color_argb background;
-	g_image* backgroundImage;
 public:
 	panel_t() :
-			background(RGB(240, 240, 240)), backgroundImage(0) {
+			background(ARGB(230, 240, 240, 240)) {
 	}
 
 	virtual void paint();
@@ -44,9 +42,6 @@ public:
 
 	void setBackground(g_color_argb color);
 	g_color_argb getBackground();
-
-	void setBackgroundImage(g_image* image);
-	g_image* getBackgroundImage();
 };
 
 #endif

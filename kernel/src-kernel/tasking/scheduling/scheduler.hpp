@@ -39,8 +39,6 @@ private:
 	uint64_t milliseconds;
 	uint32_t coreId;
 
-	g_global_recursive_lock model_lock;
-
 	g_task_entry* wait_queue;
 	g_task_entry* run_queue;
 	g_task_entry* idle_entry;

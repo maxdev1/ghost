@@ -24,8 +24,6 @@
 #include "memory/memory.hpp"
 #include "memory/collections/address_stack.hpp"
 
-static g_message_queue* firstQueue = 0;
-
 typedef g_hash_map<g_tid, g_message_queue_head*> g_message_queue_map;
 static g_message_queue_map* queues = 0;
 
@@ -210,7 +208,7 @@ g_message_receive_status g_message_controller::receive_message(g_tid target, g_m
 		queue = entry->value;
 	}
 
-	if(queue == nullptr) {
+	if (queue == nullptr) {
 		return G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY;
 	}
 
@@ -271,116 +269,5 @@ g_message_receive_status g_message_controller::receive_message(g_tid target, g_m
 	queue->total -= content_len;
 
 	return G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL;
-}
-
-/**
- *
- */
-g_message_send_status g_message_controller::send(uint32_t task, g_message* source) {
-
-	g_message_queue* foundQueue = 0;
-
-	// Search for queue
-	if (firstQueue != 0) {
-		g_message_queue* n = firstQueue;
-		do {
-			if (n->taskId == task) {
-				foundQueue = n;
-				break;
-			}
-		} while ((n = n->next) != 0);
-	}
-
-	// Create a new queue
-	if (foundQueue == 0) {
-		foundQueue = new g_message_queue;
-		foundQueue->taskId = task;
-		foundQueue->count = 0;
-		foundQueue->next = firstQueue;
-		firstQueue = foundQueue;
-	}
-
-	// Add to queue
-	if (foundQueue->count < G_MESSAGE_QUEUE_SIZE) {
-		foundQueue->messages[foundQueue->count++] = *source;
-		return G_MESSAGE_SEND_STATUS_SUCCESSFUL;
-	}
-
-	return G_MESSAGE_SEND_STATUS_QUEUE_FULL;
-}
-
-/**
- *
- */
-g_message_receive_status g_message_controller::receive(uint32_t task, g_message& target) {
-
-	g_message_queue* foundQueue = 0;
-
-	// Search for queue
-	if (firstQueue != 0) {
-		g_message_queue* n = firstQueue;
-		do {
-			if (n->taskId == task) {
-				foundQueue = n;
-				break;
-			}
-		} while ((n = n->next) != 0);
-	}
-
-	// Take from queue
-	if (foundQueue != 0 && foundQueue->count > 0) {
-		target = foundQueue->messages[--foundQueue->count];
-
-		return G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL;
-	}
-
-	return G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY;
-}
-
-/**
- *
- */
-g_message_receive_status g_message_controller::receiveWithTopic(uint32_t task, uint32_t topic, g_message& target) {
-
-	g_message_queue* foundQueue = 0;
-
-	// Search for queue
-	if (firstQueue != 0) {
-		g_message_queue* n = firstQueue;
-		do {
-			if (n->taskId == task) {
-				foundQueue = n;
-				break;
-			}
-		} while ((n = n->next) != 0);
-	}
-
-	// Take from queue
-	if (foundQueue != 0 && foundQueue->count > 0) {
-
-		int32_t indexToRemove = -1;
-
-		for (int32_t i = 0; i < foundQueue->count; i++) {
-			if (foundQueue->messages[i].topic == topic) {
-				target = foundQueue->messages[i];
-				indexToRemove = i;
-				break;
-			}
-		}
-
-		if (indexToRemove != -1) {
-			// copy all objects behind the removed position one to the left
-			for (int32_t i = indexToRemove; i < foundQueue->count - 1; i++) {
-				foundQueue->messages[i] = foundQueue->messages[i + 1];
-			}
-
-			// decrease number of queued messages
-			--foundQueue->count;
-
-			return G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL;
-		}
-	}
-
-	return G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY;
 }
 

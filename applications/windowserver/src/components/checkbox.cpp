@@ -19,7 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <components/checkbox.hpp>
-#include <ghostuser/graphics/painter.hpp>
 #include <events/mouse_event.hpp>
 
 /**
@@ -46,6 +45,9 @@ void checkbox_t::layout() {
  *
  */
 void checkbox_t::paint() {
+
+	// TODO
+	/*
 	g_rectangle bounds = getBounds();
 	g_painter p(graphics);
 	p.setColor(pressed ? RGB(240, 240, 240) : (hovered ? RGB(245, 245, 255) : RGB(255, 255, 255)));
@@ -65,6 +67,7 @@ void checkbox_t::paint() {
 		polygon.translate(-1, 2);
 		p.fill(polygon);
 	}
+	*/
 }
 
 /**

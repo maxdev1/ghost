@@ -309,7 +309,7 @@ g_fs_transaction_id g_fs_delegate_ramdisk::request_open(g_thread* requester, g_f
 	if (handler->discovery_status == G_FS_DISCOVERY_SUCCESSFUL) {
 
 		if (ramdisk_node->type != G_RAMDISK_ENTRY_TYPE_FILE) {
-			g_log_warn("%! only files can be opened, given node was a %i", "filesystem", ramdisk_node->type);
+			g_log_warn("%! only files can be opened, given node ('%s') was a %i", "filesystem", ramdisk_node->name, ramdisk_node->type);
 			handler->status = G_FS_OPEN_ERROR;
 		} else {
 			// truncate file if requested
@@ -353,3 +353,24 @@ g_fs_transaction_id g_fs_delegate_ramdisk::request_open(g_thread* requester, g_f
 void g_fs_delegate_ramdisk::finish_open(g_thread* requester, g_fs_transaction_handler_open* handler) {
 
 }
+
+/**
+ *
+ */
+g_fs_transaction_id g_fs_delegate_ramdisk::request_close(g_thread* requester, g_fs_transaction_handler_close* handler, g_file_descriptor_content* fd,
+		g_fs_node* node) {
+
+	g_fs_transaction_id id = g_fs_transaction_store::next_transaction();
+	// nothing to do here
+	handler->status = G_FS_CLOSE_SUCCESSFUL;
+	g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
+	return id;
+}
+
+/**
+ *
+ */
+void g_fs_delegate_ramdisk::finish_close(g_thread* requester, g_fs_transaction_handler_close* handler) {
+
+}
+

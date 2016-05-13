@@ -63,7 +63,7 @@ g_ui_open_status g_ui::open() {
 	g_ui_event_dispatcher_tid = g_create_thread((void*) &event_dispatch_thread);
 
 	// send initialization request
-	uint32_t init_tx = g_ipc_next_topic();
+	g_message_transaction init_tx = g_get_message_tx_id();
 
 	g_ui_initialize_request request;
 	request.header.id = G_UI_PROTOCOL_INITIALIZATION;

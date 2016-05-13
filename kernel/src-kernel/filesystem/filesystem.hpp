@@ -150,7 +150,7 @@ public:
 	/**
 	 *
 	 */
-	static bool unmap_file(g_pid pid, g_fs_node* node, g_file_descriptor_content* fd, g_fs_close_status* out_status);
+	static bool unmap_file(g_pid pid, g_fs_node* node, g_file_descriptor_content* fd);
 
 	/**
 	 *

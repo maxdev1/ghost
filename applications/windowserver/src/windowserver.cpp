@@ -32,16 +32,17 @@
 #include <components/text/text_field.hpp>
 #include <components/plain_console_panel.hpp>
 #include <components/scrollpane.hpp>
+#include <components/scrollbar.hpp>
 #include <components/button.hpp>
 #include <layout/flow_layout_manager.hpp>
 #include <layout/grid_layout_manager.hpp>
-
-#include <ghostuser/graphics/images/png_image_format.hpp>
 
 #include <iostream>
 #include <stdio.h>
 
 #include <ghostuser/tasking/lock.hpp>
+
+#include <cairo/cairo.h>
 
 static windowserver_t* server;
 static g_lock dispatch_lock;
@@ -98,40 +99,15 @@ void windowserver_t::launch() {
 	background_t background(screenBounds);
 	screen->addChild(&background);
 
-	// create test components
-	// createTestComponents();
-
-	// scroll pane
-	window_t* testWindow = new window_t;
-	testWindow->setTitle("Test Window");
-	testWindow->setBounds(g_rectangle(10, 10, 500, 500));
-
-	panel_t* testPanelImage = new panel_t;
-	testPanelImage->setBounds(g_rectangle(20, 20, 500, 600));
-	testPanelImage->setBackground(RGB(0, 100, 100));
-
-	FILE* testImageFile = fopen("/salty.png", "r");
-	if (testImageFile != NULL) {
-		g_png_image_format format_png;
-		g_image* testImage = new g_image;
-		if (testImage->load(testImageFile, &format_png) == g_image_load_status::SUCCESSFUL) {
-			testPanelImage->setBackgroundImage(testImage);
-		} else {
-			klog("failed to load image of salty spitoon");
-		}
-		fclose(testImageFile);
-	}
-
-	testWindow->addChild(testPanelImage);
-	screen->addChild(testWindow);
-	testWindow->setVisible(true);
-
 	// start interface
 	registration_thread_t* registration_thread = new registration_thread_t();
 	registration_thread->start();
 
 	responder_thread = new command_message_responder_thread_t();
 	responder_thread->start();
+
+	// test components
+//	createTestComponents();
 
 	// execute the main loop
 	mainLoop(screenBounds);
@@ -143,7 +119,6 @@ void windowserver_t::launch() {
 void windowserver_t::mainLoop(g_rectangle screenBounds) {
 
 	g_graphics global;
-	g_painter globalPainter(global);
 	global.resize(screenBounds.width, screenBounds.height);
 
 	cursor_t::nextPosition = g_point(screenBounds.width / 2, screenBounds.height / 2);
@@ -155,7 +130,6 @@ void windowserver_t::mainLoop(g_rectangle screenBounds) {
 	uint64_t render_time;
 
 	while (true) {
-
 		render_start = g_millis();
 		event_processor->processMouseState();
 
@@ -182,13 +156,13 @@ void windowserver_t::mainLoop(g_rectangle screenBounds) {
 		screen->resolveRequirement(COMPONENT_REQUIREMENT_PAINT);
 
 		// blit the root component to the buffer
-		screen->blit(global.getBuffer(), screenBounds, screenBounds, g_point(0, 0));
+		screen->blit(&global, screenBounds, g_point(0, 0));
 #if BENCHMARKING
 		total_component_processing += (g_millis() - time_component_processing);
 #endif
 
 		// paint the cursor
-		cursor_t::paint(&globalPainter);
+		cursor_t::paint(&global);
 
 		// blit output
 		blit(&global);
@@ -196,10 +170,10 @@ void windowserver_t::mainLoop(g_rectangle screenBounds) {
 		// wait for next rendering
 		g_atomic_lock(&render_atom);
 
-		// limit to 60 fps
+		// limit to 80 fps
 		render_time = g_millis() - render_start;
-		if (render_time < (1000 / 60)) {
-			g_sleep((1000 / 60) - render_time);
+		if (render_time < (1000 / 80)) {
+			g_sleep((1000 / 80) - render_time);
 		}
 
 		// print output
@@ -219,7 +193,7 @@ void windowserver_t::blit(g_graphics* graphics) {
 
 	g_dimension resolution = video_output->getResolution();
 	g_rectangle screenBounds(0, 0, resolution.width, resolution.height);
-	g_color_argb* buffer = graphics->getBuffer();
+	g_color_argb* buffer = (g_color_argb*) cairo_image_surface_get_data(graphics->getSurface());
 
 	// get invalid output
 	g_rectangle invalid = screen->grabInvalid();
@@ -253,77 +227,60 @@ void windowserver_t::loadCursor() {
  */
 void windowserver_t::createTestComponents() {
 
-	// Window: layouted
-	window_t* layoutedWindow = new window_t;
-	layoutedWindow->setBounds(g_rectangle(10, 10, 300, 250));
-	layoutedWindow->setLayoutManager(new flow_layout_manager_t());
-	screen->addChild(layoutedWindow);
+	window_t* testWindow = new window_t;
+	testWindow->setTitle("Ghost Launchpad");
+	testWindow->setBounds(g_rectangle(10, 10, 300, 250));
 
-	button_t* button1 = new button_t();
-	button1->getLabel().setTitle("Button 1");
-	layoutedWindow->addChild(button1);
+	grid_layout_manager_t* layout = new grid_layout_manager_t(1, 0);
+	layout->setPadding(g_insets(10, 10, 10, 10));
+	testWindow->getPanel()->setLayoutManager(layout);
 
-	button_t* button2 = new button_t();
-	button2->getLabel().setTitle("Button 2");
-	layoutedWindow->addChild(button2);
+	label_t* infoLabel = new label_t();
+	infoLabel->setTitle("Hello user!");
+	testWindow->addChild(infoLabel);
 
-	label_t* label1 = new label_t();
-	label1->setTitle("I am a label");
-	layoutedWindow->addChild(label1);
+	label_t* infoLabel2 = new label_t();
+	infoLabel2->setTitle("This is a demo launchpad that let's you execute available GUI applications.");
+	testWindow->addChild(infoLabel2);
 
-	label_t* label2 = new label_t();
-	label2->setTitle("Ghost: WindowServer 2.0!");
-	layoutedWindow->addChild(label2);
+	button_t* openCalculatorButton = new button_t();
+	openCalculatorButton->getLabel().setTitle("Open calculator");
+	testWindow->addChild(openCalculatorButton);
 
-	label_t* label3 = new label_t();
-	label3->setTitle("This is an example text.");
-	layoutedWindow->addChild(label3);
+	/*
+	 scrollpane_t* scroller = new scrollpane_t;
+	 scroller->setBounds(g_rectangle(0, 0, 300, 200));
+	 testWindow->addChild(scroller);
 
-	checkbox_t* testCheckBox = new checkbox_t;
-	testCheckBox->setBounds(g_rectangle(10, 200, 100, 20));
-	testCheckBox->getLabel().setTitle("I'm a checkbox!");
-	layoutedWindow->addChild(testCheckBox);
+	 panel_t* contentPanel = new panel_t();
+	 contentPanel->setBounds(g_rectangle(0, 0, 400, 400));
+	 contentPanel->setBackground(RGB(200, 200, 200));
+	 contentPanel->setLayoutManager(new grid_layout_manager_t(1, 5));
+	 scroller->setViewPort(contentPanel);
 
-	layoutedWindow->setVisible(true);
+	 button_t* button1 = new button_t();
+	 button1->getLabel().setTitle("Button 1");
+	 contentPanel->addChild(button1);
 
-	// Window: console
-	window_t* consolePanelTestWindow = new window_t;
-	consolePanelTestWindow->setBounds(g_rectangle(330, 10, 300, 300));
-	consolePanelTestWindow->setLayoutManager(new grid_layout_manager_t(1, 1));
+	 label_t* label1 = new label_t();
+	 label1->setTitle("This is a panel with some scrollable content. The content is layouted using a grid layout.");
+	 contentPanel->addChild(label1);
 
-	plain_console_panel_t* console = new plain_console_panel_t;
-	consolePanelTestWindow->addChild(console);
+	 label_t* label2 = new label_t();
+	 label2->setTitle("The height of the content panel is used to specify the scrollable area.");
+	 contentPanel->addChild(label2);
 
-	std::string test = "This is a test text.\nI basically want to test how the console renders this. :)\n\nAnd it looooks....";
-	for (int i = 0; i < test.length(); i++) {
-		console->append(test[i]);
-	}
+	 button_t* button2 = new button_t();
+	 button2->getLabel().setTitle("Button 2");
+	 contentPanel->addChild(button2);
 
-	screen->addChild(consolePanelTestWindow);
+	 label_t* label3 = new label_t();
+	 label3->setTitle("Yey! Works great :)");
+	 contentPanel->addChild(label3);
+	 */
 
-	consolePanelTestWindow->setVisible(true);
-
-	// Window: GhostInfo
-	window_t* ghostInfoWindow = new window_t;
-	ghostInfoWindow->setBounds(g_rectangle(60, 140, 320, 200));
-
-	label_t* testLabel = new label_t;
-	testLabel->setBounds(g_rectangle(10, 10, 480, 40));
-	testLabel->setTitle("Welcome to Ghost!\nThis is a small UI demonstration.\nWritten by Max Schlüssel");
-	ghostInfoWindow->addChild(testLabel);
-
-	text_field_t* testField = new text_field_t;
-	testField->setBounds(g_rectangle(10, 60, 300, 30));
-	ghostInfoWindow->addChild(testField);
-
-	text_field_t* testField2 = new text_field_t;
-	testField2->setBounds(g_rectangle(10, 100, 300, 70));
-	ghostInfoWindow->addChild(testField2);
-
-	screen->addChild(ghostInfoWindow);
-	ghostInfoWindow->bringToFront();
-
-	ghostInfoWindow->setVisible(true);
+	screen->addChild(testWindow);
+	testWindow->setVisible(true);
 }
 
 /**

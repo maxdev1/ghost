@@ -23,21 +23,24 @@
 
 #include <components/component.hpp>
 #include <events/mouse_event.hpp>
-#include <ghostuser/graphics/painter.hpp>
 #include <ghostuser/graphics/metrics/point.hpp>
-#include <ghostuser/graphics/images/image.hpp>
 
 #include <string.h>
 #include <cstdio>
 #include <sstream>
 #include <map>
 #include <fstream>
+#include <cairo/cairo.h>
+
+#define FALLBACK_CURSOR_SIZE	10
+
 /**
  *
  */
 struct cursor_configuration {
-	g_image image;
+	cairo_surface_t* surface;
 	g_point hitpoint;
+	g_dimension size;
 };
 
 /**
@@ -57,7 +60,7 @@ public:
 	/**
 	 *
 	 */
-	static void paint(g_painter* global);
+	static void paint(g_graphics* global);
 
 	/**
 	 *

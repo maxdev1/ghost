@@ -21,14 +21,19 @@
 #ifndef __GHOST_LIBC_FENV__
 #define __GHOST_LIBC_FENV__
 
+// This header originates from the musl C library http://www.musl-libc.org/
+
 #include "ghost/common.h"
 
 __BEGIN_C
 
+// Definitions for x86_64 platform
 #if __x86_64__
-#error "architecture not supported"
+#error "not implemented for architecuter x86_64"
 
+// Definitions for x86 platform
 #elif __i386__
+
 #define FE_INVALID    1
 #define __FE_DENORM   2
 #define FE_DIVBYZERO  4
@@ -59,27 +64,71 @@ typedef struct {
 	unsigned int __data_offset;
 	unsigned short __data_selector;
 	unsigned short __unused5;
-}fenv_t;
+} fenv_t;
 
 #define FE_DFL_ENV      ((const fenv_t *) -1)
 
+// Other architectures are not supported
 #else
-#error "architecture not supported"
+#error "current architecture not supported"
 
 #endif
 
+/**
+ *
+ */
 int feclearexcept(int);
+
+/**
+ *
+ */
 int fegetexceptflag(fexcept_t *, int);
+
+/**
+ *
+ */
 int feraiseexcept(int);
+
+/**
+ *
+ */
 int fesetexceptflag(const fexcept_t *, int);
+
+/**
+ *
+ */
 int fetestexcept(int);
 
+
+/**
+ *
+ */
 int fegetround(void);
+
+/**
+ *
+ */
 int fesetround(int);
 
+
+/**
+ *
+ */
 int fegetenv(fenv_t *);
+
+/**
+ *
+ */
 int feholdexcept(fenv_t *);
+
+/**
+ *
+ */
 int fesetenv(const fenv_t *);
+
+/**
+ *
+ */
 int feupdateenv(const fenv_t *);
 
 __END_C

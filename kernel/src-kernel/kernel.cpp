@@ -185,8 +185,10 @@ void g_kernel::run_ap() {
 
 	ap_setup_lock.lock();
 	{
+		#if G_LOGGING_DEBUG
 		uint32_t core = g_system::currentProcessorId();
 		g_log_debug("%! core %i ready for initialization", "kernap", core);
+		#endif
 
 		// Debug ESP output
 		uint32_t esp;
@@ -321,7 +323,7 @@ void g_kernel::load_ramdisk(g_multiboot_module* ramdiskModule) {
 /**
  * 
  */
-void __attribute__((no_return)) g_kernel::panic(const char* msg, ...) {
+void g_kernel::panic(const char* msg, ...) {
 
 	g_logger::manualLock();
 

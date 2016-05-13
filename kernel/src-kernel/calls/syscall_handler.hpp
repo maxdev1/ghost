@@ -76,9 +76,6 @@ private:
 	static g_thread* write_tls_master_for_process(g_thread* state);
 	static g_thread* configure_process(g_thread* state);
 
-	static g_thread* send_msg(g_thread* state);
-	static g_thread* recv_msg(g_thread* state);
-	static g_thread* recv_topic_msg(g_thread* state);
 	static g_thread* send_message(g_thread* state);
 	static g_thread* receive_message(g_thread* state);
 

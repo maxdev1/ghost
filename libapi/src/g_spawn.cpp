@@ -54,7 +54,7 @@ g_spawn_status g_spawn_poi(const char* path, const char* args, const char* workd
 	}
 
 	// create transaction
-	g_message_transaction tx = g_ipc_next_topic();
+	g_message_transaction tx = g_get_message_tx_id();
 
 	// create request
 	size_t path_bytes = strlen(path) + 1;

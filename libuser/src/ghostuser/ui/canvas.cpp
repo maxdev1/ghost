@@ -55,7 +55,7 @@ bool g_canvas::retrieveServerManagedBuffer() {
 	}
 
 	// send initialization request
-	uint32_t tx = g_ipc_next_topic();
+	g_message_transaction tx = g_get_message_tx_id();
 
 	g_ui_component_get_canvas_buffer_request request;
 	request.header.id = G_UI_PROTOCOL_GET_CANVAS_BUFFER_REQUEST;
@@ -70,8 +70,11 @@ bool g_canvas::retrieveServerManagedBuffer() {
 		g_ui_component_get_canvas_buffer_response* response = (g_ui_component_get_canvas_buffer_response*) G_MESSAGE_CONTENT(buffer());
 
 		if (response->status == G_UI_PROTOCOL_SUCCESS) {
-			this->graphics = new g_graphics(false, (g_color_argb*) response->buffer, response->bufferWidth, response->bufferHeight);
-			return true;
+
+			klog("canvas is not implemented");
+			return false;
+			//this->graphics = new g_graphics(false, (g_color_argb*) response->buffer, response->bufferWidth, response->bufferHeight);
+			//return true;
 		}
 	}
 

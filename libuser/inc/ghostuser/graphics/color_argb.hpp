@@ -29,7 +29,14 @@
 #define ARGB_A_FROM(argb)	((argb >> 24) & 0xFF)
 #define ARGB_R_FROM(argb)	((argb >> 16) & 0xFF)
 #define ARGB_G_FROM(argb)	((argb >> 8) & 0xFF)
-#define ARGB_B_FROM(argb)	((argb) & 0xFF)
+#define ARGB_B_FROM(argb)	((argb >> 0) & 0xFF)
+
+#define ARGB_FA_FROM(argb)	((double) ((argb >> 24) & 0xFF) / 255)
+#define ARGB_FR_FROM(argb)	((double) ((argb >> 16) & 0xFF) / 255)
+#define ARGB_FG_FROM(argb)	((double) ((argb >> 8) & 0xFF) / 255)
+#define ARGB_FB_FROM(argb)	((double) ((argb >> 0) & 0xFF) / 255)
+
+#define G_COLOR_ARGB_TO_FPARAMS(argb)		ARGB_FR_FROM(argb), ARGB_FG_FROM(argb), ARGB_FB_FROM(argb), ARGB_FA_FROM(argb)
 
 typedef uint32_t g_color_argb;
 

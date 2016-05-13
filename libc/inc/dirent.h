@@ -26,18 +26,50 @@
 
 __BEGIN_C
 
+/**
+ * Directory entry types
+ */
+#define DT_UNKNOWN		0
+#define DT_REG			1
+#define DT_DIR			2
+#define DT_FIFO			3
+#define DT_SOCK			4
+#define DT_CHR			5
+#define DT_BLK			6
+#define DT_LNK			7
+
+/**
+ *
+ */
+typedef struct dirent dirent;
+
 struct dirent {
-	ino_t d_ino;
+	ino_t d_fileno;
 	size_t d_reclen;
 	size_t d_namlen;
 	dev_t d_dev;
 	unsigned char d_type;
-	char* d_name[];
+	char d_name[G_FILENAME_MAX];
 };
 
+/**
+ *
+ */
 int closedir(DIR* dir);
+
+/**
+ *
+ */
 DIR* opendir(const char* path);
+
+/**
+ *
+ */
 struct dirent* readdir(DIR* dir);
+
+/**
+ *
+ */
 void rewinddir(DIR* dir);
 
 __END_C

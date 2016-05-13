@@ -47,6 +47,7 @@ target_clean() {
 
 target_install() {
 	echo "installing to '$INSTALL_TARGET':"
+	mkdir -p $INSTALL_TARGET
 	cp $ARTIFACT $INSTALL_TARGET
 	failOnError
 	list $ARTIFACT

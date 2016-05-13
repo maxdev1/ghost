@@ -24,63 +24,6 @@
 #include "ghost/ipc.h"
 
 /**
- * @field taskId
- * 		the task id of the target task
- *
- * @field message
- * 		the message to send
- *
- * @field sendResult
- * 		the result of sending
- *
- * @security-level APPLICATION
- */
-typedef struct {
-	uint32_t taskId;
-	g_message* message;
-
-	g_message_send_status sendResult;
-}__attribute__((packed)) g_syscall_send_msg;
-
-/**
- * @field taskId
- * 		the task id which's messages should be received
- *
- * @field message
- * 		the message to write to
- *
- * @security-level APPLICATION
- */
-typedef struct {
-	uint32_t taskId;
-	g_message* message;
-	g_message_receive_mode mode;
-
-	g_message_receive_status receiveResult;
-}__attribute__((packed)) g_syscall_recv_msg;
-
-/**
- * @field taskId
- * 		the task id which's messages should be received
- *
- * @field message
- * 		the message to write to
- *
- * @field topic
- * 		the topic to read from
- *
- * @security-level APPLICATION
- */
-typedef struct {
-	uint32_t taskId;
-	g_message* message;
-	uint32_t topic;
-	g_message_receive_mode mode;
-
-	g_message_receive_status receiveResult;
-}__attribute__((packed)) g_syscall_recv_topic_msg;
-
-/**
  * @field receiver
  * 		task id of the target task
  *

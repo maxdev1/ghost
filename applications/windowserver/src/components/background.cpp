@@ -19,7 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <components/background.hpp>
-#include <ghostuser/graphics/painter.hpp>
 
 /**
  *
@@ -32,7 +31,10 @@ background_t::background_t(g_rectangle bounds) {
  *
  */
 void background_t::paint() {
-	g_painter p(graphics);
-	p.setColor(RGB(25, 128, 255));
-	p.fill(getBounds());
+
+	cairo_t* cr = graphics.getContext();
+	cairo_set_source_rgba(cr, 0.1, 0.5, 1, 1);
+	auto bounds = getBounds();
+	cairo_rectangle(cr, bounds.x, bounds.y, bounds.width, bounds.height);
+	cairo_fill(cr);
 }

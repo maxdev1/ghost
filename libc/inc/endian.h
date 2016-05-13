@@ -21,44 +21,66 @@
 #ifndef __GHOST_LIBC_ENDIAN__
 #define __GHOST_LIBC_ENDIAN__
 
+#include "ghost/common.h"
 #include <stdint.h>
 
 __BEGIN_C
 
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __PDP_ENDIAN 3412
-
+// when using GCC, define the order
 #if defined(__GNUC__) && defined(__BYTE_ORDER__)
-#define __BYTE_ORDER __BYTE_ORDER__
-
-#elif __x86_64__
-#define __BYTE_ORDER __LITTLE_ENDIAN
-
-#elif __i386__
-#define __BYTE_ORDER __LITTLE_ENDIAN
-
+#define __LITTLE_ENDIAN		__ORDER_LITTLE_ENDIAN__
+#define __BIG_ENDIAN		__ORDER_BIG_ENDIAN__
+#define __PDP_ENDIAN		__ORDER_PDP_ENDIAN__
 #else
-#error "architecture not supported"
+#define __LITTLE_ENDIAN		0x01020304
+#define __BIG_ENDIAN		0x04030201
+#define __PDP_ENDIAN		0x03040102
 #endif
 
-#define BIG_ENDIAN __BIG_ENDIAN
-#define LITTLE_ENDIAN __LITTLE_ENDIAN
-#define PDP_ENDIAN __PDP_ENDIAN
-#define BYTE_ORDER __BYTE_ORDER
+// define current byte order
+#if defined(__GNUC__) && defined(__BYTE_ORDER__)
+#define __BYTE_ORDER		__BYTE_ORDER__
 
+#elif __x86_64__
+#define __BYTE_ORDER		__LITTLE_ENDIAN
+
+#elif __i386__
+#define __BYTE_ORDER		__LITTLE_ENDIAN
+
+#else
+#error "unable to declare endianness for this platform"
+#endif
+
+// define other names
+#define BIG_ENDIAN			__BIG_ENDIAN
+#define LITTLE_ENDIAN		__LITTLE_ENDIAN
+#define PDP_ENDIAN			__PDP_ENDIAN
+#define BYTE_ORDER			__BYTE_ORDER
+
+/**
+ *
+ */
 static __inline uint16_t __bswap16(uint16_t __x) {
 	return __x << 8 | __x >> 8;
 }
 
+/**
+ *
+ */
 static __inline uint32_t __bswap32(uint32_t __x) {
 	return __x >> 24 | (__x >> 8 & 0xff00) | (__x << 8 & 0xff0000) | __x << 24;
 }
 
+/**
+ *
+ */
 static __inline uint64_t __bswap64(uint64_t __x) {
 	return __bswap32(__x) + 0ULL << 32 | __bswap32(__x >> 32);
 }
 
+/**
+ *
+ */
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #define htobe16(x) __bswap16(x)
 #define be16toh(x) __bswap16(x)

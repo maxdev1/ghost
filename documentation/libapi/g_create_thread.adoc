@@ -1,0 +1,25 @@
+
+[[g_create_thread]]
+g_create_thread
+~~~~~~~~~~~~~~~
+---------------------------------------------------------------------------------------------
+g_tid g_create_thread(void* function);
+g_tid g_create_thread_d(void* function, void* userData);
+g_tid g_create_thread_ds(void* function, void* userData, g_create_thread_status* out_status);
+---------------------------------------------------------------------------------------------
+
+Creates a thread. The thread starts execution in the given `function`. The
+`userData` pointer is passed as an argument when supplied. When given, the
+`out_status` is set to the status of thread creation. This can be one of the
+codes below.
+
+include::../common/security_level_notice_user.adoc[]
+
+Constants of g_create_thread_status
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[options="header"]
+|==========================================================
+| Identifier						| Description
+| G_CREATE_THREAD_STATUS_SUCCESSFUL	| Thread creation was successful
+| G_CREATE_THREAD_STATUS_FAILED		| Thread creation failed, see log
+|==========================================================

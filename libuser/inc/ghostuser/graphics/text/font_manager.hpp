@@ -23,7 +23,6 @@
 
 #include <ghostuser/graphics/text/font.hpp>
 #include <ghostuser/graphics/text/freetype.hpp>
-#include <ghostuser/graphics/text/glyph.hpp>
 #include <string>
 #include <map>
 

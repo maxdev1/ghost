@@ -381,12 +381,14 @@ G_SYSCALL_HANDLER(create_thread) {
 		thread->cpuState->eip = (uint32_t) data->initialEntry;
 		thread->threadEntry = data->userEntry;
 		thread->userData = data->userData;
-
-		data->processId = thread->id;
 		g_tasking::addTask(thread);
+
+		data->threadId = thread->id;
+		data->status = G_CREATE_THREAD_STATUS_SUCCESSFUL;
 	} else {
 		g_log_warn("%! (%i:%i) failed to spawn thread", "syscall", current_thread->process->main->id, current_thread->id);
-		data->processId = 0;
+		data->threadId = -1;
+		data->status = G_CREATE_THREAD_STATUS_FAILED;
 	}
 
 	// A process is forced to give away time when creating a thread

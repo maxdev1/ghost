@@ -62,8 +62,11 @@ void g_madt::parse(g_acpi_table_header* madtSdtHeader) {
 			g_ioapic_manager::create(entry->ioapicId, entry->ioapicAddress, entry->globalSystemInterruptBase);
 
 		} else if (entryHeader->deviceType == 2) { // Interrupt Source Override
+
+			#if	G_LOGGING_DEBUG
 			g_madt_interrupt_src_override_entry* entry = (g_madt_interrupt_src_override_entry*) entryHeader;
 			g_log_debug("%# int src override, irqSource: %i, globInt: %i, busSource: %i", entry->irqSource, entry->globalSystemInterrupt, entry->busSource);
+			#endif
 
 		} else {
 			g_log_debug("%# device of unknown type %i", entryHeader->deviceType);

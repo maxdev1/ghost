@@ -33,6 +33,7 @@
 #include "filesystem/fs_transaction_handler_discovery.hpp"
 #include "filesystem/fs_transaction_handler_get_length.hpp"
 #include "filesystem/fs_transaction_handler_open.hpp"
+#include "filesystem/fs_transaction_handler_close.hpp"
 #include "memory/contextual.hpp"
 
 /**
@@ -170,8 +171,9 @@ public:
 	virtual void finish_directory_refresh(g_thread* requester, g_fs_transaction_handler_directory_refresh* handler) = 0;
 
 	/**
-	 * Used to open a file. The given node can be two things here: if the node was found, it is the actual node.
-	 * Otherwise it is the last discovered parent node and the filename the name of the file that shall be opened.
+	 * Used to open a file. The given node can be two things here: If the node was found (meaning the file
+	 * already exists) it is the node itself. Otherwise it is the last discovered parent node and the filename
+	 * is the name of the file that shall be created.
 	 */
 	virtual g_fs_transaction_id request_open(g_thread* requester, g_fs_node* node, char* filename, int32_t flags, int32_t mode,
 			g_fs_transaction_handler_open* handler) = 0;
@@ -180,6 +182,16 @@ public:
 	 *
 	 */
 	virtual void finish_open(g_thread* requester, g_fs_transaction_handler_open* handler) = 0;
+
+	/**
+	 * Used to close a file.
+	 */
+	virtual g_fs_transaction_id request_close(g_thread* requester, g_fs_transaction_handler_close* handler, g_file_descriptor_content* fd, g_fs_node* node) = 0;
+
+	/**
+	 *
+	 */
+	virtual void finish_close(g_thread* requester, g_fs_transaction_handler_close* handler) = 0;
 
 };
 

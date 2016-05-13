@@ -53,6 +53,7 @@ typedef uint64_t g_fs_phys_id; // a physical filesystem node identifier
 #define G_FILE_FLAG_MODE_TRUNCATE			(1 << 4)	// truncate mode
 #define G_FILE_FLAG_MODE_APPEND				(1 << 5)	// append mode
 #define G_FILE_FLAG_MODE_CREATE				(1 << 6)	// create mode
+#define G_FILE_FLAG_MODE_EXCLUSIVE			(1 << 7)	// exclusive mode
 // currently, 16 bits are reserved for flags. adjust mode mask if necessary
 
 /**
@@ -130,6 +131,7 @@ static const g_fs_tasked_delegate_request_type G_FS_TASKED_DELEGATE_REQUEST_TYPE
 static const g_fs_tasked_delegate_request_type G_FS_TASKED_DELEGATE_REQUEST_TYPE_GET_LENGTH = 3;
 static const g_fs_tasked_delegate_request_type G_FS_TASKED_DELEGATE_REQUEST_TYPE_READ_DIRECTORY = 4;
 static const g_fs_tasked_delegate_request_type G_FS_TASKED_DELEGATE_REQUEST_TYPE_OPEN = 5;
+static const g_fs_tasked_delegate_request_type G_FS_TASKED_DELEGATE_REQUEST_TYPE_CLOSE = 6;
 
 /**
  * Status codes for the {g_fs_open} system call
@@ -165,7 +167,8 @@ static const g_fs_write_status G_FS_WRITE_ERROR = 4;
 typedef int g_fs_close_status;
 static const g_fs_close_status G_FS_CLOSE_SUCCESSFUL = 0;
 static const g_fs_close_status G_FS_CLOSE_INVALID_FD = 1;
-static const g_fs_close_status G_FS_CLOSE_ERROR = 2;
+static const g_fs_close_status G_FS_CLOSE_BUSY = 2;
+static const g_fs_close_status G_FS_CLOSE_ERROR = 3;
 
 /**
  * Status codes for the {g_fs_seek} system call
@@ -217,6 +220,14 @@ static const g_set_working_directory_status G_SET_WORKING_DIRECTORY_NOT_FOUND = 
 static const g_set_working_directory_status G_SET_WORKING_DIRECTORY_ERROR = 3;
 
 /**
+ * Status codes for the {g_get_working_directory} system call
+ */
+typedef int g_get_working_directory_status;
+static const g_get_working_directory_status G_GET_WORKING_DIRECTORY_SUCCESSFUL = 0;
+static const g_get_working_directory_status G_GET_WORKING_DIRECTORY_SIZE_EXCEEDED = 1;
+static const g_get_working_directory_status G_GET_WORKING_DIRECTORY_ERROR = 2;
+
+/**
  * Status codes & structures for directory reading
  */
 typedef int g_fs_open_directory_status;
@@ -247,7 +258,7 @@ typedef struct {
 } g_fs_directory_iterator;
 
 /**
- * Transaction storage structures (may not be bigger than one page).
+ * Transaction storage structures (NOTE limited to 1 page!)
  */
 typedef struct {
 	g_fs_phys_id parent_phys_fs_id;
@@ -300,6 +311,12 @@ typedef struct {
 
 	g_fs_open_status result_status;
 } g_fs_tasked_delegate_transaction_storage_open;
+
+typedef struct {
+	g_fs_phys_id phys_fs_id;
+
+	g_fs_close_status result_status;
+} g_fs_tasked_delegate_transaction_storage_close;
 
 __END_C
 

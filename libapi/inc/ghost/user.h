@@ -168,15 +168,12 @@ g_fd g_open_fms(const char* path, int32_t flags, int32_t mode, g_fs_open_status*
  *
  * @param fd
  * 		the file descriptor to close
- * @param-opt out_status
- * 		filled with one of the {g_fs_read_status} codes
  *
- * @return whether closing was successful
+ * @return one of the {g_fs_close_status} codes
  *
  * @security-level APPLICATION
  */
-int g_close(g_fd fd);
-int g_close_s(g_fd fd, g_fs_close_status* out_status);
+g_fs_close_status g_close(g_fd fd);
 
 /**
  * Retrieves the length of a file in bytes.
@@ -302,11 +299,17 @@ g_set_working_directory_status g_set_working_directory_p(const char* path, g_pro
  * Retrieves the working directory for the current process.
  *
  * @param path
- * 		buffer of at least {G_PATH_MAX} bytes size
+ * 		buffer of at least <maxlen> or {G_PATH_MAX} bytes size
+ *
+ * @param maxlen
+ * 		length of the buffer in bytes
+ *
+ * @return whether the action was successful
  *
  * @security-level APPLICATION
  */
-void g_get_working_directory(char* buffer);
+g_get_working_directory_status g_get_working_directory(char* buffer);
+g_get_working_directory_status g_get_working_directory_l(char* buffer, size_t maxlen);
 
 /**
  * Retrieves the directory of the executable when available, otherwise an empty
@@ -359,16 +362,16 @@ int32_t g_write(g_fd fd, const void* buffer, uint64_t length);
 int32_t g_write_s(g_fd fd, const void* buffer, uint64_t length, g_fs_write_status* out_status);
 
 /**
- * Returns the next topic identifier that can be used for messaging.
- * When sending a message, a topic can be added so that one can wait
- * for an answer with the same topic. This method always returns a
- * new topic id each time it is called and is thread-safe.
+ * Returns the next transaction id that can be used for messaging.
+ * When sending a message, a transaction can be added so that one can wait
+ * for an answer with the same transaction. This method always returns a
+ * new transaction id each time it is called and is thread-safe.
  *
- * @return a new topic id
+ * @return a new transaction id
  *
  * @security-level APPLICATION
  */
-uint32_t g_ipc_next_topic();
+g_message_transaction g_get_message_tx_id();
 
 /**
  * Allocates a memory region with the size of at least the given
@@ -400,7 +403,7 @@ void* g_alloc_mem(int32_t size);
  *
  * @security-level APPLICATION
  */
-void* g_share_mem(void* memory, int32_t size, uint32_t pid);
+void* g_share_mem(void* memory, int32_t size, g_pid pid);
 
 /**
  * Yields, causing a switch to the next process.
@@ -470,71 +473,74 @@ void g_exit(int status);
  *
  * @security-level APPLICATION
  */
-uint32_t g_create_thread(void* function);
-uint32_t g_create_thread_d(void* function, void* userData);
+g_tid g_create_thread(void* function);
+g_tid g_create_thread_d(void* function, void* userData);
+g_tid g_create_thread_ds(void* function, void* userData, g_create_thread_status* out_status);
 
 /**
- * Sends a message to a task.
+ * Sends a message to the given task. This means that <len> bytes from the
+ * buffer <buf> are copied to a message that is then sent to the <target> task.
+ * The message may be no longer than {G_MESSAGE_MAXIMUM_LENGTH}.
  *
- * @param tid
- * 		the task id
- * @param message
- * 		the message
+ * The mode specifies how the function shall block:
+ * - {G_MESSAGE_SEND_MODE_BLOCKING} the executing task will bock if the target tasks
+ * 		message queue is full
+ * - {G_MESSAGE_SEND_MODE_NON_BLOCKING} the function will return {G_MESSAGE_SEND_STATUS_QUEUE_FULL}
+ * 		if the target tasks message queue is full
  *
- * @return one of the {g_message_send_status} codes
- *
- * @security-level APPLICATION
- */
-g_message_send_status g_send_msg(uint32_t tid, g_message* message);
-
-/**
- * Receives a message for a task by taking any message from the
- * tasks message queue. The task id may either be the id
- * of the executing thread or the id of its parent process.
- *
- * @param tid
- * 		the task id
- * @param message
- * 		the message
+ * @param target
+ * 		id of the target task
+ * @param buf
+ * 		message content buffer
+ * @param len
+ * 		number of bytes to copy from the buffer
  * @param-opt mode
- * 		one of the {g_message_receive_mode} codes
+ * 		determines how the function blocks when given, default is {G_MESSAGE_SEND_MODE_BLOCKING}
+ * @param-opt tx
+ * 		transaction id
  *
- * @return one of the {g_message_receive_status} codes
- *
- * @security-level APPLICATION
- */
-g_message_receive_status g_recv_msg(uint32_t tid, g_message* message);
-g_message_receive_status g_recv_msg_m(uint32_t tid, g_message* message, g_message_receive_mode mode);
-
-/**
- * Receives a message for a task by taking a message from the
- * queue that has the the given topic set. The task id may either
- * be the id of the executing thread or the id of its parent process.
- *
- * @param tid
- * 		the task id
- * @param topic
- * 		the topic
- * @param message
- * 		the message
- * @param-opt mode
- * 		one of the {g_message_receive_mode} codes
- *
- * @return one of the {g_message_receive_status} codes
+ * @return one of the <g_message_send_status> codes
  *
  * @security-level APPLICATION
  */
-g_message_receive_status g_recv_topic_msg(uint32_t tid, uint32_t topic, g_message* message);
-g_message_receive_status g_recv_topic_msg_m(uint32_t tid, uint32_t topic, g_message* message, g_message_receive_mode mode);
-
-/**
- * TODO variable sized messaging
- */
-g_message_send_status g_send_message(g_tid target, void* message, size_t max);
-g_message_send_status g_send_message_m(g_tid target, void* message, size_t max, g_message_send_mode mode);
+g_message_send_status g_send_message(g_tid target, void* buf, size_t len);
+g_message_send_status g_send_message_m(g_tid target, void* buf, size_t len, g_message_send_mode mode);
 g_message_send_status g_send_message_t(g_tid tid, void* buf, size_t len, g_message_transaction tx);
 g_message_send_status g_send_message_tm(g_tid tid, void* buf, size_t len, g_message_transaction tx, g_message_send_mode mode);
 
+/**
+ * Receives a message. At maximum <max> bytes will be attempted to be copied to
+ * the buffer <buf>. Note that when receiving a message, a buffer with a size of
+ * at least the size of {g_message_header} plus the size of the sent message
+ * must be used.
+ *
+ * After successful completion, the buffer will contain the message header followed
+ * by the content of the message.
+ * - to access the header, use the buffer pointer: ((g_message_header*) buf)
+ * - to access the content, use the helper macro:  G_MESSAGE_CONTENT(buf)
+ *
+ * The mode specifies how the function shall block:
+ * - {G_MESSAGE_RECEIVE_MODE_BLOCKING} the executing task will block if no messages
+ * 		are available
+ * - {G_MESSAGE_RECEIVE_MODE_NON_BLOCKING} the function will return {G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY}
+ * 		if the executing tasks message queue is empty
+ *
+ * When a transaction ID is given, only messages that were sent with the same
+ * transaction ID will be received.
+ *
+ * @param buf
+ * 		output buffer
+ * @param max
+ * 		maximum number of bytes to copy to the buffer
+ * @param-opt mode
+ * 		determines how the function blocks when given, default is {G_MESSAGE_RECEIVE_MODE_BLOCKING}
+ * @param-opt tx
+ * 		transaction id
+ * @param break_condition
+ * 		can be used to break the waiting process by setting its value to 1
+ *
+ * @security-level APPLICATION
+ */
 g_message_receive_status g_receive_message(void* buf, size_t max);
 g_message_receive_status g_receive_message_m(void* buf, size_t max, g_message_receive_mode mode);
 g_message_receive_status g_receive_message_t(void* buf, size_t max, g_message_transaction tx);
@@ -966,7 +972,7 @@ void g_cancel_process_creation(g_process_creation_identifier process);
  *
  * @security-level KERNEL
  */
-uint32_t g_get_created_process_id(g_process_creation_identifier process);
+g_pid g_get_created_process_id(g_process_creation_identifier process);
 
 /**
  * Creates a mountpoint and registers the current thread as its file system delegate.
@@ -1090,8 +1096,7 @@ g_raise_signal_status g_raise_signal(g_pid process, int signal);
  *
  * @return one of the {g_kernquery_status} codes
  */
-g_kernquery_status g_kernquery(uint16_t command, const uint8_t* query,
-		uint8_t* outbuffer);
+g_kernquery_status g_kernquery(uint16_t command, const uint8_t* query, uint8_t* outbuffer);
 
 __END_C
 

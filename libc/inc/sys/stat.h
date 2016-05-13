@@ -45,6 +45,10 @@ typedef uint32_t mode_t;
 #define S_IRUSR 0400
 #define S_IRWXU 0700
 
+// TODO
+#define S_ISREG(mode)	1
+#define S_ISDIR(mode)	0
+
 struct stat {
 	dev_t st_dev;
 	ino_t st_ino;
@@ -64,6 +68,12 @@ struct stat {
  * TODO
  */
 int stat(const char *pathname, struct stat *buf);
+int fstat(int fd, struct stat* buf);
+int lstat(const char *pathname, struct stat *buf);
+int chmod(const char *pathname, mode_t mode);
+int fchmod(int fd, mode_t mode);
+mode_t umask(mode_t mask);
+int mkdir(const char *path, mode_t mode);
 
 __END_C
 

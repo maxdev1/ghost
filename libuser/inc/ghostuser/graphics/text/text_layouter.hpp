@@ -22,9 +22,9 @@
 #define GHOSTLIBRARY_GRAPHICS_TEXT_TEXTLAYOUTER
 
 #include <ghostuser/graphics/metrics/point.hpp>
+#include <ghostuser/graphics/metrics/dimension.hpp>
 #include <ghostuser/graphics/metrics/rectangle.hpp>
 #include <ghostuser/graphics/text/font.hpp>
-#include <ghostuser/graphics/text/glyph.hpp>
 #include <ghostuser/graphics/text/text_alignment.hpp>
 #include <vector>
 
@@ -33,12 +33,17 @@
  */
 struct g_positioned_glyph {
 	g_positioned_glyph() :
-			glyph(0) {
+			line(-1), glyph(0), glyph_count(0) {
 	}
 
 	int line;
 	g_point position;
-	g_glyph* glyph;
+
+	g_dimension size;
+	g_point advance;
+
+	cairo_glyph_t* glyph;
+	int glyph_count;
 };
 
 /**
@@ -52,6 +57,11 @@ struct g_layouted_text {
 	// Bounds of the entire layouted text
 	g_rectangle textBounds;
 
+	// Buffers
+	cairo_glyph_t* glyph_buffer = nullptr;
+	int glyph_count;
+	cairo_text_cluster_t* cluster_buffer = nullptr;
+	int cluster_count;
 };
 
 /**
@@ -74,7 +84,18 @@ public:
 	/**
 	 *
 	 */
-	void layout(std::string text, g_font* font, int size, g_rectangle bounds, g_text_alignment alignment, g_layouted_text& out, bool breakOnOverflow = true);
+	g_layouted_text* initializeBuffer();
+
+	/**
+	 *
+	 */
+	void layout(cairo_t* cr, const char* text, g_font* font, int size, g_rectangle bounds, g_text_alignment alignment, g_layouted_text* layout,
+			bool breakOnOverflow = true);
+
+	/**
+	 *
+	 */
+	void destroyLayout(g_layouted_text* layout);
 
 };
 

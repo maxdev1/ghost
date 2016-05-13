@@ -19,6 +19,9 @@ with CFLAGS					"-std=c++11 -I$INC -I$INC_KERNEL"
 echo "target: $TARGET"
 requireTool changes
 
+# always create output folder
+mkdir -p $OBJ
+
 
 target_clean() {
 	echo "cleaning:"

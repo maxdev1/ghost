@@ -28,6 +28,9 @@
 
 __BEGIN_C
 
+extern char **environ;
+extern char *optarg;
+
 // constants for use with <access>
 #define	F_OK		0	// file existence
 #define	X_OK		1	// execute or search permission
@@ -65,19 +68,33 @@ int close(int filedes);
 void* sbrk(intptr_t increment);
 
 /**
- * TODO
+ * POSIX wrapper for <g_get_tid>
  */
-int isatty(int fd);
+pid_t getpid();
 
 /**
- * TODO
+ * POSIX wrapper for <g_get_pid>
  */
-int access(const char* pathname, int mode);
+pid_t getppid();
 
 /**
  * POSIX wrapper for <g_sleep>, but with seconds instead of milliseconds
  */
 unsigned sleep(unsigned seconds);
+
+/**
+ *
+ */
+char* getcwd(char* buf, size_t size);
+
+/**
+ * TODO
+ */
+int isatty(int fd);
+int access(const char* pathname, int mode);
+int fcntl(int fildes, int cmd, ...);
+int rmdir(const char* path);
+int symlink(const char* path1, const char* path2);
 
 __END_C
 

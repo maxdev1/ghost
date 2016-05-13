@@ -19,19 +19,16 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <components/panel.hpp>
-#include <ghostuser/graphics/painter.hpp>
 
 /**
  *
  */
 void panel_t::paint() {
-	g_painter p(graphics);
-	p.setColor(background);
-	p.fill(g_rectangle(0, 0, getBounds().width, getBounds().height));
 
-	if (backgroundImage) {
-		p.drawImage(0, 0, backgroundImage);
-	}
+	auto cr = graphics.getContext();
+	cairo_set_source_rgba(cr, ARGB_FR_FROM(background), ARGB_FG_FROM(background), ARGB_FB_FROM(background), ARGB_FA_FROM(background));
+	cairo_rectangle(cr, 0, 0, getBounds().width, getBounds().height);
+	cairo_fill(cr);
 }
 
 /**
@@ -47,19 +44,4 @@ void panel_t::setBackground(g_color_argb color) {
  */
 g_color_argb panel_t::getBackground() {
 	return background;
-}
-
-/**
- *
- */
-void panel_t::setBackgroundImage(g_image* image) {
-	backgroundImage = image;
-	markFor(COMPONENT_REQUIREMENT_PAINT);
-}
-
-/**
- *
- */
-g_image* panel_t::getBackgroundImage() {
-	return backgroundImage;
 }

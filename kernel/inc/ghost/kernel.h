@@ -96,6 +96,11 @@ static const g_thread_priority G_THREAD_PRIORITY_IDLE = 1;
  */
 #define G_THREAD_USER_STACK_RESERVED_VIRTUAL_PAGES		16
 
+/**
+ * Pipes
+ */
+#define G_PIPE_DEFAULT_CAPACITY		0x400
+
 __END_C
 
 #endif

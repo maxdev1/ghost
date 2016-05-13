@@ -22,40 +22,13 @@
 #include <string.h>
 #include <malloc.h>
 
-#define DEBUG_DIRTY false
-
 /**
  *
  */
-g_graphics::g_graphics(bool transparentBackground, g_color_argb* externalBuffer, uint16_t width, uint16_t height) :
-		transparentBackground(transparentBackground), buffer(externalBuffer), width(width), height(height) {
+g_graphics::g_graphics(uint16_t width, uint16_t height) :
+		width(width), height(height) {
 
-	hasExternalBuffer = (externalBuffer != nullptr);
-	resize(0, 0);
-}
-
-/**
- *
- */
-g_color_argb g_graphics::add(g_color_argb a, g_color_argb b) {
-
-	uint8_t firstA = (a >> 24) & 0xFF;
-	uint8_t firstR = (a >> 16) & 0xFF;
-	uint8_t firstG = (a >> 8) & 0xFF;
-	uint8_t firstB = a & 0xFF;
-
-	uint8_t secondA = (b >> 24) & 0xFF;
-	uint8_t secondR = (b >> 16) & 0xFF;
-	uint8_t secondG = (b >> 8) & 0xFF;
-	uint8_t secondB = b & 0xFF;
-
-	float secondStrength = ((float) secondA) / 255.0f;
-	uint8_t resultA = (uint8_t) (firstA + (secondA * (255 - firstA) / 255));
-	uint8_t resultR = (uint8_t) (secondStrength * secondR + (1.0f - secondStrength) * (float) firstR);
-	uint8_t resultG = (uint8_t) (secondStrength * secondG + (1.0f - secondStrength) * (float) firstG);
-	uint8_t resultB = (uint8_t) (secondStrength * secondB + (1.0f - secondStrength) * (float) firstB);
-
-	return (resultA << 24) | (resultR << 16) | (resultG << 8) | (resultB);
+	resize(width, height);
 }
 
 /**
@@ -63,94 +36,35 @@ g_color_argb g_graphics::add(g_color_argb a, g_color_argb b) {
  */
 void g_graphics::resize(int newWidth, int newHeight) {
 
-	// when there is an external buffer, don't do this
-	if (hasExternalBuffer) {
-		return;
-	}
-
 	if (newWidth < 0 || newHeight < 0) {
 		return;
 	}
 
-	// create new buffer
-	g_color_argb* newBuffer = new g_color_argb[newWidth * newHeight];
-
-	if (buffer) {
-		delete buffer;
+	// release old buffers
+	if (surface) {
+		cairo_surface_destroy(surface);
+	}
+	if (context) {
+		cairo_destroy(context);
 	}
 
 	// set new values
 	width = newWidth;
 	height = newHeight;
-	buffer = newBuffer;
+	surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
+	context = cairo_create(surface);
 }
 
 /**
  *
  */
-void g_graphics::clear() {
-	for (int p = 0; p < width * height; p++) {
-		if (transparentBackground) {
-			buffer[p] = 0;
-		} else {
-			buffer[p] = RGB(255, 255, 255);
-		}
-	}
-}
+void g_graphics::blitTo(g_graphics* graphics, g_rectangle absoluteClip, g_point position) {
 
-/**
- *
- */
-void g_graphics::paintPixel(int x, int y, g_color_argb argb) {
-
-	if (x >= 0 && y >= 0 && x < width && y < height) {
-		buffer[y * width + x] = add(buffer[y * width + x], argb);
-	}
-}
-
-/**
- *
- */
-void g_graphics::putPixel(int x, int y, g_color_argb argb) {
-	if (x >= 0 && y >= 0 && x < width && y < height) {
-		buffer[y * width + x] = argb;
-	}
-}
-
-/**
- *
- */
-g_color_argb g_graphics::getPixel(int x, int y) {
-
-	if (x >= 0 && y >= 0 && x < width && y < height) {
-		return buffer[y * width + x];
-	}
-	return ARGB(0, 0, 0, 0);
-}
-
-/**
- *
- */
-void g_graphics::blitTo(g_color_argb* out, const g_rectangle& outBounds, const g_rectangle& absoluteClip, const g_point& offset) {
-
-	int absX;
-	int absY;
-
-	for (int y = 0; y < height; y++) {
-		absY = (y + offset.y);
-
-		for (int x = 0; x < width; x++) {
-			absX = (x + offset.x);
-
-			if (absX >= absoluteClip.x && absY >= absoluteClip.y && absX < absoluteClip.x + absoluteClip.width && absY < absoluteClip.y + absoluteClip.height) {
-				uint32_t absOff = absY * outBounds.width + absX;
-
-				if (transparentBackground) {
-					out[absOff] = add(out[absOff], buffer[y * width + x]);
-				} else {
-					out[absOff] = buffer[y * width + x];
-				}
-			}
-		}
-	}
+	auto cr = graphics->context;
+	cairo_save(cr);
+	cairo_set_source_surface(cr, this->surface, position.x, position.y);
+	cairo_rectangle(cr, absoluteClip.x, absoluteClip.y, absoluteClip.width, absoluteClip.height);
+	cairo_clip(cr);
+	cairo_paint(cr);
+	cairo_restore(cr);
 }

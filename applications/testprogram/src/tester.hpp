@@ -20,7 +20,6 @@
 
 #define TEST_MESSAGING		0
 #define TEST_UI				1
-#define TEST_OLD_MESSAGING	2
 
 #define SELECTED_TEST		TEST_UI
 

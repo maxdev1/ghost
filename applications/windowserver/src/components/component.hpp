@@ -184,14 +184,12 @@ public:
 
 	/**
 	 * This method is used to blit the component and all of its children
-	 * to a big buffer, the out buffer
+	 * to the out buffer
 	 *
-	 * @param out		the output buffer
-	 * @param outBounds	bounds of the output buffer
 	 * @param absClip	absolute bounds that may not be exceeded
 	 * @param position	absolute screen position to blit to
 	 */
-	void blit(g_color_argb* out, g_rectangle& outBounds, g_rectangle absClip, g_point position);
+	void blit(g_graphics* out, g_rectangle absClip, g_point position);
 
 	/**
 	 * Adds the given component as a child to this component
@@ -342,6 +340,11 @@ public:
 	 *
 	 */
 	bool getListener(g_ui_component_event_type eventType, event_listener_info_t& out);
+
+	/**
+	 *
+	 */
+	void clearSurface();
 
 };
 

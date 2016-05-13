@@ -1,0 +1,78 @@
+# port.sh Manual
+:toc: left
+
+include::../common/homelink.adoc[]
+
+:numbered:
+
+Basics
+------
+`/patches/ports/port.sh` is a script that helps building libraries and software
+for the system more easily.
+
+To install one of the ports in the local port directory, use:
+
+------------------------
+sh port.sh libpng/1.6.18
+------------------------
+
+This will automatically download the source archive from the Ghost repository
+(https://ghostkernel.org/repository/), apply the available patches and build
+the library into the sysroot.
+
+
+Port structure
+--------------
+The script only builds a small framework that allows it to be more flexible for
+a variety of builds.
+
+A port resides in a folder with the name of the library or application, then
+a folder with its version. Each port _must_ have a `package.sh` file and may
+optionally have a `patch.diff`.
+
+[source,folder structure]
+-----
+libpng/
+	1.6.18/
+		package.sh
+		patch.diff
+-----
+
+
+Creating a port
+---------------
+
+The `package.sh` is the "description" for the port. It is first used to
+determine where the source archive for the port shall be downloaded from,
+what the archives file name is and where to unpack it. The second thing that
+it defines must be the two functions `port_unpack` and `port_install`. The
+following is an example taken from the libpng port:
+
+[source,bash script]
+-----
+REMOTE_ARCHIVE="https://ghostkernel.org/repository/libpng/libpng-1.6.18.tar.gz"
+UNPACKED_DIR=libpng-1.6.18
+ARCHIVE=libpng-1.6.18.tar.gz
+
+port_unpack() {
+	tar -xf $ARCHIVE
+}
+
+port_install() {
+	../$UNPACKED_DIR/configure --host=$HOST --prefix=$PREFIX
+	make
+	make DESTDIR=$SYSROOT install
+}
+-----
+	
+When this port is installed, the script will perform a series of steps to
+install the port.
+
+. Create an empty output directory within the `build` folder
+. Download the archive file into that directory
+. Call `port_unpack` to unpack the archive
+. Apply the `patch.diff` if supplied
+. Call `port_install` to perform the installation
+
+The variable `$SYSROOT` is given in the context of `port_install` and shall
+be used to install the port to the system root.

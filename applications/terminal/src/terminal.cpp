@@ -196,12 +196,11 @@ void terminal_t::run(create_terminal_info_t* inf) {
 
 		std::stringstream msg1;
 		msg1 << std::endl;
-		msg1 << " Copyright (c) 2012-2016 Max Schl" << OEMUS_CHAR_UE << "ssel"
+		msg1 << " Copyright (c) 2012-2016 Max Schl" << OEMUS_CHAR_UE << "ssel <lokoxe@gmail.com>"
 				<< std::endl;
 		screen->write(msg1.str(), SC_COLOR(SC_BLACK, SC_LGRAY));
 		std::stringstream msg2;
-		msg2 << " Enter '" << BUILTIN_COMMAND_HELP
-				<< "' for a brief introduction.";
+		msg2 << " Enter 'read README' for a brief introduction.";
 		msg2 << std::endl << std::endl;
 		screen->write(msg2.str());
 
@@ -379,7 +378,7 @@ bool terminal_t::run_term_command(std::string command, g_fd* term_in,
 			g_pipe_s(&err_pipe_w, &err_pipe_r, &pipe_stat);
 			if (pipe_stat != G_FS_PIPE_SUCCESSFUL) {
 				screen->write("unable to create process err pipe",
-						SC_ERROR_COLOR);
+				SC_ERROR_COLOR);
 				return false;
 			}
 			in_stdio[2] = err_pipe_w;
@@ -421,23 +420,22 @@ bool terminal_t::run_term_command(std::string command, g_fd* term_in,
 bool terminal_t::handle_builtin(std::string command) {
 
 	if (command == BUILTIN_COMMAND_HELP) {
-		screen->write(" help               prints this help screen\n");
-		screen->write(
-				" ls                 lists all files in the current directory\n");
-		screen->write(" cd <path>          switches to a directory\n");
-		screen->write(" clear              clears the screen\n");
-		screen->write(" keyboard set <layout> switches the keyboard layout\n");
-		screen->write(" keyboard info      prints the keyboard layout\n");
-		screen->write(" read               prints file contents\n");
-		screen->write(
-				" sleep <ms>         sleeps for the given number of milliseconds\n");
-		screen->write(" background <file>  runs a program in the background\n");
-		screen->write(" terminal           opens a new terminal\n");
-		screen->write(
-				" terminal <num>     switches to the terminal with the given number\n");
-		screen->write(" terminals          lists all terminals\n");
+		screen->write(" The terminal has the following built-in functions:\n");
 		screen->write("\n");
-		screen->write(" ctrl + tab         switches to the next terminal\n");
+		screen->write(" help                  prints this help screen\n");
+		screen->write(" ls                    lists all files in the current directory\n");
+		screen->write(" cd <path>             switches to a directory\n");
+		screen->write(" clear                 clears the screen\n");
+		screen->write(" sleep <ms>            sleeps for the given number of milliseconds\n");
+		screen->write(" background <file>     runs a program in the background\n");
+		screen->write("\n");
+		screen->write(" terminal, ctrl+space  open a new terminal\n");
+		screen->write(" terminal <num>        switches to the terminal with the given number\n");
+		screen->write(" terminals             lists all terminals\n");
+		screen->write(" ctrl+tab              switches to the next terminal\n");
+		screen->write("\n");
+		screen->write(" keyboard set <layout> switches the keyboard layout\n");
+		screen->write(" keyboard info         prints the keyboard layout\n");
 		screen->write("\n");
 		return true;
 
@@ -515,7 +513,8 @@ bool terminal_t::handle_builtin(std::string command) {
 		} else if (stat == G_SET_WORKING_DIRECTORY_NOT_FOUND) {
 			screen->write("directory not found\n", SC_ERROR_COLOR);
 		} else if (stat == G_SET_WORKING_DIRECTORY_ERROR) {
-			screen->write("unable to switch to the selected directory\n", SC_ERROR_COLOR);
+			screen->write("unable to switch to the selected directory\n",
+					SC_ERROR_COLOR);
 		}
 
 		read_working_directory();
@@ -604,20 +603,21 @@ void terminal_t::standard_out_thread(standard_out_thread_data_t* data) {
 		int r = g_read_s(data->stdout_read_end, buf, buflen, &stat);
 
 		if (stat == G_FS_READ_SUCCESSFUL) {
-			std::stringstream o;
+			uint8_t color = (data->err ? SC_ERROR_COLOR : SC_DEFAULT_COLOR);
 			for (int i = 0; i < r; i++) {
 				char c = buf[i];
 				if (c == '\r') {
 					continue;
 				} else if (c == '\t') {
-					o << "    ";
+					data->screen->writeChar(' ', color);
+					data->screen->writeChar(' ', color);
+					data->screen->writeChar(' ', color);
+					data->screen->writeChar(' ', color);
 				} else {
-					o << c;
+					data->screen->writeChar(c, color);
 				}
 			}
 
-			uint8_t color = (data->err ? SC_ERROR_COLOR : SC_DEFAULT_COLOR);
-			data->screen->write(o.str(), color);
 			data->screen->updateCursor();
 		} else {
 			break;
@@ -711,7 +711,7 @@ bool terminal_t::find_executable(std::string path, std::string& out) {
 	}
 
 	// if not ending with ".bin", append it and search again
-	if(path.length() < 4 || path.substr(path.length() - 4) != ".bin") {
+	if (path.length() < 4 || path.substr(path.length() - 4) != ".bin") {
 		return find_executable(path + ".bin", out);
 	}
 
@@ -733,8 +733,8 @@ bool terminal_t::execute(std::string shortpath, std::string args,
 
 	// spawn binary
 	g_spawn_status status = g_spawn_poi(realpath.c_str(), args.c_str(),
-			working_directory.c_str(),
-			G_SECURITY_LEVEL_APPLICATION, out_pid, out_stdio, in_stdio);
+			working_directory.c_str(), G_SECURITY_LEVEL_APPLICATION, out_pid,
+			out_stdio, in_stdio);
 
 	if (status == G_SPAWN_STATUS_SUCCESSFUL) {
 		return true;

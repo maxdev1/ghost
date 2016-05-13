@@ -41,18 +41,26 @@ void threadsetuproutine() {
 }
 
 // redirect
-uint32_t g_create_thread(void* function) {
+g_tid g_create_thread(void* function) {
 	return g_create_thread_d(function, 0);
+}
+
+// redirect
+g_tid g_create_thread_d(void* function, void* userData) {
+	return g_create_thread_ds(function, userData, 0);
 }
 
 /**
  *
  */
-uint32_t g_create_thread_d(void* function, void* userData) {
+g_tid g_create_thread_ds(void* function, void* userData, g_create_thread_status* out_status) {
 	g_syscall_create_thread data;
 	data.initialEntry = (void*) threadsetuproutine;
 	data.userEntry = function;
 	data.userData = userData;
 	g_syscall(G_SYSCALL_CREATE_THREAD, (uint32_t) &data);
-	return data.processId;
+	if (out_status) {
+		*out_status = data.status;
+	}
+	return data.threadId;
 }

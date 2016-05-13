@@ -1,0 +1,74 @@
+# Memory layout documentation
+:toc: left
+:last-update-label!:
+
+include::../common/homelink.adoc[]
+
+About
+-----
+This section describes the memory layouting and management.
+
+
+Address spaces
+--------------
+Each <<threads#Processes,process>> has its own address space. All threads of
+the same process share the same address space and therefore have access to the
+same regions of memory.
+
+
+[[LowerMemory]]
+Lower memory
+------------
+
+[[Userspace]]
+User space
+----------
+The user space is the area of virtual address space that can possibly be
+accessed by a user space process. 
+
+The layout of this part of the virtual address space is as follows.
+
+[options="header"]
+|===============================================================================
+| Adress range				| Description
+| 0x00100000 - 0x80000000	| The program executable is loaded in this area.
+	Right after the last used page of the process image, the process heap starts
+	and may possibly expand up to the end of this area.
+| 0x80000000 - 0xA0000000	| _Currently unused_
+| 0xA0000000 - 0xC0000000	| "Virtual ranges" area. This area is handled
+	by a kind of "range allocator" that manages the address ranges within. These
+	address ranges are used for various things: the user space stacks,
+	allocating shared memory, thread-local-storage and more.
+|===============================================================================
+
+[[Kernelspace]]
+Kernel space
+------------
+
+
+
+[[Stacks]]
+Stacks
+------
+Each thread has two stacks: a user space stack and a kernel space stack.
+
+Kernel space stack
+~~~~~~~~~~~~~~~~~
+The kernel space stack is the one that the kernel operates on during system
+calls and where the state of the thread is stored during interruptions. It is
+statically assigned to 1 page and mapped into <<Kernelspace,kernel space>>.
+It is not accessible by the userspace code.
+
+User space stack
+~~~~~~~~~~~~~~~~
+The user space stack is the one that the application operates on. On thread
+creation, a virtual address range of 16 pages is reserved and the last page
+is mapped as a physical page. The stack starts at the end of this page.
+
+image::../diagrams/Stack-Initialization.png[]
+
+This allows the stack to grow dynamically without reserving more physical
+memory than necessary. When the stack overflows, a page fault is triggered
+and the kernel handles the situation by inserting a new physical page.
+
+image::../diagrams/Stack-Overflow.png[]

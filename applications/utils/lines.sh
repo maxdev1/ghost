@@ -4,7 +4,7 @@
 # Define build setup
 SRC=src-lines
 OBJ=obj-lines
-ARTIFACT_NAME=lines
+ARTIFACT_NAME=lines.bin
 CFLAGS="-std=c++11 -I$SRC"
 LDFLAGS=""
 

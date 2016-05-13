@@ -201,8 +201,7 @@ void g_filesystem::process_closed(g_pid pid) {
 
 		auto node_entry = nodes->get(content->node_id);
 		if (node_entry) {
-			g_fs_close_status stat;
-			unmap_file(pid, node_entry->value, content, &stat);
+			g_fs_close_status stat = unmap_file(pid, node_entry->value, content);
 
 			if (stat == G_FS_CLOSE_SUCCESSFUL) {
 				g_log_debug("%! successfully closed fd %i when exiting process %i", "filesystem", content->id, pid);
@@ -252,23 +251,20 @@ g_fd g_filesystem::map_file(g_pid pid, g_fs_node* node, int32_t open_flags, g_fd
 /**
  *
  */
-bool g_filesystem::unmap_file(g_pid pid, g_fs_node* node, g_file_descriptor_content* fd, g_fs_close_status* out_status) {
+bool g_filesystem::unmap_file(g_pid pid, g_fs_node* node, g_file_descriptor_content* fd) {
 
 	if (node->type == G_FS_NODE_TYPE_FILE) {
 		g_file_descriptors::unmap(pid, fd->id);
-		*out_status = G_FS_CLOSE_SUCCESSFUL;
-		return 0;
+		return true;
 
 	} else if (node->type == G_FS_NODE_TYPE_PIPE) {
 		g_pipes::remove_reference(node->phys_fs_id, pid);
 		g_file_descriptors::unmap(pid, fd->id);
-		*out_status = G_FS_CLOSE_SUCCESSFUL;
-		return 0;
+		return true;
 	}
 
 	g_log_warn("%! tried to close a node of non-file type %i", "filesystem", node->type);
-	*out_status = G_FS_CLOSE_ERROR;
-	return -1;
+	return false;
 }
 
 /**
@@ -425,8 +421,7 @@ g_fd g_filesystem::clonefd(g_fd source_fd, g_pid source_pid, g_fd target_fd, g_p
 
 		// close old file descriptor if available
 		if (target_node) {
-			g_fs_close_status close_status;
-			unmap_file(source_pid, target_node, target_fd_content, &close_status);
+			unmap_file(source_pid, target_node, target_fd_content);
 		}
 	}
 

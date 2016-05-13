@@ -1,0 +1,51 @@
+# libc Documentation
+:toc: left
+
+include::../common/homelink.adoc[]
+
+:numbered:
+
+Implementation status
+---------------------
+This section lists the implementation status for the parts of the C library.
+A few headers (floating point arithmetic related) and the implementation of
+the libm parts are taken from the musl C library (http://www.musl-libc.org/).
+
+[options="header"]
+|===============================================================================
+| Header			| Definitions					| Implementation
+| `assert.h`		| ✓								| ✓
+| `complex.h`		| ✓								| _not implemented_
+| `ctype.h`			| ✓								| ✓
+| `dir.h`			| _not defined_					| ✓
+| `dirent.h`		| ✓								| _not implemented_
+| `dlfcn.h`			| _not defined_					| ✓
+| `endian.h`		| ✓								| ✓
+| `errno.h`			| ✓								| ✓
+| `fcntl.h`			| _partially defined_			| _partially implemented_
+| `fenv.h`			| ✓								| _not implemented_
+| `file.h`			| ✓								| ✓
+| `float.h`			| ✓								| _not implemented_
+| `inttypes.h`		| ✓								| _not implemented_
+| `libgen.h`		| _partially defined_			| ✓
+| `limits.h`		| ✓								| ✓
+| `locale.h`		| ✓								| _not implemented_
+| `malloc.h`		| ✓								| ✓
+| `math.h`			| ✓								| ✓ (musl)
+| `sched.h`			| _partially defined_			| ✓
+| `setjmp.h`		| ✓								| ✓
+| `signal.h`		| ✓								| ✓
+| `stdalign.h`		| ✓								| ✓
+| `stdbool.h`		| ✓								| ✓
+| `stdint.h`		| ✓								| ✓
+| `stdio.h`			| ✓								| _partially implemented_
+| `stdlib.h`		| ✓								| _partially implemented_
+| `string.h`		| ✓								| _partially implemented_
+| `strings.h`		| _partially defined_			| ✓
+| `tgmath.h`		| ✓								| ✓
+| `time.h`			| ✓								| _not implemented_
+| `unistd.h`		| _partially defined_			| _partially implemented_
+| `wchar.h`			| ✓								| _not implemented_
+| `wctype.h`		| ✓								| _not implemented_
+|===============================================================================
+

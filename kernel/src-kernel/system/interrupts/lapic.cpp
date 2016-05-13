@@ -41,9 +41,9 @@ static g_virtual_address virtualBase;
 void g_lapic::initialize() {
 
 	// Read version
+	#if G_LOGGING_DEBUG
 	uint32_t apicVersionRegVal = read(APIC_REGISTER_VERSION);
 
-#if G_LOGGING_DEBUG
 	uint32_t localId = read_id();
 	uint8_t apicVersion = apicVersionRegVal & 0xFF;
 	uint16_t maxLvtIndex = (apicVersionRegVal >> 16) & 0xFF;
@@ -51,7 +51,7 @@ void g_lapic::initialize() {
 			apicVersion,
 			(apicVersion < 0x10 ? "82489DX discrete" : "integrated"),
 			maxLvtIndex);
-#endif
+	#endif
 
 	// Initialize APIC to well-known state
 	write(APIC_REGISTER_DEST_FORMAT, 0xFFFFFFFF);

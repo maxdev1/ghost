@@ -39,6 +39,13 @@ void g_processor::cpuid(uint32_t code, uint32_t* outA, uint32_t* outB, uint32_t*
 /**
  *
  */
+void g_processor::enableSSE() {
+	_enableSSE();
+}
+
+/**
+ *
+ */
 bool g_processor::hasFeature(g_cpuid_standard_edx_feature feature) {
 	uint32_t eax;
 	uint32_t ebx;
@@ -91,21 +98,20 @@ void g_processor::printInformation() {
 	uint32_t edx;
 	cpuid(1, &eax, &ebx, &ecx, &edx);
 
-	g_log_debugn("%! advanced features:", "cpu");
+	g_log_infon("%! cpu features:", "cpu");
 	if (edx & (int64_t) g_cpuid_standard_edx_feature::PAE) {
-		g_log_debugn(" PAE");
+		g_log_infon(" PAE");
 	}
 	if (edx & (int64_t) g_cpuid_standard_edx_feature::MMX) {
-		g_log_debugn(" MMX");
+		g_log_infon(" MMX");
 	}
 	if (edx & (int64_t) g_cpuid_standard_edx_feature::SSE) {
-		g_log_debugn(" SSE");
+		g_log_infon(" SSE");
 	}
 	if (edx & (int64_t) g_cpuid_standard_edx_feature::SSE2) {
-		g_log_debugn(" SSE2");
+		g_log_infon(" SSE2");
 	}
-
-	g_log_debug("");
+	g_log_info("");
 }
 
 /**

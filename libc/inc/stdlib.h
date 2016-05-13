@@ -362,6 +362,25 @@ size_t mbstowcs(wchar_t* out, const char* s, size_t n);
  */
 size_t wcstombs(char* out, const wchar_t* s, size_t n);
 
+/**
+ * Creates a temporary filename, usign the <templ> as a part for templating.
+ * The last six characters of this template must be 'X'.
+ *
+ * POSIX.1-2001
+ *
+ * @param templ
+ * 		file name template to use
+ *
+ * @return the pointer to <templ>
+ */
+char* mktemp(char* templ);
+
+// TODO
+/**
+ * POSIX, sets the environment variable <key>.
+ */
+int setenv(const char *key, const char *val, int overwrite);
+
 __END_C
 
 #endif

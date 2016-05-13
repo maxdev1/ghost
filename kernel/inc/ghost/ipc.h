@@ -27,29 +27,7 @@
 
 __BEGIN_C
 
-/**
- * Structure of a message.
- *
- * @field type			the type of message
- * @field sender		id of the sender task, automatically set by the kernel
- * @field topic			the topic/transaction id, used for topic-message-receiving
- * @field parameterX	a parameter
- */
-typedef struct {
-	uint32_t type;
-	uint32_t sender;
-	uint32_t topic;
-
-	uint32_t parameterA;
-	uint32_t parameterB;
-	uint32_t parameterC;
-	uint32_t parameterD;
-}__attribute__((packed)) g_message;
-
-// creates an empty message
-#define g_message_empty(name)	g_message name = { .type = 0, .sender = 0, .topic = 0, .parameterA = 0, .parameterB = 0, .parameterC = 0, .parameterD = 0 };
-
-// message topic
+// message transactions
 typedef uint32_t g_message_transaction;
 #define G_MESSAGE_TRANSACTION_NONE			0
 #define G_MESSAGE_TRANSACTION_FIRST			1

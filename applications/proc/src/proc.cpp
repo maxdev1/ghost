@@ -23,7 +23,7 @@
 #include <sstream>
 
 #define MAJOR	0
-#define MINOR	1
+#define MINOR	2
 
 #include "list/list.hpp"
 
@@ -63,15 +63,14 @@ int main(int argc, char** argv) {
 			println("");
 			println("The following commands are available:");
 			println("");
-			println("\tlist\t\tlists basic information for all PCI devices");
+			println("\tlist\t\tlists information about the running tasks");
+			println("\tkill <id>\tkills the task with the given id");
 			println("");
 
 		} else {
 			fprintf(stderr, "unknown command: %s\n", command);
 		}
 	} else {
-		fprintf(stderr, "usage:\n\t%s <command>\n", argv[0]);
-		fprintf(stderr, "Type \"%s --help\" for a list of commands.\n", argv[0]);
-		fprintf(stderr, "\n");
+		return proc_list(argc, argv);
 	}
 }

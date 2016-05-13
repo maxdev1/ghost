@@ -69,7 +69,7 @@ remove() {
 #
 failOnError() {
 	if [[ $? != 0 ]]; then
-		echo "build failed"
+		echo "Build failed"
 		exit 1
 	fi	
 }

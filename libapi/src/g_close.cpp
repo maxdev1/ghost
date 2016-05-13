@@ -20,21 +20,13 @@
 
 #include "ghost.h"
 
-// redirect
-int g_close(g_fd file) {
-	return g_close_s(file, 0);
-}
-
 /**
  *
  */
-int g_close_s(g_fd file, g_fs_close_status* out_status) {
+g_fs_close_status g_close(g_fd file) {
 
 	g_syscall_fs_close data;
 	data.fd = file;
 	g_syscall(G_SYSCALL_FS_CLOSE, (uint32_t) &data);
-	if (out_status) {
-		*out_status = data.status;
-	}
-	return data.result;
+	return data.status;
 }

@@ -23,8 +23,16 @@
 /**
  *
  */
-void g_get_working_directory(char* buffer) {
+g_get_working_directory_status g_get_working_directory(char* buffer) {
+	return g_get_working_directory_l(buffer, G_PATH_MAX);
+}
+/**
+ *
+ */
+g_get_working_directory_status g_get_working_directory_l(char* buffer, size_t maxlen) {
 	g_syscall_fs_get_working_directory data;
 	data.buffer = buffer;
+	data.maxlen = maxlen;
 	g_syscall(G_SYSCALL_GET_WORKING_DIRECTORY, (uint32_t) &data);
+	return data.result;
 }

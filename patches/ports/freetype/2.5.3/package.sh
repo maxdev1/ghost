@@ -1,4 +1,4 @@
-REMOTE_ARCHIVE="http://ghostkernel.org/repository/freetype/freetype-2.5.3.tar.gz"
+REMOTE_ARCHIVE="https://ghostkernel.org/repository/freetype/freetype-2.5.3.tar.gz"
 UNPACKED_DIR=freetype-2.5.3
 ARCHIVE=freetype-2.5.3.tar.gz
 

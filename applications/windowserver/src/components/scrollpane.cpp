@@ -19,40 +19,86 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <components/scrollpane.hpp>
-#include <ghostuser/graphics/painter.hpp>
 #include <events/mouse_event.hpp>
 #include <stdio.h>
 
 /**
  *
  */
-bool scrollpane_t::handle(event_t& event) {
+void scrollpane_t::setViewPort(component_t* component) {
+	viewPort = component;
+	addChild(component);
 
-	mouse_event_t* me = dynamic_cast<mouse_event_t*>(&event);
-	if (me) {
-		if (me->type == MOUSE_EVENT_DRAG) {
-			scroll_point.x = -me->position.x;
-			scroll_point.y = -me->position.y;
+	addChild(&horizontalScrollbar);
+	horizontalScrollbar.setScrollHandler(this);
 
-			g_dimension preferred = content_panel.getPreferredSize();
-			content_panel.setBounds(g_rectangle(scroll_point.x, scroll_point.y, preferred.width, preferred.height));
+	addChild(&verticalScrollbar);
+	verticalScrollbar.setScrollHandler(this);
+}
+
+/**
+ *
+ */
+void scrollpane_t::layout() {
+	auto bounds = getBounds();
+
+	verticalScrollbar.setModelArea(bounds.height, viewPort->getBounds().height);
+	verticalScrollbar.setBounds(g_rectangle(bounds.width - 15, 0, 15, bounds.height - 15));
+
+	horizontalScrollbar.setModelArea(bounds.width, viewPort->getBounds().width);
+	horizontalScrollbar.setBounds(g_rectangle(0, bounds.height - 15, bounds.width - 15, 15));
+}
+
+/**
+ *
+ */
+void scrollpane_t::setPosition(g_point& newPosition) {
+
+	if (viewPort != nullptr) {
+		scrollPosition = newPosition;
+
+		g_rectangle viewPortSize = viewPort->getBounds();
+		g_rectangle bounds = getBounds();
+
+		// limit if too small
+		if (scrollPosition.x > 0) {
+			scrollPosition.x = 0;
+
+		} else if (viewPortSize.width < bounds.width) {
+			scrollPosition.x = 0;
+
+		} else if (scrollPosition.x + viewPortSize.width < bounds.width) {
+			scrollPosition.x = bounds.width - viewPortSize.width;
 		}
-		return true;
+
+		if (scrollPosition.y > 0) {
+			scrollPosition.y = 0;
+
+		} else if (viewPortSize.height < bounds.height) {
+			scrollPosition.y = 0;
+
+		} else if (scrollPosition.y + viewPortSize.height < bounds.height) {
+			scrollPosition.y = bounds.height - viewPortSize.height;
+		}
+
+		viewPort->setBounds(g_rectangle(scrollPosition.x, scrollPosition.y, viewPortSize.width, viewPortSize.height));
 	}
 
-	return false;
 }
 
 /**
  *
  */
-void scrollpane_t::handleBoundChange(g_rectangle oldBounds) {
-	content_panel.setBounds(getBounds());
-}
+void scrollpane_t::handleScroll(scrollbar_t* bar) {
 
-/**
- *
- */
-void scrollpane_t::addChild(component_t* comp) {
-	content_panel.addChild(comp);
+	if (bar == &verticalScrollbar) {
+		g_point pos = scrollPosition;
+		pos.y = -verticalScrollbar.getModelPosition();
+		setPosition(pos);
+
+	} else if (bar == &horizontalScrollbar) {
+		g_point pos = scrollPosition;
+		pos.x = -horizontalScrollbar.getModelPosition();
+		setPosition(pos);
+	}
 }

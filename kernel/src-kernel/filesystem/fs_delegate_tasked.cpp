@@ -106,11 +106,15 @@ g_fs_transaction_id g_fs_delegate_tasked::request_discovery(g_thread* requester,
 
 	} else {
 		// send message to the task delegate
-		g_message_empty(request);
-		request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_DISCOVER;
-		request.parameterA = id;
+		/*
+		 TODO
+		 g_message_empty(request);
+		 request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_DISCOVER;
+		 request.parameterA = id;
 
-		int send_status = g_message_controller::send(delegate_thread->id, &request);
+		 int send_status = g_message_controller::send(delegate_thread->id, &request);
+		 */
+		g_message_send_status send_status = G_MESSAGE_SEND_STATUS_FAILED; // TODO
 
 		if (send_status == G_MESSAGE_SEND_STATUS_SUCCESSFUL) {
 			// task was requested, wait for answer
@@ -205,11 +209,15 @@ g_fs_transaction_id g_fs_delegate_tasked::request_read(g_thread* requester, g_fs
 	g_address_space::switch_to_space(current);
 
 	// send message to the task delegate
-	g_message_empty(request);
-	request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_READ;
-	request.parameterA = id;
+	/* TODO
+	 g_message_empty(request);
+	 request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_READ;
+	 request.parameterA = id;
 
-	g_message_send_status send_status = g_message_controller::send(delegate_thread->id, &request);
+	 g_message_send_status send_status = g_message_controller::send(delegate_thread->id, &request);
+	 */
+	g_message_send_status send_status = G_MESSAGE_SEND_STATUS_FAILED; // TODO
+
 	if (send_status == G_MESSAGE_SEND_STATUS_SUCCESSFUL) {
 		// set transaction status
 		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_WAITING);
@@ -316,11 +324,15 @@ g_fs_transaction_id g_fs_delegate_tasked::request_write(g_thread* requester, g_f
 	g_address_space::switch_to_space(current);
 
 	// send message to the task delegate
-	g_message_empty(request);
-	request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_WRITE;
-	request.parameterA = id;
+	/* TODO
+	 g_message_empty(request);
+	 request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_WRITE;
+	 request.parameterA = id;
 
-	g_message_send_status send_status = g_message_controller::send(delegate_thread->id, &request);
+	 g_message_send_status send_status = g_message_controller::send(delegate_thread->id, &request);
+	 */
+	g_message_send_status send_status = G_MESSAGE_SEND_STATUS_FAILED; // TODO
+
 	if (send_status == G_MESSAGE_SEND_STATUS_SUCCESSFUL) {
 
 		// set transaction status
@@ -393,11 +405,14 @@ g_fs_transaction_id g_fs_delegate_tasked::request_get_length(g_thread* requester
 	g_address_space::switch_to_space(current);
 
 	// update the status / notify delegate thread
-	g_message_empty(request);
-	request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_GET_LENGTH;
-	request.parameterA = id;
+	/* TODO
+	 g_message_empty (request);
+	 request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_GET_LENGTH;
+	 request.parameterA = id;
 
-	int send_status = g_message_controller::send(delegate_thread->id, &request);
+	 int send_status = g_message_controller::send(delegate_thread->id, &request);
+	 */
+	g_message_send_status send_status = G_MESSAGE_SEND_STATUS_FAILED; // TODO
 
 	if (send_status == G_MESSAGE_SEND_STATUS_SUCCESSFUL) {
 		// task was requested, wait for answer
@@ -461,11 +476,14 @@ g_fs_transaction_id g_fs_delegate_tasked::request_directory_refresh(g_thread* re
 	g_address_space::switch_to_space(current);
 
 	// update the status / notify delegate thread
-	g_message_empty(request);
-	request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_READ_DIRECTORY;
-	request.parameterA = id;
+	/*
+	 g_message_empty (request);
+	 request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_READ_DIRECTORY;
+	 request.parameterA = id;
 
-	int send_status = g_message_controller::send(delegate_thread->id, &request);
+	 int send_status = g_message_controller::send(delegate_thread->id, &request);
+	 */
+	g_message_send_status send_status = G_MESSAGE_SEND_STATUS_FAILED; // TODO
 
 	if (send_status == G_MESSAGE_SEND_STATUS_SUCCESSFUL) {
 		// task was requested, wait for answer
@@ -543,18 +561,22 @@ g_fs_transaction_id g_fs_delegate_tasked::request_open(g_thread* requester, g_fs
 
 	g_address_space::switch_to_space(current);
 
-	if(!configuration_fine) {
+	if (!configuration_fine) {
 		handler->status = G_FS_OPEN_ERROR;
 		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
 		return id;
 	}
 
 	// update the status / notify delegate thread
-	g_message_empty(request);
-	request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_OPEN;
-	request.parameterA = id;
+	/* TODO
+	 g_message_empty (request);
+	 request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_OPEN;
+	 request.parameterA = id;
 
-	int send_status = g_message_controller::send(delegate_thread->id, &request);
+	 int send_status = g_message_controller::send(delegate_thread->id, &request);
+	 */
+	g_message_send_status send_status = G_MESSAGE_SEND_STATUS_FAILED; // TODO
+
 	if (send_status == G_MESSAGE_SEND_STATUS_SUCCESSFUL) {
 		// task was requested, wait for answer
 		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_WAITING);
@@ -594,3 +616,70 @@ void g_fs_delegate_tasked::finish_open(g_thread* requester, g_fs_transaction_han
 
 	g_address_space::switch_to_space(current);
 }
+
+/**
+ *
+ */
+g_fs_transaction_id g_fs_delegate_tasked::request_close(g_thread* requester, g_fs_transaction_handler_close* handler, g_file_descriptor_content* fd,
+		g_fs_node* node) {
+
+	g_fs_transaction_id id = g_fs_transaction_store::next_transaction();
+
+	// fill transaction storage
+	g_page_directory current = g_address_space::get_current_space();
+	g_address_space::switch_to_space(delegate_thread->process->pageDirectory);
+
+	g_fs_tasked_delegate_transaction_storage_close* disc = (g_fs_tasked_delegate_transaction_storage_close*) transaction_storage();
+	disc->phys_fs_id = node->phys_fs_id;
+
+	g_address_space::switch_to_space(current);
+
+	// update the status / notify delegate thread
+	/* TODO
+	 g_message_empty (request);
+	 request.type = G_FS_TASKED_DELEGATE_REQUEST_TYPE_CLOSE;
+	 request.parameterA = id;
+
+	 int send_status = g_message_controller::send(delegate_thread->id, &request);
+	 */
+	g_message_send_status send_status = G_MESSAGE_SEND_STATUS_FAILED; // TODO
+
+	if (send_status == G_MESSAGE_SEND_STATUS_SUCCESSFUL) {
+		// task was requested, wait for answer
+		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_WAITING);
+
+	} else if (send_status == G_MESSAGE_SEND_STATUS_QUEUE_FULL) {
+		g_log_warn("%! message queue was full when trying to request close on fs delegate", "filesystem");
+		handler->status = G_FS_CLOSE_BUSY;
+		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
+
+	} else if (send_status == G_MESSAGE_SEND_STATUS_FAILED) {
+		g_log_warn("%! message sending failed when trying to request close on fs delegate", "filesystem");
+		handler->status = G_FS_CLOSE_ERROR;
+		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
+	}
+
+	return id;
+}
+
+/**
+ *
+ */
+void g_fs_delegate_tasked::finish_close(g_thread* requester, g_fs_transaction_handler_close* handler) {
+
+	g_page_directory current = g_address_space::get_current_space();
+
+	// copy values from transaction storage to local stack
+	g_address_space::switch_to_space(delegate_thread->process->pageDirectory);
+
+	g_fs_tasked_delegate_transaction_storage_close* storage = (g_fs_tasked_delegate_transaction_storage_close*) transaction_storage();
+	g_fs_directory_refresh_status status = storage->result_status;
+
+	// copy values to the handler
+	g_address_space::switch_to_space(requester->process->pageDirectory);
+	handler->status = status;
+
+	// switch back
+	g_address_space::switch_to_space(current);
+}
+

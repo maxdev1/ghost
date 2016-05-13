@@ -23,7 +23,6 @@
 #include <ghostuser/io/keyboard.hpp>
 #include <ghostuser/io/ps2.hpp>
 #include <ghostuser/io/ps2_driver_constants.hpp>
-#include <ghostuser/tasking/ipc.hpp>
 #include <ghostuser/utils/logger.hpp>
 #include <ghostuser/utils/property_file_parser.hpp>
 #include <ghostuser/utils/utils.hpp>

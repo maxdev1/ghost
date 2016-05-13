@@ -20,7 +20,6 @@
 
 #include <ghost.h>
 #include <ghostuser/graphics/vbe.hpp>
-#include <ghostuser/tasking/ipc.hpp>
 #include <ghostuser/utils/logger.hpp>
 
 /**
@@ -33,28 +32,29 @@ bool g_vbe::setMode(uint16_t width, uint16_t height, uint8_t bpp, g_vbe_mode_inf
 	if (driver_tid == -1) {
 		return false;
 	}
-	uint32_t transaction = g_ipc_next_topic();
+	g_message_transaction transaction = g_get_message_tx_id();
 
 	// create mode-setting request
-	g_message_empty(request);
-	request.topic = transaction;
-	request.type = G_VBE_DRIVER_COMMAND_SET_MODE;
-	request.parameterA = (((uint16_t) width) << 16) | (((uint16_t) height) & 0xFFFF);
-	request.parameterB = bpp;
-	g_send_msg(driver_tid, &request);
+	g_vbe_set_mode_request request;
+	request.header.command = G_VBE_COMMAND_SET_MODE;
+	request.width = width;
+	request.height = height;
+	request.bpp = bpp;
+	g_send_message_t(driver_tid, &request, sizeof(g_vbe_set_mode_request), transaction);
 
 	// receive response
-	g_message_empty(response);
-	g_recv_topic_msg(g_get_tid(), transaction, &response);
+	size_t buflen = sizeof(g_message_header) + sizeof(g_vbe_set_mode_response);
+	uint8_t buf[buflen];
+	auto status = g_receive_message_t(buf, buflen, transaction);
+	g_vbe_set_mode_response* response = (g_vbe_set_mode_response*) G_MESSAGE_CONTENT(buf);
 
-	if (response.type == G_VBE_DRIVER_COMMAND_SET_MODE) {
-		out.lfb = response.parameterA;
-		out.resX = response.parameterB >> 16;
-		out.resY = response.parameterB & 0xFFFF;
-		out.bpp = response.parameterC;
-		out.bpsl = response.parameterD;
-		return true;
+	if (status == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
+		if (response->status == G_VBE_SET_MODE_STATUS_SUCCESS) {
+			out = response->mode_info;
+			return true;
+		}
 	}
+
 	return false;
 }
 

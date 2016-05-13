@@ -24,8 +24,7 @@
 #include <events/focus_event.hpp>
 #include <events/key_event.hpp>
 #include <events/mouse_event.hpp>
-#include <Fonts.hpp>
-
+#include <fontloader.hpp>
 #include <ghostuser/graphics/text/font_manager.hpp>
 #include <ghostuser/ui/properties.hpp>
 #include <ghostuser/utils/logger.hpp>
@@ -35,14 +34,12 @@
  *
  */
 text_field_t::text_field_t() :
-		cursor(0), scrollX(0), secure(false), focused(false), visualStatus(text_field_visual_status_t::NORMAL), fontSize(10), textColor(RGB(0, 0, 0)), insets(
-				g_insets(5, 5, 5, 5)) {
-	// Dummy values, if someone forgets to properly setFont
-	heightOfCapitalX = 10;
-	lineHeight = 10;
-	cursorMoveStrategy = default_caret_move_strategy_t::getInstance();
+		cursor(0), marker(0), scrollX(0), secure(false), focused(false), visualStatus(text_field_visual_status_t::NORMAL), fontSize(14), textColor(
+				RGB(0, 0, 0)), insets(g_insets(5, 5, 5, 5)) {
+	caretMoveStrategy = default_caret_move_strategy_t::getInstance();
 
-	setFont(Fonts::getDefault());
+	viewModel = g_text_layouter::getInstance()->initializeBuffer();
+	setFont(font_loader_t::getDefault());
 }
 
 /**
@@ -64,18 +61,20 @@ void text_field_t::setText(std::string newText) {
  *
  */
 void text_field_t::update() {
+
 	// Perform layouting
 	g_rectangle bounds = getBounds();
-	viewModel = g_layouted_text();
 
 	std::string visible_text = text;
-	if(secure) {
+	if (secure) {
 		visible_text = "";
-		for(int i = 0; i < text.length(); i++) {
+		for (int i = 0; i < text.length(); i++) {
 			visible_text += "*";
 		}
 	}
-	g_text_layouter::getInstance()->layout(visible_text, font, fontSize, g_rectangle(0, 0, bounds.width, bounds.height), g_text_alignment::LEFT, viewModel, false);
+
+	g_text_layouter::getInstance()->layout(graphics.getContext(), visible_text.c_str(), font, fontSize, g_rectangle(0, 0, bounds.width, bounds.height),
+			g_text_alignment::LEFT, viewModel, false);
 	markFor(COMPONENT_REQUIREMENT_PAINT);
 }
 
@@ -88,22 +87,26 @@ void text_field_t::paint() {
 		return;
 	}
 
+	auto cr = graphics.getContext();
 	g_rectangle bounds = getBounds();
-	g_painter p(graphics);
 
-	// Background
-	p.setColor(RGB(255, 255, 255));
-	p.fill(g_rectangle(0, 0, bounds.width, bounds.height));
+	// background
+	cairo_set_source_rgb(cr, 1, 1, 1);
+	cairo_rectangle(cr, 0, 0, bounds.width, bounds.height);
+	cairo_fill(cr);
 
-	// Border
+	// border
+	g_color_argb borderColor;
 	if (focused) {
-		p.setColor(RGB(55, 155, 255));
+		borderColor = RGB(55, 155, 255);
 	} else if (visualStatus == text_field_visual_status_t::HOVERED) {
-		p.setColor(RGB(150, 150, 150));
+		borderColor = RGB(150, 150, 150);
 	} else {
-		p.setColor(RGB(180, 180, 180));
+		borderColor = RGB(180, 180, 180);
 	}
-	p.draw(g_rectangle(0, 0, bounds.width - 1, bounds.height - 1));
+	cairo_set_source_rgba(cr, G_COLOR_ARGB_TO_FPARAMS(borderColor));
+	cairo_rectangle(cr, 0, 0, bounds.width, bounds.height);
+	cairo_stroke(cr);
 
 	// Scroll
 	applyScroll();
@@ -115,14 +118,15 @@ void text_field_t::paint() {
 	// Paint marking
 	if (focused) {
 		pos = 0;
-		for (g_positioned_glyph& g : viewModel.positions) {
+		for (g_positioned_glyph& g : viewModel->positions) {
 
 			g_color_argb color = textColor;
 			if (first != second && pos >= first && pos < second) {
-				p.setColor(RGB(55, 155, 255));
+				cairo_set_source_rgba(cr, G_COLOR_ARGB_TO_FPARAMS(RGB(55,155,255)));
 				g_rectangle before = positionToCursorBounds(pos);
 				g_rectangle after = positionToCursorBounds(pos + 1);
-				p.fill(g_rectangle(before.x, before.y, after.x - before.x, before.height));
+				cairo_rectangle(cr, before.x, before.y, after.x - before.x, before.height);
+				cairo_fill(cr);
 
 				color = RGB(255, 255, 255);
 			}
@@ -132,7 +136,7 @@ void text_field_t::paint() {
 
 	// Paint glyphs
 	pos = 0;
-	for (g_positioned_glyph& g : viewModel.positions) {
+	for (g_positioned_glyph& g : viewModel->positions) {
 
 		g_rectangle onView = glyphToView(g);
 		g_color_argb color = textColor;
@@ -140,14 +144,21 @@ void text_field_t::paint() {
 			color = RGB(255, 255, 255);
 		}
 
-		p.drawColoredBitmap(onView.x, onView.y, g.glyph->getBitmap(), color, onView.width, onView.height);
+		cairo_save(cr);
+		cairo_set_source_rgba(cr, G_COLOR_ARGB_TO_FPARAMS(color));
+		cairo_translate(cr, onView.x - g.glyph->x, onView.y - g.glyph->y); // TODO?
+		cairo_glyph_path(cr, g.glyph, g.glyph_count);
+		cairo_fill(cr);
+		cairo_restore(cr);
 		++pos;
 	}
 
 	// Paint cursor
 	if (focused) {
-		p.setColor(RGB(60, 60, 60));
-		p.fill(positionToCursorBounds(cursor));
+		cairo_set_source_rgba(cr, G_COLOR_ARGB_TO_FPARAMS(RGB(60, 60, 60)));
+		auto bounds = positionToCursorBounds(cursor);
+		cairo_rectangle(cr, bounds.x, bounds.y, bounds.width, bounds.height);
+		cairo_fill(cr);
 	}
 }
 
@@ -159,7 +170,7 @@ void text_field_t::applyScroll() {
 	int cursorX = positionToUnscrolledCursorX(cursor);
 	g_rectangle bounds = getBounds();
 
-	// Scroll
+	// scroll
 	if (scrollX + cursorX > bounds.width - insets.right) {
 		scrollX = bounds.width - cursorX - insets.right;
 	} else if (scrollX + cursorX < insets.left) {
@@ -173,12 +184,12 @@ void text_field_t::applyScroll() {
 int text_field_t::positionToUnscrolledCursorX(int pos) {
 
 	int cursorX = insets.left;
-	int positionsCount = viewModel.positions.size();
+	int positionsCount = viewModel->positions.size();
 	for (int i = 0; i < positionsCount; i++) {
-		g_positioned_glyph& g = viewModel.positions[i];
+		g_positioned_glyph& g = viewModel->positions[i];
 		// After last?
 		if (i == positionsCount - 1 && pos == positionsCount) {
-			cursorX = g.position.x + insets.left + g.glyph->getAdvance().x;
+			cursorX = g.position.x + insets.left + g.advance.x;
 		}
 		// Anywhere inside
 		if (i == pos) {
@@ -230,7 +241,7 @@ void text_field_t::backspace(g_key_info& info) {
 
 		int leftcut = selected.getFirst();
 		if (info.alt) {
-			leftcut = cursorMoveStrategy->calculateSkip(text, leftcut, caret_direction_t::LEFT);
+			leftcut = caretMoveStrategy->calculateSkip(text, leftcut, caret_direction_t::LEFT);
 		} else if (info.ctrl) {
 			leftcut = 0;
 		}
@@ -299,10 +310,10 @@ bool text_field_t::handle(event_t& e) {
 				backspace(ke->info);
 
 			} else if (ke->info.key == "KEY_ARROW_LEFT") {
-				cursorMoveStrategy->moveCaret(this, caret_direction_t::LEFT, ke->info);
+				caretMoveStrategy->moveCaret(this, caret_direction_t::LEFT, ke->info);
 
 			} else if (ke->info.key == "KEY_ARROW_RIGHT") {
-				cursorMoveStrategy->moveCaret(this, caret_direction_t::RIGHT, ke->info);
+				caretMoveStrategy->moveCaret(this, caret_direction_t::RIGHT, ke->info);
 
 			} else if (ke->info.key == "KEY_A" && ke->info.ctrl) {
 				marker = 0;
@@ -355,8 +366,8 @@ bool text_field_t::handle(event_t& e) {
 				cursor = text.length();
 
 			} else if (me->clickCount == 2) {
-				marker = cursorMoveStrategy->calculateSkip(text, clickCursor, caret_direction_t::LEFT);
-				cursor = cursorMoveStrategy->calculateSkip(text, clickCursor, caret_direction_t::RIGHT);
+				marker = caretMoveStrategy->calculateSkip(text, clickCursor, caret_direction_t::LEFT);
+				cursor = caretMoveStrategy->calculateSkip(text, clickCursor, caret_direction_t::RIGHT);
 
 			} else {
 				cursor = clickCursor;
@@ -386,8 +397,8 @@ int text_field_t::viewToPosition(g_point p) {
 
 	int pos = 0;
 
-	for (int i = 0; i < viewModel.positions.size(); i++) {
-		g_positioned_glyph g = viewModel.positions[i];
+	for (int i = 0; i < viewModel->positions.size(); i++) {
+		g_positioned_glyph g = viewModel->positions[i];
 		g_rectangle onView = glyphToView(g);
 
 		if (p.x < onView.x + onView.width / 2) {
@@ -396,20 +407,18 @@ int text_field_t::viewToPosition(g_point p) {
 
 		++pos;
 	}
-
 	return pos;
 }
 
 /**
  *
  */
-g_rectangle text_field_t::glyphToView(g_positioned_glyph g) {
+g_rectangle text_field_t::glyphToView(g_positioned_glyph& g) {
 
-	int yOffset = getBounds().height / 2 - heightOfCapitalX - 4;
+	int yOffset = getBounds().height / 2 - fontSize / 2 - 2;
 	int x = scrollX + g.position.x + insets.left;
 	int y = g.position.y + yOffset;
-	g_dimension bitmapDimension = g.glyph->getBitmapSize();
-	return g_rectangle(x, y, bitmapDimension.width, bitmapDimension.height);
+	return g_rectangle(x, y, g.size.width, g.size.height);
 }
 
 /**
@@ -418,7 +427,8 @@ g_rectangle text_field_t::glyphToView(g_positioned_glyph g) {
 g_rectangle text_field_t::positionToCursorBounds(int pos) {
 
 	int cursorX = positionToUnscrolledCursorX(pos);
-	return g_rectangle(scrollX + cursorX, getBounds().height / 2 - lineHeight / 2, 1, lineHeight);
+	int caretHeight = fontSize + 4;
+	return g_rectangle(scrollX + cursorX, getBounds().height / 2 - caretHeight / 2, 1, caretHeight);
 }
 
 /**
@@ -426,10 +436,6 @@ g_rectangle text_field_t::positionToCursorBounds(int pos) {
  */
 void text_field_t::setFont(g_font* f) {
 	font = f;
-
-	g_glyph* glyphCapitalX = font->getGlyph(fontSize, 'X');
-	heightOfCapitalX = glyphCapitalX->getBounding().height;
-	lineHeight = font->getLineHeight(fontSize);
 }
 
 /**
@@ -444,7 +450,7 @@ g_range text_field_t::getSelectedRange() {
  */
 bool text_field_t::getBoolProperty(int property, bool* out) {
 
-	if(property == G_UI_PROPERTY_SECURE) {
+	if (property == G_UI_PROPERTY_SECURE) {
 		*out = secure;
 		return true;
 	}
@@ -457,7 +463,7 @@ bool text_field_t::getBoolProperty(int property, bool* out) {
  */
 bool text_field_t::setBoolProperty(int property, bool value) {
 
-	if(property == G_UI_PROPERTY_SECURE) {
+	if (property == G_UI_PROPERTY_SECURE) {
 		secure = value;
 		return true;
 	}
