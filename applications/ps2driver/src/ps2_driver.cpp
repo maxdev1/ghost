@@ -24,7 +24,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <ghost.h>
-#include <ghostuser/tasking/ipc.hpp>
 #include <ghostuser/tasking/lock.hpp>
 #include <ghostuser/utils/utils.hpp>
 #include <ghostuser/utils/logger.hpp>

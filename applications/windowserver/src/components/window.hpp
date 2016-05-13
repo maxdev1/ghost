@@ -70,6 +70,13 @@ public:
 	/**
 	 *
 	 */
+	panel_t* getPanel() {
+		return &panel;
+	}
+
+	/**
+	 *
+	 */
 	void setBackground(g_color_argb color) {
 		backgroundColor = color;
 		markFor(COMPONENT_REQUIREMENT_PAINT);

@@ -23,12 +23,10 @@
 #include <events/focus_event.hpp>
 #include <events/key_event.hpp>
 #include <events/mouse_event.hpp>
-#include <ghostuser/graphics/painter.hpp>
 #include <ghostuser/graphics/text/font_manager.hpp>
-#include <ghostuser/graphics/text/text_layouter.hpp>
 #include <ghostuser/io/files/file_utils.hpp>
 #include <ghostuser/ui/properties.hpp>
-#include <ghostuser/graphics/polygon.hpp>
+#include <cairo/cairo.h>
 
 /**
  *
@@ -64,21 +62,29 @@ void window_t::addChild(component_t* component) {
  */
 void window_t::paint() {
 
-	graphics.clear();
-	g_painter p(graphics);
+	cairo_t* cr = graphics.getContext();
 
-	p.setColor(backgroundColor);
-	p.fill(g_rectangle(0, 0, getBounds().width, getBounds().height));
+	clearSurface();
 
-	p.setColor(RGB(230, 230, 230));
-	p.fill(g_rectangle(0, 0, getBounds().width, 30));
+	// fill background
+	cairo_set_source_rgba(cr, 0.9, 0.9, 0.9, 0.9);
+	cairo_rectangle(cr, 0, 0, getBounds().width, getBounds().height);
+	cairo_fill(cr);
 
-	p.setColor(RGB(180, 180, 180));
-	p.drawLine(g_point(0, 30), g_point(getBounds().width, 30));
+	// TODO
+	/*
+	 p.setColor(backgroundColor);
+	 p.fill(g_rectangle(0, 0, getBounds().width, getBounds().height));
 
-	p.setColor(RGB(80, 80, 80));
-	p.draw(g_rectangle(0, 0, getBounds().width - 1, getBounds().height - 1));
+	 p.setColor(RGB(230, 230, 230));
+	 p.fill(g_rectangle(0, 0, getBounds().width, 30));
 
+	 p.setColor(RGB(180, 180, 180));
+	 p.drawLine(g_point(0, 30), g_point(getBounds().width, 30));
+
+	 p.setColor(RGB(80, 80, 80));
+	 p.draw(g_rectangle(0, 0, getBounds().width - 1, getBounds().height - 1));
+	 */
 }
 
 /**

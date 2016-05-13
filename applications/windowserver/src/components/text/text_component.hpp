@@ -31,7 +31,7 @@
  */
 class text_component_t: public component_t {
 protected:
-	caret_move_strategy_t* cursorMoveStrategy;
+	caret_move_strategy_t* caretMoveStrategy;
 
 public:
 	virtual ~text_component_t() {

@@ -22,6 +22,7 @@
 #define GHOST_API_CALLS_MEMORYCALLS
 
 #include "ghost/stdint.h"
+#include "ghost/kernel.h"
 
 /**
  * @field size
@@ -59,7 +60,7 @@ typedef struct {
 typedef struct {
 	void* memory;
 	uint32_t size;
-	uint32_t processId;
+	g_pid processId;
 
 	void* virtualAddress;
 }__attribute__((packed)) g_syscall_share_mem;

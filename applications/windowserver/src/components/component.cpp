@@ -24,9 +24,9 @@
 #include <events/locatable.hpp>
 #include <windowserver.hpp>
 
-#include <ghostuser/graphics/painter.hpp>
 #include <ghostuser/utils/logger.hpp>
 #include <algorithm>
+#include <cairo/cairo.h>
 
 /**
  *
@@ -99,25 +99,25 @@ void component_t::markDirty(g_rectangle rect) {
 /**
  *
  */
-void component_t::blit(g_color_argb* out, g_rectangle& outBounds, g_rectangle absClip, g_point position) {
+void component_t::blit(g_graphics* out, g_rectangle absClip, g_point position) {
 
 	if (this->visible) {
-		if (graphics.getBuffer() != 0) {
-			graphics.blitTo(out, outBounds, absClip, position);
+		if (graphics.getContext() != 0) {
+			graphics.blitTo(out, absClip, position);
 		}
 
-		g_rectangle absBounds = getBounds();
-		absBounds.x = position.x;
-		absBounds.y = position.y;
-		int newTop = absClip.getTop() > absBounds.getTop() ? absClip.getTop() : absBounds.getTop();
-		int newBottom = absClip.getBottom() < absBounds.getBottom() ? absClip.getBottom() : absBounds.getBottom();
-		int newLeft = absClip.getLeft() > absBounds.getLeft() ? absClip.getLeft() : absBounds.getLeft();
-		int newRight = absClip.getRight() < absBounds.getRight() ? absClip.getRight() : absBounds.getRight();
+		g_rectangle ownAbsBounds = getBounds();
+		ownAbsBounds.x = position.x;
+		ownAbsBounds.y = position.y;
+		int newTop = absClip.getTop() > ownAbsBounds.getTop() ? absClip.getTop() : ownAbsBounds.getTop();
+		int newBottom = absClip.getBottom() < ownAbsBounds.getBottom() ? absClip.getBottom() : ownAbsBounds.getBottom();
+		int newLeft = absClip.getLeft() > ownAbsBounds.getLeft() ? absClip.getLeft() : ownAbsBounds.getLeft();
+		int newRight = absClip.getRight() < ownAbsBounds.getRight() ? absClip.getRight() : ownAbsBounds.getRight();
 
 		g_rectangle thisClip = g_rectangle(newLeft, newTop, newRight - newLeft, newBottom - newTop);
 		for (component_t* c : children) {
 			if (c->visible) {
-				c->blit(out, outBounds, thisClip, g_point(position.x + c->bounds.x, position.y + c->bounds.y));
+				c->blit(out, thisClip, g_point(position.x + c->bounds.x, position.y + c->bounds.y));
 			}
 		}
 	}
@@ -403,3 +403,17 @@ bool component_t::getListener(g_ui_component_event_type eventType, event_listene
 	}
 	return false;
 }
+
+/**
+ *
+ */
+void component_t::clearSurface() {
+	// clear surface
+	auto cr = graphics.getContext();
+	cairo_save(cr);
+	cairo_set_source_rgba(cr, 0, 0, 0, 0);
+	cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+	cairo_paint(cr);
+	cairo_restore(cr);
+}
+

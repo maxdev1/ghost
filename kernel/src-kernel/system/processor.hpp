@@ -105,6 +105,7 @@ enum class g_cpuid_extended_ecx_feature {
  * Implementation in the assembler file
  */
 extern "C" bool _checkForCPUID();
+extern "C" void _enableSSE();
 
 /**
  *
@@ -130,6 +131,8 @@ public:
 	static bool hasFeature(g_cpuid_extended_ecx_feature feature);
 
 	static void printInformation();
+
+	static void enableSSE();
 
 	/**
 	 * Returns the CPU's vendor. "out" must be a pointer to a

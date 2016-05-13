@@ -22,15 +22,15 @@
 #include <stdint.h>
 #include <string.h>
 
-static uint8_t g_ipc_next_topic_lock = false;
+static uint8_t __next_transaction_lock = false;
+static g_message_transaction __next_transaction = G_MESSAGE_TRANSACTION_FIRST;
 
 /**
  *
  */
-uint32_t g_ipc_next_topic() {
-	g_atomic_lock((uint8_t*) &g_ipc_next_topic_lock);
-	static uint32_t topic_counter = G_MESSAGE_TRANSACTION_FIRST;
-	uint32_t next_topic = topic_counter++;
-	g_ipc_next_topic_lock = false;
+g_message_transaction g_get_message_tx_id() {
+	g_atomic_lock((uint8_t*) &__next_transaction_lock);
+	g_message_transaction next_topic = __next_transaction++;
+	__next_transaction_lock = false;
 	return next_topic;
 }

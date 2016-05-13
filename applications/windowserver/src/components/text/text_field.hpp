@@ -23,9 +23,9 @@
 
 #include <components/text/text_component.hpp>
 #include <components/titled_component.hpp>
+#include <ghostuser/graphics/metrics/insets.hpp>
 #include <ghostuser/graphics/text/font.hpp>
 #include <ghostuser/graphics/text/text_layouter.hpp>
-#include <ghostuser/graphics/painter.hpp>
 #include <ghostuser/io/keyboard.hpp>
 
 #include <string>
@@ -50,8 +50,6 @@ private:
 	bool secure;
 
 	g_font* font;
-	int heightOfCapitalX;
-	int lineHeight;
 
 	int scrollX;
 	int fontSize;
@@ -61,7 +59,7 @@ private:
 	int cursor;
 	int marker;
 
-	g_layouted_text viewModel;
+	g_layouted_text* viewModel;
 
 	void loadDefaultFont();
 	void applyScroll();
@@ -153,7 +151,7 @@ public:
 	/**
 	 *
 	 */
-	g_rectangle glyphToView(g_positioned_glyph g);
+	g_rectangle glyphToView(g_positioned_glyph& g);
 
 	/**
 	 *

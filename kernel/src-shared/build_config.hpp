@@ -21,42 +21,31 @@
 #ifndef GHOST_BUILDCONFIGURATION
 #define GHOST_BUILDCONFIGURATION
 
-#include <logger/log_level.hpp>
+#include "logger/log_level.hpp"
 #include "debug/debug_interface_mode.hpp"
 
 #if !(defined(_ARCH_X86_) || defined(_ARCH_X86_64_))
-#error "No architecture defined for build. Need to specify _ARCH_X86_ or _ARCH_x86_64_"
+#error "No architecture defined for build. Need to specify either _ARCH_X86_ or _ARCH_x86_64_"
 #endif
 
-/**
- * Log level
- */
-#define G_LOG_LEVEL										G_LOG_LEVEL_WARN
-
-/**
- * Version number
- */
-#define G_VERSION_MAJOR									0
-#define G_VERSION_MINOR									5
-#define G_VERSION_PATCH									2
-
-/**
- * Name of the initialization binary that the kernel loads on startup
- */
-#define G_INIT_BINARY_NAME								"applications/init.bin"
-#define G_IDLE_BINARY_NAME								"applications/idle.bin"
-
-/**
- * Detail debugging
- */
+// logging settings
+#define G_LOG_LEVEL										G_LOG_LEVEL_INFO
+// fine-grained debugging options
 #define G_DEBUG_SYSCALLS								false
 #define G_DEBUG_WHOS_WAITING							false
 #define G_DEBUG_LOCKS_DEADLOCKING						false
 #define G_DEBUG_THREAD_DUMPING							false
 
-/**
- * Debug interface mode
- */
+// mode for the debug interface
 #define G_DEBUG_INTERFACE_MODE							G_DEBUG_INTERFACE_MODE_PLAIN_LOG
+
+// version
+#define G_VERSION_MAJOR									0
+#define G_VERSION_MINOR									5
+#define G_VERSION_PATCH									3
+
+// paths to system binaries
+#define G_INIT_BINARY_NAME								"applications/init.bin"
+#define G_IDLE_BINARY_NAME								"applications/idle.bin"
 
 #endif

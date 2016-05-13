@@ -214,44 +214,55 @@ int main() {
 
 	g_logger::log("initialized");
 
+	size_t buflen = sizeof(g_message_header) + sizeof(g_vbe_set_mode_request);
+	uint8_t buf[buflen];
+
 	while (true) {
 		// wait for incoming request
-		g_message_empty(request);
-		g_recv_msg(tid, &request);
-		uint32_t requester = request.sender;
+		auto status = g_receive_message(buf, buflen);
+		if (status != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
+			continue;
+		}
+
+		g_message_header* header = (g_message_header*) buf;
+		g_vbe_request_header* vbeheader = (g_vbe_request_header*) G_MESSAGE_CONTENT(buf);
+		uint32_t requester = header->sender;
 
 		// handle command
-		if (request.type == G_VBE_DRIVER_COMMAND_SET_MODE) {
-			uint16_t resX = request.parameterA >> 16;
-			uint16_t resY = request.parameterA & 0xFFFF;
-			uint16_t bpp = request.parameterB;
+		if (vbeheader->command == G_VBE_COMMAND_SET_MODE) {
+			g_vbe_set_mode_request* request = (g_vbe_set_mode_request*) G_MESSAGE_CONTENT(buf);
 
 			// create response
-			g_message_empty(response);
-			response.topic = request.topic;
+			g_vbe_set_mode_response response;
 
 			// switch video mode
 			VesaVideoInfo result;
+			uint16_t resX = request->width;
+			uint16_t resY = request->height;
+			uint8_t bpp = request->bpp;
+
+			klog("attempting to set video mode");
 			if (setVideoMode(resX, resY, bpp, result)) {
 				g_logger::log("changed video mode to %ix%ix%i", resX, resY, bpp);
 				uint32_t lfbSize = result.bytesPerScanline * result.resolutionY;
 				void* addressInRequestersSpace = g_share_mem(result.lfb, lfbSize, requester);
 
-				response.type = G_VBE_DRIVER_COMMAND_SET_MODE;
-				response.parameterA = (uint32_t) addressInRequestersSpace;
-				response.parameterB = ((result.resolutionX & 0xFFFF) << 16) | (result.resolutionY & 0xFFFF);
-				response.parameterC = (uint32_t) result.bpp;
-				response.parameterD = (uint32_t) result.bytesPerScanline;
+				response.status = G_VBE_SET_MODE_STATUS_SUCCESS;
+				response.mode_info.lfb = (uint32_t) addressInRequestersSpace;
+				response.mode_info.resX = result.resolutionX;
+				response.mode_info.resY = result.resolutionY;
+				response.mode_info.bpp = (uint8_t) result.bpp;
+				response.mode_info.bpsl = (uint16_t) result.bytesPerScanline;
 
 			} else {
 				g_logger::log("unable to switch to video mode %ix%ix%i", resX, resY, bpp);
-				response.type = 2;
+				response.status = G_VBE_SET_MODE_STATUS_FAILED;
 			}
 
 			// send response
-			g_send_msg(requester, &response);
+			g_send_message_t(header->sender, &response, sizeof(g_vbe_set_mode_response), header->transaction);
 		} else {
-			g_logger::log("received unknown command %i from task %i", request.type, request.sender);
+			g_logger::log("received unknown command %i from task %i", vbeheader->command, header->sender);
 		}
 	}
 

@@ -46,7 +46,7 @@ bool g_ps2::registerSelf() {
 		return false;
 	}
 
-	uint32_t transaction = g_ipc_next_topic();
+	g_message_transaction transaction = g_get_message_tx_id();
 
 	// send request
 	g_ps2_register_request request;

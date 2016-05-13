@@ -27,6 +27,10 @@ CONFORMITY_CHECK="$SRC/_conformity.c"
 
 echo "target: $TARGET"
 
+# always create output folder
+mkdir -p $OBJ
+mkdir -p $CRT_OBJ
+
 
 target_clean() {
 	echo "cleaning:"

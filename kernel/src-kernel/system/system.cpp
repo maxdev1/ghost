@@ -71,6 +71,14 @@ void g_system::initializeBsp(g_physical_address initialPageDirectoryPhysical) {
 	// Do some CPU info output
 	g_processor::printInformation();
 
+	// Enable SSE if available
+	if (g_processor::hasFeature(g_cpuid_standard_edx_feature::SSE)) {
+		g_log_info("%! support enabled", "sse");
+		g_processor::enableSSE();
+	} else {
+		g_log_warn("%! no support detected", "sse");
+	}
+
 	// APIC must be available
 	if (g_processor::hasFeature(g_cpuid_standard_edx_feature::APIC)) {
 		g_log_debug("%! APIC available", "cpu");

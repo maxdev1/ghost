@@ -130,6 +130,16 @@ public:
 	 */
 	virtual void finish_open(g_thread* requester, g_fs_transaction_handler_open* handler);
 
+	/**
+	 *
+	 */
+	virtual g_fs_transaction_id request_close(g_thread* requester, g_fs_transaction_handler_close* handler, g_file_descriptor_content* fd, g_fs_node* node);
+
+	/**
+	 *
+	 */
+	virtual void finish_close(g_thread* requester, g_fs_transaction_handler_close* handler);
+
 };
 
 #endif

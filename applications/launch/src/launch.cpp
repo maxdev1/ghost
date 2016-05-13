@@ -28,11 +28,24 @@
  */
 int main(int argc, char** argv) {
 
-	g_task_register_id("launch");
+	// check parameters
+	char* path;
+	if (argc > 1) {
+		path = argv[1];
+	} else {
+		fprintf(stderr, "usage:		%s /path/to/script\n", argv[0]);
+		return -1;
+	}
 
-	// load init script
-	FILE* init_script = fopen("/system/launch/init", "r");
-	launchscript_parser_t* parser = new launchscript_parser_t(init_script);
+	// load given script
+	FILE* scriptfile = fopen(path, "r");
+	if (scriptfile == NULL) {
+		fprintf(stderr, "%s: file not found\n", path);
+		return -1;
+	}
+
+	// parse the script
+	launchscript_parser_t* parser = new launchscript_parser_t(scriptfile);
 	ls_document_t* document = parser->document();
 
 	// interpret script

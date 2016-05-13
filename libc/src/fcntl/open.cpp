@@ -44,14 +44,11 @@ int open(const char* pathname, int flags, ...) {
 
 	if (status == G_FS_OPEN_SUCCESSFUL) {
 		return fd;
-
 	} else if (status == G_FS_OPEN_NOT_FOUND) {
 		errno = ENOENT;
-
 	} else {
 		// TODO set error codes, improve kernel error codes
 		errno = EIO;
-
 	}
 
 	return -1;

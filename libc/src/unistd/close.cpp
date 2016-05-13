@@ -27,19 +27,14 @@
  */
 int close(int filedes) {
 
-	g_fs_close_status status;
-	g_close_s(filedes, &status);
+	g_fs_close_status status = g_close(filedes);
 
 	if (status == G_FS_CLOSE_SUCCESSFUL) {
 		return 0;
-
 	} else if (status == G_FS_CLOSE_INVALID_FD) {
 		errno = EBADF;
-
 	} else {
-		// TODO improve kernel error codes
 		errno = EIO;
-
 	}
 
 	return -1;

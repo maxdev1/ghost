@@ -22,7 +22,6 @@
 #include <ghostuser/io/mouse.hpp>
 #include <ghostuser/io/ps2.hpp>
 #include <ghostuser/io/ps2_driver_constants.hpp>
-#include <ghostuser/tasking/ipc.hpp>
 #include <ghostuser/utils/logger.hpp>
 
 /**

@@ -25,7 +25,6 @@
 #include <components/screen.hpp>
 #include <events/event_processor.hpp>
 #include "output/video_output.hpp"
-#include <ghostuser/graphics/painter.hpp>
 #include <ghostuser/graphics/graphics.hpp>
 #include "interface/command_message_responder_thread.hpp"
 

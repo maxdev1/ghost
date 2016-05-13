@@ -24,8 +24,6 @@
 #include <logger/logger.hpp>
 #include <tasking/tasking.hpp>
 #include <tasking/thread_manager.hpp>
-#include <tasking/wait/waiter_recv_msg.hpp>
-#include <tasking/wait/waiter_recv_topic_msg.hpp>
 #include <tasking/wait/waiter_send_message.hpp>
 #include <tasking/wait/waiter_receive_message.hpp>
 
@@ -82,120 +80,5 @@ G_SYSCALL_HANDLER(receive_message) {
 
 	// something went wrong, immediate return
 	return current_thread;
-}
-
-/**
- * Sends a message to the task with the "taskId", reading the contents from
- * the "message". This adds the message to the tasks incoming message queue.
- */
-G_SYSCALL_HANDLER(send_msg) {
-
-	g_syscall_send_msg* data = (g_syscall_send_msg*) G_SYSCALL_DATA(current_thread->cpuState);
-
-	// Get executing task id and store it in the data
-	data->message->sender = current_thread->id;
-
-	// Send the message
-	data->sendResult = g_message_controller::send(data->taskId, data->message);
-
-	return current_thread;
-}
-
-/**
- * Receives the next message in the incoming message queue of the task with
- * the "taskId". This only works if the task with the given id is a thread of
- * the current process.
- */
-G_SYSCALL_HANDLER(recv_msg) {
-
-	g_process* process = current_thread->process;
-	g_syscall_recv_msg* data = (g_syscall_recv_msg*) G_SYSCALL_DATA(current_thread->cpuState);
-
-	uint32_t requestedTaskId = data->taskId;
-
-	// Check if this task is allowed to receive the message
-	if (requestedTaskId == current_thread->id || requestedTaskId == process->main->id) {
-
-		g_message message;
-		int status = g_message_controller::receive(requestedTaskId, message);
-
-		if (status == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
-			// There was a message - immediate return
-			*data->message = message;
-			data->receiveResult = G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL;
-			return current_thread;
-
-		} else if (status == G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY) {
-
-			// check mode to see what to do
-			if (data->mode == G_MESSAGE_RECEIVE_MODE_NON_BLOCKING) {
-				data->receiveResult = G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY;
-				return current_thread;
-
-			} else {
-				// append wait info and switch
-				current_thread->wait(new g_waiter_recv_msg(data));
-				return g_tasking::schedule();
-			}
-
-		} else {
-			// Something went wrong, immediate return
-			data->receiveResult = G_MESSAGE_RECEIVE_STATUS_FAILED;
-			return current_thread;
-		}
-	} else {
-		// Not permitted
-		data->receiveResult = G_MESSAGE_RECEIVE_STATUS_FAILED_NOT_PERMITTED;
-		return current_thread;
-	}
-}
-
-/**
- * Receives the first message in the incoming message queue of the task with
- * the "taskId" that has the "topic". Same rules as for normal message
- * receiving apply.
- */
-G_SYSCALL_HANDLER(recv_topic_msg) {
-
-	g_process* process = current_thread->process;
-	g_syscall_recv_topic_msg* data = (g_syscall_recv_topic_msg*) G_SYSCALL_DATA(current_thread->cpuState);
-
-	uint32_t requestedTaskId = data->taskId;
-
-	// Check if this task is allowed to receive the message
-	if (requestedTaskId == current_thread->id || requestedTaskId == process->main->id) {
-
-		g_message message;
-		int status = g_message_controller::receiveWithTopic(requestedTaskId, data->topic, message);
-
-		if (status == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
-			// There was a message - immediate return
-			*data->message = message;
-			data->receiveResult = G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL;
-			return current_thread;
-
-		} else if (status == G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY) {
-
-			// check mode to see what to do
-			if (data->mode == G_MESSAGE_RECEIVE_MODE_NON_BLOCKING) {
-				data->receiveResult = G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY;
-				return current_thread;
-
-			} else {
-				// append wait info and switch
-				current_thread->wait(new g_waiter_recv_topic_msg(data));
-				return g_tasking::schedule();
-			}
-
-		} else {
-			// Something went wrong, immediate return
-			data->receiveResult = G_MESSAGE_RECEIVE_STATUS_FAILED;
-			return current_thread;
-		}
-	} else {
-		// Not permitted
-		data->receiveResult = G_MESSAGE_RECEIVE_STATUS_FAILED_NOT_PERMITTED;
-		return current_thread;
-	}
 }
 

@@ -75,7 +75,7 @@ fi
 
 # attempt to download source archive
 echo "> downloading source from '$REMOTE_ARCHIVE'..."
-curl "$REMOTE_ARCHIVE" -o $BUILD_DIR/$ARCHIVE
+curl "$REMOTE_ARCHIVE" -k -o $BUILD_DIR/$ARCHIVE
 if [ $? != 0 ]; then
 	fail "unable to download remote archive"
 fi

@@ -1,4 +1,4 @@
-REMOTE_ARCHIVE="http://ghostkernel.org/repository/libpng/libpng-1.6.18.tar.gz"
+REMOTE_ARCHIVE="https://ghostkernel.org/repository/libpng/libpng-1.6.18.tar.gz"
 UNPACKED_DIR=libpng-1.6.18
 ARCHIVE=libpng-1.6.18.tar.gz
 

@@ -1,0 +1,55 @@
+= Building from source
+:toc: left
+include::../common/homelink.adoc[]
+
+Basics
+------
+This document contains an explanation on how to build the toolchain and then the
+entire operating system from it's sources.
+
+The project itself consists of two repositories:
+
+* *ghost*, main repository containing the source code for the system
+* *ghost-sysroot*, a blueprint for the system root directory
+
+The system root directory (sysroot) is a concept used in cross compiling. It contains
+the initial filesystem that is used to boot the OS. All cross-compiled libraries and
+applications are installed in this folder, and when cross-compiling a program or
+library, the compiler uses this directory as the location to search for like headers,
+libraries and more. This avoids using the host systems header files.
+
+
+Preparation
+-----------
+
+. Clone the ghost-sysroot to `/ghost/sysroot` (If you want to use a different folder, you
+	must modify the `TOOLCHAIN_BASE` in the `ghost.sh` script).
+. Clone the main repository somewhere to your filesystem (for example `/ghost/source`)
+
+
+On Mac OS
+~~~~~~~~~
+If you are on Mac OS X, you must make sure that the GNU GCC is used (it by default has
+some kind of alias so that GCC points to LLVM, which we don't want). Use export to set the
+correct version:
+
+-----
+export CC=gcc-5
+export CXX=g++-5
+export CPP=cpp-5
+export LD=gcc-5
+-----
+
+
+Toolchain setup
+---------------
+To setup the toolchain, simply run the toolchain setup script `toolchain.sh`. It will
+attempt to do everything that is necessary to create the toolchain.
+
+Tips
+~~~~
+
+* To specify a different toolchain base directory, modify `TOOLCHAIN_BASE` in the
+	`ghost.sh` file
+* While binutils and gcc are being built, the log output is redirected to a file named
+	`ghost-build.log` in the respective build directory in the temporary folder

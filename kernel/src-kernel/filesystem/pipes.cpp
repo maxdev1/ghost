@@ -43,11 +43,11 @@ g_pipe_id g_pipes::create() {
 	g_pipe_id id = -1;
 
 	g_pipe* pipe = new g_pipe();
-	pipe->buffer = new uint8_t[PIPE_DEFAULT_CAPACITY];
+	pipe->buffer = new uint8_t[G_PIPE_DEFAULT_CAPACITY];
 	pipe->write = pipe->buffer;
 	pipe->read = pipe->buffer;
 	pipe->size = 0;
-	pipe->capacity = PIPE_DEFAULT_CAPACITY;
+	pipe->capacity = G_PIPE_DEFAULT_CAPACITY;
 	pipe->references = 0;
 
 	if (pipe->buffer != 0) {

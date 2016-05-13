@@ -22,6 +22,7 @@
 #define GHOST_API_CALLS_SPAWNINGCALLS
 
 #include "ghost/kernel.h"
+#include "ghost/system.h"
 #include "ghost/ramdisk.h"
 
 /**
@@ -50,13 +51,17 @@ typedef struct {
  *
  * @field userData
  * 		user-defined
+ *
+ * @field status
+ * 		result of thread creation
  */
 typedef struct {
 	void* initialEntry;
 	void* userEntry;
 	void* userData;
 
-	uint32_t processId;
+	g_create_thread_status status;
+	g_tid threadId;
 }__attribute__((packed)) g_syscall_create_thread;
 
 /**
@@ -189,7 +194,7 @@ typedef struct {
 typedef struct {
 	g_process_creation_identifier processObject;
 
-	uint32_t resultId;
+	g_pid resultId;
 }__attribute__((packed)) g_syscall_get_created_process_id;
 
 /**

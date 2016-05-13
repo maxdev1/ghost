@@ -18,6 +18,9 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#ifndef __MAIN_INTERNAL__
+#define __MAIN_INTERNAL__
+
 #include "ghost/common.h"
 
 __BEGIN_C
@@ -31,3 +34,5 @@ void __g_init_libc();
 void __g_fini_libc();
 
 __END_C
+
+#endif

@@ -23,7 +23,7 @@
 /**
  *
  */
-uint32_t g_get_created_process_id(g_process_creation_identifier process) {
+g_pid g_get_created_process_id(g_process_creation_identifier process) {
 	g_syscall_get_created_process_id data;
 	data.processObject = process;
 	g_syscall(G_SYSCALL_GET_CREATED_PROCESS_ID, (uint32_t) &data);

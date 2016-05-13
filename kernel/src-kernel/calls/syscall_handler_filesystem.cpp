@@ -41,7 +41,19 @@
 G_SYSCALL_HANDLER(get_working_directory) {
 
 	g_syscall_fs_get_working_directory* data = (g_syscall_fs_get_working_directory*) G_SYSCALL_DATA(current_thread->cpuState);
-	g_string::copy(data->buffer, current_thread->process->workingDirectory);
+
+	char* cwd = current_thread->process->workingDirectory;
+	if (cwd) {
+		size_t length = g_string::length(cwd);
+		if (length + 1 > data->maxlen) {
+			data->result = G_GET_WORKING_DIRECTORY_SIZE_EXCEEDED;
+		} else {
+			g_string::copy(data->buffer, cwd);
+			data->result = G_GET_WORKING_DIRECTORY_SUCCESSFUL;
+		}
+	} else {
+		data->result = G_GET_WORKING_DIRECTORY_ERROR;
+	}
 	return current_thread;
 }
 
@@ -279,10 +291,22 @@ G_SYSCALL_HANDLER(fs_close) {
 		return current_thread;
 	}
 
-	// TODO let a handler tell the delegate and do the unmapping
-	data->result = g_filesystem::unmap_file(current_thread->process->main->id, node, fd, &data->status);
-	data->status = G_FS_CLOSE_SUCCESSFUL;
-	return current_thread;
+	// create and start handler
+	g_contextual<g_syscall_fs_close*> bound_data(data, current_thread->process->pageDirectory);
+	g_fs_transaction_handler_close* handler = new g_fs_transaction_handler_close(bound_data, fd, node);
+	auto start_status = handler->start_transaction(current_thread);
+
+	if (start_status == G_FS_TRANSACTION_START_WITH_WAITER) {
+		return g_tasking::schedule();
+
+	} else if (start_status == G_FS_TRANSACTION_START_IMMEDIATE_FINISH) {
+		return current_thread;
+
+	} else {
+		g_log_warn("starting close transaction failed with status (%i)", start_status);
+		data->status = G_FS_CLOSE_ERROR;
+		return current_thread;
+	}
 }
 
 /**

@@ -165,3 +165,26 @@ g_fs_transaction_id g_fs_delegate_mount::request_open(g_thread* requester, g_fs_
 void g_fs_delegate_mount::finish_open(g_thread* requester, g_fs_transaction_handler_open* handler) {
 }
 
+/**
+ *
+ */
+g_fs_transaction_id g_fs_delegate_mount::request_close(g_thread* requester, g_fs_transaction_handler_close* handler, g_file_descriptor_content* fd,
+		g_fs_node* node) {
+
+	g_fs_transaction_id id = g_fs_transaction_store::next_transaction();
+
+	// mount can't be opened
+	g_log_warn("%! mountpoints can not be closed", "filesystem");
+	handler->status = G_FS_CLOSE_ERROR;
+
+	g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
+	return id;
+}
+
+/**
+ *
+ */
+void g_fs_delegate_mount::finish_close(g_thread* requester, g_fs_transaction_handler_close* handler) {
+
+}
+

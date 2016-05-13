@@ -19,15 +19,14 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <components/plain_console_panel.hpp>
-#include <ghostuser/graphics/painter.hpp>
-#include <Fonts.hpp>
 #include <events/focus_event.hpp>
+#include <fontloader.hpp>
 
 /**
  *
  */
 plain_console_panel_t::plain_console_panel_t() {
-	font = Fonts::getDefault();
+	font = font_loader_t::getDefault();
 	focused = false;
 }
 
@@ -45,14 +44,15 @@ void plain_console_panel_t::update() {
 	}
 
 	// Reset view model, layout characters
-	viewModel = g_layouted_text();
+	// TODO
+/*	viewModel = g_layouted_text();
 	g_text_layouter::getInstance()->layout(content, font, 10, thisBounds, g_text_alignment::LEFT, viewModel);
 	g_dimension newPreferred(viewModel.textBounds.width + 3, viewModel.textBounds.height + 3);
 
 	// Set new preferred size
 	if (getPreferredSize() != newPreferred) {
 		setPreferredSize(newPreferred);
-	}
+	}*/
 
 	markFor(COMPONENT_REQUIREMENT_PAINT);
 }
@@ -61,7 +61,9 @@ void plain_console_panel_t::update() {
  *
  */
 void plain_console_panel_t::paint() {
-	g_painter p(graphics);
+
+	// TODO
+	/*g_painter p(graphics);
 	p.setColor(RGB(255, 255, 255));
 	p.fill(g_rectangle(0, 0, getBounds().width, getBounds().height));
 
@@ -77,7 +79,7 @@ void plain_console_panel_t::paint() {
 		g_dimension bitmapSize = current->getBitmapSize();
 		p.drawColoredBitmap(glyph.position.x, getBounds().height - viewModel.textBounds.height + glyph.position.y, current->getBitmap(), RGB(0, 0, 0),
 				bitmapSize.width, bitmapSize.height);
-	}
+	}*/
 }
 
 /**

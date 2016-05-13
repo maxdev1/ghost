@@ -1,0 +1,48 @@
+# Ramdisk documentation
+:toc: left
+
+include::../common/homelink.adoc[]
+
+:numbered:
+Ramdisk format
+--------------
+
+The ramdisk can be created using the ramdisk building tool in
+`tools/ramdisk-writer`. This section documents the structure of the ramdisk.
+
+To build a ramdisk file, format the contents of each file you want to add as
+depicted below. Files and folders must not be written in any particular order.
+
+Node structure
+~~~~~~~~~~~~~~
+Byte order of all numeric values is LITTLE ENDIAN.
+
+[options="header"]
+|======================================================================
+| Length in bytes	| Type					| Description
+| 1					| Byte					| <<EntryType,Type of the entry>>
+| 4					| Integer				| Entry ID
+| 4					| Integer				| ID of the parent entry
+| 4					| Integer				| Name length in bytes
+| <Name length>		| String				| Name content
+|======================================================================
+
+Entries of the type file additionally have the fields:
+
+[options="header"]
+|======================================================================
+| Length in bytes	| Type					| Description
+| 4					| Integer				| Data length in bytes
+| <Data length>		| Bytes					| Data content
+|======================================================================
+
+
+[[EntryType]]
+Entry type constants
+~~~~~~~~~~~~~~~~~~~~
+[options="header"]
+|==================================
+| Value				| Type
+| 0					| Folder
+| 1					| File
+|==================================

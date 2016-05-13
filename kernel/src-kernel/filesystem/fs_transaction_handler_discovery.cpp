@@ -87,8 +87,17 @@ g_fs_transaction_handler_finish_status g_fs_transaction_handler_discovery::finis
 
 			// continue discovery
 			auto status = start_transaction(thread);
-			if (!all_nodes_discovered) {
-				return G_FS_TRANSACTION_HANDLING_REPEAT_WITH_SAME_HANDLER;
+
+			// check for possible failure
+			if (status == G_FS_TRANSACTION_START_FAILED) {
+				return G_FS_TRANSACTION_HANDLING_DONE;
+
+			} else {
+
+				// check if all nodes have been discovered now
+				if (!all_nodes_discovered) {
+					return G_FS_TRANSACTION_HANDLING_REPEAT_WITH_SAME_HANDLER;
+				}
 			}
 		}
 	}

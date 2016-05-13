@@ -1,4 +1,4 @@
-REMOTE_ARCHIVE="http://ghostkernel.org/repository/zlib/zlib-1.2.8.tar.gz"
+REMOTE_ARCHIVE="https://ghostkernel.org/repository/zlib/zlib-1.2.8.tar.gz"
 UNPACKED_DIR=zlib-1.2.8
 ARCHIVE=zlib-1.2.8.tar.gz
 REQUIRES_INSTALL_IN_SOURCE_DIR=1

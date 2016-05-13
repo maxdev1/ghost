@@ -26,5 +26,6 @@
  *
  */
 void g_close_directory(g_fs_directory_iterator* iterator) {
+	free(iterator->entry_buffer.name);
 	free(iterator);
 }

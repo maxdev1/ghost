@@ -105,8 +105,8 @@ typedef struct {
  * @field fd
  * 		file descriptor
  *
- * @field result
- * 		the close result
+ * @field status
+ * 		one of the {g_fs_close_status} codes
  *
  * @security-level APPLICATION
  */
@@ -114,7 +114,6 @@ typedef struct {
 	g_fd fd;
 
 	g_fs_close_status status;
-	uint8_t result;
 }__attribute__((packed)) g_syscall_fs_close;
 
 /**
@@ -307,12 +306,17 @@ typedef struct {
 
 /**
  * @field buffer
- * 		buffer with a size of at least {G_PATH_MAX} bytes
+ * 		buffer with the given size
+ *
+ * @field maxlen
+ * 		maximum number of bytes to write to the buffer
  *
  * @security-level APPLICATION
  */
 typedef struct {
 	char* buffer;
+	size_t maxlen;
+	g_get_working_directory_status result;
 }__attribute__((packed)) g_syscall_fs_get_working_directory;
 
 /**

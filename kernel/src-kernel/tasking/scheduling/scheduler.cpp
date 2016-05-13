@@ -41,8 +41,6 @@ g_scheduler::g_scheduler(uint32_t coreId) :
  */
 void g_scheduler::add(g_thread* t) {
 
-	model_lock.lock();
-
 	// set the scheduler on the task
 	t->scheduler = this;
 
@@ -62,16 +60,12 @@ void g_scheduler::add(g_thread* t) {
 	}
 
 	g_log_debug("%! task %i assigned to core %i", "scheduler", t->id, coreId);
-
-	model_lock.unlock();
 }
 
 /**
  *
  */
 void g_scheduler::remove_threads(g_process* process) {
-
-	model_lock.lock();
 
 	// set all threads in run queue to dead
 	auto entry = run_queue;
@@ -93,8 +87,6 @@ void g_scheduler::remove_threads(g_process* process) {
 		}
 		entry = next;
 	}
-
-	model_lock.unlock();
 }
 
 /**
@@ -113,7 +105,6 @@ g_thread* g_scheduler::lastThread() {
 uint32_t g_scheduler::calculateLoad() {
 
 	uint32_t load = 0;
-	model_lock.lock();
 
 	// TODO improve load calculation
 	g_task_entry* entry = run_queue;
@@ -127,7 +118,6 @@ uint32_t g_scheduler::calculateLoad() {
 		entry = entry->next;
 	}
 
-	model_lock.unlock();
 	return load;
 }
 
@@ -213,8 +203,6 @@ g_thread* g_scheduler::save(g_processor_state* cpuState) {
  */
 g_thread* g_scheduler::schedule() {
 
-	model_lock.lock();
-
 	// store which entry is running
 	g_task_entry* running_entry = current_entry;
 
@@ -269,7 +257,6 @@ g_thread* g_scheduler::schedule() {
 	_finishSwitch(current_entry->value);
 	++current_entry->value->rounds;
 
-	model_lock.unlock();
 	return current_entry->value;
 }
 
@@ -361,7 +348,6 @@ void g_scheduler::_printDeadlockWarning() {
 g_thread* g_scheduler::getTaskById(g_tid id) {
 
 	g_thread* thr = 0;
-	model_lock.lock();
 
 	g_task_entry* entry = run_queue;
 	while (entry) {
@@ -383,7 +369,6 @@ g_thread* g_scheduler::getTaskById(g_tid id) {
 		}
 	}
 
-	model_lock.unlock();
 	return thr;
 }
 
@@ -393,7 +378,6 @@ g_thread* g_scheduler::getTaskById(g_tid id) {
 g_thread* g_scheduler::getTaskByIdentifier(const char* identifier) {
 
 	g_thread* thr = 0;
-	model_lock.lock();
 
 	g_task_entry* entry = run_queue;
 	while (entry) {
@@ -422,7 +406,6 @@ g_thread* g_scheduler::getTaskByIdentifier(const char* identifier) {
 		}
 	}
 
-	model_lock.unlock();
 	return thr;
 }
 
@@ -466,7 +449,6 @@ g_task_entry* g_scheduler::_removeFromQueue(g_task_entry** queue_head, g_thread*
  */
 void g_scheduler::moveToRunQueue(g_thread* thread) {
 
-	model_lock.lock();
 
 	g_task_entry* move_entry = _removeFromQueue(&wait_queue, thread);
 
@@ -479,7 +461,6 @@ void g_scheduler::moveToRunQueue(g_thread* thread) {
 	move_entry->next = run_queue;
 	run_queue = move_entry;
 
-	model_lock.unlock();
 }
 
 /**
@@ -487,7 +468,6 @@ void g_scheduler::moveToRunQueue(g_thread* thread) {
  */
 void g_scheduler::moveToWaitQueue(g_thread* thread) {
 
-	model_lock.lock();
 
 	g_task_entry* move_entry = _removeFromQueue(&run_queue, thread);
 
@@ -505,7 +485,6 @@ void g_scheduler::moveToWaitQueue(g_thread* thread) {
 		current_entry = nullptr;
 	}
 
-	model_lock.unlock();
 }
 
 /**
@@ -513,7 +492,6 @@ void g_scheduler::moveToWaitQueue(g_thread* thread) {
  */
 void g_scheduler::increaseWaitPriority(g_thread* thread) {
 
-	model_lock.lock();
 
 	// remove entry from wait queue
 	g_task_entry* entry = _removeFromQueue(&wait_queue, thread);
@@ -524,7 +502,6 @@ void g_scheduler::increaseWaitPriority(g_thread* thread) {
 		wait_queue = entry;
 	}
 
-	model_lock.unlock();
 }
 
 /**
@@ -579,8 +556,6 @@ void g_scheduler::_checkWaitingState(g_thread* thread) {
  */
 uint32_t g_scheduler::count() {
 
-	model_lock.lock();
-
 	uint32_t count = 0;
 
 	auto entry = run_queue;
@@ -595,8 +570,6 @@ uint32_t g_scheduler::count() {
 		entry = entry->next;
 	}
 
-	model_lock.unlock();
-
 	return count;
 }
 
@@ -605,7 +578,6 @@ uint32_t g_scheduler::count() {
  */
 g_thread* g_scheduler::getAtPosition(uint32_t position) {
 
-	model_lock.lock();
 	uint32_t index = 0;
 
 	auto entry = run_queue;
@@ -625,8 +597,6 @@ g_thread* g_scheduler::getAtPosition(uint32_t position) {
 		++index;
 		entry = entry->next;
 	}
-
-	model_lock.unlock();
 
 	return nullptr;
 }

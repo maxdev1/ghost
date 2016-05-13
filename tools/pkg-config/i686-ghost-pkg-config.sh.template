@@ -1,0 +1,5 @@
+#!/bin/sh
+export PKG_CONFIG_SYSROOT_DIR=__SYSROOT__
+export PKG_CONFIG_LIBDIR=__SYSROOT__/system/lib/pkgconfig
+export PKG_CONFIG_PATH=$PKG_CONFIG_LIBDIR
+exec pkg-config --static "$@"

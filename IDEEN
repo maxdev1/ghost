@@ -1,11 +1,3 @@
-Hier werden Ideen aufgelistet, um die Performance zu verbessern.
-
-
-# KRITISCH: dlmalloc funktioniert nicht thread-safe
-Deshalb ist aktuell der gmalloc eingebunden. Warum der dlmalloc trotz USE_LOCKS keine
-Spinlocks verwendet ist rauszufinden.
-
-
 # Nachrichten-Empfang verbessern
 Beim Senden von einer Nachricht prüfen, ob der Target-Thread auf die Nachricht wartet.
 Wenn ja, kann dieser gleich receiven und in die Run-Queue verschoben werden.

@@ -25,7 +25,6 @@
 #include <components/titled_component.hpp>
 #include <ghostuser/graphics/text/font.hpp>
 #include <ghostuser/graphics/text/text_alignment.hpp>
-#include <ghostuser/graphics/text/text_layouter.hpp>
 
 /**
  *
@@ -34,11 +33,11 @@ class label_t: public component_t, public titled_component_t {
 private:
 	g_font* font;
 	int fontSize;
+	cairo_text_extents_t lastExtents;
+
 	std::string text;
 	g_text_alignment alignment;
 	g_color_argb color;
-
-	g_layouted_text viewModel;
 
 public:
 	label_t();
@@ -48,6 +47,8 @@ public:
 	virtual void paint();
 	virtual void update();
 	virtual bool handle(event_t& e);
+
+	virtual void setFont(g_font* font);
 
 	virtual void setTitle(std::string title);
 	virtual std::string getTitle();

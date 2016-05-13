@@ -19,29 +19,25 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "tester.hpp"
+#include <libgen.h>
 #include <stdio.h>
-#include <ghost.h>
-
-uint8_t overflow() {
-	char test[0x2000];
-	test[0] = 244;
-	return test[0];
-}
+#include <string.h>
+#include <malloc.h>
 
 /**
  *
  */
 int main(int argc, char** argv) {
-	klog("testing stack overflow...");
-	uint8_t x;
-	klog("stack is: %x", &x);
 
-	uint8_t y = overflow();
-	klog("done %c", y);
+	if (argc > 1) {
+		char* dirbuf = strdup(argv[1]);
+		char* basebuf = strdup(argv[1]);
+		printf("basename: %s\n", dirname(dirbuf));
+		printf("dirname:  %s\n", basename(basebuf));
+		free(dirbuf);
+		free(basebuf);
+	} else {
+		fprintf(stderr, "specify a path name");
+	}
 
-	g_tid f = g_fork();
-	klog("i am: %i", f);
-
-	return y;
-	//run_test(argc, argv);
 }

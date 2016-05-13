@@ -77,11 +77,6 @@ char* get_executable_name() {
 	// free the absolute buffer
 	free(absoluteExecPath);
 
-	// if nothing found...
-	if (execName == 0) {
-		execName = "program";
-	}
-
 	return execName;
 }
 

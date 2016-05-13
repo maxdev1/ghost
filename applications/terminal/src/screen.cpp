@@ -101,10 +101,8 @@ void screen_t::updateCursor() {
  */
 void screen_t::writeChar(char c, screen_color_t color) {
 	if (c == '\n') {
-		writeChar(' ', color);
-		while ((offset % ( SCREEN_WIDTH * 2)) != 0) {
-			writeChar(' ', color);
-		}
+		offset += SCREEN_WIDTH * 2;
+		offset -= offset % (SCREEN_WIDTH * 2);
 	} else {
 		output_current[offset++] = c;
 		output_current[offset++] = (uint8_t) color;
@@ -146,7 +144,7 @@ void screen_t::normalize() {
 		offset -= SCREEN_WIDTH * 2;
 
 		uint32_t lineBytes = SCREEN_WIDTH * 2;
-		int screenSize = SCREEN_HEIGHT * lineBytes;
+		uint32_t screenSize = SCREEN_HEIGHT * lineBytes;
 
 		memcpy(output_current, &output_current[SCREEN_WIDTH * 2],
 				screenSize - lineBytes);

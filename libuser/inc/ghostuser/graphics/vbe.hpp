@@ -24,7 +24,6 @@
 #include <stdint.h>
 
 #define G_VBE_DRIVER_IDENTIFIER			"vbedriver"
-#define G_VBE_DRIVER_COMMAND_SET_MODE	1
 
 /**
  *
@@ -35,7 +34,45 @@ struct g_vbe_mode_info {
 	uint16_t bpp;
 	uint16_t bpsl;
 	uint32_t lfb;
-};
+}__attribute__((packed));
+
+/**
+ *
+ */
+typedef int g_vbe_command;
+#define G_VBE_COMMAND_SET_MODE	((g_vbe_command) 0)
+
+/**
+ *
+ */
+struct g_vbe_request_header {
+	g_vbe_command command;
+}__attribute__((packed));
+
+/**
+ *
+ */
+typedef int g_vbe_set_mode_status;
+#define G_VBE_SET_MODE_STATUS_SUCCESS		((g_vbe_set_mode_status) 0)
+#define G_VBE_SET_MODE_STATUS_FAILED		((g_vbe_set_mode_status) 1)
+
+/**
+ *
+ */
+struct g_vbe_set_mode_request {
+	g_vbe_request_header header;
+	uint16_t width;
+	uint16_t height;
+	uint8_t bpp;
+}__attribute__((packed));
+
+/**
+ *
+ */
+struct g_vbe_set_mode_response {
+	g_vbe_set_mode_status status;
+	g_vbe_mode_info mode_info;
+}__attribute__((packed));
 
 /**
  *

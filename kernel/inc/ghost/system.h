@@ -95,6 +95,11 @@ typedef uint8_t g_kill_status;
 #define G_KILL_STATUS_NOT_FOUND							((g_kill_status) 1)
 #define G_KILL_STATUS_FAILED					 		((g_kill_status) 2)
 
+// for <g_create_thread>
+typedef uint8_t g_create_thread_status;
+#define G_CREATE_THREAD_STATUS_SUCCESSFUL				((g_create_thread_status) 0)
+#define G_CREATE_THREAD_STATUS_FAILED					((g_create_thread_status) 1)
+
 __END_C
 
 #endif

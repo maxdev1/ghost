@@ -4,7 +4,7 @@
 # Define build setup
 SRC=src
 OBJ=obj
-ARTIFACT_NAME=calculator
+ARTIFACT_NAME=calculator.bin
 CFLAGS="-std=c++11 -I$SRC"
 LDFLAGS=""
 

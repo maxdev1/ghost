@@ -288,7 +288,7 @@ g_fs_transaction_id g_fs_delegate_pipe::request_open(g_thread* requester, g_fs_n
 	g_fs_transaction_id id = g_fs_transaction_store::next_transaction();
 
 	// pipes can never be opened
-	g_log_warn("%! pipes can not be opened", "filesystem");
+	g_log_warn("%! pipes can not be opened explicitly", "filesystem");
 	handler->status = G_FS_OPEN_ERROR;
 
 	g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
@@ -299,5 +299,25 @@ g_fs_transaction_id g_fs_delegate_pipe::request_open(g_thread* requester, g_fs_n
  *
  */
 void g_fs_delegate_pipe::finish_open(g_thread* requester, g_fs_transaction_handler_open* handler) {
+
+}
+
+/**
+ *
+ */
+g_fs_transaction_id g_fs_delegate_pipe::request_close(g_thread* requester, g_fs_transaction_handler_close* handler, g_file_descriptor_content* fd,
+		g_fs_node* node) {
+
+	g_fs_transaction_id id = g_fs_transaction_store::next_transaction();
+	// nothing to do here
+	handler->status = G_FS_CLOSE_SUCCESSFUL;
+	g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
+	return id;
+}
+
+/**
+ *
+ */
+void g_fs_delegate_pipe::finish_close(g_thread* requester, g_fs_transaction_handler_close* handler) {
 
 }

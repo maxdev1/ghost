@@ -26,6 +26,9 @@
 
 __BEGIN_C
 
+/**
+ *
+ */
 typedef long time_t;
 typedef long suseconds_t;
 
@@ -33,6 +36,13 @@ typedef void* timer_t;
 typedef int clockid_t;
 typedef long clock_t;
 
+#define CLOCKS_PER_SEC 1000000L
+
+#define TIME_UTC 1
+
+/**
+ *
+ */
 struct tm {
 	int tm_sec;
 	int tm_min;
@@ -47,19 +57,50 @@ struct tm {
 	const char *__tm_zone;
 };
 
+/**
+ *
+ */
 clock_t clock();
+
+/**
+ *
+ */
 time_t time(time_t *);
+
+/**
+ *
+ */
 double difftime(time_t, time_t);
+
+/**
+ *
+ */
 time_t mktime(struct tm *);
+
+/**
+ *
+ */
 size_t strftime(char *, size_t, const char*, const struct tm *);
+
+/**
+ *
+ */
 struct tm* gmtime(const time_t *);
+
+/**
+ *
+ */
 struct tm* localtime(const time_t *);
+
+/**
+ *
+ */
 char* asctime(const struct tm *);
+
+/**
+ *
+ */
 char* ctime(const time_t *);
-
-#define CLOCKS_PER_SEC 1000000L
-
-#define TIME_UTC 1
 
 __END_C
 

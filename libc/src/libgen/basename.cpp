@@ -22,6 +22,8 @@
 #include "ghost.h"
 #include "string.h"
 
+static char _statbuf[8];
+
 /**
  *
  */
@@ -29,30 +31,43 @@ char* basename(char* path) {
 
 	// return dot if null
 	if (path == NULL) {
-		return ".";
+		_statbuf[0] = '.';
+		_statbuf[1] = 0;
+		return _statbuf;
 	}
 
 	// get length of the path
-	int len = strlen(path);
+	size_t len = strlen(path);
 
 	// return dot if empty
 	if (len == 0) {
-		return ".";
+		_statbuf[0] = '.';
+		_statbuf[1] = 0;
+		return _statbuf;
 	}
 
-	// return slash in these two cases
-	if ((len == 1 && path[0] == '/')
-			|| (len == 2 && path[0] == '/' && path[1] == '/')) {
-		return "/";
+	// overwrite trailing slashes with nulls
+	char* last = path + len - 1;
+	while (last >= path && *last == '/') {
+		*last = 0;
+		--last;
+	}
+
+	// if the entire path consisted of slashes, return slash
+	if (*path == 0) {
+		_statbuf[0] = '/';
+		_statbuf[1] = 0;
+		return _statbuf;
 	}
 
 	// find base name part
-	char* slashLocation = strrchr(path, '/');
+	char* rightmostSlash = strrchr(path, '/');
 
-	if (slashLocation == NULL) {
+	if (rightmostSlash == NULL) {
+		// no slash found
 		return path;
 	}
 
-	return slashLocation + 1;
+	return rightmostSlash + 1;
 }
 

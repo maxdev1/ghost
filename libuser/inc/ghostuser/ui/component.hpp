@@ -76,7 +76,7 @@ protected:
 		}
 
 		// send initialization request
-		uint32_t tx = g_ipc_next_topic();
+		g_message_transaction tx = g_get_message_tx_id();
 
 		g_ui_create_component_request request;
 		request.header.id = G_UI_PROTOCOL_CREATE_COMPONENT;

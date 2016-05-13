@@ -37,8 +37,7 @@
 void run_tests() {
 
 	// Start MagicFS-driver
-	launch_via_spawner("/applications/example-fs-driver.bin", "",
-	G_SECURITY_LEVEL_DRIVER);
+	launch_via_spawner("/applications/example-fs-driver.bin", "", G_SECURITY_LEVEL_DRIVER);
 	g_sleep(100);
 
 	// g_open_directory test
@@ -153,9 +152,8 @@ void run_tests() {
 		g_logger::log("length: %i", g_flength("/system/keyboard/de-DE.layout"));
 		g_logger::log("length: %i", g_flength_s("/system/keyboard/de-DE.layout", false));
 
-		g_fs_close_status closestatus;
-		int32_t closeres = g_close_s(test_file, &closestatus);
-		g_logger::log("ramdisk: closed with result %i, status: %i", closeres, closestatus);
+		g_fs_close_status closestatus = g_close(test_file);
+		g_logger::log("ramdisk: closed with status: %i", closestatus);
 	}
 
 	/* Ramdisk length-seeking test */{
@@ -167,9 +165,8 @@ void run_tests() {
 		g_seek(test_file, 0, G_FS_SEEK_END);
 		g_logger::log("ramdisk: file length is %i", g_tell(test_file));
 
-		g_fs_close_status closestatus;
-		int32_t closeres = g_close_s(test_file, &closestatus);
-		g_logger::log("ramdisk: closed with result %i, status: %i", closeres, closestatus);
+		g_fs_close_status closestatus = g_close(test_file);
+		g_logger::log("ramdisk: closed with status: %i", closestatus);
 	}
 
 	/* Clone-FD test */{
@@ -213,9 +210,8 @@ void run_tests() {
 		g_logger::log("length: %i", g_flength("/system/keyboard/de-DE.layout"));
 		g_logger::log("length: %i", g_flength_s("/system/keyboard/de-DE.layout", false));
 
-		g_fs_close_status closestatus;
-		int32_t closeres = g_close_s(test_file, &closestatus);
-		g_logger::log("ramdisk: closed with result %i, status: %i", closeres, closestatus);
+		g_fs_close_status closestatus = g_close(test_file);
+		g_logger::log("ramdisk: closed with status: %i", closestatus);
 	}
 
 	/* Magic-FS read test */{
@@ -236,9 +232,8 @@ void run_tests() {
 		}
 		g_logger::log("magicfs: read content: '" + str.str() + "'");
 
-		g_fs_close_status closestatus;
-		int32_t closeres = g_close_s(test_file, &closestatus);
-		g_logger::log("magicfs: closed with result %i, status: %i", closeres, closestatus);
+		g_fs_close_status closestatus = g_close(test_file);
+		g_logger::log("magicfs: closed with status: %i", closestatus);
 	}
 
 	/* Magic-FS write test */{
@@ -263,9 +258,8 @@ void run_tests() {
 		int32_t len = g_write_s(test_file, buf, contentlen, &write_status);
 		g_logger::log("magicfs: wrote %i bytes, status: %i", len, write_status);
 
-		g_fs_close_status closestatus;
-		int32_t closeres = g_close_s(test_file, &closestatus);
-		g_logger::log("magicfs: closed with result %i, status: %i", closeres, closestatus);
+		g_fs_close_status closestatus = g_close(test_file);
+		g_logger::log("magicfs: closed with status: %i", closestatus);
 	}
 
 	/**

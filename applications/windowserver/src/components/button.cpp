@@ -23,10 +23,10 @@
 
 #include <events/focus_event.hpp>
 #include <events/mouse_event.hpp>
-#include <ghostuser/graphics/painter.hpp>
 #include <ghostuser/graphics/text/text_alignment.hpp>
 #include <ghostuser/ui/properties.hpp>
 #include <ghostuser/utils/Logger.hpp>
+#include <math.h>
 
 /**
  *
@@ -54,24 +54,49 @@ void button_t::layout() {
  */
 void button_t::paint() {
 
-	g_painter p(graphics);
-	if (enabled) {
-		p.setColor(state.pressed ? RGB(230, 230, 230) : (state.hovered ? RGB(250, 250, 250) : RGB(240, 240, 240)));
-	} else {
-		p.setColor(RGB(200, 200, 200));
-	}
-	p.fill(g_rectangle(0, 0, getBounds().width, getBounds().height));
+	auto cr = graphics.getContext();
+	clearSurface();
+	auto bounds = getBounds();
 
+	// choose colors
+	g_color_argb background;
+	if (enabled) {
+		background = state.pressed ? RGB(230, 230, 230) : (state.hovered ? RGB(255, 255, 255) : RGB(248, 248, 248));
+	} else {
+		background = RGB(200, 200, 200);
+	}
+
+	g_color_argb border;
 	if (enabled) {
 		if (state.focused) {
-			p.setColor(RGB(55, 155, 255));
+			border = RGB(55, 155, 255);
 		} else {
-			p.setColor(RGB(180, 180, 180));
+			border = RGB(180, 180, 180);
 		}
 	} else {
-		p.setColor(RGB(160, 160, 160));
+		border = RGB(160, 160, 160);
 	}
-	p.draw(g_rectangle(0, 0, getBounds().width - 1, getBounds().height - 1));
+
+	// prepare
+	double x = 0.5;
+	double y = 0.5;
+	double width = bounds.width - 1;
+	double height = bounds.height - 1;
+	double radius = 2.5;
+	double degrees = M_PI / 180.0;
+
+	cairo_new_sub_path(cr);
+	cairo_arc(cr, x + width - radius, y + radius, radius, -90 * degrees, 0 * degrees);
+	cairo_arc(cr, x + width - radius, y + height - radius, radius, 0 * degrees, 90 * degrees);
+	cairo_arc(cr, x + radius, y + height - radius, radius, 90 * degrees, 180 * degrees);
+	cairo_arc(cr, x + radius, y + radius, radius, 180 * degrees, 270 * degrees);
+	cairo_close_path(cr);
+
+	cairo_set_source_rgba(cr, G_COLOR_ARGB_TO_FPARAMS(background));
+	cairo_fill_preserve(cr);
+	cairo_set_source_rgba(cr, G_COLOR_ARGB_TO_FPARAMS(border));
+	cairo_set_line_width(cr, 1);
+	cairo_stroke(cr);
 }
 
 /**

@@ -25,6 +25,7 @@
 #include <ghostuser/graphics/metrics/dimension.hpp>
 #include <ghostuser/graphics/metrics/rectangle.hpp>
 #include <stdint.h>
+#include <cairo/cairo.h>
 
 /**
  *
@@ -33,37 +34,38 @@ class g_graphics {
 private:
 	int width;
 	int height;
-	g_color_argb* buffer;
-	bool transparentBackground;
-	bool hasExternalBuffer;
-
-	inline g_color_argb add(g_color_argb a, g_color_argb b);
+	cairo_t* context = 0;
+	cairo_surface_t* surface = 0;
 
 public:
 	/**
-	 * Creates a graphics object. This is a class that allows painting on a buffer.
+	 * Creates a graphics object. This is a class that holds a surface.
 	 * If an <code>externalBuffer</code> is provided, no internal buffer will be
 	 * automatically created.
 	 *
-	 * @param transparentBackground whether the graphics buffer has a transparent background
-	 *
-	 * @param externalBuffer an optional external buffer to use instead of an internal one
 	 * @param width of the externalBuffer
 	 * @param height of the externalBuffer
 	 */
-	g_graphics(bool transparentBackground = false, g_color_argb* externalBuffer = nullptr, uint16_t width = 0, uint16_t height = 0);
-
-	/**
-	 *
-	 */
-	g_color_argb* getBuffer() {
-		return buffer;
-	}
+	g_graphics(uint16_t width = 0, uint16_t height = 0);
 
 	/**
 	 *
 	 */
 	void resize(int width, int height);
+
+	/**
+	 *
+	 */
+	cairo_t* getContext() {
+		return context;
+	}
+
+	/**
+	 *
+	 */
+	cairo_surface_t* getSurface() {
+		return surface;
+	}
 
 	/**
 	 *
@@ -80,29 +82,10 @@ public:
 	}
 
 	/**
-	 * Adds the pixel
-	 */
-	void paintPixel(int x, int y, g_color_argb argb);
-
-	/**
-	 * Sets the pixel ignoring alphas
-	 */
-	void putPixel(int x, int y, g_color_argb argb);
-
-	/**
-	 * Returns the pixel
-	 */
-	g_color_argb getPixel(int x, int y);
-
-	/**
 	 *
 	 */
-	void clear();
+	void blitTo(g_graphics* graphics, g_rectangle absoluteClip, g_point position);
 
-	/**
-	 *
-	 */
-	void blitTo(g_color_argb* out, const g_rectangle& outBounds, const g_rectangle& absoluteClip, const g_point& offset);
 };
 
 #endif

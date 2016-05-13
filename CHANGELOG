@@ -1,4 +1,4 @@
-Ghost Development Changelog
+GHOST DEVELOPMENT CHANGELOG
 ---------------------------
 This changelog is used to keep track of the major system changes for each version.
 
@@ -20,3 +20,7 @@ This changelog is used to keep track of the major system changes for each versio
 - kernquery syscall interface added
 - "g_kill" returns a status now
 - thread type & priority types moved to public header
+
+0.5.3
+- removed old messaging interface
+- added handling of close syscall to fs delegates

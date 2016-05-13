@@ -22,10 +22,11 @@
 #define GHOSTLIBRARY_GRAPHICS_TEXT_FONT
 
 #include <ghostuser/graphics/text/freetype.hpp>
-#include <ghostuser/graphics/text/glyph.hpp>
 #include <ghostuser/io/streams/input_stream.hpp>
 #include <string>
 #include <map>
+#include <cairo/cairo.h>
+#include <cairo/cairo-ft.h>
 
 /**
  *
@@ -35,9 +36,6 @@ enum class g_font_style
 		NORMAL, ITALIC, BOLD
 };
 
-typedef std::map<char, g_glyph*> g_font_glyph_map;
-typedef std::map<int, g_font_glyph_map> g_font_size_map;
-
 /**
  *
  */
@@ -45,34 +43,18 @@ class g_font {
 private:
 	uint8_t* data;
 	std::string name;
-	FT_Face face;
 	g_font_style style;
 	bool hint;
 
+	FT_Face face;
+	cairo_font_face_t* cairo_face;
+
 	bool okay;
 
-	/**
-	 * Glyph cache
-	 */
-	g_font_size_map glyphCache;
-
-	/**
-	 * Freetype sizes
-	 */
-	std::map<int, FT_Size> sizes;
 	int activeSize;
 
-	/**
-	 * Deletes all glyphs in the cache
-	 */
-	void destroyGlyphs();
-
-	/**
-	 * Looks for the size in the size map, otherwise creates it
-	 */
-	FT_Size getSize(int size);
-
 public:
+
 	/**
 	 * Creates an empty font with the "name". The "source" data
 	 * is copied to an internal buffer.
@@ -114,24 +96,11 @@ public:
 	}
 
 	/**
-	 * Looks for character "c" with "size" in the glyph
-	 * cache, renders it if not existant.
-	 *
-	 * @param size	the size to render
-	 * @param c		the searched character
-	 * @return the matching glyph object
-	 */
-	g_glyph* getGlyph(int size, char c);
-
-	/**
 	 *
 	 */
-	int getLineHeight(int size);
-
-	/**
-	 *
-	 */
-	g_point getKerning(int size, g_glyph* left, g_glyph* right);
+	cairo_font_face_t* getFace() {
+		return cairo_face;
+	}
 
 };
 

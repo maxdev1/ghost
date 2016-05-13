@@ -22,28 +22,41 @@
 #define __SCROLLPANE__
 
 #include <components/component.hpp>
+#include <components/scrollbar.hpp>
 #include <components/panel.hpp>
 
 /**
  *
  */
-class scrollpane_t: public component_t {
+class scrollpane_t: public component_t, public scroll_handler_t {
 private:
-	g_color_argb background;
-	panel_t content_panel;
-	g_point scroll_point;
+	component_t* viewPort;
+	g_point scrollPosition;
+	scrollbar_t verticalScrollbar;
+	scrollbar_t horizontalScrollbar;
 
 public:
 	scrollpane_t() :
-			background(RGB(240, 240, 240)), scroll_point(g_point(0, 0)) {
-		component_t::addChild(&content_panel);
+			scrollPosition(g_point(0, 0)), viewPort(nullptr), verticalScrollbar(scrollbar_orientation_t::VERTICAL), horizontalScrollbar(
+					scrollbar_orientation_t::HORIZONTAL) {
 	}
 
-	virtual bool handle(event_t& event);
+	virtual g_point getPosition() const {
+		return scrollPosition;
+	}
 
-	virtual void addChild(component_t* comp);
+	virtual void layout();
 
-	virtual void handleBoundChange(g_rectangle oldBounds);
+	virtual void setPosition(g_point& position);
+
+	virtual void setViewPort(component_t* content);
+
+	virtual component_t* getViewPort() const {
+		return viewPort;
+	}
+
+	virtual void handleScroll(scrollbar_t* bar);
+
 };
 
 #endif

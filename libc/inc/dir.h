@@ -25,6 +25,7 @@
 #include "ghost/fs.h"
 #include "sys/types.h"
 #include "stdint.h"
+#include "dirent.h"
 
 __BEGIN_C
 
@@ -34,6 +35,8 @@ typedef struct DIR DIR;
  * Represents a directory stream. Used by dirent-related functions.
  */
 struct DIR {
+	struct dirent* entbuf;
+	g_fs_directory_iterator* iter;
 };
 
 __END_C

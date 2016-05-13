@@ -5,6 +5,6 @@
 5. Apply patch, then (from separate build directory):
 	
 	export PKG_CONFIG=i686-ghost-pkg-config.sh
-	CFLAGS="-DCAIRO_NO_MUTEX=1" ../cairo-1.12.18/configure --host=i686-ghost --prefix=/system --enable-ps=no --enable-pdf=no --enable-interpreter=no --enable-xlib=no
+	CFLAGS="-DCAIRO_NO_MUTEX=1" ../cairo-1.12.18/configure --host=i686-ghost --prefix=/system --enable-xlib=no
 	make
 	make DESTDIR=/ghost/sysroot install

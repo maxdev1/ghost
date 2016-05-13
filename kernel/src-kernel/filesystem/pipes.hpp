@@ -22,6 +22,7 @@
 #define GHOST_FILESYSTEM_PIPES
 
 #include "ghost/stdint.h"
+#include "ghost/kernel.h"
 #include "utils/list_entry.hpp"
 #include "tasking/process.hpp"
 #include "filesystem/pipes.hpp"
@@ -30,11 +31,6 @@
  *
  */
 typedef int g_pipe_id;
-
-/**
- *
- */
-#define PIPE_DEFAULT_CAPACITY	0x400
 
 /**
  *

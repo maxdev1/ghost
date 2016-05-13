@@ -1,1 +1,17 @@
-LIBAPI
+# libapi Documentation
+:toc: left
+
+include::../common/homelink.adoc[]
+
+:numbered:
+
+About
+-----
+libapi is a wrapper library that uses the system call interface provided by the
+kernel to build a facade of C functions.
+
+Tasking
+-------
+include::g_atomic_lock.adoc[]
+include::g_create_thread.adoc[]
+

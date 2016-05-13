@@ -1,3 +1,0 @@
-- Install script to the bin folder
-- When using, set environment variable PKG_CONFIG to "i686-ghost-pkg-config.sh"
-- Needs a real pkg-config to be installed
