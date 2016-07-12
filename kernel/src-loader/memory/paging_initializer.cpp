@@ -83,9 +83,9 @@ void g_paging_initializer::relocateMultibootModules(g_page_directory pageDirecto
 		g_multiboot_module* module = (g_multiboot_module*) (mbInfo->modulesAddress + sizeof(g_multiboot_module) * i);
 
 		// Get physical values for module
-		uint32_t modPhysStartAligned = PAGE_ALIGN_DOWN(module->moduleStart);
+		uint32_t modPhysStartAligned = G_PAGE_ALIGN_DOWN(module->moduleStart);
 		uint32_t modPhysOff = module->moduleStart - modPhysStartAligned;
-		uint32_t modPhysEndAligned = PAGE_ALIGN_UP(module->moduleEnd);
+		uint32_t modPhysEndAligned = G_PAGE_ALIGN_UP(module->moduleEnd);
 		uint32_t modPhysLen = module->moduleEnd - module->moduleStart;
 
 		// Calculate virtual values and map
@@ -104,7 +104,7 @@ void g_paging_initializer::relocateMultibootModules(g_page_directory pageDirecto
 		module->moduleEnd = modVirtStart + modPhysLen;
 		g_log_debug(" to virt %h-%h", module->moduleStart, module->moduleEnd);
 
-		nextModuleLocation = PAGE_ALIGN_UP(module->moduleEnd);
+		nextModuleLocation = G_PAGE_ALIGN_UP(module->moduleEnd);
 	}
 }
 
@@ -125,8 +125,8 @@ void g_paging_initializer::identityMap(uint32_t* directory, uint32_t start, uint
  */
 void g_paging_initializer::mapPage(uint32_t* directory, uint32_t virtualAddress, uint32_t physicalAddress, uint32_t tableFlags, uint32_t pageFlags) {
 
-	uint32_t ti = TABLE_IN_DIRECTORY_INDEX(virtualAddress);
-	uint32_t pi = PAGE_IN_TABLE_INDEX(virtualAddress);
+	uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(virtualAddress);
+	uint32_t pi = G_PAGE_IN_TABLE_INDEX(virtualAddress);
 
 	// Create table if it does not exist
 	if (directory[ti] == 0) {
@@ -163,8 +163,8 @@ bool g_paging_initializer::mapPageToRecursiveDirectory(uint32_t virtualAddress, 
 		g_loader::panic("%! tried to map unaligned addresses: virt %h to phys %h", "paging", virtualAddress, physicalAddress);
 	}
 
-	uint32_t ti = TABLE_IN_DIRECTORY_INDEX(virtualAddress);
-	uint32_t pi = PAGE_IN_TABLE_INDEX(virtualAddress);
+	uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(virtualAddress);
+	uint32_t pi = G_PAGE_IN_TABLE_INDEX(virtualAddress);
 
 	uint32_t* directory = (uint32_t*) 0xFFFFF000;
 	uint32_t* table = ((uint32_t*) 0xFFC00000) + (0x400 * ti);

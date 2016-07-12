@@ -29,8 +29,8 @@ g_pp_reference_count_directory directory;
  */
 void g_pp_reference_tracker::increment(g_physical_address address) {
 
-	uint32_t ti = TABLE_IN_DIRECTORY_INDEX(address);
-	uint32_t pi = PAGE_IN_TABLE_INDEX(address);
+	uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(address);
+	uint32_t pi = G_PAGE_IN_TABLE_INDEX(address);
 
 	if (directory.tables[ti] == 0) {
 		directory.tables[ti] = new g_pp_reference_count_table;
@@ -48,8 +48,8 @@ void g_pp_reference_tracker::increment(g_physical_address address) {
  */
 int16_t g_pp_reference_tracker::decrement(g_physical_address address) {
 
-	uint32_t ti = TABLE_IN_DIRECTORY_INDEX(address);
-	uint32_t pi = PAGE_IN_TABLE_INDEX(address);
+	uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(address);
+	uint32_t pi = G_PAGE_IN_TABLE_INDEX(address);
 
 	if (directory.tables[ti] == 0) {
 		return 0;

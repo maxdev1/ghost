@@ -22,7 +22,9 @@
 #define __GHOST_USER_LIBRARY__UI_UI__
 
 class g_listener;
+class g_canvas;
 #include <ghostuser/ui/interface_specification.hpp>
+
 
 /**
  *
@@ -68,6 +70,8 @@ public:
 
 	static void add_listener(g_listener* l);
 	static void remove_listener(g_listener* l);
+
+	static bool register_desktop_canvas(g_canvas* c);
 };
 
 #endif

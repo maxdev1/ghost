@@ -177,9 +177,9 @@ g_fs_transaction_id g_fs_delegate_tasked::request_read(g_thread* requester, g_fs
 	 */
 	g_address_space::switch_to_space(requester->process->pageDirectory);
 
-	int required_pages = PAGE_ALIGN_UP(length) / G_PAGE_SIZE + 1;
+	int required_pages = G_PAGE_ALIGN_UP(length) / G_PAGE_SIZE + 1;
 	g_local<g_physical_address> phys_pages(new g_physical_address[required_pages]);
-	g_virtual_address virt_start = PAGE_ALIGN_DOWN((g_virtual_address ) buffer());
+	g_virtual_address virt_start = G_PAGE_ALIGN_DOWN((g_virtual_address ) buffer());
 	uint32_t offset_in_first_page = ((g_virtual_address) buffer()) & G_PAGE_ALIGN_MASK;
 
 	for (int i = 0; i < required_pages; i++) {
@@ -292,9 +292,9 @@ g_fs_transaction_id g_fs_delegate_tasked::request_write(g_thread* requester, g_f
 	 */
 	g_address_space::switch_to_space(requester->process->pageDirectory);
 
-	int required_pages = PAGE_ALIGN_UP(length) / G_PAGE_SIZE + 1;
+	int required_pages = G_PAGE_ALIGN_UP(length) / G_PAGE_SIZE + 1;
 	g_local<g_physical_address> phys_pages(new g_physical_address[required_pages]);
-	g_virtual_address virt_start = PAGE_ALIGN_DOWN((g_virtual_address ) buffer());
+	g_virtual_address virt_start = G_PAGE_ALIGN_DOWN((g_virtual_address ) buffer());
 	uint32_t offset_in_first_page = ((g_virtual_address) buffer()) & G_PAGE_ALIGN_MASK;
 
 	for (int i = 0; i < required_pages; i++) {

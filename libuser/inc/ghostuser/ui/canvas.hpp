@@ -28,20 +28,33 @@
 /**
  *
  */
+struct g_canvas_buffer_info {
+	g_color_argb* buffer;
+	uint16_t width;
+	uint16_t height;
+};
+
+/**
+ *
+ */
 class g_canvas: public g_component {
 protected:
 	g_graphics* graphics;
+	g_address buffer;
 
 	g_canvas(uint32_t id) :
-			graphics(0), g_component(id) {
+			graphics(0), g_component(id), buffer(0) {
 	}
 
 	~g_canvas();
 
-	bool retrieveServerManagedBuffer();
-
 public:
 	static g_canvas* create();
+
+	void acknowledgeNewBuffer(g_address address);
+
+	void blit(g_rectangle rect);
+	g_canvas_buffer_info getBuffer();
 };
 
 #endif

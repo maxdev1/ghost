@@ -30,6 +30,7 @@ static g_ui_component_id next_id = 1;
 g_ui_component_id component_registry_t::add(component_t* component) {
 	g_ui_component_id id = next_id++;
 	components[id] = component;
+	component->id = id;
 	return id;
 }
 

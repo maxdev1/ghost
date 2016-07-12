@@ -24,3 +24,4 @@ This changelog is used to keep track of the major system changes for each versio
 0.5.3
 - removed old messaging interface
 - added handling of close syscall to fs delegates
+- fixed a bug for large shared memory mappings that would cause stack overflow

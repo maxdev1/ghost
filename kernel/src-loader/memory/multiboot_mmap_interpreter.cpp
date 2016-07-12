@@ -60,8 +60,8 @@ void g_multiboot_mmap_interpreter::load(g_bitmap_page_allocator* allocator, uint
 				}
 
 				// Page-align
-				areaStart = PAGE_ALIGN_UP(areaStart);
-				areaEnd = PAGE_ALIGN_DOWN(areaEnd);
+				areaStart = G_PAGE_ALIGN_UP(areaStart);
+				areaEnd = G_PAGE_ALIGN_DOWN(areaEnd);
 
 				// Mark as free
 				uint32_t chunkCount = 0;
@@ -76,7 +76,7 @@ void g_multiboot_mmap_interpreter::load(g_bitmap_page_allocator* allocator, uint
 						for (uint32_t i = 0; i < mbInfo->modulesCount; i++) {
 							g_multiboot_module* module = (g_multiboot_module*) (mbInfo->modulesAddress + sizeof(g_multiboot_module) * i);
 
-							if ((areaStart >= PAGE_ALIGN_DOWN(module->moduleStart)) && (areaStart < PAGE_ALIGN_UP(module->moduleEnd))) {
+							if ((areaStart >= G_PAGE_ALIGN_DOWN(module->moduleStart)) && (areaStart < G_PAGE_ALIGN_UP(module->moduleEnd))) {
 								isInModule = true;
 								break;
 							}

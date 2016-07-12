@@ -119,7 +119,7 @@ g_physical_address g_thread_manager::forkCurrentPageDirectory(g_process* process
 						clonedTableTemp[pi] = table[pi] & ~G_PAGE_TABLE_READWRITE;
 
 						// increment reference count on the physical page
-						g_pp_reference_tracker::increment(PAGE_ALIGN_DOWN(table[pi]));
+						g_pp_reference_tracker::increment(G_PAGE_ALIGN_DOWN(table[pi]));
 
 					} else {
 						clonedTableTemp[pi] = 0;
@@ -479,7 +479,7 @@ void g_thread_manager::prepareThreadLocalStorage(g_thread* thread) {
 
 		// allocate virtual range with aligned size of TLS + size of {g_user_thread}
 		uint32_t required_size = tls_master_aligned_total_size + sizeof(g_user_thread);
-		uint32_t required_pages = PAGE_ALIGN_UP(required_size) / G_PAGE_SIZE;
+		uint32_t required_pages = G_PAGE_ALIGN_UP(required_size) / G_PAGE_SIZE;
 		g_virtual_address tls_copy_virt = process->virtualRanges.allocate(required_pages, G_PROC_VIRTUAL_RANGE_FLAG_PHYSICAL_OWNER);
 
 		// store executing space

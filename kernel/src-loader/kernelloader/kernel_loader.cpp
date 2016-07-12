@@ -45,7 +45,7 @@ void g_kernel_loader::load(g_multiboot_module* kernelModule) {
 	 * that every copy of the kernel space contains all later kernel pages.
 	 */
 	uint32_t* directory = (uint32_t*) 0xFFFFF000;
-	for (uint32_t ti = TABLE_IN_DIRECTORY_INDEX(setupInformation->kernelImageStart); ti < 1024; ti++) {
+	for (uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(setupInformation->kernelImageStart); ti < 1024; ti++) {
 
 		// Create the table only if it doesn't exist yet
 		if (directory[ti] == 0) {
@@ -126,8 +126,8 @@ void g_kernel_loader::loadBinary(elf32_ehdr* header, g_setup_information* setupI
 		}
 	}
 
-	imageStart = PAGE_ALIGN_DOWN(imageStart);
-	imageEnd = PAGE_ALIGN_UP(imageEnd);
+	imageStart = G_PAGE_ALIGN_DOWN(imageStart);
+	imageEnd = G_PAGE_ALIGN_UP(imageEnd);
 	g_log_debug("%! image spans from %h to %h", "kernload", imageStart, imageEnd);
 
 	// Map pages

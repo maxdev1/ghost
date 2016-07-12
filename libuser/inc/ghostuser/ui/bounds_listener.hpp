@@ -42,10 +42,12 @@ public:
 	}
 
 	virtual void process(g_ui_component_event_header* header) {
-		handle_bounds_changed();
+
+		g_ui_component_bounds_event* bounds_event = (g_ui_component_bounds_event*) header;
+		handle_bounds_changed(bounds_event->bounds);
 	}
 
-	virtual void handle_bounds_changed() = 0;
+	virtual void handle_bounds_changed(g_rectangle bounds) = 0;
 };
 
 #endif

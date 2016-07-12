@@ -22,6 +22,7 @@
 #include <ghostuser/ui/component.hpp>
 #include <ghostuser/ui/listener.hpp>
 #include <ghostuser/ui/ui.hpp>
+#include <ghostuser/ui/canvas.hpp>
 #include <ghostuser/ui/action_component.hpp>
 #include <ghostuser/ui/action_listener.hpp>
 #include <ghostuser/utils/logger.hpp>
@@ -85,7 +86,6 @@ g_ui_open_status g_ui::open() {
 	}
 
 	// mark UI as ready
-	g_logger::log("successfully opened UI in window server");
 	g_ui_initialized = true;
 	g_ui_delegate_tid = response->window_server_delegate_thread;
 	return G_UI_OPEN_STATUS_SUCCESSFUL;
@@ -121,3 +121,34 @@ void g_ui::event_dispatch_thread() {
 	}
 }
 
+/**
+ *
+ */
+bool g_ui::register_desktop_canvas(g_canvas* c) {
+
+	if (!g_ui_initialized) {
+		return false;
+	}
+
+	g_message_transaction tx = g_get_message_tx_id();
+
+	// send registration request
+	g_ui_register_desktop_canvas_request request;
+	request.header.id = G_UI_PROTOCOL_REGISTER_DESKTOP_CANVAS;
+	request.canvas_id = c->getId();
+	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_register_desktop_canvas_request), tx);
+
+	// read response
+	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_register_desktop_canvas_response);
+	g_local<uint8_t> buffer(new uint8_t[bufferSize]);
+
+	if (g_receive_message_t(buffer(), bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
+		g_ui_register_desktop_canvas_response* response = (g_ui_register_desktop_canvas_response*) G_MESSAGE_CONTENT(buffer());
+
+		if (response->status == G_UI_PROTOCOL_SUCCESS) {
+			return true;
+		}
+	}
+
+	return false;
+}

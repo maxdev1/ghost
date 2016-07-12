@@ -181,7 +181,7 @@ uint32_t g_acpi::getLengthOfUnmappedSDT(g_physical_address tableLocation) {
 
 	// Align the location down, we will allocate 2 pages to make sure the
 	// header is within the range
-	g_physical_address physStart = PAGE_ALIGN_DOWN(tableLocation);
+	g_physical_address physStart = G_PAGE_ALIGN_DOWN(tableLocation);
 	g_virtual_address virtualBase = g_kernel_virt_addr_ranges->allocate(2);
 
 	if (!g_address_space::map(virtualBase, physStart, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS)) {
@@ -227,8 +227,8 @@ g_acpi_table_header* g_acpi::mapSDT(g_physical_address tableLocation) {
 	}
 
 	// Down/upalign physical range
-	g_physical_address physStart = PAGE_ALIGN_DOWN(tableLocation);
-	g_physical_address physEnd = PAGE_ALIGN_UP(tableLocation + tableLength);
+	g_physical_address physStart = G_PAGE_ALIGN_DOWN(tableLocation);
+	g_physical_address physEnd = G_PAGE_ALIGN_UP(tableLocation + tableLength);
 
 	// Calculate offset of header within first page
 	uint32_t mappingOffset = tableLocation - physStart;

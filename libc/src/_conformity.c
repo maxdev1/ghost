@@ -1,3 +1,8 @@
+/**
+ * This header file is compiled with "-std=c11" only as a test to see if all
+ * included headers are C11 conform.
+ */
+
 // freestanding GCC headers
 #include <stdarg.h>
 #include <stdatomic.h>
