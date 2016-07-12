@@ -149,7 +149,7 @@ void g_interrupt_exception_handler::printStackTrace(g_processor_state* state) {
  */
 g_thread* g_interrupt_exception_handler::handlePageFault(g_thread* current_thread) {
 
-	g_virtual_address accessedVirtual = PAGE_ALIGN_DOWN(getCR2());
+	g_virtual_address accessedVirtual = G_PAGE_ALIGN_DOWN(getCR2());
 	g_physical_address accessedPhysical = g_address_space::virtual_to_physical(accessedVirtual);
 
 	// handle-able stack overflow?
@@ -163,7 +163,7 @@ g_thread* g_interrupt_exception_handler::handlePageFault(g_thread* current_threa
 		if (accessedVirtual >= stackAreaStart && accessedVirtual < stackAreaEnd) {
 
 			// start at the accessed page
-			g_virtual_address unmappedNext = PAGE_ALIGN_DOWN(accessedVirtual);
+			g_virtual_address unmappedNext = G_PAGE_ALIGN_DOWN(accessedVirtual);
 			while (unmappedNext < current_thread->userStackAreaStart) {
 				// map physical pages until mapped stack-start is reached
 				g_physical_address addPagePhys = g_pp_allocator::allocate();
@@ -174,7 +174,7 @@ g_thread* g_interrupt_exception_handler::handlePageFault(g_thread* current_threa
 			}
 
 			// set area to new location
-			current_thread->userStackAreaStart = PAGE_ALIGN_DOWN(accessedVirtual);
+			current_thread->userStackAreaStart = G_PAGE_ALIGN_DOWN(accessedVirtual);
 
 			// continue
 			return current_thread;
@@ -185,8 +185,8 @@ g_thread* g_interrupt_exception_handler::handlePageFault(g_thread* current_threa
 	// Check if within binary image range
 	if (accessedVirtual >= current_thread->process->imageStart && accessedVirtual <= current_thread->process->imageEnd) {
 
-		uint32_t ti = TABLE_IN_DIRECTORY_INDEX(accessedVirtual);
-		uint32_t pi = PAGE_IN_TABLE_INDEX(accessedVirtual);
+		uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(accessedVirtual);
+		uint32_t pi = G_PAGE_IN_TABLE_INDEX(accessedVirtual);
 		g_page_table table = G_CONST_RECURSIVE_PAGE_TABLE(ti);
 		if (table[pi] != 0) {
 

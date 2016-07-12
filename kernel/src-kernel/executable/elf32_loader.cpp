@@ -115,8 +115,8 @@ void g_elf32_loader::loadLoadSegment(elf32_ehdr* header, g_process* process) {
 	}
 
 	// Align the addresses
-	imageStart = PAGE_ALIGN_DOWN(imageStart);
-	imageEnd = PAGE_ALIGN_UP(imageEnd);
+	imageStart = G_PAGE_ALIGN_DOWN(imageStart);
+	imageEnd = G_PAGE_ALIGN_UP(imageEnd);
 
 	// Map pages for the executable
 	for (uint32_t virt = imageStart; virt < imageEnd; virt += G_PAGE_SIZE) {
@@ -150,7 +150,7 @@ void g_elf32_loader::loadTlsMasterCopy(elf32_ehdr* header, g_process* process) {
 	for (uint32_t i = 0; i < header->e_phnum; i++) {
 		elf32_phdr* programHeader = (elf32_phdr*) (((uint32_t) header) + header->e_phoff + (header->e_phentsize * i));
 		if (programHeader->p_type == PT_TLS) {
-			tlsSize = PAGE_ALIGN_UP(programHeader->p_memsz);
+			tlsSize = G_PAGE_ALIGN_UP(programHeader->p_memsz);
 
 			uint32_t tlsPages = tlsSize / G_PAGE_SIZE;
 			uint32_t tlsStart = process->virtualRanges.allocate(tlsPages);

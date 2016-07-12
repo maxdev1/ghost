@@ -35,12 +35,12 @@ void g_ioapic::createMapping() {
 	}
 
 	// Add the physical offset to the virtual address
-	virtualAddress += physicalAddress - PAGE_ALIGN_DOWN(physicalAddress);
+	virtualAddress += physicalAddress - G_PAGE_ALIGN_DOWN(physicalAddress);
 
 	// Map the two pages
 	g_log_debug("%! mapped at %h (phys %h)", "ioapic", virtualAddress, physicalAddress);
-	g_address_space::map(PAGE_ALIGN_DOWN(virtualAddress), PAGE_ALIGN_DOWN(physicalAddress), DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
-	g_address_space::map(PAGE_ALIGN_DOWN(virtualAddress) + G_PAGE_SIZE, PAGE_ALIGN_DOWN(physicalAddress) + G_PAGE_SIZE, DEFAULT_KERNEL_TABLE_FLAGS,
+	g_address_space::map(G_PAGE_ALIGN_DOWN(virtualAddress), G_PAGE_ALIGN_DOWN(physicalAddress), DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+	g_address_space::map(G_PAGE_ALIGN_DOWN(virtualAddress) + G_PAGE_SIZE, G_PAGE_ALIGN_DOWN(physicalAddress) + G_PAGE_SIZE, DEFAULT_KERNEL_TABLE_FLAGS,
 	DEFAULT_KERNEL_PAGE_FLAGS);
 }
 

@@ -46,7 +46,7 @@ public:
 	void bufferCommandMessage(void* commandMessage);
 
 	void process();
-	void process_command(g_ui_message_header* request_header, command_message_response_t& response_out);
+	void process_command(g_tid sender_tid, g_ui_message_header* request_header, command_message_response_t& response_out);
 
 	void translateKeyEvent(g_key_info& info);
 	void processMouseState();

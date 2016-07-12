@@ -299,7 +299,7 @@ void g_kernel::print_header(g_setup_information* info) {
  */
 void g_kernel::load_ramdisk(g_multiboot_module* ramdiskModule) {
 
-	int ramdiskPages = PAGE_ALIGN_UP(ramdiskModule->moduleEnd - ramdiskModule->moduleStart) / G_PAGE_SIZE;
+	int ramdiskPages = G_PAGE_ALIGN_UP(ramdiskModule->moduleEnd - ramdiskModule->moduleStart) / G_PAGE_SIZE;
 
 	g_virtual_address ramdiskNewLocation = g_kernel_virt_addr_ranges->allocate(ramdiskPages);
 	if (ramdiskNewLocation == 0) {

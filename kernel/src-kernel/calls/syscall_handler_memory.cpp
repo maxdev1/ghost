@@ -47,7 +47,7 @@ G_SYSCALL_HANDLER(alloc_mem) {
 	data->virtualResult = 0;
 
 	// Get the number of pages
-	uint32_t pages = PAGE_ALIGN_UP(data->size) / G_PAGE_SIZE;
+	uint32_t pages = G_PAGE_ALIGN_UP(data->size) / G_PAGE_SIZE;
 	if (pages > 0) {
 		// Allocate a virtual range, we are physical owner
 		uint8_t virtualRangeFlags = G_PROC_VIRTUAL_RANGE_FLAG_PHYSICAL_OWNER;
@@ -116,7 +116,7 @@ G_SYSCALL_HANDLER(share_mem) {
 
 	// Get the number of pages
 	uint32_t memory = (uint32_t) data->memory;
-	uint32_t pages = PAGE_ALIGN_UP(data->size) / G_PAGE_SIZE;
+	uint32_t pages = G_PAGE_ALIGN_UP(data->size) / G_PAGE_SIZE;
 
 	// Only allow sharing in user memory
 	if (memory < G_CONST_KERNEL_AREA_START && (memory + pages * G_PAGE_SIZE) <= G_CONST_KERNEL_AREA_START) {
@@ -133,19 +133,15 @@ G_SYSCALL_HANDLER(share_mem) {
 			if (virtualRangeBase != 0) {
 
 				g_page_directory executing_space = g_address_space::get_current_space();
-				g_physical_address pagesPhysical[pages];
 
 				// Map the pages to the other processes space
 				for (uint32_t i = 0; i < pages; i++) {
-					pagesPhysical[i] = g_address_space::virtual_to_physical(memory + i * G_PAGE_SIZE);
-				}
+					g_physical_address physical_addr = g_address_space::virtual_to_physical(memory + i * G_PAGE_SIZE);
 
-				g_address_space::switch_to_space(targetProcess->pageDirectory);
-				for (uint32_t i = 0; i < pages; i++) {
-					g_address_space::map(virtualRangeBase + i * G_PAGE_SIZE, pagesPhysical[i],
-					DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+					g_address_space::switch_to_space(targetProcess->pageDirectory);
+					g_address_space::map(virtualRangeBase + i * G_PAGE_SIZE, physical_addr, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+					g_address_space::switch_to_space(executing_space);
 				}
-				g_address_space::switch_to_space(executing_space);
 
 				// Done
 				data->virtualAddress = (void*) virtualRangeBase;
@@ -185,7 +181,7 @@ G_SYSCALL_HANDLER(map_mmio) {
 	// Only kernel and drivers may do this
 	if (process->securityLevel <= G_SECURITY_LEVEL_DRIVER) {
 
-		uint32_t pages = PAGE_ALIGN_UP(data->size) / G_PAGE_SIZE;
+		uint32_t pages = G_PAGE_ALIGN_UP(data->size) / G_PAGE_SIZE;
 
 		// Allocate a virtual range (but not be physical owner)
 		g_virtual_address range = process->virtualRanges.allocate(pages,

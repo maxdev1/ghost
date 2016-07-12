@@ -85,8 +85,8 @@ uint32_t g_loader::findFreeMemory(g_multiboot_information* info, uint32_t start,
 			for (uint32_t i = 0; i < info->modulesCount; i++) {
 				g_multiboot_module* module = (g_multiboot_module*) (info->modulesAddress + sizeof(g_multiboot_module) * i);
 
-				uint32_t moduleStart = PAGE_ALIGN_DOWN(module->moduleStart);
-				uint32_t moduleEnd = PAGE_ALIGN_UP(module->moduleEnd);
+				uint32_t moduleStart = G_PAGE_ALIGN_DOWN(module->moduleStart);
+				uint32_t moduleEnd = G_PAGE_ALIGN_UP(module->moduleEnd);
 
 				if (pos >= moduleStart && pos < moduleEnd) {
 					notWithinModule = false;
@@ -120,14 +120,14 @@ void g_loader::initialize(g_multiboot_information* multibootInformation) {
 	g_log_info("%! loader initializing", "loader");
 
 	// End of the loader binary in memory
-	uint32_t loaderEndAddress = PAGE_ALIGN_UP((uint32_t ) &endAddress);
+	uint32_t loaderEndAddress = G_PAGE_ALIGN_UP((uint32_t ) &endAddress);
 
 	// Find free spaces to place the GDT and the bitmap
 	uint32_t gdtAreaStart = findFreeMemory(multibootInformation, loaderEndAddress, 1);
 	uint32_t gdtAreaEnd = gdtAreaStart + G_PAGE_SIZE;
 
-	uint32_t bitmapStart = findFreeMemory(multibootInformation, gdtAreaEnd, PAGE_ALIGN_UP(G_BITMAP_SIZE) / G_PAGE_SIZE);
-	uint32_t bitmapEnd = PAGE_ALIGN_UP(bitmapStart + G_BITMAP_SIZE);
+	uint32_t bitmapStart = findFreeMemory(multibootInformation, gdtAreaEnd, G_PAGE_ALIGN_UP(G_BITMAP_SIZE) / G_PAGE_SIZE);
+	uint32_t bitmapEnd = G_PAGE_ALIGN_UP(bitmapStart + G_BITMAP_SIZE);
 
 	// The "reservedAreaEnd" is the end of the memory (somewhere above 1MiB)
 	// that is not occupied by the loader binary or the pages that we split

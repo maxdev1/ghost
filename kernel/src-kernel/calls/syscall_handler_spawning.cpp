@@ -267,7 +267,7 @@ G_SYSCALL_HANDLER(write_tls_master_for_process) {
 		g_process* target_process = target_thread->process;
 
 		// Get a virtual address range for the TLS master copy
-		uint32_t required_pages = PAGE_ALIGN_UP(data->copysize) / G_PAGE_SIZE;
+		uint32_t required_pages = G_PAGE_ALIGN_UP(data->copysize) / G_PAGE_SIZE;
 		g_virtual_address tls_master_virt = target_process->virtualRanges.allocate(required_pages, G_PROC_VIRTUAL_RANGE_FLAG_PHYSICAL_OWNER);
 
 		// Temporarily copy master contents to kernel heap because we switch directories

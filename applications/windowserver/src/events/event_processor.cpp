@@ -20,15 +20,18 @@
 
 #include <components/cursor.hpp>
 #include <events/event_processor.hpp>
-#include <ghostuser/tasking/lock.hpp>
 #include <input/input_receiver.hpp>
 #include <interface/component_registry.hpp>
+
+#include <ghostuser/tasking/lock.hpp>
+#include <ghostuser/ui/interface_specification.hpp>
 
 #include <windowserver.hpp>
 #include <components/window.hpp>
 #include <components/button.hpp>
 #include <components/text/text_field.hpp>
 #include <components/label.hpp>
+#include <components/canvas.hpp>
 
 #include <events/event.hpp>
 #include <events/mouse_event.hpp>
@@ -83,7 +86,7 @@ void event_processor_t::process() {
 		buf_response.message = 0;
 
 		// process the actual action
-		process_command((g_ui_message_header*) G_MESSAGE_CONTENT(request_buffer), buf_response);
+		process_command(message->sender, (g_ui_message_header*) G_MESSAGE_CONTENT(request_buffer), buf_response);
 
 		// add generated response to queue
 		if (buf_response.message != 0) {
@@ -98,7 +101,7 @@ void event_processor_t::process() {
 /**
  *
  */
-void event_processor_t::process_command(g_ui_message_header* request_header, command_message_response_t& response_out) {
+void event_processor_t::process_command(g_tid sender_tid, g_ui_message_header* request_header, command_message_response_t& response_out) {
 
 	if (request_header->id == G_UI_PROTOCOL_CREATE_COMPONENT) {
 		component_t* component = 0;
@@ -112,15 +115,23 @@ void event_processor_t::process_command(g_ui_message_header* request_header, com
 			component = new window_t();
 			windowserver_t::instance()->screen->addChild(component);
 			break;
+
 		case G_UI_COMPONENT_TYPE_LABEL:
 			component = new label_t();
 			break;
+
 		case G_UI_COMPONENT_TYPE_BUTTON:
 			component = new button_t();
 			break;
+
 		case G_UI_COMPONENT_TYPE_TEXTFIELD:
 			component = new text_field_t();
 			break;
+
+		case G_UI_COMPONENT_TYPE_CANVAS: {
+			component = new canvas_t(sender_tid);
+			break;
+		}
 
 		default:
 			klog("don't know how to create a component of type %i", create_request->type);
@@ -130,6 +141,7 @@ void event_processor_t::process_command(g_ui_message_header* request_header, com
 		// register the component
 		if (component != 0) {
 			component_id = component_registry_t::add(component);
+
 			// apply default properties
 			component->setBounds(g_rectangle(100, 100, 200, 80));
 		}
@@ -319,6 +331,39 @@ void event_processor_t::process_command(g_ui_message_header* request_header, com
 		response_out.message = response;
 		response_out.length = sizeof(g_ui_component_get_title_response);
 
+	} else if (request_header->id == G_UI_PROTOCOL_CANVAS_ACK_BUFFER_REQUEST) {
+		g_ui_component_canvas_ack_buffer_request* request = (g_ui_component_canvas_ack_buffer_request*) request_header;
+		component_t* component = component_registry_t::get(request->id);
+
+		canvas_t* canvas = (canvas_t*) component;
+		canvas->acknowledgeCurrentBuffer();
+
+	} else if (request_header->id == G_UI_PROTOCOL_CANVAS_BLIT) {
+		g_ui_component_canvas_ack_buffer_request* request = (g_ui_component_canvas_ack_buffer_request*) request_header;
+		component_t* component = component_registry_t::get(request->id);
+
+		canvas_t* canvas = (canvas_t*) component;
+		canvas->blit();
+
+	} else if (request_header->id == G_UI_PROTOCOL_REGISTER_DESKTOP_CANVAS) {
+		g_ui_register_desktop_canvas_request* request = (g_ui_register_desktop_canvas_request*) request_header;
+		component_t* component = component_registry_t::get(request->canvas_id);
+
+		// create response message
+		g_ui_register_desktop_canvas_response* response = new g_ui_register_desktop_canvas_response;
+		if (component == 0) {
+			response->status = G_UI_PROTOCOL_FAIL;
+		} else {
+			response->status = G_UI_PROTOCOL_SUCCESS;
+
+			canvas_t* canvas = (canvas_t*) component;
+			screen_t* screen = windowserver_t::instance()->screen;
+			screen->addChild(canvas);
+			canvas->setBounds(screen->getBounds());
+		}
+
+		response_out.message = response;
+		response_out.length = sizeof(g_ui_register_desktop_canvas_response);
 	}
 
 }

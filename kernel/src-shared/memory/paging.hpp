@@ -22,12 +22,7 @@
 #define GHOST_SHARED_MEMORY_PAGING
 
 #include "ghost/stdint.h"
-
-/**
- * Page size
- */
-#define G_PAGE_SIZE			0x1000
-#define G_PAGE_ALIGN_MASK		(G_PAGE_SIZE - 1)
+#include "ghost/memory.h"
 
 /**
  * Page directory flags
@@ -59,15 +54,6 @@ const uint32_t G_PAGE_GLOBAL = 128;
 #define DEFAULT_KERNEL_PAGE_FLAGS			(G_PAGE_PRESENT | G_PAGE_READWRITE | G_PAGE_GLOBAL)
 #define DEFAULT_USER_TABLE_FLAGS			(G_PAGE_TABLE_PRESENT | G_PAGE_TABLE_READWRITE | G_PAGE_TABLE_USERSPACE)
 #define DEFAULT_USER_PAGE_FLAGS				(G_PAGE_PRESENT | G_PAGE_READWRITE | G_PAGE_USERSPACE)
-
-/**
- * Page alignment macros
- */
-#define PAGE_ALIGN_DOWN(value)				((value) & ~(G_PAGE_SIZE - 1))
-#define PAGE_ALIGN_UP(value)				(((value) & (G_PAGE_SIZE - 1)) ? (PAGE_ALIGN_DOWN((value)) + G_PAGE_SIZE) : (value))
-
-#define TABLE_IN_DIRECTORY_INDEX(address)	((uint32_t)((address / G_PAGE_SIZE) / 1024))
-#define PAGE_IN_TABLE_INDEX(address)		((uint32_t)((address / G_PAGE_SIZE) % 1024))
 
 /**
  * Typedefs for better readability

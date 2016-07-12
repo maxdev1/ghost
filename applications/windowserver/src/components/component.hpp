@@ -76,13 +76,15 @@ protected:
 	bool visible;
 
 public:
+	g_ui_component_id id;
+
 	/**
 	 * Creates the component; initially marks it as dirty
 	 * and sets no parent
 	 */
 	component_t(bool transparentBackground = false) :
-			graphics(transparentBackground), visible(true), requirements(COMPONENT_REQUIREMENT_ALL), childRequirements(COMPONENT_REQUIREMENT_ALL), parent(0), layoutManager(
-					0), bounds_event_component_t(this) {
+			id(-1), graphics(transparentBackground), visible(true), requirements(COMPONENT_REQUIREMENT_ALL), childRequirements(COMPONENT_REQUIREMENT_ALL), parent(
+					0), layoutManager(0), bounds_event_component_t(this) {
 	}
 
 	/**

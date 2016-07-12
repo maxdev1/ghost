@@ -66,8 +66,10 @@ const g_ui_protocol_command_id G_UI_PROTOCOL_SET_VISIBLE = 7;
 const g_ui_protocol_command_id G_UI_PROTOCOL_SET_LISTENER = 8;
 const g_ui_protocol_command_id G_UI_PROTOCOL_SET_BOOL_PROPERTY = 9;
 const g_ui_protocol_command_id G_UI_PROTOCOL_GET_BOOL_PROPERTY = 10;
-const g_ui_protocol_command_id G_UI_PROTOCOL_GET_CANVAS_BUFFER_REQUEST = 11;
+const g_ui_protocol_command_id G_UI_PROTOCOL_CANVAS_ACK_BUFFER_REQUEST = 11;
 const g_ui_protocol_command_id G_UI_PROTOCOL_GET_BOUNDS = 12;
+const g_ui_protocol_command_id G_UI_PROTOCOL_CANVAS_BLIT = 13;
+const g_ui_protocol_command_id G_UI_PROTOCOL_REGISTER_DESKTOP_CANVAS = 14;
 
 /**
  * Common status for requests
@@ -92,6 +94,7 @@ const g_ui_component_type G_UI_COMPONENT_TYPE_CANVAS = 4;
 typedef uint32_t g_ui_component_event_type;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_ACTION = 0;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_BOUNDS = 1;
+const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_CANVAS_WFA = 2; // "wait for acknowledge"-event
 
 /**
  *
@@ -255,20 +258,30 @@ typedef struct {
 }__attribute__((packed)) g_ui_component_set_bool_property_response;
 
 /**
- * Request/response for getting the buffer of a canvas
+ * Request/response for acknowledging the buffer update of a canvas/blitting the canvas
  */
 typedef struct {
 	g_ui_message_header header;
 	g_ui_component_id id;
-}__attribute__((packed)) g_ui_component_get_canvas_buffer_request;
+}__attribute__((packed)) g_ui_component_canvas_ack_buffer_request;
+
+typedef struct {
+	g_ui_message_header header;
+	g_ui_component_id id;
+}__attribute__((packed)) g_ui_component_canvas_blit_request;
+
+/**
+ * Request to register the desktop canvas
+ */
+typedef struct {
+	g_ui_message_header header;
+	g_ui_component_id canvas_id;
+}__attribute__((packed)) g_ui_register_desktop_canvas_request;
 
 typedef struct {
 	g_ui_message_header header;
 	g_ui_protocol_status status;
-	uint8_t* buffer;
-	uint16_t bufferWidth;
-	uint16_t bufferHeight;
-}__attribute__((packed)) g_ui_component_get_canvas_buffer_response;
+}__attribute__((packed)) g_ui_register_desktop_canvas_response;
 
 /**
  * Event handler registration functions
@@ -302,5 +315,22 @@ typedef struct {
 	g_ui_component_event_header header;
 	g_rectangle bounds;
 }__attribute__((packed)) g_ui_component_bounds_event;
+
+typedef struct {
+	g_ui_component_event_header header;
+	g_address newBufferAddress;
+}__attribute__((packed)) g_ui_component_canvas_wfa_event;
+
+/**
+ * Canvas shared memory header
+ */
+typedef struct {
+	uint16_t paintable_width;
+	uint16_t paintable_height;
+	uint16_t blit_x;
+	uint16_t blit_y;
+	uint16_t blit_width;
+	uint16_t blit_height;
+}__attribute__((packed)) g_ui_canvas_shared_memory_header;
 
 #endif

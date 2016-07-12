@@ -41,8 +41,8 @@ bool g_address_space::map(g_virtual_address virtual_addr, g_physical_address phy
 	}
 
 	// calculate table & page indices
-	uint32_t ti = TABLE_IN_DIRECTORY_INDEX(virtual_addr);
-	uint32_t pi = PAGE_IN_TABLE_INDEX(virtual_addr);
+	uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(virtual_addr);
+	uint32_t pi = G_PAGE_IN_TABLE_INDEX(virtual_addr);
 
 	// get pointers to directory and table
 	g_page_directory directory = (g_page_directory) G_CONST_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
@@ -109,8 +109,8 @@ void g_address_space::map_to_temporary_mapped_directory(g_page_directory directo
 	}
 
 	// calculate table & page indices
-	uint32_t ti = TABLE_IN_DIRECTORY_INDEX(virtual_addr);
-	uint32_t pi = PAGE_IN_TABLE_INDEX(virtual_addr);
+	uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(virtual_addr);
+	uint32_t pi = G_PAGE_IN_TABLE_INDEX(virtual_addr);
 
 	// create table if it does not exist
 	if (directory[ti] == 0) {
@@ -153,8 +153,8 @@ void g_address_space::map_to_temporary_mapped_directory(g_page_directory directo
  */
 void g_address_space::unmap(g_virtual_address virtualAddress) {
 
-	uint32_t ti = TABLE_IN_DIRECTORY_INDEX(virtualAddress);
-	uint32_t pi = PAGE_IN_TABLE_INDEX(virtualAddress);
+	uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(virtualAddress);
+	uint32_t pi = G_PAGE_IN_TABLE_INDEX(virtualAddress);
 
 	g_page_directory directory = (g_page_directory) G_CONST_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
 	g_page_table table = G_CONST_RECURSIVE_PAGE_TABLE(ti);
@@ -196,8 +196,8 @@ g_page_directory g_address_space::get_current_space() {
  */
 g_physical_address g_address_space::virtual_to_physical(g_virtual_address addr) {
 
-	uint32_t ti = TABLE_IN_DIRECTORY_INDEX(addr);
-	uint32_t pi = PAGE_IN_TABLE_INDEX(addr);
+	uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(addr);
+	uint32_t pi = G_PAGE_IN_TABLE_INDEX(addr);
 
 	g_page_table table = G_CONST_RECURSIVE_PAGE_TABLE(ti);
 

@@ -83,7 +83,7 @@ int main() {
 
 	// wait for control requests
 	size_t buflen = sizeof(g_message_header) + sizeof(g_ps2_register_request);
-	uint8_t buf[buflen];
+	uint8_t* buf = new uint8_t[buflen];
 	g_tid tid = g_get_tid();
 	while (true) {
 		g_message_receive_status stat = g_receive_message(buf, buflen);
