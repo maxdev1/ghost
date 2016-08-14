@@ -64,9 +64,8 @@ section .text
 	    call initializeLoader
 
 	; Hang the system after execution
-	hang:
-		hlt
-	    jmp hang
+	cli
+	hlt
 
 
 
