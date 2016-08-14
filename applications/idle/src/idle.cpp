@@ -27,7 +27,8 @@
 int main() {
 	signal(SIGINT, SIG_IGN);
 
-	asm("cli");
+	again:
 	asm("hlt");
+	goto again;
 }
 
