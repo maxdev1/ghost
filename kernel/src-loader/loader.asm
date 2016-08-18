@@ -63,11 +63,9 @@ section .text
 		push ebx ; Multiboot information pointer
 	    call initializeLoader
 
-	; Hang the system after execution
-	hang:
+		; Hang the system after execution
+		cli
 		hlt
-	    jmp hang
-
 
 
 ; # DATA

@@ -41,9 +41,10 @@ class g_canvas: public g_component {
 protected:
 	g_graphics* graphics;
 	g_address buffer;
+	g_address new_buffer;
 
 	g_canvas(uint32_t id) :
-			graphics(0), g_component(id), buffer(0) {
+			graphics(0), g_component(id), buffer(0), new_buffer(0) {
 	}
 
 	~g_canvas();
