@@ -20,13 +20,11 @@ important features are:
 - virtual 8086 for BIOS calls
 
 ## Status
-This is the bleeding edge source version of May 13, 2016.
+This is the bleeding edge source version of August 18, 2016.
 Version 0.5.3
 
-This is a demo release that contains some new tools, PCI device enumeration,
-process listing and more. The most important change is the introduction of the
-cairo graphics library as the rendering engine for the window server. See the
-website for a demo image.
+Currently working on the canvas implementation that is essential for any other
+GUI related working. Planning a desktop implementation.
 
 ## Structure
 - `applications`
