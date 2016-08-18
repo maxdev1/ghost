@@ -37,14 +37,39 @@ g_canvas_buffer_info g_canvas::getBuffer() {
 
 	g_canvas_buffer_info info;
 
+	if (new_buffer) {
+		// unmap old buffer if available
+		if (buffer) {
+
+			// TODO this kills the client
+			g_unmap((void*) buffer);
+
+		}
+
+		// store new one
+		buffer = new_buffer;
+
+		// tell server we have acknowledged the changed buffer
+		g_message_transaction tx = g_get_message_tx_id();
+
+		g_ui_component_canvas_ack_buffer_request request;
+		request.header.id = G_UI_PROTOCOL_CANVAS_ACK_BUFFER_REQUEST;
+		request.id = this->id;
+		g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_canvas_ack_buffer_request), tx);
+
+		new_buffer = 0;
+	}
+
 	if (buffer == 0) {
 		info.buffer = 0;
 
 	} else {
+		// return buffer
 		info.buffer = (g_color_argb*) (buffer + sizeof(g_ui_canvas_shared_memory_header));
 		g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) buffer;
 		info.width = header->paintable_width;
 		info.height = header->paintable_height;
+
 	}
 	return info;
 }
@@ -71,21 +96,7 @@ void g_canvas::acknowledgeNewBuffer(g_address address) {
 		return;
 	}
 
-	// unmap old buffer if available
-	if (buffer != 0) {
-		g_unmap((void*) buffer);
-	}
-
-	// store new one
-	buffer = address;
-
-	// tell server we have acknowledged the changed buffer
-	g_message_transaction tx = g_get_message_tx_id();
-
-	g_ui_component_canvas_ack_buffer_request request;
-	request.header.id = G_UI_PROTOCOL_CANVAS_ACK_BUFFER_REQUEST;
-	request.id = this->id;
-	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_canvas_ack_buffer_request), tx);
+	new_buffer = address;
 }
 
 /**

@@ -336,7 +336,7 @@ void event_processor_t::process_command(g_tid sender_tid, g_ui_message_header* r
 		component_t* component = component_registry_t::get(request->id);
 
 		canvas_t* canvas = (canvas_t*) component;
-		canvas->acknowledgeCurrentBuffer();
+		canvas->clientHasAcknowledgedCurrentBuffer();
 
 	} else if (request_header->id == G_UI_PROTOCOL_CANVAS_BLIT) {
 		g_ui_component_canvas_ack_buffer_request* request = (g_ui_component_canvas_ack_buffer_request*) request_header;
