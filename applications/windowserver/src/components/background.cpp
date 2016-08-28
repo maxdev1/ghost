@@ -20,11 +20,14 @@
 
 #include <components/background.hpp>
 
+cairo_surface_t* surface;
 /**
  *
  */
 background_t::background_t(g_rectangle bounds) {
 	setBounds(bounds);
+
+	surface = cairo_image_surface_create_from_png("/system/graphics/wallpaper.png");
 }
 
 /**
@@ -33,8 +36,15 @@ background_t::background_t(g_rectangle bounds) {
 void background_t::paint() {
 
 	cairo_t* cr = graphics.getContext();
-	cairo_set_source_rgba(cr, 0.1, 0.5, 1, 1);
 	auto bounds = getBounds();
+	cairo_set_source_surface(cr, surface, bounds.x, bounds.y);
 	cairo_rectangle(cr, bounds.x, bounds.y, bounds.width, bounds.height);
 	cairo_fill(cr);
+}
+
+/**
+ *
+ */
+bool background_t::handle(event_t& e) {
+	return true;
 }

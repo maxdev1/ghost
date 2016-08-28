@@ -18,7 +18,7 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <Screen.hpp>
+#include <headless_screen.hpp>
 #include <string.h>
 #include <ghostuser/utils/Utils.hpp>
 #include <ghost.h>
@@ -29,7 +29,7 @@ static uint32_t screenIdCounter = 0;
 /**
  *
  */
-screen_t::screen_t() {
+headless_screen_t::headless_screen_t() {
 	id = screenIdCounter++;
 	output_buffer = new uint8_t[SCREEN_WIDTH * SCREEN_HEIGHT * 2];
 	output_current = output_buffer;
@@ -43,7 +43,7 @@ screen_t::screen_t() {
 /**
  *
  */
-void screen_t::clean() {
+void headless_screen_t::clean() {
 	g_atomic_lock(&lock);
 	for (uint32_t off = 0; off < SCREEN_HEIGHT * SCREEN_WIDTH * 2; off += 2) {
 		output_buffer[off] = ' ';
@@ -56,7 +56,7 @@ void screen_t::clean() {
 /**
  *
  */
-void screen_t::activate() {
+void headless_screen_t::activate() {
 	g_atomic_lock(&lock);
 	memcpy((uint8_t*) VIDEO_MEMORY, output_buffer,
 	SCREEN_HEIGHT * SCREEN_WIDTH * 2);
@@ -67,7 +67,7 @@ void screen_t::activate() {
 /**
  *
  */
-void screen_t::deactivate() {
+void headless_screen_t::deactivate() {
 	g_atomic_lock(&lock);
 	memcpy(output_buffer, (uint8_t*) VIDEO_MEMORY,
 	SCREEN_HEIGHT * SCREEN_WIDTH * 2);
@@ -78,7 +78,7 @@ void screen_t::deactivate() {
 /**
  *
  */
-void screen_t::moveCursor(uint16_t x, uint16_t y) {
+void headless_screen_t::moveCursor(uint16_t x, uint16_t y) {
 	g_atomic_lock(&lock);
 	uint16_t position = (y * SCREEN_WIDTH) + x;
 
@@ -92,14 +92,14 @@ void screen_t::moveCursor(uint16_t x, uint16_t y) {
 /**
  *
  */
-void screen_t::updateCursor() {
+void headless_screen_t::updateCursor() {
 	moveCursor((offset % (SCREEN_WIDTH * 2)) / 2, offset / (SCREEN_WIDTH * 2));
 }
 
 /**
  *
  */
-void screen_t::writeChar(char c, screen_color_t color) {
+void headless_screen_t::writeChar(char c, screen_color_t color) {
 	if (c == '\n') {
 		offset += SCREEN_WIDTH * 2;
 		offset -= offset % (SCREEN_WIDTH * 2);
@@ -114,7 +114,7 @@ void screen_t::writeChar(char c, screen_color_t color) {
 /**
  *
  */
-void screen_t::backspace() {
+void headless_screen_t::backspace() {
 	g_atomic_lock(&lock);
 	offset -= 2;
 	output_current[offset++] = ' ';
@@ -126,7 +126,7 @@ void screen_t::backspace() {
 /**
  *
  */
-void screen_t::write(std::string message, screen_color_t color) {
+void headless_screen_t::write(std::string message, screen_color_t color) {
 
 	g_atomic_lock(&lock);
 	char* p = (char*) message.c_str();
@@ -139,7 +139,7 @@ void screen_t::write(std::string message, screen_color_t color) {
 /**
  *
  */
-void screen_t::normalize() {
+void headless_screen_t::normalize() {
 	if (offset >= SCREEN_WIDTH * SCREEN_HEIGHT * 2) {
 		offset -= SCREEN_WIDTH * 2;
 
@@ -156,3 +156,9 @@ void screen_t::normalize() {
 	}
 }
 
+/**
+ *
+ */
+g_key_info headless_screen_t::readInput(bool* cancelCondition) {
+	return g_keyboard::readKey(cancelCondition);
+}

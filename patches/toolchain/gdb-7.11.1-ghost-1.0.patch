@@ -1,0 +1,27 @@
+diff -Nur gdb-7.11.1/bfd/config.bfd gdb-7.11.1-ghost/bfd/config.bfd
+--- gdb-7.11.1/bfd/config.bfd	2016-06-01 02:36:15.000000000 +0200
++++ gdb-7.11.1-ghost/bfd/config.bfd	2016-08-22 18:12:35.000000000 +0200
+@@ -279,6 +279,11 @@
+     targ_defvec=arc_elf32_le_vec
+     targ_selvecs=arc_elf32_be_vec
+     ;;
++    
++  i[3-7]86-*-ghost*)
++    targ_defvec=i386_coff_vec
++    targ_selvecs=i386_elf32_vec
++    ;;
+ 
+   arm-*-darwin*)
+     targ_defvec=arm_mach_o_vec
+diff -Nur gdb-7.11.1/config.sub gdb-7.11.1-ghost/config.sub
+--- gdb-7.11.1/config.sub	2016-06-01 02:36:15.000000000 +0200
++++ gdb-7.11.1-ghost/config.sub	2016-08-22 17:51:36.000000000 +0200
+@@ -1376,7 +1376,7 @@
+ 	-gnu* | -bsd* | -mach* | -minix* | -genix* | -ultrix* | -irix* \
+ 	      | -*vms* | -sco* | -esix* | -isc* | -aix* | -cnk* | -sunos | -sunos[34]*\
+ 	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
+-	      | -sym* | -kopensolaris* | -plan9* \
++	      | -sym* | -kopensolaris* | -plan9* | -ghost* \
+ 	      | -amigaos* | -amigados* | -msdos* | -newsos* | -unicos* | -aof* \
+ 	      | -aos* | -aros* | -cloudabi* | -sortix* \
+ 	      | -nindy* | -vxsim* | -vxworks* | -ebmon* | -hms* | -mvs* \

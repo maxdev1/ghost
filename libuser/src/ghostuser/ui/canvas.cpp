@@ -37,17 +37,15 @@ g_canvas_buffer_info g_canvas::getBuffer() {
 
 	g_canvas_buffer_info info;
 
-	if (new_buffer) {
+	if (nextBuffer) {
+
 		// unmap old buffer if available
-		if (buffer) {
-
-			// TODO this kills the client
-			g_unmap((void*) buffer);
-
+		if (currentBuffer) {
+			g_unmap((void*) currentBuffer);
 		}
 
 		// store new one
-		buffer = new_buffer;
+		currentBuffer = nextBuffer;
 
 		// tell server we have acknowledged the changed buffer
 		g_message_transaction tx = g_get_message_tx_id();
@@ -57,16 +55,16 @@ g_canvas_buffer_info g_canvas::getBuffer() {
 		request.id = this->id;
 		g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_canvas_ack_buffer_request), tx);
 
-		new_buffer = 0;
+		nextBuffer = 0;
 	}
 
-	if (buffer == 0) {
+	if (currentBuffer == 0) {
 		info.buffer = 0;
 
 	} else {
 		// return buffer
-		info.buffer = (g_color_argb*) (buffer + sizeof(g_ui_canvas_shared_memory_header));
-		g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) buffer;
+		info.buffer = (g_color_argb*) (currentBuffer + sizeof(g_ui_canvas_shared_memory_header));
+		g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer;
 		info.width = header->paintable_width;
 		info.height = header->paintable_height;
 
@@ -92,11 +90,14 @@ g_canvas* g_canvas::create() {
  */
 void g_canvas::acknowledgeNewBuffer(g_address address) {
 
-	if (!g_ui_initialized) {
+	if (address == currentBuffer) {
 		return;
 	}
+	nextBuffer = address;
 
-	new_buffer = address;
+	if (userListener) {
+		userListener->handle_buffer_changed();
+	}
 }
 
 /**
@@ -104,12 +105,12 @@ void g_canvas::acknowledgeNewBuffer(g_address address) {
  */
 void g_canvas::blit(g_rectangle rect) {
 
-	if (buffer == 0) {
+	if (currentBuffer == 0) {
 		return;
 	}
 
 	// write blit parameters
-	g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) buffer;
+	g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer;
 	header->blit_x = rect.x;
 	header->blit_y = rect.y;
 	header->blit_width = rect.width;

@@ -41,7 +41,6 @@ void action_component_t::fireAction() {
 		action_event.header.component_id = listener_info.component_id;
 		g_send_message(listener_info.target_thread, &action_event, sizeof(g_ui_component_action_event));
 	}
-
 }
 
 /**

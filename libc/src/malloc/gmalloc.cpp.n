@@ -21,13 +21,10 @@ typedef struct {
  */
 void free(void* ptr) {
 
-	g_atomic_lock(&heap_lock);
-
-	allocation_header_t* header = (allocation_header_t*) ((uint8_t*) ptr
-			- sizeof(allocation_header_t));
-	memset(ptr, rand(), header->size);
-
-	heap_lock = 0;
+	// just return if null is given
+	if (ptr == 0) {
+		return;
+	}
 }
 
 /**
@@ -45,7 +42,7 @@ void* malloc(size_t size) {
 
 	size_t needed = size + sizeof(allocation_header_t);
 	while (heap_end - heap_used < needed) {
-		heap_end = (uint8_t*) sbrk(4096);
+		heap_end = (uint8_t*) sbrk(0x10000);
 	}
 
 	allocation_header_t* header = (allocation_header_t*) heap_used;
@@ -60,6 +57,10 @@ void* malloc(size_t size) {
  *
  */
 void* realloc(void* mem, size_t size) {
+
+	if (mem == 0) {
+		mem = malloc(size);
+	}
 
 	allocation_header_t* header = (allocation_header_t*) ((uint8_t*) mem
 			- sizeof(allocation_header_t));

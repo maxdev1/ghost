@@ -24,7 +24,7 @@
 #include <events/focus_event.hpp>
 #include <events/key_event.hpp>
 #include <events/mouse_event.hpp>
-#include <fontloader.hpp>
+#include <ghostuser/graphics/text/font_loader.hpp>
 #include <ghostuser/graphics/text/font_manager.hpp>
 #include <ghostuser/ui/properties.hpp>
 #include <ghostuser/utils/logger.hpp>
@@ -39,7 +39,7 @@ text_field_t::text_field_t() :
 	caretMoveStrategy = default_caret_move_strategy_t::getInstance();
 
 	viewModel = g_text_layouter::getInstance()->initializeBuffer();
-	setFont(font_loader_t::getDefault());
+	setFont(g_font_loader::getDefault());
 }
 
 /**

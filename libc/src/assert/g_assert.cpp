@@ -30,5 +30,4 @@ void g_assert(const char* file, int line, const char* function, const char* expr
 
 	fprintf(stderr, "Assertion failed: %s:%lu: %s: %s\n", file, line, function, expr);
 	klog("Assertion failed: %s:%lu: %s: %s\n", file, line, function, expr);
-	abort();
 }

@@ -23,6 +23,7 @@
 
 #include <ghost.h>
 #include <ghostuser/graphics/metrics/rectangle.hpp>
+#include <ghostuser/io/keyboard.hpp>
 
 /**
  * This UI interface specification defines the messages
@@ -95,6 +96,8 @@ typedef uint32_t g_ui_component_event_type;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_ACTION = 0;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_BOUNDS = 1;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_CANVAS_WFA = 2; // "wait for acknowledge"-event
+const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_KEY = 3;
+const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_FOCUS = 4;
 
 /**
  *
@@ -320,6 +323,16 @@ typedef struct {
 	g_ui_component_event_header header;
 	g_address newBufferAddress;
 }__attribute__((packed)) g_ui_component_canvas_wfa_event;
+
+typedef struct {
+	g_ui_component_event_header header;
+	g_key_info_basic key_info;
+}__attribute__((packed)) g_ui_component_key_event;
+
+typedef struct {
+	g_ui_component_event_header header;
+	uint8_t now_focused;
+}__attribute__((packed)) g_ui_component_focus_event;
 
 /**
  * Canvas shared memory header

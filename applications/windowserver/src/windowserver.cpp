@@ -69,11 +69,15 @@ int main(int argc, char** argv) {
 void windowserver_t::launch() {
 	g_task_register_id("windowserver");
 
+	// disable video log
+	g_set_video_log(false);
+
 	// initialize the video output
 	video_output = new vbe_video_output_t();
 	if (!video_output->initialize()) {
 		std::cerr << "failed to initialize video mode" << std::endl;
 		klog("failed to initialize video mode");
+		return;
 	}
 
 	// set up event handling
@@ -109,8 +113,22 @@ void windowserver_t::launch() {
 	// test components
 //	createTestComponents();
 
-	// execute the main loop
+// execute the main loop
 	mainLoop(screenBounds);
+}
+
+static uint64_t render_start;
+/**
+ *
+ */
+void lockcheck() {
+
+	while (true) {
+		if (g_millis() - render_start > 3000) {
+			g_log("window server has frozen");
+		}
+		g_sleep(1000);
+	}
 }
 
 /**
@@ -120,13 +138,13 @@ void windowserver_t::mainLoop(g_rectangle screenBounds) {
 
 	g_graphics global;
 	global.resize(screenBounds.width, screenBounds.height);
+	g_create_thread((void*) lockcheck);
 
 	cursor_t::nextPosition = g_point(screenBounds.width / 2, screenBounds.height / 2);
 
 	// intially set rendering atom
 	render_atom = true;
 
-	uint64_t render_start;
 	uint64_t render_time;
 
 	while (true) {
@@ -167,14 +185,14 @@ void windowserver_t::mainLoop(g_rectangle screenBounds) {
 		// blit output
 		blit(&global);
 
-		// wait for next rendering
-		g_atomic_lock(&render_atom);
-
 		// limit to 80 fps
 		render_time = g_millis() - render_start;
 		if (render_time < (1000 / 80)) {
 			g_sleep((1000 / 80) - render_time);
 		}
+
+		// wait for next rendering
+		g_atomic_lock(&render_atom);
 
 		// print output
 #if BENCHMARKING
@@ -218,6 +236,10 @@ void windowserver_t::blit(g_graphics* graphics) {
 void windowserver_t::loadCursor() {
 	cursor_t::load("/system/graphics/cursor/default.cursor");
 	cursor_t::load("/system/graphics/cursor/text.cursor");
+	cursor_t::load("/system/graphics/cursor/resize-ns.cursor");
+	cursor_t::load("/system/graphics/cursor/resize-ew.cursor");
+	cursor_t::load("/system/graphics/cursor/resize-nesw.cursor");
+	cursor_t::load("/system/graphics/cursor/resize-nwes.cursor");
 	cursor_t::set("default");
 	cursor_t::focusedComponent = screen;
 }
@@ -288,11 +310,24 @@ void windowserver_t::createTestComponents() {
  */
 component_t* windowserver_t::dispatchUpwards(component_t* component, event_t& event) {
 
+	// store when dispatching to parents
+	g_point initialPosition;
+	locatable_t* locatable = dynamic_cast<locatable_t*>(&event);
+	if (locatable) {
+		initialPosition = locatable->position;
+	}
+
+	// check upwards until someone accepts the event
 	component_t* acceptor = component;
 	while (!dispatch(acceptor, event)) {
 		acceptor = acceptor->getParent();
 		if (acceptor == 0) {
 			break;
+		}
+
+		// restore position on locatable events
+		if (locatable) {
+			locatable->position = initialPosition;
 		}
 	}
 	return acceptor;

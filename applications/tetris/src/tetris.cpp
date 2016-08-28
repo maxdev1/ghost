@@ -1,77 +1,104 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
- *                  Tetris for the Ghost operating system                    *
+ *             Canvas example for the Ghost operating system                 *
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <ghostuser/ui/ui.hpp>
 #include <ghostuser/ui/window.hpp>
-#include <ghostuser/ui/label.hpp>
 #include <ghostuser/ui/canvas.hpp>
-#include <ghostuser/ui/button.hpp>
 #include <ghostuser/ui/textfield.hpp>
-#include <ghostuser/ui/action_listener.hpp>
-#include <tetris.hpp>
+#include <iostream>
 #include <math.h>
 
-#include <sstream>
-
 /**
- *
+ * This example application creates a window with a canvas and draws one of the
+ * cairo samples on it.
  */
 int main(int argc, char** argv) {
 
+	// Open the UI
 	g_ui_open_status open_stat = g_ui::open();
+	if (open_stat != G_UI_OPEN_STATUS_SUCCESSFUL) {
+		std::cerr << "User interface could not be initialized" << std::endl;
+		return -1;
+	}
 
-	if (open_stat == G_UI_OPEN_STATUS_SUCCESSFUL) {
-		g_window* window = g_window::create();
+	// Create a window
+	g_window* window = g_window::create();
+	window->setTitle("Test Window");
 
-		window->setTitle("Tetris");
+	// Create the canvas
+	g_canvas* canvas = g_canvas::create();
+	window->addChild(canvas);
 
-		g_canvas* canvas = g_canvas::create();
-		window->addChild(canvas);
-		canvas->setBounds(window->getBounds());
+	// Resize the window
+	g_rectangle windowBounds(200, 200, 270, 270);
+	window->setBounds(windowBounds);
+	window->setVisible(true);
+	canvas->setBounds(g_rectangle(0, 0, windowBounds.width, windowBounds.height));
 
-		window->setBounds(g_rectangle(200, 200, 200, 200));
-		window->setVisible(true);
+	// Variables for our surface
+	cairo_surface_t* surface = 0;
+	g_color_argb* surfaceBuffer = 0;
 
-		// canvas test
-		double r = 0;
-		while (true) {
-			// set canvas bounds
-			auto windowBounds = window->getBounds();
+	while (true) {
+		// Resize canvas when window is resized
+		auto windowBounds = window->getBounds();
+		if (canvas->getBounds() != windowBounds) {
 			canvas->setBounds(g_rectangle(0, 0, windowBounds.width, windowBounds.height));
-
-			// get buffer
-			auto bufferInfo = canvas->getBuffer();
-			if (bufferInfo.buffer == 0) {
-				continue;
-			}
-
-			// get the surface ready and go:
-			cairo_surface_t* bufferSurface = cairo_image_surface_create_for_data((uint8_t*) bufferInfo.buffer, CAIRO_FORMAT_ARGB32, bufferInfo.width,
-					bufferInfo.height, cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, bufferInfo.width));
-			auto cr = cairo_create(bufferSurface);
-
-			// paint background black
-			cairo_save(cr);
-			cairo_set_source_rgba(cr, 0, 0, 0, 1);
-			cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-			cairo_paint(cr);
-			cairo_restore(cr);
-
-			// draw a red circle
-			cairo_set_source_rgb(cr, r, 1, 0);
-			cairo_arc(cr, 100,  100, (windowBounds.height < windowBounds.width ? windowBounds.height / 3 : windowBounds.width / 3), 0, 2 * M_PI);
-			cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
-			cairo_fill(cr);
-
-			r += 0.01;
-			if(r > 1) {
-				r = 0;
-			}
-
-			canvas->blit(g_rectangle(0, 0, bufferInfo.width, bufferInfo.height));
 		}
+
+		// Get buffer
+		auto bufferInfo = canvas->getBuffer();
+		if (bufferInfo.buffer == 0) {
+			g_sleep(100);
+			continue;
+		}
+
+		// Get the surface ready and go:
+		if (surface == 0 || surfaceBuffer != bufferInfo.buffer) {
+			surface = cairo_image_surface_create_for_data((uint8_t*) bufferInfo.buffer, CAIRO_FORMAT_ARGB32, bufferInfo.width, bufferInfo.height,
+					cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, bufferInfo.width));
+			surfaceBuffer = bufferInfo.buffer;
+		}
+
+		// Perform the painting
+		auto cr = cairo_create(surface);
+
+		// Clear the background
+		cairo_save(cr);
+		cairo_set_source_rgba(cr, 0, 0, 0, 0);
+		cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+		cairo_paint(cr);
+		cairo_restore(cr);
+
+		// Draw the example
+		double xc = 128.0;
+		double yc = 128.0;
+		double radius = 100.0;
+		double angle1 = 45.0 * (M_PI / 180.0);
+		double angle2 = 180.0 * (M_PI / 180.0);
+
+		cairo_set_line_width(cr, 10.0);
+		cairo_arc_negative(cr, xc, yc, radius, angle1, angle2);
+		cairo_stroke(cr);
+
+		cairo_set_source_rgba(cr, 1, 0.2, 0.2, 0.6);
+		cairo_set_line_width(cr, 6.0);
+
+		cairo_arc(cr, xc, yc, 10.0, 0, 2 * M_PI);
+		cairo_fill(cr);
+
+		cairo_arc(cr, xc, yc, radius, angle1, angle1);
+		cairo_line_to(cr, xc, yc);
+		cairo_arc(cr, xc, yc, radius, angle2, angle2);
+		cairo_line_to(cr, xc, yc);
+		cairo_stroke(cr);
+
+		// Blit the content to screen
+		canvas->blit(g_rectangle(0, 0, bufferInfo.width, bufferInfo.height));
+
+		g_sleep(100);
 	}
 }

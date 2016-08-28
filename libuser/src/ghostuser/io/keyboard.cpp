@@ -121,6 +121,26 @@ g_key_info g_keyboard::keyForScancode(uint8_t scancode) {
 /**
  *
  */
+g_key_info g_keyboard::fullKeyInfo(g_key_info_basic basic) {
+
+	// Get key from layout map
+	g_key_info info;
+	info.alt = basic.alt;
+	info.ctrl = basic.ctrl;
+	info.pressed = basic.pressed;
+	info.scancode = basic.scancode;
+	info.shift = basic.shift;
+
+	auto pos = scancodeLayout.find(basic.scancode);
+	if (pos != scancodeLayout.end()) {
+		info.key = pos->second;
+	}
+	return info;
+}
+
+/**
+ *
+ */
 char g_keyboard::charForKey(g_key_info info) {
 
 	auto pos = conversionLayout.find(info);

@@ -24,7 +24,7 @@
 
 #include <cairo/cairo.h>
 #include <cairo/cairo-ft.h>
-#include <fontloader.hpp>
+#include <ghostuser/graphics/text/font_loader.hpp>
 #include <sstream>
 #include <ghost.h>
 
@@ -34,7 +34,7 @@
 label_t::label_t() :
 		component_t(true) {
 
-	setFont(font_loader_t::getDefault());
+	setFont(g_font_loader::getDefault());
 	alignment = g_text_alignment::LEFT;
 	color = RGB(0, 0, 0);
 }

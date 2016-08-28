@@ -92,7 +92,7 @@ struct ModeInfoBlock {
 	uint8_t directColorModeInfo;
 
 	// 40
-	uint32_t lfbPhysicalBase;  // your LFB (Linear Framebuffer) address ;)
+	uint32_t lfbPhysicalBase;
 	uint32_t offScreenMemOffset;
 	uint16_t offScreenMemSizeKb;
 	uint16_t linBytesPerScanline;

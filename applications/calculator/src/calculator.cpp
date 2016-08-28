@@ -153,7 +153,7 @@ int main(int argc, char** argv) {
 		PLACE_BUTTON_T(Eq, "=", grid4, grid5 + dispOff);
 		butEq->setActionListener(new command_press_action_listener_t(COM_EQ));
 
-		window->setBounds(g_rectangle(70, 70, 170, 290));
+		window->setBounds(g_rectangle(70, 70, 190, 320));
 		window->setVisible(true);
 
 		uint8_t blocker = true;

@@ -37,10 +37,11 @@ enum focus_event_type_t {
 class focus_event_t: public event_t {
 public:
 	focus_event_t() :
-			type(FOCUS_EVENT_NONE) {
+			type(FOCUS_EVENT_NONE), newFocusedComponent(nullptr) {
 	}
 
 	focus_event_type_t type;
+	component_t* newFocusedComponent;
 };
 
 #endif

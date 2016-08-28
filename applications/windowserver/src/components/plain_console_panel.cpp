@@ -20,13 +20,13 @@
 
 #include <components/plain_console_panel.hpp>
 #include <events/focus_event.hpp>
-#include <fontloader.hpp>
+#include <ghostuser/graphics/text/font_loader.hpp>
 
 /**
  *
  */
 plain_console_panel_t::plain_console_panel_t() {
-	font = font_loader_t::getDefault();
+	font = g_font_loader::getDefault();
 	focused = false;
 }
 

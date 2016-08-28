@@ -18,27 +18,22 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef GHOSTLIBRARY_UI_ACTIONLISTENER
-#define GHOSTLIBRARY_UI_ACTIONLISTENER
+#ifndef GHOSTLIBRARY_GRAPHICS_TEXT_FONTLOADER
+#define GHOSTLIBRARY_GRAPHICS_TEXT_FONTLOADER
 
-#include <ghostuser/ui/listener.hpp>
-#include <cstdint>
-
-class g_component;
+#include <ghostuser/graphics/text/font.hpp>
+#include <string>
 
 /**
  *
  */
-class g_action_listener: public g_listener {
+class g_font_loader {
+private:
+	static g_font* getFontAtPath(std::string path, std::string name);
+	static g_font* getSystemFont(std::string name);
 public:
-	virtual ~g_action_listener() {
-	}
-
-	virtual void process(g_ui_component_event_header* header) {
-		handle_action();
-	}
-
-	virtual void handle_action() = 0;
+	static g_font* get(std::string name);
+	static g_font* getDefault();
 };
 
 #endif

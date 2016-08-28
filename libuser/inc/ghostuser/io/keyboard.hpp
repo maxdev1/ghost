@@ -28,18 +28,28 @@
 /**
  *
  */
-class g_key_info {
-public:
-	g_key_info() :
-			key("KEY_NONE"), pressed(false), ctrl(false), alt(false), shift(false), scancode(0) {
-	}
-
-	std::string key;
+struct g_key_info_basic {
 	bool pressed :1;
 	bool ctrl :1;
 	bool alt :1;
 	bool shift :1;
 	uint8_t scancode;
+
+	g_key_info_basic() :
+			pressed(false), ctrl(false), alt(false), shift(false), scancode(0) {
+	}
+}__attribute__((packed));
+
+/**
+ *
+ */
+class g_key_info: public g_key_info_basic {
+public:
+	g_key_info() :
+			key("KEY_NONE") {
+	}
+
+	std::string key;
 
 	/**
 	 *
@@ -86,6 +96,7 @@ public:
 
 	static g_key_info keyForScancode(uint8_t scancode);
 	static char charForKey(g_key_info info);
+	static g_key_info fullKeyInfo(g_key_info_basic basic);
 
 	static std::string getCurrentLayout();
 	static bool loadLayout(std::string iso);

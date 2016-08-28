@@ -18,27 +18,38 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef GHOSTLIBRARY_UI_ACTIONLISTENER
-#define GHOSTLIBRARY_UI_ACTIONLISTENER
+#ifndef GHOSTLIBRARY_UI_KEYLISTENER
+#define GHOSTLIBRARY_UI_KEYLISTENER
 
 #include <ghostuser/ui/listener.hpp>
+#include <ghostuser/io/keyboard.hpp>
 #include <cstdint>
-
-class g_component;
 
 /**
  *
  */
-class g_action_listener: public g_listener {
+struct g_key_event {
+	g_key_info_basic info;
+};
+
+/**
+ *
+ */
+class g_key_listener: public g_listener {
 public:
-	virtual ~g_action_listener() {
+	virtual ~g_key_listener() {
 	}
 
 	virtual void process(g_ui_component_event_header* header) {
-		handle_action();
+
+		g_ui_component_key_event* event = (g_ui_component_key_event*) header;
+
+		g_key_event e;
+		e.info = event->key_info;
+		handle_key_event(e);
 	}
 
-	virtual void handle_action() = 0;
+	virtual void handle_key_event(g_key_event& e) = 0;
 };
 
 #endif

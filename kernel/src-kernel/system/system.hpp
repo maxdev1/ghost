@@ -69,6 +69,11 @@ public:
 	 */
 	static g_processor* getProcessorById(uint32_t coreId);
 
+	/**
+	 *
+	 */
+	static void checkAndEnableSSE();
+
 };
 
 #endif

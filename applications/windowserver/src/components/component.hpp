@@ -348,6 +348,11 @@ public:
 	 */
 	void clearSurface();
 
+	/**
+	 *
+	 */
+	bool isChildOf(component_t* c);
+
 };
 
 #endif
