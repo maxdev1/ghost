@@ -18,69 +18,19 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <stdint.h>
-#include <string>
-#include <ghostuser/io/keyboard.hpp>
-
-#ifndef SCREEN_HPP_
-#define SCREEN_HPP_
-
-#define SCREEN_WIDTH	80
-#define SCREEN_HEIGHT	25
-#define VIDEO_MEMORY	0xB8000
+#ifndef __DLMALLOC_CONFIG__
+#define __DLMALLOC_CONFIG__
 
 /**
- *
+ * This is the configuration header for dlmalloc.
  */
-typedef uint8_t screen_color_t;
+#define USE_LOCKS			1
+#define HAVE_MMAP			0
 
-#define SC_BLACK		0x0
-#define SC_BLUE			0x1
-#define SC_GREEN		0x2
-#define SC_CYAN			0x3
-#define SC_RED			0x4
-#define SC_MAGENTA		0x5
-#define SC_BROWN		0x6
-#define SC_LGRAY		0x7
-#define SC_DARKGRAY		0x8
-#define SC_LBLUE		0x9
-#define SC_LGREEN		0xA
-#define SC_LCYAN		0xB
-#define SC_LRED			0xC
-#define SC_LMAGENTA		0xD
-#define SC_YELLOW		0xE
-#define SC_WHITE		0xF
+#define LACKS_SYS_MMAN_H	1
 
-#define SC_COLOR(ba, fo)	(fo | (ba << 4))
-#define SC_DEFAULT_COLOR	SC_COLOR(SC_BLACK, SC_WHITE)
-#define SC_ERROR_COLOR		SC_COLOR(SC_BLACK, SC_RED)
-
-/**
- * OEM-US special characters
- */
-#define OEMUS_CHAR_UE	((char) 0x81) /*�*/
-
-/**
- *
- */
-class screen_t {
-public:
-	virtual ~screen_t() {
-	}
-
-	virtual void clean() = 0;
-	virtual void deactivate() = 0;
-	virtual void activate() = 0;
-
-	virtual void backspace() = 0;
-	virtual void write(std::string message, screen_color_t color =
-	SC_DEFAULT_COLOR) = 0;
-	virtual void writeChar(char c, screen_color_t color = SC_DEFAULT_COLOR) = 0;
-	virtual void updateCursor() = 0;
-
-	virtual g_key_info readInput(bool* cancelCondition) = 0;
-
-	virtual void workingDirectoryChanged(std::string str) {}
-};
+// TODO try these for error-checking:
+// #define DEBUG			1
+// #define FOOTERS			1
 
 #endif

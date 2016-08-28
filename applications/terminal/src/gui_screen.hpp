@@ -18,69 +18,62 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <stdint.h>
-#include <string>
-#include <ghostuser/io/keyboard.hpp>
+#include "screen.hpp"
 
-#ifndef SCREEN_HPP_
-#define SCREEN_HPP_
+#include <cairo/cairo.h>
+#include <ghostuser/ui/window.hpp>
+#include <ghostuser/ui/canvas.hpp>
 
-#define SCREEN_WIDTH	80
-#define SCREEN_HEIGHT	25
-#define VIDEO_MEMORY	0xB8000
-
-/**
- *
- */
-typedef uint8_t screen_color_t;
-
-#define SC_BLACK		0x0
-#define SC_BLUE			0x1
-#define SC_GREEN		0x2
-#define SC_CYAN			0x3
-#define SC_RED			0x4
-#define SC_MAGENTA		0x5
-#define SC_BROWN		0x6
-#define SC_LGRAY		0x7
-#define SC_DARKGRAY		0x8
-#define SC_LBLUE		0x9
-#define SC_LGREEN		0xA
-#define SC_LCYAN		0xB
-#define SC_LRED			0xC
-#define SC_LMAGENTA		0xD
-#define SC_YELLOW		0xE
-#define SC_WHITE		0xF
-
-#define SC_COLOR(ba, fo)	(fo | (ba << 4))
-#define SC_DEFAULT_COLOR	SC_COLOR(SC_BLACK, SC_WHITE)
-#define SC_ERROR_COLOR		SC_COLOR(SC_BLACK, SC_RED)
-
-/**
- * OEM-US special characters
- */
-#define OEMUS_CHAR_UE	((char) 0x81) /*�*/
+#include <ghostuser/utils/utils.hpp>
+#include <ghostuser/ui/ui.hpp>
+#include <ghostuser/ui/label.hpp>
+#include <ghostuser/ui/button.hpp>
+#include <ghostuser/ui/textfield.hpp>
+#include <ghostuser/ui/action_listener.hpp>
+#include <ghostuser/ui/focus_listener.hpp>
+#include <ghostuser/ui/key_listener.hpp>
+#include <ghostuser/tasking/lock.hpp>
+#include <ghostuser/graphics/text/font_loader.hpp>
+#include <ghostuser/graphics/text/font.hpp>
+#include <ghostuser/graphics/text/text_layouter.hpp>
 
 /**
  *
  */
-class screen_t {
+class gui_screen_t: public screen_t {
+private:
+	g_window* window;
+	g_canvas* canvas;
+
+	cairo_surface_t* existingSurface = 0;
+	g_color_argb* existingSurfaceBuffer = 0;
+	g_dimension bufferSize;
+	cairo_t* existingContext;
+
+	g_layouted_text* viewModel;
+	g_font* font;
+
+	void initialize();
+	cairo_t* getGraphics();
+
+	static void blinkCursorThread();
+
 public:
-	virtual ~screen_t() {
-	}
+	gui_screen_t();
 
-	virtual void clean() = 0;
-	virtual void deactivate() = 0;
-	virtual void activate() = 0;
+	static void paint_entry();
+	void paint();
 
-	virtual void backspace() = 0;
-	virtual void write(std::string message, screen_color_t color =
-	SC_DEFAULT_COLOR) = 0;
-	virtual void writeChar(char c, screen_color_t color = SC_DEFAULT_COLOR) = 0;
-	virtual void updateCursor() = 0;
+	void clean();
+	void deactivate();
+	void activate();
 
-	virtual g_key_info readInput(bool* cancelCondition) = 0;
+	void backspace();
+	void write(std::string message, screen_color_t color = SC_DEFAULT_COLOR);
+	void writeChar(char c, screen_color_t color = SC_DEFAULT_COLOR);
+	void updateCursor();
 
-	virtual void workingDirectoryChanged(std::string str) {}
+	g_key_info readInput(bool* cancelCondition);
+
+	void workingDirectoryChanged(std::string str);
 };
-
-#endif

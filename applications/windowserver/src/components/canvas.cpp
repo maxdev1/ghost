@@ -29,7 +29,8 @@ canvas_t::canvas_t(g_tid partnerThread) :
 	partnerProcess = g_get_pid_for_tid(partnerThread);
 
 	currentBuffer.localMapping = nullptr;
-	previousBuffer.localMapping = nullptr;
+	nextBuffer.localMapping = nullptr;
+
 	mustCheckAgain = false;
 }
 
@@ -57,18 +58,19 @@ void canvas_t::checkBuffer() {
 	uint32_t requiredSize = sizeof(g_ui_canvas_shared_memory_header) + cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, bounds.height) * bounds.width;
 	uint16_t requiredPages = G_PAGE_ALIGN_UP(requiredSize) / G_PAGE_SIZE;
 
-	// if current buffer not yet acknowledged, we must wait until client sends an acknowledge response
-	if (currentBuffer.localMapping != nullptr && !currentBuffer.acknowledged) {
+	// if next buffer not yet acknowledged, ask client to acknowledge it
+	if (nextBuffer.localMapping != nullptr && !nextBuffer.acknowledged) {
 		mustCheckAgain = true;
 
 		// send event again
-		requestClientToAcknowledgeCurrentBuffer();
+		requestClientToAcknowledgeNewBuffer();
 
 		// if there is no buffer or there is an acknowledged one that is not sufficient, create a new one
 	} else if (currentBuffer.localMapping == nullptr || (currentBuffer.acknowledged && currentBuffer.pages < requiredPages)) {
 		createNewBuffer(requiredPages);
 
 	}
+
 }
 
 /**
@@ -78,32 +80,29 @@ void canvas_t::createNewBuffer(uint16_t requiredPages) {
 
 	g_rectangle bounds = getBounds();
 
-	// store the current buffer information
-	previousBuffer = currentBuffer;
+	// TODO this is leaking memory when creating a buffer before the current "nextBuffer" was acknowledged
 
 	// create a new buffer
-	currentBuffer.acknowledged = false;
-	currentBuffer.pages = requiredPages;
-	currentBuffer.localMapping = (uint8_t*) g_alloc_mem(requiredPages * G_PAGE_SIZE);
+	nextBuffer.acknowledged = false;
+	nextBuffer.pages = requiredPages;
+	nextBuffer.localMapping = (uint8_t*) g_alloc_mem(requiredPages * G_PAGE_SIZE);
 
-	if (currentBuffer.localMapping == 0) {
+	if (nextBuffer.localMapping == 0) {
 		klog("warning: failed to allocate a buffer for a canvas");
-		currentBuffer = previousBuffer;
 		return;
 	}
 
 	// share buffer with target process
-	currentBuffer.partnerMapping = (uint8_t*) g_share_mem(currentBuffer.localMapping, requiredPages * G_PAGE_SIZE, partnerProcess);
+	nextBuffer.remoteMapping = (uint8_t*) g_share_mem(nextBuffer.localMapping, requiredPages * G_PAGE_SIZE, partnerProcess);
 
-	if (currentBuffer.partnerMapping == 0) {
+	if (nextBuffer.remoteMapping == 0) {
 		klog("warning: failed to share a buffer for a canvas to proc %i", partnerProcess);
-		g_unmap(currentBuffer.localMapping);
-		currentBuffer = previousBuffer;
+		g_unmap(nextBuffer.localMapping);
 		return;
 	}
 
 	// initialize the header
-	g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer.localMapping;
+	g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) nextBuffer.localMapping;
 	header->paintable_width = bounds.width;
 	header->paintable_height = bounds.height;
 	header->blit_x = 0;
@@ -111,13 +110,13 @@ void canvas_t::createNewBuffer(uint16_t requiredPages) {
 	header->blit_width = 0;
 	header->blit_height = 0;
 
-	requestClientToAcknowledgeCurrentBuffer();
+	requestClientToAcknowledgeNewBuffer();
 }
 
 /**
  *
  */
-void canvas_t::requestClientToAcknowledgeCurrentBuffer() {
+void canvas_t::requestClientToAcknowledgeNewBuffer() {
 
 	// look for a listener
 	event_listener_info_t listenerInfo;
@@ -127,7 +126,7 @@ void canvas_t::requestClientToAcknowledgeCurrentBuffer() {
 		g_ui_component_canvas_wfa_event event;
 		event.header.type = G_UI_COMPONENT_EVENT_TYPE_CANVAS_WFA;
 		event.header.component_id = listenerInfo.component_id;
-		event.newBufferAddress = (g_address) currentBuffer.partnerMapping;
+		event.newBufferAddress = (g_address) nextBuffer.remoteMapping;
 		g_send_message(listenerInfo.target_thread, &event, sizeof(g_ui_component_canvas_wfa_event));
 
 	}
@@ -138,14 +137,15 @@ void canvas_t::requestClientToAcknowledgeCurrentBuffer() {
  */
 void canvas_t::clientHasAcknowledgedCurrentBuffer() {
 
-	// current one is now acknowledged
-	currentBuffer.acknowledged = true;
-
 	// previous buffer can be deleted
-	if (previousBuffer.localMapping != nullptr) {
-		g_unmap(previousBuffer.localMapping);
-		previousBuffer.localMapping = nullptr;
+	if (currentBuffer.localMapping != nullptr) {
+		g_unmap(currentBuffer.localMapping);
+		currentBuffer.localMapping = nullptr;
 	}
+
+	currentBuffer = nextBuffer;
+	currentBuffer.acknowledged = true;
+	nextBuffer.localMapping = 0;
 
 	// if the window was resized during an un-acknowledged state, we must now create a new buffer
 	if (mustCheckAgain) {
@@ -166,7 +166,7 @@ void canvas_t::paint() {
 
 	// there muts be a buffer that is acknowledged
 	if (currentBuffer.localMapping != 0 && currentBuffer.acknowledged) {
-		
+
 		// make background empty
 		clearSurface();
 

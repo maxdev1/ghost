@@ -19,6 +19,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <terminal.hpp>
+#include <headless_screen.hpp>
+#include <gui_screen.hpp>
 
 #include <stdint.h>
 #include <string.h>
@@ -33,24 +35,45 @@
 #include <ghostuser/utils/utils.hpp>
 #include <ghostuser/utils/logger.hpp>
 #include <ghostuser/io/keyboard.hpp>
+#include <ghostuser/ui/ui.hpp>
 
 static std::vector<terminal_t*> terminals;
 static std::vector<g_tid> terminal_threads;
 static terminal_t* active_terminal = 0;
 
 int terminal_index = 0;
+static bool headless;
 
 /**
  *
  */
 int main(int argc, char* argv[]) {
 
-	if (g_task_get_id("terminal") != -1) {
-		std::cout << "error: can't execute terminal process twice" << std::endl;
+	// check for headless argument
+	headless = (strcmp("--headless", argv[1]) == 0);
+
+	// headless may only run once
+	if (g_task_get_id("terminal_headless") != -1) {
+		std::cerr
+				<< "error: terminal can only be executed once when in headless mode"
+				<< std::endl;
+		return -1;
 	}
 
+	// if not headless, init gui
+	if (!headless) {
+		auto status = g_ui::open();
+
+		if (status != G_UI_OPEN_STATUS_SUCCESSFUL) {
+			klog("failed to open UI for terminal with status %i", status);
+			return -1;
+		}
+	}
+
+	// initialize general settings
 	terminal_t::prepare();
 
+	// instantiate a terminal
 	create_terminal_info_t* inf = new create_terminal_info_t;
 	inf->number = terminal_index++;
 	terminal_t::create_terminal(inf);
@@ -64,10 +87,21 @@ int main(int argc, char* argv[]) {
 /**
  *
  */
+bool terminal_t::runs_headless() {
+	return headless;
+}
+
+/**
+ * Prepares the terminal application for execution. Loads the current keyboard
+ * layout and disables video log to avoid interfering with headless mode.
+ */
 void terminal_t::prepare() {
 
-	g_task_register_id("terminal");
-	g_logger::log("starting terminal");
+	// register as the terminal task when headless
+	if (headless) {
+		g_task_register_id("terminal_headless");
+		klog("initializing headless terminal");
+	}
 
 	// load keyboard layout
 	std::string initialLayout = "de-DE";
@@ -79,15 +113,14 @@ void terminal_t::prepare() {
 	}
 
 	// disable video logging
-	g_logger::log("disabling video log");
 	g_set_video_log(false);
 }
 
 /**
- *
+ * Creates a new terminal by starting a thread.
  */
 void terminal_t::create_terminal(create_terminal_info_t* inf) {
-	g_tid term = g_create_thread_d((void*) &terminal_t::add_terminal,
+	g_tid term = g_create_thread_d((void*) &terminal_t::terminal_start_routine,
 			(void*) inf);
 	terminal_threads.push_back(term);
 }
@@ -95,15 +128,21 @@ void terminal_t::create_terminal(create_terminal_info_t* inf) {
 /**
  *
  */
-void terminal_t::add_terminal(create_terminal_info_t* inf) {
+void terminal_t::terminal_start_routine(create_terminal_info_t* inf) {
+
+	// create new terminal
 	terminal_t* terminal = new terminal_t();
 	terminals.push_back(terminal);
 
+	// copy working directory
 	if (active_terminal) {
 		terminal->working_directory = active_terminal->working_directory;
 	}
 
+	// switch screen to new terminal
 	switch_to(terminal);
+
+	// run terminal in this thread
 	terminal->run(inf);
 }
 
@@ -112,7 +151,11 @@ void terminal_t::add_terminal(create_terminal_info_t* inf) {
  */
 terminal_t::terminal_t() :
 		inactive(false) {
-	screen = new screen_t();
+	if (headless) {
+		screen = new headless_screen_t();
+	} else {
+		screen = new gui_screen_t();
+	}
 }
 
 /**
@@ -143,6 +186,7 @@ void terminal_t::switch_to_next() {
  *
  */
 void terminal_t::switch_to(terminal_t* term) {
+
 	if (active_terminal) {
 		active_terminal->inactive = true;
 		active_terminal->screen->deactivate();
@@ -173,6 +217,7 @@ void terminal_t::read_working_directory() {
 	g_get_working_directory(buf);
 	working_directory = std::string(buf);
 	delete buf;
+	screen->workingDirectoryChanged(working_directory);
 }
 
 /**
@@ -184,30 +229,32 @@ void terminal_t::run(create_terminal_info_t* inf) {
 	screen->clean();
 	screen->activate();
 
-	if (inf->number == 0) {
-		// print the logo
-		std::ifstream logofile("/system/graphics/logo.oem-us");
-		screen->write("\n");
-		if (logofile.good()) {
-			std::string logo((std::istreambuf_iterator<char>(logofile)),
-					std::istreambuf_iterator<char>());
-			screen->write(logo, SC_COLOR(SC_BLACK, SC_LBLUE));
+	if (headless) {
+		if (inf->number == 0) {
+			// print the logo
+			std::ifstream logofile("/system/graphics/logo.oem-us");
+			screen->write("\n");
+			if (logofile.good()) {
+				std::string logo((std::istreambuf_iterator<char>(logofile)),
+						std::istreambuf_iterator<char>());
+				screen->write(logo, SC_COLOR(SC_BLACK, SC_LBLUE));
+			}
+
+			std::stringstream msg1;
+			msg1 << std::endl;
+			msg1 << " Copyright (c) 2012-2016 Max Schl" << OEMUS_CHAR_UE
+					<< "ssel <lokoxe@gmail.com>" << std::endl;
+			screen->write(msg1.str(), SC_COLOR(SC_BLACK, SC_LGRAY));
+			std::stringstream msg2;
+			msg2 << " Enter 'read README' for a brief introduction.";
+			msg2 << std::endl << std::endl;
+			screen->write(msg2.str());
+
+		} else {
+			std::stringstream msg;
+			msg << "terminal " << inf->number << std::endl;
+			screen->write(msg.str());
 		}
-
-		std::stringstream msg1;
-		msg1 << std::endl;
-		msg1 << " Copyright (c) 2012-2016 Max Schl" << OEMUS_CHAR_UE << "ssel <lokoxe@gmail.com>"
-				<< std::endl;
-		screen->write(msg1.str(), SC_COLOR(SC_BLACK, SC_LGRAY));
-		std::stringstream msg2;
-		msg2 << " Enter 'read README' for a brief introduction.";
-		msg2 << std::endl << std::endl;
-		screen->write(msg2.str());
-
-	} else {
-		std::stringstream msg;
-		msg << "terminal " << inf->number << std::endl;
-		screen->write(msg.str());
 	}
 
 	// delete info
@@ -423,14 +470,18 @@ bool terminal_t::handle_builtin(std::string command) {
 		screen->write(" The terminal has the following built-in functions:\n");
 		screen->write("\n");
 		screen->write(" help                  prints this help screen\n");
-		screen->write(" ls                    lists all files in the current directory\n");
+		screen->write(
+				" ls                    lists all files in the current directory\n");
 		screen->write(" cd <path>             switches to a directory\n");
 		screen->write(" clear                 clears the screen\n");
-		screen->write(" sleep <ms>            sleeps for the given number of milliseconds\n");
-		screen->write(" background <file>     runs a program in the background\n");
+		screen->write(
+				" sleep <ms>            sleeps for the given number of milliseconds\n");
+		screen->write(
+				" background <file>     runs a program in the background\n");
 		screen->write("\n");
 		screen->write(" terminal, ctrl+space  open a new terminal\n");
-		screen->write(" terminal <num>        switches to the terminal with the given number\n");
+		screen->write(
+				" terminal <num>        switches to the terminal with the given number\n");
 		screen->write(" terminals             lists all terminals\n");
 		screen->write(" ctrl+tab              switches to the next terminal\n");
 		screen->write("\n");
@@ -451,17 +502,22 @@ bool terminal_t::handle_builtin(std::string command) {
 		return true;
 
 	} else if (command == BUILTIN_COMMAND_SCANCODE) {
-		while (true) {
-			auto key = g_keyboard::readKey();
-			if (key.pressed && key.ctrl && key.key == "KEY_C") {
-				break;
+
+		if (headless) {
+			while (true) {
+				auto key = g_keyboard::readKey();
+				if (key.pressed && key.ctrl && key.key == "KEY_C") {
+					break;
+				}
+				std::stringstream msg;
+				msg << "scancode: " << (key.pressed ? "d " : "u ")
+						<< (uint32_t) key.scancode << ", ctrl: " << key.ctrl
+						<< ", alt: " << key.alt << ", shift: " << key.shift
+						<< std::endl;
+				screen->write(msg.str());
 			}
-			std::stringstream msg;
-			msg << "scancode: " << (key.pressed ? "d " : "u ")
-					<< (uint32_t) key.scancode << ", ctrl: " << key.ctrl
-					<< ", alt: " << key.alt << ", shift: " << key.shift
-					<< std::endl;
-			screen->write(msg.str());
+		} else {
+			screen->write("This command is only available in headless mode.\n");
 		}
 		return true;
 
@@ -514,7 +570,7 @@ bool terminal_t::handle_builtin(std::string command) {
 			screen->write("directory not found\n", SC_ERROR_COLOR);
 		} else if (stat == G_SET_WORKING_DIRECTORY_ERROR) {
 			screen->write("unable to switch to the selected directory\n",
-					SC_ERROR_COLOR);
+			SC_ERROR_COLOR);
 		}
 
 		read_working_directory();
@@ -758,7 +814,7 @@ std::string terminal_t::read_input(std::string there, screen_t* screen,
 
 	std::string line = there;
 	while (continue_input == 0 || *continue_input) {
-		g_key_info key = g_keyboard::readKey(continue_input);
+		g_key_info key = screen->readInput(continue_input);
 
 		if (key.pressed) {
 			if ((key.ctrl && key.key == "KEY_C") || (key.key == "KEY_ESC")) {

@@ -117,12 +117,17 @@ public:
 	bool file_exists(std::string path);
 	bool find_executable(std::string path, std::string& out);
 
+	static bool runs_headless();
+
 private:
 	std::string working_directory;
 	screen_t* screen;
 	uint8_t inactive;
 
-	static void add_terminal(create_terminal_info_t* inf);
+	/**
+	 * Function used as the main entry point for a terminal instance.
+	 */
+	static void terminal_start_routine(create_terminal_info_t* inf);
 	terminal_t();
 
 	static screen_t* addScreen();

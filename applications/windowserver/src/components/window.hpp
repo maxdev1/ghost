@@ -29,7 +29,7 @@
 /**
  * constants for border sizes
  */
-#define DEFAULT_BORDER_WIDTH		5
+#define DEFAULT_BORDER_WIDTH		7
 #define DEFAULT_CORNER_SIZE			15
 
 /**
@@ -60,6 +60,13 @@ private:
 
 	label_t label;
 	panel_t panel;
+
+	bool crossPressed;
+	bool crossHovered;
+	bool focused;
+
+	int shadowSize;
+	g_rectangle crossBounds;
 
 public:
 	window_t();

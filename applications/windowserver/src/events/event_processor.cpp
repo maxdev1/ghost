@@ -452,7 +452,18 @@ void event_processor_t::processMouseState() {
 				if (cursor_t::focusedComponent != 0) {
 					focus_event_t focusLostEvent;
 					focusLostEvent.type = FOCUS_EVENT_LOST;
+					focusLostEvent.newFocusedComponent = hitComponent;
 					instance->dispatchUpwards(cursor_t::focusedComponent, focusLostEvent);
+
+					// Post event to client
+					event_listener_info_t listenerInfo;
+					if (cursor_t::focusedComponent->getListener(G_UI_COMPONENT_EVENT_TYPE_FOCUS, listenerInfo)) {
+						g_ui_component_focus_event focus_event;
+						focus_event.header.type = G_UI_COMPONENT_EVENT_TYPE_FOCUS;
+						focus_event.header.component_id = listenerInfo.component_id;
+						focus_event.now_focused = false;
+						g_send_message(listenerInfo.target_thread, &focus_event, sizeof(g_ui_component_focus_event));
+					}
 				}
 
 				// Bring hit components window to front
@@ -464,7 +475,18 @@ void event_processor_t::processMouseState() {
 				// New gains focus
 				focus_event_t focusGainedEvent;
 				focusGainedEvent.type = FOCUS_EVENT_GAINED;
+				focusGainedEvent.newFocusedComponent = hitComponent;
 				cursor_t::focusedComponent = instance->dispatchUpwards(hitComponent, focusGainedEvent);
+
+				// Post event to client
+				event_listener_info_t listenerInfo;
+				if (cursor_t::focusedComponent->getListener(G_UI_COMPONENT_EVENT_TYPE_FOCUS, listenerInfo)) {
+					g_ui_component_focus_event focus_event;
+					focus_event.header.type = G_UI_COMPONENT_EVENT_TYPE_FOCUS;
+					focus_event.header.component_id = listenerInfo.component_id;
+					focus_event.now_focused = true;
+					g_send_message(listenerInfo.target_thread, &focus_event, sizeof(g_ui_component_focus_event));
+				}
 			}
 		}
 
@@ -487,8 +509,9 @@ void event_processor_t::processMouseState() {
 		// Move or drag
 	} else if (cursor_t::position != previousPosition) {
 
+		// Post enter or leave events
 		component_t* hovered = screen->getComponentAt(cursor_t::position);
-		if (hovered != 0 && (hovered != cursor_t::hoveredComponent)) {
+		if ((hovered != cursor_t::hoveredComponent) && (cursor_t::draggedComponent != 0 && cursor_t::draggedComponent != cursor_t::hoveredComponent)) {
 
 			// Leave
 			if (cursor_t::hoveredComponent) {
@@ -498,11 +521,13 @@ void event_processor_t::processMouseState() {
 				cursor_t::hoveredComponent = 0;
 			}
 
-			// Enter
-			mouse_event_t enterEvent = baseEvent;
-			enterEvent.type = MOUSE_EVENT_ENTER;
-			cursor_t::hoveredComponent = hovered;
-			instance->dispatchUpwards(cursor_t::hoveredComponent, enterEvent);
+			if (hovered) {
+				// Enter
+				mouse_event_t enterEvent = baseEvent;
+				enterEvent.type = MOUSE_EVENT_ENTER;
+				cursor_t::hoveredComponent = hovered;
+				instance->dispatchUpwards(cursor_t::hoveredComponent, enterEvent);
+			}
 		}
 
 		if (cursor_t::draggedComponent != 0) { // Dragging

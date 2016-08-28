@@ -22,6 +22,7 @@
 #include <components/window.hpp>
 
 #include <events/locatable.hpp>
+#include <events/key_event.hpp>
 #include <windowserver.hpp>
 
 #include <ghostuser/utils/logger.hpp>
@@ -45,12 +46,19 @@ void component_t::setBounds(const g_rectangle& newBounds) {
 
 	markDirty();
 	bounds = newBounds;
+	if (bounds.width < minimumSize.width) {
+		bounds.width = minimumSize.width;
+	}
+	if (bounds.height < minimumSize.height) {
+		bounds.height = minimumSize.height;
+	}
 	markDirty();
 
-	if (oldBounds.width != newBounds.width || oldBounds.height != newBounds.height) {
-		graphics.resize(newBounds.width, newBounds.height);
+	if (oldBounds.width != bounds.width || oldBounds.height != bounds.height) {
+		graphics.resize(bounds.width, bounds.height);
 		markFor(COMPONENT_REQUIREMENT_LAYOUT);
 		markFor(COMPONENT_REQUIREMENT_UPDATE);
+		markFor(COMPONENT_REQUIREMENT_PAINT);
 
 		handleBoundChange(oldBounds);
 	}
@@ -241,9 +249,23 @@ bool component_t::handle(event_t& event) {
 					locatable->position.x += child->bounds.x;
 					locatable->position.y += child->bounds.y;
 				}
+
 			} else if (child->handle(event)) {
 				return true;
 			}
+		}
+	}
+
+	// post key event to client
+	key_event_t* key_event = dynamic_cast<key_event_t*>(&event);
+	if (key_event) {
+		event_listener_info_t info;
+		if (getListener(G_UI_COMPONENT_EVENT_TYPE_KEY, info)) {
+			g_ui_component_key_event posted_key_event;
+			posted_key_event.header.type = G_UI_COMPONENT_EVENT_TYPE_KEY;
+			posted_key_event.header.component_id = info.component_id;
+			posted_key_event.key_info = key_event->info;
+			g_send_message(info.target_thread, &posted_key_event, sizeof(g_ui_component_key_event));
 		}
 	}
 
@@ -417,3 +439,18 @@ void component_t::clearSurface() {
 	cairo_restore(cr);
 }
 
+/**
+ *
+ */
+bool component_t::isChildOf(component_t* c) {
+
+	component_t* next = parent;
+	do {
+		if (next == c) {
+			return true;
+		}
+		next = next->getParent();
+	} while (next);
+
+	return false;
+}

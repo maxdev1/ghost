@@ -24,6 +24,7 @@
 #include <events/mouse_event.hpp>
 #include <ghostuser/utils/property_file_parser.hpp>
 #include <ghostuser/utils/logger.hpp>
+#include <windowserver.hpp>
 
 static std::map<std::string, cursor_configuration> cursorConfigurations;
 static cursor_configuration* currentConfiguration = 0;
@@ -48,6 +49,11 @@ void cursor_t::set(std::string name) {
 		currentConfiguration = &cursorConfigurations["default"];
 	} else {
 		g_logger::log("could neither load '" + name + "' cursor nor 'default' cursor");
+	}
+
+	screen_t* screen = windowserver_t::instance()->screen;
+	if (screen) {
+		screen->markDirty(getArea());
 	}
 
 }
@@ -106,8 +112,6 @@ bool cursor_t::load(std::string cursorPath) {
 	pack.hitpoint = g_point(hitpointX, hitpointY);
 	pack.size = g_dimension(cairo_image_surface_get_width(pack.surface), cairo_image_surface_get_height(pack.surface));
 	cursorConfigurations[name] = pack;
-
-	g_logger::log("created cursor '" + name + "' with hitpoint %i/%i", hitpointX, hitpointY);
 
 	return true;
 }

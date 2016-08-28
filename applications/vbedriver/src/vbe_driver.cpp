@@ -73,14 +73,14 @@ bool loadModeInfo(uint16_t mode, ModeInfoBlock* target) {
 /**
  *
  */
-bool setVideoMode(uint32_t mode, bool withLfb) {
+bool setVideoMode(uint32_t mode, bool flatFrameBuffer) {
 	g_vm86_registers out;
 	g_vm86_registers regs;
 
 	regs.ax = 0x4F02;
 	regs.bx = mode;
 
-	if (withLfb) {
+	if (flatFrameBuffer) {
 		regs.bx |= 0x4000;
 	}
 
@@ -135,13 +135,19 @@ bool setVideoMode(uint32_t wantedWidth, uint32_t wantedHeight, uint32_t wantedBp
 
 			// mode output
 			if (debug_output) {
-				g_logger::log("mode %x, attr: %x, mmo: %x, %ix%ix%i", mode, modeInfoBlock->modeAttributes, modeInfoBlock->memoryModel,
-						modeInfoBlock->resolutionX, modeInfoBlock->resolutionY, modeInfoBlock->bpp);
+				g_logger::log("mode %x, attr: %x, mmo: %x, %ix%ix%i lfb: %x", mode, modeInfoBlock->modeAttributes, modeInfoBlock->memoryModel,
+						modeInfoBlock->resolutionX, modeInfoBlock->resolutionY, modeInfoBlock->bpp, modeInfoBlock->lfbPhysicalBase);
+			}
+
+			// Must be supported by hardware
+			if ((modeInfoBlock->modeAttributes & 0x1) != 0x1) {
+				continue;
 			}
 
 			// Need LFB support
-			if ((modeInfoBlock->modeAttributes & 0x90) != 0x90)
+			if ((modeInfoBlock->modeAttributes & 0x90) != 0x90) {
 				continue;
+			}
 
 			// Need direct color mode
 			if (modeInfoBlock->memoryModel != 6) {
@@ -171,25 +177,26 @@ bool setVideoMode(uint32_t wantedWidth, uint32_t wantedHeight, uint32_t wantedBp
 		if (bestMatchingMode != 0) {
 
 			// Enable the best matching mode
-			g_logger::log("setting video mode...");
-			setVideoMode(bestMatchingMode, true);
+			klog("performing mode switch to %x...", bestMatchingMode);
+			if (setVideoMode(bestMatchingMode, true)) {
 
-			// Reload mode info into buffer
-			bool couldReloadModeInfo = loadModeInfo(bestMatchingMode, modeInfoBlock);
+				// Reload mode info into buffer
+				bool couldReloadModeInfo = loadModeInfo(bestMatchingMode, modeInfoBlock);
 
-			// Reloading successful?
-			if (couldReloadModeInfo) {
+				// Reloading successful?
+				if (couldReloadModeInfo) {
 
-				// Create MMIO mapping
-				void* area = g_map_mmio((void*) modeInfoBlock->lfbPhysicalBase, modeInfoBlock->linBytesPerScanline * modeInfoBlock->resolutionY);
+					// Create MMIO mapping
+					void* area = g_map_mmio((void*) modeInfoBlock->lfbPhysicalBase, modeInfoBlock->linBytesPerScanline * modeInfoBlock->resolutionY);
 
-				// Write out
-				result.resolutionX = modeInfoBlock->resolutionX;
-				result.resolutionY = modeInfoBlock->resolutionY;
-				result.bpp = modeInfoBlock->bpp;
-				result.bytesPerScanline = modeInfoBlock->linBytesPerScanline;
-				result.lfb = area;
-				successful = true;
+					// Write out
+					result.resolutionX = modeInfoBlock->resolutionX;
+					result.resolutionY = modeInfoBlock->resolutionY;
+					result.bpp = modeInfoBlock->bpp;
+					result.bytesPerScanline = modeInfoBlock->linBytesPerScanline;
+					result.lfb = area;
+					successful = true;
+				}
 			}
 		}
 
@@ -255,7 +262,7 @@ int main() {
 				response.mode_info.bpsl = (uint16_t) result.bytesPerScanline;
 
 			} else {
-				g_logger::log("unable to switch to video mode %ix%ix%i", resX, resY, bpp);
+				g_logger::log("unable to switch to video resolution %ix%ix%i", resX, resY, bpp);
 				response.status = G_VBE_SET_MODE_STATUS_FAILED;
 			}
 

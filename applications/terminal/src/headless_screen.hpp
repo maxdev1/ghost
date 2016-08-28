@@ -18,69 +18,36 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <stdint.h>
-#include <string>
-#include <ghostuser/io/keyboard.hpp>
-
-#ifndef SCREEN_HPP_
-#define SCREEN_HPP_
-
-#define SCREEN_WIDTH	80
-#define SCREEN_HEIGHT	25
-#define VIDEO_MEMORY	0xB8000
+#include "screen.hpp"
 
 /**
  *
  */
-typedef uint8_t screen_color_t;
+class headless_screen_t: public screen_t {
+private:
+	uint32_t id;
 
-#define SC_BLACK		0x0
-#define SC_BLUE			0x1
-#define SC_GREEN		0x2
-#define SC_CYAN			0x3
-#define SC_RED			0x4
-#define SC_MAGENTA		0x5
-#define SC_BROWN		0x6
-#define SC_LGRAY		0x7
-#define SC_DARKGRAY		0x8
-#define SC_LBLUE		0x9
-#define SC_LGREEN		0xA
-#define SC_LCYAN		0xB
-#define SC_LRED			0xC
-#define SC_LMAGENTA		0xD
-#define SC_YELLOW		0xE
-#define SC_WHITE		0xF
+	uint8_t* output_buffer;
+	uint8_t* output_current;
 
-#define SC_COLOR(ba, fo)	(fo | (ba << 4))
-#define SC_DEFAULT_COLOR	SC_COLOR(SC_BLACK, SC_WHITE)
-#define SC_ERROR_COLOR		SC_COLOR(SC_BLACK, SC_RED)
+	uint32_t offset;
 
-/**
- * OEM-US special characters
- */
-#define OEMUS_CHAR_UE	((char) 0x81) /*�*/
+	uint32_t activeProcessId;
+	uint8_t lock;
+	void normalize();
+	void moveCursor(uint16_t x, uint16_t y);
 
-/**
- *
- */
-class screen_t {
 public:
-	virtual ~screen_t() {
-	}
+	headless_screen_t();
 
-	virtual void clean() = 0;
-	virtual void deactivate() = 0;
-	virtual void activate() = 0;
+	void clean();
+	void deactivate();
+	void activate();
 
-	virtual void backspace() = 0;
-	virtual void write(std::string message, screen_color_t color =
-	SC_DEFAULT_COLOR) = 0;
-	virtual void writeChar(char c, screen_color_t color = SC_DEFAULT_COLOR) = 0;
-	virtual void updateCursor() = 0;
+	void backspace();
+	void write(std::string message, screen_color_t color = SC_DEFAULT_COLOR);
+	void writeChar(char c, screen_color_t color = SC_DEFAULT_COLOR);
+	void updateCursor();
 
-	virtual g_key_info readInput(bool* cancelCondition) = 0;
-
-	virtual void workingDirectoryChanged(std::string str) {}
+	g_key_info readInput(bool* cancelCondition);
 };
-
-#endif

@@ -72,12 +72,7 @@ void g_system::initializeBsp(g_physical_address initialPageDirectoryPhysical) {
 	g_processor::printInformation();
 
 	// Enable SSE if available
-	if (g_processor::hasFeature(g_cpuid_standard_edx_feature::SSE)) {
-		g_log_info("%! support enabled", "sse");
-		g_processor::enableSSE();
-	} else {
-		g_log_warn("%! no support detected", "sse");
-	}
+	checkAndEnableSSE();
 
 	// APIC must be available
 	if (g_processor::hasFeature(g_cpuid_standard_edx_feature::APIC)) {
@@ -151,9 +146,25 @@ void g_system::initializeAp() {
 	// Load interrupt descriptor table
 	g_idt::load();
 
+	// Enable SSE if available
+	checkAndEnableSSE();
+
 	// Initialize local APIC
 	g_lapic::initialize();
 
+}
+
+/**
+ *
+ */
+void g_system::checkAndEnableSSE() {
+
+	if (g_processor::hasFeature(g_cpuid_standard_edx_feature::SSE)) {
+		g_log_info("%! support enabled", "sse");
+		g_processor::enableSSE();
+	} else {
+		g_log_warn("%! no support detected", "sse");
+	}
 }
 
 /**

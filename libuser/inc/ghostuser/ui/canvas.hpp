@@ -23,6 +23,7 @@
 
 #include <ghostuser/ui/component.hpp>
 #include <ghostuser/graphics/graphics.hpp>
+#include <ghostuser/ui/canvas_buffer_listener.hpp>
 #include <cstdint>
 
 /**
@@ -40,11 +41,17 @@ struct g_canvas_buffer_info {
 class g_canvas: public g_component {
 protected:
 	g_graphics* graphics;
-	g_address buffer;
-	g_address new_buffer;
+	g_address currentBuffer;
+	g_address nextBuffer;
+
+	/**
+	 * Listener only for user purpose, so a client gets an event once the
+	 * buffer was changed.
+	 */
+	g_canvas_buffer_listener* userListener;
 
 	g_canvas(uint32_t id) :
-			graphics(0), g_component(id), buffer(0), new_buffer(0) {
+			graphics(0), g_component(id), currentBuffer(0), nextBuffer(0), userListener(0) {
 	}
 
 	~g_canvas();
@@ -56,6 +63,10 @@ public:
 
 	void blit(g_rectangle rect);
 	g_canvas_buffer_info getBuffer();
+
+	void setBufferListener(g_canvas_buffer_listener* l) {
+		userListener = l;
+	}
 };
 
 #endif

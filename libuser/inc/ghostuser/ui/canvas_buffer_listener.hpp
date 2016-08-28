@@ -18,27 +18,17 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef GHOSTLIBRARY_UI_ACTIONLISTENER
-#define GHOSTLIBRARY_UI_ACTIONLISTENER
-
-#include <ghostuser/ui/listener.hpp>
-#include <cstdint>
-
-class g_component;
+#ifndef GHOSTLIBRARY_UI_CANVASBUFFERLISTENER
+#define GHOSTLIBRARY_UI_CANVASBUFFERLISTENER
 
 /**
  *
  */
-class g_action_listener: public g_listener {
+class g_canvas_buffer_listener {
 public:
-	virtual ~g_action_listener() {
+	virtual ~g_canvas_buffer_listener() {
 	}
-
-	virtual void process(g_ui_component_event_header* header) {
-		handle_action();
-	}
-
-	virtual void handle_action() = 0;
+	virtual void handle_buffer_changed() = 0;
 };
 
 #endif

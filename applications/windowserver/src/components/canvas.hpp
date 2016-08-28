@@ -28,7 +28,7 @@
  */
 struct buffer_info_t {
 	uint8_t* localMapping;
-	uint8_t* partnerMapping;
+	uint8_t* remoteMapping;
 	uint16_t pages;
 	bool acknowledged;
 };
@@ -41,8 +41,9 @@ public:
 	g_pid partnerProcess;
 	g_tid partnerThread;
 
-	buffer_info_t previousBuffer;
 	buffer_info_t currentBuffer;
+	buffer_info_t nextBuffer;
+
 	bool mustCheckAgain;
 
 	canvas_t(g_tid partnerThread);
@@ -57,7 +58,7 @@ public:
 
 	void createNewBuffer(uint16_t requiredPages);
 	void clientHasAcknowledgedCurrentBuffer();
-	void requestClientToAcknowledgeCurrentBuffer();
+	void requestClientToAcknowledgeNewBuffer();
 	void blit();
 
 private:

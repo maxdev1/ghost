@@ -18,8 +18,8 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef GHOSTLIBRARY_UI_ACTIONLISTENER
-#define GHOSTLIBRARY_UI_ACTIONLISTENER
+#ifndef GHOSTLIBRARY_UI_FOCUSLISTENER
+#define GHOSTLIBRARY_UI_FOCUSLISTENER
 
 #include <ghostuser/ui/listener.hpp>
 #include <cstdint>
@@ -29,16 +29,18 @@ class g_component;
 /**
  *
  */
-class g_action_listener: public g_listener {
+class g_focus_listener: public g_listener {
 public:
-	virtual ~g_action_listener() {
+	virtual ~g_focus_listener() {
 	}
 
 	virtual void process(g_ui_component_event_header* header) {
-		handle_action();
+
+		g_ui_component_focus_event* event = (g_ui_component_focus_event*) header;
+		handle_focus_changed(event->now_focused);
 	}
 
-	virtual void handle_action() = 0;
+	virtual void handle_focus_changed(bool now_focused) = 0;
 };
 
 #endif

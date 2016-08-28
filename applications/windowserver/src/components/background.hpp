@@ -45,6 +45,11 @@ public:
 	 */
 	virtual void paint();
 
+	/**
+	 *
+	 */
+	virtual bool handle(event_t& e);
+
 };
 
 #endif
