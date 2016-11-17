@@ -26,6 +26,6 @@
  * This method is called by the GCC if a pure virtual method is called.
  */
 extern "C" void __cxa_pure_virtual() {
-	// Nothing happens
+	// We can't fix this, so we just do nothing
 }
 

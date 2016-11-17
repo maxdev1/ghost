@@ -19,7 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost/user.h"
-#include <malloc.h>
+#include "ghost/malloc.h"
 
 /**
  *

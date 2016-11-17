@@ -21,15 +21,31 @@
 #ifndef __LIBAPI_INTERNAL__
 #define __LIBAPI_INTERNAL__
 
-#include "ghost/common.h"
+#include "ghost.h"
 
 __BEGIN_C
+
+/**
+ *
+ */
+void __g_exit_thread();
 
 /**
  * The address of this function is inserted as the return address for signal & irq handlers.
  * It does nothing but calling the <g_restore_interrupted_state> function.
  */
 void __g_restore_interrupted_state_callback();
+
+/**
+ * Util functions
+ */
+void* __g_memcpy(void* dest, const void* src, size_t num);
+size_t __g_strlen(const char* s);
+
+/**
+ * Simplified function used in the atomic wait API functions.
+ */
+g_bool __g_atomic_lock(g_atom* atom_1, g_atom* atom_2, bool set_on_finish, bool is_try, g_bool has_timeout, uint64_t timeout);
 
 __END_C
 

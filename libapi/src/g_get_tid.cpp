@@ -23,7 +23,7 @@
 /**
  *
  */
-uint32_t g_get_tid() {
+g_tid g_get_tid() {
 	g_syscall_get_tid data;
 	g_syscall(G_SYSCALL_GET_TASK_ID, (uint32_t) &data);
 	return data.id;

@@ -21,8 +21,7 @@
 #ifndef __GHOST_LIBC_DIR__
 #define __GHOST_LIBC_DIR__
 
-#include "ghost/common.h"
-#include "ghost/fs.h"
+#include "ghost.h"
 #include "sys/types.h"
 #include "stdint.h"
 #include "dirent.h"
@@ -37,6 +36,7 @@ typedef struct DIR DIR;
 struct DIR {
 	struct dirent* entbuf;
 	g_fs_directory_iterator* iter;
+	g_atom lock;
 };
 
 __END_C

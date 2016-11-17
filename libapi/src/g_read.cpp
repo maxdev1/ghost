@@ -19,8 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost/user.h"
-#include <stdint.h>
-#include <string.h>
+#include "ghost/stdint.h"
 
 // redirect
 int32_t g_read(g_fd file, void* buffer, uint64_t length) {

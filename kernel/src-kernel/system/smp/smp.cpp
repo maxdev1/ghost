@@ -52,7 +52,7 @@ void g_smp::initialize(g_physical_address initialPageDirectoryPhysical) {
 			g_log_info("%*%! could not allocate physical page for AP stack", 0x0C, "smp");
 			return;
 		}
-		g_virtual_address stackVirtual = g_kernel_virt_addr_ranges->allocate(1);
+		g_virtual_address stackVirtual = g_kernel::virtual_range_pool->allocate(1);
 		if (stackPhysical == 0) {
 			g_log_info("%*%! could not allocate virtual range for AP stack", 0x0C, "smp");
 			return;
@@ -68,7 +68,7 @@ void g_smp::initialize(g_physical_address initialPageDirectoryPhysical) {
 
 	// Copy start object from ramdisk to lower memory
 	const char* ap_startup_location = "system/lib/apstartup.o";
-	g_ramdisk_entry* startupObject = g_kernel_ramdisk->findAbsolute(ap_startup_location);
+	g_ramdisk_entry* startupObject = g_kernel::ramdisk->findAbsolute(ap_startup_location);
 	if (startupObject == 0) {
 		g_log_info("%*%! could not initialize due to missing apstartup object at '%s'", 0x0C, "smp", ap_startup_location);
 		return;

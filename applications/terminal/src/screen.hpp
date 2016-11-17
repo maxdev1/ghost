@@ -52,8 +52,15 @@ typedef uint8_t screen_color_t;
 #define SC_WHITE		0xF
 
 #define SC_COLOR(ba, fo)	(fo | (ba << 4))
-#define SC_DEFAULT_COLOR	SC_COLOR(SC_BLACK, SC_WHITE)
-#define SC_ERROR_COLOR		SC_COLOR(SC_BLACK, SC_RED)
+
+#define VT100_COLOR_BLACK	0
+#define VT100_COLOR_RED		1
+#define VT100_COLOR_GREEN	2
+#define VT100_COLOR_YELLOW	3
+#define VT100_COLOR_BLUE	4
+#define VT100_COLOR_MAGENTA	5
+#define VT100_COLOR_CYAN	6
+#define VT100_COLOR_WHITE	7
 
 /**
  * OEM-US special characters
@@ -65,6 +72,10 @@ typedef uint8_t screen_color_t;
  */
 class screen_t {
 public:
+	screen_color_t colorForeground = SC_WHITE;
+	screen_color_t colorBackground = SC_BLACK;
+	g_atom _lock = 0;
+
 	virtual ~screen_t() {
 	}
 
@@ -73,14 +84,36 @@ public:
 	virtual void activate() = 0;
 
 	virtual void backspace() = 0;
-	virtual void write(std::string message, screen_color_t color =
-	SC_DEFAULT_COLOR) = 0;
-	virtual void writeChar(char c, screen_color_t color = SC_DEFAULT_COLOR) = 0;
+	virtual void writeChar(char c) = 0;
 	virtual void updateCursor() = 0;
+	virtual void moveCursor(int x, int y) = 0;
+	virtual int getCursorX() = 0;
+	virtual int getCursorY() = 0;
+
+	virtual void setColorForeground(int c) {
+		colorForeground = c;
+	}
+	virtual void setColorBackground(int c) {
+		colorBackground = c;
+	}
+	virtual int getColorForeground() {
+		return colorForeground;
+	}
+	virtual int getColorBackground() {
+		return colorBackground;
+	}
+
+	virtual void lock() {
+		g_atomic_lock(&_lock);
+	}
+	virtual void unlock() {
+		_lock = false;
+	}
 
 	virtual g_key_info readInput(bool* cancelCondition) = 0;
 
-	virtual void workingDirectoryChanged(std::string str) {}
+	virtual void workingDirectoryChanged(std::string str) {
+	}
 };
 
 #endif

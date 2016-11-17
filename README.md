@@ -1,55 +1,41 @@
 # ABOUT GHOST
 **Ghost** is an operating system for the Intel x86 platform written
-from scratch in C++ and assembly. It aspires to follow a pure
-micro kernel design and do stuff as clean as possible. Some of the
-important features are:
-
-- multiprocessor & multithreading support
-- window server, GUI with homemade toolkit
-- patched GCC, OS specific toolchain
-- custom libc implementation
-- libstdc++ port
-- extensive kernel API library (libapi)
-- userspace C++ library (libuser)
-- PS/2 keyboard & mouse driver, VESA video driver
-- userspace filesystem driver support
-- ELF binary support
-- ipc mechanisms: pipes, signals, messages, shared memory
-- named processes
-- serial COM1 kernel logging
-- virtual 8086 for BIOS calls
+from scratch in C++ and assembly. It's based on a (almost) pure microkernel
+design.
 
 ## Status
-This is the bleeding edge source version of August 18, 2016.
-Version 0.5.3
+This is the bleeding edge source version of November 17, 2016.
+Version 0.5.4
 
-Currently working on the canvas implementation that is essential for any other
-GUI related working. Planning a desktop implementation.
+I've reworked a lot of stuff since the last revision and fixed many bugs.
+The client-canvas is finished and used in the terminal/desktop. Started the
+implementation of a new, VT100 compatible terminal and a custom shell
+(`gosh`). Added various features to the window server, including event
+transfer to the client, exit-event when the main window of a program closes,
+remove components when their process dies and more.
 
-## Structure
-- `applications`
-	sources for the essential system applications
-- `documentation`
-	about kernel concepts and features
-- `kernel`
-	sources of the kernel
-- `libapi`
-	sources of the userspace API library
-- `libc`
-	sources of the Ghost C library implementation
-- `libuser`
-	sources of the C++ userspace library
-- `patches`
-	patches & instructions for ports and toolchain setup
-- `tools`
-	set of tools that are used for development
+Also added a JavaScript interpreter program (`js`) which bases on
+the Duktape JS engine.
 
-There is an additional repository, the `ghost-sysroot` that is used as the
-base for the filesystem image for a blank installation.
+## Features
+- Command-line & GUI environment
+- Multiprocessor support
+- PS/2 keyboard & mouse driver, VESA video driver
+- Kernel written from scratch
+- Patched GCC, OS specific toolchain
+- Custom libc implementation
+- libstdc++ port
+- Extensive kernel API library (libapi)
+- Userspace C++ library (libuser)
+- Userspace filesystem driver support
+- ELF binary support
+- Various IPC mechanisms: pipes, signals, messages, shared memory
+- Serial COM1 kernel logging
+- Virtual 8086 for BIOS calls
 
-## Building Ghost
-See the `patches/toolchain/TOOLCHAIN.md` for instructions on how to set up the
-toolchain.
+## Documentation
+See the `documentation` folder for documentation. It contains information
+about the technical design as well as building instructions.
 
 ## Contact
 If you want to get in contact, contribute to the project or have any questions,

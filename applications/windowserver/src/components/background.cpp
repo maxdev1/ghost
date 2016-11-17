@@ -26,6 +26,7 @@ cairo_surface_t* surface;
  */
 background_t::background_t(g_rectangle bounds) {
 	setBounds(bounds);
+	setZIndex(0);
 
 	surface = cairo_image_surface_create_from_png("/system/graphics/wallpaper.png");
 }
@@ -37,6 +38,11 @@ void background_t::paint() {
 
 	cairo_t* cr = graphics.getContext();
 	auto bounds = getBounds();
+
+	cairo_set_source_rgb(cr, 0, 0, 0);
+	cairo_rectangle(cr, bounds.x, bounds.y, bounds.width, bounds.height);
+	cairo_fill(cr);
+
 	cairo_set_source_surface(cr, surface, bounds.x, bounds.y);
 	cairo_rectangle(cr, bounds.x, bounds.y, bounds.width, bounds.height);
 	cairo_fill(cr);

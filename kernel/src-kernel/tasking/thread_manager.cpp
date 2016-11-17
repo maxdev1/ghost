@@ -160,7 +160,7 @@ g_physical_address g_thread_manager::forkCurrentPageDirectory(g_process* process
 	g_temporary_paging_util::unmap((g_virtual_address) tempPd);
 
 	// copy kernel stack
-	g_virtual_address kernelStackVirt = g_kernel_virt_addr_ranges->allocate(1);
+	g_virtual_address kernelStackVirt = g_kernel::virtual_range_pool->allocate(1);
 	g_physical_address kernelStackPhys = g_pp_allocator::allocate();
 	g_address_space::map(kernelStackVirt, kernelStackPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
 	g_memory::copy((uint8_t*) kernelStackVirt, (uint8_t*) sourceThread->kernelStackPageVirt, G_PAGE_SIZE);
@@ -228,7 +228,7 @@ bool g_thread_manager::createThreadUserStack(g_process* process, g_virtual_addre
 bool g_thread_manager::createThreadKernelStack(g_process* process, g_virtual_address* outKernelStackVirt) {
 
 	// perform stack mapping
-	g_virtual_address kernelStackVirt = g_kernel_virt_addr_ranges->allocate(1);
+	g_virtual_address kernelStackVirt = g_kernel::virtual_range_pool->allocate(1);
 	if (kernelStackVirt == 0) {
 		if (process->main) {
 			g_log_warn("%! thread creation for process %i failed: kernel virtual ranges are full", "threadmgr", process->main->id);
@@ -321,7 +321,7 @@ g_thread* g_thread_manager::fork(g_thread* source_thread) {
 /**
  *
  */
-g_thread* g_thread_manager::createProcess(g_security_level securityLevel) {
+g_thread* g_thread_manager::createProcess(g_security_level securityLevel, g_process* parent) {
 
 	// create the process
 	g_process* process = new g_process(securityLevel);
@@ -330,6 +330,7 @@ g_thread* g_thread_manager::createProcess(g_security_level securityLevel) {
 
 	// create main thread
 	g_thread* main_thread = createThread(process, G_THREAD_TYPE_MAIN);
+	process->parent = parent;
 	process->main = main_thread;
 
 #if G_LOGGING_DEBUG

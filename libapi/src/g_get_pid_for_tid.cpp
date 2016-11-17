@@ -23,7 +23,7 @@
 /**
  *
  */
-uint32_t g_get_pid_for_tid(uint32_t tid) {
+g_pid g_get_pid_for_tid(uint32_t tid) {
 	g_syscall_get_pid_for_tid data;
 	data.tid = tid;
 	g_syscall(G_SYSCALL_GET_PROCESS_ID_FOR_TASK_ID, (uint32_t) &data);

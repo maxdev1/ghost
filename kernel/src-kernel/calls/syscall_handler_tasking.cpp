@@ -24,12 +24,12 @@
 #include <logger/logger.hpp>
 #include <tasking/tasking.hpp>
 #include <filesystem/filesystem.hpp>
+#include <system/interrupts/handling/interrupt_request_dispatcher.hpp>
 #include <tasking/thread_manager.hpp>
 #include <tasking/wait/waiter_wait_for_irq.hpp>
 #include <tasking/wait/waiter_atomic_wait.hpp>
 #include <tasking/wait/waiter_join.hpp>
 #include <tasking/wait/waiter_sleep.hpp>
-#include <system/interrupts/handling/interrupt_request_handler.hpp>
 
 /**
  * Yields
@@ -45,8 +45,16 @@ G_SYSCALL_HANDLER(yield) {
 G_SYSCALL_HANDLER(exit) {
 
 	current_thread->alive = false;
-	g_log_debug("%! task %i exited faithfully with code %i", "syscall", current_thread->id, ((g_syscall_exit*) G_SYSCALL_DATA(current_thread->cpuState))->code);
+	current_thread->process->main->alive = false;
+	return g_tasking::schedule();
+}
 
+/**
+ * Exits only the current thread.
+ */
+G_SYSCALL_HANDLER(exit_thread) {
+
+	current_thread->alive = false;
 	return g_tasking::schedule();
 }
 
@@ -101,6 +109,25 @@ G_SYSCALL_HANDLER(get_pid) {
 }
 
 /**
+ * Returns the parent process id for the given process id.
+ */
+G_SYSCALL_HANDLER(get_parent_pid) {
+
+	g_syscall_get_parent_pid* data = (g_syscall_get_parent_pid*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_thread* target_task = g_tasking::getTaskById(data->pid);
+
+	g_process* parent_process = target_task->process->parent;
+	if (parent_process) {
+		data->parent_pid = parent_process->main->id;
+	} else {
+		data->parent_pid = -1;
+	}
+
+	return current_thread;
+
+}
+
+/**
  * Returns the id of the current task.
  */
 G_SYSCALL_HANDLER(get_tid) {
@@ -119,7 +146,12 @@ G_SYSCALL_HANDLER(get_pid_for_tid) {
 
 	g_syscall_get_pid_for_tid* data = (g_syscall_get_pid_for_tid*) G_SYSCALL_DATA(current_thread->cpuState);
 	g_thread* target_task = g_tasking::getTaskById(data->tid);
-	data->pid = target_task->process->main->id;
+
+	if (target_task) {
+		data->pid = target_task->process->main->id;
+	} else {
+		data->pid = -1;
+	}
 
 	return current_thread;
 
@@ -137,7 +169,7 @@ G_SYSCALL_HANDLER(wait_for_irq) {
 
 	// Only driver level
 	if (process->securityLevel == G_SECURITY_LEVEL_DRIVER) {
-		bool fired = g_interrupt_request_handler::pollIrq(data->irq);
+		bool fired = g_interrupt_request_dispatcher::poll_irq(data->irq);
 
 		if (fired) {
 			return current_thread;
@@ -158,40 +190,42 @@ G_SYSCALL_HANDLER(atomic_wait) {
 
 	g_syscall_atomic_lock* data = (g_syscall_atomic_lock*) G_SYSCALL_DATA(current_thread->cpuState);
 
-	uint8_t* atom_1 = (uint8_t*) data->atom_1;
-	uint8_t* atom_2 = (uint8_t*) data->atom_2;
-	bool set_on_finish = data->set_on_finish;
-	bool try_only = data->try_only;
-
-	// when "trying" only...
-	if (try_only) {
-		// check if atom 1 is set and atom 2 is NULL or set
-		if (*atom_1 && (!atom_2 || *atom_2)) {
+	// try to immediately resolve it
+	if (data->is_try) {
+		if (*data->atom_1 && (!data->atom_2 || *data->atom_2)) {
 			data->was_set = false;
 
 		} else {
-			*atom_1 = true;
-			if (atom_2) {
-				*atom_2 = true;
+			*data->atom_1 = true;
+			if (data->atom_2) {
+				*data->atom_2 = true;
 			}
 			data->was_set = true;
 		}
 		return current_thread;
 	}
 
-	// check if atom 1 is set and atom 2 is NULL or set
-	if (*atom_1 && (!atom_2 || *atom_2)) {
-		current_thread->wait(new g_waiter_atomic_wait(atom_1, atom_2, set_on_finish));
+	// check if the thread must sleep
+	if (*data->atom_1 && (!data->atom_2 || *data->atom_2)) {
+
+		if (data->has_timeout) {
+			current_thread->wait(new g_waiter_atomic_wait(data, current_thread->scheduler));
+		} else {
+			current_thread->wait(new g_waiter_atomic_wait(data));
+		}
+
 		return g_tasking::schedule();
 	}
 
-	// already unlocked, set atoms
-	if (set_on_finish) {
-		*atom_1 = true;
-		if (atom_2) {
-			*atom_2 = true;
+	// set result values
+	if (data->set_on_finish) {
+		*data->atom_1 = true;
+		if (data->atom_2) {
+			*data->atom_2 = true;
 		}
+		data->was_set = true;
 	}
+
 	return current_thread;
 }
 
@@ -279,7 +313,7 @@ G_SYSCALL_HANDLER(register_irq_handler) {
 	g_syscall_register_irq_handler* data = (g_syscall_register_irq_handler*) G_SYSCALL_DATA(current_thread->cpuState);
 
 	if (current_thread->process->securityLevel <= G_SECURITY_LEVEL_DRIVER) {
-		g_interrupt_request_handler::set_handler(data->irq, current_thread->id, data->handler, data->callback);
+		g_interrupt_request_dispatcher::set_handler(data->irq, current_thread->id, data->handler, data->callback);
 		data->status = G_REGISTER_IRQ_HANDLER_STATUS_SUCCESSFUL;
 	} else {
 		data->status = G_REGISTER_IRQ_HANDLER_STATUS_NOT_PERMITTED;

@@ -34,14 +34,14 @@ g_textfield* g_textfield::create() {
  *
  */
 void g_textfield::setSecure(bool secure) {
-	g_component::setBoolProperty(G_UI_PROPERTY_SECURE, secure);
+	g_component::setNumericProperty(G_UI_PROPERTY_SECURE, secure);
 }
 
 /**
  *
  */
 bool g_textfield::isSecure() {
-	bool result;
-	g_component::getBoolProperty(G_UI_PROPERTY_SECURE, &result);
-	return result;
+	uint32_t value;
+	g_component::getNumericProperty(G_UI_PROPERTY_SECURE, &value);
+	return value;
 }

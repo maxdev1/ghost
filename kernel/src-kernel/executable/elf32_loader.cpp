@@ -52,7 +52,7 @@ g_elf32_spawn_status g_elf32_loader::spawnFromRamdisk(g_ramdisk_entry* entry, g_
 	if (status == ELF32_VALIDATION_SUCCESSFUL) {
 
 		// Create the process
-		g_thread* mainThread = g_thread_manager::createProcess(securityLevel);
+		g_thread* mainThread = g_thread_manager::createProcess(securityLevel, nullptr);
 		if (mainThread == 0) {
 			g_log_warn("%! failed to create main thread to spawn ELF binary from ramdisk", "elf32");
 			return ELF32_SPAWN_STATUS_PROCESS_CREATION_FAILED;

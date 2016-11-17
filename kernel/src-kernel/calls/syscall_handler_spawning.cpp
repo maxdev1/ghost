@@ -50,7 +50,7 @@ G_SYSCALL_HANDLER(create_empty_process) {
 
 	// Only kernel level
 	if (process->securityLevel == G_SECURITY_LEVEL_KERNEL) {
-		g_thread* emptyMainThread = g_thread_manager::createProcess(data->securityLevel);
+		g_thread* emptyMainThread = g_thread_manager::createProcess(data->securityLevel, process);
 		data->processObject = emptyMainThread;
 
 		g_log_debug("%! (%i:%i) created empty process %i", "syscall", process->main->id, current_thread->id, emptyMainThread->id);
@@ -185,7 +185,7 @@ G_SYSCALL_HANDLER(create_pages_in_space) {
  */
 G_SYSCALL_HANDLER(attach_created_process) {
 
-	g_process* process = current_thread->process;
+	G_IF_LOG_WARN(g_process* process = current_thread->process);
 
 	g_syscall_attach_created_process* data = (g_syscall_attach_created_process*) G_SYSCALL_DATA(current_thread->cpuState);
 
@@ -210,7 +210,7 @@ G_SYSCALL_HANDLER(attach_created_process) {
  */
 G_SYSCALL_HANDLER(cancel_process_creation) {
 
-	g_process* process = current_thread->process;
+	G_IF_LOG_WARN(g_process* process = current_thread->process);
 
 	g_syscall_cancel_process_creation* data = (g_syscall_cancel_process_creation*) G_SYSCALL_DATA(current_thread->cpuState);
 
@@ -311,7 +311,7 @@ G_SYSCALL_HANDLER(ramdisk_spawn) {
 	g_syscall_ramdisk_spawn* data = (g_syscall_ramdisk_spawn*) G_SYSCALL_DATA(current_thread->cpuState);
 
 	if (process->securityLevel == G_SECURITY_LEVEL_KERNEL) {
-		g_ramdisk_entry* file = g_kernel_ramdisk->findAbsolute(data->path);
+		g_ramdisk_entry* file = g_kernel::ramdisk->findAbsolute(data->path);
 
 		if (file) {
 			g_thread* spawnedThread;

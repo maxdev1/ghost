@@ -45,8 +45,10 @@ __BEGIN_C
  *
  * @security-level APPLICATION
  */
-void g_atomic_lock(uint8_t* atom);
-void g_atomic_lock_dual(uint8_t* atom_1, uint8_t* atom_2);
+void g_atomic_lock(g_atom* atom);
+void g_atomic_lock_dual(g_atom* a1, g_atom* a2);
+g_bool g_atomic_lock_to(g_atom* atom, uint64_t timeout);
+g_bool g_atomic_lock_dual_to(g_atom* a1, g_atom* a2, uint64_t timeout);
 
 /**
  * Trys to perform atomic wait. If the lock is already locked, the function
@@ -58,8 +60,10 @@ void g_atomic_lock_dual(uint8_t* atom_1, uint8_t* atom_2);
  *
  * @security-level APPLICATION
  */
-uint8_t g_atomic_try_lock(uint8_t* atom);
-uint8_t g_atomic_try_lock_dual(uint8_t* atom_1, uint8_t* atom_2);
+g_bool g_atomic_try_lock(g_atom* atom);
+g_bool g_atomic_try_lock_dual(g_atom* a1, g_atom* a2);
+g_bool g_atomic_try_lock_to(g_atom* atom, uint64_t timeout);
+g_bool g_atomic_try_lock_dual_to(g_atom* a1, g_atom* a2, uint64_t timeout);
 
 /**
  * Performs an atomic block. If the atom is true, the executing task must
@@ -71,8 +75,10 @@ uint8_t g_atomic_try_lock_dual(uint8_t* atom_1, uint8_t* atom_2);
  *
  * @security-level APPLICATION
  */
-void g_atomic_block(uint8_t* atom);
-void g_atomic_block_dual(uint8_t* atom_1, uint8_t* atom_2);
+void g_atomic_block(g_atom* atom);
+void g_atomic_block_dual(g_atom* a1, g_atom* a2);
+g_bool g_atomic_block_to(g_atom* atom, uint64_t timeout);
+g_bool g_atomic_block_dual_to(g_atom* a1, g_atom* a2, uint64_t timeout);
 
 /**
  * Spawns a program binary.
@@ -429,7 +435,19 @@ void g_sleep(uint64_t ms);
  *
  * @security-level APPLICATION
  */
-uint32_t g_get_pid();
+g_pid g_get_pid();
+
+/**
+ * Retrieves the id of the parent process for a given process.
+ *
+ * @param pid
+ * 		id of the process
+ *
+ * @return the id of the executing process
+ *
+ * @security-level APPLICATION
+ */
+g_pid g_get_parent_pid(g_pid pid);
 
 /**
  * Retrieves the current thread id. If this thread is the main
@@ -439,7 +457,7 @@ uint32_t g_get_pid();
  *
  * @security-level APPLICATION
  */
-uint32_t g_get_tid();
+g_tid g_get_tid();
 
 /**
  * Retrieves the process id for a thread id.
@@ -450,7 +468,7 @@ uint32_t g_get_tid();
  *
  * @security-level APPLICATION
  */
-uint32_t g_get_pid_for_tid(uint32_t tid);
+g_pid g_get_pid_for_tid(uint32_t tid);
 
 /**
  * Quits the process with the given status code.
@@ -796,7 +814,7 @@ g_tid g_fork();
  *
  * @security-level APPLICATION
  */
-void g_join(uint32_t tid);
+void g_join(g_tid tid);
 
 /**
  * Clones a file descriptor in a process to another processes. Creates a new file
@@ -950,7 +968,7 @@ uint8_t g_write_tls_master_for_process(g_process_creation_identifier process, ui
  *
  * @security-level KERNEL
  */
-void g_attach_created_process(g_process_creation_identifier process, uint32_t eip);
+void g_attach_created_process(g_process_creation_identifier process, g_address eip);
 
 /**
  * Cancels process creation.

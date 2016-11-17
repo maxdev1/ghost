@@ -81,6 +81,6 @@ public:
 		return g_point(width + p.width, height + p.height);
 	}
 
-};
+}__attribute__((packed));
 
 #endif

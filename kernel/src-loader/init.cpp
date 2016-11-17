@@ -37,7 +37,7 @@
  */
 extern "C" void initializeLoader(g_multiboot_information* multibootStruct, uint32_t magicNumber) {
 
-	g_constructors::call();
+	g_abi_constructors_call_global();
 
 	// initialize COM port
 	g_com_port_information comPortInfo = biosDataArea->comPortInfo;

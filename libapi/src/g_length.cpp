@@ -19,7 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost/user.h"
-#include <string.h>
 
 // redirect
 int64_t g_length(g_fd fd) {

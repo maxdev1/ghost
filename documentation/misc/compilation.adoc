@@ -46,6 +46,42 @@ Toolchain setup
 To setup the toolchain, simply run the toolchain setup script `toolchain.sh`. It will
 attempt to do everything that is necessary to create the toolchain.
 
+
+Installing libraries
+--------------------
+To build the core applications of Ghost, several libraries must be built beforehand.
+The core libraries depend on each other, while each of the third party libraries depends of
+the core. The libuser builds on top of all these libraries.
+
+image::../diagrams/Library-Dependencies.png[]
+
+In the repository there is a `patches/ports` folder which contains a script usable to easily
+install all libraries that the core applications of Ghost require.
+
+Navigate to the folder and install the libraries in this order:
+
+-----
+./port.sh zlib/1.2.8
+./port.sh pixman/0.32.6
+./port.sh libpng/1.6.18
+./port.sh freetype/2.5.3
+./port.sh cairo/1.12.18
+-----
+
+
+Building core applications
+--------------------------
+Finally, run `build.sh all` within the `libuser` folder in the repository. This will install
+the high-level userspace library that the core applications use.
+
+Now that all the dependencies are ready, the core applications can be built.
+Run `build.sh all` in the directory of each program you want to install.
+
+As there is currently no buildscript that automates the process of building the core
+applications, it is easiest to import everything in Eclipse. Each project has the necessary
+Eclipse settings and can be built simply by clicking the build button.
+
+
 Tips
 ~~~~
 

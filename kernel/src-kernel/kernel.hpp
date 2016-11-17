@@ -27,31 +27,21 @@
 #include <ramdisk/ramdisk.hpp>
 #include <tasking/thread.hpp>
 
-extern g_address_range_pool* g_kernel_virt_addr_ranges;
-extern g_ramdisk* g_kernel_ramdisk;
-
 /**
- * The kernel class
+ *
  */
 class g_kernel {
-private:
-	/**
-	 *
-	 */
-	static void print_header(g_setup_information* info);
-
-	/**
-	 *
-	 */
-	static void load_ramdisk(g_multiboot_module* ramdiskModule);
-
-	/**
-	 * Performs the very first kernel setup, copying all necessary information that
-	 * is provided by the loader.
-	 */
-	static void pre_setup(g_setup_information* info);
-
 public:
+	/**
+	 * Pool of virtual ranges used in the kernel to map memory.
+	 */
+	static g_address_range_pool* virtual_range_pool;
+
+	/**
+	 * Pointer to the global ramdisk instance.
+	 */
+	static g_ramdisk* ramdisk;
+
 	/**
 	 * Does the initial setup of the kernel. The setup information struct is provided
 	 * from the bootloader and contains important information like the position of the
@@ -87,6 +77,23 @@ public:
 	 * @param ...		variable arguments for the message
 	 */
 	static void panic(const char* message, ...);
+
+private:
+	/**
+	 *
+	 */
+	static void print_header(g_setup_information* info);
+
+	/**
+	 *
+	 */
+	static void load_ramdisk(g_multiboot_module* ramdiskModule);
+
+	/**
+	 * Performs the very first kernel setup, copying all necessary information that
+	 * is provided by the loader.
+	 */
+	static void pre_setup(g_setup_information* info);
 
 };
 

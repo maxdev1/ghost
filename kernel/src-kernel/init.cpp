@@ -35,7 +35,7 @@
  */
 extern "C" void loadKernel(g_setup_information* setupInformation) {
 
-	g_constructors::call();
+	g_abi_constructors_call_global();
 
 	// Call the kernel
 	g_kernel::run(setupInformation);

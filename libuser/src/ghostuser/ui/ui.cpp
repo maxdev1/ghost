@@ -152,3 +152,32 @@ bool g_ui::register_desktop_canvas(g_canvas* c) {
 
 	return false;
 }
+
+/**
+ *
+ */
+bool g_ui::get_screen_dimension(g_dimension* out) {
+
+	if (!g_ui_initialized) {
+		return false;
+	}
+
+	g_message_transaction tx = g_get_message_tx_id();
+
+	// send request
+	g_ui_get_screen_dimension_request request;
+	request.header.id = G_UI_PROTOCOL_GET_SCREEN_DIMENSION;
+	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_get_screen_dimension_request), tx);
+
+	// read response
+	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_get_screen_dimension_response);
+	g_local<uint8_t> buffer(new uint8_t[bufferSize]);
+
+	if (g_receive_message_t(buffer(), bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
+		g_ui_get_screen_dimension_response* response = (g_ui_get_screen_dimension_response*) G_MESSAGE_CONTENT(buffer());
+		*out = response->size;
+		return true;
+	}
+
+	return false;
+}

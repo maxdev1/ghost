@@ -33,9 +33,9 @@ private:
 	uint32_t offset;
 
 	uint32_t activeProcessId;
-	uint8_t lock;
+	g_atom lock;
 	void normalize();
-	void moveCursor(uint16_t x, uint16_t y);
+	void moveVisualCursor(int x, int y);
 
 public:
 	headless_screen_t();
@@ -45,9 +45,11 @@ public:
 	void activate();
 
 	void backspace();
-	void write(std::string message, screen_color_t color = SC_DEFAULT_COLOR);
-	void writeChar(char c, screen_color_t color = SC_DEFAULT_COLOR);
+	void writeChar(char c);
 	void updateCursor();
+	void moveCursor(int x, int y);
+	int getCursorX();
+	int getCursorY();
 
 	g_key_info readInput(bool* cancelCondition);
 };

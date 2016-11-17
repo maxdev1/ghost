@@ -26,7 +26,7 @@
 #include <ghostuser/io/keyboard.hpp>
 #include <ghostuser/tasking/lock.hpp>
 
-uint8_t paintIsFresh = false;
+uint8_t paint_uptodate = false;
 bool cursorBlink = false;
 bool focused = false;
 uint64_t lastInput = 0;
@@ -62,14 +62,14 @@ public:
 
 		// TODO why does this kill the server?
 		// canvas->setBounds(g_rectangle(0, 0, bounds.width, bounds.height));
-		paintIsFresh = false;
+		paint_uptodate = false;
 	}
 };
 
 class canvas_buffer_listener_t: public g_canvas_buffer_listener {
 public:
 	virtual void handle_buffer_changed() {
-		paintIsFresh = false;
+		paint_uptodate = false;
 	}
 };
 
@@ -77,7 +77,7 @@ class terminal_focus_listener_t: public g_focus_listener {
 public:
 	virtual void handle_focus_changed(bool now_focused) {
 		focused = now_focused;
-		paintIsFresh = false;
+		paint_uptodate = false;
 		lastInput = g_millis();
 	}
 };
@@ -97,6 +97,10 @@ void gui_screen_t::initialize() {
 
 	window = g_window::create();
 	window->setTitle("Terminal");
+	window->onClose([] {
+		klog("exiting terminal");
+		g_exit(0);
+	});
 
 	canvas = g_canvas::create();
 	window->addChild(canvas);
@@ -131,7 +135,7 @@ void gui_screen_t::paint_entry() {
 void gui_screen_t::blinkCursorThread() {
 	while (true) {
 		cursorBlink = !cursorBlink;
-		paintIsFresh = false;
+		paint_uptodate = false;
 		g_sleep(650);
 	}
 }
@@ -212,8 +216,8 @@ void gui_screen_t::paint() {
 
 		canvas->blit(g_rectangle(0, 0, bufferSize.width, bufferSize.height));
 
-		paintIsFresh = true;
-		g_atomic_block(&paintIsFresh);
+		paint_uptodate = true;
+		g_atomic_block(&paint_uptodate);
 	}
 }
 
@@ -264,7 +268,7 @@ bool charIsUtf8(char c) {
  */
 void gui_screen_t::clean() {
 	output = "";
-	paintIsFresh = false;
+	paint_uptodate = false;
 }
 
 /**
@@ -288,10 +292,10 @@ void gui_screen_t::updateCursor() {
 /**
  *
  */
-void gui_screen_t::writeChar(char c, screen_color_t color) {
+void gui_screen_t::writeChar(char c) {
 	if (charIsUtf8(c)) {
 		output += c;
-		paintIsFresh = false;
+		paint_uptodate = false;
 	}
 }
 
@@ -300,16 +304,7 @@ void gui_screen_t::writeChar(char c, screen_color_t color) {
  */
 void gui_screen_t::backspace() {
 	output = output.substr(0, output.length() - 1);
-	paintIsFresh = false;
-}
-
-/**
- *
- */
-void gui_screen_t::write(std::string message, screen_color_t color) {
-
-	output += message;
-	paintIsFresh = false;
+	paint_uptodate = false;
 }
 
 /**
@@ -343,4 +338,16 @@ g_key_info gui_screen_t::readInput(bool* cancelCondition) {
  */
 void gui_screen_t::workingDirectoryChanged(std::string str) {
 	window->setTitle("Terminal - " + str);
+}
+
+/**
+ * TODO
+ */
+void gui_screen_t::moveCursor(int x, int y) {
+}
+int gui_screen_t::getCursorX() {
+	return 0;
+}
+int gui_screen_t::getCursorY() {
+	return 0;
 }

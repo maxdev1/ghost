@@ -68,6 +68,11 @@ DIR* opendir(const char* path);
 struct dirent* readdir(DIR* dir);
 
 /**
+ * Reentrant version of the readdir function.
+ */
+int readdir_r(DIR* dirp, struct dirent* entry, struct dirent** result);
+
+/**
  *
  */
 void rewinddir(DIR* dir);

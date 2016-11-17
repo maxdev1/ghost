@@ -22,6 +22,9 @@ This changelog is used to keep track of the major system changes for each versio
 - thread type & priority types moved to public header
 
 0.5.3
-- removed old messaging interface
-- added handling of close syscall to fs delegates
-- fixed a bug for large shared memory mappings that would cause stack overflow
+- Removed old messaging interface
+- Added handling of close syscall to fs delegates
+- Fixed a bug for large shared memory mappings that would cause stack overflow
+
+- Cleaned up the API functions for the G_SYSCALL_ATOMIC_LOCK system call
+- Added the possibility to pass a timeout for locking calls

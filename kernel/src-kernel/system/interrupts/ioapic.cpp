@@ -29,7 +29,7 @@
  */
 void g_ioapic::createMapping() {
 	// Get a virtual range for mapping
-	virtualAddress = g_kernel_virt_addr_ranges->allocate(2);
+	virtualAddress = g_kernel::virtual_range_pool->allocate(2);
 	if (virtualAddress == 0) {
 		g_kernel::panic("%! could not get a virtual range for mapping", "ioapic");
 	}

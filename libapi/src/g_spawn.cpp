@@ -20,8 +20,8 @@
 
 #include "ghost.h"
 #include "ghost/bytewise.h"
-#include <string.h>
 #include <ghost/utils/local.hpp>
+#include "__internal.h"
 
 // redirect
 g_spawn_status g_spawn(const char* path, const char* args, const char* workdir, g_security_level securityLevel) {
@@ -57,9 +57,9 @@ g_spawn_status g_spawn_poi(const char* path, const char* args, const char* workd
 	g_message_transaction tx = g_get_message_tx_id();
 
 	// create request
-	size_t path_bytes = strlen(path) + 1;
-	size_t args_bytes = strlen(args) + 1;
-	size_t workdir_bytes = strlen(workdir) + 1;
+	size_t path_bytes = __g_strlen(path) + 1;
+	size_t args_bytes = __g_strlen(args) + 1;
+	size_t workdir_bytes = __g_strlen(workdir) + 1;
 	size_t requestlen = sizeof(g_spawn_command_spawn_request) + path_bytes + args_bytes + workdir_bytes;
 	g_local<uint8_t> _request(new uint8_t[requestlen]);
 	uint8_t* request = _request();
@@ -84,11 +84,11 @@ g_spawn_status g_spawn_poi(const char* path, const char* args, const char* workd
 
 	uint8_t* insert = request;
 	insert += sizeof(g_spawn_command_spawn_request);
-	memcpy(insert, path, path_bytes);
+	__g_memcpy(insert, path, path_bytes);
 	insert += path_bytes;
-	memcpy(insert, args, args_bytes);
+	__g_memcpy(insert, args, args_bytes);
 	insert += args_bytes;
-	memcpy(insert, workdir, workdir_bytes);
+	__g_memcpy(insert, workdir, workdir_bytes);
 
 	// send request to spawner
 	g_send_message_t(spawner_tid, request, requestlen, tx);

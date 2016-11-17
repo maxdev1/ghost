@@ -28,6 +28,22 @@
 /**
  *
  */
+class __g_window_close_listener: public g_listener {
+private:
+	std::function<void()> func;
+
+public:
+	__g_window_close_listener(std::function<void()> func) :
+			func(func) {
+	}
+	void process(g_ui_component_event_header* header) {
+		func();
+	}
+};
+
+/**
+ *
+ */
 g_window* g_window::create() {
 	return createComponent<g_window, G_UI_COMPONENT_TYPE_WINDOW>();
 }
@@ -36,14 +52,21 @@ g_window* g_window::create() {
  *
  */
 bool g_window::isResizable() {
-	bool val;
-	g_component::getBoolProperty(G_UI_PROPERTY_RESIZABLE, &val);
-	return val;
+	uint32_t value;
+	g_component::getNumericProperty(G_UI_PROPERTY_RESIZABLE, &value);
+	return value;
 }
 
 /**
  *
  */
 void g_window::setResizable(bool resizable) {
-	g_component::setBoolProperty(G_UI_PROPERTY_RESIZABLE, resizable);
+	g_component::setNumericProperty(G_UI_PROPERTY_RESIZABLE, resizable);
+}
+
+/**
+ *
+ */
+bool g_window::onClose(std::function<void()> func) {
+	return setListener(G_UI_COMPONENT_EVENT_TYPE_CLOSE, new __g_window_close_listener(func)) ;
 }

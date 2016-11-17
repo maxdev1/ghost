@@ -20,6 +20,7 @@
 
 #include "login-screen.hpp"
 
+#include <cairo/cairo.h>
 #include <ghostuser/ui/ui.hpp>
 #include <ghostuser/ui/window.hpp>
 #include <ghostuser/ui/label.hpp>

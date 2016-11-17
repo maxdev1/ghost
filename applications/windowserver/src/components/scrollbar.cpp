@@ -46,10 +46,10 @@ bool scrollbar_t::handle(event_t& e) {
 
 	mouse_event_t* me = dynamic_cast<mouse_event_t*>(&e);
 	if (me) {
-		if (me->type == MOUSE_EVENT_ENTER) {
+		if (me->type == G_MOUSE_EVENT_ENTER) {
 			markFor(COMPONENT_REQUIREMENT_PAINT);
 
-		} else if (me->type == MOUSE_EVENT_PRESS) {
+		} else if (me->type == G_MOUSE_EVENT_PRESS) {
 
 			g_rectangle knob = calculateKnob();
 			if (knob.contains(me->position)) {
@@ -63,7 +63,7 @@ bool scrollbar_t::handle(event_t& e) {
 			}
 			markFor(COMPONENT_REQUIREMENT_PAINT);
 
-		} else if (me->type == MOUSE_EVENT_DRAG) {
+		} else if (me->type == G_MOUSE_EVENT_DRAG) {
 
 			int mousePosition;
 			if (orientation == scrollbar_orientation_t::VERTICAL) {

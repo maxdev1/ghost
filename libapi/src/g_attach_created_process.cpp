@@ -23,7 +23,7 @@
 /**
  *
  */
-void g_attach_created_process(g_process_creation_identifier process, uint32_t eip) {
+void g_attach_created_process(g_process_creation_identifier process, g_address eip) {
 	g_syscall_attach_created_process data;
 	data.eip = eip;
 	data.processObject = process;

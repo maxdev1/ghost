@@ -59,6 +59,24 @@ typedef struct {
 extern int terminal_index;
 
 /**
+ * Used to remember the status of a stream, for example whether a control
+ * sequence is currently being sent.
+ */
+typedef int terminal_stream_status_t;
+const terminal_stream_status_t TERMINAL_STREAM_STATUS_TEXT = 0;
+const terminal_stream_status_t TERMINAL_STREAM_STATUS_LAST_WAS_ESC = 1;
+const terminal_stream_status_t TERMINAL_STREAM_STATUS_WITHIN_VT100 = 2;
+const terminal_stream_status_t TERMINAL_STREAM_STATUS_WITHIN_GHOSTTERM = 3;
+#define TERMINAL_STREAM_CONTROL_MAX_PARAMETERS	4
+
+typedef struct {
+	terminal_stream_status_t status = TERMINAL_STREAM_STATUS_TEXT;
+	int parameterCount = 0;
+	int parameters[TERMINAL_STREAM_CONTROL_MAX_PARAMETERS];
+	char controlCharacter;
+} stream_control_status_t;
+
+/**
  *
  */
 class terminal_t {
@@ -108,16 +126,38 @@ public:
 
 	static void switch_to_next();
 	static void switch_to(terminal_t* terminal);
-	static std::string read_input(std::string there, screen_t* screen,
+	static std::string read_input(std::string there, terminal_t* term,
 			terminal_input_status_t* out_status, bool* continue_input);
 
 	static void standard_in_thread(standard_in_thread_data_t* data);
 	static void standard_out_thread(standard_out_thread_data_t* data);
+	static inline void process_output_character(
+			standard_out_thread_data_t* data, stream_control_status_t* status,
+			char c);
+	static void process_vt100_sequence(standard_out_thread_data_t* data,
+			stream_control_status_t* status);
+	static void process_ghostterm_sequence(standard_out_thread_data_t* data,
+			stream_control_status_t* status);
+
+	/**
+	 * Translates a color given as a VT100 parameter to a screen color which
+	 * can be used by the screens.
+	 */
+	static inline screen_color_t convert_vt100_to_screen_color(int color);
+
+	/**
+	 *
+	 */
+	static void writeToScreen(screen_t* screen, std::string str,
+			screen_color_t background = SC_BLACK, screen_color_t foreground =
+					SC_WHITE);
 
 	bool file_exists(std::string path);
 	bool find_executable(std::string path, std::string& out);
 
 	static bool runs_headless();
+
+	bool input_raw = false;
 
 private:
 	std::string working_directory;

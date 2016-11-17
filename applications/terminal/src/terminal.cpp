@@ -36,6 +36,7 @@
 #include <ghostuser/utils/logger.hpp>
 #include <ghostuser/io/keyboard.hpp>
 #include <ghostuser/ui/ui.hpp>
+#include <dirent.h>
 
 static std::vector<terminal_t*> terminals;
 static std::vector<g_tid> terminal_threads;
@@ -223,6 +224,31 @@ void terminal_t::read_working_directory() {
 /**
  *
  */
+void terminal_t::writeToScreen(screen_t* screen, std::string str,
+		screen_color_t background, screen_color_t foreground) {
+
+	screen->lock();
+
+	int bg = screen->getColorBackground();
+	int fg = screen->getColorForeground();
+	screen->setColorBackground(background);
+	screen->setColorForeground(foreground);
+
+	const char* c = str.c_str();
+	while (*c) {
+		screen->writeChar(*c);
+		++c;
+	}
+
+	screen->setColorBackground(bg);
+	screen->setColorForeground(fg);
+
+	screen->unlock();
+}
+
+/**
+ *
+ */
 void terminal_t::run(create_terminal_info_t* inf) {
 
 	read_working_directory();
@@ -233,27 +259,29 @@ void terminal_t::run(create_terminal_info_t* inf) {
 		if (inf->number == 0) {
 			// print the logo
 			std::ifstream logofile("/system/graphics/logo.oem-us");
-			screen->write("\n");
+			writeToScreen(screen, "\n");
+
 			if (logofile.good()) {
 				std::string logo((std::istreambuf_iterator<char>(logofile)),
 						std::istreambuf_iterator<char>());
-				screen->write(logo, SC_COLOR(SC_BLACK, SC_LBLUE));
+				writeToScreen(screen, logo, SC_BLACK, SC_LBLUE);
 			}
 
 			std::stringstream msg1;
 			msg1 << std::endl;
 			msg1 << " Copyright (c) 2012-2016 Max Schl" << OEMUS_CHAR_UE
 					<< "ssel <lokoxe@gmail.com>" << std::endl;
-			screen->write(msg1.str(), SC_COLOR(SC_BLACK, SC_LGRAY));
+			writeToScreen(screen, msg1.str(), SC_BLACK, SC_LGRAY);
+
 			std::stringstream msg2;
 			msg2 << " Enter 'read README' for a brief introduction.";
 			msg2 << std::endl << std::endl;
-			screen->write(msg2.str());
+			writeToScreen(screen, msg2.str(), SC_BLACK, SC_WHITE);
 
 		} else {
 			std::stringstream msg;
 			msg << "terminal " << inf->number << std::endl;
-			screen->write(msg.str());
+			writeToScreen(screen, msg.str());
 		}
 	}
 
@@ -270,8 +298,8 @@ void terminal_t::run(create_terminal_info_t* inf) {
 
 		if (write_header) {
 			// write current directory
-			screen->write(working_directory, SC_COLOR(SC_BLACK, SC_LGRAY));
-			screen->write(">", SC_COLOR(SC_BLACK, SC_DARKGRAY));
+			writeToScreen(screen, working_directory, SC_BLACK, SC_LGRAY);
+			writeToScreen(screen, ">", SC_BLACK, SC_DARKGRAY);
 			screen->updateCursor();
 		} else {
 			write_header = true;
@@ -279,7 +307,7 @@ void terminal_t::run(create_terminal_info_t* inf) {
 
 		// read line
 		terminal_input_status_t status;
-		command = read_input(command, screen, &status, 0);
+		command = read_input(command, this, &status, 0);
 
 		// handle input
 		if (status == TERMINAL_INPUT_STATUS_SCREEN_SWITCH) {
@@ -297,7 +325,7 @@ void terminal_t::run(create_terminal_info_t* inf) {
 			write_header = false;
 
 		} else if (status == TERMINAL_INPUT_STATUS_DEFAULT) {
-			screen->write("\n");
+			writeToScreen(screen, "\n");
 			screen->updateCursor();
 
 			if (!command.empty()) {
@@ -335,6 +363,7 @@ void terminal_t::run_command(std::string command) {
 	out_data.stop = false;
 	out_data.err = false;
 	out_data.stdout_read_end = term_out;
+	out_data.terminal = this;
 	out_data.screen = screen;
 	g_tid rout = g_create_thread_d((void*) &standard_out_thread,
 			(void*) &out_data);
@@ -343,6 +372,7 @@ void terminal_t::run_command(std::string command) {
 	err_data.stop = false;
 	err_data.err = true;
 	err_data.stdout_read_end = term_err;
+	out_data.terminal = this;
 	err_data.screen = screen;
 	g_tid rerr = g_create_thread_d((void*) &standard_out_thread,
 			(void*) &err_data);
@@ -373,7 +403,8 @@ bool terminal_t::run_term_command(std::string command, g_fd* term_in,
 	g_fd first_pipe_r;
 	g_pipe_s(&first_pipe_w, &first_pipe_r, &first_pipe_stat);
 	if (first_pipe_stat != G_FS_PIPE_SUCCESSFUL) {
-		screen->write("unable to create process pipe", SC_ERROR_COLOR);
+		writeToScreen(screen, "unable to create process pipe",
+				SC_COLOR(SC_BLACK, SC_RED));
 		return false;
 	}
 	*term_in = first_pipe_w;
@@ -407,7 +438,8 @@ bool terminal_t::run_term_command(std::string command, g_fd* term_in,
 		g_fd out_pipe_r;
 		g_pipe_s(&out_pipe_w, &out_pipe_r, &pipe_stat);
 		if (pipe_stat != G_FS_PIPE_SUCCESSFUL) {
-			screen->write("unable to create process out pipe", SC_ERROR_COLOR);
+			writeToScreen(screen, "unable to create process out pipe",
+					SC_COLOR(SC_BLACK, SC_RED));
 			return false;
 		}
 
@@ -424,8 +456,8 @@ bool terminal_t::run_term_command(std::string command, g_fd* term_in,
 			g_fd err_pipe_r;
 			g_pipe_s(&err_pipe_w, &err_pipe_r, &pipe_stat);
 			if (pipe_stat != G_FS_PIPE_SUCCESSFUL) {
-				screen->write("unable to create process err pipe",
-				SC_ERROR_COLOR);
+				writeToScreen(screen, "unable to create process err pipe",
+						SC_COLOR(SC_BLACK, SC_RED));
 				return false;
 			}
 			in_stdio[2] = err_pipe_w;
@@ -467,27 +499,33 @@ bool terminal_t::run_term_command(std::string command, g_fd* term_in,
 bool terminal_t::handle_builtin(std::string command) {
 
 	if (command == BUILTIN_COMMAND_HELP) {
-		screen->write(" The terminal has the following built-in functions:\n");
-		screen->write("\n");
-		screen->write(" help                  prints this help screen\n");
-		screen->write(
+		writeToScreen(screen,
+				" The terminal has the following built-in functions:\n");
+		writeToScreen(screen, "\n");
+		writeToScreen(screen,
+				" help                  prints this help screen\n");
+		writeToScreen(screen,
 				" ls                    lists all files in the current directory\n");
-		screen->write(" cd <path>             switches to a directory\n");
-		screen->write(" clear                 clears the screen\n");
-		screen->write(
+		writeToScreen(screen,
+				" cd <path>             switches to a directory\n");
+		writeToScreen(screen, " clear                 clears the screen\n");
+		writeToScreen(screen,
 				" sleep <ms>            sleeps for the given number of milliseconds\n");
-		screen->write(
+		writeToScreen(screen,
 				" background <file>     runs a program in the background\n");
-		screen->write("\n");
-		screen->write(" terminal, ctrl+space  open a new terminal\n");
-		screen->write(
+		writeToScreen(screen, "\n");
+		writeToScreen(screen, " terminal, ctrl+space  open a new terminal\n");
+		writeToScreen(screen,
 				" terminal <num>        switches to the terminal with the given number\n");
-		screen->write(" terminals             lists all terminals\n");
-		screen->write(" ctrl+tab              switches to the next terminal\n");
-		screen->write("\n");
-		screen->write(" keyboard set <layout> switches the keyboard layout\n");
-		screen->write(" keyboard info         prints the keyboard layout\n");
-		screen->write("\n");
+		writeToScreen(screen, " terminals             lists all terminals\n");
+		writeToScreen(screen,
+				" ctrl+tab              switches to the next terminal\n");
+		writeToScreen(screen, "\n");
+		writeToScreen(screen,
+				" keyboard set <layout> switches the keyboard layout\n");
+		writeToScreen(screen,
+				" keyboard info         prints the keyboard layout\n");
+		writeToScreen(screen, "\n");
 		return true;
 
 	} else if (command.substr(0,
@@ -495,9 +533,11 @@ bool terminal_t::handle_builtin(std::string command) {
 		command = command.substr(std::string(BUILTIN_COMMAND_KBD_SET).length());
 		bool layoutLoaded = g_keyboard::loadLayout(command);
 		if (layoutLoaded) {
-			screen->write("keyboard layout to '" + command + "' set \n");
+			writeToScreen(screen,
+					"keyboard layout to '" + command + "' set \n");
 		} else {
-			screen->write("keyboard layout to '" + command + "' not found\n");
+			writeToScreen(screen,
+					"keyboard layout to '" + command + "' not found\n");
 		}
 		return true;
 
@@ -514,15 +554,16 @@ bool terminal_t::handle_builtin(std::string command) {
 						<< (uint32_t) key.scancode << ", ctrl: " << key.ctrl
 						<< ", alt: " << key.alt << ", shift: " << key.shift
 						<< std::endl;
-				screen->write(msg.str());
+				writeToScreen(screen, msg.str());
 			}
 		} else {
-			screen->write("This command is only available in headless mode.\n");
+			writeToScreen(screen,
+					"This command is only available in headless mode.\n");
 		}
 		return true;
 
 	} else if (command == BUILTIN_COMMAND_KBD_INFO) {
-		screen->write(
+		writeToScreen(screen,
 				"keyboard layout is '" + g_keyboard::getCurrentLayout()
 						+ "'\n");
 		return true;
@@ -554,7 +595,7 @@ bool terminal_t::handle_builtin(std::string command) {
 		msg << "process ";
 		msg << pid;
 		msg << "\n";
-		screen->write(msg.str());
+		writeToScreen(screen, msg.str());
 		return true;
 
 	} else if (command.substr(0,
@@ -565,12 +606,15 @@ bool terminal_t::handle_builtin(std::string command) {
 		g_set_working_directory_status stat = write_working_directory();
 
 		if (stat == G_SET_WORKING_DIRECTORY_NOT_A_FOLDER) {
-			screen->write("selected file not a folder\n", SC_ERROR_COLOR);
+			writeToScreen(screen, "selected file not a folder\n",
+					SC_COLOR(SC_BLACK, SC_RED));
 		} else if (stat == G_SET_WORKING_DIRECTORY_NOT_FOUND) {
-			screen->write("directory not found\n", SC_ERROR_COLOR);
+			writeToScreen(screen, "directory not found\n",
+					SC_COLOR(SC_BLACK, SC_RED));
 		} else if (stat == G_SET_WORKING_DIRECTORY_ERROR) {
-			screen->write("unable to switch to the selected directory\n",
-			SC_ERROR_COLOR);
+			writeToScreen(screen,
+					"unable to switch to the selected directory\n",
+					SC_COLOR(SC_BLACK, SC_RED));
 		}
 
 		read_working_directory();
@@ -590,15 +634,15 @@ bool terminal_t::handle_builtin(std::string command) {
 			msg << "sleeping for ";
 			msg << ms;
 			msg << "ms... ";
-			screen->write(msg.str());
+			writeToScreen(screen, msg.str());
 			g_sleep(ms);
-			screen->write("awake!\n");
+			writeToScreen(screen, "awake!\n");
 		} else {
 			std::stringstream msg;
 			msg << "can't sleep this long (";
 			msg << ms;
 			msg << "ms)\n";
-			screen->write(msg.str());
+			writeToScreen(screen, msg.str());
 		}
 		return true;
 
@@ -611,7 +655,7 @@ bool terminal_t::handle_builtin(std::string command) {
 		std::stringstream msg;
 		msg << terminals.size();
 		msg << " terminals active\n";
-		screen->write(msg.str());
+		writeToScreen(screen, msg.str());
 		return true;
 
 	} else if (command.substr(0,
@@ -630,7 +674,7 @@ bool terminal_t::handle_builtin(std::string command) {
 			std::stringstream msg;
 			msg << pos;
 			msg << "is not a valid screen index\n";
-			screen->write(msg.str());
+			writeToScreen(screen, msg.str());
 		}
 		return true;
 
@@ -654,24 +698,21 @@ void terminal_t::standard_out_thread(standard_out_thread_data_t* data) {
 	int buflen = 1024;
 	char* buf = new char[buflen];
 
+	stream_control_status_t status;
+
 	while (true) {
 		g_fs_read_status stat;
 		int r = g_read_s(data->stdout_read_end, buf, buflen, &stat);
 
 		if (stat == G_FS_READ_SUCCESSFUL) {
-			uint8_t color = (data->err ? SC_ERROR_COLOR : SC_DEFAULT_COLOR);
+
 			for (int i = 0; i < r; i++) {
 				char c = buf[i];
-				if (c == '\r') {
-					continue;
-				} else if (c == '\t') {
-					data->screen->writeChar(' ', color);
-					data->screen->writeChar(' ', color);
-					data->screen->writeChar(' ', color);
-					data->screen->writeChar(' ', color);
-				} else {
-					data->screen->writeChar(c, color);
-				}
+
+				// Lock screen and set error colori f required
+				data->screen->lock();
+				process_output_character(data, &status, c);
+				data->screen->unlock();
 			}
 
 			data->screen->updateCursor();
@@ -688,6 +729,200 @@ void terminal_t::standard_out_thread(standard_out_thread_data_t* data) {
 /**
  *
  */
+void terminal_t::process_output_character(standard_out_thread_data_t* data,
+		stream_control_status_t* status, char c) {
+
+	if (status->status == TERMINAL_STREAM_STATUS_TEXT) {
+
+		// Simple textual output
+		if (c == '\r') {
+			return;
+
+		} else if (c == '\t') {
+			data->screen->writeChar(' ');
+			data->screen->writeChar(' ');
+			data->screen->writeChar(' ');
+			data->screen->writeChar(' ');
+
+		} else if (c == 27 /* ESC */) {
+			status->status = TERMINAL_STREAM_STATUS_LAST_WAS_ESC;
+
+		} else {
+			int fg = data->screen->getColorForeground();
+			if (data->err) {
+				data->screen->setColorForeground(SC_RED);
+			}
+
+			data->screen->writeChar(c);
+
+			if (data->err) {
+				data->screen->setColorForeground(fg);
+			}
+		}
+
+		// ESC was sent
+	} else if (status->status == TERMINAL_STREAM_STATUS_LAST_WAS_ESC) {
+		// must be followed by [ for VT100 sequence
+		if (c == '[') {
+			status->status = TERMINAL_STREAM_STATUS_WITHIN_VT100;
+
+			// or a Ghost terminal sequence
+		} else if (c == '{') {
+			status->status = TERMINAL_STREAM_STATUS_WITHIN_GHOSTTERM;
+
+			// otherwise reset
+		} else {
+			status->status = TERMINAL_STREAM_STATUS_TEXT;
+		}
+
+		// Handle sequence parameters
+	} else if (status->status == TERMINAL_STREAM_STATUS_WITHIN_VT100
+			|| status->status == TERMINAL_STREAM_STATUS_WITHIN_GHOSTTERM) {
+
+		// Parameter value
+		if (c >= '0' && c <= '9') {
+			if (status->parameterCount == 0) {
+				status->parameterCount = 1;
+			}
+
+			if (status->parameterCount <= TERMINAL_STREAM_CONTROL_MAX_PARAMETERS) {
+				status->parameters[status->parameterCount - 1] =
+						status->parameters[status->parameterCount - 1] * 10;
+				status->parameters[status->parameterCount - 1] += c - '0';
+
+				// Illegal number of parameters is skipped
+			}
+
+			// Parameter seperator
+		} else if (c == ';') {
+			status->parameterCount++;
+
+			// Finish character
+		} else {
+			status->controlCharacter = c;
+
+			if (status->status == TERMINAL_STREAM_STATUS_WITHIN_VT100) {
+				process_vt100_sequence(data, status);
+			} else if (status->status
+					== TERMINAL_STREAM_STATUS_WITHIN_GHOSTTERM) {
+				process_ghostterm_sequence(data, status);
+			}
+
+			// reset status
+			status->parameterCount = 0;
+			for (int i = 0; i < TERMINAL_STREAM_CONTROL_MAX_PARAMETERS; i++) {
+				status->parameters[i] = 0;
+			}
+			status->status = TERMINAL_STREAM_STATUS_TEXT;
+		}
+
+	}
+}
+
+/**
+ *
+ */
+void terminal_t::process_vt100_sequence(standard_out_thread_data_t* data,
+		stream_control_status_t* status) {
+
+	switch (status->controlCharacter) {
+
+	// Cursor up
+	case 'A':
+		data->screen->moveCursor(data->screen->getCursorX(),
+				data->screen->getCursorY() - status->parameters[0]);
+		break;
+
+		// Cursor down
+	case 'B':
+		data->screen->moveCursor(data->screen->getCursorX(),
+				data->screen->getCursorY() + status->parameters[0]);
+		break;
+
+		// Cursor forward
+	case 'C':
+		data->screen->moveCursor(
+				data->screen->getCursorX() + status->parameters[0],
+				data->screen->getCursorY());
+		break;
+
+		// Cursor back
+	case 'D':
+		data->screen->moveCursor(
+				data->screen->getCursorX() - status->parameters[0],
+				data->screen->getCursorY());
+		break;
+
+		// Mode setting
+	case 'm':
+		for (int i = 0; i < status->parameterCount; i++) {
+			int param = status->parameters[i];
+
+			// Reset
+			if (param == 0) {
+				data->screen->setColorBackground(SC_BLACK);
+				data->screen->setColorForeground(SC_WHITE);
+
+				// Foreground color
+			} else if (param >= 30 && param < 40) {
+				data->screen->setColorForeground(convert_vt100_to_screen_color(param - 30));
+
+				// Background color
+			} else if (param >= 40 && param < 50) {
+				data->screen->setColorBackground(convert_vt100_to_screen_color(param - 40));
+			}
+		}
+
+		break;
+
+	}
+
+}
+
+/**
+ *
+ */
+screen_color_t terminal_t::convert_vt100_to_screen_color(int color) {
+
+	switch (color) {
+	case VT100_COLOR_BLACK:
+		return SC_BLACK;
+	case VT100_COLOR_BLUE:
+		return SC_BLUE;
+	case VT100_COLOR_CYAN:
+		return SC_CYAN;
+	case VT100_COLOR_GREEN:
+		return SC_GREEN;
+	case VT100_COLOR_MAGENTA:
+		return SC_MAGENTA;
+	case VT100_COLOR_RED:
+		return SC_RED;
+	case VT100_COLOR_WHITE:
+		return SC_WHITE;
+	case VT100_COLOR_YELLOW:
+		return SC_YELLOW;
+	}
+	return SC_WHITE;
+}
+
+/**
+ *
+ */
+void terminal_t::process_ghostterm_sequence(standard_out_thread_data_t* data,
+		stream_control_status_t* status) {
+
+	switch (status->controlCharacter) {
+
+	// Make terminal raw
+	case 'r':
+		data->terminal->input_raw = true;
+		break;
+	}
+
+}
+/**
+ *
+ */
 void terminal_t::standard_in_thread(standard_in_thread_data_t* data) {
 
 	std::string line;
@@ -696,7 +931,7 @@ void terminal_t::standard_in_thread(standard_in_thread_data_t* data) {
 		terminal_input_status_t stat;
 
 		// we add up the line because it might contain content already
-		line = terminal_t::read_input(line, data->terminal->screen, &stat,
+		line = terminal_t::read_input(line, data->terminal, &stat,
 				&data->continue_input);
 
 		if (stat == TERMINAL_INPUT_STATUS_EXIT) {
@@ -710,6 +945,8 @@ void terminal_t::standard_in_thread(standard_in_thread_data_t* data) {
 
 		} else if (stat == TERMINAL_INPUT_STATUS_DEFAULT) {
 			line += "\n";
+			data->terminal->writeToScreen(data->terminal->screen, "\n");
+			data->terminal->screen->updateCursor();
 
 			const char* lineContent = line.c_str();
 			int lineLength = strlen(lineContent);
@@ -783,7 +1020,7 @@ bool terminal_t::execute(std::string shortpath, std::string args,
 	// check for command in path
 	std::string realpath;
 	if (!find_executable(shortpath, realpath)) {
-		screen->write(shortpath + ": command not found\n");
+		writeToScreen(screen, shortpath + ": command not found\n");
 		return false;
 	}
 
@@ -802,15 +1039,18 @@ bool terminal_t::execute(std::string shortpath, std::string args,
 	msg << "', code: ";
 	msg << status;
 	msg << "\n";
-	screen->write(msg.str(), SC_ERROR_COLOR);
+
+	writeToScreen(screen, msg.str(), SC_BLACK, SC_RED);
 	return false;
 }
 
 /**
  *
  */
-std::string terminal_t::read_input(std::string there, screen_t* screen,
+std::string terminal_t::read_input(std::string there, terminal_t* term,
 		terminal_input_status_t* out_status, bool* continue_input) {
+
+	screen_t* screen = term->screen;
 
 	std::string line = there;
 	while (continue_input == 0 || *continue_input) {
@@ -840,6 +1080,32 @@ std::string terminal_t::read_input(std::string there, screen_t* screen,
 					screen->updateCursor();
 				}
 
+			} else if (key.key == "KEY_TAB") {
+
+				DIR* dir = opendir(term->working_directory.c_str());
+				dirent* ent;
+
+				// check if text contains a whitespace, find everything after that
+				auto wspos = line.find(' ');
+				std::string search =
+						(wspos == -1) ? line : line.substr(wspos + 1);
+				auto searchlen = search.length();
+
+				// find a dirent that starts with the entered text
+				while ((ent = readdir(dir)) != 0) {
+					if (searchlen < ent->d_namlen
+							&& strncmp(search.c_str(), ent->d_name,
+									search.length()) == 0) {
+						std::stringstream appendix;
+						for (int i = search.length(); i < ent->d_namlen; i++) {
+							appendix << ent->d_name[i];
+						}
+						line += appendix.str();
+						writeToScreen(screen, appendix.str());
+						break;
+					}
+				}
+
 			} else {
 				char chr = g_keyboard::charForKey(key);
 				if (chr != -1) {
@@ -847,7 +1113,12 @@ std::string terminal_t::read_input(std::string there, screen_t* screen,
 
 					std::string out;
 					out += chr;
-					screen->write(out);
+					writeToScreen(screen, out);
+
+					// put each character when raw
+					if (term->input_raw) {
+						break;
+					}
 				}
 			}
 

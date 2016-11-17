@@ -30,9 +30,12 @@
  */
 class component_registry_t {
 public:
-	static g_ui_component_id add(component_t* component);
+	static g_ui_component_id add(g_pid process, component_t* component);
 	static component_t* get(g_ui_component_id id);
+	static std::map<g_ui_component_id, component_t*>* get_process_map(g_pid pid);
 
+	static void remove_component(g_pid pid, g_ui_component_id id);
+	static void remove_process_map(g_pid pid);
 };
 
 #endif

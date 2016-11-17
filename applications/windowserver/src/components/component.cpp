@@ -23,11 +23,16 @@
 
 #include <events/locatable.hpp>
 #include <events/key_event.hpp>
+#include <events/mouse_event.hpp>
 #include <windowserver.hpp>
 
 #include <ghostuser/utils/logger.hpp>
+#include <ghostuser/ui/properties.hpp>
 #include <algorithm>
 #include <cairo/cairo.h>
+
+#include <layout/flow_layout_manager.hpp>
+#include <layout/grid_layout_manager.hpp>
 
 /**
  *
@@ -141,6 +146,11 @@ void component_t::addChild(component_t* comp) {
 	}
 
 	children.push_back(comp);
+
+	std::sort(children.begin(), children.end(), [](component_t*& struct1, component_t*& struct2) {
+		return struct1->z_index < struct2->z_index;
+	});
+
 	comp->parent = this;
 	markFor(COMPONENT_REQUIREMENT_LAYOUT);
 }
@@ -266,6 +276,21 @@ bool component_t::handle(event_t& event) {
 			posted_key_event.header.component_id = info.component_id;
 			posted_key_event.key_info = key_event->info;
 			g_send_message(info.target_thread, &posted_key_event, sizeof(g_ui_component_key_event));
+		}
+	}
+
+	// post mouse event to client
+	mouse_event_t* mouse_event = dynamic_cast<mouse_event_t*>(&event);
+	if (mouse_event) {
+		event_listener_info_t info;
+		if (getListener(G_UI_COMPONENT_EVENT_TYPE_MOUSE, info)) {
+			g_ui_component_mouse_event posted_event;
+			posted_event.header.type = G_UI_COMPONENT_EVENT_TYPE_MOUSE;
+			posted_event.header.component_id = info.component_id;
+			posted_event.position = mouse_event->position;
+			posted_event.type = mouse_event->type;
+			posted_event.buttons = mouse_event->buttons;
+			g_send_message(info.target_thread, &posted_event, sizeof(g_ui_component_mouse_event));
 		}
 	}
 
@@ -451,6 +476,32 @@ bool component_t::isChildOf(component_t* c) {
 		}
 		next = next->getParent();
 	} while (next);
+
+	return false;
+}
+
+/**
+ *
+ */
+bool component_t::getNumericProperty(int property, uint32_t* out) {
+
+	return false;
+}
+
+/**
+ *
+ */
+bool component_t::setNumericProperty(int property, uint32_t value) {
+
+	if (property == G_UI_PROPERTY_LAYOUT_MANAGER) {
+		if (value == G_UI_LAYOUT_MANAGER_FLOW) {
+			setLayoutManager(new flow_layout_manager_t());
+			return true;
+		} else if (value == G_UI_LAYOUT_MANAGER_GRID) {
+			setLayoutManager(new grid_layout_manager_t(1, 1));
+			return true;
+		}
+	}
 
 	return false;
 }

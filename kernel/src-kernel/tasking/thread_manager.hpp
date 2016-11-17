@@ -34,7 +34,7 @@ class g_thread_manager {
 public:
 	static g_thread* fork(g_thread* task);
 
-	static g_thread* createProcess(g_security_level securityLevel);
+	static g_thread* createProcess(g_security_level securityLevel, g_process* parent);
 	static g_thread* createSubThread(g_process* process);
 
 	static g_thread* createProcessVm86(uint8_t interrupt, g_vm86_registers& in, g_vm86_registers* out);

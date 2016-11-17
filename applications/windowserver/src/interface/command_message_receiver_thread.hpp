@@ -28,6 +28,7 @@
  */
 class command_message_receiver_thread_t: public g_thread {
 public:
+	g_atom stop = false;
 
 	/**
 	 *

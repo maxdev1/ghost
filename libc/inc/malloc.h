@@ -22,6 +22,7 @@
 #define __GHOST_LIBC_MALLOC__
 
 #include "ghost/common.h"
+#include "ghost/malloc.h"
 #include <stddef.h>
 
 __BEGIN_C
@@ -50,25 +51,6 @@ void* aligned_alloc(size_t alignment, size_t size);
  * 		allocated space or 0 if not successful
  */
 void* calloc(size_t num, size_t size);
-
-/**
- * Deallocates the given memory (which must have previously been allocated
- * with one of the allocation functions). (N1548-7.22.3.3)
- *
- * @param ptr
- * 		pointer to memory to free, or NULL
- */
-void free(void* ptr);
-
-/**
- * Allocates <size> bytes of memory. (N1548-7.22.3.4)
- *
- * @param size
- * 		size in bytes to allocate
- * @return
- * 		allocated memory
- */
-void* malloc(size_t size);
 
 /**
  * Reallocates the memory pointed to by <ptr> to have at least

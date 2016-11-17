@@ -22,8 +22,10 @@
 #define GHOSTLIBRARY_UI_WINDOW
 
 #include <ghostuser/ui/component.hpp>
+#include <ghostuser/ui/listener.hpp>
 #include <ghostuser/ui/titled_component.hpp>
 #include <cstdint>
+#include <functional>
 
 /**
  *
@@ -40,6 +42,7 @@ public:
 	bool isResizable();
 	void setResizable(bool resizable);
 
+	bool onClose(std::function<void()> func);
 };
 
 #endif

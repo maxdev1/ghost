@@ -31,7 +31,6 @@
 // logging settings
 #define G_LOG_LEVEL										G_LOG_LEVEL_INFO
 // fine-grained debugging options
-#define G_DEBUG_SYSCALLS								false
 #define G_DEBUG_WHOS_WAITING							false
 #define G_DEBUG_LOCKS_DEADLOCKING						false
 #define G_DEBUG_THREAD_DUMPING							false
@@ -42,7 +41,7 @@
 // version
 #define G_VERSION_MAJOR									0
 #define G_VERSION_MINOR									5
-#define G_VERSION_PATCH									3
+#define G_VERSION_PATCH									4
 
 // paths to system binaries
 #define G_INIT_BINARY_NAME								"applications/init.bin"

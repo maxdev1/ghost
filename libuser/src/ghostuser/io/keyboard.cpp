@@ -36,15 +36,13 @@ static bool statusShift = false;
 static bool statusAlt = false;
 
 // TODO
-static bool numLock = false;
-
-static std::map<uint8_t, std::string> scancodeLayout;
+static std::map<uint32_t, std::string> scancodeLayout;
 static std::map<g_key_info, char> conversionLayout;
 
-static uint32_t keyboardRegisteredTask = -1;
-static uint32_t keyboardTopic = -1;
-
 static std::string currentLayout;
+
+static g_key_info last_unknown_key;
+static bool have_last_unknown_key = false;
 
 /**
  *
@@ -68,54 +66,71 @@ g_key_info g_keyboard::readKey(bool* break_condition) {
 	g_ps2_area->keyboard.atom_unhandled = false;
 
 	// read and convert data
-	return keyForScancode(scancode);
+	g_key_info info;
+	if (keyForScancode(scancode, &info)) {
+		return info;
+	}
+	return g_key_info();
 }
 
 /**
  *
  */
-g_key_info g_keyboard::keyForScancode(uint8_t scancode) {
-
-	g_key_info info;
+bool g_keyboard::keyForScancode(uint8_t scancode, g_key_info* out) {
 
 	// Get "pressed" info from scancode
-	info.pressed = !(scancode & (1 << 7));
-	scancode = scancode & ~(1 << 7); // remove 7th bit
-
-	info.scancode = scancode;
+	out->pressed = !(scancode & (1 << 7));
+	out->scancode = scancode & ~(1 << 7); // remove 7th bit
 
 	// Get key from layout map
-	auto pos = scancodeLayout.find(scancode);
-	if (pos != scancodeLayout.end()) {
-		info.key = pos->second;
+	bool found_compound = false;
+	if (have_last_unknown_key) {
+		int compoundScancode = last_unknown_key.scancode << 8 | out->scancode;
+
+		// Try to find a compound key
+		auto pos = scancodeLayout.find(compoundScancode);
+		if (pos != scancodeLayout.end()) {
+			out->key = pos->second;
+			found_compound = true;
+			have_last_unknown_key = false;
+		}
+	}
+
+	// When it is no compound
+	if (!found_compound) {
+
+		// Try to find the normal key
+		auto pos = scancodeLayout.find(out->scancode);
+		if (pos == scancodeLayout.end()) {
+
+			// If it's not found, this might be the start of a compound
+			have_last_unknown_key = true;
+			last_unknown_key = *out;
+			return false;
+
+		} else {
+			out->key = pos->second;
+		}
 	}
 
 	// Handle special keys
-	if (info.key == "KEY_CTRL_L" || info.key == "KEY_CTRL_R") {
-		statusCtrl = info.pressed;
+	if (out->key == "KEY_CTRL_L" || out->key == "KEY_CTRL_R") {
+		statusCtrl = out->pressed;
 
-	} else if (info.key == "KEY_SHIFT_L" || info.key == "KEY_SHIFT_R") {
-		statusShift = info.pressed;
+	} else if (out->key == "KEY_SHIFT_L" || out->key == "KEY_SHIFT_R") {
+		statusShift = out->pressed;
 
-	} else if (info.key == "KEY_ALT_L" || info.key == "KEY_ALT_R") {
-		statusAlt = info.pressed;
+	} else if (out->key == "KEY_ALT_L" || out->key == "KEY_ALT_R") {
+		statusAlt = out->pressed;
 
-	} else if (info.key == "KEY_PAD_8") {
-		info.key = "KEY_ARROW_UP";
-	} else if (info.key == "KEY_PAD_6") {
-		info.key = "KEY_ARROW_RIGHT";
-	} else if (info.key == "KEY_PAD_4") {
-		info.key = "KEY_ARROW_LEFT";
-	} else if (info.key == "KEY_PAD_2") {
-		info.key = "KEY_ARROW_DOWN";
 	}
 
 	// Set control key info
-	info.ctrl = statusCtrl;
-	info.shift = statusShift;
-	info.alt = statusAlt;
+	out->ctrl = statusCtrl;
+	out->shift = statusShift;
+	out->alt = statusAlt;
 
-	return info;
+	return true;
 }
 
 /**
@@ -185,12 +200,31 @@ bool g_keyboard::loadScancodeLayout(std::string iso) {
 	std::map<std::string, std::string> properties = props.getProperties();
 
 	for (auto entry : properties) {
-		// Convert number from hex
-		std::stringstream scancodeStr;
-		scancodeStr << std::hex << entry.first;
 
-		uint32_t scancode;
-		scancodeStr >> scancode;
+		uint32_t scancode = 0;
+
+		auto spacepos = entry.first.find(" ");
+		if (spacepos != std::string::npos) {
+			std::string part1 = entry.first.substr(0, spacepos);
+			std::string part2 = entry.first.substr(spacepos + 1);
+
+			uint32_t part1val;
+			std::stringstream conv1;
+			conv1 << std::hex << part1;
+			conv1 >> part1val;
+
+			uint32_t part2val;
+			std::stringstream conv2;
+			conv2 << std::hex << part2;
+			conv2 >> part2val;
+
+			scancode = (part1val << 8) | part2val;
+
+		} else {
+			std::stringstream conv;
+			conv << std::hex << entry.first;
+			conv >> scancode;
+		}
 
 		if (entry.second.empty()) {
 			std::stringstream msg;

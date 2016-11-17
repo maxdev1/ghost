@@ -19,8 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost/user.h"
-#include <stdint.h>
-#include <string.h>
+#include "ghost/stdint.h"
 
 // redirect
 void g_pipe(g_fd* out_write, g_fd* out_read) {

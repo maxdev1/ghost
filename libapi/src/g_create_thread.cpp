@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost/user.h"
+#include "__internal.h"
 
 /**
  * Thread setup routine, used by the thread creation call. Assumes that the created thread
@@ -34,10 +35,10 @@ void threadsetuproutine() {
 		// Call the entry
 		(userEntry)(data.userData);
 
-		return g_exit(0);
+		return __g_exit_thread();
 	}
 
-	return g_exit(-1);
+	return __g_exit_thread();
 }
 
 // redirect

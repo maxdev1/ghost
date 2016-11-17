@@ -80,6 +80,6 @@ public:
 		return g_point(x + p.x, y + p.y);
 	}
 
-};
+}__attribute__((packed));
 
 #endif

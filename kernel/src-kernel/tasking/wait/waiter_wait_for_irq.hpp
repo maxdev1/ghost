@@ -21,8 +21,8 @@
 #ifndef GHOST_MULTITASKING_WAIT_MANAGER_INTERRUPTS
 #define GHOST_MULTITASKING_WAIT_MANAGER_INTERRUPTS
 
+#include <system/interrupts/handling/interrupt_request_dispatcher.hpp>
 #include <tasking/wait/waiter.hpp>
-#include <system/interrupts/handling/interrupt_request_handler.hpp>
 
 /**
  *
@@ -40,7 +40,7 @@ public:
 	 *
 	 */
 	virtual bool checkWaiting(g_thread* task) {
-		bool fired = g_interrupt_request_handler::pollIrq((uint32_t) interrupt);
+		bool fired = g_interrupt_request_dispatcher::poll_irq((uint32_t) interrupt);
 
 		if (fired) {
 			// Interrupt was fired

@@ -21,6 +21,7 @@
 #include "registration_thread.hpp"
 #include <ghostuser/ui/interface_specification.hpp>
 #include <interface/command_message_receiver_thread.hpp>
+#include <interface/application_exit_cleanup_thread.hpp>
 #include <stdio.h>
 
 /**
@@ -40,7 +41,6 @@ void registration_thread_t::run() {
 	size_t bufferLength = sizeof(g_message_header) + sizeof(g_ui_initialize_request);
 	uint8_t* buffer = new uint8_t[bufferLength];
 
-	klog("waiting for registration requests");
 	while (true) {
 		g_message_receive_status stat = g_receive_message(buffer, bufferLength);
 
@@ -51,6 +51,10 @@ void registration_thread_t::run() {
 			// create handler thread
 			command_message_receiver_thread_t* communicator = new command_message_receiver_thread_t();
 			g_tid communicator_tid = communicator->start();
+
+			// create a thread that cleans up the ui when the client thread exits
+			application_exit_cleanup_thread_t* cleanup = new application_exit_cleanup_thread_t(g_get_pid_for_tid(request_message->sender), communicator);
+			cleanup->start();
 
 			// send response
 			g_ui_initialize_response response;

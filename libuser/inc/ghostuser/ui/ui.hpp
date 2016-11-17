@@ -24,7 +24,7 @@
 class g_listener;
 class g_canvas;
 #include <ghostuser/ui/interface_specification.hpp>
-
+#include <ghostuser/graphics/metrics/dimension.hpp>
 
 /**
  *
@@ -72,6 +72,8 @@ public:
 	static void remove_listener(g_listener* l);
 
 	static bool register_desktop_canvas(g_canvas* c);
+
+	static bool get_screen_dimension(g_dimension* out);
 };
 
 #endif

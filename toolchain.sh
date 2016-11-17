@@ -21,6 +21,9 @@ STEP_CLEAN=0
 STEP_UNPACK=1
 STEP_PATCH=1
 
+STEP_BUILD_BINUTILS=1
+STEP_BUILD_GCC=1
+
 
 # Set defaults for variables
 with AUTOMAKE	automake
@@ -36,6 +39,10 @@ for var in "$@"; do
 		STEP_UNPACK=0
 	elif [ $var == "--skip-patch" ]; then
 		STEP_PATCH=0
+	elif [ $var == "--skip-build-binutils" ]; then
+		STEP_BUILD_BINUTILS=0
+	elif [ $var == "--skip-build-gcc" ]; then
+		STEP_BUILD_GCC=0
 	elif [ $var == "--clean" ]; then
 		STEP_CLEAN=1
 	else
@@ -58,6 +65,18 @@ requireTool patch
 requireTool curl
 requireTool $AUTOMAKE
 requireTool $AUTOCONF
+
+
+# Additional build config
+BUILD_GCC_ADDITIONAL_FLAGS=""
+case "$(uname -s)" in
+	CYGWIN*|MINGW32*|MSYS*)
+		echo "Preparing for build on Cygwin"
+		BUILD_GCC_ADDITIONAL_FLAGS="--with-gmp=/usr/local --with-mpc=/usr/local --with-mpfr=/usr/local"
+		;;
+esac
+
+
 
 # Check version of automake/autoconf
 echo "    $REQUIRED_AUTOMAKE"
@@ -181,51 +200,62 @@ PATH=$PATH:$TOOLCHAIN_BASE/bin
 
 
 # Build binutils
-echo "Building binutils"
-mkdir -p temp/build-binutils
-pushd temp/build-binutils
+if [ $STEP_BUILD_BINUTILS == 1 ]; then
 
-echo "    Configuring"
-../$BINUTILS_UNPACKED/configure --target=$TARGET --prefix=$TOOLCHAIN_BASE --disable-nls --disable-werror --with-sysroot=$SYSROOT >>ghost-build.log 2>&1
-failOnError
+	echo "Building binutils"
+	mkdir -p temp/build-binutils
+	pushd temp/build-binutils
 
-echo "    Building"
-make all -j8						>>ghost-build.log 2>&1
-failOnError
+	echo "    Configuring"
+	../$BINUTILS_UNPACKED/configure --target=$TARGET --prefix=$TOOLCHAIN_BASE --disable-nls --disable-werror --with-sysroot=$SYSROOT >>ghost-build.log 2>&1
+	failOnError
 
-echo "    Installing"
-make install						>>ghost-build.log 2>&1
-failOnError
+	echo "    Building"
+	make all -j8						>>ghost-build.log 2>&1
+	failOnError
 
-popd
+	echo "    Installing"
+	make install						>>ghost-build.log 2>&1
+	failOnError
 
+	popd
+
+else
+	echo "Skipping build of binutils"
+fi
 
 
 # Build GCC
-echo "Building GCC"
-mkdir -p temp/build-gcc
-pushd temp/build-gcc
+if [ $STEP_BUILD_GCC == 1 ]; then
 
-echo "    Configuration"
-../$GCC_UNPACKED/configure --target=$TARGET --prefix=$TOOLCHAIN_BASE --disable-nls --enable-languages=c,c++ --with-sysroot=$SYSROOT >>ghost-build.log 2>&1
-failOnError
+	echo "Building GCC"
+	mkdir -p temp/build-gcc
+	pushd temp/build-gcc
+	
+	echo "    Configuration"
+	../$GCC_UNPACKED/configure --target=$TARGET --prefix=$TOOLCHAIN_BASE --disable-nls --enable-languages=c,c++ --with-sysroot=$SYSROOT $BUILD_GCC_ADDITIONAL_FLAGS >>ghost-build.log 2>&1
+	failOnError
 
-echo "    Building core"
-make all-gcc -j8					>>ghost-build.log 2>&1
-failOnError
+	echo "    Building core"
+	make all-gcc -j8					>>ghost-build.log 2>&1
+	failOnError
 
-echo "    Installing core"
-make install-gcc					>>ghost-build.log 2>&1
-failOnError
+	echo "    Installing core"
+	make install-gcc					>>ghost-build.log 2>&1
+	failOnError
 
-echo "    Building target libgcc"
-make all-target-libgcc -j8			>>ghost-build.log 2>&1
-failOnError
+	echo "    Building target libgcc"
+	make all-target-libgcc -j8			>>ghost-build.log 2>&1
+	failOnError
 
-echo "    Installing target libgcc"
-make install-target-libgcc			>>ghost-build.log 2>&1
-failOnError
-popd
+	echo "    Installing target libgcc"
+	make install-target-libgcc			>>ghost-build.log 2>&1
+	failOnError
+	popd
+
+else
+	echo "Skipping build of GCC"
+fi
 
 
 

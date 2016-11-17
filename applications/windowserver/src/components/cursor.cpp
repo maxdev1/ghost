@@ -32,8 +32,8 @@ static cursor_configuration* currentConfiguration = 0;
 g_point cursor_t::position;
 g_point cursor_t::nextPosition;
 
-mouse_button_t cursor_t::pressedButtons = MOUSE_EVENT_NONE;
-mouse_button_t cursor_t::nextPressedButtons = MOUSE_EVENT_NONE;
+g_mouse_button cursor_t::pressedButtons = G_MOUSE_EVENT_NONE;
+g_mouse_button cursor_t::nextPressedButtons = G_MOUSE_EVENT_NONE;
 component_t* cursor_t::draggedComponent = 0;
 component_t* cursor_t::hoveredComponent = 0;
 component_t* cursor_t::focusedComponent = 0;

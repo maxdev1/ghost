@@ -28,8 +28,8 @@ typedef void (*g_constructor)();
 
 /**
  * Constructor symbols, defined in the kernel linker script. Please note that these
- * variables are not actually pointers, but symbols of no type (use "&" to get
- * their address).
+ * variables are not actually pointers, but symbols of no type (only use their
+ * address by referencing).
  */
 extern "C" {
 void* startConstructors;
@@ -39,7 +39,7 @@ void* endConstructors;
 /**
  *
  */
-void g_constructors::call() {
+void g_abi_constructors_call_global() {
 
 	g_constructor* start = (g_constructor*) &startConstructors;
 	g_constructor* end = (g_constructor*) &endConstructors;
