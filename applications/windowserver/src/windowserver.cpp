@@ -36,6 +36,7 @@
 #include <components/button.hpp>
 #include <layout/flow_layout_manager.hpp>
 #include <layout/grid_layout_manager.hpp>
+#include <interface/component_registry.hpp>
 
 #include <iostream>
 #include <stdio.h>
@@ -185,14 +186,13 @@ void windowserver_t::mainLoop(g_rectangle screenBounds) {
 		// blit output
 		blit(&global);
 
-		// limit to 80 fps
+		// limit to 60 fps
 		render_time = g_millis() - render_start;
-		if (render_time < (1000 / 80)) {
-			g_sleep((1000 / 80) - render_time);
+		if (render_time < (1000 / 60)) {
+			g_sleep((1000 / 60) - render_time);
 		}
 
-		// wait for next rendering
-		g_atomic_lock(&render_atom);
+		g_atomic_lock_to(&render_atom, 100);
 
 		// print output
 #if BENCHMARKING
@@ -369,5 +369,35 @@ windowserver_t* windowserver_t::instance() {
  */
 void windowserver_t::triggerRender() {
 	render_atom = false;
+}
+
+/**
+ *
+ */
+void windowserver_t::cleanup(g_pid process) {
+
+	// get components mapped for process
+	auto components = component_registry_t::get_process_map(process);
+
+	// TODO
+	klog("removing components for process %i", process);
+	if (components) {
+		for (auto& entry : *components) {
+			component_t* component = entry.second;
+			if (component) {
+				//	component_registry_t::remove_component(process, entry.first);
+				component->setVisible(false);
+
+				//	auto parent = component->getParent();
+				//	if (parent) {
+				//		parent->removeChild(component);
+				//	}
+
+				//	delete component;
+			}
+		}
+
+		// component_registry_t::remove_process_map(process);
+	}
 }
 

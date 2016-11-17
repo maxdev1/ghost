@@ -20,14 +20,14 @@
 
 #include <system/interrupts/handling/interrupt_dispatcher.hpp>
 #include <system/interrupts/handling/interrupt_stubs.hpp>
-#include <system/interrupts/handling/interrupt_request_handler.hpp>
-#include <system/interrupts/handling/interrupt_exception_handler.hpp>
 #include <system/interrupts/descriptors/idt.hpp>
 #include <system/interrupts/pic.hpp>
 #include <system/interrupts/lapic.hpp>
 
 #include <kernel.hpp>
 #include <logger/logger.hpp>
+#include <system/interrupts/handling/interrupt_exception_dispatcher.hpp>
+#include <system/interrupts/handling/interrupt_request_dispatcher.hpp>
 #include <tasking/tasking.hpp>
 #include <system/io_ports.hpp>
 #include <system/processor_state.hpp>
@@ -44,15 +44,15 @@ extern "C" g_processor_state* _interruptHandler(g_processor_state* cpuState) {
 	return g_interrupt_dispatcher::handle(cpuState);
 }
 
-static g_global_lock handlingLock;
+static g_global_lock __interrupt_global_lock;
 
 /**
  * 
  */
 g_processor_state* g_interrupt_dispatcher::handle(g_processor_state* cpuState) {
 
-	// TODO not global lock, lock per operation
-	handlingLock.lock();
+	// TODO avoid global lock, lock per operation
+	__interrupt_global_lock.lock();
 
 	// save current task state
 	g_thread* current_thread = g_tasking::save(cpuState);
@@ -62,9 +62,9 @@ g_processor_state* g_interrupt_dispatcher::handle(g_processor_state* cpuState) {
 	 while requests are redirected to the request handler.
 	 */
 	if (cpuState->intr < 0x20) {
-		current_thread = g_interrupt_exception_handler::handle(current_thread);
+		current_thread = g_interrupt_exception_dispatcher::handle(current_thread);
 	} else {
-		current_thread = g_interrupt_request_handler::handle(current_thread);
+		current_thread = g_interrupt_request_dispatcher::handle(current_thread);
 	}
 
 	// sanity check
@@ -76,7 +76,7 @@ g_processor_state* g_interrupt_dispatcher::handle(g_processor_state* cpuState) {
 	g_lapic::send_eoi();
 
 	// TODO
-	handlingLock.unlock();
+	__interrupt_global_lock.unlock();
 
 	return current_thread->cpuState;
 }

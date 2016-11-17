@@ -50,8 +50,8 @@ class cursor_t {
 public:
 	static g_point position;
 	static g_point nextPosition;
-	static mouse_button_t pressedButtons;
-	static mouse_button_t nextPressedButtons;
+	static g_mouse_button pressedButtons;
+	static g_mouse_button nextPressedButtons;
 
 	static component_t* draggedComponent;
 	static component_t* hoveredComponent;

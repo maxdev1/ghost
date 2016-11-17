@@ -52,3 +52,25 @@ struct dirent* readdir(DIR* dir) {
 
 	return NULL;
 }
+
+/**
+ *
+ */
+int readdir_r(DIR* dirp, struct dirent* entry, struct dirent** result) {
+
+	g_atomic_lock(&(dirp->lock));
+
+	errno = 0;
+
+	struct dirent* entryFound = readdir(dirp);
+	if (entryFound) {
+		memcpy(entry, dirp->entbuf, sizeof(struct dirent));
+	} else {
+		*result = entry;
+		*result = NULL;
+	}
+
+	int err = errno;
+	dirp->lock = 0;
+	return err ? err : 0;
+}

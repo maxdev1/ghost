@@ -21,5 +21,16 @@
 #ifndef __DESKTOP__
 #define __DESKTOP__
 
+#include <cairo/cairo.h>
+
+/**
+ * Retrives the drawing context from the canvas.
+ */
+cairo_t* get_drawing_context();
+
+/**
+ *
+ */
+void blit_canvas();
 
 #endif

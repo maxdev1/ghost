@@ -47,11 +47,8 @@
 #include "executable/elf32_loader.hpp"
 #include "memory/collections/address_range_pool.hpp"
 
-// pointer to the global ramdisk
-g_ramdisk* g_kernel_ramdisk;
-
-// pool of virtual address ranges for the kernel
-g_address_range_pool* g_kernel_virt_addr_ranges;
+g_ramdisk* g_kernel::ramdisk;
+g_address_range_pool* g_kernel::virtual_range_pool;
 
 // BSP/AP setup locks & counter
 static g_global_lock bsp_setup_lock;
@@ -95,8 +92,8 @@ void g_kernel::pre_setup(g_setup_information* info) {
 	}
 
 	// Create virtual range pool for kernel ranges
-	g_kernel_virt_addr_ranges = new g_address_range_pool();
-	g_kernel_virt_addr_ranges->initialize(G_CONST_KERNEL_VIRTUAL_RANGES_START, G_CONST_KERNEL_VIRTUAL_RANGES_END);
+	g_kernel::virtual_range_pool = new g_address_range_pool();
+	g_kernel::virtual_range_pool->initialize(G_CONST_KERNEL_VIRTUAL_RANGES_START, G_CONST_KERNEL_VIRTUAL_RANGES_END);
 
 	// Remap the ramdisk module into the kernels ranges & load the ramdisk
 	load_ramdisk(rd_module);
@@ -185,10 +182,10 @@ void g_kernel::run_ap() {
 
 	ap_setup_lock.lock();
 	{
-		#if G_LOGGING_DEBUG
+#if G_LOGGING_DEBUG
 		uint32_t core = g_system::currentProcessorId();
 		g_log_debug("%! core %i ready for initialization", "kernap", core);
-		#endif
+#endif
 
 		// Debug ESP output
 		uint32_t esp;
@@ -239,7 +236,7 @@ void g_kernel::load_system_process(const char* binary_path, g_thread_priority pr
 
 	system_process_spawn_lock.lock();
 
-	g_ramdisk_entry* entry = g_kernel_ramdisk->findAbsolute(binary_path);
+	g_ramdisk_entry* entry = g_kernel::ramdisk->findAbsolute(binary_path);
 	if (entry) {
 		g_thread* systemProcess;
 		g_elf32_spawn_status status = g_elf32_loader::spawnFromRamdisk(entry, G_SECURITY_LEVEL_KERNEL, &systemProcess, true, priority);
@@ -301,7 +298,7 @@ void g_kernel::load_ramdisk(g_multiboot_module* ramdiskModule) {
 
 	int ramdiskPages = G_PAGE_ALIGN_UP(ramdiskModule->moduleEnd - ramdiskModule->moduleStart) / G_PAGE_SIZE;
 
-	g_virtual_address ramdiskNewLocation = g_kernel_virt_addr_ranges->allocate(ramdiskPages);
+	g_virtual_address ramdiskNewLocation = g_kernel::virtual_range_pool->allocate(ramdiskPages);
 	if (ramdiskNewLocation == 0) {
 		panic("%! not enough virtual space for ramdisk remapping", "kern");
 	}
@@ -315,8 +312,8 @@ void g_kernel::load_ramdisk(g_multiboot_module* ramdiskModule) {
 	ramdiskModule->moduleEnd = ramdiskNewLocation + (ramdiskModule->moduleEnd - ramdiskModule->moduleStart);
 	ramdiskModule->moduleStart = ramdiskNewLocation;
 
-	g_kernel_ramdisk = new g_ramdisk();
-	g_kernel_ramdisk->load(ramdiskModule);
+	g_kernel::ramdisk = new g_ramdisk();
+	g_kernel::ramdisk->load(ramdiskModule);
 	g_log_info("%! ramdisk loaded", "kern");
 }
 

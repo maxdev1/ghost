@@ -35,9 +35,14 @@ void command_message_receiver_thread_t::run() {
 	size_t bufferLength = sizeof(g_message_header) + G_UI_MAXIMUM_MESSAGE_SIZE;
 	uint8_t* buffer = new uint8_t[bufferLength];
 
-	while (true) {
+	while (!stop) {
 		// receive messages
-		g_message_receive_status stat = g_receive_message(buffer, bufferLength);
+		g_message_receive_status stat = g_receive_message_tmb(buffer, bufferLength, G_MESSAGE_TRANSACTION_NONE, G_MESSAGE_RECEIVE_MODE_BLOCKING, &stop);
+
+		if (stop) {
+			break;
+		}
+
 		if (stat == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
 			g_message_header* request_message = (g_message_header*) buffer;
 

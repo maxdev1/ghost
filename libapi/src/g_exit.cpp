@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost/user.h"
+#include "__internal.h"
 
 /**
  *
@@ -27,5 +28,13 @@ void g_exit(int code) {
 	g_syscall_exit data;
 	data.code = code;
 	g_syscall(G_SYSCALL_EXIT, (uint32_t) &data);
+	__builtin_unreachable();
+}
+
+/**
+ *
+ */
+void __g_exit_thread() {
+	g_syscall(G_SYSCALL_EXIT_THREAD, 0);
 	__builtin_unreachable();
 }

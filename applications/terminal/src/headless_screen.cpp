@@ -47,7 +47,7 @@ void headless_screen_t::clean() {
 	g_atomic_lock(&lock);
 	for (uint32_t off = 0; off < SCREEN_HEIGHT * SCREEN_WIDTH * 2; off += 2) {
 		output_buffer[off] = ' ';
-		output_buffer[off + 1] = SC_DEFAULT_COLOR;
+		output_buffer[off + 1] = SC_BLACK;
 	}
 	offset = 0;
 	lock = false;
@@ -78,7 +78,7 @@ void headless_screen_t::deactivate() {
 /**
  *
  */
-void headless_screen_t::moveCursor(uint16_t x, uint16_t y) {
+void headless_screen_t::moveVisualCursor(int x, int y) {
 	g_atomic_lock(&lock);
 	uint16_t position = (y * SCREEN_WIDTH) + x;
 
@@ -92,21 +92,43 @@ void headless_screen_t::moveCursor(uint16_t x, uint16_t y) {
 /**
  *
  */
-void headless_screen_t::updateCursor() {
-	moveCursor((offset % (SCREEN_WIDTH * 2)) / 2, offset / (SCREEN_WIDTH * 2));
+void headless_screen_t::moveCursor(int x, int y) {
+
+	g_atomic_lock(&lock);
+
+	offset = (y * SCREEN_WIDTH * 2) + x * 2;
+	if (offset < 0) {
+		offset = 0;
+	} else if (offset > (SCREEN_WIDTH * 2 * SCREEN_HEIGHT)) {
+		offset = SCREEN_WIDTH * 2 * SCREEN_HEIGHT;
+	}
+
+	lock = false;
 }
 
 /**
  *
  */
-void headless_screen_t::writeChar(char c, screen_color_t color) {
+void headless_screen_t::updateCursor() {
+	moveVisualCursor((offset % (SCREEN_WIDTH * 2)) / 2,
+			offset / (SCREEN_WIDTH * 2));
+
+}
+
+/**
+ *
+ */
+void headless_screen_t::writeChar(char c) {
+	g_atomic_lock(&lock);
 	if (c == '\n') {
 		offset += SCREEN_WIDTH * 2;
 		offset -= offset % (SCREEN_WIDTH * 2);
 	} else {
 		output_current[offset++] = c;
-		output_current[offset++] = (uint8_t) color;
+		output_current[offset++] = (uint8_t) SC_COLOR(colorBackground,
+				colorForeground);
 	}
+	lock = false;
 
 	normalize();
 }
@@ -126,20 +148,10 @@ void headless_screen_t::backspace() {
 /**
  *
  */
-void headless_screen_t::write(std::string message, screen_color_t color) {
+void headless_screen_t::normalize() {
 
 	g_atomic_lock(&lock);
-	char* p = (char*) message.c_str();
-	while (*p) {
-		writeChar(*p++, color);
-	}
-	lock = false;
-}
 
-/**
- *
- */
-void headless_screen_t::normalize() {
 	if (offset >= SCREEN_WIDTH * SCREEN_HEIGHT * 2) {
 		offset -= SCREEN_WIDTH * 2;
 
@@ -151,9 +163,11 @@ void headless_screen_t::normalize() {
 
 		for (uint32_t i = 0; i < SCREEN_WIDTH * 2; i += 2) {
 			output_current[screenSize - lineBytes + i] = ' ';
-			output_current[screenSize - lineBytes + i + 1] = SC_DEFAULT_COLOR;
+			output_current[screenSize - lineBytes + i + 1] = SC_BLACK;
 		}
 	}
+
+	lock = false;
 }
 
 /**
@@ -161,4 +175,18 @@ void headless_screen_t::normalize() {
  */
 g_key_info headless_screen_t::readInput(bool* cancelCondition) {
 	return g_keyboard::readKey(cancelCondition);
+}
+
+/**
+ *
+ */
+int headless_screen_t::getCursorX() {
+	return (offset % (SCREEN_WIDTH * 2)) / 2;
+}
+
+/**
+ *
+ */
+int headless_screen_t::getCursorY() {
+	return offset / (SCREEN_WIDTH * 2);
 }

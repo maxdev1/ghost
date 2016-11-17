@@ -170,7 +170,7 @@ bool window_t::handle(event_t& event) {
 	if (mouseEvent) {
 		g_rectangle currentBounds = getBounds();
 
-		if (mouseEvent->type == MOUSE_EVENT_MOVE) {
+		if (mouseEvent->type == G_MOUSE_EVENT_MOVE) {
 			if (resizable) {
 				g_point pos = mouseEvent->position;
 				if ((pos.x < shadowSize + cornerSize / 2) && (pos.x > shadowSize - cornerSize / 2) && (pos.y < cornerSize)
@@ -210,7 +210,7 @@ bool window_t::handle(event_t& event) {
 			}
 			markFor(COMPONENT_REQUIREMENT_PAINT);
 
-		} else if (mouseEvent->type == MOUSE_EVENT_DRAG) {
+		} else if (mouseEvent->type == G_MOUSE_EVENT_DRAG) {
 			// Press on the cross
 			if (crossPressed) {
 				crossHovered = crossBounds.contains(mouseEvent->position);
@@ -290,7 +290,7 @@ bool window_t::handle(event_t& event) {
 				this->setBounds(appliedBounds);
 			}
 
-		} else if (mouseEvent->type == MOUSE_EVENT_PRESS) {
+		} else if (mouseEvent->type == G_MOUSE_EVENT_PRESS) {
 
 			// Press on the cross
 			if (crossBounds.contains(mouseEvent->position)) {
@@ -344,15 +344,15 @@ bool window_t::handle(event_t& event) {
 				}
 			}
 
-		} else if (mouseEvent->type == MOUSE_EVENT_LEAVE) {
+		} else if (mouseEvent->type == G_MOUSE_EVENT_LEAVE) {
 			cursor_t::set("default");
 
-		} else if (mouseEvent->type == MOUSE_EVENT_DRAG_RELEASE) {
+		} else if (mouseEvent->type == G_MOUSE_EVENT_DRAG_RELEASE) {
 			crossPressed = false;
 			markFor(COMPONENT_REQUIREMENT_PAINT);
 
 			if (crossBounds.contains(mouseEvent->position)) {
-				this->setVisible(false);
+				this->close();
 			}
 
 		}
@@ -365,7 +365,22 @@ bool window_t::handle(event_t& event) {
 /**
  *
  */
-bool window_t::getBoolProperty(int property, bool* out) {
+void window_t::close() {
+
+	event_listener_info_t info;
+	if (getListener(G_UI_COMPONENT_EVENT_TYPE_CLOSE, info)) {
+		g_ui_component_close_event posted_event;
+		posted_event.header.type = G_UI_COMPONENT_EVENT_TYPE_CLOSE;
+		posted_event.header.component_id = info.component_id;
+		g_send_message(info.target_thread, &posted_event, sizeof(g_ui_component_close_event));
+	}
+	setVisible(false);
+}
+
+/**
+ *
+ */
+bool window_t::getNumericProperty(int property, uint32_t* out) {
 
 	if (property == G_UI_PROPERTY_RESIZABLE) {
 		*out = resizable;
@@ -378,7 +393,7 @@ bool window_t::getBoolProperty(int property, bool* out) {
 /**
  *
  */
-bool window_t::setBoolProperty(int property, bool value) {
+bool window_t::setNumericProperty(int property, uint32_t value) {
 
 	if (property == G_UI_PROPERTY_RESIZABLE) {
 		resizable = value;

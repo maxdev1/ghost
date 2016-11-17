@@ -19,8 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost/user.h"
-#include <stdint.h>
-#include <string.h>
+#include "ghost/stdint.h"
 #include <stdarg.h>
 
 // redirect

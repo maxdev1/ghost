@@ -55,6 +55,16 @@ typedef struct {
  * 		the resulting id
  */
 typedef struct {
+	g_pid pid;
+
+	g_pid parent_pid;
+}__attribute__((packed)) g_syscall_get_parent_pid;
+
+/**
+ * @field id
+ * 		the resulting id
+ */
+typedef struct {
 	g_tid id;
 }__attribute__((packed)) g_syscall_get_tid;
 
@@ -98,10 +108,13 @@ typedef struct {
  * 		whether the atom was set, when trying only
  */
 typedef struct {
-	uint8_t* atom_1;
-	uint8_t* atom_2;
+	g_atom* atom_1;
+	g_atom* atom_2;
 	uint8_t set_on_finish :1;
-	uint8_t try_only :1;
+	uint8_t is_try :1;
+	uint8_t has_timeout :1;
+	uint64_t timeout;
+
 	uint8_t was_set :1;
 }__attribute__((packed)) g_syscall_atomic_lock;
 

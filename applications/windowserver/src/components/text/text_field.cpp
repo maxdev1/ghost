@@ -27,6 +27,7 @@
 #include <ghostuser/graphics/text/font_loader.hpp>
 #include <ghostuser/graphics/text/font_manager.hpp>
 #include <ghostuser/ui/properties.hpp>
+#include <ghostuser/ui/interface_specification.hpp>
 #include <ghostuser/utils/logger.hpp>
 #include <sstream>
 
@@ -346,17 +347,17 @@ bool text_field_t::handle(event_t& e) {
 
 	mouse_event_t* me = dynamic_cast<mouse_event_t*>(&e);
 	if (me) {
-		if (me->type == MOUSE_EVENT_ENTER) {
+		if (me->type == G_MOUSE_EVENT_ENTER) {
 			visualStatus = text_field_visual_status_t::HOVERED;
 			markFor(COMPONENT_REQUIREMENT_PAINT);
 			cursor_t::set("text");
 
-		} else if (me->type == MOUSE_EVENT_LEAVE) {
+		} else if (me->type == G_MOUSE_EVENT_LEAVE) {
 			visualStatus = text_field_visual_status_t::NORMAL;
 			markFor(COMPONENT_REQUIREMENT_PAINT);
 			cursor_t::set("default");
 
-		} else if (me->type == MOUSE_EVENT_PRESS) {
+		} else if (me->type == G_MOUSE_EVENT_PRESS) {
 
 			g_point p = me->position;
 			int clickCursor = viewToPosition(p);
@@ -378,7 +379,7 @@ bool text_field_t::handle(event_t& e) {
 
 			markFor(COMPONENT_REQUIREMENT_PAINT);
 
-		} else if (me->type == MOUSE_EVENT_DRAG) {
+		} else if (me->type == G_MOUSE_EVENT_DRAG) {
 			g_point p = me->position;
 			cursor = viewToPosition(p);
 			markFor(COMPONENT_REQUIREMENT_PAINT);
@@ -448,7 +449,7 @@ g_range text_field_t::getSelectedRange() {
 /**
  *
  */
-bool text_field_t::getBoolProperty(int property, bool* out) {
+bool text_field_t::getNumericProperty(int property, uint32_t* out) {
 
 	if (property == G_UI_PROPERTY_SECURE) {
 		*out = secure;
@@ -461,7 +462,7 @@ bool text_field_t::getBoolProperty(int property, bool* out) {
 /**
  *
  */
-bool text_field_t::setBoolProperty(int property, bool value) {
+bool text_field_t::setNumericProperty(int property, uint32_t value) {
 
 	if (property == G_UI_PROPERTY_SECURE) {
 		secure = value;

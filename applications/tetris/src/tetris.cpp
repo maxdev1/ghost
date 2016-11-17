@@ -10,6 +10,7 @@
 #include <ghostuser/ui/textfield.hpp>
 #include <iostream>
 #include <math.h>
+#include <cairo/cairo.h>
 
 /**
  * This example application creates a window with a canvas and draws one of the
@@ -40,7 +41,7 @@ int main(int argc, char** argv) {
 
 	// Variables for our surface
 	cairo_surface_t* surface = 0;
-	g_color_argb* surfaceBuffer = 0;
+	uint8_t* surfaceBuffer = 0;
 
 	while (true) {
 		// Resize canvas when window is resized

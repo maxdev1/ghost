@@ -26,13 +26,6 @@
 /**
  *
  */
-g_canvas::~g_canvas() {
-	delete graphics;
-}
-
-/**
- *
- */
 g_canvas_buffer_info g_canvas::getBuffer() {
 
 	g_canvas_buffer_info info;
@@ -63,11 +56,10 @@ g_canvas_buffer_info g_canvas::getBuffer() {
 
 	} else {
 		// return buffer
-		info.buffer = (g_color_argb*) (currentBuffer + sizeof(g_ui_canvas_shared_memory_header));
+		info.buffer = (uint8_t*) (currentBuffer + G_UI_CANVAS_SHARED_MEMORY_HEADER_SIZE);
 		g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer;
 		info.width = header->paintable_width;
 		info.height = header->paintable_height;
-
 	}
 	return info;
 }
@@ -115,6 +107,7 @@ void g_canvas::blit(g_rectangle rect) {
 	header->blit_y = rect.y;
 	header->blit_width = rect.width;
 	header->blit_height = rect.height;
+	header->ready = true;
 
 	// send blit message
 	g_message_transaction tx = g_get_message_tx_id();

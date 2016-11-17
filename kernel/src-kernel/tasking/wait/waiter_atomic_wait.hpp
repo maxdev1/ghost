@@ -29,17 +29,26 @@
  */
 class g_waiter_atomic_wait: public g_waiter {
 private:
-	uint8_t* atom_1;
-	uint8_t* atom_2;
-	bool set_on_finish;
+	g_syscall_atomic_lock* data;
+
+	g_scheduler* timing_scheduler = 0;
+	uint64_t time_start = 0;
 
 public:
 
 	/**
 	 *
 	 */
-	g_waiter_atomic_wait(uint8_t* atom_1, uint8_t* atom_2, bool set_on_finish) :
-			atom_1(atom_1), atom_2(atom_2), set_on_finish(set_on_finish) {
+	g_waiter_atomic_wait(g_syscall_atomic_lock* data) :
+			data(data) {
+	}
+
+	/**
+	 *
+	 */
+	g_waiter_atomic_wait(g_syscall_atomic_lock* data, g_scheduler* timing_scheduler) :
+			data(data), timing_scheduler(timing_scheduler) {
+		time_start = timing_scheduler->getMilliseconds();
 	}
 
 	/**
@@ -47,17 +56,24 @@ public:
 	 */
 	virtual bool checkWaiting(g_thread* task) {
 
-		bool keepWaiting = *atom_1 && (!atom_2 || *atom_2);
-
-		// once waiting is finished, set the atom if required
-		if (!keepWaiting && set_on_finish) {
-			*atom_1 = true;
-			if (atom_2) {
-				*atom_2 = true;
-			}
+		// check timeout first
+		if (data->has_timeout && (timing_scheduler->getMilliseconds() - time_start > data->timeout)) {
+			// timeout exceeded
+			return false;
 		}
 
-		return keepWaiting;
+		// once waiting is finished, set the atom if required
+		bool keep_wait = *data->atom_1 && (!data->atom_2 || *data->atom_2);
+
+		if (!keep_wait && data->set_on_finish) {
+			*data->atom_1 = true;
+			if (data->atom_2) {
+				*data->atom_2 = true;
+			}
+			data->was_set = true;
+		}
+
+		return keep_wait;
 	}
 
 	/**

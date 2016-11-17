@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <ghost/memory.h>
+#include <string.h>
 #include <components/canvas.hpp>
 
 /**
@@ -55,7 +56,7 @@ void canvas_t::checkBuffer() {
 
 	// calculate how many pages we need for the shared area
 	g_rectangle bounds = getBounds();
-	uint32_t requiredSize = sizeof(g_ui_canvas_shared_memory_header) + cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, bounds.height) * bounds.width;
+	uint32_t requiredSize = G_UI_CANVAS_SHARED_MEMORY_HEADER_SIZE + cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, bounds.width) * bounds.height;
 	uint16_t requiredPages = G_PAGE_ALIGN_UP(requiredSize) / G_PAGE_SIZE;
 
 	// if next buffer not yet acknowledged, ask client to acknowledge it
@@ -65,10 +66,17 @@ void canvas_t::checkBuffer() {
 		// send event again
 		requestClientToAcknowledgeNewBuffer();
 
-		// if there is no buffer or there is an acknowledged one that is not sufficient, create a new one
-	} else if (currentBuffer.localMapping == nullptr || (currentBuffer.acknowledged && currentBuffer.pages < requiredPages)) {
+		// if there is no buffer yet, create one
+	} else if (currentBuffer.localMapping == nullptr) {
 		createNewBuffer(requiredPages);
 
+		// if current buffer is acknowledged but too small, create a new one
+	} else if (currentBuffer.acknowledged) {
+
+		g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer.localMapping;
+		if (header->paintable_width < bounds.width || header->paintable_height < bounds.height) {
+			createNewBuffer(requiredPages);
+		}
 	}
 
 }
@@ -109,6 +117,7 @@ void canvas_t::createNewBuffer(uint16_t requiredPages) {
 	header->blit_y = 0;
 	header->blit_width = 0;
 	header->blit_height = 0;
+	header->ready = false;
 
 	requestClientToAcknowledgeNewBuffer();
 }
@@ -147,6 +156,9 @@ void canvas_t::clientHasAcknowledgedCurrentBuffer() {
 	currentBuffer.acknowledged = true;
 	nextBuffer.localMapping = 0;
 
+	g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer.localMapping;
+	header->ready = false;
+
 	// if the window was resized during an un-acknowledged state, we must now create a new buffer
 	if (mustCheckAgain) {
 		mustCheckAgain = false;
@@ -161,25 +173,30 @@ void canvas_t::clientHasAcknowledgedCurrentBuffer() {
 void canvas_t::paint() {
 
 	auto bounds = getBounds();
-
 	auto cr = graphics.getContext();
 
 	// there muts be a buffer that is acknowledged
 	if (currentBuffer.localMapping != 0 && currentBuffer.acknowledged) {
 
-		// make background empty
-		clearSurface();
-
-		// create a cairo surface from the buffer
 		g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer.localMapping;
-		uint8_t* bufferContent = (uint8_t*) (currentBuffer.localMapping + sizeof(g_ui_canvas_shared_memory_header));
-		cairo_surface_t* bufferSurface = cairo_image_surface_create_for_data(bufferContent, CAIRO_FORMAT_ARGB32, header->paintable_width,
-				header->paintable_height, cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, header->paintable_width));
-		cairo_set_source_surface(cr, bufferSurface, 0, 0);
-		cairo_paint(cr);
 
-		// mark painted area as dirty
-		markDirty(g_rectangle(header->blit_x, header->blit_y, header->blit_width, header->blit_height));
+		if (header->ready) {
+			header->ready = false;
+
+			// make background empty
+			clearSurface();
+
+			// create a cairo surface from the buffer
+			uint8_t* bufferContent = (uint8_t*) (currentBuffer.localMapping + G_UI_CANVAS_SHARED_MEMORY_HEADER_SIZE);
+			cairo_surface_t* bufferSurface = cairo_image_surface_create_for_data(bufferContent, CAIRO_FORMAT_ARGB32, header->paintable_width,
+					header->paintable_height, cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, header->paintable_width));
+			cairo_set_source_surface(cr, bufferSurface, 0, 0);
+			cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+			cairo_paint(cr);
+
+			// mark painted area as dirty
+			markDirty(g_rectangle(header->blit_x, header->blit_y, header->blit_width, header->blit_height));
+		}
 	}
 }
 
@@ -187,5 +204,6 @@ void canvas_t::paint() {
  *
  */
 void canvas_t::blit() {
+
 	markFor(COMPONENT_REQUIREMENT_PAINT);
 }

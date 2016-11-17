@@ -35,6 +35,7 @@ struct standard_out_thread_data_t {
 	bool err;
 	g_fd stdout_read_end;
 	screen_t* screen;
+	terminal_t* terminal;
 };
 
 /**

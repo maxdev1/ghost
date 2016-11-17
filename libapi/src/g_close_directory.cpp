@@ -19,8 +19,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost.h"
+#include "ghost/malloc.h"
 #include <stdarg.h>
-#include <malloc.h>
 
 /**
  *

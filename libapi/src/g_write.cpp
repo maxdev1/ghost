@@ -19,8 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost/user.h"
-#include <stdint.h>
-#include <string.h>
+#include "ghost/stdint.h"
 
 // redirect
 int32_t g_write(g_fd file, const void* buffer, uint64_t length) {

@@ -23,6 +23,7 @@
 
 #include <ghost.h>
 #include <ghostuser/graphics/metrics/rectangle.hpp>
+#include <ghostuser/graphics/metrics/dimension.hpp>
 #include <ghostuser/io/keyboard.hpp>
 
 /**
@@ -65,12 +66,13 @@ const g_ui_protocol_command_id G_UI_PROTOCOL_GET_TITLE = 5;
 const g_ui_protocol_command_id G_UI_PROTOCOL_SET_BOUNDS = 6;
 const g_ui_protocol_command_id G_UI_PROTOCOL_SET_VISIBLE = 7;
 const g_ui_protocol_command_id G_UI_PROTOCOL_SET_LISTENER = 8;
-const g_ui_protocol_command_id G_UI_PROTOCOL_SET_BOOL_PROPERTY = 9;
-const g_ui_protocol_command_id G_UI_PROTOCOL_GET_BOOL_PROPERTY = 10;
+const g_ui_protocol_command_id G_UI_PROTOCOL_SET_NUMERIC_PROPERTY = 9;
+const g_ui_protocol_command_id G_UI_PROTOCOL_GET_NUMERIC_PROPERTY = 10;
 const g_ui_protocol_command_id G_UI_PROTOCOL_CANVAS_ACK_BUFFER_REQUEST = 11;
 const g_ui_protocol_command_id G_UI_PROTOCOL_GET_BOUNDS = 12;
 const g_ui_protocol_command_id G_UI_PROTOCOL_CANVAS_BLIT = 13;
 const g_ui_protocol_command_id G_UI_PROTOCOL_REGISTER_DESKTOP_CANVAS = 14;
+const g_ui_protocol_command_id G_UI_PROTOCOL_GET_SCREEN_DIMENSION = 15;
 
 /**
  * Common status for requests
@@ -98,6 +100,15 @@ const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_BOUNDS = 1;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_CANVAS_WFA = 2; // "wait for acknowledge"-event
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_KEY = 3;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_FOCUS = 4;
+const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_MOUSE = 5;
+const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_CLOSE = 6;
+
+/**
+ *
+ */
+typedef uint8_t g_ui_layout_manager;
+#define G_UI_LAYOUT_MANAGER_GRID		((g_ui_layout_manager) 0)
+#define G_UI_LAYOUT_MANAGER_FLOW		((g_ui_layout_manager) 1)
 
 /**
  *
@@ -231,34 +242,34 @@ typedef struct {
 }__attribute__((packed)) g_ui_component_get_title_response;
 
 /**
- * Request/response for getting a bool property
+ * Request/response for getting a numeric property
  */
 typedef struct {
 	g_ui_message_header header;
 	g_ui_component_id id;
 	int property;
-}__attribute__((packed)) g_ui_component_get_bool_property_request;
+}__attribute__((packed)) g_ui_component_get_numeric_property_request;
 
 typedef struct {
 	g_ui_message_header header;
 	g_ui_protocol_status status;
-	uint8_t value;
-}__attribute__((packed)) g_ui_component_get_bool_property_response;
+	uint32_t value;
+}__attribute__((packed)) g_ui_component_get_numeric_property_response;
 
 /**
- * Request/response for setting a bool property
+ * Request/response for setting a numeric property
  */
 typedef struct {
 	g_ui_message_header header;
 	g_ui_component_id id;
 	int property;
-	uint8_t value;
-}__attribute__((packed)) g_ui_component_set_bool_property_request;
+	uint32_t value;
+}__attribute__((packed)) g_ui_component_set_numeric_property_request;
 
 typedef struct {
 	g_ui_message_header header;
 	g_ui_protocol_status status;
-}__attribute__((packed)) g_ui_component_set_bool_property_response;
+}__attribute__((packed)) g_ui_component_set_numeric_property_response;
 
 /**
  * Request/response for acknowledging the buffer update of a canvas/blitting the canvas
@@ -302,6 +313,18 @@ typedef struct {
 }__attribute__((packed)) g_ui_component_set_listener_response;
 
 /**
+ * Retrieve screen size
+ */
+typedef struct {
+	g_ui_message_header header;
+}__attribute__((packed)) g_ui_get_screen_dimension_request;
+
+typedef struct {
+	g_ui_message_header header;
+	g_dimension size;
+}__attribute__((packed)) g_ui_get_screen_dimension_response;
+
+/**
  * Event structures
  */
 typedef struct {
@@ -334,6 +357,36 @@ typedef struct {
 	uint8_t now_focused;
 }__attribute__((packed)) g_ui_component_focus_event;
 
+typedef struct {
+	g_ui_component_event_header header;
+}__attribute__((packed)) g_ui_component_close_event;
+
+/**
+ * Mouse events
+ */
+typedef uint8_t g_mouse_button;
+#define G_MOUSE_BUTTON_NONE		((g_mouse_button) 0x0)
+#define G_MOUSE_BUTTON_1		((g_mouse_button) 0x1)
+#define G_MOUSE_BUTTON_2		((g_mouse_button) 0x2)
+#define G_MOUSE_BUTTON_3		((g_mouse_button) 0x4)
+
+typedef uint8_t g_mouse_event_type;
+#define G_MOUSE_EVENT_NONE			((g_mouse_event_type) 0)
+#define G_MOUSE_EVENT_MOVE			((g_mouse_event_type) 1)
+#define G_MOUSE_EVENT_PRESS			((g_mouse_event_type) 2)
+#define G_MOUSE_EVENT_RELEASE		((g_mouse_event_type) 3)
+#define G_MOUSE_EVENT_DRAG_RELEASE	((g_mouse_event_type) 4)
+#define G_MOUSE_EVENT_DRAG			((g_mouse_event_type) 5)
+#define G_MOUSE_EVENT_ENTER			((g_mouse_event_type) 6)
+#define G_MOUSE_EVENT_LEAVE			((g_mouse_event_type) 7)
+
+typedef struct {
+	g_ui_component_event_header header;
+	g_point position;
+	g_mouse_event_type type;
+	g_mouse_button buttons;
+}__attribute__((packed)) g_ui_component_mouse_event;
+
 /**
  * Canvas shared memory header
  */
@@ -344,6 +397,13 @@ typedef struct {
 	uint16_t blit_y;
 	uint16_t blit_width;
 	uint16_t blit_height;
+	g_bool ready;
 }__attribute__((packed)) g_ui_canvas_shared_memory_header;
+
+/**
+ * Cairo requires the canvas memory buffer to be aligned. This constant must be used to calculate
+ * the address for the canvas buffer in the canvas shared memory.
+ */
+#define G_UI_CANVAS_SHARED_MEMORY_HEADER_SIZE	((sizeof(g_ui_canvas_shared_memory_header) - sizeof(g_ui_canvas_shared_memory_header) % sizeof(g_address)) + sizeof(g_address))
 
 #endif

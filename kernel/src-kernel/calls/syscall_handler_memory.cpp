@@ -109,7 +109,7 @@ G_SYSCALL_HANDLER(alloc_mem) {
  */
 G_SYSCALL_HANDLER(share_mem) {
 
-	g_process* process = current_thread->process;
+	G_IF_LOG_WARN(g_process* process = current_thread->process);
 
 	g_syscall_share_mem* data = (g_syscall_share_mem*) G_SYSCALL_DATA(current_thread->cpuState);
 	data->virtualAddress = 0;

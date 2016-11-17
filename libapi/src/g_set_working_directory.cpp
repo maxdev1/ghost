@@ -24,7 +24,7 @@
  *
  */
 g_set_working_directory_status g_set_working_directory(const char* path) {
-	g_set_working_directory_p(path, 0);
+	return g_set_working_directory_p(path, 0);
 }
 
 /**

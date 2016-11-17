@@ -63,12 +63,12 @@ public:
 	/**
 	 *
 	 */
-	virtual bool getBoolProperty(int property, bool* out);
+	virtual bool getNumericProperty(int property, uint32_t* out);
 
 	/**
 	 *
 	 */
-	virtual bool setBoolProperty(int property, bool value);
+	virtual bool setNumericProperty(int property, uint32_t value);
 
 };
 

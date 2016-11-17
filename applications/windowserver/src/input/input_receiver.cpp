@@ -78,15 +78,15 @@ void input_receiver_t::startReceiveMouseEvents() {
 			cursor_t::nextPosition.y = resolution.height - 2;
 		}
 
-		cursor_t::nextPressedButtons = MOUSE_BUTTON_NONE;
+		cursor_t::nextPressedButtons = G_MOUSE_BUTTON_NONE;
 		if (info.button1) {
-			cursor_t::nextPressedButtons |= MOUSE_BUTTON_1;
+			cursor_t::nextPressedButtons |= G_MOUSE_BUTTON_1;
 		}
 		if (info.button2) {
-			cursor_t::nextPressedButtons |= MOUSE_BUTTON_2;
+			cursor_t::nextPressedButtons |= G_MOUSE_BUTTON_2;
 		}
 		if (info.button3) {
-			cursor_t::nextPressedButtons |= MOUSE_BUTTON_3;
+			cursor_t::nextPressedButtons |= G_MOUSE_BUTTON_3;
 		}
 
 		windowserver_t::instance()->triggerRender();

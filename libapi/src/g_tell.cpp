@@ -19,8 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost/user.h"
-#include <stdint.h>
-#include <string.h>
+#include "ghost/stdint.h"
 
 // redirect
 int64_t g_tell(g_fd fd) {

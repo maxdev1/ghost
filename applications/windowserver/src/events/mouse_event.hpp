@@ -23,22 +23,7 @@
 
 #include <events/event.hpp>
 #include <events/locatable.hpp>
-
-/**
- *
- */
-typedef uint8_t mouse_button_t;
-#define MOUSE_BUTTON_NONE	0x0
-#define MOUSE_BUTTON_1		0x1
-#define MOUSE_BUTTON_2		0x2
-#define MOUSE_BUTTON_3		0x4
-
-/**
- *
- */
-enum mouse_event_type_t {
-	MOUSE_EVENT_NONE, MOUSE_EVENT_MOVE, MOUSE_EVENT_PRESS, MOUSE_EVENT_RELEASE, MOUSE_EVENT_DRAG_RELEASE, MOUSE_EVENT_DRAG, MOUSE_EVENT_ENTER, MOUSE_EVENT_LEAVE
-};
+#include <ghostuser/ui/interface_specification.hpp>
 
 /**
  *
@@ -46,11 +31,11 @@ enum mouse_event_type_t {
 class mouse_event_t: public event_t, public locatable_t {
 public:
 	mouse_event_t() :
-			type(MOUSE_EVENT_NONE), buttons(MOUSE_BUTTON_NONE), clickCount(1) {
+			type(G_MOUSE_EVENT_NONE), buttons(G_MOUSE_BUTTON_NONE), clickCount(1) {
 	}
 
-	mouse_event_type_t type;
-	mouse_button_t buttons;
+	g_mouse_event_type type;
+	g_mouse_button buttons;
 	int clickCount;
 };
 

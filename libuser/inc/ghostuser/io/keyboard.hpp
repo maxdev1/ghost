@@ -94,7 +94,7 @@ private:
 public:
 	static g_key_info readKey(bool* break_condition = nullptr);
 
-	static g_key_info keyForScancode(uint8_t scancode);
+	static bool keyForScancode(uint8_t scancode, g_key_info* out);
 	static char charForKey(g_key_info info);
 	static g_key_info fullKeyInfo(g_key_info_basic basic);
 

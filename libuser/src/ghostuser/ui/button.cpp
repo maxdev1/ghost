@@ -34,14 +34,14 @@ g_button* g_button::create() {
  *
  */
 void g_button::setEnabled(bool enabled) {
-	g_component::setBoolProperty(G_UI_PROPERTY_ENABLED, enabled);
+	g_component::setNumericProperty(G_UI_PROPERTY_ENABLED, enabled);
 }
 
 /**
  *
  */
 bool g_button::isEnabled() {
-	bool enabled;
-	g_component::getBoolProperty(G_UI_PROPERTY_ENABLED, &enabled);
-	return enabled;
+	uint32_t value;
+	g_component::getNumericProperty(G_UI_PROPERTY_ENABLED, &value);
+	return value;
 }

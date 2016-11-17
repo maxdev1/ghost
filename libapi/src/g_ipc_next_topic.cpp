@@ -19,10 +19,9 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost/user.h"
-#include <stdint.h>
-#include <string.h>
+#include "ghost/stdint.h"
 
-static uint8_t __next_transaction_lock = false;
+static g_atom __next_transaction_lock = false;
 static g_message_transaction __next_transaction = G_MESSAGE_TRANSACTION_FIRST;
 
 /**

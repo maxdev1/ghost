@@ -85,6 +85,11 @@ size_t strftime(char *, size_t, const char*, const struct tm *);
 /**
  *
  */
+char* strptime(const char* buf, const char* format, struct tm* tm);
+
+/**
+ *
+ */
 struct tm* gmtime(const time_t *);
 
 /**

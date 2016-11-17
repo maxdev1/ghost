@@ -46,9 +46,9 @@ private:
 	g_canvas* canvas;
 
 	cairo_surface_t* existingSurface = 0;
-	g_color_argb* existingSurfaceBuffer = 0;
+	uint8_t* existingSurfaceBuffer = 0;
 	g_dimension bufferSize;
-	cairo_t* existingContext;
+	cairo_t* existingContext = 0;
 
 	g_layouted_text* viewModel;
 	g_font* font;
@@ -69,9 +69,11 @@ public:
 	void activate();
 
 	void backspace();
-	void write(std::string message, screen_color_t color = SC_DEFAULT_COLOR);
-	void writeChar(char c, screen_color_t color = SC_DEFAULT_COLOR);
+	void writeChar(char c);
 	void updateCursor();
+	void moveCursor(int x, int y);
+	int getCursorX();
+	int getCursorY();
 
 	g_key_info readInput(bool* cancelCondition);
 

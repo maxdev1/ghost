@@ -27,8 +27,6 @@
  */
 void* memcpy(void* dest, const void* src, size_t num) {
 
-	__G_DEBUG_TRACE(memcpy);
-
 	uint8_t* src_8 = (uint8_t*) src;
 	uint8_t* dest_8 = (uint8_t*) dest;
 	while (num--) {

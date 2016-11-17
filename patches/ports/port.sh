@@ -1,6 +1,8 @@
 #!/bin/bash
 
+echo ""
 echo "ghost-port"
+echo "=========="
 
 PACKAGE="$1"
 BUILD_ROOT="build"
@@ -9,22 +11,38 @@ HOST=i686-ghost
 PREFIX=/system
 REQUIRES_INSTALL_IN_SOURCE_DIR=0
 
-echo "> building package '$PACKAGE'"
-
-# checks if a tool is available
-requireTool() {
-	if ! hash $1 2>/dev/null; then
-		echo "! missing required tool: '$1'"
-		exit 1
-	fi
-}
 
 # quit on failure
 fail() {
 	echo "! $1"
+	echo
+	echo "(Use \"$0 --help\" for more information)"
 	exit 1
 }
 
+# check package parameter
+if [ "$PACKAGE" = "--help" ]; then
+	echo ""
+	echo "This script has the ability to automatically download, patch, configure and"
+	echo "build libraries for the Ghost OS."
+	echo ""
+	echo "To install a port, specify the name and version to install, for example:"
+	echo ""
+	echo "   $0 zlib/1.2.8"
+	echo ""
+	exit
+elif [ "$PACKAGE" = "" ]; then
+	fail "please supply a package to install"
+fi
+
+echo "> building package \"$PACKAGE\""
+
+# checks if a tool is available
+requireTool() {
+	if ! hash $1 2>/dev/null; then
+		fail "! missing required tool: '$1'"
+	fi
+}
 
 # check if package parameter was given
 if [ -z "$PACKAGE" ]; then

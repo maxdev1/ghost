@@ -25,6 +25,7 @@
 #include <events/mouse_event.hpp>
 #include <ghostuser/graphics/text/text_alignment.hpp>
 #include <ghostuser/ui/properties.hpp>
+#include <ghostuser/ui/interface_specification.hpp>
 #include <ghostuser/utils/Logger.hpp>
 #include <math.h>
 
@@ -107,23 +108,23 @@ bool button_t::handle(event_t& e) {
 	mouse_event_t* me = dynamic_cast<mouse_event_t*>(&e);
 	if (me) {
 		if (enabled) {
-			if (me->type == MOUSE_EVENT_ENTER) {
+			if (me->type == G_MOUSE_EVENT_ENTER) {
 				state.hovered = true;
 				markFor(COMPONENT_REQUIREMENT_PAINT);
 
-			} else if (me->type == MOUSE_EVENT_LEAVE) {
+			} else if (me->type == G_MOUSE_EVENT_LEAVE) {
 				state.hovered = false;
 				markFor(COMPONENT_REQUIREMENT_PAINT);
 
-			} else if (me->type == MOUSE_EVENT_PRESS) {
+			} else if (me->type == G_MOUSE_EVENT_PRESS) {
 				state.pressed = true;
 				markFor(COMPONENT_REQUIREMENT_PAINT);
 
-			} else if (me->type == MOUSE_EVENT_RELEASE || me->type == MOUSE_EVENT_DRAG_RELEASE) {
+			} else if (me->type == G_MOUSE_EVENT_RELEASE || me->type == G_MOUSE_EVENT_DRAG_RELEASE) {
 				state.pressed = false;
 				markFor(COMPONENT_REQUIREMENT_PAINT);
 
-				if (me->type == MOUSE_EVENT_RELEASE) {
+				if (me->type == G_MOUSE_EVENT_RELEASE) {
 					if (me->position.x >= 0 && me->position.y >= 0 && me->position.x < getBounds().width && me->position.y < getBounds().height) {
 						fireAction();
 					}
@@ -178,7 +179,7 @@ std::string button_t::getTitle() {
 /**
  *
  */
-bool button_t::getBoolProperty(int property, bool* out) {
+bool button_t::getNumericProperty(int property, uint32_t* out) {
 
 	if (property == G_UI_PROPERTY_ENABLED) {
 		*out = enabled;
@@ -191,7 +192,7 @@ bool button_t::getBoolProperty(int property, bool* out) {
 /**
  *
  */
-bool button_t::setBoolProperty(int property, bool value) {
+bool button_t::setNumericProperty(int property, uint32_t value) {
 
 	if (property == G_UI_PROPERTY_ENABLED) {
 		enabled = value;

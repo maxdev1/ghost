@@ -45,9 +45,10 @@ typedef uint32_t mode_t;
 #define S_IRUSR 0400
 #define S_IRWXU 0700
 
-// TODO
+// TODO dummy macros
 #define S_ISREG(mode)	1
 #define S_ISDIR(mode)	0
+#define S_ISLNK(mode)	0
 
 struct stat {
 	dev_t st_dev;

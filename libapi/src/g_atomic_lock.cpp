@@ -19,22 +19,32 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost/user.h"
+#include "__internal.h"
 
 /**
  *
  */
-void g_atomic_lock(uint8_t* atom) {
-	g_atomic_lock_dual(atom, 0);
+void g_atomic_lock(g_atom* atom) {
+	__g_atomic_lock(atom, nullptr, true, false, false, 0);
 }
 
 /**
  *
  */
-void g_atomic_lock_dual(uint8_t* atom_1, uint8_t* atom_2) {
-	g_syscall_atomic_lock data;
-	data.atom_1 = atom_1;
-	data.atom_2 = atom_2;
-	data.set_on_finish = true;
-	data.try_only = false;
-	g_syscall(G_SYSCALL_ATOMIC_LOCK, (uint32_t) &data);
+void g_atomic_lock_dual(g_atom* atom_1, g_atom* atom_2) {
+	__g_atomic_lock(atom_1, atom_2, true, false, false, 0);
+}
+
+/**
+ *
+ */
+g_bool g_atomic_lock_to(g_atom* atom, uint64_t timeout) {
+	return __g_atomic_lock(atom, nullptr, true, false, true, timeout);
+}
+
+/**
+ *
+ */
+g_bool g_atomic_lock_dual_to(g_atom* atom_1, g_atom* atom_2, uint64_t timeout) {
+	return __g_atomic_lock(atom_1, atom_2, true, false, true, timeout);
 }

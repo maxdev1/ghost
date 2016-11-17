@@ -19,7 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost/user.h"
-#include <string.h>
 
 /**
  *
@@ -28,7 +27,15 @@ void g_ramdisk_info(int node, g_ramdisk_entry_info* out) {
 	g_syscall_ramdisk_info data;
 	data.nodeId = node;
 	g_syscall(G_SYSCALL_RAMDISK_INFO, (uint32_t) &data);
+
+	// copy name
+	char* src = data.name;
+	char* dest = out->name;
+	while (*src) {
+		*dest++ = *src++;
+	}
+	*dest = 0;
+
 	out->length = data.length;
-	strcpy((char*) out->name, (char*) data.name);
 	out->type = data.type;
 }

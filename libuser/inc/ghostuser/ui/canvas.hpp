@@ -22,15 +22,15 @@
 #define GHOSTLIBRARY_UI_CANVAS
 
 #include <ghostuser/ui/component.hpp>
-#include <ghostuser/graphics/graphics.hpp>
 #include <ghostuser/ui/canvas_buffer_listener.hpp>
+#include <ghostuser/graphics/color_argb.hpp>
 #include <cstdint>
 
 /**
  *
  */
 struct g_canvas_buffer_info {
-	g_color_argb* buffer;
+	uint8_t* buffer;
 	uint16_t width;
 	uint16_t height;
 };
@@ -40,7 +40,6 @@ struct g_canvas_buffer_info {
  */
 class g_canvas: public g_component {
 protected:
-	g_graphics* graphics;
 	g_address currentBuffer;
 	g_address nextBuffer;
 
@@ -51,10 +50,8 @@ protected:
 	g_canvas_buffer_listener* userListener;
 
 	g_canvas(uint32_t id) :
-			graphics(0), g_component(id), currentBuffer(0), nextBuffer(0), userListener(0) {
+			g_component(id), currentBuffer(0), nextBuffer(0), userListener(0) {
 	}
-
-	~g_canvas();
 
 public:
 	static g_canvas* create();

@@ -140,7 +140,7 @@ void event_processor_t::process_command(g_tid sender_tid, g_ui_message_header* r
 
 		// register the component
 		if (component != 0) {
-			component_id = component_registry_t::add(component);
+			component_id = component_registry_t::add(g_get_pid_for_tid(sender_tid), component);
 
 			// apply default properties
 			component->setBounds(g_rectangle(100, 100, 200, 80));
@@ -237,16 +237,16 @@ void event_processor_t::process_command(g_tid sender_tid, g_ui_message_header* r
 		response_out.message = response;
 		response_out.length = sizeof(g_ui_component_set_listener_response);
 
-	} else if (request_header->id == G_UI_PROTOCOL_SET_BOOL_PROPERTY) {
-		g_ui_component_set_bool_property_request* request = (g_ui_component_set_bool_property_request*) request_header;
+	} else if (request_header->id == G_UI_PROTOCOL_SET_NUMERIC_PROPERTY) {
+		g_ui_component_set_numeric_property_request* request = (g_ui_component_set_numeric_property_request*) request_header;
 		component_t* component = component_registry_t::get(request->id);
 
 		// create response message
-		g_ui_component_set_bool_property_response* response = new g_ui_component_set_bool_property_response;
+		g_ui_component_set_numeric_property_response* response = new g_ui_component_set_numeric_property_response;
 		if (component == 0) {
 			response->status = G_UI_PROTOCOL_FAIL;
 		} else {
-			if (component->setBoolProperty(request->property, (bool) request->value)) {
+			if (component->setNumericProperty(request->property, (bool) request->value)) {
 				response->status = G_UI_PROTOCOL_SUCCESS;
 			} else {
 				response->status = G_UI_PROTOCOL_FAIL;
@@ -254,19 +254,19 @@ void event_processor_t::process_command(g_tid sender_tid, g_ui_message_header* r
 		}
 
 		response_out.message = response;
-		response_out.length = sizeof(g_ui_component_set_bool_property_response);
+		response_out.length = sizeof(g_ui_component_set_numeric_property_response);
 
-	} else if (request_header->id == G_UI_PROTOCOL_GET_BOOL_PROPERTY) {
-		g_ui_component_get_bool_property_request* request = (g_ui_component_get_bool_property_request*) request_header;
+	} else if (request_header->id == G_UI_PROTOCOL_GET_NUMERIC_PROPERTY) {
+		g_ui_component_get_numeric_property_request* request = (g_ui_component_get_numeric_property_request*) request_header;
 		component_t* component = component_registry_t::get(request->id);
 
 		// create response message
-		g_ui_component_get_bool_property_response* response = new g_ui_component_get_bool_property_response;
+		g_ui_component_get_numeric_property_response* response = new g_ui_component_get_numeric_property_response;
 		if (component == 0) {
 			response->status = G_UI_PROTOCOL_FAIL;
 		} else {
-			bool out;
-			if (component->getBoolProperty(request->property, &out)) {
+			uint32_t out;
+			if (component->getNumericProperty(request->property, &out)) {
 				response->value = out;
 				response->status = G_UI_PROTOCOL_SUCCESS;
 			} else {
@@ -275,7 +275,7 @@ void event_processor_t::process_command(g_tid sender_tid, g_ui_message_header* r
 		}
 
 		response_out.message = response;
-		response_out.length = sizeof(g_ui_component_get_bool_property_response);
+		response_out.length = sizeof(g_ui_component_get_numeric_property_response);
 
 	} else if (request_header->id == G_UI_PROTOCOL_SET_TITLE) {
 		g_ui_component_set_title_request* request = (g_ui_component_set_title_request*) request_header;
@@ -357,6 +357,8 @@ void event_processor_t::process_command(g_tid sender_tid, g_ui_message_header* r
 			response->status = G_UI_PROTOCOL_SUCCESS;
 
 			canvas_t* canvas = (canvas_t*) component;
+			canvas->setZIndex(1);
+
 			screen_t* screen = windowserver_t::instance()->screen;
 			screen->addChild(canvas);
 			canvas->setBounds(screen->getBounds());
@@ -364,6 +366,15 @@ void event_processor_t::process_command(g_tid sender_tid, g_ui_message_header* r
 
 		response_out.message = response;
 		response_out.length = sizeof(g_ui_register_desktop_canvas_response);
+
+	} else if (request_header->id == G_UI_PROTOCOL_GET_SCREEN_DIMENSION) {
+		g_ui_get_screen_dimension_request* request = (g_ui_get_screen_dimension_request*) request_header;
+
+		g_ui_get_screen_dimension_response* response = new g_ui_get_screen_dimension_response;
+		response->size = windowserver_t::instance()->screen->getBounds().getSize();
+
+		response_out.message = response;
+		response_out.length = sizeof(g_ui_get_screen_dimension_response);
 	}
 
 }
@@ -387,7 +398,7 @@ void event_processor_t::translateKeyEvent(g_key_info& info) {
 void event_processor_t::processMouseState() {
 
 	g_point previousPosition = cursor_t::position;
-	mouse_button_t previousPressedButtons = cursor_t::pressedButtons;
+	g_mouse_button previousPressedButtons = cursor_t::pressedButtons;
 
 	g_dimension resolution = windowserver_t::instance()->video_output->getResolution();
 	windowserver_t* instance = windowserver_t::instance();
@@ -414,13 +425,13 @@ void event_processor_t::processMouseState() {
 	baseEvent.buttons = cursor_t::pressedButtons;
 
 	// Press
-	if ((!(previousPressedButtons & MOUSE_BUTTON_1) && (cursor_t::pressedButtons & MOUSE_BUTTON_1))
-			|| (!(previousPressedButtons & MOUSE_BUTTON_2) && (cursor_t::pressedButtons & MOUSE_BUTTON_2))
-			|| (!(previousPressedButtons & MOUSE_BUTTON_3) && (cursor_t::pressedButtons & MOUSE_BUTTON_3))) {
+	if ((!(previousPressedButtons & G_MOUSE_BUTTON_1) && (cursor_t::pressedButtons & G_MOUSE_BUTTON_1))
+			|| (!(previousPressedButtons & G_MOUSE_BUTTON_2) && (cursor_t::pressedButtons & G_MOUSE_BUTTON_2))
+			|| (!(previousPressedButtons & G_MOUSE_BUTTON_3) && (cursor_t::pressedButtons & G_MOUSE_BUTTON_3))) {
 
 		// Prepare event
 		mouse_event_t pressEvent = baseEvent;
-		pressEvent.type = MOUSE_EVENT_PRESS;
+		pressEvent.type = G_MOUSE_EVENT_PRESS;
 
 		// Multiclicks
 		static uint64_t lastClick = 0;
@@ -491,19 +502,19 @@ void event_processor_t::processMouseState() {
 		}
 
 		// Release
-	} else if (((previousPressedButtons & MOUSE_BUTTON_1) && !(cursor_t::pressedButtons & MOUSE_BUTTON_1))
-			|| ((previousPressedButtons & MOUSE_BUTTON_2) && !(cursor_t::pressedButtons & MOUSE_BUTTON_2))
-			|| ((previousPressedButtons & MOUSE_BUTTON_3) && !(cursor_t::pressedButtons & MOUSE_BUTTON_3))) {
+	} else if (((previousPressedButtons & G_MOUSE_BUTTON_1) && !(cursor_t::pressedButtons & G_MOUSE_BUTTON_1))
+			|| ((previousPressedButtons & G_MOUSE_BUTTON_2) && !(cursor_t::pressedButtons & G_MOUSE_BUTTON_2))
+			|| ((previousPressedButtons & G_MOUSE_BUTTON_3) && !(cursor_t::pressedButtons & G_MOUSE_BUTTON_3))) {
 
 		if (cursor_t::draggedComponent) {
 			mouse_event_t releaseDraggedEvent = baseEvent;
-			releaseDraggedEvent.type = MOUSE_EVENT_DRAG_RELEASE;
+			releaseDraggedEvent.type = G_MOUSE_EVENT_DRAG_RELEASE;
 			instance->dispatchUpwards(cursor_t::draggedComponent, releaseDraggedEvent);
 			cursor_t::draggedComponent = 0;
 		}
 
 		mouse_event_t releaseEvent = baseEvent;
-		releaseEvent.type = MOUSE_EVENT_RELEASE;
+		releaseEvent.type = G_MOUSE_EVENT_RELEASE;
 		instance->dispatch(screen, releaseEvent);
 
 		// Move or drag
@@ -516,7 +527,7 @@ void event_processor_t::processMouseState() {
 			// Leave
 			if (cursor_t::hoveredComponent) {
 				mouse_event_t leaveEvent = baseEvent;
-				leaveEvent.type = MOUSE_EVENT_LEAVE;
+				leaveEvent.type = G_MOUSE_EVENT_LEAVE;
 				instance->dispatchUpwards(cursor_t::hoveredComponent, leaveEvent);
 				cursor_t::hoveredComponent = 0;
 			}
@@ -524,7 +535,7 @@ void event_processor_t::processMouseState() {
 			if (hovered) {
 				// Enter
 				mouse_event_t enterEvent = baseEvent;
-				enterEvent.type = MOUSE_EVENT_ENTER;
+				enterEvent.type = G_MOUSE_EVENT_ENTER;
 				cursor_t::hoveredComponent = hovered;
 				instance->dispatchUpwards(cursor_t::hoveredComponent, enterEvent);
 			}
@@ -532,12 +543,12 @@ void event_processor_t::processMouseState() {
 
 		if (cursor_t::draggedComponent != 0) { // Dragging
 			mouse_event_t dragEvent = baseEvent;
-			dragEvent.type = MOUSE_EVENT_DRAG;
+			dragEvent.type = G_MOUSE_EVENT_DRAG;
 			instance->dispatchUpwards(cursor_t::draggedComponent, dragEvent);
 
 		} else { // Moving
 			mouse_event_t moveEvent = baseEvent;
-			moveEvent.type = MOUSE_EVENT_MOVE;
+			moveEvent.type = G_MOUSE_EVENT_MOVE;
 			instance->dispatch(screen, moveEvent);
 		}
 	}

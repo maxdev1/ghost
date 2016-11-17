@@ -22,6 +22,7 @@
 #define GHOSTLIBRARY_GRAPHICS_METRICS_RECTANGLE
 
 #include <ghostuser/graphics/metrics/point.hpp>
+#include <ghostuser/graphics/metrics/dimension.hpp>
 #include <cstdint>
 
 /**
@@ -179,6 +180,13 @@ public:
 			norm.height = -norm.height;
 		}
 		return norm;
+	}
+
+	/**
+	 *
+	 */
+	g_dimension getSize() {
+		return g_dimension(width, height);
 	}
 }__attribute__((packed));
 

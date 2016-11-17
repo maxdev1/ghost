@@ -21,12 +21,10 @@
 #ifndef CONSTRUCTORS
 #define CONSTRUCTORS
 
-/*
- *
+/**
+ * Calls all global constructors in the current binary. This uses link symbols
+ * specified in the linker script to identify the constructor location.
  */
-class g_constructors {
-public:
-	static void call();
-};
+void g_abi_constructors_call_global();
 
 #endif

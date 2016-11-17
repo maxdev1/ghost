@@ -21,15 +21,15 @@
 #ifndef __COMPONENT__
 #define __COMPONENT__
 
-#include <events/event.hpp>
+#include <stdio.h>
 #include <vector>
-#include <ghostuser/graphics/graphics.hpp>
-#include <ghostuser/graphics/metrics/rectangle.hpp>
+#include <map>
+#include <events/event.hpp>
 #include <layout/layout_manager.hpp>
 #include <components/bounds_event_component.hpp>
 #include <components/event_listener_info.hpp>
-#include <stdio.h>
-#include <map>
+#include <ghostuser/graphics/metrics/rectangle.hpp>
+#include <ghostuser/graphics/graphics.hpp>
 
 // forward declarations
 class window_t;
@@ -69,6 +69,8 @@ private:
 
 	std::map<g_ui_component_event_type, event_listener_info_t> listeners;
 
+	int z_index = 1000;
+
 protected:
 	layout_manager_t* layoutManager;
 	g_graphics graphics;
@@ -91,6 +93,13 @@ public:
 	 * Destroys the component
 	 */
 	virtual ~component_t();
+
+	/**
+	 *
+	 */
+	void setZIndex(int z_index) {
+		this->z_index = z_index;
+	}
 
 	/**
 	 * Returns a Pointer to the components graphics
@@ -322,16 +331,12 @@ public:
 	/**
 	 *
 	 */
-	virtual bool getBoolProperty(int property, bool* out) {
-		return false;
-	}
+	virtual bool getNumericProperty(int property, uint32_t* out);
 
 	/**
 	 *
 	 */
-	virtual bool setBoolProperty(int property, bool value) {
-		return false;
-	}
+	virtual bool setNumericProperty(int property, uint32_t value);
 
 	/**
 	 *

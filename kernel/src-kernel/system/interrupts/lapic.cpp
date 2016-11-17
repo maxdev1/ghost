@@ -91,7 +91,7 @@ void g_lapic::prepare(g_physical_address lapicAddress) {
  */
 void g_lapic::createMapping() {
 	// Map it to virtual space
-	virtualBase = g_kernel_virt_addr_ranges->allocate(1);
+	virtualBase = g_kernel::virtual_range_pool->allocate(1);
 	if (virtualBase == 0) {
 		g_kernel::panic("%! could not get a virtual range for mapping", "apic");
 	}

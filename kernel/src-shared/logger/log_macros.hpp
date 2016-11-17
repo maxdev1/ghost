@@ -28,10 +28,12 @@
 #define g_log_info(msg...)				g_logger::println(msg)
 #define g_log_infon(msg...)				g_logger::print(msg)
 #define G_LOGGING_INFO					true
+#define G_IF_LOG_INFO(s)				s
 #else
 #define g_log_info(msg...)				{};
 #define g_log_infon(msg...)				{};
 #define G_LOGGING_INFO					false
+#define G_IF_LOG_INFO(s)
 #endif
 
 // Warn
@@ -39,10 +41,12 @@
 #define g_log_warn(msg...)				g_logger::println(msg)
 #define g_log_warnn(msg...)				g_logger::print(msg)
 #define G_LOGGING_WARN					true
+#define G_IF_LOG_WARN(s)				s
 #else
 #define g_log_warn(msg...)				{};
 #define g_log_warnn(msg...)				{};
 #define G_LOGGING_WARN					false
+#define G_IF_LOG_WARN(s)
 #endif
 
 // Debug
@@ -50,11 +54,12 @@
 #define g_log_debug(msg...)				g_logger::println(msg)
 #define g_log_debugn(msg...)			g_logger::print(msg)
 #define G_LOGGING_DEBUG					true
+#define G_IF_LOG_DEBUG(s)				s
 #else
 #define g_log_debug(msg...)				{};
 #define g_log_debugn(msg...)			{};
 #define G_LOGGING_DEBUG					false
+#define G_IF_LOG_DEBUG(s)
 #endif
-
 
 #endif

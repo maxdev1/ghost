@@ -26,11 +26,13 @@
  * used to simplify configuring components from a client application.
  */
 
-#define G_UI_PROPERTY_MOVABLE		1
-#define G_UI_PROPERTY_RESIZABLE		2
+#define G_UI_PROPERTY_MOVABLE			1
+#define G_UI_PROPERTY_RESIZABLE			2
 
-#define G_UI_PROPERTY_SECURE		3
+#define G_UI_PROPERTY_SECURE			3
 
-#define G_UI_PROPERTY_ENABLED		4
+#define G_UI_PROPERTY_ENABLED			4
+
+#define G_UI_PROPERTY_LAYOUT_MANAGER	5
 
 #endif
