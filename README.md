@@ -17,6 +17,9 @@ remove components when their process dies and more.
 Also added a JavaScript interpreter program (`js`) which bases on
 the Duktape JS engine.
 
+## Screenshot
+![Current screenshot of Duktape running](https://ghostkernel.org/files/ghost-0.5.3-jsconsole.png)
+
 ## Features
 - Command-line & GUI environment
 - Multiprocessor support
