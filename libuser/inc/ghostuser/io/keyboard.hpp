@@ -33,7 +33,7 @@ struct g_key_info_basic {
 	bool ctrl :1;
 	bool alt :1;
 	bool shift :1;
-	uint8_t scancode;
+	uint16_t scancode;
 
 	g_key_info_basic() :
 			pressed(false), ctrl(false), alt(false), shift(false), scancode(0) {

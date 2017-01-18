@@ -20,7 +20,7 @@
 
 #include <terminal.hpp>
 #include <headless_screen.hpp>
-#include <gui_screen.hpp>
+#include <gui_screen/gui_screen.hpp>
 #include <unistd.h>
 #include <ghostuser/io/terminal.hpp>
 #include <signal.h>
@@ -39,7 +39,6 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
-	klog("starting terminal");
 	terminal_t term(headless);
 	term.execute();
 }
@@ -49,9 +48,10 @@ int main(int argc, char* argv[]) {
  */
 void terminal_t::execute() {
 
+	// initialize the screen
 	initializeScreen();
 	if (!screen) {
-		klog("terminal: failed to initialize screen");
+		klog("Terminal: Failed to initialize screen");
 		return;
 	}
 	screen->clean();
@@ -59,7 +59,7 @@ void terminal_t::execute() {
 	// load keyboard layout
 	std::string initialLayout = "de-DE";
 	if (!g_keyboard::loadLayout(initialLayout)) {
-		g_logger::log("terminal: failed to load keyboard layout: " + initialLayout);
+		g_logger::log("Terminal: Failed to load keyboard layout: " + initialLayout);
 		return;
 	}
 
@@ -93,7 +93,7 @@ void terminal_t::initializeScreen() {
 
 	if (headless) {
 		if (g_task_get_id("terminal_headless") != -1) {
-			fprintf(stderr, "error: terminal can only be executed once when in headless mode");
+			fprintf(stderr, "Terminal: Can only be executed once when in headless mode");
 			return;
 		}
 		g_task_register_id("terminal_headless");
@@ -102,14 +102,12 @@ void terminal_t::initializeScreen() {
 		return;
 	}
 
-	// initialize user interface
-	auto status = g_ui::open();
-	if (status != G_UI_OPEN_STATUS_SUCCESSFUL) {
-		klog("terminal: failed to initialize g_ui with status %i", status);
-		return;
+	gui_screen_t* gui_screen = new gui_screen_t();
+	if (gui_screen->initialize()) {
+		screen = gui_screen;
+	} else {
+		fprintf(stderr, "Terminal: Failed to initialize the graphical screen");
 	}
-
-	screen = new gui_screen_t();
 }
 
 /**
@@ -123,7 +121,7 @@ void terminal_t::start_shell() {
 	g_fd shellin_r;
 	g_pipe_s(&shellin_w, &shellin_r, &stdin_stat);
 	if (stdin_stat != G_FS_PIPE_SUCCESSFUL) {
-		klog("terminal: failed to setup stdin pipe for shell");
+		klog("Terminal: Failed to setup stdin pipe for shell");
 		return;
 	}
 
@@ -132,7 +130,7 @@ void terminal_t::start_shell() {
 	g_fd shellout_r;
 	g_pipe_s(&shellout_w, &shellout_r, &stdout_stat);
 	if (stdout_stat != G_FS_PIPE_SUCCESSFUL) {
-		klog("terminal: failed to setup stdout pipe for shell");
+		klog("Terminal: Failed to setup stdout pipe for shell");
 		return;
 	}
 
@@ -141,7 +139,7 @@ void terminal_t::start_shell() {
 	g_fd shellerr_r;
 	g_pipe_s(&shellerr_w, &shellerr_r, &stderr_stat);
 	if (stderr_stat != G_FS_PIPE_SUCCESSFUL) {
-		klog("terminal: failed to setup stderr pipe for shell");
+		klog("Terminal: Failed to setup stderr pipe for shell");
 		return;
 	}
 
@@ -155,7 +153,7 @@ void terminal_t::start_shell() {
 	g_spawn_status status = g_spawn_poi("/applications/gosh.bin", "", "/", G_SECURITY_LEVEL_APPLICATION, &out_pid, stdio_target, stdio_in);
 
 	if (status != G_SPAWN_STATUS_SUCCESSFUL) {
-		klog("terminal: failed to spawn shell process");
+		klog("Terminal: Failed to spawn shell process");
 		return;
 	}
 

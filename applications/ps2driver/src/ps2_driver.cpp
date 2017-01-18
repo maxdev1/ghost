@@ -51,6 +51,9 @@ uint64_t packets_count = 0;
 
 g_ps2_shared_area* shared_area;
 
+g_fd keyboard_pipe_w;
+g_fd keyboard_pipe_r;
+
 /**
  *
  */
@@ -69,11 +72,20 @@ int main() {
 		return 1;
 	}
 
+	// set up keyboard pipe
+	g_fs_pipe_status stat;
+	g_pipe_bs(&keyboard_pipe_w, &keyboard_pipe_r, false, &stat);
+	if (stat != G_FS_PIPE_SUCCESSFUL) {
+		klog("failed to create keyboard pipe (status: %i)", stat);
+		return 1;
+	}
+
 	// initialize memory area
-	shared_area->keyboard.atom_nothing_queued = true;
-	shared_area->keyboard.atom_unhandled = false;
-	shared_area->mouse.atom_nothing_queued = true;
-	shared_area->mouse.atom_unhandled = false;
+	shared_area->mouse.lock = false;
+	shared_area->mouse.buffer_empty_lock = true;
+	shared_area->keyboard.buffer_empty_lock = true;
+	shared_area->keyboard.buffer_amount = 0;
+	shared_area->keyboard.buffer_amount_lock = false;
 
 	// initialize mouse
 	initialize_mouse();
@@ -99,9 +111,14 @@ int main() {
 					(g_ps2_shared_area*) g_share_mem((void*) shared_area,
 							sizeof(g_ps2_shared_area), requester_pid);
 
+			// share keyboard pipe with requester
+			g_fd keyboard_pipe_target_read_end = g_clone_fd(keyboard_pipe_r,
+					g_get_pid(), requester_pid);
+
 			// send response
 			g_ps2_register_response response;
 			response.area = shared_in_target;
+			response.keyboard_pipe = keyboard_pipe_target_read_end;
 			g_send_message_t(mes->sender, &response,
 					sizeof(g_ps2_register_response), mes->transaction);
 		}
@@ -194,16 +211,16 @@ void handle_mouse_data(uint8_t b) {
 			int16_t offY = valY - ((flags << 3) & 0x100);
 
 			// wait for handling and set
-			g_atomic_block(&shared_area->mouse.atom_unhandled);
+			g_atomic_lock(&shared_area->mouse.lock);
 
 			// write data
-			shared_area->mouse.move_x = offX;
-			shared_area->mouse.move_y = offY;
+			shared_area->mouse.move_x += offX;
+			shared_area->mouse.move_y += offY;
 			shared_area->mouse.flags = flags;
+			shared_area->mouse.buffer_empty_lock = false;
 
 			// show waiter that data is queue
-			shared_area->mouse.atom_nothing_queued = false;
-			shared_area->mouse.atom_unhandled = true;
+			shared_area->mouse.lock = false;
 		}
 
 		mouse_packet_number = 0;
@@ -216,15 +233,15 @@ void handle_mouse_data(uint8_t b) {
  */
 void handle_keyboard_data(uint8_t b) {
 
-	// wait for handling and set
-	g_atomic_block(&shared_area->keyboard.atom_unhandled);
+	// write byte to keyboard pipe
+	g_atomic_lock(&shared_area->keyboard.buffer_amount_lock);
 
-	// write data
-	shared_area->keyboard.scancode = b;
+	shared_area->keyboard.buffer_empty_lock = false;
+	g_write(keyboard_pipe_w, &b, 1);
 
-	// show waiter that data is queue
-	shared_area->keyboard.atom_nothing_queued = false;
-	shared_area->keyboard.atom_unhandled = true;
+	// increase buffer ocunter
+	shared_area->keyboard.buffer_amount++;
+	shared_area->keyboard.buffer_amount_lock = false;
 }
 
 /**

@@ -46,6 +46,7 @@
 
 #include "executable/elf32_loader.hpp"
 #include "memory/collections/address_range_pool.hpp"
+#include "video/pretty_boot.hpp"
 
 g_ramdisk* g_kernel::ramdisk;
 g_address_range_pool* g_kernel::virtual_range_pool;
@@ -75,6 +76,7 @@ void g_kernel::pre_setup(g_setup_information* info) {
 
 	// print header
 	print_header(info);
+	G_PRETTY_BOOT_STATUS("Checking available memory", 20);
 
 	// Initialize physical page allocator from bitmap provided by the loader
 	g_pp_allocator::initializeFromBitmap(info->bitmapStart, info->bitmapEnd);
@@ -86,9 +88,11 @@ void g_kernel::pre_setup(g_setup_information* info) {
 	g_kernel_heap::initialize(info->heapStart, info->heapEnd);
 
 	// Find ramdisk module
+	G_PRETTY_BOOT_STATUS("Searching for ramdisk", 30);
 	g_multiboot_module* rd_module = g_multiboot_util::findModule(info->multibootInformation, "/boot/ramdisk");
 	if (rd_module == 0) {
-		panic("%! ramdisk does not exist", "kern");
+		G_PRETTY_BOOT_FAIL("Ramdisk not found (did you supply enough memory?");
+		panic("%! ramdisk not found (did you supply enough memory?)", "kern");
 	}
 
 	// Create virtual range pool for kernel ranges
@@ -96,6 +100,7 @@ void g_kernel::pre_setup(g_setup_information* info) {
 	g_kernel::virtual_range_pool->initialize(G_CONST_KERNEL_VIRTUAL_RANGES_START, G_CONST_KERNEL_VIRTUAL_RANGES_END);
 
 	// Remap the ramdisk module into the kernels ranges & load the ramdisk
+	G_PRETTY_BOOT_STATUS("Loading ramdisk", 40);
 	load_ramdisk(rd_module);
 }
 
@@ -142,20 +147,24 @@ void g_kernel::run_bsp(g_physical_address initial_pd_physical) {
 		g_gdt_manager::initialize();
 
 		// Initialize the scheduler
+		G_PRETTY_BOOT_STATUS("Preparing scheduler", 70);
 		g_tasking::initialize();
 
 		// Enable tasking for this core
 		g_tasking::enableForThisCore();
 
 		// Initialize filesystem
+		G_PRETTY_BOOT_STATUS("Initializing filesystem", 80);
 		g_filesystem::initialize();
 
 		// Set up PCI
 		g_pci::initialize();
 
+		G_PRETTY_BOOT_STATUS("Loading system binaries", 90);
 		// Create initial process
 		load_system_process(G_IDLE_BINARY_NAME, G_THREAD_PRIORITY_IDLE);
 		load_system_process(G_INIT_BINARY_NAME, G_THREAD_PRIORITY_NORMAL);
+		G_PRETTY_BOOT_STATUS("Starting user space", 100);
 	}
 	bsp_setup_lock.unlock();
 	/* BSP INITIALIZATION END */
@@ -266,7 +275,9 @@ void g_kernel::load_system_process(const char* binary_path, g_thread_priority pr
 void g_kernel::print_header(g_setup_information* info) {
 
 	// Print header
-	g_console_video::clear();
+	if (!G_PRETTY_BOOT) {
+		g_console_video::clear();
+	}
 	g_log_infon("");
 	g_log_infon("");
 	g_log_infon("");

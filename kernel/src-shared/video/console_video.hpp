@@ -47,6 +47,16 @@ public:
 	static void print(char c);
 
 	/**
+	 *
+	 */
+	static void putChar(uint16_t x, uint16_t y, char c, uint8_t color);
+
+	/**
+	 *
+	 */
+	static void putString(uint16_t x, uint16_t y, const char* c, uint8_t color);
+
+	/**
 	 * Sets the output color.
 	 *
 	 * @param color the color
@@ -57,6 +67,25 @@ public:
 	 * Clears the screen.
 	 */
 	static void clear();
+
+	/**
+	 *
+	 */
+	static int getWidth() {
+		return WIDTH;
+	}
+
+	/**
+	 *
+	 */
+	static int getHeight() {
+		return HEIGHT;
+	}
+
+	/**
+	 *
+	 */
+	static void setVisualCursor(int x, int y);
 
 private:
 

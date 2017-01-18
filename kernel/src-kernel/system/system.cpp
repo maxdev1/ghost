@@ -30,7 +30,7 @@
 #include <system/smp/smp.hpp>
 #include <kernel.hpp>
 #include <system/processor.hpp>
-#include <system/processor.hpp>
+#include <video/pretty_boot.hpp>
 
 static g_processor* processor_list = 0;
 static uint32_t processors_available = 0;
@@ -121,6 +121,7 @@ void g_system::initializeBsp(g_physical_address initialPageDirectoryPhysical) {
 
 		// Print available CPUs
 		g_log_info("%! %i available core%s", "system", processors_available, (processors_available > 1 ? "s" : ""));
+		G_PRETTY_BOOT_STATUS("Initializing physical cores", 60);
 
 		// Initialize multiprocessing
 		g_smp::initialize(initialPageDirectoryPhysical);

@@ -469,5 +469,5 @@ bool text_field_t::setNumericProperty(int property, uint32_t value) {
 		return true;
 	}
 
-	return false;
+	return component_t::setNumericProperty(property, value);
 }

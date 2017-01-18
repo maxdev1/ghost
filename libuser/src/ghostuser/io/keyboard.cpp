@@ -55,20 +55,27 @@ g_key_info g_keyboard::readKey(bool* break_condition) {
 		}
 	}
 
-	// wait until incoming data is here (and the driver unsets the atom)
-	g_atomic_block_dual(&g_ps2_area->keyboard.atom_nothing_queued, (uint8_t*) break_condition);
+	// wait until there are bytes in the buffer
+	if (g_atomic_block_to(&g_ps2_area->keyboard.buffer_empty_lock, 10000) == false) {
 
-	// take info from the shared memory
-	uint8_t scancode = g_ps2_area->keyboard.scancode;
+		// keyboard pipe is non-blocking
+		uint8_t scancode[1];
+		if (g_read(g_ps2_keyboard_pipe, scancode, 1) > 0) {
 
-	// tell driver that we've handled it
-	g_ps2_area->keyboard.atom_nothing_queued = true;
-	g_ps2_area->keyboard.atom_unhandled = false;
+			// decrease buffer counter
+			g_atomic_lock(&g_ps2_area->keyboard.buffer_amount_lock);
+			g_ps2_area->keyboard.buffer_amount--;
+			if (g_ps2_area->keyboard.buffer_amount == 0) {
+				g_ps2_area->keyboard.buffer_empty_lock = true;
+			}
+			g_ps2_area->keyboard.buffer_amount_lock = false;
 
-	// read and convert data
-	g_key_info info;
-	if (keyForScancode(scancode, &info)) {
-		return info;
+			// read and convert data
+			g_key_info info;
+			if (keyForScancode(scancode[0], &info)) {
+				return info;
+			}
+		}
 	}
 	return g_key_info();
 }
@@ -91,6 +98,7 @@ bool g_keyboard::keyForScancode(uint8_t scancode, g_key_info* out) {
 		auto pos = scancodeLayout.find(compoundScancode);
 		if (pos != scancodeLayout.end()) {
 			out->key = pos->second;
+			out->scancode = compoundScancode;
 			found_compound = true;
 			have_last_unknown_key = false;
 		}

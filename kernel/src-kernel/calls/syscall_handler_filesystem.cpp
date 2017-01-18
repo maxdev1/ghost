@@ -442,7 +442,7 @@ G_SYSCALL_HANDLER(fs_clonefd) {
 G_SYSCALL_HANDLER(fs_pipe) {
 
 	g_syscall_fs_pipe* data = (g_syscall_fs_pipe*) G_SYSCALL_DATA(current_thread->cpuState);
-	data->status = g_filesystem::pipe(current_thread, &data->write_fd, &data->read_fd);
+	data->status = g_filesystem::pipe(current_thread, data->blocking, &data->write_fd, &data->read_fd);
 	return current_thread;
 }
 

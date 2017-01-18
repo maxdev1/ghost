@@ -20,6 +20,7 @@
 
 #include <video/console_video.hpp>
 #include <memory/memory.hpp>
+#include <system/io_ports.hpp>
 
 static uint8_t* videoMemory = (uint8_t*) g_console_video::VIDEO_MEMORY;
 static uint8_t color = g_console_video::DEFAULT_COLOR;
@@ -47,6 +48,31 @@ void g_console_video::print(char c) {
 }
 
 /**
+ *
+ */
+void g_console_video::putChar(uint16_t x, uint16_t y, char c, uint8_t color) {
+	videoMemory[y * (WIDTH * 2) + x * 2] = c;
+	videoMemory[y * (WIDTH * 2) + x * 2 + 1] = color;
+}
+
+/**
+ *
+ */
+void g_console_video::putString(uint16_t x, uint16_t y, const char* c, uint8_t color) {
+
+	while (*c) {
+		putChar(x++, y, *c, color);
+		if (x > WIDTH) {
+			x = 0;
+			y++;
+		}
+		if (y > HEIGHT) {
+			y = 0;
+		}
+		++c;
+	}
+}
+/**
  * 
  */
 void g_console_video::scrollUp() {
@@ -72,4 +98,16 @@ void g_console_video::clear() {
  */
 void g_console_video::setColor(uint8_t newColor) {
 	color = newColor;
+}
+
+/**
+ *
+ */
+void g_console_video::setVisualCursor(int x, int y) {
+
+	uint16_t position = (y * WIDTH) + x;
+	g_io_ports::writeByte(0x3D4, 0x0F);
+	g_io_ports::writeByte(0x3D5, (uint8_t) (position & 0xFF));
+	g_io_ports::writeByte(0x3D4, 0x0E);
+	g_io_ports::writeByte(0x3D5, (uint8_t) ((position >> 8) & 0xFF));
 }

@@ -8,16 +8,16 @@ include::../common/homelink.adoc[]
 [[Threads]]
 Threads
 -------
-Threads hold information about their current state and their configuration.
-All threads run solely in user-space, there are no threads running in
-kernel-space for design reasons.
+A thread is a single stream of code execution. Threads hold information about
+their current state and their configuration. All threads run solely in
+user-space, there are no threads running in kernel-space for design reasons.
 
-Each thread has a unique id, typed by `g_tid` (and `g_pid` respectively). This
-id can be obtained from within the thread using `<<libapi#g_get_tid,g_get_tid>>`.
+Each thread has a unique id of type `g_tid`. This id can be obtained from within
+the thread using `<<libapi#g_get_tid,g_get_tid>>`.
 
-Each thread has its own userspace and kernelspace thread. See the
-<<memory#Stacks,stack section>> of the memory layout documentation for details
-on allocation and layout of these.
+Each thread has its own user- and kernel-space stack. See the
+<<memory#Stacks,stack section>> of the memory layout documentation for details.
+
 
 Types of threads
 ~~~~~~~~~~~~~~~~
@@ -32,14 +32,14 @@ The following constants of type `g_thread_type` denote types of threads.
 
 
 
-
 Creating a thread
 ~~~~~~~~~~~~~~~~~
 To create a thread, the `<<libapi#g_create_thread,g_create_thread>>` API function
-is used. This function must be supplied with an address pointing to code that will
-be executed once the thread starts. Typically, a function name is used as the
-execution entry. The variations of this function can also be supplied with a
-pointer to user data. A simple example could look like this:
+is used. This function must be supplied with an address pointing to code that the
+thread shall execute. Typically, a function name is used as the execution entry.
+The variations of this function can also be supplied with a pointer to user data.
+
+A simple example could look like this:
 
 [source,c]
 -----

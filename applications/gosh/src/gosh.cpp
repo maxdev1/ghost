@@ -26,19 +26,21 @@
 /**
  *
  */
-std::string readInputLine() {
+bool readInputLine(std::string& line) {
 
 	g_terminal::setMode(G_TERMINAL_MODE_RAW);
 	g_terminal::setEcho(false);
 
-	std::string line = "";
 	int caret = 0;
 
 	while (true) {
 		int c = g_terminal::getChar();
+		if (c == -1) {
+			return false;
+		}
 
 		if (c == G_TERMKEY_BACKSPACE) {
-			if (line.size() > 0) {
+			if (line.size() > 0 && caret > 0) {
 				auto pos = g_terminal::getCursor();
 				auto afterCaret = line.substr(caret);
 				line = line.substr(0, caret - 1) + afterCaret;
@@ -58,12 +60,16 @@ std::string readInputLine() {
 			break;
 
 		} else if (c == G_TERMKEY_LEFT) {
-			caret--;
-			g_terminal::moveCursorBack(1);
+			if (caret > 0) {
+				caret--;
+				g_terminal::moveCursorBack(1);
+			}
 
 		} else if (c == G_TERMKEY_RIGHT) {
-			caret++;
-			g_terminal::moveCursorForward(1);
+			if (caret < line.size()) {
+				caret++;
+				g_terminal::moveCursorForward(1);
+			}
 
 		} else if (c < 0x100) {
 			auto pos = g_terminal::getCursor();
@@ -82,7 +88,7 @@ std::string readInputLine() {
 		}
 	}
 
-	return line;
+	return true;
 }
 
 /**
@@ -92,11 +98,25 @@ int main(int argc, char *argv[]) {
 
 	g_terminal::setCursor(g_term_cursor_position(0, 0));
 
+	char* cwdbuf = new char[G_PATH_MAX];
+
 	while (true) {
+
+		// print cwd
+		if (g_get_working_directory(cwdbuf)
+				== G_GET_WORKING_DIRECTORY_SUCCESSFUL) {
+			std::cout << cwdbuf;
+		} else {
+			std::cout << "?";
+		}
+
 		std::cout << '>';
 		std::flush(std::cout);
 
-		std::string line = readInputLine();
+		std::string line;
+		if (!readInputLine(line)) {
+			break;
+		}
 
 		// switch to normal input mode
 		g_terminal::setMode(G_TERMINAL_MODE_DEFAULT);
@@ -133,4 +153,5 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	delete cwdbuf;
 }

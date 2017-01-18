@@ -61,7 +61,13 @@ int g_terminal::readUnbuffered() {
 	// Escaped sequences
 	if (c == G_TERMKEY_SUB) {
 		int b1 = getc(stdin);
+		if (b1 == -1) {
+			return -1;
+		}
 		int b2 = getc(stdin);
+		if (b2 == -1) {
+			return -1;
+		}
 		return ((b2 << 8) | b1);
 	}
 

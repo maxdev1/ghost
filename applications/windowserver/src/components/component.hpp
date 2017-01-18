@@ -266,7 +266,7 @@ public:
 	/**
 	 *
 	 */
-	void setLayoutManager(layout_manager_t* layoutManager);
+	virtual void setLayoutManager(layout_manager_t* layoutManager);
 
 	/**
 	 *

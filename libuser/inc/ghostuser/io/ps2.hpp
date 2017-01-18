@@ -21,8 +21,9 @@
 #include "ps2_driver_constants.hpp"
 
 // shared area pointer
-extern g_ps2_shared_area* g_ps2_area;
 extern bool g_ps2_is_registered;
+extern g_ps2_shared_area* g_ps2_area;
+extern g_fd g_ps2_keyboard_pipe;
 
 /**
  *

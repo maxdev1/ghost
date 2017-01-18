@@ -30,6 +30,7 @@
 
 #include <logger/logger.hpp>
 #include <video/console_video.hpp>
+#include <video/pretty_boot.hpp>
 #include <multiboot/multiboot_util.hpp>
 #include <stdarg.h>
 
@@ -123,6 +124,7 @@ void g_loader::initialize(g_multiboot_information* multibootInformation) {
 	uint32_t loaderEndAddress = G_PAGE_ALIGN_UP((uint32_t ) &endAddress);
 
 	// Find free spaces to place the GDT and the bitmap
+	G_PRETTY_BOOT_STATUS("Preparing memory", 3);
 	uint32_t gdtAreaStart = findFreeMemory(multibootInformation, loaderEndAddress, 1);
 	uint32_t gdtAreaEnd = gdtAreaStart + G_PAGE_SIZE;
 
@@ -165,13 +167,19 @@ void g_loader::initialize(g_multiboot_information* multibootInformation) {
 	// IMPORTANT: Now the multiboot module location has changed!
 
 	// Load kernel binary
+	G_PRETTY_BOOT_STATUS("Locating kernel binary", 3);
 	g_log_info("%! locating kernel binary...", "loader");
+
 	g_multiboot_module* kernelModule = g_multiboot_util::findModule(setupInformation.multibootInformation, "/boot/kernel");
 	if (kernelModule) {
+
+		G_PRETTY_BOOT_STATUS("Loading kernel", 5);
 		g_log_info("%! found kernel binary at %h, loading...", "loader", kernelModule->moduleStart);
+
 		g_kernel_loader::load(kernelModule);
 		g_loader::panic("%! something went wrong during boot process, halting", "loader");
 	} else {
+		G_PRETTY_BOOT_FAIL("Kernel module not found");
 		g_loader::panic("%! kernel module not found", "loader");
 	}
 }
@@ -180,6 +188,7 @@ void g_loader::initialize(g_multiboot_information* multibootInformation) {
  * 
  */
 void g_loader::panic(const char* msg, ...) {
+
 	g_log_info("%! an unrecoverable error has occured. reason:", "lpanic");
 
 	va_list valist;

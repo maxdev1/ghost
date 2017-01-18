@@ -23,6 +23,7 @@
 
 #include <logger/logger.hpp>
 #include <video/console_video.hpp>
+#include <video/pretty_boot.hpp>
 #include <system/serial/serial_port.hpp>
 #include "system/bios_data_area.hpp"
 #include "debug/debug_interface.hpp"
@@ -50,7 +51,12 @@ extern "C" void initializeLoader(g_multiboot_information* multibootStruct, uint3
 	}
 
 	// Clear the console and print the header colored
-	g_console_video::clear();
+	if (G_PRETTY_BOOT) {
+		g_pretty_boot::enable();
+	} else {
+		g_console_video::clear();
+	}
+
 	g_log_info("");
 	g_console_video::setColor(0x90);
 	g_log_infon("Ghost Loader");
@@ -59,12 +65,12 @@ extern "C" void initializeLoader(g_multiboot_information* multibootStruct, uint3
 	g_log_info("");
 
 	g_log_info("%! checking magic number", "early");
+	G_PRETTY_BOOT_STATUS("Validating boot", 1);
 
 	if (magicNumber == G_MULTIBOOT_BOOTLOADER_MAGIC) {
-		g_log_info("%! initializing loader", "early");
 		g_loader::initialize(multibootStruct);
 
 	} else {
-		g_log_info("%! invalid magic number in multiboot struct", "early");
+		g_loader::panic("%! invalid magic number in multiboot struct", "early");
 	}
 }

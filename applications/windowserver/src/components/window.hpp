@@ -146,6 +146,11 @@ public:
 	 */
 	virtual void close();
 
+	/**
+	 *
+	 */
+	virtual void setLayoutManager(layout_manager_t* layoutManager);
+
 };
 
 #endif

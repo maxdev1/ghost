@@ -28,6 +28,8 @@
 #error "No architecture defined for build. Need to specify either _ARCH_X86_ or _ARCH_x86_64_"
 #endif
 
+#define G_PRETTY_BOOT									true
+
 // logging settings
 #define G_LOG_LEVEL										G_LOG_LEVEL_INFO
 // fine-grained debugging options
@@ -41,7 +43,7 @@
 // version
 #define G_VERSION_MAJOR									0
 #define G_VERSION_MINOR									5
-#define G_VERSION_PATCH									4
+#define G_VERSION_PATCH									5
 
 // paths to system binaries
 #define G_INIT_BINARY_NAME								"applications/init.bin"

@@ -447,10 +447,11 @@ g_fd g_filesystem::clonefd(g_fd source_fd, g_pid source_pid, g_fd target_fd, g_p
 	return -1;
 }
 
-g_fs_pipe_status g_filesystem::pipe(g_thread* thread, g_fd* out_write, g_fd* out_read) {
+g_fs_pipe_status g_filesystem::pipe(g_thread* thread, bool blocking, g_fd* out_write, g_fd* out_read) {
 
 	g_fs_node* node = create_node();
 	node->type = G_FS_NODE_TYPE_PIPE;
+	node->is_blocking = blocking;
 	pipe_root->add_child(node);
 
 	node->phys_fs_id = g_pipes::create();
