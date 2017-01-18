@@ -25,8 +25,8 @@ void grid_layout_manager_t::layout() {
 	std::vector<component_t*>& children = component->getChildren();
 
 	g_rectangle usedBounds = component->getBounds();
-	usedBounds.x += padding.left;
-	usedBounds.y += padding.top;
+	usedBounds.x = padding.left;
+	usedBounds.y = padding.top;
 	usedBounds.width -= padding.left + padding.right;
 	usedBounds.height -= padding.top + padding.bottom;
 

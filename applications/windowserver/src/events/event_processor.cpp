@@ -49,14 +49,18 @@ event_processor_t::event_processor_t() {
  *
  */
 void event_processor_t::bufferKeyEvent(g_key_info keyInfo) {
+	key_info_buffer_lock.lock();
 	key_info_buffer.push_back(keyInfo);
+	key_info_buffer_lock.unlock();
 }
 
 /**
  *
  */
 void event_processor_t::bufferCommandMessage(void* commandMessage) {
+	command_message_buffer_lock.lock();
 	command_message_buffer.push_back(commandMessage);
+	command_message_buffer_lock.unlock();
 }
 
 /**
@@ -65,12 +69,15 @@ void event_processor_t::bufferCommandMessage(void* commandMessage) {
 void event_processor_t::process() {
 
 	// process key events
+	key_info_buffer_lock.lock();
 	while (key_info_buffer.size() > 0) {
 		translateKeyEvent(key_info_buffer.back());
 		key_info_buffer.pop_back();
 	}
+	key_info_buffer_lock.unlock();
 
 	// process command messages
+	command_message_buffer_lock.lock();
 	while (command_message_buffer.size() > 0) {
 
 		// take next message from buffer
@@ -96,6 +103,7 @@ void event_processor_t::process() {
 		// delete request buffer
 		delete (g_message_header*) request_buffer;
 	}
+	command_message_buffer_lock.unlock();
 }
 
 /**

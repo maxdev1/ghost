@@ -24,6 +24,7 @@
 #include <ghostuser/io/keyboard.hpp>
 #include <ghostuser/io/mouse.hpp>
 #include <ghostuser/ui/interface_specification.hpp>
+#include <ghostuser/tasking/lock.hpp>
 #include <interface/command_message_responder_thread.hpp>
 #include <deque>
 
@@ -40,9 +41,11 @@ public:
 	event_processor_t();
 
 	std::deque<g_key_info> key_info_buffer;
+	g_lock key_info_buffer_lock;
 	void bufferKeyEvent(g_key_info keyInfo);
 
 	std::deque<void*> command_message_buffer;
+	g_lock command_message_buffer_lock;
 	void bufferCommandMessage(void* commandMessage);
 
 	void process();

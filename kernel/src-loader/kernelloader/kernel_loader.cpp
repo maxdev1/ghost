@@ -25,6 +25,7 @@
 #include <memory/paging_initializer.hpp>
 #include <memory/memory.hpp>
 #include <memory/bitmap/bitmap_page_allocator.hpp>
+#include <video/pretty_boot.hpp>
 
 /**
  * 
@@ -66,6 +67,7 @@ void g_kernel_loader::load(g_multiboot_module* kernelModule) {
 	uint32_t stackPointer = setupInformation->stackEnd - 4;
 	uint32_t stackPhys = g_loader::getPhysicalAllocator()->allocate();
 	if (stackPhys == 0) {
+		G_PRETTY_BOOT_FAIL("Failed to allocate kernel stack");
 		g_loader::panic("%! out of pages when trying to create kernel stack", "kernload");
 	}
 	g_paging_initializer::mapPageToRecursiveDirectory(setupInformation->stackStart, stackPhys, DEFAULT_KERNEL_TABLE_FLAGS,
@@ -78,7 +80,8 @@ void g_kernel_loader::load(g_multiboot_module* kernelModule) {
 		uint32_t phys = g_loader::getPhysicalAllocator()->allocate();
 
 		if (phys == 0) {
-			g_loader::panic("%! out of pages, allocated to %h", "kernload", virt);
+			G_PRETTY_BOOT_FAIL("Failed to allocate kernel heap");
+			g_loader::panic("%! out of pages when trying to allocate kernel heap, allocated to %h", "kernload", virt);
 		}
 
 		g_paging_initializer::mapPageToRecursiveDirectory(virt, phys,
@@ -92,6 +95,7 @@ void g_kernel_loader::load(g_multiboot_module* kernelModule) {
 	uint32_t setupInformationAddress = (uint32_t) g_loader::getSetupInformation();
 	uint32_t entryAddress = elfHeader->e_entry;
 
+	G_PRETTY_BOOT_STATUS("Starting kernel", 10);
 	g_log_info("%! jumping to %h...", "kernload", entryAddress);
 	asm("mov %0, %%esp\n"
 			"mov %%esp, %%ebp\n"

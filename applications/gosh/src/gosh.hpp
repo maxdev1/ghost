@@ -18,7 +18,7 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __GHOST_JS__
-#define __GHOST_JS__
+#ifndef __GHOST_GOSH__
+#define __GHOST_GOSH__
 
 #endif

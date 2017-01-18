@@ -47,7 +47,7 @@ void headless_screen_t::clean() {
 	g_atomic_lock(&lock);
 	for (uint32_t off = 0; off < SCREEN_HEIGHT * SCREEN_WIDTH * 2; off += 2) {
 		output_buffer[off] = ' ';
-		output_buffer[off + 1] = SC_BLACK;
+		output_buffer[off + 1] = SC_COLOR(SC_BLACK, SC_WHITE);
 	}
 	offset = 0;
 	lock = false;
@@ -104,6 +104,7 @@ void headless_screen_t::moveCursor(int x, int y) {
 	}
 
 	lock = false;
+	updateCursor();
 }
 
 /**
@@ -112,7 +113,6 @@ void headless_screen_t::moveCursor(int x, int y) {
 void headless_screen_t::updateCursor() {
 	moveVisualCursor((offset % (SCREEN_WIDTH * 2)) / 2,
 			offset / (SCREEN_WIDTH * 2));
-
 }
 
 /**
@@ -131,6 +131,7 @@ void headless_screen_t::writeChar(char c) {
 	lock = false;
 
 	normalize();
+	updateCursor();
 }
 
 /**
@@ -143,6 +144,8 @@ void headless_screen_t::backspace() {
 	++offset; // keep color
 	offset -= 2;
 	lock = false;
+
+	updateCursor();
 }
 
 /**

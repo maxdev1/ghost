@@ -18,40 +18,69 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <kernel.hpp>
-#include <runtime/constructors.hpp>
-
-#include <build_config.hpp>
-#include <kernelloader/setup_information.hpp>
-#include <logger/logger.hpp>
-#include <video/console_video.hpp>
 #include <video/pretty_boot.hpp>
-#include <system/serial/serial_port.hpp>
-#include "ghost/stdint.h"
+#include <video/console_video.hpp>
+#include <utils/string.hpp>
+#include <memory/memory.hpp>
+#include <logger/logger.hpp>
 
 /**
- * Does the final loading preparation and starts the kernel.
  *
- * @param setupInformation		the setup information passed by the loader
  */
-extern "C" void loadKernel(g_setup_information* setupInformation) {
-
-	g_abi_constructors_call_global();
-
-	// Set video output
-	if (G_PRETTY_BOOT) {
-		g_pretty_boot::enable(false);
-	} else {
+void g_pretty_boot::enable(bool clear_screen) {
+	g_logger::setVideo(false);
+	if (clear_screen) {
 		g_console_video::clear();
 	}
+	print_centered("Ghost", 10, 0x09);
+	g_console_video::setVisualCursor(-1, -1);
+}
 
-	// Call the kernel
-	g_kernel::run(setupInformation);
+/**
+ *
+ */
+void g_pretty_boot::print_progress_bar(int percent, uint8_t color) {
 
-	// Hang after execution
-	g_log_info("%! execution finished, halting", "postkern");
-	asm("cli");
-	for (;;) {
-		asm("hlt");
+	for (int i = 30; i < 50; i++) {
+		g_console_video::putChar(i, 12, ' ', 0x80);
 	}
+
+	double cells = (20.0 / 100.0) * percent;
+	if (cells < 1) {
+		cells = 1;
+	}
+
+	for (int i = 30; i < 30 + (int) cells; i++) {
+		g_console_video::putChar(i, 12, ' ', color);
+	}
+}
+
+/**
+ *
+ */
+void g_pretty_boot::print_centered(const char* string, int y, uint8_t color) {
+
+	int strl = g_string::length(string);
+	int left_bound = 40 - strl / 2;
+
+	for (int i = 0; i < 80; i++) {
+		g_console_video::putChar(i, y, ' ', 0x00);
+	}
+	g_console_video::putString(left_bound, y, string, color);
+}
+
+/**
+ *
+ */
+void g_pretty_boot::update_status(const char* string, int percent) {
+	print_progress_bar(percent, 0x90);
+	print_centered(string, 14, 0x07);
+}
+
+/**
+ *
+ */
+void g_pretty_boot::fail(const char* string) {
+	print_progress_bar(100, 0xC0);
+	print_centered(string, 14, 0x0F);
 }

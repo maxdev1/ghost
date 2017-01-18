@@ -46,6 +46,8 @@ window_t::window_t() :
 	component_t::addChild(&label);
 	component_t::addChild(&panel);
 	setMinimumSize(g_dimension(100, 40));
+
+	panel.setBackground(ARGB(0, 0, 0, 0));
 }
 
 /**
@@ -59,12 +61,18 @@ void window_t::layout() {
 }
 
 /**
- *
+ * TODO: Remove subpanel method and let the client do the work here
  */
 void window_t::addChild(component_t* component) {
 	panel.addChild(component);
 }
+void window_t::setLayoutManager(layout_manager_t* layoutManager) {
+	panel.setLayoutManager(layoutManager);
+}
 
+/**
+ *
+ */
 void roundedRectangle(cairo_t* cr, double x, double y, double width, double height, double radius) {
 	double degrees = M_PI / 180.0;
 	cairo_new_sub_path(cr);
@@ -400,7 +408,7 @@ bool window_t::setNumericProperty(int property, uint32_t value) {
 		return true;
 	}
 
-	return false;
+	return component_t::setNumericProperty(property, value);
 }
 
 /**

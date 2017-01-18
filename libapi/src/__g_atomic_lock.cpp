@@ -35,6 +35,12 @@ g_bool __g_atomic_lock(g_atom* atom_1, g_atom* atom_2, bool set_on_finish, bool 
 	data.timeout = timeout;
 
 	data.was_set = false;
+	data.timed_out = false;
+
 	g_syscall(G_SYSCALL_ATOMIC_LOCK, (uint32_t) &data);
-	return data.was_set;
+
+	if (is_try) {
+		return data.was_set;
+	}
+	return data.timed_out;
 }

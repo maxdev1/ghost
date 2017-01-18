@@ -25,6 +25,7 @@
 
 g_ps2_shared_area* g_ps2_area = 0;
 bool g_ps2_is_registered = false;
+g_fd g_ps2_keyboard_pipe = -1;
 
 static uint8_t g_ps2_registration_lock = false;
 
@@ -77,5 +78,6 @@ bool g_ps2::registerSelf() {
 	g_ps2_registration_lock = false;
 	g_ps2_is_registered = true;
 	g_ps2_area = response->area;
+	g_ps2_keyboard_pipe = response->keyboard_pipe;
 	return true;
 }

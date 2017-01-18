@@ -45,4 +45,4 @@ feel free to contact me at:
 
 	lokoxe@gmail.com
 	
--Max SchlÃ¼ssel
+-Max Schlüssel

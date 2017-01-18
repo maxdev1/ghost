@@ -84,7 +84,8 @@ public:
 	void execute();
 
 	/**
-	 * Initializes the terminals screen.
+	 * Initializes the terminals screen. If successful, the terminals screen property
+	 * is set to the new screen, otherwise it remains null.
 	 */
 	void initializeScreen();
 

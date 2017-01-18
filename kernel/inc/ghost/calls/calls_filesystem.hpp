@@ -202,6 +202,7 @@ typedef struct {
 	g_fd write_fd;
 	g_fd read_fd;
 	g_fs_pipe_status status;
+	g_bool blocking;
 }__attribute__((packed)) g_syscall_fs_pipe;
 
 /**

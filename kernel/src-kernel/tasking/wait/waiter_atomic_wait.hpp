@@ -59,6 +59,7 @@ public:
 		// check timeout first
 		if (data->has_timeout && (timing_scheduler->getMilliseconds() - time_start > data->timeout)) {
 			// timeout exceeded
+			data->timed_out = true;
 			return false;
 		}
 

@@ -116,6 +116,7 @@ typedef struct {
 	uint64_t timeout;
 
 	uint8_t was_set :1;
+	uint8_t timed_out :1;
 }__attribute__((packed)) g_syscall_atomic_lock;
 
 /**

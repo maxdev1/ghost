@@ -95,8 +95,6 @@ bool g_font_manager::createFont(std::string name, uint8_t* source, uint32_t sour
 
 	// Register font
 	fontRegistry[name] = font;
-
-	g_logger::log("created font '" + name + "'");
 	return true;
 }
 

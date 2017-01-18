@@ -18,40 +18,33 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <kernel.hpp>
-#include <runtime/constructors.hpp>
+#ifndef GHOST_SHARED_VIDEO_PRETTYBOOT
+#define GHOST_SHARED_VIDEO_PRETTYBOOT
 
-#include <build_config.hpp>
-#include <kernelloader/setup_information.hpp>
-#include <logger/logger.hpp>
-#include <video/console_video.hpp>
-#include <video/pretty_boot.hpp>
-#include <system/serial/serial_port.hpp>
+#include <stdarg.h>
 #include "ghost/stdint.h"
+#include <build_config.hpp>
+
+#if G_PRETTY_BOOT
+#define G_PRETTY_BOOT_STATUS(text, percent)		g_pretty_boot::update_status(text, percent)
+#define G_PRETTY_BOOT_FAIL(text)				g_pretty_boot::fail(text)
+#else
+#define G_PRETTY_BOOT_STATUS(text, percent)
+#define G_PRETTY_BOOT_FAIL(text)
+#endif
 
 /**
- * Does the final loading preparation and starts the kernel.
  *
- * @param setupInformation		the setup information passed by the loader
  */
-extern "C" void loadKernel(g_setup_information* setupInformation) {
+class g_pretty_boot {
+public:
+	static void enable(bool clear_screen = true);
 
-	g_abi_constructors_call_global();
+	static void print_progress_bar(int percent, uint8_t color);
+	static void print_centered(const char* string, int y, uint8_t color);
 
-	// Set video output
-	if (G_PRETTY_BOOT) {
-		g_pretty_boot::enable(false);
-	} else {
-		g_console_video::clear();
-	}
+	static void update_status(const char* string, int percent);
+	static void fail(const char* string);
+};
 
-	// Call the kernel
-	g_kernel::run(setupInformation);
-
-	// Hang after execution
-	g_log_info("%! execution finished, halting", "postkern");
-	asm("cli");
-	for (;;) {
-		asm("hlt");
-	}
-}
+#endif

@@ -5,11 +5,12 @@ v1.0
 
 About
 -----
-Welcome to the documentation of Ghost.
+Welcome to the documentation of the Ghost OS!
 
-Ghost is an operating system for the Intel x86 platform written from scratch in
-C++ and assembly. It aspires to follow a pure micro kernel design. This document
-contains conceptual and technical documentation about the system.
+Ghost is an operating system for the Intel x86 platform written with almost
+all components written from scratch. The kernel follows a pure microkernel
+design. This document contains conceptual and technical documentation about
+the system.
 
 NOTE: This file is supposed to be compiled with AsciiDoctor
 (http://asciidoctor.org/), see the scripts `generate.sh` and `generate.bat`.

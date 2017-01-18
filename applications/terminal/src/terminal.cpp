@@ -551,8 +551,9 @@ bool terminal_t::handle_builtin(std::string command) {
 				}
 				std::stringstream msg;
 				msg << "scancode: " << (key.pressed ? "d " : "u ")
-						<< (uint32_t) key.scancode << ", ctrl: " << key.ctrl
-						<< ", alt: " << key.alt << ", shift: " << key.shift
+						<< (uint32_t) key.scancode << " "
+						<< (key.ctrl ? "+ctrl" : "") << (key.alt ? "+alt" : "")
+						<< (key.shift ? "+shift" : "") << " ->" << key.key
 						<< std::endl;
 				writeToScreen(screen, msg.str());
 			}
@@ -865,11 +866,13 @@ void terminal_t::process_vt100_sequence(standard_out_thread_data_t* data,
 
 				// Foreground color
 			} else if (param >= 30 && param < 40) {
-				data->screen->setColorForeground(convert_vt100_to_screen_color(param - 30));
+				data->screen->setColorForeground(
+						convert_vt100_to_screen_color(param - 30));
 
 				// Background color
 			} else if (param >= 40 && param < 50) {
-				data->screen->setColorBackground(convert_vt100_to_screen_color(param - 40));
+				data->screen->setColorBackground(
+						convert_vt100_to_screen_color(param - 40));
 			}
 		}
 

@@ -160,7 +160,7 @@ public:
 	/**
 	 *
 	 */
-	static g_fs_pipe_status pipe(g_thread* thread, g_fd* out_write, g_fd* out_read);
+	static g_fs_pipe_status pipe(g_thread* thread, bool blocking, g_fd* out_write, g_fd* out_read);
 
 	/**
 	 *
