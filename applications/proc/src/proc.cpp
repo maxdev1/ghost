@@ -24,6 +24,7 @@
 
 #define MAJOR	0
 #define MINOR	2
+#define PATCH	1
 
 #include "list/list.hpp"
 
@@ -58,7 +59,7 @@ int main(int argc, char** argv) {
 			}
 
 		} else if (strcmp(command, "--help") == 0) {
-			println("proc, v%i.%i", MAJOR, MINOR);
+			println("proc, v%i.%i.%i", MAJOR, MINOR, PATCH);
 			println("Task management utility");
 			println("");
 			println("The following commands are available:");

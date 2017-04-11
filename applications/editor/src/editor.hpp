@@ -18,27 +18,18 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef GHOST_INTERRUPTS_EXCEPTION_HANDLER
-#define GHOST_INTERRUPTS_EXCEPTION_HANDLER
+#ifndef __GHOST_EDITOR__
+#define __GHOST_EDITOR__
 
-#include <system/processor_state.hpp>
-#include <tasking/thread.hpp>
+#include <string>
+#include <ghostuser/graphics/metrics/point.hpp>
 
-/**
- *
- */
-class g_interrupt_exception_handler {
-public:
-	static g_thread* handle(g_thread* current_thread);
-
-	static g_thread* handleGeneralProtectionFault(g_thread* current_thread);
-	static g_thread* handlePageFault(g_thread* current_thread);
-	static g_thread* handleDivideError(g_thread* current_thread);
-	static g_thread* handleInvalidOperationCode(g_thread* current_thread);
-
-	static uint32_t getCR2();
-	static void dump(g_thread* current_thread);
-	static void printStackTrace(g_processor_state* cpuState);
-};
+void load_file();
+void extend_buffer();
+void display_current_lines();
+void quit_with_error(std::string message);
+void insert_into_buffer(char* c, uint32_t len);
+void do_backspace();
+uint8_t* find_line(int line);
 
 #endif

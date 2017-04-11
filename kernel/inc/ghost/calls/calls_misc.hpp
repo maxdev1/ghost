@@ -54,21 +54,17 @@ typedef struct {
 
 /**
  * @field command
- * 		the query command
+ * 		query command
  *
- * @field query
- * 		input query buffer pointer
- *
- * @field outbuffer
- * 		output buffer pointer
+ * @field buffer
+ * 		communication buffer
  *
  * @field status
  * 		one of the {g_kernquery_status} status codes
  */
 typedef struct {
 	uint16_t command;
-	const uint8_t* query;
-	uint8_t* outbuffer;
+	uint8_t* buffer;
 	g_kernquery_status status;
 }__attribute__((packed)) g_syscall_kernquery;
 

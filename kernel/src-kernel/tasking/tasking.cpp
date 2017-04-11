@@ -253,23 +253,18 @@ uint32_t g_tasking::count() {
 /**
  *
  */
-g_thread* g_tasking::getAtPosition(uint32_t position) {
+uint32_t g_tasking::get_task_ids(g_tid* out, uint32_t len) {
 
-	uint32_t index = 0;
-	uint32_t previous_sched_counts = 0;
+	uint32_t pos = 0;
+	g_log_info("start: %h", out);
 
 	uint32_t processors = g_system::getNumberOfProcessors();
 	for (uint32_t i = 0; i < processors; i++) {
 		g_scheduler* sched = schedulers[i];
 		if (sched) {
-			// check if in this scheduler
-			uint32_t tasks_for_sched = sched->count();
-			if (position < index + tasks_for_sched) {
-				return sched->getAtPosition(position - previous_sched_counts);
-			}
-			previous_sched_counts += tasks_for_sched;
+			pos += sched->get_task_ids(&out[pos], len - pos);
 		}
 	}
 
-	return nullptr;
+	return pos;
 }

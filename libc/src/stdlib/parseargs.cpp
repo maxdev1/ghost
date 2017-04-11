@@ -29,34 +29,6 @@
 /**
  *
  */
-#define SKIP_WHITESPACE(pos)							\
-	while (*pos && isspace(*pos)) {						\
-		++pos;											\
-	}
-
-/**
- *
- */
-#define SKIP_ARGUMENT(pos)								\
-	bool instr = false;									\
-	bool esc = false;									\
-	while (*pos) {										\
-		if (*pos == '"' && !esc) {						\
-			instr = !instr;								\
-			esc = false;								\
-		} else if (*pos == '\\' && !esc) {				\
-			esc = true;									\
-		} else if (isspace(*pos) && !instr && !esc) {	\
-			break;										\
-		} else {										\
-			esc = false;								\
-		}												\
-		++pos;											\
-	}
-
-/**
- *
- */
 char* get_executable_name() {
 	// read path for the executable
 	char* absoluteExecPath = (char*) malloc(G_PATH_MAX);
@@ -96,8 +68,16 @@ int parseargs(int* out_argc, char*** out_args) {
 	char* pos = unparsedCommandLine;
 	int argc = 1;
 	while (*pos) {
-		SKIP_WHITESPACE(pos);
-		SKIP_ARGUMENT(pos);
+
+		// read until unit separator
+		while(*pos) {
+			if(*pos == G_CLIARGS_SEPARATOR) {
+				pos++;
+				break;
+			}
+			pos++;
+		}
+
 		++argc;
 	}
 
@@ -110,18 +90,29 @@ int parseargs(int* out_argc, char*** out_args) {
 	// put executable path as first argument
 	argv[0] = get_executable_name();
 
+	// parse command line
 	pos = unparsedCommandLine;
 	int argpp = 1;
 	while (*pos) {
-		SKIP_WHITESPACE(pos);
 		argv[argpp++] = pos;
-		SKIP_ARGUMENT(pos);
+
+		// skip until unit separator
+		while(*pos) {
+			if(*pos == G_CLIARGS_SEPARATOR) {
+				break;
+			}
+			pos++;
+		}
+
+		// no more chars - break
 		if (*pos == 0) {
 			break;
 		}
+
 		*pos++ = 0;
 	}
 
+	// mark end of argument vector
 	argv[argpp] = 0;
 
 	// clean up arguments

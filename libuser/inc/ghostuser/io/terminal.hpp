@@ -164,6 +164,20 @@ typedef struct _g_term_cursor_position {
 } g_term_cursor_position;
 
 /**
+ * Cursor position struct
+ */
+typedef struct _g_term_dimension {
+	_g_term_dimension(int w, int h) :
+			w(w), h(h) {
+	}
+	_g_term_dimension() :
+			w(0), h(0) {
+	}
+	int w;
+	int h;
+} g_term_dimension;
+
+/**
  * Terminal client access class.
  */
 class g_terminal {
@@ -187,7 +201,14 @@ public:
 	static void moveCursorForward(int n);
 	static void moveCursorBack(int n);
 
+	static g_term_dimension getSize();
 	static void setControlProcess(g_pid pid);
+
+	static void clear();
+	static void setScrollAreaToScreen();
+	static void setScrollArea(int start, int end);
+	static void scroll(int amount);
+	static void setCursorVisible(bool visible);
 };
 
 #endif

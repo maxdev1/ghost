@@ -23,11 +23,10 @@
 /**
  *
  */
-g_kernquery_status g_kernquery(uint16_t command, const uint8_t* query, uint8_t* outbuffer) {
+g_kernquery_status g_kernquery(uint16_t command, uint8_t* buffer) {
 	g_syscall_kernquery data;
 	data.command = command;
-	data.query = query;
-	data.outbuffer = outbuffer;
+	data.buffer = buffer;
 	g_syscall(G_SYSCALL_KERNQUERY, (uint32_t) &data);
 	return data.status;
 }

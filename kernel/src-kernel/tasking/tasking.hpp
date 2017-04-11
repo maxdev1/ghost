@@ -112,7 +112,7 @@ public:
 	/**
 	 *
 	 */
-	static g_thread* getAtPosition(uint32_t position);
+	static uint32_t get_task_ids(g_tid* out, uint32_t len);
 
 };
 

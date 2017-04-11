@@ -140,4 +140,12 @@ public:
 	void set_focused(bool focused);
 
 	void update_visible_buffer_size();
+	virtual int getWidth();
+	virtual int getHeight();
+
+	void setScrollAreaScreen();
+	void setScrollArea(int start, int end);
+	void scroll(int value);
+
+	void setCursorVisible(bool visible);
 };

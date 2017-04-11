@@ -517,3 +517,45 @@ void gui_screen_t::update_visible_buffer_size() {
 		repaint();
 	}
 }
+
+/**
+ *
+ */
+void gui_screen_t::setScrollAreaScreen() {
+	// TODO
+}
+
+/**
+ *
+ */
+void gui_screen_t::setScrollArea(int start, int end) {
+	// TODO
+}
+
+/**
+ *
+ */
+void gui_screen_t::scroll(int value) {
+	// TODO
+}
+
+/**
+ *
+ */
+void gui_screen_t::setCursorVisible(bool visible) {
+	// TODO
+}
+
+/**
+ *
+ */
+int gui_screen_t::getWidth() {
+	return raster_size.width;
+}
+
+/**
+ *
+ */
+int gui_screen_t::getHeight() {
+	return raster_size.height;
+}

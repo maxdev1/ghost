@@ -105,75 +105,86 @@ G_SYSCALL_HANDLER(kernquery) {
 
 	if (queryCommand == G_KERNQUERY_PCI_COUNT) {
 		data->status = G_KERNQUERY_STATUS_SUCCESSFUL;
-		g_kernquery_pci_count_out* out = (g_kernquery_pci_count_out*) data->outbuffer;
-		out->count = g_pci::getDeviceCount();
+		g_kernquery_pci_count_data* buf = (g_kernquery_pci_count_data*) data->buffer;
+		buf->count = g_pci::getDeviceCount();
 
 	} else if (queryCommand == G_KERNQUERY_PCI_GET) {
 		data->status = G_KERNQUERY_STATUS_SUCCESSFUL;
 
-		g_kernquery_pci_get_in* in = (g_kernquery_pci_get_in*) data->query;
-		g_pci_header* pciHeader = g_pci::getDeviceAt(in->position);
+		g_kernquery_pci_get_data* buf = (g_kernquery_pci_get_data*) data->buffer;
+		g_pci_header* pciHeader = g_pci::getDeviceAt(buf->position);
 
-		g_kernquery_pci_get_out* out = (g_kernquery_pci_get_out*) data->outbuffer;
 		if (pciHeader == nullptr) {
-			out->found = false;
+			buf->found = false;
 		} else {
-			out->found = true;
+			buf->found = true;
 
-			out->bus = pciHeader->bus;
-			out->slot = pciHeader->slot;
-			out->function = pciHeader->function;
+			buf->bus = pciHeader->bus;
+			buf->slot = pciHeader->slot;
+			buf->function = pciHeader->function;
 
-			out->vendorId = pciHeader->vendorId;
-			out->deviceId = pciHeader->deviceId;
+			buf->vendorId = pciHeader->vendorId;
+			buf->deviceId = pciHeader->deviceId;
 
-			out->classCode = pciHeader->classCode;
-			out->subclassCode = pciHeader->subclassCode;
-			out->progIf = pciHeader->progIf;
+			buf->classCode = pciHeader->classCode;
+			buf->subclassCode = pciHeader->subclassCode;
+			buf->progIf = pciHeader->progIf;
 		}
 
 	} else if (queryCommand == G_KERNQUERY_TASK_COUNT) {
 		data->status = G_KERNQUERY_STATUS_SUCCESSFUL;
-		((g_kernquery_task_count_out*) data->outbuffer)->count = g_tasking::count();
+		g_kernquery_task_count_data* buf = (g_kernquery_task_count_data*) data->buffer;
+		buf->count = g_tasking::count();
 
-	} else if (queryCommand == G_KERNQUERY_TASK_GET_BY_POS) {
+	} else if (queryCommand == G_KERNQUERY_TASK_LIST) {
+		data->status = G_KERNQUERY_STATUS_SUCCESSFUL;
+		g_kernquery_task_list_data* buf = (g_kernquery_task_list_data*) data->buffer;
+		buf->filled_ids = g_tasking::get_task_ids(buf->id_buffer, buf->id_buffer_size);
+
+	} else if (queryCommand == G_KERNQUERY_TASK_GET_BY_ID) {
 		data->status = G_KERNQUERY_STATUS_SUCCESSFUL;
 
-		g_kernquery_task_get_by_pos_in* in = (g_kernquery_task_get_by_pos_in*) data->query;
-		g_kernquery_task_get_out* out = (g_kernquery_task_get_out*) data->outbuffer;
+		g_kernquery_task_get_data* buf = (g_kernquery_task_get_data*) data->buffer;
+		g_thread* thread = g_tasking::getTaskById(buf->id);
 
-		g_thread* thread = g_tasking::getAtPosition(in->position);
+		if (thread) {
+			buf->id = thread->id;
+			if (thread->process->main == nullptr) {
+				buf->parent = -1;
+			} else {
+				buf->parent = thread->process->main->id;
+			}
+			buf->type = thread->type;
+			buf->memory_used = g_thread_manager::getMemoryUsage(thread);
 
-		out->id = thread->id;
-		out->parent = thread->process->main->id;
-		out->type = thread->type;
-		out->memory_used = g_thread_manager::getMemoryUsage(thread);
-
-		// copy identifier
-		const char* thread_ident = thread->getIdentifier();
-		if (thread_ident == nullptr) {
-			out->identifier[0] = 0;
-		} else {
-			// do safe copy
-			int max = 512;
-			for (int i = 0; i < max; i++) {
-				out->identifier[i] = thread_ident[i];
-				if (out->identifier[i] == 0) {
-					break;
-				}
-				if (i == max - 1) {
-					out->identifier[i] = 0;
-					break;
+			// copy identifier
+			const char* thread_ident = thread->getIdentifier();
+			if (thread_ident == nullptr) {
+				buf->identifier[0] = 0;
+			} else {
+				// do safe copy
+				int max = 512;
+				for (int i = 0; i < max; i++) {
+					buf->identifier[i] = thread_ident[i];
+					if (buf->identifier[i] == 0) {
+						break;
+					}
+					if (i == max - 1) {
+						buf->identifier[i] = 0;
+						break;
+					}
 				}
 			}
-		}
 
-		// copy process source
-		char* source_path = thread->process->source_path;
-		if (source_path == nullptr) {
-			out->source_path[0] = 0;
+			// copy process source
+			char* source_path = thread->process->source_path;
+			if (source_path == nullptr) {
+				buf->source_path[0] = 0;
+			} else {
+				g_string::copy(buf->source_path, source_path);
+			}
 		} else {
-			g_string::copy(out->source_path, source_path);
+			data->status = G_KERNQUERY_STATUS_UNKNOWN_ID;
 		}
 
 	} else {

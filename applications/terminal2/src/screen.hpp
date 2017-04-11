@@ -57,6 +57,7 @@ typedef uint8_t screen_color_t;
 #define VT100_COLOR_MAGENTA	5
 #define VT100_COLOR_CYAN	6
 #define VT100_COLOR_WHITE	7
+#define VT100_COLOR_GRAY	8
 
 /**
  * OEM-US special characters
@@ -96,12 +97,21 @@ public:
 		return colorBackground;
 	}
 
+	virtual int getWidth() = 0;
+	virtual int getHeight() = 0;
+
 	virtual void lock() {
 		g_atomic_lock(&_lock);
 	}
 	virtual void unlock() {
 		_lock = false;
 	}
+
+	virtual void setScrollAreaScreen() = 0;
+	virtual void setScrollArea(int start, int end) = 0;
+	virtual void scroll(int value) = 0;
+
+	virtual void setCursorVisible(bool visible) = 0;
 
 };
 

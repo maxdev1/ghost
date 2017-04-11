@@ -449,7 +449,6 @@ g_task_entry* g_scheduler::_removeFromQueue(g_task_entry** queue_head, g_thread*
  */
 void g_scheduler::moveToRunQueue(g_thread* thread) {
 
-
 	g_task_entry* move_entry = _removeFromQueue(&wait_queue, thread);
 
 	if (move_entry == 0) {
@@ -467,7 +466,6 @@ void g_scheduler::moveToRunQueue(g_thread* thread) {
  *
  */
 void g_scheduler::moveToWaitQueue(g_thread* thread) {
-
 
 	g_task_entry* move_entry = _removeFromQueue(&run_queue, thread);
 
@@ -491,7 +489,6 @@ void g_scheduler::moveToWaitQueue(g_thread* thread) {
  *
  */
 void g_scheduler::increaseWaitPriority(g_thread* thread) {
-
 
 	// remove entry from wait queue
 	g_task_entry* entry = _removeFromQueue(&wait_queue, thread);
@@ -576,27 +573,23 @@ uint32_t g_scheduler::count() {
 /**
  *
  */
-g_thread* g_scheduler::getAtPosition(uint32_t position) {
+uint32_t g_scheduler::get_task_ids(g_tid* out, uint32_t len) {
 
-	uint32_t index = 0;
+	uint32_t pos = 0;
 
 	auto entry = run_queue;
-	while (entry) {
-		if (index == position) {
-			return entry->value;
-		}
-		++index;
+	while (pos < len && entry) {
+		g_log_info("inserting %i at %i (%h)", entry->value->id, pos, &out[pos]);
+		out[pos++] = entry->value->id;
 		entry = entry->next;
 	}
 
 	entry = wait_queue;
-	while (entry) {
-		if (index == position) {
-			return entry->value;
-		}
-		++index;
+	while (pos < len && entry) {
+		g_log_info("inserting %i at %i (%h)", entry->value->id, pos, &out[pos]);
+		out[pos++] = entry->value->id;
 		entry = entry->next;
 	}
 
-	return nullptr;
+	return pos;
 }

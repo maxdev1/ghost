@@ -519,7 +519,7 @@ int fgetpos(FILE* stream, fpos_t* pos);
  * @param whence
  * 		<SEEK_CUR>, <SEEK_END> or <SEEK_SET>
  * @return
- * 		zero if successful, otherwise non-zero
+ * 		on failure -1, otherwise the new offset
  */
 int fseek(FILE* stream, long int offset, int whence);
 int fseeko(FILE* stream, off_t offset, int whence);

@@ -41,21 +41,19 @@ static const g_kernquery_status G_KERNQUERY_STATUS_UNKNOWN_ID = 1;
 #define G_KERNQUERY_PCI_GET				0x501
 
 #define G_KERNQUERY_TASK_COUNT			0x600
-#define G_KERNQUERY_TASK_GET_BY_POS		0x601
-#define G_KERNQUERY_TASK_GET_BY_ID		0x601
+#define G_KERNQUERY_TASK_LIST			0x601
+#define G_KERNQUERY_TASK_GET_BY_ID		0x602
 
 /**
  * PCI
  */
 typedef struct {
 	uint32_t count;
-}__attribute__((packed)) g_kernquery_pci_count_out;
+}__attribute__((packed)) g_kernquery_pci_count_data;
 
 typedef struct {
 	uint32_t position;
-}__attribute__((packed)) g_kernquery_pci_get_in;
 
-typedef struct {
 	uint8_t found;
 
 	uint8_t slot;
@@ -68,34 +66,43 @@ typedef struct {
 	uint8_t classCode;
 	uint8_t subclassCode;
 	uint8_t progIf;
-}__attribute__((packed)) g_kernquery_pci_get_out;
+}__attribute__((packed)) g_kernquery_pci_get_data;
+
 
 /**
- * Processes / threads
+ * Used in the {G_KERNQUERY_TASK_COUNT} query to retrieve the number
+ * of existing tasks.
  */
 typedef struct {
 	uint32_t count;
-}__attribute__((packed)) g_kernquery_task_count_out;
+}__attribute__((packed)) g_kernquery_task_count_data;
 
+/**
+ * Used in the {G_KERNQUERY_TASK_LIST} query to retrieve a list that
+ * contains the id of each existing task.
+ */
 typedef struct {
-	uint32_t position;
-}__attribute__((packed)) g_kernquery_task_get_by_pos_in;
+	g_tid* id_buffer;
+	uint32_t id_buffer_size;
 
+	uint32_t filled_ids;
+}__attribute__((packed)) g_kernquery_task_list_data;
+
+/**
+ * Used in the {G_KERNQUERY_TASK_GET_BY_ID} query to retrieve
+ * information about a specific task.
+ */
 typedef struct {
 	g_tid id;
-}__attribute__((packed)) g_kernquery_task_get_by_id_in;
-
-typedef struct {
 	uint8_t found;
 
-	g_tid id;
 	g_tid parent;
 	g_thread_type type;
 	char identifier[512];
 	char source_path[G_PATH_MAX];
 
 	g_virtual_address memory_used;
-}__attribute__((packed)) g_kernquery_task_get_out;
+}__attribute__((packed)) g_kernquery_task_get_data;
 
 __END_C
 

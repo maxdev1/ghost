@@ -18,55 +18,26 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __TERMINAL_SCREEN_HEADLESS__
-#define __TERMINAL_SCREEN_HEADLESS__
+#ifndef __TASKBAR__
+#define __TASKBAR__
 
-#include "screen.hpp"
+#include "component.hpp"
+#include "desktop.hpp"
 
-#define SCREEN_WIDTH	80
-#define SCREEN_HEIGHT	25
-#define VIDEO_MEMORY	0xB8000
+#define TASKBAR_HEIGHT 30
 
 /**
  *
  */
-class headless_screen_t: public screen_t {
-private:
-	uint32_t id;
-	uint8_t* output_current;
-
-	uint32_t offset;
-
-	uint32_t activeProcessId;
-	g_atom lock = 0;
-	void normalize();
-
-	bool cursorVisible = true;
-	void updateVisualCursor();
-
-	bool scrollAreaScreen = true;
-	int scrollAreaStart = 0;
-	int scrollAreaEnd = 0;
-
+class taskbar_t: public component_t {
 public:
-	headless_screen_t();
+	g_layouted_text* start_button_layout;
+	g_font* font;
 
-	g_key_info readInput();
-	void clean();
-	void backspace();
-	void writeChar(char c);
-	void moveCursor(int x, int y);
-	int getCursorX();
-	int getCursorY();
-	int getWidth();
-	int getHeight();
+	taskbar_t(desktop_t* desktop);
 
-	void setScrollAreaScreen();
-	void setScrollArea(int start, int end);
-	void scroll(int value);
-
-	void setCursorVisible(bool visible);
-
+	virtual void paint(cairo_t* cr);
+	void handle_mouse_event(g_ui_component_mouse_event* e);
 };
 
 #endif

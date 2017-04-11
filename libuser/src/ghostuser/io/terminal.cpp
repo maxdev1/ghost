@@ -210,10 +210,45 @@ g_term_cursor_position g_terminal::getCursor() {
 		}
 	}
 
-	g_term_cursor_position pos;
-	pos.y = -1;
-	pos.x = -1;
-	return pos;
+	g_term_cursor_position invalid;
+	invalid.y = -1;
+	invalid.x = -1;
+	return invalid;
+}
+
+/**
+ *
+ */
+g_term_dimension g_terminal::getSize() {
+
+	// read request
+	std::cout << (char) G_TERMKEY_ESC << "{i";
+	std::flush(std::cout);
+
+	// read response
+	readAndBufferUntilESC();
+
+	int ch = readUnbuffered();
+	if (ch == '{') {
+		int parameters[TERMINAL_STREAM_CONTROL_MAX_PARAMETERS];
+		for (int i = 0; i < TERMINAL_STREAM_CONTROL_MAX_PARAMETERS; i++) {
+			parameters[i] = 0;
+		}
+
+		int mode = readEscapedParameters(parameters);
+
+		if (mode == 'i') {
+			g_term_dimension result;
+			result.w = parameters[0];
+			result.h = parameters[1];
+			return result;
+		}
+	}
+
+	g_term_dimension invalid;
+	invalid.w = -1;
+	invalid.h = -1;
+	return invalid;
 }
 
 /**
@@ -253,5 +288,49 @@ void g_terminal::moveCursorBack(int n) {
  */
 void g_terminal::setControlProcess(g_pid pid) {
 	std::cout << (char) G_TERMKEY_ESC << "{" << pid << "c";
+	std::flush(std::cout);
+}
+
+/**
+ *
+ */
+void g_terminal::clear() {
+	std::cout << (char) G_TERMKEY_ESC << "[2J";
+	std::flush(std::cout);
+}
+
+/**
+ *
+ */
+void g_terminal::setScrollAreaToScreen() {
+	std::cout << (char) G_TERMKEY_ESC << "[r";
+	std::flush(std::cout);
+}
+
+/**
+ *
+ */
+void g_terminal::setScrollArea(int start, int end) {
+	std::cout << (char) G_TERMKEY_ESC << "[" << start << ";" << end << "r";
+	std::flush(std::cout);
+}
+
+/**
+ *
+ */
+void g_terminal::scroll(int value) {
+	if (value >= 0) {
+		std::cout << (char) G_TERMKEY_ESC << "[" << value << "S";
+	} else {
+		std::cout << (char) G_TERMKEY_ESC << "[" << -value << "T";
+	}
+	std::flush(std::cout);
+}
+
+/**
+ *
+ */
+void g_terminal::setCursorVisible(bool visible) {
+	std::cout << (char) G_TERMKEY_ESC << "{" << 0 << ";" << (visible ? 1 : 0) << "C";
 	std::flush(std::cout);
 }

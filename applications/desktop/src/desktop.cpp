@@ -5,7 +5,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <desktop.hpp>
-#include <ghostuser/ui/ui.hpp>
 #include <ghostuser/ui/window.hpp>
 #include <ghostuser/ui/label.hpp>
 #include <ghostuser/ui/canvas.hpp>
@@ -13,21 +12,14 @@
 #include <ghostuser/ui/textfield.hpp>
 #include <ghostuser/ui/action_listener.hpp>
 #include <ghostuser/ui/mouse_listener.hpp>
-#include <ghostuser/graphics/text/text_layouter.hpp>
-#include <ghostuser/graphics/text/font_loader.hpp>
 #include <ghostuser/tasking/lock.hpp>
 #include <math.h>
 #include <iostream>
 #include <list>
 #include <sstream>
 
-/**
- *
- */
-g_atom paint_uptodate = false;
-g_point cursor_position;
-
-g_dimension screen_dim;
+#include "component.hpp"
+#include "taskbar.hpp"
 
 /**
  * Variables used for the status of the canvas and its buffer.
@@ -42,8 +34,9 @@ g_canvas_buffer_info canvas_buffer_info;
 /**
  *
  */
-void spawn_terminal() {
-	g_spawn("/applications/terminal2.bin", "", "/", G_SECURITY_LEVEL_APPLICATION);
+int main(int argc, char** argv) {
+	desktop_t desktop;
+	desktop.run();
 }
 
 /**
@@ -51,46 +44,41 @@ void spawn_terminal() {
  */
 class desktop_mouse_listener_t: public g_mouse_listener {
 public:
+	desktop_t* desktop;
+
+	desktop_mouse_listener_t(desktop_t* desktop) :
+			desktop(desktop) {
+	}
+
 	virtual void handle_mouse_event(g_ui_component_mouse_event* e) {
-		cursor_position = e->position;
-		paint_uptodate = false;
-
-		static bool startPressed = false;
-
-		if (e->type == G_MOUSE_EVENT_PRESS) {
-			if (cursor_position.x < 120 && cursor_position.y > screen_dim.height - 30) {
-				startPressed = true;
-			}
-		}
-		if (e->type == G_MOUSE_EVENT_RELEASE) {
-			if (cursor_position.x < 120 && cursor_position.y > screen_dim.height - 30 && startPressed) {
-				g_create_thread((void*) spawn_terminal);
-			}
-		}
+		desktop->cursor_position = e->position;
+		desktop->handle_mouse_event(e);
+		desktop->paint_uptodate = false;
 	}
 };
 
 /**
  *
  */
-int main(int argc, char** argv) {
+void desktop_t::run() {
 
 	g_ui_open_status open_stat = g_ui::open();
 
 	if (open_stat == G_UI_OPEN_STATUS_SUCCESSFUL) {
+
+		// Initialize canvas
 		canvas = g_canvas::create();
 		g_ui::register_desktop_canvas(canvas);
-
 		g_ui::get_screen_dimension(&screen_dim);
 
 		canvas->setBounds(g_rectangle(0, 0, screen_dim.width, screen_dim.height));
-		canvas->setMouseListener(new desktop_mouse_listener_t());
+		canvas->setMouseListener(new desktop_mouse_listener_t(this));
 
-		int taskbar_height = 30;
+		// Create taskbar
+		taskbar = new taskbar_t(this);
+		components.push_back(taskbar);
 
-		auto start_button_layout = g_text_layouter::getInstance()->initializeBuffer();
-		g_font* font = g_font_loader::getDefault();
-
+		// Main loop
 		while (true) {
 			// get buffer
 			auto cr = get_drawing_context();
@@ -106,40 +94,9 @@ int main(int argc, char** argv) {
 			cairo_paint(cr);
 			cairo_restore(cr);
 
-			// draw task bar
-			cairo_save(cr);
-			cairo_set_source_rgba(cr, 0.1, 0.1, 0.15, 0.8);
-			cairo_rectangle(cr, 0, screen_dim.height - taskbar_height, screen_dim.width, taskbar_height);
-			cairo_fill(cr);
-			cairo_restore(cr);
-
-			// start button
-			g_rectangle start_bounds(20, screen_dim.height - taskbar_height, 100, taskbar_height);
-
-			cairo_save(cr);
-			if (start_bounds.contains(cursor_position)) {
-				cairo_set_source_rgba(cr, 0.3, 0.3, 0.32, 0.8);
-			} else {
-				cairo_set_source_rgba(cr, 0.3, 0.3, 0.32, 0.5);
-			}
-			cairo_rectangle(cr, start_bounds.x, start_bounds.y, start_bounds.width, start_bounds.height);
-			cairo_fill(cr);
-			cairo_restore(cr);
-
-			g_text_layouter::getInstance()->layout(cr, "Terminal", font, 14, start_bounds, g_text_alignment::CENTER, start_button_layout);
-
-			// Paint glyphs
-			for (g_positioned_glyph& g : start_button_layout->positions) {
-				cairo_save(cr);
-				if (start_bounds.contains(cursor_position)) {
-					cairo_set_source_rgba(cr, 1, 1, 1, 1);
-				} else {
-					cairo_set_source_rgba(cr, 1, 1, 1, 0.8);
-				}
-				cairo_translate(cr, g.position.x - g.glyph->x + 5, g.position.y - g.glyph->y + 5);
-				cairo_glyph_path(cr, g.glyph, g.glyph_count);
-				cairo_fill(cr);
-				cairo_restore(cr);
+			// draw components
+			for (component_t* component : components) {
+				component->paint(cr);
 			}
 
 			// redraw entire screen (TODO: only redraw partially)
@@ -154,7 +111,24 @@ int main(int argc, char** argv) {
 /**
  *
  */
-cairo_t* get_drawing_context() {
+void desktop_t::handle_mouse_event(g_ui_component_mouse_event* e) {
+
+	auto iter = components.rbegin();
+	for (; iter != components.rend(); ++iter) {
+		auto component = *iter;
+
+		if (component->bounds.contains(e->position)) {
+			e->position = e->position - component->bounds.getStart();
+			component->handle_mouse_event(e);
+			break;
+		}
+	}
+}
+
+/**
+ *
+ */
+cairo_t* desktop_t::get_drawing_context() {
 
 	// get buffer
 	canvas_buffer_info = canvas->getBuffer();
