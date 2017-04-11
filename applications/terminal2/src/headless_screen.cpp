@@ -22,6 +22,7 @@
 #include <string.h>
 #include <ghostuser/utils/Utils.hpp>
 #include <ghost.h>
+#include <stdio.h>
 
 static uint32_t screenIdCounter = 0;
 
@@ -55,17 +56,20 @@ void headless_screen_t::clean() {
  *
  */
 void headless_screen_t::updateVisualCursor() {
-	int x = (offset % (SCREEN_WIDTH * 2)) / 2;
-	int y = offset / (SCREEN_WIDTH * 2);
 
-	g_atomic_lock(&lock);
-	uint16_t position = (y * SCREEN_WIDTH) + x;
+	if (cursorVisible) {
+		int x = (offset % (SCREEN_WIDTH * 2)) / 2;
+		int y = offset / (SCREEN_WIDTH * 2);
 
-	g_utils::outportByte(0x3D4, 0x0F);
-	g_utils::outportByte(0x3D5, (uint8_t) (position & 0xFF));
-	g_utils::outportByte(0x3D4, 0x0E);
-	g_utils::outportByte(0x3D5, (uint8_t) ((position >> 8) & 0xFF));
-	lock = false;
+		g_atomic_lock(&lock);
+		uint16_t position = (y * SCREEN_WIDTH) + x;
+
+		g_utils::outportByte(0x3D4, 0x0F);
+		g_utils::outportByte(0x3D5, (uint8_t) (position & 0xFF));
+		g_utils::outportByte(0x3D4, 0x0E);
+		g_utils::outportByte(0x3D5, (uint8_t) ((position >> 8) & 0xFF));
+		lock = false;
+	}
 }
 
 /**
@@ -107,9 +111,6 @@ void headless_screen_t::writeChar(char c) {
 
 	// Ensure valid offset
 	normalize();
-
-	// Re-position BIOS cursor
-	updateVisualCursor();
 }
 
 /**
@@ -125,8 +126,6 @@ void headless_screen_t::backspace() {
 	offset -= 2;
 
 	lock = false;
-
-	updateVisualCursor();
 }
 
 /**
@@ -156,6 +155,69 @@ void headless_screen_t::normalize() {
 /**
  *
  */
+void headless_screen_t::setCursorVisible(bool visible) {
+
+	cursorVisible = visible;
+
+	if (visible) {
+		updateVisualCursor();
+
+	} else {
+		g_atomic_lock(&lock);
+		// effectively hides the cursor
+		g_utils::outportByte(0x3D4, 0x0F);
+		g_utils::outportByte(0x3D5, (uint8_t) (-1 & 0xFF));
+		g_utils::outportByte(0x3D4, 0x0E);
+		g_utils::outportByte(0x3D5, (uint8_t) ((-1 >> 8) & 0xFF));
+		lock = false;
+	}
+
+}
+
+/**
+ *
+ */
+void headless_screen_t::setScrollAreaScreen() {
+	scrollAreaScreen = true;
+}
+
+/**
+ *
+ */
+void headless_screen_t::setScrollArea(int start, int end) {
+	scrollAreaScreen = false;
+	g_atomic_lock(&lock);
+	scrollAreaStart = start > SCREEN_HEIGHT ? SCREEN_HEIGHT : start;
+	scrollAreaEnd = end > SCREEN_HEIGHT ? SCREEN_HEIGHT : end;
+	lock = false;
+}
+
+/**
+ *
+ */
+void headless_screen_t::scroll(int value) {
+
+	int scrollStart = scrollAreaScreen ? 0 : scrollAreaStart;
+	int scrollEnd = scrollAreaScreen ? SCREEN_HEIGHT : scrollAreaEnd;
+
+	g_atomic_lock(&lock);
+
+	if (value > 0) {
+		for (int i = scrollEnd - 2; i >= scrollStart; i--) {
+			memcpy(&output_current[(i + value) * SCREEN_WIDTH * 2], &output_current[i * SCREEN_WIDTH * 2], SCREEN_WIDTH * 2);
+		}
+	} else {
+		for (int i = scrollStart; i < scrollEnd; i++) {
+			memcpy(&output_current[i * SCREEN_WIDTH * 2], &output_current[(i + value) * SCREEN_WIDTH * 2], SCREEN_WIDTH * 2);
+		}
+	}
+
+	lock = false;
+}
+
+/**
+ *
+ */
 g_key_info headless_screen_t::readInput() {
 	return g_keyboard::readKey();
 }
@@ -172,4 +234,18 @@ int headless_screen_t::getCursorX() {
  */
 int headless_screen_t::getCursorY() {
 	return offset / (SCREEN_WIDTH * 2);
+}
+
+/**
+ *
+ */
+int headless_screen_t::getWidth() {
+	return SCREEN_WIDTH;
+}
+
+/**
+ *
+ */
+int headless_screen_t::getHeight() {
+	return SCREEN_HEIGHT;
 }

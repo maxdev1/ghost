@@ -22,15 +22,42 @@
 #define __DESKTOP__
 
 #include <cairo/cairo.h>
+#include <list>
+#include <ghost.h>
+#include <ghostuser/ui/ui.hpp>
+#include <ghostuser/graphics/metrics/point.hpp>
+#include <ghostuser/graphics/metrics/dimension.hpp>
 
-/**
- * Retrives the drawing context from the canvas.
- */
-cairo_t* get_drawing_context();
+class taskbar_t;
+class component_t;
 
 /**
  *
  */
-void blit_canvas();
+class desktop_t {
+public:
+	std::list<component_t*> components;
+	taskbar_t* taskbar;
+
+	g_point cursor_position;
+	g_dimension screen_dim;
+
+	g_atom paint_uptodate = false;
+
+	/**
+	 *
+	 */
+	void run();
+
+	/**
+	 * Retrives the drawing context from the canvas.
+	 */
+	cairo_t* get_drawing_context();
+
+	/**
+	 *
+	 */
+	void handle_mouse_event(g_ui_component_mouse_event* e);
+};
 
 #endif

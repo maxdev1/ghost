@@ -18,57 +18,32 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "screen.hpp"
+#ifndef __COMPONENT__
+#define __COMPONENT__
 
+#include "desktop.hpp"
 #include <cairo/cairo.h>
-#include <ghostuser/ui/window.hpp>
-#include <ghostuser/ui/canvas.hpp>
 
-#include <ghostuser/utils/utils.hpp>
-#include <ghostuser/ui/ui.hpp>
-#include <ghostuser/ui/label.hpp>
-#include <ghostuser/ui/button.hpp>
-#include <ghostuser/ui/textfield.hpp>
-#include <ghostuser/ui/action_listener.hpp>
-#include <ghostuser/ui/focus_listener.hpp>
-#include <ghostuser/ui/key_listener.hpp>
-#include <ghostuser/tasking/lock.hpp>
-#include <ghostuser/graphics/text/font_loader.hpp>
-#include <ghostuser/graphics/text/font.hpp>
+#include <ghostuser/graphics/metrics/rectangle.hpp>
 #include <ghostuser/graphics/text/text_layouter.hpp>
+#include <ghostuser/graphics/text/font_loader.hpp>
 
 /**
  *
  */
-class gui_screen_t: public screen_t {
-private:
-	g_window* window;
-	g_canvas* canvas;
-
-	cairo_surface_t* existingSurface = 0;
-	uint8_t* existingSurfaceBuffer = 0;
-	g_dimension bufferSize;
-	cairo_t* existingContext = 0;
-
-	g_layouted_text* viewModel;
-	g_font* font;
-
-	void initialize();
-	cairo_t* getGraphics();
-
-	static void blinkCursorThread();
-
+class component_t {
 public:
-	gui_screen_t();
+	g_rectangle bounds;
+	desktop_t* desktop;
 
-	static void paint_entry();
-	void paint();
+	component_t(desktop_t* desktop) :
+			desktop(desktop) {
+	}
+	virtual ~component_t() {
+	}
 
-	g_key_info readInput();
-	void clean();
-	void backspace();
-	void writeChar(char c);
-	void moveCursor(int x, int y);
-	int getCursorX();
-	int getCursorY();
+	virtual void paint(cairo_t* cr) = 0;
+	virtual void handle_mouse_event(g_ui_component_mouse_event* e) = 0;
 };
+
+#endif

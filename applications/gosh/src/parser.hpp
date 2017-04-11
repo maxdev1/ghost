@@ -18,48 +18,47 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef GHOST_INTERRUPTS_REQUEST_HANDLERS
-#define GHOST_INTERRUPTS_REQUEST_HANDLERS
+#ifndef __GHOST_GOSH_PARSER__
+#define __GHOST_GOSH_PARSER__
 
-#include <system/processor_state.hpp>
-#include <tasking/thread.hpp>
+#include <vector>
+#include <string>
 
-#include "ghost/stdint.h"
-#include "ghost/kernel.h"
-
-/**
- * Type of an interrupt handler
- */
-typedef struct {
-	g_tid thread_id;
-	uintptr_t handler;
-	uintptr_t callback;
-} g_irq_handler;
+struct pipe_expression_t;
+struct program_call_t;
 
 /**
- * Interrupt request handling class
+ *
  */
-class g_interrupt_request_handler {
+struct pipe_expression_t {
+	std::vector<program_call_t*> calls;
+};
+
+/**
+ *
+ */
+struct program_call_t {
+	std::string program;
+	std::vector<std::string> arguments;
+};
+
+/**
+ *
+ */
+class parser_t {
+private:
+	char current;
+	int position;
+	std::string input;
+
+	void step();
+	void skip_whitespace();
 public:
+	parser_t(std::string input);
 
-	/**
-	 * @see source
-	 */
-	static g_thread* handle(g_thread* current_thread);
-
-	/**
-	 * Checks if the given IRQ has happened and was not handled yet.
-	 *
-	 * @param irq the number of the irq to check
-	 * @return true if the irq has occured and should be handled
-	 */
-	static bool pollIrq(uint8_t irq);
-
-	/**
-	 *
-	 */
-	static void set_handler(uint8_t irq, g_tid thread_id, uintptr_t handler_addr, uintptr_t callback_addr);
-
+	bool pipe_expression(pipe_expression_t** out);
+	bool program_call(program_call_t** out);
+	bool argument(std::string& out);
 };
 
 #endif

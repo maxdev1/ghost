@@ -232,9 +232,9 @@ public:
 	uint32_t count();
 
 	/**
-	 * The position is solely a logical thing used for listing tasks in the system.
+	 *
 	 */
-	g_thread* getAtPosition(uint32_t position);
+	uint32_t get_task_ids(g_tid* out, uint32_t len);
 
 };
 

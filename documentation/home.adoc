@@ -26,3 +26,4 @@ component. On the top of each page there's a link back to this home page.
 * *<<libc#,libc>>* - documentation for the C library implementation
 * *<<ramdisk-format#,Ramdisk>>* - documentation about the Ramdisk format & generation
 * *<<port#,port.sh>>* - manual for the porting utility
+* *<<spawning#,Spawning>>* about process creation

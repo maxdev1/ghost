@@ -72,6 +72,7 @@ typedef struct {
 
 // process configuration buffer lengths
 #define G_CLIARGS_BUFFER_LENGTH			1024
+#define G_CLIARGS_SEPARATOR				0x1F // ASCII character: UNIT SEPARATOR
 
 // for <g_register_irq_handler>
 typedef uint8_t g_register_irq_handler_status;

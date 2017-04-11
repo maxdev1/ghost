@@ -194,16 +194,16 @@ PCIClassMapping PCI_CLASSCODE_MAPPINGS[] = {
 int pci_list() {
 
 	// read how many devices there are
-	g_kernquery_pci_count_out out;
+	g_kernquery_pci_count_data buf;
 
-	g_kernquery_status countstatus = g_kernquery(G_KERNQUERY_PCI_COUNT, 0, (uint8_t*) &out);
+	g_kernquery_status countstatus = g_kernquery(G_KERNQUERY_PCI_COUNT, (uint8_t*) &buf);
 	if (countstatus != G_KERNQUERY_STATUS_SUCCESSFUL) {
 		fprintf(stderr, "failed to query the kernel for the number of PCI devices (code %i)\n", countstatus);
 		return 1;
 	}
 
 	// list devices
-	uint32_t deviceCount = out.count;
+	uint32_t deviceCount = buf.count;
 	printf("Found %i PCI devices\n", deviceCount);
 
 	// tables top line
@@ -244,12 +244,10 @@ int pci_list() {
 	for (uint32_t pos = 0; pos < deviceCount; pos++) {
 
 		// query device at position
-		g_kernquery_pci_get_in in;
-		in.position = pos;
+		g_kernquery_pci_get_data buf;
+		buf.position = pos;
 
-		g_kernquery_pci_get_out out;
-
-		g_kernquery_status getstatus = g_kernquery(G_KERNQUERY_PCI_GET, (uint8_t*) &in, (uint8_t*) &out);
+		g_kernquery_status getstatus = g_kernquery(G_KERNQUERY_PCI_GET, (uint8_t*) &buf);
 		if (getstatus != G_KERNQUERY_STATUS_SUCCESSFUL) {
 			fprintf(stderr, "failed to query the kernel for PCI devices %i (code %i)", pos, getstatus);
 			return 1;
@@ -260,11 +258,11 @@ int pci_list() {
 		PCIClassMapping* matchingNoProgifEntry = 0;
 		for (int i = 0; i < sizeof(PCI_CLASSCODE_MAPPINGS) / sizeof(PCIClassMapping); i++) {
 			PCIClassMapping* table = &PCI_CLASSCODE_MAPPINGS[i];
-			if (table->classCode == out.classCode && table->subclassCode == out.subclassCode && table->progIf == out.progIf) {
+			if (table->classCode == buf.classCode && table->subclassCode == buf.subclassCode && table->progIf == buf.progIf) {
 				matchingEntry = table;
 				break;
 
-			} else if(table->classCode == out.classCode && table->subclassCode == out.subclassCode) {
+			} else if(table->classCode == buf.classCode && table->subclassCode == buf.subclassCode) {
 				matchingNoProgifEntry = table;
 				break;
 			}
@@ -280,8 +278,8 @@ int pci_list() {
 			className = matchingNoProgifEntry->className;
 			subclassName = matchingNoProgifEntry->subclassName;
 		}
-		printf("\xB3 %02x \xB3 %02x \xB3 %02x \xB3 %04x \xB3 %04x \xB3 %.22s \xB3 %.22s \xB3", out.bus, out.slot, out.function, out.vendorId,
-					out.deviceId, className, subclassName);
+		printf("\xB3 %02x \xB3 %02x \xB3 %02x \xB3 %04x \xB3 %04x \xB3 %.22s \xB3 %.22s \xB3", buf.bus, buf.slot, buf.function, buf.vendorId,
+					buf.deviceId, className, subclassName);
 	}
 
 	// bottom line

@@ -1108,15 +1108,12 @@ g_raise_signal_status g_raise_signal(g_pid process, int signal);
  * @param command
  * 		query command
  *
- * @param query
- * 		input query
- *
- * @param outbuffer
- * 		output buffer
+ * @param buffer
+ * 		communication buffer
  *
  * @return one of the {g_kernquery_status} codes
  */
-g_kernquery_status g_kernquery(uint16_t command, const uint8_t* query, uint8_t* outbuffer);
+g_kernquery_status g_kernquery(uint16_t command, uint8_t* buffer);
 
 __END_C
 

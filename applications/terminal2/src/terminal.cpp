@@ -26,7 +26,9 @@
 #include <signal.h>
 
 /**
- *
+ * Main routine that initializes the terminal. The terminal can run in headless
+ * and graphical mode - this is determined by the respective command line
+ * argument.
  */
 int main(int argc, char* argv[]) {
 
@@ -44,7 +46,10 @@ int main(int argc, char* argv[]) {
 }
 
 /**
- *
+ * Executes the terminal instance. This initializes the screen, laods the
+ * keyboard layout for this process and then starts the actual shell process.
+ * Then control is given to the routines that process user input and program
+ * output.
  */
 void terminal_t::execute() {
 
@@ -87,7 +92,8 @@ void terminal_t::execute() {
 }
 
 /**
- *
+ * Initializes either the graphical window screen or a headless screen (that
+ * writes to the BIOS video memory area).
  */
 void terminal_t::initializeScreen() {
 
@@ -111,7 +117,8 @@ void terminal_t::initializeScreen() {
 }
 
 /**
- *
+ * Starts the shell executable and passes pipes for their input, output and
+ * error streams.
  */
 void terminal_t::start_shell() {
 
@@ -163,7 +170,7 @@ void terminal_t::start_shell() {
 }
 
 /**
- *
+ * Simple utility function to write a C++ string to the shell executables input.
  */
 void terminal_t::write_string_to_shell(std::string line) {
 
@@ -182,7 +189,8 @@ void terminal_t::write_string_to_shell(std::string line) {
 }
 
 /**
- *
+ * Sends a terminal key to the shell. These keys are encoded in a specific way
+ * so that the programs can receive more than simple text characters.
  */
 void terminal_t::write_termkey_to_shell(int termkey) {
 
@@ -194,7 +202,8 @@ void terminal_t::write_termkey_to_shell(int termkey) {
 }
 
 /**
- *
+ * Main input routine that receives typed keys by the user and sends them to the
+ * shell executable respectively.
  */
 void terminal_t::input_routine() {
 
@@ -270,6 +279,12 @@ void terminal_t::input_routine() {
 
 			} else if (readInput.key == "KEY_ARROW_DOWN" && readInput.pressed) {
 				write_termkey_to_shell(G_TERMKEY_DOWN);
+
+			} else if (readInput.key == "KEY_TAB" && readInput.pressed && readInput.shift) {
+				write_string_to_shell("\t");
+
+			} else if (readInput.key == "KEY_TAB" && readInput.pressed) {
+				write_termkey_to_shell(G_TERMKEY_STAB);
 
 			} else {
 				char chr = g_keyboard::charForKey(readInput);
@@ -452,9 +467,20 @@ void terminal_t::process_vt100_sequence(stream_control_status_t* status) {
 				// Background color
 			} else if (param >= 40 && param < 50) {
 				screen->setColorBackground(convert_vt100_to_screen_color(param - 40));
+
 			}
 		}
 
+		break;
+
+		// Clearing
+	case 'J':
+		if (status->parameterCount == 1) {
+			// Clear the entire screen
+			if (status->parameters[0] == 2) {
+				screen->clean();
+			}
+		}
 		break;
 
 		// Reposition cursor
@@ -473,8 +499,25 @@ void terminal_t::process_vt100_sequence(stream_control_status_t* status) {
 		}
 		break;
 
-	}
+		// Set scroll area
+	case 'r':
+		if(status->parameterCount == 0) {
+			screen->setScrollAreaScreen();
+		} else {
+			screen->setScrollArea(status->parameters[0], status->parameters[1]);
+		}
+		break;
 
+		// Scroll Scrolling Region Up
+	case 'S':
+		screen->scroll(status->parameters[0]);
+		break;
+
+		// Scroll Scrolling Region Down
+	case 'T':
+		screen->scroll(-status->parameters[0]);
+		break;
+	}
 }
 
 /**
@@ -494,6 +537,14 @@ void terminal_t::process_ghostterm_sequence(stream_control_status_t* status) {
 		this->echo = (status->parameters[0] == 1);
 		break;
 
+		// Screen info
+	case 'i': {
+		std::stringstream response;
+		response << (char) G_TERMKEY_ESC << "{" << screen->getWidth() << ";" << screen->getHeight() << "i";
+		write_string_to_shell(response.str().c_str());
+		break;
+	}
+
 		// Put char
 	case 'p':
 		screen->writeChar(status->parameters[0]);
@@ -502,6 +553,14 @@ void terminal_t::process_ghostterm_sequence(stream_control_status_t* status) {
 		// Process control
 	case 'c':
 		current_process = status->parameters[0];
+		break;
+
+		// Various other controls
+	case 'C':
+		// show/hide cursor
+		if (status->parameters[0] == 0) {
+			screen->setCursorVisible(status->parameters[1]);
+		}
 		break;
 
 	}
@@ -529,6 +588,8 @@ screen_color_t terminal_t::convert_vt100_to_screen_color(int color) {
 		return SC_WHITE;
 	case VT100_COLOR_YELLOW:
 		return SC_YELLOW;
+	case VT100_COLOR_GRAY:
+		return SC_LGRAY;
 	}
 	return SC_WHITE;
 }

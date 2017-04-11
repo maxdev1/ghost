@@ -43,7 +43,7 @@
 // version
 #define G_VERSION_MAJOR									0
 #define G_VERSION_MINOR									5
-#define G_VERSION_PATCH									5
+#define G_VERSION_PATCH									6
 
 // paths to system binaries
 #define G_INIT_BINARY_NAME								"applications/init.bin"
