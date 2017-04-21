@@ -3,7 +3,7 @@
 
 The kernel and the userspace applications are written from scratch in C++ and Assembly (and a little C). The kernel is not based on any existing kernel and not Unix-compatible. There is a relatively small POSIX.1 compatibility layer that allows porting some software to the system though.
 
-The most advanced features are SMP support (symmetric multiprocessing) to run on multiple processors, a v8086 monitor for executing BIOS calls (which also introduced VESA support), support for ELF binary loading (including thread-local-storage and all the other little things), as well as signal support.
+The most advanced features are SMP support (symmetric multiprocessing) to run on multiple processors, a v8086 monitor for executing BIOS calls (which also introduced VESA support), support for ELF binary loading (including thread-local-storage and all the other little things), as well as signal support. And there is a fancy little GUI that makes it all good-looking :-)
 
 ## Status
 This is the bleeding edge source version of April 12, 2017.
