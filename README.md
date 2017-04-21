@@ -4,36 +4,28 @@ from scratch in C++ and assembly. It's based on a (almost) pure microkernel
 design.
 
 ## Status
-This is the bleeding edge source version of November 17, 2016.
-Version 0.5.4
+This is the bleeding edge source version of April 12, 2017.
+Version 0.5.6
 
-I've reworked a lot of stuff since the last revision and fixed many bugs.
-The client-canvas is finished and used in the terminal/desktop. Started the
-implementation of a new, VT100 compatible terminal and a custom shell
-(`gosh`). Added various features to the window server, including event
-transfer to the client, exit-event when the main window of a program closes,
-remove components when their process dies and more.
-
-Also added a JavaScript interpreter program (`js`) which bases on
-the Duktape JS engine.
-
-![Current screenshot of Duktape running](https://ghostkernel.org/files/ghost-0.5.3-jsconsole.png)
+![Current highres-screenshot](https://ghostkernel.org/files/ghost-0.5.6-highres.png)
 
 ## Features
-- Command-line & GUI environment
-- Multiprocessor support
-- PS/2 keyboard & mouse driver, VESA video driver
-- Kernel written from scratch
-- Patched GCC, OS specific toolchain
-- Custom libc implementation
-- libstdc++ port
-- Extensive kernel API library (libapi)
-- Userspace C++ library (libuser)
-- Userspace filesystem driver support
-- ELF binary support
-- Various IPC mechanisms: pipes, signals, messages, shared memory
-- Serial COM1 kernel logging
-- Virtual 8086 for BIOS calls
+* Pure micro-kernel
+* Multiprocessor- & multitasking support
+* IPC - pipes, signals, messages, shared memory
+* Window server (GUI with homemade toolkit)
+* Patched GCC (OS specific toolchain)
+* self-made libc
+* libghostapi, extensive kernel API library
+* libstdc++ port
+* libghostuser for simplified file I/O, creating UIs & more...
+* VESA video driver
+* PS/2 keyboard & mouse driver
+* ELF binary support
+* Userspace filesystem driver support
+* Serial COM1 kernel logging
+* Virtual 8086 for BIOS calls
+* Copy-on-write implementation, `fork()`
 
 ## Documentation
 See the `documentation` folder for documentation. It contains information
@@ -45,4 +37,4 @@ feel free to contact me at:
 
 	lokoxe@gmail.com
 	
--Max Schlüssel
+-Max SchlÃ¼ssel
