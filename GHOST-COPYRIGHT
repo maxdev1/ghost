@@ -16,3 +16,6 @@ COPYRIGHT RULES
 - When using a larger part of the sources, include this file in the root
   directory of where the sources lie, as a file named "GHOST-COPYRIGHT"
   (or don't remove it in the first place).
+- When using parts of the sources in any application, include the copyright notice
+  in an appropriate location (for console applications, this should be the "--version"
+  screen; for GUI applications, the credit screen, if there is one).
