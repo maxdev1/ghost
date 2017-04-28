@@ -1,5 +1,7 @@
+COPYRIGHT NOTICE FILE
 This notice file MUST be included in all redistributions of the sources or
-any part of this project.
+any part of this project (see rules below).
+
 
     DERIVED FROM THE GHOST OPERATING SYSTEM
     This software is derived from the Ghost operating system project,
@@ -7,7 +9,8 @@ any part of this project.
     https://ghostkernel.org/
     https://github.com/maxdev1/ghost
 
-Rules:
+
+COPYRIGHT RULES
 - When changing the GPL header of any source file (thus removing the info that
   it comes from the Ghost project), you MUST include the above notice in the header.
 - When using a larger part of the sources, include this file in the root
