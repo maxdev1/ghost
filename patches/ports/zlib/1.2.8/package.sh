@@ -8,7 +8,7 @@ port_unpack() {
 }
 
 port_install() {
-	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=../../../../../../i686-ghost-toolchain.cmake ../$UNPACKED_DIR
+	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX -DCMAKE_TOOLCHAIN_FILE=../../../../../../i686-ghost-toolchain.cmake ../$UNPACKED_DIR
 	make
 	make DESTDIR=$SYSROOT install
 }
