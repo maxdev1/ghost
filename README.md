@@ -36,6 +36,7 @@ Version 0.5.6
 * libpng
 * pixman
 * zlib
+* nasm
 * bash (in progress)
 
 ## Documentation
