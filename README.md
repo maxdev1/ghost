@@ -29,6 +29,15 @@ Version 0.5.6
 * Virtual 8086 for BIOS calls
 * Copy-on-write implementation, `fork()`
 
+## Ported software
+* musl (libm part of Ghost's libc)
+* cairo
+* freetype
+* libpng
+* pixman
+* zlib
+* bash (in progress)
+
 ## Documentation
 See the `documentation` folder for documentation. It contains information
 about the technical design as well as building instructions.
