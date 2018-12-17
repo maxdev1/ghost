@@ -34,6 +34,8 @@ public:
 	g_layouted_text* start_button_layout;
 	g_font* font;
 
+	g_rectangle start_bounds;
+
 	taskbar_t(desktop_t* desktop);
 
 	virtual void paint(cairo_t* cr);

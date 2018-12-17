@@ -6,7 +6,7 @@ The kernel and the userspace applications are written from scratch in C++ and As
 The most advanced features are SMP support (symmetric multiprocessing) to run on multiple processors, a v8086 monitor for executing BIOS calls (which also introduced VESA support), support for ELF binary loading (including thread-local-storage and all the other little things), as well as signal support. And there is a fancy little GUI that makes it all good-looking :-)
 
 ## Status
-This is the bleeding edge source version of April 12, 2017.
+This is the bleeding edge source version of December 17, 2018.
 Version 0.5.6
 
 ![Current highres-screenshot](https://ghostkernel.org/files/ghost-0.5.6-highres.png)

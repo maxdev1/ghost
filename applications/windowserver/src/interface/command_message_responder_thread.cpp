@@ -35,6 +35,7 @@ void command_message_responder_thread_t::run() {
 
 		// wait until messages are added
 		g_atomic_lock(&buffer_empty);
+		g_atomic_lock(&buffer_lock);
 
 		// process all
 		while (buffer.size() > 0) {
@@ -49,6 +50,8 @@ void command_message_responder_thread_t::run() {
 			// remove response from queue
 			buffer.pop_back();
 		}
+
+		buffer_lock = 0;
 	}
 }
 
@@ -56,7 +59,9 @@ void command_message_responder_thread_t::run() {
  *
  */
 void command_message_responder_thread_t::send_response(command_message_response_t& response) {
+	g_atomic_lock(&buffer_lock);
 	buffer.push_back(response);
 	buffer_empty = false;
+	buffer_lock = 0;
 }
 

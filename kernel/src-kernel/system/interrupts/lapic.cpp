@@ -151,7 +151,7 @@ void g_lapic::startTimer() {
 	// Start timer as periodic on IRQ 0
 	write(APIC_REGISTER_LVT_TIMER, 32 | APIC_LVT_TIMER_MODE_PERIODIC);
 	write(APIC_REGISTER_TIMER_DIV, 0x3);
-	write(APIC_REGISTER_TIMER_INITCNT, ticksPer10ms);
+	write(APIC_REGISTER_TIMER_INITCNT, ticksPer10ms / 10);
 }
 
 /**

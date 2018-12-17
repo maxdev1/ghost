@@ -50,6 +50,9 @@ public:
 
 	virtual void setFont(g_font* font);
 
+	virtual void setColor(g_color_argb color);
+	virtual g_color_argb getColor();
+
 	virtual void setTitle(std::string title);
 	virtual std::string getTitle();
 

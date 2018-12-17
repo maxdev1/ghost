@@ -30,6 +30,7 @@
 #include <components/event_listener_info.hpp>
 #include <ghostuser/graphics/metrics/rectangle.hpp>
 #include <ghostuser/graphics/graphics.hpp>
+#include <ghostuser/tasking/lock.hpp>
 
 // forward declarations
 class window_t;
@@ -54,11 +55,35 @@ typedef uint32_t component_requirement_t;
 /**
  *
  */
+typedef uint32_t component_child_reference_type_t;
+
+#define COMPONENT_CHILD_REFERENCE_TYPE_DEFAULT		0
+#define COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL		1
+
+class component_t;
+class component_child_reference_t {
+public:
+	component_t* component;
+	component_child_reference_type_t type;
+};
+
+struct component_listener_entry_t {
+	component_listener_entry_t* previous;
+	g_ui_component_event_type type;
+	event_listener_info_t info;
+	component_listener_entry_t* next;
+};
+
+/**
+ *
+ */
 class component_t: public bounds_event_component_t {
 private:
 	g_rectangle bounds;
 	component_t* parent;
-	std::vector<component_t*> children;
+	std::vector<component_child_reference_t> children;
+	g_lock children_lock;
+
 
 	g_dimension minimumSize;
 	g_dimension preferredSize;
@@ -67,7 +92,7 @@ private:
 	component_requirement_t requirements;
 	component_requirement_t childRequirements;
 
-	std::map<g_ui_component_event_type, event_listener_info_t> listeners;
+	component_listener_entry_t* listeners = 0;
 
 	int z_index = 1000;
 
@@ -120,7 +145,7 @@ public:
 	/**
 	 *
 	 */
-	std::vector<component_t*>& getChildren() {
+	std::vector<component_child_reference_t>& getChildren() {
 		return children;
 	}
 
@@ -207,7 +232,7 @@ public:
 	 *
 	 * @param comp	the component to add
 	 */
-	virtual void addChild(component_t* comp);
+	virtual void addChild(component_t* comp, component_child_reference_type_t type = COMPONENT_CHILD_REFERENCE_TYPE_DEFAULT);
 
 	/**
 	 * Removes the given component from this component
@@ -229,6 +254,13 @@ public:
 	 * @return the window
 	 */
 	virtual window_t* getWindow();
+
+	/**
+	 * @return whether this type of component is a window.
+	 */
+	virtual bool isWindow() {
+		return false;
+	}
 
 	/**
 	 * Brings this component to the front
@@ -357,6 +389,13 @@ public:
 	 *
 	 */
 	bool isChildOf(component_t* c);
+
+	/**
+	 * Returns the reference to the given component (if the given component is a child of this component).
+	 *
+	 * @return true if the component was found
+	 */
+	bool getChildReference(component_t* child, component_child_reference_t& out);
 
 };
 

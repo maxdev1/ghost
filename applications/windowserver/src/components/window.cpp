@@ -43,8 +43,8 @@ window_t::window_t() :
 
 	shadowSize = 10;
 
-	component_t::addChild(&label);
-	component_t::addChild(&panel);
+	component_t::addChild(&label, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
+	component_t::addChild(&panel, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
 	setMinimumSize(g_dimension(100, 40));
 
 	panel.setBackground(ARGB(0, 0, 0, 0));
@@ -63,7 +63,7 @@ void window_t::layout() {
 /**
  * TODO: Remove subpanel method and let the client do the work here
  */
-void window_t::addChild(component_t* component) {
+void window_t::addChild(component_t* component, component_child_reference_type_t type) {
 	panel.addChild(component);
 }
 void window_t::setLayoutManager(layout_manager_t* layoutManager) {

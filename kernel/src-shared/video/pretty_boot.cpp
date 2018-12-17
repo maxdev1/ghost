@@ -24,6 +24,9 @@
 #include <memory/memory.hpp>
 #include <logger/logger.hpp>
 
+const static int progressbar_ypos = 15;
+const static int logo_ypos = 7;
+
 /**
  *
  */
@@ -32,7 +35,21 @@ void g_pretty_boot::enable(bool clear_screen) {
 	if (clear_screen) {
 		g_console_video::clear();
 	}
-	print_centered("Ghost", 10, 0x09);
+
+	g_console_video::putString(15, logo_ypos, "  \xDC\xDC\xDC\xDC  \xDC          \xDC    \xDC  \xDC                \xDC  ", 0x09);
+	g_console_video::putString(15, logo_ypos + 1, " \xDE\xDB  \xDB\xDD\xDE\xDB         \xDE\xDB   \xDE\xDB \xDE\xDD               \xDE\xDB  ", 0x09);
+	g_console_video::putString(15, logo_ypos + 2,
+			" \xDE\xDB \xDC\xDC \xDE\xDB\xDC\xDC \xDC\xDC\xDC \xDC\xDC\xDE\xDB\xDC  \xDE\xDB\xDB\xDB  \xDC\xDC\xDC \xDC\xDC \xDC\xDC\xDC \xDC\xDC\xDC\xDE\xDB  ",
+			0x09);
+	g_console_video::putString(15, logo_ypos + 3,
+			" \xDE\xDB  \xDB\xDD\xDE\xDB \xDB\xDE\xDB \xDB\xDD\xDF\xDC\xDE\xDB   \xDE\xDB \xDE\xDD\xDE\xDB \xDF\xDE\xDB \xDE\xDB \xDB\xDE\xDB \xDF\xDE\xDB  ",
+			0x09);
+	g_console_video::putString(15, logo_ypos + 4,
+			"  \xDF\xDF\xDF\xDF  \xDF \xDF \xDF\xDF\xDF \xDF\xDF \xDF    \xDF  \xDF \xDF\xDF\xDF \xDF  \xDF \xDF \xDF\xDF\xDF \xDF\xDF ", 0x09);
+
+	g_console_video::putString(0, 0, "Version 0.5.6", 0x07);
+	print_centered("Copyright (c) 2012-2016 Max Schl\x81ssel", 23, 0x07);
+
 	g_console_video::setVisualCursor(-1, -1);
 }
 
@@ -42,7 +59,7 @@ void g_pretty_boot::enable(bool clear_screen) {
 void g_pretty_boot::print_progress_bar(int percent, uint8_t color) {
 
 	for (int i = 30; i < 50; i++) {
-		g_console_video::putChar(i, 12, ' ', 0x80);
+		g_console_video::putChar(i, progressbar_ypos, ' ', 0x80);
 	}
 
 	double cells = (20.0 / 100.0) * percent;
@@ -51,7 +68,7 @@ void g_pretty_boot::print_progress_bar(int percent, uint8_t color) {
 	}
 
 	for (int i = 30; i < 30 + (int) cells; i++) {
-		g_console_video::putChar(i, 12, ' ', color);
+		g_console_video::putChar(i, progressbar_ypos, ' ', color);
 	}
 }
 
@@ -74,7 +91,7 @@ void g_pretty_boot::print_centered(const char* string, int y, uint8_t color) {
  */
 void g_pretty_boot::update_status(const char* string, int percent) {
 	print_progress_bar(percent, 0x90);
-	print_centered(string, 14, 0x07);
+	print_centered(string, progressbar_ypos + 2, 0x0F);
 }
 
 /**
@@ -82,5 +99,5 @@ void g_pretty_boot::update_status(const char* string, int percent) {
  */
 void g_pretty_boot::fail(const char* string) {
 	print_progress_bar(100, 0xC0);
-	print_centered(string, 14, 0x0F);
+	print_centered(string, progressbar_ypos + 2, 0x0F);
 }

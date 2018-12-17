@@ -23,13 +23,18 @@
 
 #include <string>
 #include <ghostuser/graphics/metrics/point.hpp>
+#include <ghostuser/io/terminal.hpp>
 
 void load_file();
 void extend_buffer();
 void display_current_lines();
 void quit_with_error(std::string message);
 void insert_into_buffer(char* c, uint32_t len);
+void move_caret(int x, int y);
 void do_backspace();
 uint8_t* find_line(int line);
+
+int get_line_visual_length(int line);
+g_term_cursor_position to_visual(int line, int col);
 
 #endif

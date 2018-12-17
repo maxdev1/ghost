@@ -85,7 +85,7 @@ void label_t::paint() {
 	auto cr = graphics.getContext();
 	auto bounds = getBounds();
 
-	cairo_set_source_rgb(cr, 0, 0, 0);
+	cairo_set_source_rgb(cr, ARGB_FR_FROM(color), ARGB_FB_FROM(color), ARGB_FG_FROM(color));
 
 	int textLeft;
 	int textBot = (bounds.height / 2 - lastExtents.height / 2) + lastExtents.height;
@@ -140,4 +140,19 @@ void label_t::setAlignment(g_text_alignment newAlignment) {
  */
 g_text_alignment label_t::getAlignment() {
 	return alignment;
+}
+
+/**
+ *
+ */
+g_color_argb label_t::getColor() {
+	return color;
+}
+
+/**
+ *
+ */
+void label_t::setColor(g_color_argb color) {
+	this->color = color;
+	markFor(COMPONENT_REQUIREMENT_PAINT);
 }

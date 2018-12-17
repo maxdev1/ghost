@@ -26,7 +26,7 @@
  */
 checkbox_t::checkbox_t() :
 		component_t(true), checked(false), boxSize(DEFAULT_BOX_SIZE), boxTextGap(DEFAULT_BOX_TEXT_GAP), hovered(false), pressed(false) {
-	addChild(&label);
+	addChild(&label, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
 }
 
 /**

@@ -113,8 +113,8 @@
 
 #define APIC_ICR_DESTINATION_MAKE(i)			(((uint64_t) i & 0xFF) << 56)
 
-// the APIC timer is configured to tick every 10 milliseconds.
-#define APIC_MILLISECONDS_PER_TICK				10
+// the APIC timer is configured to tick every 1 millisecond.
+#define APIC_MILLISECONDS_PER_TICK				1
 
 /**
  * Advanced programmable interrupt controller driver

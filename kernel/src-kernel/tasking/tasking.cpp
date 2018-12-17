@@ -256,7 +256,6 @@ uint32_t g_tasking::count() {
 uint32_t g_tasking::get_task_ids(g_tid* out, uint32_t len) {
 
 	uint32_t pos = 0;
-	g_log_info("start: %h", out);
 
 	uint32_t processors = g_system::getNumberOfProcessors();
 	for (uint32_t i = 0; i < processors; i++) {

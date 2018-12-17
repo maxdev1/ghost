@@ -218,6 +218,13 @@ int main(int argc, char *argv[]) {
 
 	g_terminal::setCursor(g_term_cursor_position(0, 0));
 
+	// check if we're running headless
+	bool running_headless = (g_task_get_id("terminal_headless") != -1);
+	if (running_headless) {
+		std::cout
+				<< "Enter 'read README' for a quick introduction. Use 'launch ui' to run the GUI."
+				<< std::endl;
+	}
 	char* cwdbuf = new char[G_PATH_MAX];
 
 	while (true) {

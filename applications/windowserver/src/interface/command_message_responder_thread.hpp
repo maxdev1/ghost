@@ -41,6 +41,7 @@ class command_message_responder_thread_t: public g_thread {
 public:
 	std::deque<command_message_response_t> buffer;
 	uint8_t buffer_empty = true;
+	uint8_t buffer_lock = 0;
 
 	/**
 	 *

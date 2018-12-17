@@ -40,8 +40,15 @@ int main(int argc, char** argv) {
 	// load given script
 	FILE* scriptfile = fopen(path, "r");
 	if (scriptfile == NULL) {
-		fprintf(stderr, "%s: file not found\n", path);
-		return -1;
+
+		// try to find in /system/launch
+		std::string extendedPath = "/system/launch/";
+		extendedPath += path;
+		scriptfile = fopen(extendedPath.c_str(), "r");
+		if (scriptfile == NULL) {
+			fprintf(stderr, "%s: script file not found\n", path);
+			return -1;
+		}
 	}
 
 	// parse the script

@@ -22,6 +22,7 @@
 #include <string.h>
 #include <components/canvas.hpp>
 
+#define ALIGN_UP(value)		(value + value % 20)
 /**
  *
  */
@@ -56,7 +57,8 @@ void canvas_t::checkBuffer() {
 
 	// calculate how many pages we need for the shared area
 	g_rectangle bounds = getBounds();
-	uint32_t requiredSize = G_UI_CANVAS_SHARED_MEMORY_HEADER_SIZE + cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, bounds.width) * bounds.height;
+	uint32_t requiredSize = G_UI_CANVAS_SHARED_MEMORY_HEADER_SIZE
+			+ cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, ALIGN_UP(bounds.width)) * ALIGN_UP(bounds.height);
 	uint16_t requiredPages = G_PAGE_ALIGN_UP(requiredSize) / G_PAGE_SIZE;
 
 	// if next buffer not yet acknowledged, ask client to acknowledge it
@@ -111,8 +113,8 @@ void canvas_t::createNewBuffer(uint16_t requiredPages) {
 
 	// initialize the header
 	g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) nextBuffer.localMapping;
-	header->paintable_width = bounds.width;
-	header->paintable_height = bounds.height;
+	header->paintable_width = ALIGN_UP(bounds.width);
+	header->paintable_height = ALIGN_UP(bounds.height);
 	header->blit_x = 0;
 	header->blit_y = 0;
 	header->blit_width = 0;
