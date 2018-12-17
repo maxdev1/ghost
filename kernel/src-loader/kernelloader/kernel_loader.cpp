@@ -95,7 +95,8 @@ void g_kernel_loader::load(g_multiboot_module* kernelModule) {
 	uint32_t setupInformationAddress = (uint32_t) g_loader::getSetupInformation();
 	uint32_t entryAddress = elfHeader->e_entry;
 
-	G_PRETTY_BOOT_STATUS("Starting kernel", 10);
+	G_PRETTY_BOOT_STATUS("Starting system services", 10);
+
 	g_log_info("%! jumping to %h...", "kernload", entryAddress);
 	asm("mov %0, %%esp\n"
 			"mov %%esp, %%ebp\n"

@@ -20,8 +20,8 @@
 
 #include <ghostuser/ui/interface_specification.hpp>
 #include <interface/application_exit_cleanup_thread.hpp>
+#include <interface/component_registry.hpp>
 #include <stdio.h>
-#include <windowserver.hpp>
 #include <string.h>
 
 /**
@@ -36,6 +36,6 @@ void application_exit_cleanup_thread_t::run() {
 	command_receiver->stop = true;
 
 	// make the window server clean up
-	windowserver_t::instance()->cleanup(pid);
+	component_registry_t::cleanup_process(pid);
 }
 

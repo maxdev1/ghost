@@ -108,6 +108,12 @@ void terminal_t::initializeScreen() {
 		return;
 	}
 
+	// Kill headless terminal
+	g_pid headless = g_task_get_id("terminal_headless");
+	if(headless != -1) {
+		g_kill(headless);
+	}
+
 	gui_screen_t* gui_screen = new gui_screen_t();
 	if (gui_screen->initialize()) {
 		screen = gui_screen;

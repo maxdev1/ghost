@@ -9,22 +9,54 @@ static uint8_t* heap_start = 0;
 static uint8_t* heap_used = 0;
 static uint8_t* heap_end = 0;
 
+#define MAGIC 0xDEADBEEF
+#define OUTPUT_FAILURE(addr, msg, previous_free)	\
+		void ** puEBP = NULL;	\
+		__asm__ __volatile__ ("mov %%ebp, %0" : "=r"(puEBP));	\
+		outputfailure(addr, msg, previous_free, puEBP)
+
 /**
  *
  */
 typedef struct {
 	size_t size;
-} allocation_header_t;
+	int times_freed;
+	uint32_t previous_free;
+	uint32_t magic;
+} allocation_header_t __attribute__((packed));
+
+void outputfailure(void* addr, const char* message, uint32_t previous_free, void** stackframe) {
+	klog("free(%x) %s: (prevfree: %x) ebp %x caller %x", addr, message, previous_free, stackframe[0], stackframe[1]);
+}
 
 /**
  *
  */
 void free(void* ptr) {
 
-	// just return if null is given
-	if (ptr == 0) {
+	if(ptr == 0) {
 		return;
 	}
+
+	g_atomic_lock(&heap_lock);
+
+	allocation_header_t* header = (allocation_header_t*) ((uint8_t*) ptr - sizeof(allocation_header_t));
+	if(header->magic != MAGIC) {
+		OUTPUT_FAILURE(ptr, "illegal magic", 0);
+		for(;;);
+	}
+
+	header->times_freed++;
+	if(header->times_freed > 1) {
+		OUTPUT_FAILURE(ptr, "multi-free", header->previous_free);
+		for(;;);
+	}
+
+	void** ebp = NULL;
+	__asm__ __volatile__ ("mov %%ebp, %0" : "=r"(ebp));
+	header->previous_free = (uint32_t) ebp[1];
+
+	heap_lock = 0;
 }
 
 /**
@@ -47,6 +79,8 @@ void* malloc(size_t size) {
 
 	allocation_header_t* header = (allocation_header_t*) heap_used;
 	header->size = size;
+	header->times_freed = 0;
+	header->magic = MAGIC;
 	heap_used += needed;
 
 	heap_lock = 0;

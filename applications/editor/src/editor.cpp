@@ -20,7 +20,6 @@
 
 #include <editor.hpp>
 #include <iostream>
-#include <ghostuser/io/terminal.hpp>
 #include <stdio.h>
 #include <unistd.h>
 #include <sstream>
@@ -84,20 +83,16 @@ int main(int argc, const char** argv) {
 		int c = g_terminal::getChar();
 
 		if (c == G_TERMKEY_RIGHT) {
-			/*if (buffer[caret] == '\r' && caret < buffer_bytes) {
-			 caret++;
-			 }
-			 if (caret < buffer_bytes) {
-			 caret++;
-			 }*/
+			move_caret(1, 0);
 
 		} else if (c == G_TERMKEY_LEFT) {
-			/*if (buffer[caret] == '\r' && caret > 0) {
-			 caret--;
-			 }
-			 if (caret > 0) {
-			 caret--;
-			 }*/
+			move_caret(-1, 0);
+
+		} else if (c == G_TERMKEY_UP) {
+			move_caret(0, -1);
+
+		} else if (c == G_TERMKEY_DOWN) {
+			move_caret(0, 1);
 
 		} else if (c == G_TERMKEY_STAB) {
 			break;
@@ -115,6 +110,32 @@ int main(int argc, const char** argv) {
 			insert_into_buffer(&cs, 1);
 		}
 	}
+}
+
+/**
+ *
+ */
+void move_caret(int x, int y) {
+	caret_line += y;
+	caret_col += x;
+
+	// check line bounds
+	if (caret_line < 0) {
+		caret_line = 0;
+	} else {
+		while (caret_line > 0 && find_line(caret_line) == 0) {
+			caret_line--;
+		}
+	}
+
+	// check col bounds
+	int len = get_line_visual_length(caret_line) + 1;
+	if (caret_col < 0) {
+		caret_col = 0;
+	} else if (caret_col >= len) {
+		caret_col = len - 1;
+	}
+	g_terminal::setCursor(to_visual(caret_line, caret_col));
 }
 
 /**
@@ -147,6 +168,10 @@ int get_caret_index() {
  */
 int get_line_visual_length(int line) {
 	uint8_t* ls = find_line(line);
+	if (ls == nullptr) {
+		return 0;
+	}
+
 	uint8_t* start = ls;
 
 	int l = 0;
@@ -173,28 +198,31 @@ g_term_cursor_position to_visual(int line, int col) {
 
 	while (*start) {
 
-		if (IS_PRINTED_CHAR(*start)) {
-			if (line == data_line && col == data_col) {
-				return g_term_cursor_position(vis_x, vis_y);
-			}
-
-			if (*start == '\n') {
-				vis_x = 0;
-				vis_y++;
-				data_col = 0;
-				data_line++;
-
-			} else {
-				vis_x++;
-				data_col++;
-			}
-
-			if (vis_x > terminal_size.w) {
-				vis_y++;
-				vis_x = 0;
-			}
+		// skip non-printed characters
+		if (!IS_PRINTED_CHAR(*start)) {
+			++start;
+			continue;
 		}
 
+		if (line == data_line && col == data_col) {
+			return g_term_cursor_position(vis_x, vis_y);
+		}
+
+		if (*start == '\n') {
+			vis_x = 0;
+			vis_y++;
+			data_col = 0;
+			data_line++;
+
+		} else {
+			vis_x++;
+			data_col++;
+		}
+
+		if (vis_x > terminal_size.w) {
+			vis_y++;
+			vis_x = 0;
+		}
 		start++;
 	}
 
@@ -228,7 +256,10 @@ void insert_into_buffer(char* source, uint32_t len) {
 	int height_after = (line_len + len) / terminal_size.w + 1;
 
 	if (height_after > height_before) {
-		g_terminal::setScrollArea(to_visual(caret_line + 1, caret_col).y, terminal_size.h - 1);
+		int scrollStart = to_visual(caret_line + 1, caret_col).y;
+		int scrollEnd = terminal_size.h - 1;
+		g_terminal::setScrollArea(scrollStart, scrollEnd);
+		klog("scroll start: %i, %i", scrollStart, scrollEnd);
 		g_terminal::scroll(height_after - height_before);
 	}
 

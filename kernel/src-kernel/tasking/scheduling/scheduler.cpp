@@ -579,14 +579,12 @@ uint32_t g_scheduler::get_task_ids(g_tid* out, uint32_t len) {
 
 	auto entry = run_queue;
 	while (pos < len && entry) {
-		g_log_info("inserting %i at %i (%h)", entry->value->id, pos, &out[pos]);
 		out[pos++] = entry->value->id;
 		entry = entry->next;
 	}
 
 	entry = wait_queue;
 	while (pos < len && entry) {
-		g_log_info("inserting %i at %i (%h)", entry->value->id, pos, &out[pos]);
 		out[pos++] = entry->value->id;
 		entry = entry->next;
 	}

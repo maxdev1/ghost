@@ -22,7 +22,7 @@ void grid_layout_manager_t::layout() {
 		return;
 	}
 
-	std::vector<component_t*>& children = component->getChildren();
+	std::vector<component_child_reference_t>& children = component->getChildren();
 
 	g_rectangle usedBounds = component->getBounds();
 	usedBounds.x = padding.left;
@@ -36,7 +36,8 @@ void grid_layout_manager_t::layout() {
 
 	int widthPerComponent = (columns > 0) ? (usedBounds.width / columns) : usedBounds.width;
 
-	for (component_t* c : children) {
+	for (auto& ref : children) {
+		component_t* c = ref.component;
 
 		int usedHeight = (rows > 0) ? (usedBounds.height / rows) : c->getPreferredSize().height;
 

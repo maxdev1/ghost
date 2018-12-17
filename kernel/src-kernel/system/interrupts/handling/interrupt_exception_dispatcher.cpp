@@ -254,6 +254,12 @@ g_thread* g_interrupt_exception_dispatcher::handleInvalidOperationCode(g_thread*
 	current_thread->alive = false;
 	g_log_info("%! #%i process %i killed due to invalid operation code %h in thread %i", "exception", g_system::currentProcessorId(), main->id,
 			*((uint8_t* ) current_thread->cpuState->eip), current_thread->id);
+
+	// print source path if available
+	if (current_thread->process->source_path) {
+		g_log_info("%! origin of process %i: %s", "exception", current_thread->process->main->id, current_thread->process->source_path);
+	}
+
 	return g_tasking::schedule();
 }
 

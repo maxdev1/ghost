@@ -134,7 +134,7 @@ bool gui_screen_t::initialize() {
 	window->setLayout(G_UI_LAYOUT_MANAGER_GRID);
 	window->addChild(canvas);
 
-	g_rectangle windowBounds = g_rectangle(200, 200, 400, 250);
+	g_rectangle windowBounds = g_rectangle(80, 80, 500, 300);
 	window->setBounds(windowBounds);
 	window->setVisible(true);
 
@@ -235,7 +235,7 @@ void gui_screen_t::paint() {
 
 			if (blink_on) {
 				cairo_save(cr);
-				cairo_set_source_rgba(cr, 0, 1, 0, 1);
+				cairo_set_source_rgba(cr, 0.5, 0.7, 1, 1);
 				cairo_rectangle(cr, cursor_x * char_width + padding, cursor_y * char_height + padding + 1, char_width, char_height + 1);
 				cairo_fill(cr);
 				cairo_restore(cr);

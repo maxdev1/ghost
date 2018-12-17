@@ -99,7 +99,7 @@ public:
 	/**
 	 *
 	 */
-	virtual void addChild(component_t* component);
+	virtual void addChild(component_t* component, component_child_reference_type_t type = COMPONENT_CHILD_REFERENCE_TYPE_DEFAULT);
 
 	/**
 	 *
@@ -150,6 +150,13 @@ public:
 	 *
 	 */
 	virtual void setLayoutManager(layout_manager_t* layoutManager);
+
+	/**
+	 * @return whether this type of component is a window.
+	 */
+	virtual bool isWindow() {
+		return true;
+	}
 
 };
 
