@@ -18,49 +18,14 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "stdio.h"
-#include "stdio_internal.h"
-#include "errno.h"
-#include "inttypes.h"
-#include "stdlib.h"
-
-uint8_t tmpnam_lock = 0;
-char* tmpnam_static = NULL;
-uint64_t tmpnam_next = 0;
+// The functions in this file are implemented as defined in the Itanium C++ ABI
+// standard. These functions are required by GCC for special cases, see the
+// individual documentation for details.
 
 /**
  *
  */
-char* tmpnam(char* buf) {
-
-	// lock tmpnam
-	g_atomic_lock(&tmpnam_lock);
-
-	// set buffers
-	if (buf == NULL) {
-		// allocate the internal buffer if necessary
-		if (tmpnam_static == NULL) {
-			tmpnam_static = (char*) malloc(L_tmpnam);
-
-			if (tmpnam_static == NULL) {
-				errno = ENOMEM;
-				tmpnam_lock = 0;
-				return NULL;
-			}
-		}
-
-		// use internal buffer
-		buf = tmpnam_static;
-	}
-
-	// create temporary name
-	++tmpnam_next;
-
-	snprintf(buf, L_tmpnam, "/system/temp/%" PRIu64 "-%" PRIu64, tmpnam_next,
-			g_pid());
-
-	// unlock tmpnam
-	tmpnam_lock = 0;
-
-	return buf;
+extern void __cxa_atexit(void (*func)(void*), void* arg, void* dso_handle) {
+	// TODO
 }
+

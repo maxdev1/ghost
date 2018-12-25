@@ -1,5 +1,5 @@
-#!/bin/sh
-. ../../ghost.sh
+#!/bin/bash
+source ../../ghost.sh
 
 # Define build setup
 SRC=src
@@ -9,4 +9,4 @@ CFLAGS="-std=c++11 -I$SRC"
 LDFLAGS=""
 
 # Include application build tasks
-. ../applications.sh
+source ../applications.sh

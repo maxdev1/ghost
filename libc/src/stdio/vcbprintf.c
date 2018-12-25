@@ -108,36 +108,36 @@ int vcbprintf(void* param,
 			}
 
 			// flags
-			bool flag_left_justify = false;
-			bool flag_always_prepend_sign = false;
-			bool flag_always_prepend_space_plussign = false;
-			bool flag_force_0x_or_dec = false;
-			bool flag_left_pad_zeroes = false;
+			int flag_left_justify = 0;
+			int flag_always_prepend_sign = 0;
+			int flag_always_prepend_space_plussign = 0;
+			int flag_force_0x_or_dec = 0;
+			int flag_left_pad_zeroes = 0;
 
-			bool flag_found;
+			int flag_found;
 			do {
-				flag_found = false;
+				flag_found = 0;
 
 				switch (*s) {
 				case '-':
-					flag_left_justify = true;
-					flag_found = true;
+					flag_left_justify = 1;
+					flag_found = 1;
 					break;
 				case '+':
-					flag_always_prepend_sign = true;
-					flag_found = true;
+					flag_always_prepend_sign = 1;
+					flag_found = 1;
 					break;
 				case ' ':
-					flag_always_prepend_space_plussign = true;
-					flag_found = true;
+					flag_always_prepend_space_plussign = 1;
+					flag_found = 1;
 					break;
 				case '#':
-					flag_force_0x_or_dec = true;
-					flag_found = true;
+					flag_force_0x_or_dec = 1;
+					flag_found = 1;
 					break;
 				case '0':
-					flag_left_pad_zeroes = true;
-					flag_found = true;
+					flag_left_pad_zeroes = 1;
+					flag_found = 1;
 					break;
 				}
 
@@ -160,11 +160,11 @@ int vcbprintf(void* param,
 
 			// precision
 			int precision = 6;
-			bool explicitPrecision = false;
+			int explicitPrecision = 0;
 
 			if (*s == '.') {
 				STEP;
-				explicitPrecision = true;
+				explicitPrecision = 1;
 
 				if (*s == '*') { // take from argument list
 					precision = va_arg(arglist, int);
@@ -230,10 +230,10 @@ int vcbprintf(void* param,
 			case 'i':
 			case 'p': {
 				uintmax_t value;
-				bool issigned;
+				int issigned;
 
 				if (specifier == 'd' || specifier == 'i') {
-					issigned = true;
+					issigned = 1;
 
 					switch (length) {
 					case LENGTH_DEFAULT:
@@ -266,7 +266,7 @@ int vcbprintf(void* param,
 					}
 
 				} else {
-					issigned = false;
+					issigned = 0;
 
 					switch (length) {
 					case LENGTH_DEFAULT:
@@ -302,12 +302,12 @@ int vcbprintf(void* param,
 				// write number in temporary buffer
 				const char* digits;
 				int base;
-				bool isnegative = (issigned && ((intmax_t) value) < 0);
+				int isnegative = (issigned && ((intmax_t) value) < 0);
 
 				// pointers are printed as numbers
 				if (specifier == 'p') {
 					specifier = 'x';
-					flag_force_0x_or_dec = true;
+					flag_force_0x_or_dec = 1;
 				}
 
 				// decide for base and digits
@@ -452,7 +452,7 @@ int vcbprintf(void* param,
 				// decimals here. long doubles won't work properly as well.
 
 				// store negativity and make value positive
-				bool isnegative = value < 0;
+				int isnegative = value < 0;
 				if (isnegative) {
 					value = -value;
 				}

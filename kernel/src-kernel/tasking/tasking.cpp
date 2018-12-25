@@ -166,7 +166,7 @@ g_thread* g_tasking::lastThread() {
 /**
  *
  */
-g_thread* g_tasking::getTaskById(uint32_t id) {
+g_thread* g_tasking::getTaskById(g_tid id) {
 
 	for (uint32_t i = 0; i < g_system::getNumberOfProcessors(); i++) {
 		g_scheduler* sched = schedulers[i];

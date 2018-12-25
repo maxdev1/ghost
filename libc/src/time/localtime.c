@@ -18,14 +18,16 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-// The functions in this file are implemented as defined in the Itanium C++ ABI
-// standard. These functions are required by GCC for special cases, see the
-// individual documentation for details.
+#include "time.h"
+#include "ghost/kernel.h"
+
+static struct tm timecontainer;
 
 /**
  *
  */
-extern "C" void __cxa_atexit(void (*func)(void*), void* arg, void* dso_handle) {
-	// TODO
-}
+struct tm* localtime(const time_t * time) {
 
+	klog("warning: localtime not implemented");
+	return &timecontainer;
+}

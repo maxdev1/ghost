@@ -86,6 +86,18 @@ void g_interrupt_exception_dispatcher::dump(g_thread* current_thread) {
 	g_log_info("%#    ecx: %h      edx: %h", cpuState->ecx, cpuState->edx);
 	g_log_info("%#    esp: %h   state@: %h", cpuState->esp, cpuState);
 	g_log_info("%#   intr: %h    error: %h", cpuState->intr, cpuState->error);
+
+	// Print stack
+	g_address* ebp = reinterpret_cast<g_address*>(cpuState->ebp);
+	g_log_info("%# stack trace:");
+	for(int frame = 0; frame < 5; ++frame) {
+		g_address eip = ebp[1];
+		if(eip == 0) {
+			break;
+		}
+		ebp = reinterpret_cast<g_address*>(ebp[0]);
+		g_log_info("%#  %h", eip);
+	}
 }
 
 /**
@@ -215,7 +227,7 @@ g_thread* g_interrupt_exception_dispatcher::handlePageFault(g_thread* current_th
 
 	// raise SIGSEGV in thread
 	current_thread->raise_signal(SIGSEGV);
-	g_log_info("%! (core %i) raised SIGSEGV in thread %i", "pagefault", g_system::currentProcessorId(), current_thread->id);
+	g_log_info("%! (core %i) raised SIGSEGV in thread %i (%s)", "pagefault", g_system::currentProcessorId(), current_thread->id, current_thread->process->source_path);
 	dump(current_thread);
 
 	// old stuff:

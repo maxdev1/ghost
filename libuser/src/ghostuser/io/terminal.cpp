@@ -146,7 +146,11 @@ void g_terminal::putChar(int c) {
  *
  */
 void g_terminal::setCursor(g_term_cursor_position position) {
-	std::cout << (char) G_TERMKEY_ESC << "[" << position.y << ";" << position.x << "f";
+	g_log("couting1");
+	std::cout << (char) G_TERMKEY_ESC ;
+	g_log("couting2");
+	std::cout<< "[" << position.y << ";" << position.x << "f";
+	g_log("flushing");
 	std::flush(std::cout);
 }
 

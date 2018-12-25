@@ -18,27 +18,13 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <ghost.h>
-#include "stdlib.h"
-#include "../main_internal.h"
-
-/**
- * Global destructor routine
- */
-extern "C" void _fini();
+#include "time.h"
 
 /**
  *
  */
-void exit(int code) {
+double difftime(time_t timea, time_t timeb) {
 
-	// finalize libc
-	__g_fini_libc();
-
-	// call global destructors
-	_fini();
-
-	// quit task
-	g_exit(code);
-	__builtin_unreachable();
+	__G_NOT_IMPLEMENTED("difftime")
+	return 0;
 }

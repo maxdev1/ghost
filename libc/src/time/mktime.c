@@ -19,17 +19,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "time.h"
-#include "ghost/kernel.h"
-
-static char timebuf[] = { 'M', 'o', 'n', ' ', 'J', 'a', 'n', ' ', '0', '1', ' ',
-		'0', '0', ':', '0', '0', ':', '0', '0', ' ', '1', '9', '7', '0' };
 
 /**
  *
  */
-char* ctime(const time_t *) {
+time_t mktime(struct tm * time) {
 
-	klog("warning: ctime is not implemented");
-	return timebuf;
+	__G_NOT_IMPLEMENTED("mktime")
+	return 0;
 }
-

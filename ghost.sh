@@ -2,6 +2,10 @@
 # Ghost common build functionality
 
 
+# Include user variables if available
+if [ -f variables.sh ]; then
+	source variables.sh
+fi
 
 #
 # Overrides a variable if it is not set
@@ -103,10 +107,14 @@ with CROSS_CXX			$CROSS_PREFIX"g++"
 with CROSS_LD			$CROSS_PREFIX"ld"
 with CROSS_GAS			$CROSS_PREFIX"as"
 with CROSS_AR			$CROSS_PREFIX"ar"
-with NASM				"nasm"
-with TOOLCHAIN_BASE		"/ghost"
 
+with TOOLCHAIN_BASE		"/ghost"
 with SYSROOT			$TOOLCHAIN_BASE"/sysroot"
+
+with NASM				nasm
+with SH					bash
+
+
 SYSROOT_APPLICATIONS=$SYSROOT/applications
 SYSROOT_SYSTEM=$SYSROOT/system
 SYSROOT_SYSTEM_INCLUDE=$SYSROOT_SYSTEM/include

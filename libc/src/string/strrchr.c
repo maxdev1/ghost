@@ -18,13 +18,25 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "time.h"
+#include "string.h"
+#include "stdint.h"
 
 /**
  *
  */
-double difftime(time_t, time_t) {
+char* strrchr(const char* str, int c) {
 
-	__G_NOT_IMPLEMENTED("difftime")
-	return 0;
+	const char* rstr = str + strlen(str);
+
+	while (1) {
+		if (*rstr == c) {
+			return (char*) rstr;
+		}
+		if (str == rstr) {
+			break;
+		}
+		--rstr;
+	}
+
+	return NULL;
 }

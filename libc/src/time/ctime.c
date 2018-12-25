@@ -18,56 +18,18 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "stdio.h"
-#include "stdio_internal.h"
+#include "time.h"
+#include "ghost/kernel.h"
 
-FILE* __open_file_list = 0;
-uint8_t open_file_list_lockatom = 0;
-
-/**
- *
- */
-void __open_file_list_add(FILE* file) {
-
-	__open_file_list_lock();
-
-	__open_file_list->prev = file;
-	file->next = __open_file_list;
-	__open_file_list = file;
-
-	__open_file_list_unlock();
-}
+static char timebuf[] = { 'M', 'o', 'n', ' ', 'J', 'a', 'n', ' ', '0', '1', ' ',
+		'0', '0', ':', '0', '0', ':', '0', '0', ' ', '1', '9', '7', '0' };
 
 /**
  *
  */
-void __open_file_list_remove(FILE* file) {
+char* ctime(const time_t * time) {
 
-	__open_file_list_lock();
-
-	if (file == __open_file_list) {
-		__open_file_list = file->next;
-	}
-	if (file->prev) {
-		file->prev->next = file->next;
-	}
-	if (file->next) {
-		file->next->prev = file->prev;
-	}
-
-	__open_file_list_unlock();
+	klog("warning: ctime is not implemented");
+	return timebuf;
 }
 
-/**
- *
- */
-void __open_file_list_lock() {
-	g_atomic_lock(&open_file_list_lockatom);
-}
-
-/**
- *
- */
-void __open_file_list_unlock() {
-	open_file_list_lockatom = false;
-}
