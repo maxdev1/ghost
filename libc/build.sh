@@ -14,7 +14,7 @@ with ARTIFACT_NAME			"libc.a"
 ARTIFACT_LOCAL="$ARTIFACT_NAME"
 ARTIFACT_TARGET="$SYSROOT_SYSTEM_LIB/$ARTIFACT_NAME"
 
-with CFLAGS					"-std=c++11 -I$INC -I$INC_API -I$INC_KERNEL -I$SRC/musl -fext-numeric-literals -Wno-narrowing"
+with CFLAGS					"-std=c11 -I$INC -I$INC_API -I$INC_KERNEL -I$SRC/musl -Wno-narrowing"
 with CCFLAGS				"-std=c11 -I$INC -I$INC_API -I$INC_KERNEL"
 
 with CRT_SRC				"crt"
@@ -75,7 +75,7 @@ target_compile() {
 		if ( [ $headers_have_changed -eq 1 ] || [ $changed -eq 1 ] ); then
 			out=`sourceToObject $file`
 			list $out
-			$CROSS_CXX -c $file -o "$OBJ/$out" $CFLAGS
+			$CROSS_CC -c $file -o "$OBJ/$out" $CFLAGS
 			failOnError
 			changes -s $file
 		fi

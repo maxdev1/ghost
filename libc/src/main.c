@@ -29,9 +29,17 @@
 #include "stdio/stdio_internal.h"
 
 /**
- * Global constructor routine
+ * Global ctor/dtor functions
  */
-extern "C" void _init();
+extern void _init();
+extern void _fini();
+
+extern void (*__init_array_start[])();
+extern void (*__init_array_end[])();
+extern void (*__preinit_array_start[])();
+extern void (*__preinit_array_end[])();
+extern void (*__fini_array_start[])();
+extern void (*__fini_array_end[])();
 
 /**
  * Application entry routine, called by the CRTs.
@@ -40,9 +48,6 @@ int __g_main() {
 
 	// initialize libc
 	__g_init_libc();
-
-	// call ctors
-	_init();
 
 	// default return value
 	int ret = -1;
@@ -65,6 +70,17 @@ int __g_main() {
  */
 void __g_init_libc() {
 
+	// call global constructors
+	for (size_t i = 0; i < __preinit_array_end - __preinit_array_start; i++) {
+		(*__preinit_array_start[i])();
+	}
+
+	_init();
+
+	for (size_t i = 0; i < __init_array_end - __init_array_start; i++) {
+		(*__init_array_start[i])();
+	}
+
 	// set default locale (N1548-7.11.1.1-4)
 	setlocale(LC_ALL, "C");
 
@@ -79,6 +95,13 @@ void __g_init_libc() {
  * Finalize the C library
  */
 void __g_fini_libc() {
+
+	// call global destructors
+	for (size_t i = 0; i < __fini_array_end - __fini_array_start; i++) {
+		(*__fini_array_start[i])();
+	}
+
+	_fini();
 
 	// Finalize the standard I/O
 	__fini_stdio();

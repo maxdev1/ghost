@@ -1,0 +1,125 @@
+diff -Nur gcc-8.2.0-original/config.sub gcc-8.2.0/config.sub
+--- gcc-8.2.0-original/config.sub	2018-12-20 10:28:46.673269900 +0100
++++ gcc-8.2.0/config.sub	2018-12-20 10:47:57.722676000 +0100
+@@ -1393,7 +1393,7 @@
+ 	-gnu* | -bsd* | -mach* | -minix* | -genix* | -ultrix* | -irix* \
+ 	      | -*vms* | -sco* | -esix* | -isc* | -aix* | -cnk* | -sunos | -sunos[34]*\
+ 	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
+-	      | -sym* | -kopensolaris* | -plan9* \
++	      | -sym* | -kopensolaris* | -plan9* | -ghost* \
+ 	      | -amigaos* | -amigados* | -msdos* | -newsos* | -unicos* | -aof* \
+ 	      | -aos* | -aros* | -cloudabi* | -sortix* \
+ 	      | -nindy* | -vxsim* | -vxworks* | -ebmon* | -hms* | -mvs* \
+diff -Nur gcc-8.2.0-original/fixincludes/mkfixinc.sh gcc-8.2.0/fixincludes/mkfixinc.sh
+--- gcc-8.2.0-original/fixincludes/mkfixinc.sh	2018-12-20 10:29:19.481553300 +0100
++++ gcc-8.2.0/fixincludes/mkfixinc.sh	2018-12-20 10:48:23.385796200 +0100
+@@ -14,6 +14,7 @@
+     i?86-*-cygwin* | \
+     i?86-*-mingw32* | \
+     x86_64-*-mingw32* | \
++	*-ghost* | \
+     powerpc-*-eabisim* | \
+     powerpc-*-eabi*    | \
+     powerpc-*-rtems*   | \
+diff -Nur gcc-8.2.0-original/gcc/config/ghost.h gcc-8.2.0/gcc/config/ghost.h
+--- gcc-8.2.0-original/gcc/config/ghost.h	1970-01-01 01:00:00.000000000 +0100
++++ gcc-8.2.0/gcc/config/ghost.h	2018-12-20 10:48:59.913776200 +0100
+@@ -0,0 +1,32 @@
++// built-in defines
++#undef TARGET_OS_CPP_BUILTINS
++#define TARGET_OS_CPP_BUILTINS()		\
++do {									\
++	builtin_define_std ("_GHOST_");		\
++	builtin_define_std ("unix");		\
++	builtin_assert ("system=ghost");	\
++	builtin_assert ("system=unix");		\
++} while(0);
++
++// for Ghost-specific changes on GCC
++#undef	TARGET_GHOST
++#define	TARGET_GHOST 1
++
++// don't automatically add extern "C" { } around header files
++#undef	NO_IMPLICIT_EXTERN_C
++#define	NO_IMPLICIT_EXTERN_C 1
++
++// define the default library specifications
++#undef	LIB_SPEC
++#define	LIB_SPEC "--start-group -lghostapi -lm -lc --end-group"
++
++// start and end files
++#undef	STARTFILE_SPEC
++#define	STARTFILE_SPEC "crt0.o%s crti.o%s crtbegin.o%s"
++
++#undef  ENDFILE_SPEC
++#define ENDFILE_SPEC "crtend.o%s crtn.o%s"
++
++// modify location of the start files
++#undef	STANDARD_STARTFILE_PREFIX
++#define	STANDARD_STARTFILE_PREFIX "/system/lib/"
+diff -Nur gcc-8.2.0-original/gcc/config.gcc gcc-8.2.0/gcc/config.gcc
+--- gcc-8.2.0-original/gcc/config.gcc	2018-12-20 10:28:45.999072400 +0100
++++ gcc-8.2.0/gcc/config.gcc	2018-12-20 10:50:53.442785400 +0100
+@@ -744,6 +744,14 @@
+   esac
+   use_gcc_stdint=wrap
+   ;;
++*-*-ghost*)
++  extra_parts="crtbegin.o crtend.o"
++  gas=yes
++  gnu_ld=yes
++  default_use_cxa_atexit=yes
++  use_gcc_stdint=none
++  native_system_header_dir=/system/include
++  ;;
+ *-*-fuchsia*)
+   native_system_header_dir=/include
+   ;;
+@@ -1305,6 +1313,12 @@
+ 	tm_file="dbxelf.h elfos.h newlib-stdint.h ${tm_file}"
+ 	tmake_file="${tmake_file} ft32/t-ft32"
+ 	;;
++i[34567]86-*-ghost*)
++	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h i386/i386elf.h ghost.h glibc-stdint.h"
++	;;
++x86_64-*-ghost*)
++	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h i386/i386elf.h i386/x86-64.h ghost.h glibc-stdint.h"
++	;;
+ moxie-*-elf)
+ 	gas=yes
+ 	gnu_ld=yes
+diff -Nur gcc-8.2.0-original/libgcc/config.host gcc-8.2.0/libgcc/config.host
+--- gcc-8.2.0-original/libgcc/config.host	2018-12-20 10:29:22.936083300 +0100
++++ gcc-8.2.0/libgcc/config.host	2018-12-20 10:51:53.443064700 +0100
+@@ -529,6 +529,14 @@
+ 	tmake_file="ft32/t-ft32 t-softfp-sfdf t-softfp-excl t-softfp"
+ 	extra_parts="$extra_parts crti.o crti-hw.o crtn.o"
+ 	;;
++i[34567]86-*-ghost*)
++	extra_parts="$extra_parts crtbegin.o crtend.o"
++	tmake_file="$tmake_file i386/t-crtstuff t-crtstuff-pic t-libgcc-pic"
++	;;
++x86_64-*-ghost*)
++	extra_parts="$extra_parts crtbegin.o crtend.o"
++	tmake_file="$tmake_file i386/t-crtstuff t-crtstuff-pic t-libgcc-pic"
++	;;
+ h8300-*-elf*)
+ 	tmake_file="$tmake_file h8300/t-h8300 t-fpbit"
+ 	tm_file="$tm_file h8300/h8300-lib.h"
+diff -Nur gcc-8.2.0-original/libstdc++-v3/crossconfig.m4 gcc-8.2.0/libstdc++-v3/crossconfig.m4
+--- gcc-8.2.0-original/libstdc++-v3/crossconfig.m4	2018-12-20 10:28:51.123373100 +0100
++++ gcc-8.2.0/libstdc++-v3/crossconfig.m4	2018-12-20 10:52:29.476545100 +0100
+@@ -62,6 +62,13 @@
+     AM_ICONV
+     ;;
+ 
++  *-ghost*)
++    GLIBCXX_CHECK_COMPILER_FEATURES
++    GLIBCXX_CHECK_LINKER_FEATURES
++    GLIBCXX_CHECK_MATH_SUPPORT
++    GLIBCXX_CHECK_STDLIB_SUPPORT
++    ;;
++
+   *-aix*)
+     GLIBCXX_CHECK_LINKER_FEATURES
+     GLIBCXX_CHECK_MATH_SUPPORT

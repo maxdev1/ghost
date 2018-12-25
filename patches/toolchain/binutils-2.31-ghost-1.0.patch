@@ -1,0 +1,122 @@
+diff -Nur binutils-2.31-original/bfd/config.bfd binutils-2.31/bfd/config.bfd
+--- binutils-2.31-original/bfd/config.bfd	2018-12-20 10:31:00.315804100 +0100
++++ binutils-2.31/bfd/config.bfd	2018-12-20 10:36:32.788536200 +0100
+@@ -315,6 +315,19 @@
+     ;;
+ #endif /* BFD64 */
+ 
++  i[3-7]86-*-ghost*)
++    targ_defvec=i386_elf32_vec
++    targ_selvecs=
++    targ64_selvecs=x86_64_elf64_vec
++    ;;
++#ifdef BFD64
++  x86_64-*-ghost*)
++    targ_defvec=x86_64_elf64_vec
++    targ_selvecs=i386_elf32_vec
++    want64=true
++    ;;
++#endif
++
+   am33_2.0-*-linux*)
+     targ_defvec=am33_elf32_linux_vec
+     ;;
+diff -Nur binutils-2.31-original/config.sub binutils-2.31/config.sub
+--- binutils-2.31-original/config.sub	2018-12-20 10:30:38.333267900 +0100
++++ binutils-2.31/config.sub	2018-12-20 10:37:25.367173800 +0100
+@@ -1354,7 +1354,7 @@
+ 	     | hpux* | unos* | osf* | luna* | dgux* | auroraux* | solaris* \
+ 	     | sym* | kopensolaris* | plan9* \
+ 	     | amigaos* | amigados* | msdos* | newsos* | unicos* | aof* \
+-	     | aos* | aros* | cloudabi* | sortix* \
++	     | aos* | aros* | cloudabi* | sortix* | ghost* \
+ 	     | nindy* | vxsim* | vxworks* | ebmon* | hms* | mvs* \
+ 	     | clix* | riscos* | uniplus* | iris* | rtu* | xenix* \
+ 	     | knetbsd* | mirbsd* | netbsd* \
+diff -Nur binutils-2.31-original/gas/configure.tgt binutils-2.31/gas/configure.tgt
+--- binutils-2.31-original/gas/configure.tgt	2018-12-20 10:30:41.053844100 +0100
++++ binutils-2.31/gas/configure.tgt	2018-12-20 10:39:18.712718100 +0100
+@@ -213,6 +213,7 @@
+   i386-*-elfiamcu)			fmt=elf arch=iamcu ;;
+   i386-*-elf*)				fmt=elf ;;
+   i386-*-fuchsia*)			fmt=elf ;;
++  i386-*-ghost*)            fmt=elf ;;
+   i386-*-kaos*)				fmt=elf ;;
+   i386-*-bsd*)				fmt=aout em=386bsd ;;
+   i386-*-nacl*)				fmt=elf em=nacl
+diff -Nur binutils-2.31-original/ld/configure.tgt binutils-2.31/ld/configure.tgt
+--- binutils-2.31-original/ld/configure.tgt	2018-12-20 10:30:34.948047200 +0100
++++ binutils-2.31/ld/configure.tgt	2018-12-20 10:41:46.410425500 +0100
+@@ -212,6 +212,15 @@
+ frv-*-*linux*)		targ_emul=elf32frvfd ;;
+ frv-*-*)		targ_emul=elf32frv ; targ_extra_emuls="elf32frvfd"
+ 			;;
++i[3-7]86-*-ghost*)
++			targ_emul=elf_i386_ghost
++			targ_extra_emuls=elf_i386
++			targ64_extra_emuls="elf_x86_64_ghost elf_x86_64"
++			;;
++x86_64-*-ghost*)
++			targ_emul=elf_x86_64_ghost
++			targ_extra_emuls=elf_i386_ghost elf_x86_64 elf_i386
++			;;
+ moxie-*-moxiebox*)	targ_emul=moxiebox
+ 			;;
+ moxie-*-*)		targ_emul=elf32moxie
+@@ -786,6 +795,10 @@
+   NATIVE_LIB_DIRS='/lib /usr/lib /usr/local/lib'
+   ;;
+ 
++*-*-ghost*)
++  NATIVE_LIB_DIRS='/system/lib'
++  ;;
++
+ hppa*64*-*-hpux11*)
+   NATIVE_LIB_DIRS=/usr/lib/pa20_64
+   ;;
+diff -Nur binutils-2.31-original/ld/emulparams/elf_i386_ghost.sh binutils-2.31/ld/emulparams/elf_i386_ghost.sh
+--- binutils-2.31-original/ld/emulparams/elf_i386_ghost.sh	1970-01-01 01:00:00.000000000 +0100
++++ binutils-2.31/ld/emulparams/elf_i386_ghost.sh	2018-12-20 10:42:38.261747600 +0100
+@@ -0,0 +1,3 @@
++. ${srcdir}/emulparams/elf_i386.sh
++GENERATE_SHLIB_SCRIPT=yes
++GENERATE_PIE_SCRIPT=yes
+diff -Nur binutils-2.31-original/ld/emulparams/elf_x86_64_ghost.sh binutils-2.31/ld/emulparams/elf_x86_64_ghost.sh
+--- binutils-2.31-original/ld/emulparams/elf_x86_64_ghost.sh	1970-01-01 01:00:00.000000000 +0100
++++ binutils-2.31/ld/emulparams/elf_x86_64_ghost.sh	2018-12-20 10:43:02.558383400 +0100
+@@ -0,0 +1 @@
++. ${srcdir}/emulparams/elf_x86_64.sh
+diff -Nur binutils-2.31-original/ld/Makefile.am binutils-2.31/ld/Makefile.am
+--- binutils-2.31-original/ld/Makefile.am	2018-12-20 10:30:34.659062900 +0100
++++ binutils-2.31/ld/Makefile.am	2018-12-20 10:45:17.576927900 +0100
+@@ -284,6 +284,7 @@
+ 	eelf_i386_be.c \
+ 	eelf_i386_chaos.c \
+ 	eelf_i386_fbsd.c \
++	eelf_i386_ghost.c \
+ 	eelf_i386_ldso.c \
+ 	eelf_i386_nacl.c \
+ 	eelf_i386_sol2.c \
+@@ -454,6 +455,7 @@
+ 	eelf_x86_64.c \
+ 	eelf_x86_64_cloudabi.c \
+ 	eelf_x86_64_fbsd.c \
++	eelf_x86_64_ghost.c \
+ 	eelf_x86_64_nacl.c \
+ 	eelf_x86_64_sol2.c \
+ 	ehppa64linux.c \
+@@ -1053,6 +1055,14 @@
+ eelf32ft32.c: $(srcdir)/emulparams/elf32ft32.sh \
+   $(ELF_GEN_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
+ 
++eelf_i386_ghost.c: $(srcdir)/emulparams/elf_i386_ghost.sh \
++  $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
++	${GENSCRIPTS} elf_i386_ghost "$(tdir_elf_i386_ghost)"
++
++eelf_x86_64_ghost.c: $(srcdir)/emulparams/elf_x86_64_ghost.sh \
++  $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
++	${GENSCRIPTS} elf_x86_64_ghost "$(tdir_elf_x86_64_ghost)"
++
+ eelf32ip2k.c: $(srcdir)/emulparams/elf32ip2k.sh \
+   $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
+ 

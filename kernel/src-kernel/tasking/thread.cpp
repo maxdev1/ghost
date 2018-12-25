@@ -56,6 +56,7 @@ g_thread::g_thread(g_thread_type _type) {
 	userStackAreaStart = 0;
 	kernelStackPageVirt = 0;
 	kernelStackEsp0 = 0;
+	userStackPages = 0;
 
 	waitManager = 0;
 
@@ -207,6 +208,8 @@ void g_thread::enter_irq_handler(uintptr_t address, uint8_t irq, uintptr_t callb
 
 	G_DEBUG_INTERFACE_TASK_SET_STATUS(this->id, "irq-handling");
 	finish_prepare_interruption(address, callback);
+
+	this->scheduler->pushHighPriority(this);
 }
 
 /**

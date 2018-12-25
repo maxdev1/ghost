@@ -18,16 +18,56 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "time.h"
-#include "ghost/kernel.h"
+#include "stdio.h"
+#include "stdio_internal.h"
 
-static tm timecontainer;
+FILE* __open_file_list = 0;
+uint8_t open_file_list_lockatom = 0;
 
 /**
  *
  */
-struct tm* gmtime(const time_t *) {
+void __open_file_list_add(FILE* file) {
 
-	klog("warning: gmtime not implemented");
-	return &timecontainer;
+	__open_file_list_lock();
+
+	__open_file_list->prev = file;
+	file->next = __open_file_list;
+	__open_file_list = file;
+
+	__open_file_list_unlock();
+}
+
+/**
+ *
+ */
+void __open_file_list_remove(FILE* file) {
+
+	__open_file_list_lock();
+
+	if (file == __open_file_list) {
+		__open_file_list = file->next;
+	}
+	if (file->prev) {
+		file->prev->next = file->next;
+	}
+	if (file->next) {
+		file->next->prev = file->prev;
+	}
+
+	__open_file_list_unlock();
+}
+
+/**
+ *
+ */
+void __open_file_list_lock() {
+	g_atomic_lock(&open_file_list_lockatom);
+}
+
+/**
+ *
+ */
+void __open_file_list_unlock() {
+	open_file_list_lockatom = 0;
 }

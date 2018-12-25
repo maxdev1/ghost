@@ -33,11 +33,11 @@ char* strstr(const char* str_a, const char* str_b) {
 
 	for (size_t i = 0; str_a[i]; ++i) {
 
-		bool same = true;
+		int same = 1;
 
 		for (size_t j = 0; str_b[i]; ++j) {
 			if (str_a[i + j] != str_b[j]) {
-				same = false;
+				same = 0;
 				break;
 			}
 		}

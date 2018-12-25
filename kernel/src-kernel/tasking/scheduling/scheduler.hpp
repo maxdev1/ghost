@@ -43,11 +43,7 @@ private:
 	g_task_entry* run_queue;
 	g_task_entry* idle_entry;
 	g_task_entry* current_entry;
-
-	/**
-	 * Chooses which thread to execute next and sets it as the current entry.
-	 */
-	void _selectNextTask();
+	g_task_entry* high_priority;
 
 	/**
 	 * Performs the actual context switch.
@@ -232,9 +228,17 @@ public:
 	uint32_t count();
 
 	/**
-	 *
+	 * Writes the IDs of all tasks that this scheduler holds into the given
+	 * array.
 	 */
 	uint32_t get_task_ids(g_tid* out, uint32_t len);
+
+	/**
+	 * Puts the given thread in the high priority queue, forcing the scheduler
+	 * to process this thread asap.
+	 */
+	void pushHighPriority(g_thread* thread);
+
 
 };
 

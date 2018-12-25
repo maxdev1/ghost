@@ -1,5 +1,5 @@
-#!/bin/sh
-. ../../ghost.sh
+#!/bin/bash
+source ../../ghost.sh
 
 TARGET=$1
 ARTIFACT_LOCAL=$OBJ/$ARTIFACT_NAME

@@ -1,0 +1,78 @@
+Binary files binutils-2.31-original/.DS_Store and binutils-2.31/.DS_Store differ
+diff -Nur binutils-2.31-original/bfd/config.bfd binutils-2.31/bfd/config.bfd
+--- binutils-2.31-original/bfd/config.bfd	2018-07-09 09:44:53.000000000 +0200
++++ binutils-2.31/bfd/config.bfd	2018-12-21 23:54:25.000000000 +0100
+@@ -607,6 +607,11 @@
+     targ_selvecs=iamcu_elf32_vec
+     targ64_selvecs="x86_64_elf64_vec l1om_elf64_vec k1om_elf64_vec"
+     ;;
++  i[3-7]86-*-ghost*)
++    targ_defvec=i386_elf32_vec
++    targ_selvecs=
++    targ64_selvecs="x86_64_elf64_vec"
++    ;;
+   i[3-7]86-*-freebsd* | i[3-7]86-*-kfreebsd*-gnu)
+     targ_defvec=i386_elf32_fbsd_vec
+     targ_selvecs="i386_elf32_vec iamcu_elf32_vec i386_pei_vec i386_coff_vec"
+diff -Nur binutils-2.31-original/config.sub binutils-2.31/config.sub
+--- binutils-2.31-original/config.sub	2018-07-06 09:13:31.000000000 +0200
++++ binutils-2.31/config.sub	2018-12-21 23:54:54.000000000 +0100
+@@ -1352,7 +1352,7 @@
+ 	gnu* | bsd* | mach* | minix* | genix* | ultrix* | irix* \
+ 	     | *vms* | esix* | aix* | cnk* | sunos | sunos[34]*\
+ 	     | hpux* | unos* | osf* | luna* | dgux* | auroraux* | solaris* \
+-	     | sym* | kopensolaris* | plan9* \
++	     | sym* | kopensolaris* | plan9* | ghost* \
+ 	     | amigaos* | amigados* | msdos* | newsos* | unicos* | aof* \
+ 	     | aos* | aros* | cloudabi* | sortix* \
+ 	     | nindy* | vxsim* | vxworks* | ebmon* | hms* | mvs* \
+diff -Nur binutils-2.31-original/gas/configure.tgt binutils-2.31/gas/configure.tgt
+--- binutils-2.31-original/gas/configure.tgt	2018-06-24 20:38:57.000000000 +0200
++++ binutils-2.31/gas/configure.tgt	2018-12-21 23:55:51.000000000 +0100
+@@ -213,6 +213,7 @@
+   i386-*-elfiamcu)			fmt=elf arch=iamcu ;;
+   i386-*-elf*)				fmt=elf ;;
+   i386-*-fuchsia*)			fmt=elf ;;
++  i386-*-ghost*)			fmt=elf ;;
+   i386-*-kaos*)				fmt=elf ;;
+   i386-*-bsd*)				fmt=aout em=386bsd ;;
+   i386-*-nacl*)				fmt=elf em=nacl
+Binary files binutils-2.31-original/ld/.DS_Store and binutils-2.31/ld/.DS_Store differ
+diff -Nur binutils-2.31-original/ld/configure.tgt binutils-2.31/ld/configure.tgt
+--- binutils-2.31-original/ld/configure.tgt	2018-07-09 09:44:53.000000000 +0200
++++ binutils-2.31/ld/configure.tgt	2018-12-21 23:57:41.000000000 +0100
+@@ -329,6 +329,11 @@
+ 			    | sed -e 's/x86_64/i386/'`
+ 			tdir_elf_i386=`echo ${targ_alias} \
+ 			    | sed -e 's/x86_64/i386/'` ;;
++i[3-7]86-*-ghost*)
++			targ_emul=elf_i386
++			targ_extra_emuls=
++			targ64_extra_emuls="elf_x86_64"
++			;;
+ i[3-7]86-*-gnu*)	targ_emul=elf_i386
+ 			targ_extra_emuls=elf_iamcu ;;
+ i[3-7]86-*-msdos*)	targ_emul=i386msdos; targ_extra_emuls=i386aout ;;
+@@ -786,6 +791,10 @@
+   NATIVE_LIB_DIRS='/lib /usr/lib /usr/local/lib'
+   ;;
+ 
++*-*-ghost*)
++  NATIVE_LIB_DIRS='/system/lib'
++  ;;
++
+ hppa*64*-*-hpux11*)
+   NATIVE_LIB_DIRS=/usr/lib/pa20_64
+   ;;
+diff -Nur binutils-2.31-original/ld/emulparams/elf_i386.sh binutils-2.31/ld/emulparams/elf_i386.sh
+--- binutils-2.31-original/ld/emulparams/elf_i386.sh	2018-06-24 20:38:57.000000000 +0200
++++ binutils-2.31/ld/emulparams/elf_i386.sh	2018-12-21 23:59:14.000000000 +0100
+@@ -34,4 +34,8 @@
+ 	;;
+     esac
+     ;;
++  i[3-7]86*-ghost*)
++	GENERATE_SHLIB_SCRIPT=yes
++	GENERATE_PIE_SCRIPT=yes
++	;;
+ esac

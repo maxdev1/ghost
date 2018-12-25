@@ -43,8 +43,16 @@ export LD=gcc-5
 
 Toolchain setup
 ---------------
-To setup the toolchain, simply run the toolchain setup script `toolchain.sh`. It will
-attempt to do everything that is necessary to create the toolchain.
+For the actual compilation of GCC you need to install the following prerequisites on your system:
+
+* autoconf 2.64
+* libmpfr
+* libmpc
+* libgmp
+* grub2
+
+Run the toolchain setup script `toolchain.sh`. It will attempt to do everything that is
+necessary to create the toolchain.
 
 
 Installing libraries

@@ -18,25 +18,16 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "string.h"
-#include "stdint.h"
+#include "time.h"
+#include "ghost/kernel.h"
+
+static struct tm timecontainer;
 
 /**
  *
  */
-char* strrchr(const char* str, int c) {
+struct tm* gmtime(const time_t * time) {
 
-	const char* rstr = str + strlen(str);
-
-	while (true) {
-		if (*rstr == c) {
-			return (char*) rstr;
-		}
-		if (str == rstr) {
-			break;
-		}
-		--rstr;
-	}
-
-	return NULL;
+	klog("warning: gmtime not implemented");
+	return &timecontainer;
 }

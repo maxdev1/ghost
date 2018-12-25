@@ -23,48 +23,5 @@
 
 #include "ghost/common.h"
 #include "ghost/malloc.h"
-#include <stddef.h>
-
-__BEGIN_C
-
-/**
- * Performs a memory allocation with a size of <size> that is aligned
- * to the <alignment>. (N1548-7.22.3.1)
- *
- * @param alignment
- * 		alignment to use
- * @param size
- * 		size to request
- * @return
- * 		allocated space or 0 if not successful
- */
-void* aligned_alloc(size_t alignment, size_t size);
-
-/**
- * Allocates <num> objects of <size> bytes, all bits set to zero. (N1548-7.22.3.2)
- *
- * @param num
- * 		number of objects
- * @param size
- * 		size of each object
- * @return
- * 		allocated space or 0 if not successful
- */
-void* calloc(size_t num, size_t size);
-
-/**
- * Reallocates the memory pointed to by <ptr> to have at least
- * <size> bytes after the allocation. (N1548-7.22.3.5)
- *
- * @param ptr
- * 		memory to reallocate
- * @param size
- * 		size in bytes to allocate
- * @return
- * 		allocated memory
- */
-void* realloc(void* ptr, size_t size);
-
-__END_C
 
 #endif

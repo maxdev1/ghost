@@ -18,16 +18,19 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "time.h"
-#include "ghost/kernel.h"
-
-static tm timecontainer;
+#include <ghost.h>
+#include "stdlib.h"
+#include "../main_internal.h"
 
 /**
  *
  */
-struct tm* localtime(const time_t *) {
+void exit(int code) {
 
-	klog("warning: localtime not implemented");
-	return &timecontainer;
+	// finalize libc
+	__g_fini_libc();
+
+	// quit task
+	g_exit(code);
+	__builtin_unreachable();
 }

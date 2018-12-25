@@ -26,12 +26,12 @@
 /**
  * Ignore handler, does nothing
  */
-void sig_handler_SIG_IGN(int) {
+void sig_handler_SIG_IGN(int s) {
 }
 
 /**
  * Default SIGINT handler
  */
-void sig_handler_SIG_INT(int) {
+void sig_handler_SIG_INT(int s) {
 	exit(0);
 }

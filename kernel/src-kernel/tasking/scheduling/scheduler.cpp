@@ -33,7 +33,7 @@
  *
  */
 g_scheduler::g_scheduler(uint32_t coreId) :
-		milliseconds(0), coreId(coreId), wait_queue(0), run_queue(0), idle_entry(0), current_entry(0) {
+		milliseconds(0), coreId(coreId), wait_queue(0), run_queue(0), idle_entry(0), current_entry(0), high_priority(0) {
 }
 
 /**
@@ -226,6 +226,12 @@ g_thread* g_scheduler::schedule() {
 			}
 		}
 
+		// check high priority queue
+		if(high_priority) {
+			current_entry = high_priority;
+			high_priority = high_priority->next;
+		}
+
 		// no task in run queue? select idle thread
 		if (current_entry == 0) {
 			current_entry = idle_entry;
@@ -308,6 +314,9 @@ void g_scheduler::_finishSwitch(g_thread* thread) {
  *
  */
 void g_scheduler::_remove(g_thread* thread) {
+
+	// Remove from high priority queue
+	_removeFromQueue(&high_priority, thread);
 
 	// remove from run queue
 	g_task_entry* entry = _removeFromQueue(&run_queue, thread);
@@ -590,4 +599,15 @@ uint32_t g_scheduler::get_task_ids(g_tid* out, uint32_t len) {
 	}
 
 	return pos;
+}
+
+/**
+ *
+ */
+void g_scheduler::pushHighPriority(g_thread* thread) {
+
+	g_task_entry* entry = new g_task_entry;
+	entry->value = thread;
+	entry->next = high_priority;
+	high_priority = entry;
 }

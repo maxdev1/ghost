@@ -87,7 +87,7 @@ public:
 	/**
 	 *
 	 */
-	static g_thread* getTaskById(uint32_t id);
+	static g_thread* getTaskById(g_tid id);
 
 	/**
 	 *

@@ -120,7 +120,7 @@ int parseargs(int* out_argc, char*** out_args) {
 		char* arg = argv[i];
 		size_t arglen = strlen(arg);
 
-		bool esc = false;
+		int esc = 0;
 		for (int p = 0; p < arglen; p++) {
 
 			if (!esc && arg[p] == '\\') {
@@ -129,7 +129,7 @@ int parseargs(int* out_argc, char*** out_args) {
 				}
 				arglen--;
 				--p; // repeat on same position
-				esc = true;
+				esc = 1;
 
 			} else if (!esc && arg[p] == '"') {
 				for (int x = p; x < arglen; x++) {
@@ -137,10 +137,10 @@ int parseargs(int* out_argc, char*** out_args) {
 				}
 				arglen--;
 				--p; // repeat on same position
-				esc = false;
+				esc = 0;
 
 			} else {
-				esc = false;
+				esc = 0;
 			}
 		}
 	}
