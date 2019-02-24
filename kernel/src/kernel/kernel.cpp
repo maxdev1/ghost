@@ -20,7 +20,6 @@
 
 #include "kernel/kernel.hpp"
 #include "kernel/memory/memory.hpp"
-#include "kernel/memory/heap.hpp"
 #include "kernel/filesystem/ramdisk.hpp"
 #include "kernel/logger/kernel_logger.hpp"
 

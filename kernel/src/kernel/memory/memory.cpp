@@ -20,6 +20,7 @@
 
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/heap.hpp"
+#include "kernel/memory/lower_heap.hpp"
 #include "kernel/memory/paging.hpp"
 #include "kernel/kernel.hpp"
 #include "kernel/debug/debug_interface.hpp"
@@ -32,6 +33,7 @@ void memoryInitialize(g_setup_information* setupInformation)
 {
 	memoryInitializePhysicalAllocator(setupInformation);
 	heapInitialize(setupInformation->heapStart, setupInformation->heapEnd);
+	lowerHeapInitialize(G_CONST_LOWER_HEAP_MEMORY_START, G_CONST_LOWER_HEAP_MEMORY_END);
 
 	memoryVirtualRangePool = (g_address_range_pool*) heapAllocate(sizeof(g_address_range_pool));
 	addressRangePoolInitialize(memoryVirtualRangePool);

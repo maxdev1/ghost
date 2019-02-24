@@ -18,37 +18,51 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_HEAP__
-#define __KERNEL_HEAP__
+#include "kernel/memory/lower_heap.hpp"
+#include "kernel/kernel.hpp"
+#include "kernel/memory/paging.hpp"
+#include "kernel/memory/memory.hpp"
+#include "kernel/memory/chunk_allocator.hpp"
+#include "shared/memory/bitmap_page_allocator.hpp"
 
-#include "ghost/types.h"
-#include "shared/memory/constants.hpp"
+static g_chunk_allocator lowerHeapAllocator;
+static g_virtual_address lowerHeapStart = 0;
+static g_virtual_address lowerHeapEnd = 0;
+static uint32_t lowerHeapAmountInUse = 0;
+static bool lowerHeapInitialized = false;
 
-/**
- * Initializes the kernel heap using the given range of memory.
- */
-void heapInitialize(g_virtual_address start, g_virtual_address end);
+void lowerHeapInitialize(g_virtual_address start, g_virtual_address end)
+{
+	chunkAllocatorInitialize(&lowerHeapAllocator, start, end);
+	lowerHeapStart = start;
+	lowerHeapEnd = end;
 
-/**
- * Expands the heap space by {G_CONST_KERNEL_HEAP_EXPAND_STEP} bytes.
- */
-bool heapExpand();
+	logDebug("%! initialized with area: %h - %h", "lowerheap", start, end);
+	lowerHeapInitialized = true;
+}
 
-/**
- * Allocates a number of bytes on the kernel heap.
- *
- * Causes a panic if it fails.
- */
-void* heapAllocate(uint32_t size);
+void* lowerHeapAllocate(uint32_t size)
+{
+	if(!lowerHeapInitialized)
+		kernelPanic("%! tried to use uninitialized kernel heap", "lowerheap");
 
-/**
- * Frees the given range.
- */
-void heapFree(void* memory);
+	void* ptr = chunkAllocatorAllocate(&lowerHeapAllocator, size);
+	if(!ptr)
+		kernelPanic("%! failed to allocate kernel memory", "lowerheap");
 
-/**
- * Returns the amount of used bytes in the kernel heap.
- */
-uint32_t heapGetUsedAmount();
+	lowerHeapAmountInUse += size;
+	return ptr;
+}
 
-#endif
+void lowerHeapFree(void* ptr)
+{
+	if(!lowerHeapInitialized)
+		kernelPanic("%! tried to use uninitialized lower heap", "lowerheap");
+
+	lowerHeapAmountInUse -= chunkAllocatorFree(&lowerHeapAllocator, ptr);
+}
+
+uint32_t lowerHeapGetUsedAmount()
+{
+	return lowerHeapAmountInUse;
+}
