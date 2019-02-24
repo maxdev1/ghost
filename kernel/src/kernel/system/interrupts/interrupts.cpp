@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/interrupts/interrupts.hpp"
+
 #include "kernel/system/interrupts/lapic.hpp"
 #include "kernel/system/interrupts/ioapic.hpp"
 #include "kernel/system/interrupts/pic.hpp"
