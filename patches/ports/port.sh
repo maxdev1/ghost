@@ -1,18 +1,25 @@
 #!/bin/bash
+ROOT="../.."
+if [ -f "$ROOT/variables.sh" ]; then
+	. "$ROOT/variables.sh"
+fi
+. "$ROOT/ghost.sh"
 
-echo ""
-echo "ghost-port"
-echo "=========="
 
+#
+# Ghost port installation script
+#
+# Automatically downloads, unzips, patches and builds packages as they are configured.
+# Look at the existing packages for reference.
+#
 PACKAGE="$1"
 BUILD_ROOT="build"
-SYSROOT=/ghost/sysroot
-HOST=i686-ghost
-PREFIX=/system
+HOST="$CROSS_HOST"
+PREFIX="/system"
 REQUIRES_INSTALL_IN_SOURCE_DIR=0
 
 
-# quit on failure
+# Helper to quit if a process fails
 fail() {
 	echo "! $1"
 	echo
@@ -20,7 +27,8 @@ fail() {
 	exit 1
 }
 
-# check package parameter
+
+# Checks if help was requested
 if [ "$PACKAGE" = "--help" ]; then
 	echo ""
 	echo "This script has the ability to automatically download, patch, configure and"

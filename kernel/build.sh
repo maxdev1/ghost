@@ -1,15 +1,21 @@
-#!/bin/sh
-. ../ghost.sh
+#!/bin/bash
+ROOT=".."
+if [ -f "$ROOT/variables.sh" ]; then
+	. "$ROOT/variables.sh"
+fi
+. "$ROOT/ghost.sh"
+
 
 TARGET=$1
 with TARGET "all"
 
 
 INC=inc
+INCLUDE=include
 BIN=bin
-SRC_LOADER=src-loader
-SRC_KERNEL=src-kernel
-SRC_SHARED=src-shared
+SRC_LOADER=src/loader
+SRC_KERNEL=src/kernel
+SRC_SHARED=src/shared
 INC_LIBGCC=/ghost/lib/gcc/i686-ghost/4.9.1/include
 
 OBJ_SHARED=$BIN/obj-shared
@@ -27,7 +33,7 @@ LINKSCRIPT_KERNEL=extra/link-kernel.ld
 
 RAMDISK=$ISO_SRC/boot/ramdisk
 
-AP_STARTUP_SRC=src-ap/ap_startup.asm
+AP_STARTUP_SRC=src/ap/ap_startup.asm
 AP_STARTUP_OBJ=$BIN/ap_startup.o
 AP_STARTUP_TGT=$SYSROOT/system/lib/apstartup.o
 
@@ -137,7 +143,8 @@ target_ramdisk() {
 
 target_make_iso() {
 	headline "making iso"
-	$GRUB_MKRESCUE $ISO_SRC --output=$ISO_TGT
+	rm $ISO_TGT
+	$GRUB_MKRESCUE --output=$ISO_TGT $ISO_SRC
 	failOnError
 }
 
@@ -161,9 +168,9 @@ target_qemu_debug_gdb() {
 
 target_all() {
 	target_compile_ap_startup
-	target_compile $SRC_SHARED $OBJ_SHARED "-I$INC -I$INC_LIBGCC -I$SRC_SHARED"
-	target_compile $SRC_LOADER $OBJ_LOADER "-I$INC -I$INC_LIBGCC -I$SRC_SHARED -I$SRC_LOADER"
-	target_compile $SRC_KERNEL $OBJ_KERNEL "-I$INC -I$INC_LIBGCC -I$SRC_SHARED -I$SRC_KERNEL"
+	target_compile $SRC_SHARED $OBJ_SHARED "-I$INCLUDE -I$INC -I$INC_LIBGCC -I$SRC_SHARED"
+	target_compile $SRC_LOADER $OBJ_LOADER "-I$INCLUDE -I$INC -I$INC_LIBGCC -I$SRC_SHARED -I$SRC_LOADER"
+	target_compile $SRC_KERNEL $OBJ_KERNEL "-I$INCLUDE -I$INC -I$INC_LIBGCC -I$SRC_SHARED -I$SRC_KERNEL"
 	target_link $ARTIFACT_LOADER $LINKSCRIPT_LOADER "$OBJ_LOADER/* $OBJ_SHARED/*"
 	target_link $ARTIFACT_KERNEL $LINKSCRIPT_KERNEL "$OBJ_KERNEL/* $OBJ_SHARED/*"
 	target_ramdisk

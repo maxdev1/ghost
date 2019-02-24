@@ -32,7 +32,7 @@
  */
 G_SYSCALL_HANDLER(send_message) {
 
-	g_syscall_send_message* data = (g_syscall_send_message*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_send_message* data = (g_syscall_send_message*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	// send the message
 	data->status = g_message_controller::send_message(data->receiver, current_thread->id, data->buffer, data->length, data->transaction);
@@ -41,7 +41,7 @@ G_SYSCALL_HANDLER(send_message) {
 	if (data->status == G_MESSAGE_SEND_STATUS_SUCCESSFUL) {
 		g_thread* receiver = g_tasking::getTaskById(data->receiver);
 		if (receiver) {
-			g_tasking::increaseWaitPriority(receiver);
+			receiver->scheduler->pushHighPriority(receiver);
 		}
 
 		// check if block
@@ -58,7 +58,7 @@ G_SYSCALL_HANDLER(send_message) {
  */
 G_SYSCALL_HANDLER(receive_message) {
 
-	g_syscall_receive_message* data = (g_syscall_receive_message*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_receive_message* data = (g_syscall_receive_message*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	data->status = g_message_controller::receive_message(current_thread->id, data->buffer, data->maximum, data->transaction);
 

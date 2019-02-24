@@ -22,10 +22,9 @@
 #define GHOST_MULTITASKING_PROCESS
 
 #include "ghost/types.h"
-#include <tasking/thread.hpp>
-#include <utils/list_entry.hpp>
-#include <memory/collections/address_range_pool.hpp>
-#include <system/smp/global_lock.hpp>
+#include "tasking/thread.hpp"
+#include "utils/list_entry.hpp"
+#include "memory/collections/address_range_pool.hpp"
 
 /**
  * Constants used as flags on virtual ranges of processes

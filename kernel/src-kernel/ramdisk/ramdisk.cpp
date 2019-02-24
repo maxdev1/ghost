@@ -19,13 +19,35 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <kernel.hpp>
-
 #include <ramdisk/ramdisk.hpp>
 #include <utils/string.hpp>
 #include <logger/logger.hpp>
+#include <memory/address_space.hpp>
+
+g_ramdisk* ramdiskLoadFromModule(g_multiboot_module* module) {
+
+	int pages = G_PAGE_ALIGN_UP(module->moduleEnd - module->moduleStart) / G_PAGE_SIZE;
+
+	g_virtual_address newLocation = kernelMemoryVirtualRangePool->allocate(pages);
+	if (newLocation == 0) {
+		kernelPanic("%! not enough virtual space for ramdisk remapping", "kern");
+	}
+	for (int i = 0; i < pages; i++) {
+		g_virtual_address virt = newLocation + i * G_PAGE_SIZE;
+		g_physical_address phys = g_address_space::virtual_to_physical(module->moduleStart + i * G_PAGE_SIZE);
+		g_address_space::map(virt, phys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+	}
+	module->moduleEnd = newLocation + (module->moduleEnd - module->moduleStart);
+	module->moduleStart = newLocation;
+
+	g_ramdisk* ramdisk = new g_ramdisk();
+	ramdisk->load(module);
+	g_log_info("%! ramdisk loaded", "ramdisk");
+	return ramdisk;
+}
 
 /**
- * 
+ *
  */
 g_ramdisk::g_ramdisk() {
 	root = 0;
@@ -33,7 +55,7 @@ g_ramdisk::g_ramdisk() {
 }
 
 /**
- * 
+ *
  */
 g_ramdisk_entry* g_ramdisk::load(g_multiboot_module* module) {
 	// Get the ramdisk location and its end from the multiboot info
@@ -116,7 +138,7 @@ g_ramdisk_entry* g_ramdisk::load(g_multiboot_module* module) {
 }
 
 /**
- * 
+ *
  */
 g_ramdisk_entry* g_ramdisk::findChild(g_ramdisk_entry* parent, const char* childName) {
 
@@ -131,7 +153,7 @@ g_ramdisk_entry* g_ramdisk::findChild(g_ramdisk_entry* parent, const char* child
 }
 
 /**
- * 
+ *
  */
 g_ramdisk_entry* g_ramdisk::findById(uint32_t id) {
 	g_ramdisk_entry* foundNode = 0;
@@ -154,7 +176,7 @@ g_ramdisk_entry* g_ramdisk::findById(uint32_t id) {
 }
 
 /**
- * 
+ *
  */
 g_ramdisk_entry* g_ramdisk::findAbsolute(const char* path) {
 
@@ -197,7 +219,7 @@ g_ramdisk_entry* g_ramdisk::findRelative(g_ramdisk_entry* node, const char* path
 }
 
 /**
- * 
+ *
  */
 uint32_t g_ramdisk::getChildCount(uint32_t id) {
 
@@ -215,7 +237,7 @@ uint32_t g_ramdisk::getChildCount(uint32_t id) {
 }
 
 /**
- * 
+ *
  */
 g_ramdisk_entry* g_ramdisk::getChildAt(uint32_t id, uint32_t index) {
 

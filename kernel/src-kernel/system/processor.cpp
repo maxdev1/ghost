@@ -18,8 +18,8 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <logger/logger.hpp>
 #include <kernel.hpp>
+#include <logger/logger.hpp>
 #include <system/processor.hpp>
 
 /**

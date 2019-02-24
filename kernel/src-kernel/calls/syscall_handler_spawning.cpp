@@ -23,7 +23,6 @@
 
 #include "ghost/kernel.h"
 #include "ghost/utils/local.hpp"
-#include <kernel.hpp>
 #include <ramdisk/ramdisk.hpp>
 #include <tasking/thread.hpp>
 #include <tasking/tasking.hpp>
@@ -33,6 +32,7 @@
 #include <memory/physical/pp_allocator.hpp>
 #include <memory/physical/pp_reference_tracker.hpp>
 #include <executable/elf32_loader.hpp>
+#include <kernel.hpp>
 #include "debug/debug_interface_kernel.hpp"
 
 #define CREATE_PAGE_IN_SPACE_MAXIMUM_PAGES 100
@@ -45,7 +45,7 @@ G_SYSCALL_HANDLER(create_empty_process) {
 	g_process* process = current_thread->process;
 
 	// Prepare data
-	g_syscall_create_empty_process* data = (g_syscall_create_empty_process*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_create_empty_process* data = (g_syscall_create_empty_process*) G_SYSCALL_DATA(current_thread->statePtr);
 	data->processObject = 0;
 
 	// Only kernel level
@@ -66,7 +66,7 @@ G_SYSCALL_HANDLER(create_empty_process) {
  */
 G_SYSCALL_HANDLER(cli_args_store) {
 
-	g_syscall_cli_args_store* data = (g_syscall_cli_args_store*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_cli_args_store* data = (g_syscall_cli_args_store*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	if (current_thread->process->securityLevel == G_SECURITY_LEVEL_KERNEL) {
 
@@ -94,7 +94,7 @@ G_SYSCALL_HANDLER(cli_args_release) {
 
 	g_process* process = current_thread->process;
 
-	g_syscall_cli_args_release* data = (g_syscall_cli_args_release*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_cli_args_release* data = (g_syscall_cli_args_release*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	// Copy args if available
 	if (process->cliArguments != 0) {
@@ -119,7 +119,7 @@ G_SYSCALL_HANDLER(create_pages_in_space) {
 	g_process* process = current_thread->process;
 
 	// Prepare data
-	g_syscall_create_pages_in_space* data = (g_syscall_create_pages_in_space*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_create_pages_in_space* data = (g_syscall_create_pages_in_space*) G_SYSCALL_DATA(current_thread->statePtr);
 	data->resultVirtualAddress = 0;
 
 	// Only kernel level
@@ -187,17 +187,17 @@ G_SYSCALL_HANDLER(attach_created_process) {
 
 	G_IF_LOG_WARN(g_process* process = current_thread->process);
 
-	g_syscall_attach_created_process* data = (g_syscall_attach_created_process*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_attach_created_process* data = (g_syscall_attach_created_process*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	// Only kernel level
 	if (current_thread->process->securityLevel == G_SECURITY_LEVEL_KERNEL) {
 		g_thread* targetMainThread = (g_thread*) data->processObject;
-		targetMainThread->cpuState->eip = data->eip;
+		targetMainThread->statePtr->eip = data->eip;
 		g_thread_manager::prepareThreadLocalStorage(targetMainThread);
 		g_tasking::addTask(targetMainThread);
 
 		g_log_debug("%! (%i:%i) attached task %i, starting at eip %h", "syscall", process->main->id, current_thread->id, targetMainThread->id,
-				targetMainThread->cpuState->eip);
+				targetMainThread->statePtr->eip);
 	} else {
 		g_log_warn("%! (%i:%i) error: insufficient permissions: attach created process", "syscall", process->main->id, current_thread->id);
 	}
@@ -212,7 +212,7 @@ G_SYSCALL_HANDLER(cancel_process_creation) {
 
 	G_IF_LOG_WARN(g_process* process = current_thread->process);
 
-	g_syscall_cancel_process_creation* data = (g_syscall_cancel_process_creation*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_cancel_process_creation* data = (g_syscall_cancel_process_creation*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	// Only kernel level
 	if (current_thread->process->securityLevel == G_SECURITY_LEVEL_KERNEL) {
@@ -234,7 +234,7 @@ G_SYSCALL_HANDLER(get_created_process_id) {
 
 	g_process* process = current_thread->process;
 
-	g_syscall_get_created_process_id* data = (g_syscall_get_created_process_id*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_get_created_process_id* data = (g_syscall_get_created_process_id*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	// Only on kernel level
 	if (process->securityLevel == G_SECURITY_LEVEL_KERNEL) {
@@ -256,7 +256,7 @@ G_SYSCALL_HANDLER(write_tls_master_for_process) {
 
 	g_process* process = current_thread->process;
 
-	g_syscall_write_tls_master_for_process* data = (g_syscall_write_tls_master_for_process*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_write_tls_master_for_process* data = (g_syscall_write_tls_master_for_process*) G_SYSCALL_DATA(current_thread->statePtr);
 	data->result = false;
 
 	// Only on kernel level
@@ -308,10 +308,10 @@ G_SYSCALL_HANDLER(ramdisk_spawn) {
 
 	g_process* process = current_thread->process;
 
-	g_syscall_ramdisk_spawn* data = (g_syscall_ramdisk_spawn*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_ramdisk_spawn* data = (g_syscall_ramdisk_spawn*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	if (process->securityLevel == G_SECURITY_LEVEL_KERNEL) {
-		g_ramdisk_entry* file = g_kernel::ramdisk->findAbsolute(data->path);
+		g_ramdisk_entry* file = kernelRamdisk->findAbsolute(data->path);
 
 		if (file) {
 			g_thread* spawnedThread;
@@ -349,7 +349,7 @@ G_SYSCALL_HANDLER(ramdisk_spawn) {
  */
 G_SYSCALL_HANDLER(get_thread_entry) {
 
-	g_syscall_get_thread_entry* data = (g_syscall_get_thread_entry*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_get_thread_entry* data = (g_syscall_get_thread_entry*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	if (current_thread->type == G_THREAD_TYPE_SUB) {
 		data->userEntry = current_thread->threadEntry;
@@ -370,7 +370,7 @@ G_SYSCALL_HANDLER(get_thread_entry) {
  */
 G_SYSCALL_HANDLER(create_thread) {
 
-	g_syscall_create_thread* data = (g_syscall_create_thread*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_create_thread* data = (g_syscall_create_thread*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	g_log_debug("%! (%i:%i) creates thread", "syscall", current_thread->process->main->id, current_thread->id);
 
@@ -378,7 +378,7 @@ G_SYSCALL_HANDLER(create_thread) {
 
 	if (thread != 0) {
 		g_log_debug("%! (%i:%i) spawned thread %i", "syscall", current_thread->process->main->id, current_thread->id, thread->id);
-		thread->cpuState->eip = (uint32_t) data->initialEntry;
+		thread->statePtr->eip = (uint32_t) data->initialEntry;
 		thread->threadEntry = data->userEntry;
 		thread->userData = data->userData;
 		g_tasking::addTask(thread);
@@ -401,7 +401,7 @@ G_SYSCALL_HANDLER(configure_process) {
 
 	g_process* process = current_thread->process;
 
-	g_syscall_configure_process* data = (g_syscall_configure_process*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_configure_process* data = (g_syscall_configure_process*) G_SYSCALL_DATA(current_thread->statePtr);
 	data->result = false;
 
 	// Only on kernel level

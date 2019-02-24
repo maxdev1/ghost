@@ -1,2 +1,2 @@
 
-<- <<home#,Back to Documentation Home>>
+<- <<index#,Back to index>>

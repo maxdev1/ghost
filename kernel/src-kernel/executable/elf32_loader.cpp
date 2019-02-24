@@ -19,8 +19,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <executable/elf32_loader.hpp>
-
 #include <kernel.hpp>
+
 #include <logger/logger.hpp>
 #include <ramdisk/ramdisk.hpp>
 #include <tasking/tasking.hpp>
@@ -68,7 +68,7 @@ g_elf32_spawn_status g_elf32_loader::spawnFromRamdisk(g_ramdisk_entry* entry, g_
 		g_address_space::switch_to_space(thisPageDirectory);
 
 		// Set the tasks entry point
-		mainThread->cpuState->eip = header->e_entry;
+		mainThread->statePtr->eip = header->e_entry;
 
 		// Set priority
 		mainThread->priority = priority;

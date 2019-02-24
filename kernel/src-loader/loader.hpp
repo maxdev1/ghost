@@ -52,7 +52,7 @@ public:
 	 *
 	 * @param multibootInformation	the GRUB multiboot information
 	 */
-	static void initialize(g_multiboot_information* multibootInformation);
+	static void initialize();
 
 	/**
 	 * Triggers a loader panic, means halting the entire system and displaying the given

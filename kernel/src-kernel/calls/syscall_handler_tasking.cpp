@@ -20,10 +20,10 @@
 
 #include <calls/syscall_handler.hpp>
 
-#include <kernel.hpp>
 #include <logger/logger.hpp>
 #include <tasking/tasking.hpp>
 #include <filesystem/filesystem.hpp>
+#include <kernel.hpp>
 #include <system/interrupts/handling/interrupt_request_dispatcher.hpp>
 #include <tasking/thread_manager.hpp>
 #include <tasking/wait/waiter_wait_for_irq.hpp>
@@ -63,7 +63,7 @@ G_SYSCALL_HANDLER(exit_thread) {
  */
 G_SYSCALL_HANDLER(kill) {
 
-	g_syscall_kill* data = (g_syscall_kill*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_kill* data = (g_syscall_kill*) G_SYSCALL_DATA(current_thread->statePtr);
 	g_thread* target = g_tasking::getTaskById(data->pid);
 
 	if (target == nullptr) {
@@ -85,7 +85,7 @@ G_SYSCALL_HANDLER(kill) {
  */
 G_SYSCALL_HANDLER(sleep) {
 
-	g_syscall_sleep* data = (g_syscall_sleep*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_sleep* data = (g_syscall_sleep*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	if (data->milliseconds > 0) {
 		current_thread->wait(new g_waiter_sleep(current_thread, data->milliseconds));
@@ -101,7 +101,7 @@ G_SYSCALL_HANDLER(sleep) {
  */
 G_SYSCALL_HANDLER(get_pid) {
 
-	g_syscall_get_pid* data = (g_syscall_get_pid*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_get_pid* data = (g_syscall_get_pid*) G_SYSCALL_DATA(current_thread->statePtr);
 	data->id = current_thread->process->main->id;
 
 	return current_thread;
@@ -113,7 +113,7 @@ G_SYSCALL_HANDLER(get_pid) {
  */
 G_SYSCALL_HANDLER(get_parent_pid) {
 
-	g_syscall_get_parent_pid* data = (g_syscall_get_parent_pid*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_get_parent_pid* data = (g_syscall_get_parent_pid*) G_SYSCALL_DATA(current_thread->statePtr);
 	g_thread* target_task = g_tasking::getTaskById(data->pid);
 
 	g_process* parent_process = target_task->process->parent;
@@ -132,7 +132,7 @@ G_SYSCALL_HANDLER(get_parent_pid) {
  */
 G_SYSCALL_HANDLER(get_tid) {
 
-	g_syscall_get_pid* data = (g_syscall_get_pid*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_get_pid* data = (g_syscall_get_pid*) G_SYSCALL_DATA(current_thread->statePtr);
 	data->id = current_thread->id;
 
 	return current_thread;
@@ -144,7 +144,7 @@ G_SYSCALL_HANDLER(get_tid) {
  */
 G_SYSCALL_HANDLER(get_pid_for_tid) {
 
-	g_syscall_get_pid_for_tid* data = (g_syscall_get_pid_for_tid*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_get_pid_for_tid* data = (g_syscall_get_pid_for_tid*) G_SYSCALL_DATA(current_thread->statePtr);
 	g_thread* target_task = g_tasking::getTaskById(data->tid);
 
 	if (target_task) {
@@ -165,7 +165,7 @@ G_SYSCALL_HANDLER(get_pid_for_tid) {
 G_SYSCALL_HANDLER(wait_for_irq) {
 
 	g_process* process = current_thread->process;
-	g_syscall_wait_for_irq* data = (g_syscall_wait_for_irq*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_wait_for_irq* data = (g_syscall_wait_for_irq*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	// Only driver level
 	if (process->securityLevel == G_SECURITY_LEVEL_DRIVER) {
@@ -188,7 +188,7 @@ G_SYSCALL_HANDLER(wait_for_irq) {
  */
 G_SYSCALL_HANDLER(atomic_wait) {
 
-	g_syscall_atomic_lock* data = (g_syscall_atomic_lock*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_atomic_lock* data = (g_syscall_atomic_lock*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	// try to immediately resolve it
 	if (data->is_try) {
@@ -234,7 +234,7 @@ G_SYSCALL_HANDLER(atomic_wait) {
  */
 G_SYSCALL_HANDLER(task_id_register) {
 
-	g_task_id_register* data = (g_task_id_register*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_task_id_register* data = (g_task_id_register*) G_SYSCALL_DATA(current_thread->statePtr);
 	data->successful = g_tasking::registerTaskForIdentifier(current_thread, data->identifier);
 
 	return current_thread;
@@ -245,7 +245,7 @@ G_SYSCALL_HANDLER(task_id_register) {
  */
 G_SYSCALL_HANDLER(task_id_get) {
 
-	g_syscall_task_id_get* data = (g_syscall_task_id_get*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_task_id_get* data = (g_syscall_task_id_get*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	data->resultTaskId = -1;
 
@@ -262,7 +262,7 @@ G_SYSCALL_HANDLER(task_id_get) {
  */
 G_SYSCALL_HANDLER(millis) {
 
-	g_syscall_millis* data = (g_syscall_millis*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_millis* data = (g_syscall_millis*) G_SYSCALL_DATA(current_thread->statePtr);
 	data->millis = g_tasking::currentScheduler()->getMilliseconds();
 
 	return current_thread;
@@ -273,7 +273,7 @@ G_SYSCALL_HANDLER(millis) {
  */
 G_SYSCALL_HANDLER(fork) {
 
-	g_syscall_fork* data = (g_syscall_fork*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fork* data = (g_syscall_fork*) G_SYSCALL_DATA(current_thread->statePtr);
 	g_thread* forked = g_tasking::fork(current_thread);
 
 	if (forked) {
@@ -300,7 +300,7 @@ G_SYSCALL_HANDLER(fork) {
  */
 G_SYSCALL_HANDLER(join) {
 
-	g_syscall_join* data = (g_syscall_join*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_join* data = (g_syscall_join*) G_SYSCALL_DATA(current_thread->statePtr);
 	current_thread->wait(new g_waiter_join(data->taskId));
 	return g_tasking::schedule();
 }
@@ -310,7 +310,7 @@ G_SYSCALL_HANDLER(join) {
  */
 G_SYSCALL_HANDLER(register_irq_handler) {
 
-	g_syscall_register_irq_handler* data = (g_syscall_register_irq_handler*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_register_irq_handler* data = (g_syscall_register_irq_handler*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	if (current_thread->process->securityLevel <= G_SECURITY_LEVEL_DRIVER) {
 		g_interrupt_request_dispatcher::set_handler(data->irq, current_thread->id, data->handler, data->callback);
@@ -336,7 +336,7 @@ G_SYSCALL_HANDLER(restore_interrupted_state) {
  */
 G_SYSCALL_HANDLER(register_signal_handler) {
 
-	g_syscall_register_signal_handler* data = (g_syscall_register_signal_handler*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_register_signal_handler* data = (g_syscall_register_signal_handler*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	if (data->signal >= 0 && data->signal < SIG_COUNT) {
 		g_signal_handler* handler = &(current_thread->process->signal_handlers[data->signal]);
@@ -363,7 +363,7 @@ G_SYSCALL_HANDLER(register_signal_handler) {
  */
 G_SYSCALL_HANDLER(raise_signal) {
 
-	g_syscall_raise_signal* data = (g_syscall_raise_signal*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_raise_signal* data = (g_syscall_raise_signal*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	if (data->signal >= 0 && data->signal < SIG_COUNT) {
 

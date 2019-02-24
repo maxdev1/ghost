@@ -18,83 +18,105 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef GHOST_KERNEL
-#define GHOST_KERNEL
+#ifndef __KERNEL__
+#define __KERNEL__
 
-#include <build_config.hpp>
-#include <kernelloader/setup_information.hpp>
-#include <memory/collections/address_range_pool.hpp>
-#include <ramdisk/ramdisk.hpp>
-#include <tasking/thread.hpp>
+#include "build_config.hpp"
+#include "kernelloader/setup_information.hpp"
+#include "memory/collections/address_range_pool.hpp"
+#include "ramdisk/ramdisk.hpp"
+#include "tasking/thread.hpp"
 
 /**
- *
+ * Global ramdisk instance.
  */
-class g_kernel {
-public:
-	/**
-	 * Pool of virtual ranges used in the kernel to map memory.
-	 */
-	static g_address_range_pool* virtual_range_pool;
+extern g_ramdisk* kernelRamdisk;
 
-	/**
-	 * Pointer to the global ramdisk instance.
-	 */
-	static g_ramdisk* ramdisk;
+/**
+ * Virtual range pool that allocates addresses within the kernels virtual memory area.
+ */
+extern g_address_range_pool* kernelMemoryVirtualRangePool;
 
-	/**
-	 * Does the initial setup of the kernel. The setup information struct is provided
-	 * from the bootloader and contains important information like the position of the
-	 * kernel image, or the memory bitmap.
-	 *
-	 * @param info the setup information provided by the kernel loader
-	 */
-	static void run(g_setup_information* info);
+/**
+ * Called before any other initialization happens. The information provided by
+ * the loader is interpreted and the essential kernel modules are initialized.
+ *
+ * @param info setup information structure
+ */
+void kernelPerformInitialSetup(g_setup_information* info);
 
-	/**
-	 * BSP setup routine
-	 */
-	static void run_bsp(g_physical_address initial_pd_physical);
+/**
+ * Initializes the basic memory functionality of the kernel.
+ *
+ * @param info setup information structure
+ */
+void kernelInitializeMemory(g_setup_information* info);
 
-	/**
-	 * AP setup routine
-	 */
-	static void run_ap();
+/**
+ * Initializes the kernel ramdisk instance.
+ *
+ * @param info multiboot information structure
+ */
+void kernelInitializeRamdisk(g_multiboot_information* info);
 
-	/**
-	 * Loads a system process binary as a process with the specified priority.
-	 *
-	 * @param path		the ramdisk path to the binary
-	 * @param priority	the thread priority to assign
-	 */
-	static void load_system_process(const char* path, g_thread_priority priority);
+/**
+ * Unmaps the memory that was provided by the kernel loader for initial setup.
+ */
+void kernelUnmapSetupMemory();
 
-	/**
-	 * Triggers a kernel panic, means halting the entire system and displaying the given
-	 * message/diagnostic information.
-	 *
-	 * @param message	the panic message, written in a format that the g_logger class understands
-	 * @param ...		variable arguments for the message
-	 */
-	static void panic(const char* message, ...);
+/**
+ * Halts the system and prints a diagnostic message.
+ *
+ * @param message format for the panic message
+ * @param ... variable argument list
+ */
+void kernelPanic(const char* message, ...);
 
-private:
-	/**
-	 *
-	 */
-	static void print_header(g_setup_information* info);
+/**
+ * Does the initial kernel setup.
+ *
+ * @param info setup information structure
+ */
+void kernelRun(g_setup_information* info);
 
-	/**
-	 *
-	 */
-	static void load_ramdisk(g_multiboot_module* ramdiskModule);
+/**
+ * Performs initialization of the bootstrap processor (BSP).
+ *
+ * @param initial_pd_physical
+ */
+void kernelRunBootstrapCore(g_physical_address initialPageDirectory);
 
-	/**
-	 * Performs the very first kernel setup, copying all necessary information that
-	 * is provided by the loader.
-	 */
-	static void pre_setup(g_setup_information* info);
+/**
+ * Performs initialization of an application processor. This function is
+ * executed on every single application processor (AP).
+ */
+void kernelRunApplicationCore();
 
-};
+/**
+ * Loads a binary as an initial system task.
+ *
+ * @param binaryPath path to the binary
+ * @param priority thread priority
+ */
+void kernelLoadSystemProcess(const char* binaryPath, g_thread_priority priority);
+
+/**
+ * Used to enable interrupts once the basic kernel setup has finished.
+ * Once the first timer interrupt occurs, the scheduler automatically switches
+ * to the first suitable task.
+ */
+void kernelEnableInterrupts();
+
+/**
+ * Disables interrupts. This causes the system to halt as no tasks will be scheduled
+ * anymore. Usually is only called in case of kernel panic.
+ */
+void kernelDisableInterrupts();
+
+/**
+ * Sleeps the current execution thread until the number of waiting application
+ * cores is zero.
+ */
+void kernelWaitForApplicationCores();
 
 #endif

@@ -18,9 +18,9 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <kernel.hpp>
 #include <memory/kernel_heap.hpp>
 #include <logger/logger.hpp>
-#include <kernel.hpp>
 #include <memory/address_space.hpp>
 #include <memory/paging.hpp>
 #include <memory/physical/pp_allocator.hpp>
@@ -118,7 +118,7 @@ bool g_kernel_heap::expandHeap() {
 void* g_kernel_heap::allocate(uint32_t size) {
 
 	if (!kernelHeapInitialized) {
-		g_kernel::panic("%! tried to use uninitialized kernel heap", "kernheap");
+		kernelPanic("%! tried to use uninitialized kernel heap", "kernheap");
 	}
 
 	void* allocated = allocator.allocate(size);
@@ -131,7 +131,7 @@ void* g_kernel_heap::allocate(uint32_t size) {
 		}
 	}
 
-	g_kernel::panic("%! could not expand kernel heap", "kernheap");
+	kernelPanic("%! could not expand kernel heap", "kernheap");
 	return 0;
 }
 
@@ -141,7 +141,7 @@ void* g_kernel_heap::allocate(uint32_t size) {
 void g_kernel_heap::free(void* mem) {
 
 	if (!kernelHeapInitialized) {
-		g_kernel::panic("%! tried to use uninitialized kernel heap", "kernheap");
+		kernelPanic("%! tried to use uninitialized kernel heap", "kernheap");
 	}
 
 	usedMemoryAmount -= allocator.free(mem);

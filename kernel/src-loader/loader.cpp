@@ -37,7 +37,8 @@
 /**
  * Linker symbols defined in the linker script
  */
-extern "C" {
+extern "C"
+{
 void* endAddress;
 }
 
@@ -50,7 +51,8 @@ static g_setup_information setupInformation;
 /**
  * Returns the loaders area struct
  */
-g_setup_information* g_loader::getSetupInformation() {
+g_setup_information* g_loader::getSetupInformation()
+{
 	return &setupInformation;
 }
 
@@ -62,34 +64,40 @@ static g_bitmap_page_allocator physicalAllocator;
 /**
  *
  */
-g_bitmap_page_allocator* g_loader::getPhysicalAllocator() {
+g_bitmap_page_allocator* g_loader::getPhysicalAllocator()
+{
 	return &physicalAllocator;
 }
 
 /**
  * 
  */
-uint32_t g_loader::findFreeMemory(g_multiboot_information* info, uint32_t start, int count) {
+uint32_t g_loader::findFreeMemory(g_multiboot_information* info, uint32_t start, int count)
+{
 
 	g_log_info("%! searching for %i free pages (starting at %h)", "loader", count, start);
 	g_physical_address location = start;
 
-	while (location < 0xFFFFFFFF) {
+	while(location < 0xFFFFFFFF)
+	{
 
 		bool notWithinModule = true;
 
 		// For each of the required pages, check if it is within a module
-		for (int i = 0; i < count; i++) {
+		for(int i = 0; i < count; i++)
+		{
 			uint32_t pos = location + i * G_PAGE_SIZE;
 
 			// Check one of the modules contains this position
-			for (uint32_t i = 0; i < info->modulesCount; i++) {
+			for(uint32_t i = 0; i < info->modulesCount; i++)
+			{
 				g_multiboot_module* module = (g_multiboot_module*) (info->modulesAddress + sizeof(g_multiboot_module) * i);
 
 				uint32_t moduleStart = G_PAGE_ALIGN_DOWN(module->moduleStart);
 				uint32_t moduleEnd = G_PAGE_ALIGN_UP(module->moduleEnd);
 
-				if (pos >= moduleStart && pos < moduleEnd) {
+				if(pos >= moduleStart && pos < moduleEnd)
+				{
 					notWithinModule = false;
 					location = moduleEnd;
 					break;
@@ -97,7 +105,8 @@ uint32_t g_loader::findFreeMemory(g_multiboot_information* info, uint32_t start,
 			}
 		}
 
-		if (notWithinModule) {
+		if(notWithinModule)
+		{
 			g_log_info("%# found: %h", location);
 			return location;
 		}
@@ -112,7 +121,8 @@ uint32_t g_loader::findFreeMemory(g_multiboot_information* info, uint32_t start,
 /**
  * 
  */
-void g_loader::initialize(g_multiboot_information* multibootInformation) {
+void g_loader::initialize(g_multiboot_information* multibootInformation)
+{
 
 	// Store multiboot structure
 	setupInformation.multibootInformation = multibootInformation;
@@ -139,7 +149,8 @@ void g_loader::initialize(g_multiboot_information* multibootInformation) {
 #if G_LOGGING_DEBUG
 	// Information output
 	g_log_debug("%! available modules:", "mmodule");
-	for (uint32_t i = 0; i < multibootInformation->modulesCount; i++) {
+	for (uint32_t i = 0; i < multibootInformation->modulesCount; i++)
+	{
 		g_multiboot_module* module = (g_multiboot_module*) (multibootInformation->modulesAddress + sizeof(g_multiboot_module) * i);
 		g_log_debug("%#   '%s' at %h - %h", module->path, module->moduleStart, module->moduleEnd);
 	}
@@ -171,14 +182,16 @@ void g_loader::initialize(g_multiboot_information* multibootInformation) {
 	g_log_info("%! locating kernel binary...", "loader");
 
 	g_multiboot_module* kernelModule = g_multiboot_util::findModule(setupInformation.multibootInformation, "/boot/kernel");
-	if (kernelModule) {
+	if(kernelModule)
+	{
 
 		G_PRETTY_BOOT_STATUS("Loading kernel", 5);
 		g_log_info("%! found kernel binary at %h, loading...", "loader", kernelModule->moduleStart);
 
 		g_kernel_loader::load(kernelModule);
 		g_loader::panic("%! something went wrong during boot process, halting", "loader");
-	} else {
+	} else
+	{
 		G_PRETTY_BOOT_FAIL("Kernel module not found");
 		g_loader::panic("%! kernel module not found", "loader");
 	}
@@ -187,7 +200,8 @@ void g_loader::initialize(g_multiboot_information* multibootInformation) {
 /**
  * 
  */
-void g_loader::panic(const char* msg, ...) {
+void g_loader::panic(const char* msg, ...)
+{
 
 	g_log_info("%! an unrecoverable error has occured. reason:", "lpanic");
 
@@ -198,7 +212,8 @@ void g_loader::panic(const char* msg, ...) {
 	g_logger::printCharacter('\n');
 
 	asm("cli");
-	for (;;) {
+	for(;;)
+	{
 		asm("hlt");
 	}
 }

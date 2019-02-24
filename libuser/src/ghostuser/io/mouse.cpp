@@ -38,9 +38,6 @@ g_mouse_info g_mouse::readMouse() {
 	// wait until incoming data is here (and the driver unsets the atom)
 	g_atomic_block(&g_ps2_area->mouse.buffer_empty_lock);
 
-	// take info from the shared memory
-	g_atomic_lock(&g_ps2_area->mouse.lock);
-
 	g_mouse_info e;
 	e.x = g_ps2_area->mouse.move_x;
 	e.y = g_ps2_area->mouse.move_y;
@@ -52,8 +49,6 @@ g_mouse_info g_mouse::readMouse() {
 	g_ps2_area->mouse.move_y = 0;
 
 	g_ps2_area->mouse.buffer_empty_lock = true;
-
-	g_ps2_area->mouse.lock = false;
 
 	return e;
 }

@@ -18,10 +18,10 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <kernel.hpp>
 #include <runtime/constructors.hpp>
 
 #include <build_config.hpp>
+#include <kernel.hpp>
 #include <kernelloader/setup_information.hpp>
 #include <logger/logger.hpp>
 #include <video/console_video.hpp>
@@ -38,17 +38,14 @@ extern "C" void loadKernel(g_setup_information* setupInformation) {
 
 	g_abi_constructors_call_global();
 
-	// Set video output
 	if (G_PRETTY_BOOT) {
 		g_pretty_boot::enable(false);
 	} else {
 		g_console_video::clear();
 	}
 
-	// Call the kernel
-	g_kernel::run(setupInformation);
+	kernelRun(setupInformation);
 
-	// Hang after execution
 	g_log_info("%! execution finished, halting", "postkern");
 	asm("cli");
 	for (;;) {
