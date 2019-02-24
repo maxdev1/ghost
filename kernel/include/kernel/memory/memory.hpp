@@ -36,4 +36,6 @@ void memoryInitialize(g_setup_information* setupInformation);
 
 void memoryInitializePhysicalAllocator(g_setup_information* setupInformation);
 
+void memoryUnmapSetupMemory();
+
 #endif

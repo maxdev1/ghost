@@ -32,8 +32,6 @@ extern "C" void kernelMain(g_setup_information* setupInformation);
 
 void kernelInitialize(g_setup_information* setupInformation);
 
-void kernelUnmapSetupMemory();
-
 void kernelRunBootstrapCore(g_physical_address initialPdPhys);
 
 void kernelEnableInterrupts();

@@ -20,6 +20,7 @@
 
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/heap.hpp"
+#include "kernel/memory/paging.hpp"
 #include "kernel/kernel.hpp"
 #include "kernel/debug/debug_interface.hpp"
 
@@ -49,4 +50,10 @@ void memoryInitializePhysicalAllocator(g_setup_information* setupInformation)
 
 	G_DEBUG_INTERFACE_SYSTEM_INFORMATION("memory.freePageCount", memoryPhysicalAllocator.freePageCount);
 	logInfo("%! bitmap analyzed, got %i free pages", "memory", memoryPhysicalAllocator.freePageCount);
+}
+
+void memoryUnmapSetupMemory()
+{
+	for(g_virtual_address addr = G_CONST_LOWER_MEMORY_END; addr < G_CONST_KERNEL_AREA_START; addr += G_PAGE_SIZE)
+		pagingUnmapPage(addr);
 }
