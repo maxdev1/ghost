@@ -18,62 +18,15 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_TASKING__
-#define __KERNEL_TASKING__
+#include "kernel/system/interrupts/exceptions.hpp"
+#include "shared/logger/logger.hpp"
 
-#include "ghost/kernel.h"
-#include "kernel/system/processor/processor.hpp"
-#include "kernel/system/mutex.hpp"
-
-struct g_task
+g_processor_state* exceptionsHandle(g_processor_state* statePtr)
 {
-	g_tid id;
-	g_processor_state state;
-};
+	logInfo("%*%! no resolution for exception %i, hanging system", 0x0C, "exception", statePtr->intr);
+	for(;;)
+	{
+		asm("hlt");
+	}
+}
 
-struct g_task_entry
-{
-	g_task* task;
-	g_task_entry* next;
-};
-
-struct g_tasking_local
-{
-	g_mutex lock;
-	g_task_entry* list;
-	g_task* current;
-
-	g_virtual_address kernelStack;
-};
-
-/**
- * Basic initialization of the task management.
- */
-void taskingInitializeBsp();
-
-/**
- * Initializes the local task management for this core.
- */
-void taskingInitializeAp();
-
-/**
- *
- */
-g_task* taskingCreateThread(g_virtual_address entry, g_security_level level);
-
-/**
- *
- */
-void taskingAssign(g_tasking_local* local, g_task* task);
-
-/**
- *
- */
-void taskingSchedule();
-
-/**
- *
- */
-g_tasking_local* taskingGetLocal();
-
-#endif

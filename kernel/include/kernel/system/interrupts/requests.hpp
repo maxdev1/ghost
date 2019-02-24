@@ -18,62 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_TASKING__
-#define __KERNEL_TASKING__
+#ifndef __KERNEL_REQUESTS__
+#define __KERNEL_REQUESTS__
 
-#include "ghost/kernel.h"
 #include "kernel/system/processor/processor.hpp"
-#include "kernel/system/mutex.hpp"
 
-struct g_task
-{
-	g_tid id;
-	g_processor_state state;
-};
-
-struct g_task_entry
-{
-	g_task* task;
-	g_task_entry* next;
-};
-
-struct g_tasking_local
-{
-	g_mutex lock;
-	g_task_entry* list;
-	g_task* current;
-
-	g_virtual_address kernelStack;
-};
-
-/**
- * Basic initialization of the task management.
- */
-void taskingInitializeBsp();
-
-/**
- * Initializes the local task management for this core.
- */
-void taskingInitializeAp();
-
-/**
- *
- */
-g_task* taskingCreateThread(g_virtual_address entry, g_security_level level);
-
-/**
- *
- */
-void taskingAssign(g_tasking_local* local, g_task* task);
-
-/**
- *
- */
-void taskingSchedule();
-
-/**
- *
- */
-g_tasking_local* taskingGetLocal();
+g_processor_state* requestsHandle(g_processor_state* statePtr);
 
 #endif
