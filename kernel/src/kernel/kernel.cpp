@@ -40,7 +40,7 @@ extern "C" void kernelMain(g_setup_information* setupInformation)
 
 	kernelInitialize(setupInformation);
 	g_address initialPdPhys = setupInformation->initialPageDirectoryPhysical;
-	kernelUnmapSetupMemory();
+	memoryUnmapSetupMemory();
 	kernelRunBootstrapCore(initialPdPhys);
 	kernelHalt();
 }
@@ -57,11 +57,6 @@ void kernelInitialize(g_setup_information* setupInformation)
 		kernelPanic("%! ramdisk not found (did you supply enough memory?)", "kern");
 	}
 	ramdiskLoadFromModule(ramdiskModule);
-}
-
-void kernelUnmapSetupMemory()
-{
-
 }
 
 void kernelRunBootstrapCore(g_physical_address initialPdPhys)
