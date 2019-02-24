@@ -18,24 +18,14 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL__
-#define __KERNEL__
+#include "kernel/tasking/tasking.hpp"
 
-#include "ghost/types.h"
-#include "shared/setup_information.hpp"
-#include "shared/memory/bitmap_page_allocator.hpp"
-#include "shared/logger/logger.hpp"
+void taskingInitializeBsp()
+{
 
-extern g_bitmap_page_allocator* kernelPhysicalAllocator;
+}
 
-extern "C" void kernelMain(g_setup_information* setupInformation);
+void taskingInitializeAp()
+{
 
-void kernelInitialize(g_setup_information* setupInformation);
-
-void kernelRunBootstrapCore(g_physical_address initialPdPhys);
-
-void kernelPanic(const char *msg, ...);
-
-void kernelHalt();
-
-#endif
+}

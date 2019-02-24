@@ -27,6 +27,8 @@
 #include "shared/memory/memory.hpp"
 #include "shared/memory/bitmap_page_allocator.hpp"
 
+#include "kernel/memory/paging.hpp"
+#include "kernel/memory/heap.hpp"
 #include "kernel/memory/address_range_pool.hpp"
 
 extern g_bitmap_page_allocator memoryPhysicalAllocator;

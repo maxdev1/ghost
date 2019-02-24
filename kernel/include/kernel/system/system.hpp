@@ -18,24 +18,22 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL__
-#define __KERNEL__
+#ifndef __KERNEL_SYSTEM__
+#define __KERNEL_SYSTEM__
 
 #include "ghost/types.h"
-#include "shared/setup_information.hpp"
-#include "shared/memory/bitmap_page_allocator.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/system/processor/processor.hpp"
 
-extern g_bitmap_page_allocator* kernelPhysicalAllocator;
+void systemInitializeBsp(g_physical_address initialPdPhys);
 
-extern "C" void kernelMain(g_setup_information* setupInformation);
+void systemInitializeAp();
 
-void kernelInitialize(g_setup_information* setupInformation);
+int systemGetNumberOfCores();
 
-void kernelRunBootstrapCore(g_physical_address initialPdPhys);
+uint32_t systemGetCurrentProcessorId();
 
-void kernelPanic(const char *msg, ...);
+void systemWaitForApplicationCores();
 
-void kernelHalt();
+void systemMarkApplicationCoreReady();
 
 #endif

@@ -18,24 +18,13 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL__
-#define __KERNEL__
+#ifndef __KERNEL_INTERRUPTS__
+#define __KERNEL_INTERRUPTS__
 
-#include "ghost/types.h"
-#include "shared/setup_information.hpp"
-#include "shared/memory/bitmap_page_allocator.hpp"
-#include "shared/logger/logger.hpp"
+#include "ghost/stdint.h"
 
-extern g_bitmap_page_allocator* kernelPhysicalAllocator;
+void interruptsEnable();
 
-extern "C" void kernelMain(g_setup_information* setupInformation);
-
-void kernelInitialize(g_setup_information* setupInformation);
-
-void kernelRunBootstrapCore(g_physical_address initialPdPhys);
-
-void kernelPanic(const char *msg, ...);
-
-void kernelHalt();
+void interruptsDisable();
 
 #endif

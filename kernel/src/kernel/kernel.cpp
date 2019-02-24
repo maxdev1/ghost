@@ -20,6 +20,11 @@
 
 #include "kernel/kernel.hpp"
 #include "kernel/memory/memory.hpp"
+#include "kernel/memory/gdt.hpp"
+#include "kernel/tasking/tasking.hpp"
+#include "kernel/system/mutex.hpp"
+#include "kernel/system/system.hpp"
+#include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/filesystem/ramdisk.hpp"
 #include "kernel/logger/kernel_logger.hpp"
 
@@ -27,6 +32,9 @@
 #include "shared/video/console_video.hpp"
 #include "shared/video/pretty_boot.hpp"
 #include "shared/system/serial_port.hpp"
+
+static g_mutex bootstrapCoreLock;
+static g_mutex applicationCoreLock;
 
 extern "C" void kernelMain(g_setup_information* setupInformation)
 {
@@ -60,23 +68,30 @@ void kernelInitialize(g_setup_information* setupInformation)
 
 void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 {
-	logInfo("%! running bsp", "kernelRunBootstrapCore");
-	for(;;)
-		;
+	mutexAcquire(&bootstrapCoreLock);
+	systemInitializeBsp(initialPdPhys);
+	taskingInitializeBsp();
+#warning "TODO: initialize filesystem here"
+#warning "TODO: load idle process"
+	mutexRelease(&bootstrapCoreLock);
+
+	systemWaitForApplicationCores();
+	interruptsEnable();
 }
 
-void kernelEnableInterrupts()
+void kernelRunApplicationCore()
 {
-	asm("sti");
-	for(;;)
-		asm("hlt");
-}
+	mutexAcquire(&bootstrapCoreLock);
+	mutexRelease(&bootstrapCoreLock);
 
-void kernelDisableInterrupts()
-{
-	asm("cli");
-	for(;;)
-		asm("hlt");
+	mutexAcquire(&applicationCoreLock);
+	systemInitializeAp();
+	taskingInitializeAp();
+#warning "TODO load idle process"
+	mutexRelease(&applicationCoreLock);
+
+	systemWaitForApplicationCores();
+	interruptsEnable();
 }
 
 void kernelPanic(const char *msg, ...)
@@ -90,15 +105,11 @@ void kernelPanic(const char *msg, ...)
 	va_end(valist);
 	loggerPrintCharacter('\n');
 
-	kernelDisableInterrupts();
+	interruptsDisable();
 }
 
 void kernelHalt()
 {
 	logInfo("%! execution finished, halting", "postkern");
-	asm("cli");
-	for(;;)
-	{
-		asm("hlt");
-	}
+	interruptsDisable();
 }

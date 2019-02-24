@@ -20,16 +20,16 @@
 
 #include "shared/memory/gdt.hpp"
 
-void gdtCreateGate(g_gdt_entry* gdtEntry, uint32_t base, uint32_t limit, uint8_t access, uint8_t granularity)
+void gdtCreateGate(g_gdt_entry* entry, uint32_t base, uint32_t limit, uint8_t access, uint8_t granularity)
 {
-	gdtEntry->baseLow = (base & 0xFFFF);
-	gdtEntry->baseMiddle = (base >> 16) & 0xFF;
-	gdtEntry->baseHigh = (base >> 24) & 0xFF;
+	entry->baseLow = (base & 0xFFFF);
+	entry->baseMiddle = (base >> 16) & 0xFF;
+	entry->baseHigh = (base >> 24) & 0xFF;
 
-	gdtEntry->limitLow = (limit & 0xFFFF);
-	gdtEntry->limitHigh = limit >> 16;
+	entry->limitLow = (limit & 0xFFFF);
+	entry->limitHigh = limit >> 16;
 
-	gdtEntry->granularity = granularity;
+	entry->granularity = granularity;
 
-	gdtEntry->access = access;
+	entry->access = access;
 }
