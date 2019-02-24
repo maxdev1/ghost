@@ -45,10 +45,10 @@ g_irq_handler* handlers[256] = { 0 };
  */
 g_thread* g_interrupt_request_dispatcher::handle(g_thread* current_thread) {
 
-	const uint32_t interrupt = current_thread->cpuState->intr;
+	const uint32_t interrupt = current_thread->statePtr->intr;
 	const uint32_t irq = interrupt - 0x20;
 
-	if (current_thread->cpuState->intr == 0x80) {
+	if (current_thread->statePtr->intr == 0x80) {
 		/* System call */
 		current_thread = g_syscall_handle(current_thread);
 

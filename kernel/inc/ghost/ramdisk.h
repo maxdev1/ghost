@@ -43,6 +43,8 @@ typedef int g_ramdisk_entry_type;
 #define G_RAMDISK_ENTRY_TYPE_FOLDER		0
 #define G_RAMDISK_ENTRY_TYPE_FILE		1
 
+typedef uint32_t g_ramdisk_id;
+
 /**
  * Ramdisk entry information struct used within system calls
  */

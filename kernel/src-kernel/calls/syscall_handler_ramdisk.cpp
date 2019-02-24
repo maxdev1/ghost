@@ -19,8 +19,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <calls/syscall_handler.hpp>
-
 #include <kernel.hpp>
+
 #include <ramdisk/ramdisk.hpp>
 #include <logger/logger.hpp>
 
@@ -28,9 +28,9 @@
  * Searches for a node on the ramdisk, using the absolute path of the node.
  */
 G_SYSCALL_HANDLER(ramdisk_find) {
-	g_syscall_ramdisk_find* data = (g_syscall_ramdisk_find*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_ramdisk_find* data = (g_syscall_ramdisk_find*) G_SYSCALL_DATA(current_thread->statePtr);
 
-	g_ramdisk_entry* entry = g_kernel::ramdisk->findAbsolute(data->path);
+	g_ramdisk_entry* entry = kernelRamdisk->findAbsolute(data->path);
 	if (entry) {
 		data->nodeId = entry->id;
 	} else {
@@ -44,13 +44,13 @@ G_SYSCALL_HANDLER(ramdisk_find) {
  * Searches for a child with a specific name in the parent node with the given id.
  */
 G_SYSCALL_HANDLER(ramdisk_find_child) {
-	g_syscall_ramdisk_find_child* data = (g_syscall_ramdisk_find_child*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_ramdisk_find_child* data = (g_syscall_ramdisk_find_child*) G_SYSCALL_DATA(current_thread->statePtr);
 	data->nodeId = -1;
 
-	g_ramdisk_entry* parent = g_kernel::ramdisk->findById(data->parentId);
+	g_ramdisk_entry* parent = kernelRamdisk->findById(data->parentId);
 	if (parent) {
 
-		g_ramdisk_entry* entry = g_kernel::ramdisk->findRelative(parent, data->childName);
+		g_ramdisk_entry* entry = kernelRamdisk->findRelative(parent, data->childName);
 		if (entry) {
 			data->nodeId = entry->id;
 		}
@@ -63,9 +63,9 @@ G_SYSCALL_HANDLER(ramdisk_find_child) {
  * Returns information to a specific node on the ramdisk file system.
  */
 G_SYSCALL_HANDLER(ramdisk_info) {
-	g_syscall_ramdisk_info* data = (g_syscall_ramdisk_info*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_ramdisk_info* data = (g_syscall_ramdisk_info*) G_SYSCALL_DATA(current_thread->statePtr);
 
-	g_ramdisk_entry* entry = g_kernel::ramdisk->findById(data->nodeId);
+	g_ramdisk_entry* entry = kernelRamdisk->findById(data->nodeId);
 	if (entry) {
 		data->length = entry->datalength;
 
@@ -85,9 +85,9 @@ G_SYSCALL_HANDLER(ramdisk_info) {
  * Reads from a ramdisk node.
  */
 G_SYSCALL_HANDLER(ramdisk_read) {
-	g_syscall_ramdisk_read* data = (g_syscall_ramdisk_read*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_ramdisk_read* data = (g_syscall_ramdisk_read*) G_SYSCALL_DATA(current_thread->statePtr);
 
-	g_ramdisk_entry* entry = g_kernel::ramdisk->findById(data->nodeId);
+	g_ramdisk_entry* entry = kernelRamdisk->findById(data->nodeId);
 	if (entry && entry->type == G_RAMDISK_ENTRY_TYPE_FILE) {
 		int bytesFromOffset = entry->datalength - ((int32_t) data->offset);
 		if (bytesFromOffset < 0) {
@@ -115,9 +115,9 @@ G_SYSCALL_HANDLER(ramdisk_read) {
  * Returns the number of children a ramdisk node has.
  */
 G_SYSCALL_HANDLER(ramdisk_child_count) {
-	g_syscall_ramdisk_child_count* data = (g_syscall_ramdisk_child_count*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_ramdisk_child_count* data = (g_syscall_ramdisk_child_count*) G_SYSCALL_DATA(current_thread->statePtr);
 
-	data->count = g_kernel::ramdisk->getChildCount(data->nodeId);
+	data->count = kernelRamdisk->getChildCount(data->nodeId);
 
 	return current_thread;
 }
@@ -126,9 +126,9 @@ G_SYSCALL_HANDLER(ramdisk_child_count) {
  * Returns the id of the child of the parent node (with the given id) at the given index on the ramdisk.
  */
 G_SYSCALL_HANDLER(ramdisk_child_at) {
-	g_syscall_ramdisk_child_at* data = (g_syscall_ramdisk_child_at*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_ramdisk_child_at* data = (g_syscall_ramdisk_child_at*) G_SYSCALL_DATA(current_thread->statePtr);
 
-	g_ramdisk_entry* entry = g_kernel::ramdisk->getChildAt(data->nodeId, data->index);
+	g_ramdisk_entry* entry = kernelRamdisk->getChildAt(data->nodeId, data->index);
 
 	if (entry) {
 		data->childId = entry->id;

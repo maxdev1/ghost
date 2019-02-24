@@ -18,6 +18,7 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <kernel.hpp>
 #include <system/system.hpp>
 #include <logger/logger.hpp>
 #include <system/acpi/acpi.hpp>
@@ -28,7 +29,6 @@
 #include <system/interrupts/ioapic_manager.hpp>
 #include <system/interrupts/descriptors/idt.hpp>
 #include <system/smp/smp.hpp>
-#include <kernel.hpp>
 #include <system/processor.hpp>
 #include <video/pretty_boot.hpp>
 
@@ -65,7 +65,7 @@ void g_system::initializeBsp(g_physical_address initialPageDirectoryPhysical) {
 	if (g_processor::supportsCpuid()) {
 		g_log_debug("%! supports CPUID", "cpu");
 	} else {
-		g_kernel::panic("%! no CPUID support", "cpu");
+		kernelPanic("%! no CPUID support", "cpu");
 	}
 
 	// Do some CPU info output
@@ -78,7 +78,7 @@ void g_system::initializeBsp(g_physical_address initialPageDirectoryPhysical) {
 	if (g_processor::hasFeature(g_cpuid_standard_edx_feature::APIC)) {
 		g_log_debug("%! APIC available", "cpu");
 	} else {
-		g_kernel::panic("%! no APIC available", "cpu");
+		kernelPanic("%! no APIC available", "cpu");
 	}
 
 	// Gather ACPI information
@@ -95,7 +95,7 @@ void g_system::initializeBsp(g_physical_address initialPageDirectoryPhysical) {
 		}
 
 	} else {
-		g_kernel::panic("%! ACPI info not available", "system");
+		kernelPanic("%! ACPI info not available", "system");
 	}
 
 	// Initialize the interrupt controllers
@@ -131,7 +131,7 @@ void g_system::initializeBsp(g_physical_address initialPageDirectoryPhysical) {
 		g_ioapic_manager::createIsaRedirectionEntry(12, 12, 0);
 
 	} else {
-		g_kernel::panic("%! pic compatibility mode not implemented. apic/ioapic required!", "system");
+		kernelPanic("%! pic compatibility mode not implemented. apic/ioapic required!", "system");
 		/*
 		 PIC::remapIrqs();
 		 PIC::unmaskAll();
@@ -140,7 +140,7 @@ void g_system::initializeBsp(g_physical_address initialPageDirectoryPhysical) {
 }
 
 /**
- * 
+ *
  */
 void g_system::initializeAp() {
 

@@ -70,25 +70,25 @@ uint32_t g_interrupt_exception_dispatcher::getCR2() {
  * Dumps the current CPU state to the log file
  */
 void g_interrupt_exception_dispatcher::dump(g_thread* current_thread) {
-	g_processor_state* cpuState = current_thread->cpuState;
+	g_processor_state* statePtr = current_thread->statePtr;
 	g_process* process = current_thread->process;
-	g_log_info("%! %s in task %i (process %i)", "exception", EXCEPTION_NAMES[cpuState->intr], current_thread->id, process->main->id);
+	g_log_info("%! %s in task %i (process %i)", "exception", EXCEPTION_NAMES[statePtr->intr], current_thread->id, process->main->id);
 
 	if (current_thread->getIdentifier() != 0) {
 		g_log_info("%# task identified as '%s'", current_thread->getIdentifier());
 	}
 
-	if (cpuState->intr == 0x0E) { // Page fault
+	if (statePtr->intr == 0x0E) { // Page fault
 		g_log_info("%#    accessed address: %h", getCR2());
 	}
-	g_log_info("%#    eip: %h   eflags: %h", cpuState->eip, cpuState->eflags);
-	g_log_info("%#    eax: %h      ebx: %h", cpuState->eax, cpuState->ebx);
-	g_log_info("%#    ecx: %h      edx: %h", cpuState->ecx, cpuState->edx);
-	g_log_info("%#    esp: %h   state@: %h", cpuState->esp, cpuState);
-	g_log_info("%#   intr: %h    error: %h", cpuState->intr, cpuState->error);
+	g_log_info("%#    eip: %h   eflags: %h", statePtr->eip, statePtr->eflags);
+	g_log_info("%#    eax: %h      ebx: %h", statePtr->eax, statePtr->ebx);
+	g_log_info("%#    ecx: %h      edx: %h", statePtr->ecx, statePtr->edx);
+	g_log_info("%#    esp: %h   state@: %h", statePtr->esp, statePtr);
+	g_log_info("%#   intr: %h    error: %h", statePtr->intr, statePtr->error);
 
 	// Print stack
-	g_address* ebp = reinterpret_cast<g_address*>(cpuState->ebp);
+	g_address* ebp = reinterpret_cast<g_address*>(statePtr->ebp);
 	g_log_info("%# stack trace:");
 	for(int frame = 0; frame < 5; ++frame) {
 		g_address eip = ebp[1];
@@ -248,7 +248,7 @@ g_thread* g_interrupt_exception_dispatcher::handleDivideError(g_thread* current_
 	dump(current_thread);
 
 	// Let process run, but skip the faulty instruction
-	++current_thread->cpuState->eip;
+	++current_thread->statePtr->eip;
 	g_log_info("%! #%i thread %i had a divide error", "exception", g_system::currentProcessorId(), current_thread->id);
 	return g_tasking::schedule();
 }
@@ -265,7 +265,7 @@ g_thread* g_interrupt_exception_dispatcher::handleInvalidOperationCode(g_thread*
 	main->alive = false;
 	current_thread->alive = false;
 	g_log_info("%! #%i process %i killed due to invalid operation code %h in thread %i", "exception", g_system::currentProcessorId(), main->id,
-			*((uint8_t* ) current_thread->cpuState->eip), current_thread->id);
+			*((uint8_t* ) current_thread->statePtr->eip), current_thread->id);
 
 	// print source path if available
 	if (current_thread->process->source_path) {
@@ -284,7 +284,7 @@ g_thread* g_interrupt_exception_dispatcher::handle(g_thread* current_thread) {
 
 	bool resolved = false;
 
-	switch (current_thread->cpuState->intr) {
+	switch (current_thread->statePtr->intr) {
 	case 0x00: { // Divide error
 		current_thread = handleDivideError(current_thread);
 		resolved = true;

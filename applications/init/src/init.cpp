@@ -26,6 +26,14 @@
  */
 int main(int argc, char** argv) {
 
+	int x = 0;
+	int bla = 0;
+	for(;;) {
+		klog("Hellooo %i %i!", (int) &x, bla++);
+		g_sleep(1000 + ((int) &x) % 100);
+	}
+
+/*
 	g_task_register_id("init");
 
 	// load spawner process
@@ -52,5 +60,5 @@ int main(int argc, char** argv) {
 	} else {
 		g_logger::log("failed to load launch service from '" + launch_srv_path + "' with code %i", stat);
 	}
-
+*/
 }

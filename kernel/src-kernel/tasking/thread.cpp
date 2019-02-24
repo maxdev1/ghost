@@ -18,10 +18,10 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <kernel.hpp>
 #include "tasking/thread.hpp"
 #include "tasking/process.hpp"
 #include "utils/string.hpp"
-#include "kernel.hpp"
 #include "logger/logger.hpp"
 #include "tasking/wait/waiter_perform_interruption.hpp"
 #include "debug/debug_interface_kernel.hpp"
@@ -39,10 +39,12 @@ g_thread::g_thread(g_thread_type _type) {
 
 	waitCount = 0;
 	rounds = 0;
+	lastRunTime = 0;
 	scheduler = 0;
+	schedulerRound = 0;
 
 	alive = true;
-	cpuState = 0;
+	statePtr = 0;
 	identifier = 0;
 
 	process = 0;
@@ -123,7 +125,7 @@ g_thread_information_vm86* g_thread::getVm86Information() {
 		return vm86Information;
 	}
 
-	g_kernel::panic("tried to retrieve vm86 information from the non-vm86-process type task %i", id);
+	kernelPanic("tried to retrieve vm86 information from the non-vm86-process type task %i", id);
 	return 0; // not reached
 }
 
@@ -142,8 +144,6 @@ void g_thread::wait(g_waiter* newWaitManager) {
 	if (waitManager) {
 		// replace waiter
 		delete waitManager;
-	} else {
-		scheduler->moveToWaitQueue(this);
 	}
 
 	waitManager = newWaitManager;
@@ -159,7 +159,6 @@ void g_thread::unwait() {
 	if (waitManager) {
 		delete waitManager;
 		waitManager = 0;
-		scheduler->moveToRunQueue(this);
 	}
 }
 
@@ -235,8 +234,8 @@ void g_thread::enter_signal_handler(uintptr_t address, int signal, uintptr_t cal
 void g_thread::store_for_interruption() {
 
 	// store CPU state & it's stack location
-	interruption_info->cpuState = *cpuState;
-	interruption_info->cpuStateAddress = cpuState;
+	interruption_info->state = *statePtr;
+	interruption_info->statePtr = statePtr;
 
 }
 
@@ -249,8 +248,8 @@ void g_thread::restore_interrupted_state() {
 	wait(interruption_info->waitManager);
 
 	// restore CPU state
-	cpuState = interruption_info->cpuStateAddress;
-	*cpuState = interruption_info->cpuState;
+	statePtr = interruption_info->statePtr;
+	*statePtr = interruption_info->state;
 
 	// remove interruption info
 	delete interruption_info;

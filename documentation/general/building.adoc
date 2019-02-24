@@ -1,0 +1,115 @@
+= Building
+:toc: left
+include::../common/homelink.adoc[]
+
+Getting started
+---------------
+This document contains an explanation on how to build entire operating system from source.
+
+The project consists of two repositories:
+
+* *ghost*, main repository containing the source code for the system
+* *ghost-sysroot*, a blueprint for the system root directory
+
+The system root directory (sysroot) is a concept used in cross compiling. It contains
+the initial filesystem that is used to boot the OS. All cross-compiled libraries and
+applications are installed in this folder, and when cross-compiling a program or
+library, the compiler uses this directory as the location to search for headers,
+libraries and more. This avoids using the host systems header files.
+
+
+Checking out
+------------
+
+. Clone the ghost-sysroot to `/ghost/sysroot` (If you want to use a different folder, see the "Tips" section below).
+. Clone the main repository somewhere to your filesystem (for example `/ghost/source`)
+
+
+Installing prerequisites
+------------------------
+There are some pre-requisites that you need to install on your host system. On Linux you
+should be able to easily install them with `apt`;
+
+* `apt install libmpfr-dev libgmp-dev libmpc-dev`
+* `apt install autoconf2.64 pkg-config grub2`
+* `apt install gcc g++ nasm`
+* `apt install asciidoc asciidoctor`
+
+You may need to `export AUTOCONF=autoconf2.64` depending on your installation.
+
+On Cygwin
+~~~~~~~~~
+Install the required packages that are described below via the Cygwin setup, except:
+
+* autoconf2.64 must be built from source
+* xorriso must be built from source, install libiconv-devel in Cygwin setup beforehand.
+	(It wants to be built & configured in the source directory)
+* grub2 must be built from source. Use grub-1.99 and do `export TARGET_CFLAGS="-Wno-error"`
+	`export CFLAGS="-Wno-error"` before configure
+
+On Mac OS
+~~~~~~~~~
+If you are on Mac OS X, you must make sure that the GNU GCC is used (default alias points to LLVM).
+Use export to set the correct version:
+
+-----
+export CC=gcc-5
+export CXX=g++-5
+export CPP=cpp-5
+export LD=gcc-5
+-----
+
+
+Building the toolchain
+----------------------
+Run the toolchain setup script `toolchain.sh`. It will attempt to do everything that is
+necessary to create the toolchain.
+
+If the process fails on one step, open the respective build folder (for example `temp/build-gcc`)
+and check for a `ghost-build.log` file.
+
+Once the toolchain was built, you might want to add it to your PATH.
+
+
+Building the system
+-------------------
+There is a `build.sh` in the main folder that installs required libraries, builds all
+applications and then builds and packs the kernel.
+
+For building manually, the essential order is:
+
+* `./libapi/build.sh`
+* `./libc/build.sh`
+* `./libuser/build.sh`
+* `./applications/*/build.sh`
+* `./kernel/build.sh`
+
+The generated ISO image can then be found in `kernel/bin/image.iso`.
+
+
+Library dependency
+------------------
+libapi is the lowest layer library that provides wrapping of system calls. On top of this
+is the libc that utilizes libapi. libuser builds on top of these and provides high-level
+functionalities.
+
+image::../diagrams/Library-Dependencies.png[]
+
+Third-party software
+--------------------
+To install third-party libraries, it is usually necessary to provide some parameters to the
+`./configure` script:
+
+* `--host=i686-ghost` to set the correct host
+* `--prefix=/system` to install libraries to the correct folder
+
+There is also a simplified port installation script in `patches/ports` that allows automatically
+downloads, patches and installs some third-party libraries.
+
+Tips
+----
+* To specify a different toolchain base directory, modify `TOOLCHAIN_BASE`, copy the
+	`variables.sh.template` to `variables.sh` and specify the variable with an export.
+* While binutils and gcc are being built, the log output is redirected to a file named
+	`ghost-build.log` in the respective build directory in the temporary folder. If the
+	build fails for some reason, you should check this log file.

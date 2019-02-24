@@ -28,10 +28,10 @@ bool g_waiter_perform_interruption::checkWaiting(g_thread* task) {
 	task->store_for_interruption();
 
 	// set the new entry
-	task->cpuState->eip = entry;
+	task->statePtr->eip = entry;
 
 	// jump to next stack value
-	uint32_t* esp = (uint32_t*) (task->cpuState->esp);
+	uint32_t* esp = (uint32_t*) (task->statePtr->esp);
 
 	// pass parameter value
 	if (task->interruption_info->type == g_thread_interruption_info_type::IRQ) {
@@ -50,7 +50,7 @@ bool g_waiter_perform_interruption::checkWaiting(g_thread* task) {
 	*esp = callback;
 
 	// set new ESP
-	task->cpuState->esp = (uint32_t) esp;
+	task->statePtr->esp = (uint32_t) esp;
 
 	return false;
 }

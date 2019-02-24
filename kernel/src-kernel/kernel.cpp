@@ -18,19 +18,17 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include "ghost/stdint.h"
+
 #include "kernel.hpp"
 #include "kernelloader/setup_information.hpp"
 #include "multiboot/multiboot_util.hpp"
-
-#include "ghost/stdint.h"
+#include "logger/main_logger.hpp"
 #include "logger/logger.hpp"
-#include "video/console_video.hpp"
 
 #include "system/system.hpp"
-#include "system/smp/global_lock.hpp"
-#include "system/serial/serial_port.hpp"
-#include "system/bios_data_area.hpp"
 #include "system/pci/pci.hpp"
+#include "system/smp/mutex.hpp"
 #include "tasking/tasking.hpp"
 #include "filesystem/filesystem.hpp"
 
@@ -48,291 +46,186 @@
 #include "memory/collections/address_range_pool.hpp"
 #include "video/pretty_boot.hpp"
 
-g_ramdisk* g_kernel::ramdisk;
-g_address_range_pool* g_kernel::virtual_range_pool;
+g_ramdisk *kernelRamdisk;
+g_address_range_pool *kernelMemoryVirtualRangePool;
 
-// BSP/AP setup locks & counter
-static g_global_lock bsp_setup_lock;
-static g_global_lock ap_setup_lock;
-static int waiting_aps;
+static mutex_t bootstrapCoreLock;
+static mutex_t applicationCoreLock;
+static mutex_t systemProcessSpawnLock;
+static int applicationCoresWaiting;
 
-// process spawning lock
-static g_global_lock system_process_spawn_lock;
+void kernelRun(g_setup_information *info)
+{
+	uint32_t initialPdPhys = info->initialPageDirectoryPhysical;
+	kernelPerformInitialSetup(info);
+	kernelUnmapSetupMemory();
+	// "info" is now invalid
 
-/**
- * 
- */
-void g_kernel::pre_setup(g_setup_information* info) {
-
-	// initialize COM port
-	g_com_port_information comPortInfo = biosDataArea->comPortInfo;
-	if (comPortInfo.com1 > 0) {
-		g_serial_port::initializePort(comPortInfo.com1, false); // Initialize in poll mode
-		g_logger::enableSerialPortLogging();
-		g_debug_interface::initialize(comPortInfo.com1);
-	} else {
-		g_logger::println("%! COM1 port not available for serial debug output", "logger");
-	}
-
-	// print header
-	print_header(info);
-	G_PRETTY_BOOT_STATUS("Checking available memory", 20);
-
-	// Initialize physical page allocator from bitmap provided by the loader
-	g_pp_allocator::initializeFromBitmap(info->bitmapStart, info->bitmapEnd);
-
-	uint32_t mbs = (g_pp_allocator::getFreePageCount() * G_PAGE_SIZE / 1024) / 1024;
-	g_log_info("%! memory: %iMB", "kern", mbs);
-
-	// Initialize the kernel heap
-	g_kernel_heap::initialize(info->heapStart, info->heapEnd);
-
-	// Find ramdisk module
-	G_PRETTY_BOOT_STATUS("Searching for ramdisk", 30);
-	g_multiboot_module* rd_module = g_multiboot_util::findModule(info->multibootInformation, "/boot/ramdisk");
-	if (rd_module == 0) {
-		G_PRETTY_BOOT_FAIL("Ramdisk not found (did you supply enough memory?");
-		panic("%! ramdisk not found (did you supply enough memory?)", "kern");
-	}
-
-	// Create virtual range pool for kernel ranges
-	g_kernel::virtual_range_pool = new g_address_range_pool();
-	g_kernel::virtual_range_pool->initialize(G_CONST_KERNEL_VIRTUAL_RANGES_START, G_CONST_KERNEL_VIRTUAL_RANGES_END);
-
-	// Remap the ramdisk module into the kernels ranges & load the ramdisk
-	G_PRETTY_BOOT_STATUS("Loading ramdisk", 40);
-	load_ramdisk(rd_module);
+	kernelRunBootstrapCore(initialPdPhys);
 }
 
-/**
- *
- */
-void g_kernel::run(g_setup_information* info) {
+void kernelPerformInitialSetup(g_setup_information *info)
+{
+	mainLoggerInitializeComPorts();
+	mainLoggerPrintHeader(info);
 
-	// perform initial setup
-	pre_setup(info);
-
-	// copy remaining information from loader information
-	g_physical_address initial_pd_physical = info->initialPageDirectoryPhysical;
-	g_log_debug("%! unmapping old address space area", "kern");
-	for (g_virtual_address i = G_CONST_LOWER_MEMORY_END; i < G_CONST_KERNEL_AREA_START; i += G_PAGE_SIZE) {
-		g_address_space::unmap(i);
-	}
-	// NOTE: pointer to info is now invalid
-
-	// run BSP setup
-	run_bsp(initial_pd_physical);
+	kernelInitializeMemory(info);
+	kernelInitializeRamdisk(info->multibootInformation);
 }
 
-/**
- *
- */
-void g_kernel::run_bsp(g_physical_address initial_pd_physical) {
-
-	// initialize the temporary paging util
+void kernelRunBootstrapCore(g_physical_address initialPageDirectoryPhysical)
+{
 	g_temporary_paging_util::initialize();
 
-	// tell the lower memory allocator which area to use
 	g_lower_heap::addArea(G_CONST_LOWER_HEAP_MEMORY_START, G_CONST_LOWER_HEAP_MEMORY_END);
 
-	// perform bsp initialization
-	bsp_setup_lock.lock();
+	mutexAcquire(&bootstrapCoreLock);
+
+	g_system::initializeBsp(initialPageDirectoryPhysical);
+
+	g_gdt_manager::prepare();
+	g_gdt_manager::initialize();
+
+	g_tasking::initialize();
+	g_tasking::enableForThisCore();
+
+	G_PRETTY_BOOT_STATUS("Initializing filesystem", 80);
+	g_filesystem::initialize();
+
+	g_pci::initialize();
+
+	G_PRETTY_BOOT_STATUS("Loading system binaries", 90);
+	kernelLoadSystemProcess(G_IDLE_BINARY_NAME, G_THREAD_PRIORITY_IDLE);
+	kernelLoadSystemProcess(G_INIT_BINARY_NAME, G_THREAD_PRIORITY_NORMAL);
+	kernelLoadSystemProcess(G_INIT_BINARY_NAME, G_THREAD_PRIORITY_NORMAL);
+	G_PRETTY_BOOT_STATUS("Starting user space", 100);
+
+	mutexRelease(&bootstrapCoreLock);
+
+	applicationCoresWaiting = g_system::getNumberOfProcessors() - 1;
+	kernelWaitForApplicationCores();
+	kernelEnableInterrupts();
+}
+
+void kernelRunApplicationCore()
+{
+	mutexAcquire(&applicationCoreLock);
+
+	g_log_debug("%! waiting for bsp to finish setup", "kernap");
+	mutexAcquire(&bootstrapCoreLock);
+	g_log_debug("%! core %i got ready state from bsp", "kernap", g_system::currentProcessorId());
+	mutexRelease(&bootstrapCoreLock);
+
+	g_gdt_manager::initialize();
+	g_system::initializeAp();
+	g_tasking::enableForThisCore();
+	kernelLoadSystemProcess(G_IDLE_BINARY_NAME, G_THREAD_PRIORITY_IDLE);
+
+	--applicationCoresWaiting;
+
+	mutexRelease(&applicationCoreLock);
+
+	kernelWaitForApplicationCores();
+	kernelEnableInterrupts();
+}
+
+void kernelInitializeMemory(g_setup_information *info)
+{
+	G_PRETTY_BOOT_STATUS("Checking available memory", 20);
+
+	g_pp_allocator::initializeFromBitmap(info->bitmapStart, info->bitmapEnd);
+	uint32_t size = (g_pp_allocator::getFreePageCount() * G_PAGE_SIZE / 1024) / 1024;
+	g_log_info("%! available memory: %iMB", "kern", size);
+
+	g_kernel_heap::initialize(info->heapStart, info->heapEnd);
+
+	kernelMemoryVirtualRangePool = new g_address_range_pool();
+	kernelMemoryVirtualRangePool->initialize(G_CONST_KERNEL_VIRTUAL_RANGES_START, G_CONST_KERNEL_VIRTUAL_RANGES_END);
+}
+
+void kernelInitializeRamdisk(g_multiboot_information *info)
+{
+	G_PRETTY_BOOT_STATUS("Loading ramdisk", 35);
+
+	g_multiboot_module *rd_module = g_multiboot_util::findModule(info, "/boot/ramdisk");
+	if (rd_module == 0)
 	{
-		// Initialize processors & interrupt handling
-		g_system::initializeBsp(initial_pd_physical);
-
-		// Initialize global descriptor table
-		// (AFTER the system, so BSP's id is available)
-		g_gdt_manager::prepare();
-		g_gdt_manager::initialize();
-
-		// Initialize the scheduler
-		G_PRETTY_BOOT_STATUS("Preparing scheduler", 70);
-		g_tasking::initialize();
-
-		// Enable tasking for this core
-		g_tasking::enableForThisCore();
-
-		// Initialize filesystem
-		G_PRETTY_BOOT_STATUS("Initializing filesystem", 80);
-		g_filesystem::initialize();
-
-		// Set up PCI
-		g_pci::initialize();
-
-		G_PRETTY_BOOT_STATUS("Loading system binaries", 90);
-		// Create initial process
-		load_system_process(G_IDLE_BINARY_NAME, G_THREAD_PRIORITY_IDLE);
-		load_system_process(G_INIT_BINARY_NAME, G_THREAD_PRIORITY_NORMAL);
-		G_PRETTY_BOOT_STATUS("Starting user space", 100);
-	}
-	bsp_setup_lock.unlock();
-	/* BSP INITIALIZATION END */
-
-	// wait for APs
-	waiting_aps = g_system::getNumberOfProcessors() - 1;
-	g_log_info("%! waiting for %i application processors", "kern", waiting_aps);
-	while (waiting_aps > 0) {
-		asm("pause");
+		G_PRETTY_BOOT_FAIL("Ramdisk not found (did you supply enough memory?");
+		kernelPanic("%! ramdisk not found (did you supply enough memory?)", "kern");
 	}
 
-	// Enable interrupts and wait until the first interrupt causes the scheduler to switch to the initial process
-	g_log_info("%! leaving initialization", "kern");
-	asm("sti");
-	for (;;) {
-		asm("hlt");
+	kernelRamdisk = ramdiskLoadFromModule(rd_module);
+}
+
+void kernelUnmapSetupMemory()
+{
+	for (g_virtual_address i = G_CONST_LOWER_MEMORY_END; i < G_CONST_KERNEL_AREA_START; i += G_PAGE_SIZE)
+	{
+		g_address_space::unmap(i);
 	}
 }
 
-/**
- *
- */
-void g_kernel::run_ap() {
+void kernelLoadSystemProcess(const char *binary_path, g_thread_priority priority)
+{
+	mutexAcquire(&systemProcessSpawnLock);
 
-	ap_setup_lock.lock();
+	g_ramdisk_entry *entry = kernelRamdisk->findAbsolute(binary_path);
+	if (entry)
 	{
-#if G_LOGGING_DEBUG
-		uint32_t core = g_system::currentProcessorId();
-		g_log_debug("%! core %i ready for initialization", "kernap", core);
-#endif
-
-		// Debug ESP output
-		uint32_t esp;
-		asm("mov %%esp, %0":"=g"(esp));
-		g_log_debug("%! esp is %h", "kernap", esp);
-
-		// Wait for BSP to finish setup
-		g_log_debug("%! waiting for bsp to finish setup", "kernap");
-		bsp_setup_lock.lock();
-		g_log_debug("%! core %i got ready state from bsp", "kernap", core);
-		bsp_setup_lock.unlock();
-
-		// Initialize GDT
-		g_gdt_manager::initialize();
-
-		// Initialize for AP
-		g_system::initializeAp();
-
-		// Enable tasking for this core
-		g_tasking::enableForThisCore();
-
-		// Leave initialization
-		load_system_process(G_IDLE_BINARY_NAME, G_THREAD_PRIORITY_IDLE);
-
-		// tell bsp that one more is done
-		--waiting_aps;
-	}
-	ap_setup_lock.unlock();
-
-	// wait for APs
-	g_log_debug("%! waiting for %i application processors", "kernap", waiting_aps);
-	while (waiting_aps > 0) {
-		asm("pause");
-	}
-
-	// Enable interrupts and wait until the first interrupt causes the scheduler to switch to the initial process
-	g_log_debug("%! leaving initialization", "kernap");
-	asm("sti");
-	for (;;) {
-		asm("hlt");
-	}
-}
-
-/**
- * 
- */
-void g_kernel::load_system_process(const char* binary_path, g_thread_priority priority) {
-
-	system_process_spawn_lock.lock();
-
-	g_ramdisk_entry* entry = g_kernel::ramdisk->findAbsolute(binary_path);
-	if (entry) {
-		g_thread* systemProcess;
+		g_thread *systemProcess;
 		g_elf32_spawn_status status = g_elf32_loader::spawnFromRamdisk(entry, G_SECURITY_LEVEL_KERNEL, &systemProcess, true, priority);
 
-		if (status != ELF32_SPAWN_STATUS_SUCCESSFUL) {
-			if (status == ELF32_SPAWN_STATUS_VALIDATION_ERROR) {
-				panic("%! \"%s\" is not a valid elf32 binary", "kern", binary_path);
-
-			} else if (status == ELF32_SPAWN_STATUS_PROCESS_CREATION_FAILED) {
-				panic("%! \"%s\" could not be loaded, error creating process", "kern", binary_path);
-
-			} else {
-				panic("%! \"%s\" could not be loaded", "kern", binary_path);
+		if (status != ELF32_SPAWN_STATUS_SUCCESSFUL)
+		{
+			if (status == ELF32_SPAWN_STATUS_VALIDATION_ERROR)
+			{
+				kernelPanic("%! \"%s\" is not a valid elf32 binary", "kern", binary_path);
+			}
+			else if (status == ELF32_SPAWN_STATUS_PROCESS_CREATION_FAILED)
+			{
+				kernelPanic("%! \"%s\" could not be loaded, error creating process", "kern", binary_path);
+			}
+			else
+			{
+				kernelPanic("%! \"%s\" could not be loaded", "kern", binary_path);
 			}
 		}
 
 		g_log_info("%! \"%s\" spawned to process %i", "kern", binary_path, systemProcess->id);
-	} else {
-		panic("%! \"%s\" not found", "kern", binary_path);
+	}
+	else
+	{
+		kernelPanic("%! \"%s\" not found", "kern", binary_path);
 	}
 
-	system_process_spawn_lock.unlock();
-}
-/**
- *
- */
-void g_kernel::print_header(g_setup_information* info) {
-
-	// Print header
-	if (!G_PRETTY_BOOT) {
-		g_console_video::clear();
-	}
-	g_log_infon("");
-	g_log_infon("");
-	g_log_infon("");
-	g_console_video::setColor(0x90);
-	g_log_infon("Ghost Kernel");
-	g_console_video::setColor(0x0F);
-	g_log_info(" Version %i.%i.%i", G_VERSION_MAJOR, G_VERSION_MINOR, G_VERSION_PATCH);
-	g_log_info("");
-	g_log_info("  Copyright (C) 2016, Max Schluessel <lokoxe@gmail.com>");
-	g_log_info("");
-	g_log_info("%! loading", "prekern");
-
-	// Print setup information
-	g_log_debug("%! setup information:", "prekern");
-	g_log_debug("%#   reserved: %h - %h", info->kernelImageStart, info->kernelImageEnd);
-	g_log_debug("%#   stack:    %h - %h", info->stackStart, info->stackEnd);
-	g_log_debug("%#   bitmap:   %h - %h", info->bitmapStart, info->bitmapEnd);
-	g_log_debug("%#   heap:     %h - %h", info->heapStart, info->heapEnd);
-	g_log_debug("%#   mbstruct: %h", info->multibootInformation);
-	g_log_debug("%! started", "kern");
-	g_log_debug("%! got setup information at %h", "kern", info);
-
+	mutexRelease(&systemProcessSpawnLock);
 }
 
-/**
- *
- */
-void g_kernel::load_ramdisk(g_multiboot_module* ramdiskModule) {
-
-	int ramdiskPages = G_PAGE_ALIGN_UP(ramdiskModule->moduleEnd - ramdiskModule->moduleStart) / G_PAGE_SIZE;
-
-	g_virtual_address ramdiskNewLocation = g_kernel::virtual_range_pool->allocate(ramdiskPages);
-	if (ramdiskNewLocation == 0) {
-		panic("%! not enough virtual space for ramdisk remapping", "kern");
-	}
-
-	for (int i = 0; i < ramdiskPages; i++) {
-		g_virtual_address virt = ramdiskNewLocation + i * G_PAGE_SIZE;
-		g_physical_address phys = g_address_space::virtual_to_physical(ramdiskModule->moduleStart + i * G_PAGE_SIZE);
-		g_address_space::map(virt, phys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
-	}
-
-	ramdiskModule->moduleEnd = ramdiskNewLocation + (ramdiskModule->moduleEnd - ramdiskModule->moduleStart);
-	ramdiskModule->moduleStart = ramdiskNewLocation;
-
-	g_kernel::ramdisk = new g_ramdisk();
-	g_kernel::ramdisk->load(ramdiskModule);
-	g_log_info("%! ramdisk loaded", "kern");
+void kernelEnableInterrupts()
+{
+	asm("sti");
+	for (;;)
+		asm("hlt");
 }
 
-/**
- * 
- */
-void g_kernel::panic(const char* msg, ...) {
+void kernelDisableInterrupts()
+{
+	asm("cli");
+	for (;;)
+		asm("hlt");
+}
 
+void kernelWaitForApplicationCores()
+{
+	g_log_info("%! waiting for %i application processors", "kern", applicationCoresWaiting);
+	while (applicationCoresWaiting > 0)
+	{
+		asm("pause");
+	}
+}
+
+void kernelPanic(const char *msg, ...)
+{
 	g_logger::manualLock();
 
 	g_log_info("%*%! an unrecoverable error has occured. reason:", 0x0C, "kernerr");
@@ -345,9 +238,5 @@ void g_kernel::panic(const char* msg, ...) {
 
 	g_logger::manualUnlock();
 
-	asm("cli");
-	for (;;) {
-		asm("hlt");
-	}
+	kernelDisableInterrupts();
 }
-

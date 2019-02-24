@@ -38,7 +38,7 @@ public:
 
 	static uint32_t getCR2();
 	static void dump(g_thread* current_thread);
-	static void printStackTrace(g_processor_state* cpuState);
+	static void printStackTrace(g_processor_state* statePtr);
 };
 
 #endif

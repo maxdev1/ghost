@@ -18,9 +18,9 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <kernel.hpp>
 #include "tasking/thread_manager.hpp"
 
-#include "kernel.hpp"
 #include "ghost/kernel.h"
 #include "logger/logger.hpp"
 #include "memory/memory.hpp"
@@ -160,7 +160,7 @@ g_physical_address g_thread_manager::forkCurrentPageDirectory(g_process* process
 	g_temporary_paging_util::unmap((g_virtual_address) tempPd);
 
 	// copy kernel stack
-	g_virtual_address kernelStackVirt = g_kernel::virtual_range_pool->allocate(1);
+	g_virtual_address kernelStackVirt = kernelMemoryVirtualRangePool->allocate(1);
 	g_physical_address kernelStackPhys = g_pp_allocator::allocate();
 	g_address_space::map(kernelStackVirt, kernelStackPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
 	g_memory::copy((uint8_t*) kernelStackVirt, (uint8_t*) sourceThread->kernelStackPageVirt, G_PAGE_SIZE);
@@ -228,7 +228,7 @@ bool g_thread_manager::createThreadUserStack(g_process* process, g_virtual_addre
 bool g_thread_manager::createThreadKernelStack(g_process* process, g_virtual_address* outKernelStackVirt) {
 
 	// perform stack mapping
-	g_virtual_address kernelStackVirt = g_kernel::virtual_range_pool->allocate(1);
+	g_virtual_address kernelStackVirt = kernelMemoryVirtualRangePool->allocate(1);
 	if (kernelStackVirt == 0) {
 		if (process->main) {
 			g_log_warn("%! thread creation for process %i failed: kernel virtual ranges are full", "threadmgr", process->main->id);
@@ -300,7 +300,7 @@ g_thread* g_thread_manager::fork(g_thread* source_thread) {
 	g_virtual_address esp0 = kernelStackVirt + G_PAGE_SIZE;
 
 	g_thread* thread = new g_thread(G_THREAD_TYPE_MAIN);
-	thread->cpuState = (g_processor_state*) (esp0 - sizeof(g_processor_state));
+	thread->statePtr = (g_processor_state*) (esp0 - sizeof(g_processor_state));
 	thread->kernelStackEsp0 = esp0;
 
 	thread->kernelStackPageVirt = kernelStackVirt;
@@ -385,7 +385,7 @@ g_thread* g_thread_manager::createThread(g_process* process, g_thread_type type)
 
 	// create the thread
 	g_thread* thread = new g_thread(type);
-	thread->cpuState = state;
+	thread->statePtr = state;
 	thread->kernelStackEsp0 = esp0;
 
 	thread->kernelStackPageVirt = kernelStackPageVirt;
@@ -446,7 +446,7 @@ g_thread* g_thread_manager::createProcessVm86(uint8_t interrupt, g_vm86_register
 
 	// create main thread
 	g_thread* thread = new g_thread(G_THREAD_TYPE_VM86);
-	thread->cpuState = (g_processor_state*) state;
+	thread->statePtr = (g_processor_state*) state;
 	thread->kernelStackEsp0 = esp0;
 
 	thread->kernelStackPageVirt = kernelStackVirt;
@@ -588,11 +588,11 @@ void g_thread_manager::dumpTask(g_thread* task) {
 	g_log_debug("%#  security: %h", process->securityLevel);
 	g_log_debug("%#  kernel sp:     %h", task->kernelStackEsp0);
 	if (task->type == G_THREAD_TYPE_VM86) {
-		g_log_debug("%#  cs:ip:  %h:%h", task->cpuState->cs, task->cpuState->eip);
-		g_log_debug("%#  ax: %h bx: %h cx: %h dx: %h", task->cpuState->eax, task->cpuState->ebx, task->cpuState->ecx, task->cpuState->edx);g_log_debug(
-				"%#  user sp:  %h:%h", task->cpuState->esp, task->cpuState->ss);
+		g_log_debug("%#  cs:ip:  %h:%h", task->statePtr->cs, task->statePtr->eip);
+		g_log_debug("%#  ax: %h bx: %h cx: %h dx: %h", task->statePtr->eax, task->statePtr->ebx, task->statePtr->ecx, task->statePtr->edx);g_log_debug(
+				"%#  user sp:  %h:%h", task->statePtr->esp, task->statePtr->ss);
 	} else {
-		g_log_debug("%#  user sp:       %h", task->cpuState->esp);g_log_debug("%#  entry point:   %h", task->cpuState->eip);
+		g_log_debug("%#  user sp:       %h", task->statePtr->esp);g_log_debug("%#  entry point:   %h", task->statePtr->eip);
 	}
 #endif
 }

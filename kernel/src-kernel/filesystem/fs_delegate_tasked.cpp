@@ -18,11 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <kernel.hpp>
 #include "filesystem/fs_delegate_tasked.hpp"
 #include "filesystem/filesystem.hpp"
 #include "utils/string.hpp"
 #include "logger/logger.hpp"
-#include "kernel.hpp"
 #include "tasking/communication/message_controller.hpp"
 #include "memory/address_space.hpp"
 #include "memory/physical/pp_allocator.hpp"

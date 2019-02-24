@@ -18,13 +18,13 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <memory/gdt/gdt_manager.hpp>
-#include <memory/gdt/gdt_mounter.hpp>
-#include <memory/gdt/tss.hpp>
-#include <memory/constants.hpp>
-#include <system/system.hpp>
-#include <logger/logger.hpp>
-#include <system/smp/global_lock.hpp>
+#include "system/system.hpp"
+#include "logger/logger.hpp"
+
+#include "memory/gdt/gdt_manager.hpp"
+#include "memory/gdt/gdt_mounter.hpp"
+#include "memory/gdt/tss.hpp"
+#include "memory/constants.hpp"
 
 /**
  *

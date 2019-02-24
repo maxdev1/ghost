@@ -18,12 +18,12 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <kernel.hpp>
 #include <system/interrupts/ioapic_manager.hpp>
 #include <system/interrupts/ioapic.hpp>
 
 #include <system/io_ports.hpp>
 #include <logger/logger.hpp>
-#include <kernel.hpp>
 #include <system/processor.hpp>
 
 static g_ioapic* first = 0;

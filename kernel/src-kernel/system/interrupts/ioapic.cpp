@@ -18,20 +18,20 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <kernel.hpp>
 #include <system/interrupts/ioapic.hpp>
 
 #include <memory/address_space.hpp>
 #include <logger/logger.hpp>
-#include <kernel.hpp>
 
 /**
  *
  */
 void g_ioapic::createMapping() {
 	// Get a virtual range for mapping
-	virtualAddress = g_kernel::virtual_range_pool->allocate(2);
+	virtualAddress = kernelMemoryVirtualRangePool->allocate(2);
 	if (virtualAddress == 0) {
-		g_kernel::panic("%! could not get a virtual range for mapping", "ioapic");
+		kernelPanic("%! could not get a virtual range for mapping", "ioapic");
 	}
 
 	// Add the physical offset to the virtual address

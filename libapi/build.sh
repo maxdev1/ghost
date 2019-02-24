@@ -1,5 +1,10 @@
-#!/bin/sh
-. ../ghost.sh
+#!/bin/bash
+ROOT=".."
+if [ -f "$ROOT/variables.sh" ]; then
+	. "$ROOT/variables.sh"
+fi
+. "$ROOT/ghost.sh"
+
 
 TARGET=$1
 
@@ -10,8 +15,8 @@ with INC					"inc"
 with INC_KERNEL				"../kernel/inc"
 
 with ARTIFACT_NAME			"libghostapi.a"
-ARTIFACT_LOCAL="$ARTIFACT_NAME"
-ARTIFACT_TARGET="$SYSROOT_SYSTEM_LIB/$ARTIFACT_NAME"
+with ARTIFACT_LOCAL			"$ARTIFACT_NAME"
+with ARTIFACT_TARGET		"$SYSROOT_SYSTEM_LIB/$ARTIFACT_NAME"
 
 with CFLAGS					"-std=c++11 -I$INC -I$INC_KERNEL"
 
@@ -63,31 +68,24 @@ target_archive() {
 }
 	
 target_clean_target() {
-	
 	echo "removing $ARTIFACT_TARGET"
 	rm $ARTIFACT_TARGET 2&> /dev/null
 }
 
 target_install_headers() {
-
 	echo "installing api headers"
 	cp -r $INC/* $SYSROOT_SYSTEM_INCLUDE/
 
 	echo "installing kernel headers"
 	cp -r $INC_KERNEL/* $SYSROOT_SYSTEM_INCLUDE/
-	
 }
 
 target_install() {
-	
 	target_clean_target
 	target_install_headers
 	
 	echo "installing artifact"
 	cp $ARTIFACT_LOCAL $ARTIFACT_TARGET
-	
-	# c'mon
-	chmod -R 777 $SYSROOT
 }
 
 

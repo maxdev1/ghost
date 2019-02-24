@@ -23,7 +23,6 @@
 #include <calls/syscall_handler.hpp>
 #include <logger/logger.hpp>
 
-#include <kernel.hpp>
 #include <ramdisk/ramdisk.hpp>
 #include <tasking/thread.hpp>
 #include <tasking/tasking.hpp>
@@ -33,10 +32,11 @@
 #include <memory/physical/pp_allocator.hpp>
 #include <memory/physical/pp_reference_tracker.hpp>
 #include <executable/elf32_loader.hpp>
+#include <kernel.hpp>
 
 G_SYSCALL_HANDLER(call_vm86) {
 
-	g_syscall_call_vm86* data = (g_syscall_call_vm86*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_call_vm86* data = (g_syscall_call_vm86*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	if (current_thread->process->securityLevel <= G_SECURITY_LEVEL_DRIVER) {
 		// Copy in registers

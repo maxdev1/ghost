@@ -18,50 +18,37 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <system/interrupts/handling/interrupt_dispatcher.hpp>
-#include <system/interrupts/handling/interrupt_stubs.hpp>
-#include <system/interrupts/descriptors/idt.hpp>
-#include <system/interrupts/pic.hpp>
-#include <system/interrupts/lapic.hpp>
+#include "kernel.hpp"
+#include "system/interrupts/handling/interrupt_dispatcher.hpp"
+#include "system/interrupts/handling/interrupt_stubs.hpp"
+#include "system/interrupts/descriptors/idt.hpp"
+#include "system/interrupts/pic.hpp"
+#include "system/interrupts/lapic.hpp"
 
-#include <kernel.hpp>
-#include <logger/logger.hpp>
-#include <system/interrupts/handling/interrupt_exception_dispatcher.hpp>
-#include <system/interrupts/handling/interrupt_request_dispatcher.hpp>
-#include <tasking/tasking.hpp>
-#include <system/io_ports.hpp>
-#include <system/processor_state.hpp>
-#include <system/smp/global_lock.hpp>
-#include <tasking/wait/waiter.hpp>
+#include "logger/logger.hpp"
+#include "system/interrupts/handling/interrupt_exception_dispatcher.hpp"
+#include "system/interrupts/handling/interrupt_request_dispatcher.hpp"
+#include "tasking/tasking.hpp"
+#include "system/io_ports.hpp"
+#include "system/processor_state.hpp"
+#include "tasking/wait/waiter.hpp"
 
 /**
  * Interrupt handler routine, called by the interrupt stubs (assembly file)
  *
- * @param cpuState	the current CPU state
+ * @param statePtr	the current CPU state
  * @return the CPU state to be applied
  */
-extern "C" g_processor_state* _interruptHandler(g_processor_state* cpuState) {
-	return g_interrupt_dispatcher::handle(cpuState);
-}
-
-static g_global_lock __interrupt_global_lock;
-
-/**
- * 
- */
-g_processor_state* g_interrupt_dispatcher::handle(g_processor_state* cpuState) {
-
-	// TODO avoid global lock, lock per operation
-	__interrupt_global_lock.lock();
+extern "C" g_processor_state* _interruptHandler(g_processor_state* statePtr) {
 
 	// save current task state
-	g_thread* current_thread = g_tasking::save(cpuState);
+	g_thread* current_thread = taskingSave(statePtr);
 
 	/*
 	 Exceptions (interrupts below 0x20) are redirected to the exception handler,
 	 while requests are redirected to the request handler.
 	 */
-	if (cpuState->intr < 0x20) {
+	if (statePtr->intr < 0x20) {
 		current_thread = g_interrupt_exception_dispatcher::handle(current_thread);
 	} else {
 		current_thread = g_interrupt_request_dispatcher::handle(current_thread);
@@ -69,16 +56,13 @@ g_processor_state* g_interrupt_dispatcher::handle(g_processor_state* cpuState) {
 
 	// sanity check
 	if (current_thread->waitManager != nullptr) {
-		g_kernel::panic("scheduled thread %i had a wait manager ('%s')", current_thread->id, current_thread->waitManager->debug_name());
+		kernelPanic("scheduled thread %i had a wait manager ('%s')", current_thread->id, current_thread->waitManager->debug_name());
 	}
 
 	// send end of interrupt
 	g_lapic::send_eoi();
 
-	// TODO
-	__interrupt_global_lock.unlock();
-
-	return current_thread->cpuState;
+	return current_thread->statePtr;
 }
 
 /**

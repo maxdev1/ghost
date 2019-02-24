@@ -22,7 +22,7 @@
 #define GHOST_SHARED_SYSTEM_CPU
 
 #include "ghost/stdint.h"
-#include <system/interrupts/lapic.hpp>
+#include "system/interrupts/lapic.hpp"
 
 /**
  * CPUID.1 feature flags

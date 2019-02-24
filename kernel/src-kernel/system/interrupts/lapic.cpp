@@ -18,16 +18,15 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <system/interrupts/lapic.hpp>
+#include "system/interrupts/lapic.hpp"
 
-#include <build_config.hpp>
-#include <system/io_ports.hpp>
-#include <logger/logger.hpp>
-#include <memory/address_space.hpp>
-#include <system/timing/pit.hpp>
-#include <kernel.hpp>
-#include <system/processor.hpp>
-#include <system/smp/global_lock.hpp>
+#include "build_config.hpp"
+#include "kernel.hpp"
+#include "system/io_ports.hpp"
+#include "logger/logger.hpp"
+#include "memory/address_space.hpp"
+#include "system/timing/pit.hpp"
+#include "system/processor.hpp"
 
 static bool prepared = false;
 
@@ -91,9 +90,9 @@ void g_lapic::prepare(g_physical_address lapicAddress) {
  */
 void g_lapic::createMapping() {
 	// Map it to virtual space
-	virtualBase = g_kernel::virtual_range_pool->allocate(1);
+	virtualBase = kernelMemoryVirtualRangePool->allocate(1);
 	if (virtualBase == 0) {
-		g_kernel::panic("%! could not get a virtual range for mapping", "apic");
+		kernelPanic("%! could not get a virtual range for mapping", "apic");
 	}
 
 	// "APIC registers are memory-mapped to a 4-KByte region of the processor’s physical
