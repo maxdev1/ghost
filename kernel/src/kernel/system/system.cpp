@@ -20,31 +20,21 @@
 
 #include "kernel/system/system.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
-#include "kernel/system/interrupts/lapic.hpp"
-#include "kernel/system/interrupts/ioapic.hpp"
-#include "kernel/system/interrupts/pic.hpp"
 #include "kernel/system/acpi/acpi.hpp"
+#include "kernel/system/smp.hpp"
 #include "kernel/memory/gdt.hpp"
 #include "kernel/kernel.hpp"
 
 static int applicationCoresWaiting;
 static bool bspInitialized = false;
 
-void systemInitializeBsp()
+void systemInitializeBsp(g_physical_address initialPdPhys)
 {
 	processorInitializeBsp();
 
 	acpiInitialize();
-
-	if(!(lapicGlobalIsPrepared() && ioapicAreAvailable() && processorListAvailable()))
-		kernelPanic("%! pic compatibility mode not implemented. apic/ioapic required!", "system");
-
-	idtPrepare();
-	idtLoad();
-
-	picDisable();
-	lapicInitialize();
-	ioapicInitializeAll();
+	interruptsInitializeBsp();
+	smpInitialize(initialPdPhys);
 
 	gdtPrepare();
 	gdtInitialize();
@@ -55,11 +45,11 @@ void systemInitializeBsp()
 
 void systemInitializeAp()
 {
-	idtLoad();
 	processorInitializeAp();
-	lapicInitialize();
+	interruptsInitializeAp();
 
 	gdtInitialize();
+
 	systemMarkApplicationCoreReady();
 }
 

@@ -21,19 +21,21 @@
 #include "ghost/types.h"
 
 #include "kernel/system/acpi/acpi.hpp"
+#include "kernel/system/acpi/madt.hpp"
+
 #include "kernel/kernel.hpp"
 #include "kernel/memory/memory.hpp"
 
 #include "shared/logger/logger.hpp"
 #include "shared/utils/string.hpp"
 
-static g_acpi_table_header* rootHeader = 0;
-static g_acpi_entry* first = 0;
-static bool rootIsXSDT = false;
+static g_acpi_table_header* acpiRoot = 0;
+static g_acpi_entry* acpiTables = 0;
+static bool acpiRootIsXsdt = false;
 
 g_acpi_entry* acpiGetEntryWithSignature(const char* signature)
 {
-	g_acpi_entry* cur = first;
+	g_acpi_entry* cur = acpiTables;
 	while(cur)
 	{
 		if(acpiEntryHasSignature(cur, signature))
@@ -69,10 +71,16 @@ void acpiInitialize()
 			// Create the entry
 			g_acpi_entry* entry = new g_acpi_entry();
 			entry->header = sdt;
-			entry->next = first;
-			first = entry;
+			entry->next = acpiTables;
+			acpiTables = entry;
 		}
 	}
+
+	// Find and parse MADT
+	g_acpi_entry* madt = acpiGetEntryWithSignature("APIC");
+	if(!madt)
+		kernelPanic("%! no MADT table was found in ACPI tables", "acpi");
+	madtParse(madt->header);
 }
 
 void acpiPrepareRootSDT(g_rsdp_descriptor* rsdp)
@@ -80,7 +88,7 @@ void acpiPrepareRootSDT(g_rsdp_descriptor* rsdp)
 
 	g_physical_address rootTableLocation = 0;
 
-	rootIsXSDT = false;
+	acpiRootIsXsdt = false;
 
 	// If ACPI 2.0 or higher, try to use the XSDT
 	if(rsdp->revision > 0)
@@ -91,16 +99,16 @@ void acpiPrepareRootSDT(g_rsdp_descriptor* rsdp)
 #if _ARCH_X86_64_
 			rootTableLocation = rsdp20->xsdtAddress;
 			g_log_debug("%! found XSDT in 64bit range", "acpi");
-			rootIsXSDT = true;
+			acpiRootIsXsdt = true;
 #elif _ARCH_X86_
 			if(rsdp20->xsdtAddress < 0xFFFFFFFF)
 			{
-				rootIsXSDT = true;
+				acpiRootIsXsdt = true;
 				logDebug("%! found XSDT in 32bit range", "acpi");
 				rootTableLocation = rsdp20->xsdtAddress;
 			} else
 			{
-				rootIsXSDT = false;
+				acpiRootIsXsdt = false;
 				logDebug("%! found XSDT, but range too high for 32bits, attempting to use RSDT", "acpi");
 			}
 #endif
@@ -108,7 +116,7 @@ void acpiPrepareRootSDT(g_rsdp_descriptor* rsdp)
 	}
 
 	// No XSDT? Use RSDT
-	if(!rootIsXSDT)
+	if(!acpiRootIsXsdt)
 	{
 		rootTableLocation = rsdp->rsdtAddress;
 	}
@@ -120,7 +128,7 @@ void acpiPrepareRootSDT(g_rsdp_descriptor* rsdp)
 	if(!header)
 		kernelPanic("%! could not map root system descriptor table", "acpi");
 
-	rootHeader = header;
+	acpiRoot = header;
 }
 
 bool acpiValidateSDT(g_acpi_table_header* header)
@@ -218,8 +226,8 @@ g_acpi_table_header* acpiMapSDT(g_physical_address tableLocation)
 uint32_t acpiGetRSDTentryCount()
 {
 
-	uint32_t entryBytes = rootHeader->length - sizeof(g_acpi_table_header);
-	if(rootIsXSDT)
+	uint32_t entryBytes = acpiRoot->length - sizeof(g_acpi_table_header);
+	if(acpiRootIsXsdt)
 	{
 		return entryBytes / 8;
 	} else
@@ -231,9 +239,9 @@ uint32_t acpiGetRSDTentryCount()
 g_physical_address acpiGetRSDTentry(uint32_t index)
 {
 
-	g_virtual_address startOfEntries = ((g_virtual_address) rootHeader) + sizeof(g_acpi_table_header);
+	g_virtual_address startOfEntries = ((g_virtual_address) acpiRoot) + sizeof(g_acpi_table_header);
 
-	if(rootIsXSDT)
+	if(acpiRootIsXsdt)
 	{
 		return ((uint64_t*) startOfEntries)[index];
 	} else

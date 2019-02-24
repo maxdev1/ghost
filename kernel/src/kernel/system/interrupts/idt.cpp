@@ -18,44 +18,47 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "kernel/system/mutex_reentrant.hpp"
+#include "kernel/system/interrupts/idt.hpp"
+#include "kernel/system/processor/processor.hpp"
 #include "shared/logger/logger.hpp"
 
-#include "shared/utils/string.hpp"
-#include "shared/video/console_video.hpp"
+/**
+ * IDT pointer structure
+ */
+g_idt_pointer idtPointer;
 
-static g_mutex_reentrant printLock;
+/**
+ * Interrupt descriptor table (consisting of 256 IDT entries)
+ */
+g_idt_entry idt[256];
 
-void loggerPrint(const char* message, ...)
+void idtCreateGate(uint32_t index, uint32_t base, uint16_t kernelSegment, uint8_t flags)
 {
-#warning TODO implement locking:
-	//mutexReentrantAcquire(&printLock);
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
-	//mutexReentrantRelease(&printLock);
+	idt[index].baseLow = base & 0xFFFF;
+	idt[index].baseHigh = (base >> 16) & 0xFFFF;
+	idt[index].kernelSegment = kernelSegment;
+	idt[index].zero = 0;
+	idt[index].flags = flags;
 }
 
-void loggerPrintln(const char* message, ...)
+void idtPrepare()
 {
-#warning TODO implement locking:
-	//mutexReentrantAcquire(&printLock);
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
-	loggerPrintCharacter('\n');
-	//mutexReentrantRelease(&printLock);
+	idtPointer.limit = (sizeof(g_idt_entry) * 256) - 1;
+	idtPointer.base = (uint32_t) &idt;
+
+	uint8_t* idtp = (uint8_t*) (&idt);
+	for(uint32_t i = 0; i < sizeof(g_idt_entry) * 256; i++)
+	{
+		idtp[i] = 0;
+	}
 }
 
-void loggerManualLock()
+void idtLoad()
 {
-	mutexReentrantAcquire(&printLock);
-}
-
-void loggerManualUnlock()
-{
-	mutexReentrantRelease(&printLock);
+	// Load the IDT
+	logDebug("%! descriptor table lays at %h", "idt", &idt);
+	logDebug("%! pointer at %h, base %h, limit %h", "idt", &idtPointer, idtPointer.base, idtPointer.limit);
+	_loadIdt((uint32_t) &idtPointer);
+	logDebug("%! loaded on core %i", "idt", processorGetCurrentId());
 }
 

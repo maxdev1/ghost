@@ -28,7 +28,7 @@ struct g_mutex_reentrant
 {
 	g_mutex mutex = 0;
 	int depth = 0;
-	uint32_t owner = 0;
+	uint32_t owner = -1;
 };
 
 void mutexReentrantAcquire(g_mutex_reentrant* mutex);

@@ -18,44 +18,60 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "kernel/system/mutex_reentrant.hpp"
-#include "shared/logger/logger.hpp"
+#ifndef __KERNEL_IDT__
+#define __KERNEL_IDT__
 
-#include "shared/utils/string.hpp"
-#include "shared/video/console_video.hpp"
+#include "ghost/stdint.h"
 
-static g_mutex_reentrant printLock;
-
-void loggerPrint(const char* message, ...)
+/**
+ * Structure of the IDT pointer
+ */
+struct g_idt_pointer
 {
-#warning TODO implement locking:
-	//mutexReentrantAcquire(&printLock);
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
-	//mutexReentrantRelease(&printLock);
-}
+	uint16_t limit;
+	uint32_t base;
+}__attribute__((packed));
 
-void loggerPrintln(const char* message, ...)
+/**
+ * Structure of an IDT entry
+ */
+struct g_idt_entry
 {
-#warning TODO implement locking:
-	//mutexReentrantAcquire(&printLock);
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
-	loggerPrintCharacter('\n');
-	//mutexReentrantRelease(&printLock);
-}
+	uint16_t baseLow;
+	uint16_t kernelSegment;
+	uint8_t zero;
+	uint8_t flags;
+	uint16_t baseHigh;
+}__attribute__((packed));
 
-void loggerManualLock()
-{
-	mutexReentrantAcquire(&printLock);
-}
+/**
+ * Loads the interrupt descriptor table, using the IDT pointer structure at the given address
+ *
+ * @param idtPointerAddress	the address of the IDT pointer to load from
+ * @see assembly
+ */
+extern "C" void _loadIdt(uint32_t idtPointerAddress);
 
-void loggerManualUnlock()
-{
-	mutexReentrantRelease(&printLock);
-}
+/**
+ * Installs the interrupt descriptor table.
+ */
+void idtPrepare();
 
+/**
+ * Installs the interrupt descriptor table.
+ *
+ * @reentrancy the same table is loaded on each core, therefore no locking necessary
+ */
+void idtLoad();
+
+/**
+ * Fills the given values into the given IDT entry
+ *
+ * @param index			gate index
+ * @param base			gate base address
+ * @param kernelSegment kernel code segment descriptor index
+ * @param flags			the flags to apply
+ */
+void idtCreateGate(uint32_t index, uint32_t base, uint16_t kernelSegment, uint8_t flags);
+
+#endif

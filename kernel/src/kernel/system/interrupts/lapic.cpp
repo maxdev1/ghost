@@ -33,7 +33,6 @@ static g_virtual_address virtualBase = 0;
 void lapicGlobalPrepare(g_physical_address lapicAddress)
 {
 	physicalBase = lapicAddress;
-	globalPrepared = true;
 
 	// Warn if APIC not at expected location
 	if(physicalBase != G_EXPECTED_APIC_PHYSICAL_ADDRESS)
@@ -43,6 +42,7 @@ void lapicGlobalPrepare(g_physical_address lapicAddress)
 
 	// Map it to virtual space
 	lapicCreateMapping();
+	globalPrepared = true;
 }
 
 bool lapicGlobalIsPrepared()

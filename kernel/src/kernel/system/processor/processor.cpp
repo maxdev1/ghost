@@ -67,7 +67,7 @@ void processorAdd(uint32_t apicId)
 	++processorsAvailable;
 }
 
-int processorGetNumberOfCores()
+uint16_t processorGetNumberOfCores()
 {
 	if(!processors)
 		kernelPanic("%! tried to retrieve number of cores before initializing system on BSP", "kern");
@@ -176,6 +176,11 @@ void processorPrintInformation()
 		logInfon(" SSE2");
 	}
 	logInfo("");
+}
+
+g_processor* processorGetList()
+{
+	return processors;
 }
 
 void processorReadMsr(uint32_t msr, uint32_t *lo, uint32_t *hi)

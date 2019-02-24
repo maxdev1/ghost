@@ -109,6 +109,11 @@ void ioapicCreate(uint32_t id, g_physical_address physicalAddress, uint32_t glob
 /**
  *
  */
+void ioapicInitialize(g_ioapic* io);
+
+/**
+ *
+ */
 bool ioapicAreAvailable();
 
 /**
@@ -184,7 +189,7 @@ void ioapicInitializeAll();
 /**
  *
  */
-void ioapicCreate(uint32_t id, g_physical_address ioapicAddress, uint32_t globalSystemInterruptBase);
+void ioapicCreate(uint32_t id, g_physical_address physicalAddress, uint32_t globalSystemInterruptBase);
 
 /**
  *

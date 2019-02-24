@@ -28,10 +28,6 @@ void systemInitializeBsp(g_physical_address initialPdPhys);
 
 void systemInitializeAp();
 
-int systemGetNumberOfCores();
-
-uint32_t systemGetCurrentProcessorId();
-
 void systemWaitForApplicationCores();
 
 void systemMarkApplicationCoreReady();
