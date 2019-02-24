@@ -61,7 +61,6 @@ void interruptsCheckPrerequisites()
 		kernelPanic("%! no processors found", "system");
 }
 
-static g_mutex test;
 /**
  * Interrupt handler routine, called by the interrupt stubs (assembly file)
  *
@@ -71,9 +70,7 @@ static g_mutex test;
 extern "C" g_processor_state* _interruptHandler(g_processor_state* statePtr)
 {
 
-	mutexAcquire(&test);
 	logInfo("Core %i has entered interrupt handler after interrupt %i", processorGetCurrentId(), statePtr->intr);
-	mutexRelease(&test);
 	for(;;)
 		;
 }
