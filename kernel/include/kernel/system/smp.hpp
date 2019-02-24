@@ -23,6 +23,8 @@
 
 #include "kernel/system/processor/processor.hpp"
 
+extern bool smpInitialized;
+
 /**
  * Initializes symmetric multiprocessing for all available cores.
  */
