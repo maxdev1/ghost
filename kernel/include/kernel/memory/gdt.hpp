@@ -18,24 +18,47 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL__
-#define __KERNEL__
+#ifndef __KERNEL_GDT__
+#define __KERNEL_GDT__
 
 #include "ghost/types.h"
-#include "shared/setup_information.hpp"
-#include "shared/memory/bitmap_page_allocator.hpp"
-#include "shared/logger/logger.hpp"
+#include "shared/memory/gdt.hpp"
+#include "shared/memory/tss.hpp"
 
-extern g_bitmap_page_allocator* kernelPhysicalAllocator;
+#define G_GDT_NUM_ENTRIES 7
 
-extern "C" void kernelMain(g_setup_information* setupInformation);
+struct g_gdt_list_entry
+{
+	g_gdt_pointer ptr;
+	g_gdt_entry entry[G_GDT_NUM_ENTRIES];
+	g_tss tss;
+};
 
-void kernelInitialize(g_setup_information* setupInformation);
+/**
+ * Prepares the global GDT structures.
+ */
+void gdtPrepare();
 
-void kernelRunBootstrapCore(g_physical_address initialPdPhys);
+/**
+ * Initializes the GDT for this core.
+ */
+void gdtInitialize();
 
-void kernelPanic(const char *msg, ...);
+/**
+ * Retrieves the GDT for the core with the given id.
+ */
+g_gdt_list_entry* gdtGetForCore(uint32_t coreId);
 
-void kernelHalt();
+/**
+ * Sets the ESP0 of the TSS of the current core the given address.
+ * The CPU switches to this specified stack before entering an interrupt handler.
+ */
+void gdtSetTssEsp0(g_virtual_address esp0);
+
+/**
+ * For thread local storage, it is needed to write the address of the so-called
+ * "user thread" object to the GDT.
+ */
+void gdtSetUserThreadObjectAddress(g_virtual_address userThreadAddr);
 
 #endif

@@ -18,24 +18,59 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL__
-#define __KERNEL__
+#include "kernel/system/system.hpp"
+#include "kernel/system/interrupts/interrupts.hpp"
+#include "kernel/system/interrupts/lapic.hpp"
+#include "kernel/system/interrupts/ioapic.hpp"
+#include "kernel/system/interrupts/pic.hpp"
+#include "kernel/system/acpi/acpi.hpp"
+#include "kernel/memory/gdt.hpp"
+#include "kernel/kernel.hpp"
 
-#include "ghost/types.h"
-#include "shared/setup_information.hpp"
-#include "shared/memory/bitmap_page_allocator.hpp"
-#include "shared/logger/logger.hpp"
+static int applicationCoresWaiting;
+static bool bspInitialized = false;
 
-extern g_bitmap_page_allocator* kernelPhysicalAllocator;
+void systemInitializeBsp()
+{
+	processorInitializeBsp();
 
-extern "C" void kernelMain(g_setup_information* setupInformation);
+	acpiInitialize();
 
-void kernelInitialize(g_setup_information* setupInformation);
+	if(!(lapicGlobalIsPrepared() && ioapicAreAvailable() && processorListAvailable()))
+		kernelPanic("%! pic compatibility mode not implemented. apic/ioapic required!", "system");
 
-void kernelRunBootstrapCore(g_physical_address initialPdPhys);
+	idtPrepare();
+	idtLoad();
 
-void kernelPanic(const char *msg, ...);
+	picDisable();
+	lapicInitialize();
+	ioapicInitializeAll();
 
-void kernelHalt();
+	gdtPrepare();
+	gdtInitialize();
 
-#endif
+	applicationCoresWaiting = processorGetNumberOfCores() - 1;
+	bspInitialized = true;
+}
+
+void systemInitializeAp()
+{
+	idtLoad();
+	processorInitializeAp();
+	lapicInitialize();
+
+	gdtInitialize();
+	systemMarkApplicationCoreReady();
+}
+
+void systemWaitForApplicationCores()
+{
+	logInfo("%! waiting for %i application processors", "kern", applicationCoresWaiting);
+	while(applicationCoresWaiting > 0)
+		asm("pause");
+}
+
+void systemMarkApplicationCoreReady()
+{
+	--applicationCoresWaiting;
+}
