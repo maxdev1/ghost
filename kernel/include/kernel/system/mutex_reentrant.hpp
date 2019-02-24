@@ -26,8 +26,8 @@
 
 struct g_mutex_reentrant
 {
-	g_mutex mutex = 0;
-	int depth = 0;
+	volatile int mutex = 0;
+	uint8_t depth = 0;
 	uint32_t owner = -1;
 };
 

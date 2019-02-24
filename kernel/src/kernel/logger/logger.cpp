@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/mutex_reentrant.hpp"
+#include "kernel/system/smp.hpp"
 #include "shared/logger/logger.hpp"
 
 #include "shared/utils/string.hpp"
@@ -28,34 +29,42 @@ static g_mutex_reentrant printLock;
 
 void loggerPrint(const char* message, ...)
 {
-#warning TODO implement locking:
-	//mutexReentrantAcquire(&printLock);
+	if(smpInitialized)
+		mutexReentrantAcquire(&printLock);
+
 	va_list valist;
 	va_start(valist, message);
 	loggerPrintFormatted(message, valist);
 	va_end(valist);
-	//mutexReentrantRelease(&printLock);
+
+	if(smpInitialized)
+		mutexReentrantRelease(&printLock);
 }
 
 void loggerPrintln(const char* message, ...)
 {
-#warning TODO implement locking:
-	//mutexReentrantAcquire(&printLock);
+	if(smpInitialized)
+		mutexReentrantAcquire(&printLock);
+
 	va_list valist;
 	va_start(valist, message);
 	loggerPrintFormatted(message, valist);
 	va_end(valist);
 	loggerPrintCharacter('\n');
-	//mutexReentrantRelease(&printLock);
+
+	if(smpInitialized)
+		mutexReentrantRelease(&printLock);
 }
 
 void loggerManualLock()
 {
-	mutexReentrantAcquire(&printLock);
+	if(smpInitialized)
+		mutexReentrantAcquire(&printLock);
 }
 
 void loggerManualUnlock()
 {
-	mutexReentrantRelease(&printLock);
+	if(smpInitialized)
+		mutexReentrantRelease(&printLock);
 }
 

@@ -24,8 +24,6 @@
 
 void mutexReentrantAcquire(g_mutex_reentrant* mutex)
 {
-	mutexAcquire(&mutex->mutex);
-
 #if G_DEBUG_LOCKS_DEADLOCKING
 	uint32_t deadlockCounter = 0;
 #endif
@@ -54,7 +52,6 @@ void mutexReentrantAcquire(g_mutex_reentrant* mutex)
 
 void mutexReentrantRelease(g_mutex_reentrant* mutex)
 {
-	mutexRelease(&mutex->mutex);
 	if(mutex->depth > 0)
 	{
 		--mutex->depth;

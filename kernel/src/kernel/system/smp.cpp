@@ -27,6 +27,8 @@
 
 #include "shared/logger/logger.hpp"
 
+bool smpInitialized = false;
+
 void smpInitialize(g_physical_address initialPageDirectoryPhysical)
 {
 	// Write values to lower memory for use within startup code
@@ -73,6 +75,8 @@ void smpInitialize(g_physical_address initialPageDirectoryPhysical)
 		return;
 	}
 	memoryCopy((uint8_t*) G_CONST_SMP_STARTUP_AREA_CODE_START, (uint8_t*) startupObject->data, startupObject->dataSize);
+
+	smpInitialized = true;
 
 	// Start APs
 	g_processor* core = processorGetList();
