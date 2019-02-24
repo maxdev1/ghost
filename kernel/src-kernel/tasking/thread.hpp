@@ -50,9 +50,8 @@ struct g_thread_information_vm86 {
 /**
  *
  */
-enum class g_thread_interruption_info_type
-	: uint8_t {
-		NONE, IRQ, SIGNAL
+enum class g_thread_interruption_info_type : uint8_t {
+	NONE, IRQ, SIGNAL
 };
 
 /**
@@ -121,7 +120,8 @@ public:
 
 	void raise_signal(int signal);
 	void enter_irq_handler(uintptr_t address, uint8_t irq, uintptr_t callback);
-	void enter_signal_handler(uintptr_t address, int signal, uintptr_t callback);
+	void enter_signal_handler(uintptr_t address, int signal,
+			uintptr_t callback);
 	bool start_prepare_interruption();
 	void finish_prepare_interruption(uintptr_t address, uintptr_t callback);
 

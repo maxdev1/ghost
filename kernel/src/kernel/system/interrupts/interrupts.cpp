@@ -20,6 +20,8 @@
 
 #include "kernel/system/interrupts/interrupts.hpp"
 
+#include "kernel/system/interrupts/exceptions.hpp"
+#include "kernel/system/interrupts/requests.hpp"
 #include "kernel/system/interrupts/lapic.hpp"
 #include "kernel/system/interrupts/ioapic.hpp"
 #include "kernel/system/interrupts/pic.hpp"
@@ -70,10 +72,16 @@ void interruptsCheckPrerequisites()
  */
 extern "C" g_processor_state* _interruptHandler(g_processor_state* statePtr)
 {
+	if(statePtr->intr < 0x20)
+	{
+		statePtr = exceptionsHandle(statePtr);
+	} else
+	{
+		statePtr = requestsHandle(statePtr);
+	}
 
-	logInfo("Core %i has entered interrupt handler after interrupt %i", processorGetCurrentId(), statePtr->intr);
-	for(;;)
-		;
+	lapicSendEndOfInterrupt();
+	return statePtr;
 }
 
 void interruptsInstallRoutines()
