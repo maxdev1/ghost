@@ -18,37 +18,32 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_HEAP__
-#define __KERNEL_HEAP__
+#ifndef __KERNEL_LOWER_HEAP__
+#define __KERNEL_LOWER_HEAP__
 
 #include "ghost/types.h"
 #include "shared/memory/constants.hpp"
 
 /**
- * Initializes the kernel heap using the given range of memory.
+ * Initializes the lower heap using the given range of memory.
  */
-void heapInitialize(g_virtual_address start, g_virtual_address end);
-
-/**
- * Expands the heap space by {G_CONST_KERNEL_HEAP_EXPAND_STEP} bytes.
- */
-bool heapExpand();
+void lowerHeapInitialize(g_virtual_address start, g_virtual_address end);
 
 /**
  * Allocates a number of bytes on the kernel heap.
  *
  * Causes a panic if it fails.
  */
-void* heapAllocate(uint32_t size);
+void* lowerHeapAllocate(uint32_t size);
 
 /**
  * Frees the given range.
  */
-void heapFree(void* memory);
+void lowerHeapFree(void* memory);
 
 /**
  * Returns the amount of used bytes in the kernel heap.
  */
-uint32_t heapGetUsedAmount();
+uint32_t lowerHeapGetUsedAmount();
 
 #endif
