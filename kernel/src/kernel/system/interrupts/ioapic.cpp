@@ -22,17 +22,30 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/kernel.hpp"
 
-static g_ioapic* first = 0;
+static g_ioapic* ioapicList = 0;
 
-void ioapicCreate(uint32_t id, g_physical_address physicalAddress, uint32_t globalSystemInterruptBase, g_ioapic* next)
+void ioapicInitializeAll()
+{
+	g_ioapic* io = ioapicList;
+	while(io)
+	{
+		ioapicInitialize(io);
+		io = io->next;
+	}
+}
+
+void ioapicCreate(uint32_t id, g_physical_address physicalAddress, uint32_t globalSystemInterruptBase)
 {
 	g_ioapic* io = (g_ioapic*) heapAllocate(sizeof(g_ioapic));
 	io->id = id;
 	io->physicalAddress = physicalAddress;
 	io->globalSystemInterruptBase = globalSystemInterruptBase;
-	io->next = first;
-	first = io;
+	io->next = ioapicList;
+	ioapicList = io;
+}
 
+void ioapicInitialize(g_ioapic* io)
+{
 	ioapicCreateMapping(io);
 
 	// Get ID
@@ -40,14 +53,14 @@ void ioapicCreate(uint32_t id, g_physical_address physicalAddress, uint32_t glob
 	uint32_t reportedId = (idValue >> 24) & 0xF;
 
 	// If not right ID, reprogram it
-	if(reportedId != id)
+	if(reportedId != io->id)
 	{
 		logWarn("%! has different ID (%i) than what ACPI reported (%i), reprogramming", "ioapic", idValue, reportedId);
 
 		// Remove the actual ID bits
 		idValue &= ~(0xF << 24);
 		// Set new ID bits
-		idValue |= (id & 0xF) << 24;
+		idValue |= (io->id & 0xF) << 24;
 		// Write value
 		ioapicWrite(io, IOAPIC_ID, idValue);
 	}
@@ -56,7 +69,7 @@ void ioapicCreate(uint32_t id, g_physical_address physicalAddress, uint32_t glob
 	uint32_t versionValue = ioapicRead(io, IOAPIC_VER);
 	uint32_t version = versionValue & 0xFF;
 	io->redirectEntryCount = (versionValue >> 16) & 0xFF;
-	logInfo("%! id %i: version %i, redirect entries: %i", "ioapic", id, version, io->redirectEntryCount);
+	logInfo("%! id %i: version %i, redirect entries: %i", "ioapic", io->id, version, io->redirectEntryCount);
 }
 
 void ioapicCreateMapping(g_ioapic* io)
@@ -130,12 +143,12 @@ void ioapicUnmask(g_ioapic* io, uint32_t source)
 
 bool ioapicAreAvailable()
 {
-	return first != 0;
+	return ioapicList != 0;
 }
 
 g_ioapic* ioapicGetResponsibleFor(uint32_t source)
 {
-	g_ioapic* io = first;
+	g_ioapic* io = ioapicList;
 	while(io)
 	{
 		if(source >= io->globalSystemInterruptBase && source < (io->globalSystemInterruptBase + io->redirectEntryCount))

@@ -23,6 +23,7 @@
 
 #include "ghost/stdint.h"
 #include "kernel/system/interrupts/lapic.hpp"
+#include "kernel/system/processor/processor_state.hpp"
 
 /**
  * CPUID.1 feature flags
@@ -120,11 +121,13 @@ void processorInitializeAp();
 
 void processorAdd(uint32_t apicId);
 
+g_processor* processorGetList();
+
 bool processorListAvailable();
 
 uint32_t processorGetId(g_processor* proc);
 
-int processorGetNumberOfCores();
+uint16_t processorGetNumberOfCores();
 
 uint32_t processorGetCurrentId();
 

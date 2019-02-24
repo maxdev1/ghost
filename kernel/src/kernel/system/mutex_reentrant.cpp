@@ -19,21 +19,20 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/mutex_reentrant.hpp"
-//#include "kernel/system/system.hpp"
+#include "kernel/system/processor/processor.hpp"
 #include "shared/logger/logger.hpp"
 
 void mutexReentrantAcquire(g_mutex_reentrant* mutex)
 {
-#warning "TODO: implement"
 	mutexAcquire(&mutex->mutex);
-	/*
+
 #if G_DEBUG_LOCKS_DEADLOCKING
 	uint32_t deadlockCounter = 0;
 #endif
 
 	while(!__sync_bool_compare_and_swap(&mutex->mutex, 0, 1))
 	{
-		if(mutex->owner == systemCurrentProcessorId())
+		if(mutex->owner == processorGetCurrentId())
 		{
 			++mutex->depth;
 			return;
@@ -47,25 +46,23 @@ void mutexReentrantAcquire(g_mutex_reentrant* mutex)
 			logInfo("%! looks like a deadlock", "rlock");
 		}
 #endif
+
 	}
-	mutex->owner = systemCurrentProcessorId();
+	mutex->owner = processorGetCurrentId();
 	mutex->depth = 0;
-	*/
 }
 
 void mutexReentrantRelease(g_mutex_reentrant* mutex)
 {
-#warning "TODO: implement"
 	mutexRelease(&mutex->mutex);
-	/*
 	if(mutex->depth > 0)
 	{
 		--mutex->depth;
 		return;
 	}
+
 	mutex->owner = -1;
 	mutex->mutex = 0;
-	*/
 }
 
 bool mutexReentrantIsAcquired(g_mutex_reentrant* mutex)

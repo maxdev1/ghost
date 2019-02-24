@@ -66,7 +66,7 @@ void pitPerformSleep()
 
 void pitStartAsTimer(uint32_t hz)
 {
-	g_log_debug("%! started as timer on %i hertz", "pit", hz);
+	logDebug("%! started as timer on %i hertz", "pit", hz);
 
 	timerClocking = hz;
 	uint32_t divisor = PIT_FREQUENCY / hz; // Calculate the divisor

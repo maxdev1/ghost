@@ -34,6 +34,11 @@ void kernelInitialize(g_setup_information* setupInformation);
 
 void kernelRunBootstrapCore(g_physical_address initialPdPhys);
 
+/**
+ * This function is started by the SMP implementation.
+ */
+void kernelRunApplicationCore();
+
 void kernelPanic(const char *msg, ...);
 
 void kernelHalt();
