@@ -23,6 +23,6 @@
 
 #include "kernel/system/processor/processor.hpp"
 
-g_processor_state* exceptionsHandle(g_processor_state* statePtr);
+void exceptionsHandle(g_processor_state* statePtr);
 
 #endif

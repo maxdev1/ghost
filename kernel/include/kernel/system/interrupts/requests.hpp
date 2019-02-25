@@ -23,6 +23,6 @@
 
 #include "kernel/system/processor/processor.hpp"
 
-g_processor_state* requestsHandle(g_processor_state* statePtr);
+void requestsHandle(g_processor_state* statePtr);
 
 #endif

@@ -20,7 +20,10 @@
 
 #include "kernel/tasking/tasking.hpp"
 #include "kernel/memory/memory.hpp"
+#include "kernel/memory/gdt.hpp"
 #include "kernel/system/processor/processor.hpp"
+#include "kernel/kernel.hpp"
+#include "shared/logger/logger.hpp"
 
 g_tasking_local* taskingLocal;
 
@@ -35,12 +38,17 @@ void test()
 void taskingInitializeLocal(g_tasking_local* local)
 {
 	local->lock = 0;
+	local->list = 0;
+	local->current = 0;
 
+	// Create local kernel stack
 	g_physical_address kernPhys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
 	g_virtual_address kernVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
-	local->kernelStack = kernVirt;
+	pagingMapPage(kernVirt, kernPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+	local->kernelStack = kernVirt + G_PAGE_SIZE;
+	gdtSetTssEsp0(local->kernelStack);
 
-	g_task thread = taskingCreateThread((g_virtual_address) test);
+	g_task* thread = taskingCreateThread((g_virtual_address) test, G_SECURITY_LEVEL_KERNEL);
 	taskingAssign(local, thread);
 }
 
@@ -48,13 +56,13 @@ void taskingInitializeBsp()
 {
 	taskingLocal = (g_tasking_local*) heapAllocate(sizeof(g_tasking_local) * processorGetNumberOfCores());
 
-	g_tasking_local* local = taskingLocal[processorGetCurrentId()];
+	g_tasking_local* local = &taskingLocal[processorGetCurrentId()];
 	taskingInitializeLocal(local);
 }
 
 void taskingInitializeAp()
 {
-	g_tasking_local* local = taskingLocal[processorGetCurrentId()];
+	g_tasking_local* local = &taskingLocal[processorGetCurrentId()];
 	taskingInitializeLocal(local);
 }
 
@@ -79,6 +87,27 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 	mutexRelease(&local->lock);
 }
 
+void taskingStore(g_processor_state* stateIn) {
+	g_tasking_local* local = taskingGetLocal();
+
+	if(local->current) 
+		local->current->state = *stateIn;
+	else
+		taskingSchedule();
+}
+
+
+void taskingRestore(g_processor_state* stateOut) {
+	g_tasking_local* local = taskingGetLocal();
+	if(!local->current)
+		kernelPanic("%! tried to restore without a current task", "tasking");
+
+	*stateOut = local->current->state;
+
+	pagingSwitchSpace(local->current->pageDirectory);
+}
+
+
 void taskingSchedule()
 {
 	// TODO real scheduling
@@ -86,5 +115,5 @@ void taskingSchedule()
 
 g_tasking_local* taskingGetLocal()
 {
-	return taskingLocal[processorGetCurrentId()];
+	return &taskingLocal[processorGetCurrentId()];
 }
