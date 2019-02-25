@@ -24,11 +24,13 @@
 #include "ghost/kernel.h"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/system/mutex.hpp"
+#include "kernel/memory/paging.hpp"
 
 struct g_task
 {
 	g_tid id;
 	g_processor_state state;
+	g_page_directory pageDirectory;
 };
 
 struct g_task_entry
@@ -70,6 +72,20 @@ void taskingAssign(g_tasking_local* local, g_task* task);
  *
  */
 void taskingSchedule();
+
+/**
+ * Stores the registers from the given state pointer (pointing to the top of the
+ * kernel stack) to the state structure of the current task.
+ * 
+ * If there is no current task (because we just initialized the system) then it
+ * switches to the first task.
+ */
+void taskingStore(g_processor_state* stateIn);
+
+/**
+ * Restores the state from the current task.
+ */
+void taskingRestore(g_processor_state* stateOut);
 
 /**
  *

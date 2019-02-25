@@ -21,7 +21,7 @@
 #include "kernel/system/interrupts/exceptions.hpp"
 #include "shared/logger/logger.hpp"
 
-g_processor_state* exceptionsHandle(g_processor_state* statePtr)
+void exceptionsHandle(g_processor_state* statePtr)
 {
 	logInfo("%*%! no resolution for exception %i, hanging system", 0x0C, "exception", statePtr->intr);
 	for(;;)

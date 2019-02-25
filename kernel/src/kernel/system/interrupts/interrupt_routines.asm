@@ -45,6 +45,9 @@ interruptRoutine:
 	push fs
 	push gs
 
+	; Push stack pointer
+	push esp
+
 	; Switch to kernel segments
 	mov ax, 0x10
 	mov ds, ax
@@ -52,12 +55,8 @@ interruptRoutine:
 	mov fs, ax
 	mov gs, ax
 
-	; Push stack pointer
-	push esp
 	; Call handler
 	call _interruptHandler
-	; Set stack pointer to returned value
-	mov esp, eax
 
 	; Restore segments
 	pop gs
