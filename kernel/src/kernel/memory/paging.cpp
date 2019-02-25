@@ -81,8 +81,8 @@ bool pagingMapPage(g_virtual_address virt, g_physical_address phys, uint32_t tab
 	return false;
 }
 
-void pagingMapToTemporaryMappedDirectory(g_page_directory directory, g_virtual_address virt, g_physical_address phys, uint32_t tableFlags, uint32_t pageFlags,
-		bool allowOverride)
+void pagingMapToTemporaryMappedDirectory(g_physical_address directoryPhys, g_virtual_address virt, g_physical_address phys, uint32_t tableFlags,
+		uint32_t pageFlags, bool allowOverride)
 {
 	if(!memoryVirtualRangePool)
 		kernelPanic("%! kernel virtual address range pool used before initialization", "paging");
@@ -90,16 +90,20 @@ void pagingMapToTemporaryMappedDirectory(g_page_directory directory, g_virtual_a
 	if((virt & G_PAGE_ALIGN_MASK) || (phys & G_PAGE_ALIGN_MASK))
 		kernelPanic("%! tried to map unaligned addresses: %h -> %h", "paging", virt, phys);
 
+	g_page_directory directoryTemp = (g_page_directory) addressRangePoolAllocate(memoryVirtualRangePool, 1);
+	pagingMapPage((g_virtual_address) directoryTemp, directoryPhys);
+
 	uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(virt);
 	uint32_t pi = G_PAGE_IN_TABLE_INDEX(virt);
 
-	if(directory[ti] == 0)
+	// Create table if necessary
+	if(directoryTemp[ti] == 0)
 	{
 		g_physical_address newTablePage = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
 		if(!newTablePage)
 			kernelPanic("%! no pages left for mapping", "paging");
 
-		g_virtual_address tableTemp = addressRangePoolAllocate(memoryVirtualRangePool, 1);
+		g_virtual_address tableTemp = (g_virtual_address) addressRangePoolAllocate(memoryVirtualRangePool, 1);
 		pagingMapPage(tableTemp, newTablePage);
 
 		g_page_table table = (g_page_table) tableTemp;
@@ -108,11 +112,11 @@ void pagingMapToTemporaryMappedDirectory(g_page_directory directory, g_virtual_a
 
 		addressRangePoolFree(memoryVirtualRangePool, tableTemp);
 
-		directory[ti] = newTablePage | tableFlags;
+		directoryTemp[ti] = newTablePage | tableFlags;
 	}
 
 	// Insert address into table
-	g_physical_address tablePhys = (directory[ti] & ~G_PAGE_ALIGN_MASK);
+	g_physical_address tablePhys = (directoryTemp[ti] & ~G_PAGE_ALIGN_MASK);
 	g_virtual_address tableTemp = addressRangePoolAllocate(memoryVirtualRangePool, 1);
 	pagingMapPage(tableTemp, tablePhys);
 
@@ -121,6 +125,7 @@ void pagingMapToTemporaryMappedDirectory(g_page_directory directory, g_virtual_a
 	{
 		table[pi] = phys | pageFlags;
 		addressRangePoolFree(memoryVirtualRangePool, tableTemp);
+		addressRangePoolFree(memoryVirtualRangePool, (g_virtual_address) directoryTemp);
 		return;
 	}
 
@@ -146,7 +151,7 @@ void pagingUnmapPage(g_virtual_address virt)
 	G_INVLPG(virt);
 }
 
-void pagingSwitchSpace(g_page_directory dir)
+void pagingSwitchSpace(g_physical_address dir)
 {
 	asm volatile("mov %0, %%cr3":: "b"(dir));
 }

@@ -42,13 +42,14 @@
  *
  */
 bool pagingMapPage(g_virtual_address virt, g_physical_address phys, uint32_t tableFlags = DEFAULT_KERNEL_TABLE_FLAGS, uint32_t pageFlags =
-		DEFAULT_KERNEL_PAGE_FLAGS, bool allowOverride = false);
+DEFAULT_KERNEL_PAGE_FLAGS, bool allowOverride = false);
 
 /**
  * Used to map a page into a page directory that is not the current address space.
- * The required directory tables are temporarily mapped into the current address space.
+ * The directory itself and the required tables are temporarily mapped and then unmapped again.
  */
-void pagingMapToTemporaryMappedDirectory(g_page_directory directory, g_virtual_address virtualAddress, g_physical_address physicalAddress, uint32_t tableFlags =
+void pagingMapToTemporaryMappedDirectory(g_physical_address directory, g_virtual_address virtualAddress, g_physical_address physicalAddress,
+		uint32_t tableFlags =
 		DEFAULT_KERNEL_TABLE_FLAGS, uint32_t pageFlags = DEFAULT_KERNEL_PAGE_FLAGS, bool allowOverride = false);
 
 /**
@@ -65,7 +66,7 @@ void pagingUnmapPage(g_virtual_address virt);
  * @param dir
  * 		the directory to switch to
  */
-void pagingSwitchSpace(g_page_directory dir);
+void pagingSwitchSpace(g_physical_address dir);
 
 /**
  * Returns the currently set page directory.

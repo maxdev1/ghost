@@ -25,12 +25,15 @@
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/system/mutex.hpp"
 #include "kernel/memory/paging.hpp"
+#include "kernel/memory/address_range_pool.hpp"
 
 struct g_task
 {
 	g_tid id;
 	g_processor_state state;
-	g_page_directory pageDirectory;
+	g_virtual_address stack;
+	g_physical_address pageDirectory;
+	g_address_range_pool* virtualRangePool;
 };
 
 struct g_task_entry
@@ -45,7 +48,7 @@ struct g_tasking_local
 	g_task_entry* list;
 	g_task* current;
 
-	g_virtual_address kernelStack;
+	g_virtual_address kernelStackBase;
 };
 
 /**
@@ -91,5 +94,20 @@ void taskingRestore(g_processor_state* stateOut);
  *
  */
 g_tasking_local* taskingGetLocal();
+
+/**
+ * Returns the next assignable task id.
+ */
+g_tid taskingGetNextId();
+
+/**
+ * Creates a new page directory to use for a new process. Clones the kernel space
+ * into the page directory, maps the lower memory and adds recursive mapping.
+ *
+ * @return the physical address of the directory
+ */
+g_physical_address taskingCreatePageDirectory();
+
+void taskingApplySecurityLevel(g_processor_state* state, g_security_level securityLevel);
 
 #endif

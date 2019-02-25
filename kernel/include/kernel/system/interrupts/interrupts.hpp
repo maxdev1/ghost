@@ -36,7 +36,7 @@ void interruptsDisable();
 
 void interruptsInstallRoutines();
 
-extern "C" g_processor_state* _interruptHandler(g_processor_state* statePtr);
+extern "C" g_processor_state* _interruptHandler(g_processor_state* state);
 
 /**
  * @see assembly

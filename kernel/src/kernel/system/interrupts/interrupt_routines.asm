@@ -57,6 +57,7 @@ interruptRoutine:
 
 	; Call handler
 	call _interruptHandler
+	mov esp, eax
 
 	; Restore segments
 	pop gs
