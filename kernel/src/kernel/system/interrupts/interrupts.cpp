@@ -67,21 +67,17 @@ void interruptsCheckPrerequisites()
 /**
  * Interrupt handler routine, called by the interrupt stubs (assembly file)
  *
- * @param statePtr	the current CPU state
- * @return the CPU state to be applied
+ * @param state pointer to the stack head
  */
-extern "C" g_processor_state* _interruptHandler(g_processor_state* statePtr)
+extern "C" g_processor_state* _interruptHandler(g_processor_state* state)
 {
-	if(statePtr->intr < 0x20)
-	{
-		statePtr = exceptionsHandle(statePtr);
-	} else
-	{
-		statePtr = requestsHandle(statePtr);
-	}
+	if(state->intr < 0x20)
+		exceptionsHandle(state);
+	else
+		requestsHandle(state);
 
 	lapicSendEndOfInterrupt();
-	return statePtr;
+	return state;
 }
 
 void interruptsInstallRoutines()
