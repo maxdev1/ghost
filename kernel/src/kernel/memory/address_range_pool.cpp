@@ -37,7 +37,9 @@ void addressRangePoolAddRange(g_address_range_pool* pool, g_address start, g_add
 	g_address_range* newRange = (g_address_range*) heapAllocate(sizeof(g_address_range));
 	newRange->base = start;
 	newRange->used = false;
+	newRange->next = 0;
 	newRange->pages = (end - start) / G_PAGE_SIZE;
+	newRange->flags = 0;
 
 	if(pool->first == 0)
 	{
@@ -140,10 +142,11 @@ g_address addressRangePoolAllocate(g_address_range_pool* pool, uint32_t requeste
 		int32_t remainingPages = range->pages - requestedPages;
 		if(remainingPages > 0)
 		{
-			g_address_range* splinter = new g_address_range;
+			g_address_range* splinter = (g_address_range*) heapAllocate(sizeof(g_address_range));
 			splinter->used = false;
 			splinter->pages = remainingPages;
 			splinter->base = range->base + requestedPages * G_PAGE_SIZE;
+			splinter->flags = range->flags;
 
 			splinter->next = range->next;
 			range->next = splinter;

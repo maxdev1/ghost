@@ -26,11 +26,11 @@
 
 struct g_address_range
 {
-	g_address_range* next = 0;
-	bool used = false;
-	g_address base = 0;
-	uint32_t pages = 0;
-	uint8_t flags = 0;
+	g_address_range* next;
+	bool used;
+	g_address base;
+	uint32_t pages;
+	uint8_t flags;
 };
 
 struct g_address_range_pool

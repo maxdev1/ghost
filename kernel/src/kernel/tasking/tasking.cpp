@@ -32,8 +32,8 @@ static g_tid taskingIdNext = 0;
 
 void test()
 {
-	logInfo("Hello from core %i!", processorGetCurrentId());
-	int i = 0;
+	int x = processorGetCurrentId();
+	logInfo("Hello from core %i!", x);
 	for(;;)
 	{
 	}
@@ -153,6 +153,27 @@ g_task* taskingCreateThread(g_virtual_address entry, g_security_level level)
 	task->state.eflags = 0x200;
 	taskingApplySecurityLevel(&task->state, level);
 
+	// DEBUG TEST
+#warning "..."
+	// Check
+	g_virtual_address vdir = addressRangePoolAllocate(memoryVirtualRangePool, 1);
+	g_page_directory dir = (g_page_directory) vdir;
+	volatile int pages = 0;
+	pagingMapPage(vdir, task->pageDirectory);
+	for(int i = 0; i < 1024; i++)
+	{
+		if(dir[i])
+		{
+			g_virtual_address vtable = addressRangePoolAllocate(memoryVirtualRangePool, 1);
+			pagingMapPage(vtable, dir[i] & ~G_PAGE_ALIGN_MASK);
+			addressRangePoolFree(memoryVirtualRangePool, vtable);
+			pagingUnmapPage(vtable);
+		}
+	}
+	pagingUnmapPage(vdir);
+	addressRangePoolFree(memoryVirtualRangePool, vdir);
+	// DEBUG TEST END
+
 	return task;
 }
 
@@ -178,8 +199,6 @@ void taskingStore(g_processor_state* stateIn)
 		taskingSchedule();
 }
 
-int counted = 0;
-
 void taskingRestore(g_processor_state* stateOut)
 {
 	g_tasking_local* local = taskingGetLocal();
@@ -187,10 +206,6 @@ void taskingRestore(g_processor_state* stateOut)
 		kernelPanic("%! tried to restore without a current task", "tasking");
 
 	*stateOut = local->current->state;
-
-	logInfo("Before switching page directory");
-	for(;;)
-		;
 
 	pagingSwitchSpace(local->current->pageDirectory);
 }

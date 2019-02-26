@@ -86,11 +86,12 @@ void kernelRunApplicationCore()
 	mutexRelease(&bootstrapCoreLock);
 
 	mutexAcquire(&applicationCoreLock);
+
 	logDebug("%! initializing %i", "ap", processorGetCurrentId());
 	systemInitializeAp();
 	taskingInitializeAp();
-	mutexRelease(&applicationCoreLock);
 
+	mutexRelease(&applicationCoreLock);
 	systemWaitForApplicationCores();
 	interruptsEnable();
 }
