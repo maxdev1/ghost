@@ -22,7 +22,6 @@
 #define __MUTEX_REENTRANT__
 
 #include "ghost/stdint.h"
-#include "kernel/system/mutex.hpp"
 
 struct g_mutex_reentrant
 {

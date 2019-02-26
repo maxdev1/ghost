@@ -46,8 +46,8 @@ const uint32_t G_PAGE_GLOBAL = 128;
 #define DEFAULT_USER_TABLE_FLAGS (G_PAGE_TABLE_PRESENT | G_PAGE_TABLE_READWRITE | G_PAGE_TABLE_USERSPACE)
 #define DEFAULT_USER_PAGE_FLAGS (G_PAGE_PRESENT | G_PAGE_READWRITE | G_PAGE_USERSPACE)
 
-typedef uint32_t* g_page_directory;
-typedef uint32_t* g_page_table;
+typedef volatile uint32_t* g_page_directory;
+typedef volatile uint32_t* g_page_table;
 
 #define G_INVLPG(addr) __asm__ __volatile__("invlpg (%%eax)" \
                                             :                \

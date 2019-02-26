@@ -80,7 +80,7 @@ void pagingSwitchToSpace(g_page_directory directory);
  * @param tableFlags	the table flags to apply
  * @param pageFlags		the page flags to apply
  */
-void pagingIdentityMap(uint32_t* directory, uint32_t start, uint32_t end, uint32_t tableFlags, uint32_t pageFlags);
+void pagingIdentityMap(g_page_directory directory, uint32_t start, uint32_t end, uint32_t tableFlags, uint32_t pageFlags);
 
 /**
  * Maps the page at physicalAddress to the virtualAddress, using the given tableFlags and pageFlags.
@@ -92,6 +92,6 @@ void pagingIdentityMap(uint32_t* directory, uint32_t start, uint32_t end, uint32
  * @param tableFlags	the table flags to apply
  * @param pageFlags		the page flags to apply
  */
-void pagingMapPage(uint32_t* directory, uint32_t virtualAddress, uint32_t physicalAddress, uint32_t tableFlags, uint32_t pageFlags);
+void pagingMapPage(g_page_directory directory, uint32_t virtualAddress, uint32_t physicalAddress, uint32_t tableFlags, uint32_t pageFlags);
 
 #endif

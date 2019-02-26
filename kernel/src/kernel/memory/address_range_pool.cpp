@@ -27,10 +27,13 @@
 void addressRangePoolInitialize(g_address_range_pool* pool)
 {
 	pool->first = 0;
+	pool->lock = 0;
 }
 
 void addressRangePoolAddRange(g_address_range_pool* pool, g_address start, g_address end)
 {
+	mutexAcquire(&pool->lock);
+
 	g_address_range* newRange = (g_address_range*) heapAllocate(sizeof(g_address_range));
 	newRange->base = start;
 	newRange->used = false;
@@ -47,13 +50,14 @@ void addressRangePoolAddRange(g_address_range_pool* pool, g_address start, g_add
 		// Find the last range that has a lower base than this one
 		g_address_range* lastBelow = 0;
 		g_address_range* range = pool->first;
-		do
+		while(range)
 		{
 			if(range->base < newRange->base)
 			{
 				lastBelow = range;
 			}
-		} while((range = range->next) != 0);
+			range = range->next;
+		}
 
 		if(lastBelow)
 		{
@@ -69,12 +73,15 @@ void addressRangePoolAddRange(g_address_range_pool* pool, g_address start, g_add
 			pool->first = newRange;
 		}
 	}
+	mutexRelease(&pool->lock);
 
 	addressRangePoolMerge(pool);
 }
 
 void addressRangePoolCloneRanges(g_address_range_pool* pool, g_address_range_pool* other)
 {
+	mutexAcquire(&pool->lock);
+
 	if(pool->first)
 		addressRangePoolReleaseRanges(pool);
 
@@ -97,6 +104,8 @@ void addressRangePoolCloneRanges(g_address_range_pool* pool, g_address_range_poo
 		}
 		otherCurrent = otherCurrent->next;
 	}
+
+	mutexRelease(&pool->lock);
 }
 
 g_address_range* addressRangePoolGetRanges(g_address_range_pool* pool)
@@ -106,6 +115,8 @@ g_address_range* addressRangePoolGetRanges(g_address_range_pool* pool)
 
 g_address addressRangePoolAllocate(g_address_range_pool* pool, uint32_t requestedPages, uint8_t flags)
 {
+	mutexAcquire(&pool->lock);
+
 	if(requestedPages == 0)
 	{
 		requestedPages = 1;
@@ -139,16 +150,20 @@ g_address addressRangePoolAllocate(g_address_range_pool* pool, uint32_t requeste
 			range->pages = requestedPages;
 		}
 
+		mutexRelease(&pool->lock);
 		return range->base;
 	}
 
-	logWarn("%! critical, no free range of size %i pages", "addrpool", requestedPages);
+	logInfo("%! critical, no free range of size %i pages", "addrpool", requestedPages);
 	addressRangePoolDump(pool);
+	mutexRelease(&pool->lock);
 	return 0;
 }
 
 int32_t addressRangePoolFree(g_address_range_pool* pool, g_address base)
 {
+	mutexAcquire(&pool->lock);
+
 	int32_t freedPages = -1;
 
 	g_address_range* range = pool->first;
@@ -163,18 +178,22 @@ int32_t addressRangePoolFree(g_address_range_pool* pool, g_address base)
 
 	if(!range)
 	{
-		logWarn("%! bug: tried to free a range (%h) that doesn't exist", "addrpool", base);
+		logInfo("%! bug: tried to free a range (%h) that doesn't exist", "addrpool", base);
+		mutexRelease(&pool->lock);
 		return freedPages;
 	}
 	if(!range->used)
 	{
 		logInfo("%! bug: multiple free calls for range %h (pages: %i)", "addrpool", range->base, range->pages);
+		mutexRelease(&pool->lock);
 		return freedPages;
 	}
 
 	range->used = false;
 	freedPages = range->pages;
 	addressRangePoolMerge(pool);
+
+	mutexRelease(&pool->lock);
 	return freedPages;
 }
 
@@ -182,7 +201,7 @@ void addressRangePoolMerge(g_address_range_pool* pool)
 {
 	g_address_range* current = (g_address_range*) pool->first;
 
-	while(current)
+	while(current && current->next)
 	{
 		if(!current->used && !current->next->used && ((current->base + current->pages * G_PAGE_SIZE) == current->next->base))
 		{
@@ -209,13 +228,14 @@ void addressRangePoolDump(g_address_range_pool* pool, bool onlyFree)
 	}
 
 	g_address_range* current = (g_address_range*) pool->first;
-	do
+	while(current)
 	{
 		if(!onlyFree || !current->used)
 		{
 			logDebug("%#  used: %b, base: %h, pages: %i (- %h)", current->used, current->base, current->pages, current->base + current->pages * G_PAGE_SIZE);
 		}
-	} while((current = current->next) != 0);
+		current = current->next;
+	}
 }
 
 void addressRangePoolReleaseRanges(g_address_range_pool* pool)
@@ -224,7 +244,7 @@ void addressRangePoolReleaseRanges(g_address_range_pool* pool)
 	while(range)
 	{
 		g_address_range* next = range->next;
-		delete range;
+		heapFree(range);
 		range = next;
 	}
 	pool->first = 0;

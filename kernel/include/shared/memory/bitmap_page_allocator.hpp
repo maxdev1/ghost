@@ -23,11 +23,13 @@
 
 #include "ghost/types.h"
 #include "shared/memory/bitmap.hpp"
+#include "shared/system/mutex.hpp"
 
 struct g_bitmap_page_allocator
 {
 	uint32_t freePageCount;
 	g_bitmap_entry* bitmap;
+	g_mutex lock;
 };
 
 void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, g_bitmap_entry* bitmap);

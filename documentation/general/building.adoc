@@ -32,6 +32,7 @@ should be able to easily install them with `apt`;
 
 * `apt install libmpfr-dev libgmp-dev libmpc-dev`
 * `apt install autoconf2.64 pkg-config grub2`
+* `apt install texinfo flex bison xorriso`
 * `apt install gcc g++ nasm`
 * `apt install asciidoc asciidoctor`
 

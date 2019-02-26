@@ -22,7 +22,7 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/gdt.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "kernel/system/mutex.hpp"
+#include "shared/system/mutex.hpp"
 #include "kernel/system/system.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/filesystem/ramdisk.hpp"
@@ -68,26 +68,27 @@ void kernelInitialize(g_setup_information* setupInformation)
 
 void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 {
+	logDebug("%! has entered kernel", "bsp");
 	mutexAcquire(&bootstrapCoreLock);
 	systemInitializeBsp(initialPdPhys);
 	taskingInitializeBsp();
-#warning "TODO: initialize filesystem here"
-#warning "TODO: load idle process"
 	mutexRelease(&bootstrapCoreLock);
 
 	systemWaitForApplicationCores();
+
 	interruptsEnable();
 }
 
 void kernelRunApplicationCore()
 {
+	logDebug("%! has entered kernel, waiting for bsp", "ap");
 	mutexAcquire(&bootstrapCoreLock);
 	mutexRelease(&bootstrapCoreLock);
 
 	mutexAcquire(&applicationCoreLock);
+	logDebug("%! initializing %i", "ap", processorGetCurrentId());
 	systemInitializeAp();
 	taskingInitializeAp();
-#warning "TODO load idle process"
 	mutexRelease(&applicationCoreLock);
 
 	systemWaitForApplicationCores();

@@ -103,11 +103,11 @@ void processorEnableSSE()
 {
 	if(processorHasFeature(g_cpuid_standard_edx_feature::SSE))
 	{
-		logInfo("%! support enabled", "sse");
 		_enableSSE();
+		logInfo("%! support enabled", "sse");
 	} else
 	{
-		logWarn("%! no support detected", "sse");
+		logWarn("%! not supported", "sse");
 	}
 }
 

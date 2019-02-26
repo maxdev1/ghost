@@ -96,7 +96,7 @@ void chunkAllocatorMerge(g_chunk_allocator* allocator)
 {
 
 	g_chunk_header* current = (g_chunk_header*) allocator->first;
-	while(current)
+	while(current && current->next)
 	{
 		if(!(current->used) && !(current->next->used))
 		{

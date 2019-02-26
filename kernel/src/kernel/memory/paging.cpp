@@ -90,8 +90,9 @@ void pagingMapToTemporaryMappedDirectory(g_physical_address directoryPhys, g_vir
 	if((virt & G_PAGE_ALIGN_MASK) || (phys & G_PAGE_ALIGN_MASK))
 		kernelPanic("%! tried to map unaligned addresses: %h -> %h", "paging", virt, phys);
 
-	g_page_directory directoryTemp = (g_page_directory) addressRangePoolAllocate(memoryVirtualRangePool, 1);
-	pagingMapPage((g_virtual_address) directoryTemp, directoryPhys);
+	g_virtual_address directoryTempVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
+	g_page_directory directoryTemp = (g_page_directory) directoryTempVirt;
+	pagingMapPage(directoryTempVirt, directoryPhys);
 
 	uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(virt);
 	uint32_t pi = G_PAGE_IN_TABLE_INDEX(virt);
@@ -99,37 +100,37 @@ void pagingMapToTemporaryMappedDirectory(g_physical_address directoryPhys, g_vir
 	// Create table if necessary
 	if(directoryTemp[ti] == 0)
 	{
-		g_physical_address newTablePage = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-		if(!newTablePage)
-			kernelPanic("%! no pages left for mapping", "paging");
+		g_physical_address tablePhys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+		g_virtual_address tableTempVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
+		pagingMapPage(tableTempVirt, tablePhys);
 
-		g_virtual_address tableTemp = (g_virtual_address) addressRangePoolAllocate(memoryVirtualRangePool, 1);
-		pagingMapPage(tableTemp, newTablePage);
-
-		g_page_table table = (g_page_table) tableTemp;
+		g_page_table tableTemp = (g_page_table) tableTempVirt;
 		for(uint32_t i = 0; i < 1024; i++)
-			table[i] = 0;
+			tableTemp[i] = 0;
 
-		addressRangePoolFree(memoryVirtualRangePool, tableTemp);
+		pagingUnmapPage(tableTempVirt);
+		addressRangePoolFree(memoryVirtualRangePool, tableTempVirt);
 
-		directoryTemp[ti] = newTablePage | tableFlags;
+		directoryTemp[ti] = tablePhys | tableFlags;
 	}
 
 	// Insert address into table
 	g_physical_address tablePhys = (directoryTemp[ti] & ~G_PAGE_ALIGN_MASK);
-	g_virtual_address tableTemp = addressRangePoolAllocate(memoryVirtualRangePool, 1);
-	pagingMapPage(tableTemp, tablePhys);
+	g_virtual_address tableTempVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
+	pagingMapPage(tableTempVirt, tablePhys);
 
-	g_page_table table = (g_page_table) tableTemp;
-	if(table[pi] == 0 || allowOverride)
+	g_page_table tableTemp = (g_page_table) tableTempVirt;
+	if(tableTemp[pi] == 0 || allowOverride)
 	{
-		table[pi] = phys | pageFlags;
-		addressRangePoolFree(memoryVirtualRangePool, tableTemp);
-		addressRangePoolFree(memoryVirtualRangePool, (g_virtual_address) directoryTemp);
+		tableTemp[pi] = phys | pageFlags;
+
+		addressRangePoolFree(memoryVirtualRangePool, tableTempVirt);
+		addressRangePoolFree(memoryVirtualRangePool, directoryTempVirt);
 		return;
 	}
 
-	logWarn("%! tried to map area to virtual pd %h that was already mapped, %h -> %h, table contains %h", "addrspace", directory, virtual_addr, phys, table[pi]);
+	logWarn("%! tried to map area to physical pd %h that was already mapped, %h -> %h, table contains %h", "addrspace", directoryPhys, virt, phys,
+			tableTemp[pi]);
 	kernelPanic("%! duplicate mapping", "paging");
 }
 

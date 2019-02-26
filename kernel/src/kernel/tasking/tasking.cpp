@@ -22,7 +22,6 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/gdt.hpp"
 #include "kernel/system/processor/processor.hpp"
-#include "kernel/system/mutex.hpp"
 #include "kernel/kernel.hpp"
 #include "shared/logger/logger.hpp"
 
@@ -33,10 +32,10 @@ static g_tid taskingIdNext = 0;
 
 void test()
 {
+	logInfo("Hello from core %i!", processorGetCurrentId());
 	int i = 0;
 	for(;;)
 	{
-		logInfo("Core %i: Hello %i!", processorGetCurrentId(), i++);
 	}
 }
 
@@ -62,14 +61,12 @@ void taskingInitializeBsp()
 {
 	taskingLocal = (g_tasking_local*) heapAllocate(sizeof(g_tasking_local) * processorGetNumberOfCores());
 
-#warning "TODO: lock each memory structure correctly before doing this"
 	g_tasking_local* local = &taskingLocal[processorGetCurrentId()];
 	taskingInitializeLocal(local);
 }
 
 void taskingInitializeAp()
 {
-#warning "TODO: lock each memory structure correctly before doing this"
 	g_tasking_local* local = &taskingLocal[processorGetCurrentId()];
 	taskingInitializeLocal(local);
 }
@@ -86,7 +83,7 @@ g_physical_address taskingCreatePageDirectory()
 	// clone kernel space mappings
 	for(uint32_t ti = 0; ti < 1024; ti++)
 	{
-		if(!((directoryTemp[ti] & G_PAGE_ALIGN_MASK) & G_PAGE_TABLE_USERSPACE))
+		if(!((directoryCurrent[ti] & G_PAGE_ALIGN_MASK) & G_PAGE_TABLE_USERSPACE))
 			directoryTemp[ti] = directoryCurrent[ti];
 		else
 			directoryTemp[ti] = 0;
@@ -181,6 +178,8 @@ void taskingStore(g_processor_state* stateIn)
 		taskingSchedule();
 }
 
+int counted = 0;
+
 void taskingRestore(g_processor_state* stateOut)
 {
 	g_tasking_local* local = taskingGetLocal();
@@ -188,6 +187,10 @@ void taskingRestore(g_processor_state* stateOut)
 		kernelPanic("%! tried to restore without a current task", "tasking");
 
 	*stateOut = local->current->state;
+
+	logInfo("Before switching page directory");
+	for(;;)
+		;
 
 	pagingSwitchSpace(local->current->pageDirectory);
 }

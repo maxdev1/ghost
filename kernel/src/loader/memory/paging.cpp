@@ -27,16 +27,16 @@
 
 void pagingInitialize(g_virtual_address reservedAreaEnd)
 {
-	g_address pageDirectoryAddress = bitmapPageAllocatorAllocate(&loaderPhysicalAllocator);
-	if(!pageDirectoryAddress)
+	g_physical_address pageDirPhys = bitmapPageAllocatorAllocate(&loaderPhysicalAllocator);
+	if(!pageDirPhys)
 		loaderPanic("pagingInitialize: failed to allocate memory for page directory");
 
-	loaderSetupInformation.initialPageDirectoryPhysical = pageDirectoryAddress;
-	uint32_t* pageDirectory = (uint32_t*) pageDirectoryAddress;
+	loaderSetupInformation.initialPageDirectoryPhysical = pageDirPhys;
+	g_page_directory pageDirectory = (g_page_directory) pageDirPhys;
 
 	for(uint32_t i = 0; i < 1024; i++)
 		pageDirectory[i] = 0;
-	pageDirectory[1023] = pageDirectoryAddress | DEFAULT_KERNEL_TABLE_FLAGS;
+	pageDirectory[1023] = pageDirPhys | DEFAULT_KERNEL_TABLE_FLAGS;
 
 	// Identity-map reserved area;
 	// User code must be able to access the lower memory, for example to access
@@ -73,7 +73,8 @@ void pagingRelocateMultibootModules(g_page_directory pageDirectory, g_address st
 		uint32_t modVirtStart = modVirtStartAligned + modPhysOff;
 
 		for(uint32_t off = 0; off < modPhysEndAligned - modPhysStartAligned; off += G_PAGE_SIZE)
-			pagingMapPage(pageDirectory, modVirtStartAligned + off, modPhysStartAligned + off, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+			pagingMapPage(pageDirectory, modVirtStartAligned + off, modPhysStartAligned + off, DEFAULT_USER_TABLE_FLAGS,
+			DEFAULT_USER_PAGE_FLAGS);
 
 		// Finish relocation by updating multiboot structure
 		logDebugn("%! relocated, mapped phys %h-%h", "mmodule", module->moduleStart, module->moduleEnd);
@@ -85,7 +86,7 @@ void pagingRelocateMultibootModules(g_page_directory pageDirectory, g_address st
 	}
 }
 
-void pagingIdentityMap(uint32_t* directory, uint32_t start, uint32_t end, uint32_t tableFlags, uint32_t pageFlags)
+void pagingIdentityMap(g_page_directory directory, uint32_t start, uint32_t end, uint32_t tableFlags, uint32_t pageFlags)
 {
 	logDebug("%! identity-mapping: %h - %h", "paging", start, end);
 
@@ -96,7 +97,7 @@ void pagingIdentityMap(uint32_t* directory, uint32_t start, uint32_t end, uint32
 	}
 }
 
-void pagingMapPage(uint32_t* directory, g_address virtualAddress, g_address physicalAddress, uint32_t tableFlags, uint32_t pageFlags)
+void pagingMapPage(g_page_directory directory, g_address virtualAddress, g_address physicalAddress, uint32_t tableFlags, uint32_t pageFlags)
 {
 	uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(virtualAddress);
 	uint32_t pi = G_PAGE_IN_TABLE_INDEX(virtualAddress);
@@ -107,14 +108,14 @@ void pagingMapPage(uint32_t* directory, g_address virtualAddress, g_address phys
 		if(!tablePage)
 			loaderPanic("pagingMapPage: failed to map %h -> %h, could not allocate page for table", virtualAddress, physicalAddress);
 
-		uint32_t* table = (uint32_t*) tablePage;
+		g_page_table table = (g_page_table) tablePage;
 		for(uint32_t i = 0; i < 1024; i++)
 			table[i] = 0;
 
 		directory[ti] = tablePage | tableFlags;
 	}
 
-	uint32_t* table = (uint32_t*) (directory[ti] & 0xFFFFF000);
+	g_page_table table = (g_page_table) (directory[ti] & 0xFFFFF000);
 	if(table[pi])
 		loaderPanic("pagingMapPage: duplicate mapping to address %h -> %h, table value: %h", virtualAddress, physicalAddress, table[pi]);
 
@@ -133,8 +134,8 @@ bool pagingMapPageToRecursiveDirectory(uint32_t virtualAddress, uint32_t physica
 	uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(virtualAddress);
 	uint32_t pi = G_PAGE_IN_TABLE_INDEX(virtualAddress);
 
-	uint32_t* directory = (uint32_t*) 0xFFFFF000;
-	uint32_t* table = ((uint32_t*) 0xFFC00000) + (0x400 * ti);
+	g_page_directory directory = (g_page_directory) 0xFFFFF000;
+	g_page_table table = ((g_page_table) 0xFFC00000) + (0x400 * ti);
 
 	if(directory[ti] == 0)
 	{

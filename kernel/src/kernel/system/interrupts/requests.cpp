@@ -29,8 +29,6 @@
 
 void requestsHandle(g_processor_state* state)
 {
-	taskingStore(state);
-
 	// Handle IRQ
 	const uint32_t irq = state->intr - 0x20;
 	if(irq == 0)
@@ -39,9 +37,7 @@ void requestsHandle(g_processor_state* state)
 	} else
 	{
 		logInfo("received unhandled irq %i", state->intr);
-		for(;;);
+		for(;;)
+			;
 	}
-
-	// Restore state from current task
-	taskingRestore(state);
 }
