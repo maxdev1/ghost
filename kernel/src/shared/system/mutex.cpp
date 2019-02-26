@@ -18,7 +18,7 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "kernel/system/mutex.hpp"
+#include "shared/system/mutex.hpp"
 
 #include "shared/logger/logger.hpp"
 

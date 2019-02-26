@@ -20,10 +20,26 @@
 
 #include "kernel/system/interrupts/exceptions.hpp"
 #include "shared/logger/logger.hpp"
+#include "kernel/memory/paging.hpp"
+
+uint32_t exceptionsGetCR2()
+{
+	uint32_t addr;
+	asm volatile("mov %%cr2, %0" : "=r"(addr));
+	return addr;
+}
 
 void exceptionsHandle(g_processor_state* state)
 {
 	logInfo("%*%! no resolution for exception %i, code %i, hanging system", 0x0C, "exception", state->intr, state->error);
+
+	for(;;);
+	if(state->intr == 0xE)
+	{
+		g_virtual_address accessedVirtual = G_PAGE_ALIGN_DOWN(exceptionsGetCR2());
+		g_physical_address accessedPhysical = pagingVirtualToPhysical(accessedVirtual);
+		logInfo("%# tried to access %h, points to %h", accessedVirtual, accessedPhysical);
+	}
 	for(;;)
 	{
 		asm("hlt");

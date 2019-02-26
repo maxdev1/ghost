@@ -23,7 +23,7 @@
 
 #include "ghost/kernel.h"
 #include "kernel/system/processor/processor.hpp"
-#include "kernel/system/mutex.hpp"
+#include "shared/system/mutex.hpp"
 #include "kernel/memory/paging.hpp"
 #include "kernel/memory/address_range_pool.hpp"
 

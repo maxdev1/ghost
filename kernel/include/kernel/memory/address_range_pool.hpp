@@ -22,6 +22,7 @@
 #define __KERNEL_ADDRESS_RANGE_POOL__
 
 #include "ghost/types.h"
+#include "shared/system/mutex.hpp"
 
 struct g_address_range
 {
@@ -35,6 +36,7 @@ struct g_address_range
 struct g_address_range_pool
 {
 	g_address_range* first;
+	g_mutex lock;
 };
 
 void addressRangePoolInitialize(g_address_range_pool* pool);

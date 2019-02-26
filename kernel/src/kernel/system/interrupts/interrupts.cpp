@@ -26,8 +26,8 @@
 #include "kernel/system/interrupts/ioapic.hpp"
 #include "kernel/system/interrupts/pic.hpp"
 #include "kernel/system/interrupts/idt.hpp"
-#include "kernel/system/mutex.hpp"
-
+#include "shared/system/mutex.hpp"
+#include "kernel/tasking/tasking.hpp"
 #include "kernel/kernel.hpp"
 
 void interruptsInitializeBsp()
@@ -71,10 +71,14 @@ void interruptsCheckPrerequisites()
  */
 extern "C" g_processor_state* _interruptHandler(g_processor_state* state)
 {
+	taskingStore(state);
+
 	if(state->intr < 0x20)
 		exceptionsHandle(state);
 	else
 		requestsHandle(state);
+
+	taskingRestore(state);
 
 	lapicSendEndOfInterrupt();
 	return state;

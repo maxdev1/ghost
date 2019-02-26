@@ -55,7 +55,7 @@ void systemInitializeAp()
 
 void systemWaitForApplicationCores()
 {
-	logInfo("%! waiting for %i application processors", "kern", applicationCoresWaiting);
+	logInfo("%! waiting for %i application processors", processorGetCurrentId() == 0 ? "bsp" : "ap", applicationCoresWaiting);
 	while(applicationCoresWaiting > 0)
 		asm("pause");
 }

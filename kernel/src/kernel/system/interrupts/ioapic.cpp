@@ -55,7 +55,7 @@ void ioapicInitialize(g_ioapic* io)
 	// If not right ID, reprogram it
 	if(reportedId != io->id)
 	{
-		logWarn("%! has different ID (%i) than what ACPI reported (%i), reprogramming", "ioapic", idValue, reportedId);
+		logWarn("%! has different ID (%i) than what ACPI reported (%i), reprogramming", "ioapic", io->id, reportedId);
 
 		// Remove the actual ID bits
 		idValue &= ~(0xF << 24);
@@ -85,8 +85,7 @@ void ioapicCreateMapping(g_ioapic* io)
 	// Map the two pages
 	logDebug("%! mapped at %h (phys %h)", "ioapic", io->virtualAddress, io->physicalAddress);
 	pagingMapPage(G_PAGE_ALIGN_DOWN(io->virtualAddress), G_PAGE_ALIGN_DOWN(io->physicalAddress), DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
-	pagingMapPage(G_PAGE_ALIGN_DOWN(io->virtualAddress) + G_PAGE_SIZE, G_PAGE_ALIGN_DOWN(io->physicalAddress) + G_PAGE_SIZE, DEFAULT_KERNEL_TABLE_FLAGS,
-	DEFAULT_KERNEL_PAGE_FLAGS);
+	pagingMapPage(G_PAGE_ALIGN_DOWN(io->virtualAddress) + G_PAGE_SIZE, G_PAGE_ALIGN_DOWN(io->physicalAddress) + G_PAGE_SIZE, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
 }
 
 uint32_t ioapicRead(g_ioapic* io, uint32_t reg)

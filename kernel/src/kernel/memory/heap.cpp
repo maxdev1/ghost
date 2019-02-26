@@ -24,6 +24,7 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/chunk_allocator.hpp"
 #include "shared/memory/bitmap_page_allocator.hpp"
+#include "shared/system/mutex.hpp"
 
 static g_chunk_allocator heapAllocator;
 static g_virtual_address heapStart = 0;
@@ -31,14 +32,20 @@ static g_virtual_address heapEnd = 0;
 static uint32_t heapAmountInUse = 0;
 static bool heapInitialized = false;
 
+static g_mutex heapLock = 0;
+
 void heapInitialize(g_virtual_address start, g_virtual_address end)
 {
+	mutexAcquire(&heapLock);
+
 	chunkAllocatorInitialize(&heapAllocator, start, end);
 	heapStart = start;
 	heapEnd = end;
 
 	logDebug("%! initialized with area: %h - %h", "kernheap", start, end);
 	heapInitialized = true;
+
+	mutexRelease(&heapLock);
 }
 
 bool heapExpand()
@@ -65,11 +72,14 @@ bool heapExpand()
 	heapEnd += G_CONST_KERNEL_HEAP_EXPAND_STEP;
 
 	logDebug("%! expanded to end %h (%ikb in use)", "kernheap", heapEnd, heapAmountInUse / 1024);
+
 	return true;
 }
 
 void* heapAllocate(uint32_t size)
 {
+	mutexAcquire(&heapLock);
+
 	if(!heapInitialized)
 		kernelPanic("%! tried to use uninitialized kernel heap", "kernheap");
 
@@ -78,6 +88,7 @@ void* heapAllocate(uint32_t size)
 	{
 		if(heapExpand())
 		{
+			mutexRelease(&heapLock);
 			return heapAllocate(size);
 		}
 
@@ -86,6 +97,7 @@ void* heapAllocate(uint32_t size)
 	}
 
 	heapAmountInUse += size;
+	mutexRelease(&heapLock);
 	return ptr;
 }
 

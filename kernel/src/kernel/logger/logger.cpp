@@ -29,22 +29,19 @@ static g_mutex_reentrant printLock;
 
 void loggerPrint(const char* message, ...)
 {
-	if(smpInitialized)
-		mutexReentrantAcquire(&printLock);
+	mutexReentrantAcquire(&printLock);
 
 	va_list valist;
 	va_start(valist, message);
 	loggerPrintFormatted(message, valist);
 	va_end(valist);
 
-	if(smpInitialized)
-		mutexReentrantRelease(&printLock);
+	mutexReentrantRelease(&printLock);
 }
 
 void loggerPrintln(const char* message, ...)
 {
-	if(smpInitialized)
-		mutexReentrantAcquire(&printLock);
+	mutexReentrantAcquire(&printLock);
 
 	va_list valist;
 	va_start(valist, message);
@@ -52,19 +49,16 @@ void loggerPrintln(const char* message, ...)
 	va_end(valist);
 	loggerPrintCharacter('\n');
 
-	if(smpInitialized)
-		mutexReentrantRelease(&printLock);
+	mutexReentrantRelease(&printLock);
 }
 
 void loggerManualLock()
 {
-	if(smpInitialized)
-		mutexReentrantAcquire(&printLock);
+	mutexReentrantAcquire(&printLock);
 }
 
 void loggerManualUnlock()
 {
-	if(smpInitialized)
-		mutexReentrantRelease(&printLock);
+	mutexReentrantRelease(&printLock);
 }
 

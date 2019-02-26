@@ -54,9 +54,9 @@ void lapicInitialize()
 {
 	// Read version
 #if G_LOGGING_DEBUG
-	uint32_t apicVersionRegVal = read(APIC_REGISTER_VERSION);
+	uint32_t apicVersionRegVal = lapicRead(APIC_REGISTER_VERSION);
 
-	uint32_t localId = read_id();
+	uint32_t localId = lapicReadId();
 	uint8_t apicVersion = apicVersionRegVal & 0xFF;
 	uint16_t maxLvtIndex = (apicVersionRegVal >> 16) & 0xFF;
 	logDebug("%! id %i, version %h (%s), maxlvtindex: %i", "lapic", localId,
@@ -133,6 +133,8 @@ void lapicStartTimer()
 
 uint32_t lapicReadId()
 {
+	if(!globalPrepared)
+		return 0;
 	return (lapicRead(APIC_REGISTER_ID) >> 24) & 0xFF;
 }
 
