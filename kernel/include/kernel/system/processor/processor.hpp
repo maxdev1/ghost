@@ -107,48 +107,99 @@ enum class g_cpuid_extended_ecx_feature
 struct g_processor
 {
 	uint32_t id;
-	uint32_t index;
-	uint32_t apic;
+	uint32_t hardwareId;
+	uint32_t apicId;
 	g_processor* next;
 	bool bsp;
 };
 
+/**
+ * Checks whether the CPU supports the CPUID instruction.
+ */
 extern "C" bool _checkForCPUID();
 
+/**
+ * Checks if the processor supports CPUID.
+ */
+bool processorSupportsCpuid();
+
+/**
+ * Performs a CPUID call and returns values in the out parameters.
+ */
+void processorCpuid(uint32_t code, uint32_t* outA, uint32_t* outB, uint32_t* outC, uint32_t* outD);
+
+/**
+ * Enables SSE on the current processor.
+ */
 extern "C" void _enableSSE();
 
+/**
+ * Initializes the bootstrap processor.
+ */
 void processorInitializeBsp();
 
+/**
+ * Initializes an application processor. Is called for each application processor
+ * in the system.
+ */
 void processorInitializeAp();
 
-void processorAdd(uint32_t apicId, uint32_t processorId);
+/**
+ * Adds a processor to the list of processors. This is called when the MADT
+ * tables are parsed.
+ *
+ * Each processor gets a consecutive id assigned. This can be different to
+ * the processors hardware id.
+ *
+ * @param apicId the id of the local APIC
+ * @param processorId the processor id provided in the MADT
+ */
+void processorAdd(uint32_t apicId, uint32_t hardwareId);
 
+/**
+ * Returns the list of existing processors.
+ */
 g_processor* processorGetList();
 
+/**
+ * Checks if the list of processors was already loaded.
+ */
 bool processorListAvailable();
 
-uint32_t processorGetId(g_processor* proc);
+/**
+ * Returns the number of available processors.
+ */
+uint16_t processorGetNumberOfProcessors();
 
-uint16_t processorGetNumberOfCores();
-
+/**
+ * Returns the logical id of the current processor.
+ */
 uint32_t processorGetCurrentId();
 
 /**
- * Creates an id mapping table that contains a mapping
- * from APIC id to processor index.
+ * Creates an id mapping table that contains a mapping from
+ * APIC id to processor logical id.
  */
-void processorCreateMappingTable();
+void processorApicIdCreateMappingTable();
 
-bool processorSupportsCpuid();
-
-void processorCpuid(uint32_t code, uint32_t* outA, uint32_t* outB, uint32_t* outC, uint32_t* outD);
-
+/**
+ * Checks if the processor supports the given standard EDX feature.
+ */
 bool processorHasFeature(g_cpuid_standard_edx_feature feature);
 
+/**
+ * Checks if the processor supports the given standard ECX feature.
+ */
 bool processorHasFeature(g_cpuid_extended_ecx_feature feature);
 
+/**
+ * Prints information about the processor.
+ */
 void processorPrintInformation();
 
+/**
+ * Enables SSE on the processor.
+ */
 void processorEnableSSE();
 
 /**
@@ -157,8 +208,14 @@ void processorEnableSSE();
  */
 void processorGetVendor(char* out);
 
+/**
+ * Reads the model-specific register.
+ */
 void processorReadMsr(uint32_t msr, uint32_t* lo, uint32_t* hi);
 
+/**
+ * Writes the model-specific register.
+ */
 void processorWriteMsr(uint32_t msr, uint32_t lo, uint32_t hi);
 
 #endif

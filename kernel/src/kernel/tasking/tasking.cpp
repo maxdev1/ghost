@@ -69,7 +69,7 @@ void taskingInitializeLocal(g_tasking_local* local)
 
 void taskingInitializeBsp()
 {
-	taskingLocal = (g_tasking_local*) heapAllocate(sizeof(g_tasking_local) * processorGetNumberOfCores());
+	taskingLocal = (g_tasking_local*) heapAllocate(sizeof(g_tasking_local) * processorGetNumberOfProcessors());
 
 	g_tasking_local* local = &taskingLocal[processorGetCurrentId()];
 	taskingInitializeLocal(local);

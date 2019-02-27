@@ -27,7 +27,7 @@ static g_gdt_list_entry** gdtList;
 
 void gdtPrepare()
 {
-	uint32_t cores = processorGetNumberOfCores();
+	uint32_t cores = processorGetNumberOfProcessors();
 	gdtList = (g_gdt_list_entry**) heapAllocate(sizeof(g_gdt_list_entry*) * cores);
 
 	for(uint32_t i = 0; i < cores; i++)
