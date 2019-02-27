@@ -96,7 +96,7 @@ void smpInitializeCore(g_processor* cpu)
 	uint32_t vectorValue = (G_CONST_SMP_STARTUP_AREA_CODE_START >> 12) & 0xFF;
 
 	// Send INIT
-	lapicWrite(APIC_REGISTER_INT_COMMAND_HIGH, cpu->apic << 24);
+	lapicWrite(APIC_REGISTER_INT_COMMAND_HIGH, cpu->apicId << 24);
 	lapicWrite(APIC_REGISTER_INT_COMMAND_LOW, APIC_ICR_DELMOD_INIT | APIC_ICR_LEVEL_ASSERT);
 	lapicWaitForIcrSend();
 
@@ -105,7 +105,7 @@ void smpInitializeCore(g_processor* cpu)
 	pitPerformSleep();
 
 	// Send SIPI
-	lapicWrite(APIC_REGISTER_INT_COMMAND_HIGH, cpu->apic << 24);
+	lapicWrite(APIC_REGISTER_INT_COMMAND_HIGH, cpu->apicId << 24);
 	lapicWrite(APIC_REGISTER_INT_COMMAND_LOW, vectorValue | APIC_ICR_DELMOD_SIPI | APIC_ICR_LEVEL_ASSERT);
 
 	// Sleep 200µs
@@ -113,7 +113,7 @@ void smpInitializeCore(g_processor* cpu)
 	pitPerformSleep();
 
 	// Send SIPI
-	lapicWrite(APIC_REGISTER_INT_COMMAND_HIGH, cpu->apic << 24);
+	lapicWrite(APIC_REGISTER_INT_COMMAND_HIGH, cpu->apicId << 24);
 	lapicWrite(APIC_REGISTER_INT_COMMAND_LOW, vectorValue | APIC_ICR_DELMOD_SIPI | APIC_ICR_LEVEL_ASSERT);
 
 	// Sleep 200µs
