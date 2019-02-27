@@ -30,10 +30,23 @@ g_tasking_local* taskingLocal;
 static g_mutex taskingIdLock = 0;
 static g_tid taskingIdNext = 0;
 
+static g_mutex mu = 0;
 void test()
 {
 	int x = processorGetCurrentId();
-	logInfo("Hello from core %i!", x);
+	mutexAcquire(&mu);
+	logInfo("Core %i: Test 1: Stack %h", x, &x);
+	mutexRelease(&mu);
+	for(;;)
+	{
+	}
+}
+void test2()
+{
+	int x = processorGetCurrentId();
+	mutexAcquire(&mu);
+	logInfo("Core %i: Test 2: Stack %h", x, &x);
+	mutexRelease(&mu);
 	for(;;)
 	{
 	}
@@ -53,8 +66,8 @@ void taskingInitializeLocal(g_tasking_local* local)
 	gdtSetTssEsp0(local->kernelStackBase);
 
 	// Create idle thread
-	g_task* thread = taskingCreateThread((g_virtual_address) test, G_SECURITY_LEVEL_KERNEL);
-	taskingAssign(local, thread);
+	taskingAssign(local, taskingCreateThread((g_virtual_address) test, G_SECURITY_LEVEL_KERNEL));
+	taskingAssign(local, taskingCreateThread((g_virtual_address) test2, G_SECURITY_LEVEL_KERNEL));
 }
 
 void taskingInitializeBsp()
@@ -131,7 +144,10 @@ g_task* taskingCreateThread(g_virtual_address entry, g_security_level level)
 	task->id = taskingGetNextId();
 	task->pageDirectory = taskingCreatePageDirectory();
 
-	// This is for user threads:
+	// Switch to task directory
+	g_physical_address currentDir = (g_physical_address) pagingGetCurrentSpace();
+	pagingSwitchSpace(task->pageDirectory);
+
 	// Create range pool
 	task->virtualRangePool = (g_address_range_pool*) heapAllocate(sizeof(g_address_range_pool));
 	addressRangePoolInitialize(task->virtualRangePool);
@@ -140,40 +156,20 @@ g_task* taskingCreateThread(g_virtual_address entry, g_security_level level)
 	// Create stack
 	g_physical_address stackPhys = (g_physical_address) bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
 	g_virtual_address stackVirt = (g_virtual_address) addressRangePoolAllocate(task->virtualRangePool, 1);
-	pagingMapToTemporaryMappedDirectory(task->pageDirectory, stackVirt, stackPhys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
-
-	// Calculate stack base
-	g_virtual_address ebp = stackVirt + G_PAGE_SIZE;
-	task->stack = ebp;
+	pagingMapPage(stackVirt, stackPhys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+	g_virtual_address esp = stackVirt + G_PAGE_SIZE;
+	logInfo("Core %i: Task %i stack: %h %h", processorGetCurrentId(), task->id, stackVirt, stackPhys);
+	task->stack = esp;
 
 	// Initialize task state
 	memorySetBytes((void*) &task->state, 0, sizeof(g_processor_state));
-	task->state.esp = ebp;
+	task->state.esp = esp;
 	task->state.eip = entry;
 	task->state.eflags = 0x200;
 	taskingApplySecurityLevel(&task->state, level);
 
-	// DEBUG TEST
-#warning "..."
-	// Check
-	g_virtual_address vdir = addressRangePoolAllocate(memoryVirtualRangePool, 1);
-	g_page_directory dir = (g_page_directory) vdir;
-	volatile int pages = 0;
-	pagingMapPage(vdir, task->pageDirectory);
-	for(int i = 0; i < 1024; i++)
-	{
-		if(dir[i])
-		{
-			g_virtual_address vtable = addressRangePoolAllocate(memoryVirtualRangePool, 1);
-			pagingMapPage(vtable, dir[i] & ~G_PAGE_ALIGN_MASK);
-			addressRangePoolFree(memoryVirtualRangePool, vtable);
-			pagingUnmapPage(vtable);
-		}
-	}
-	pagingUnmapPage(vdir);
-	addressRangePoolFree(memoryVirtualRangePool, vdir);
-	// DEBUG TEST END
-
+	// Switch back
+	pagingSwitchSpace(currentDir);
 	return task;
 }
 
@@ -218,7 +214,6 @@ void taskingSchedule()
 
 	if(local->current)
 	{
-
 		// Just find current entry and take next
 		g_task_entry* entry = local->list;
 		while(entry)
@@ -229,10 +224,17 @@ void taskingSchedule()
 			}
 			entry = entry->next;
 		}
-
 		if(entry)
 		{
-			local->current = entry->task;
+			entry = entry->next;
+
+			if(entry)
+			{
+				local->current = entry->task;
+			} else
+			{
+				local->current = local->list->task;
+			}
 		} else
 		{
 			local->current = local->list->task;
