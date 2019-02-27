@@ -107,6 +107,7 @@ enum class g_cpuid_extended_ecx_feature
 struct g_processor
 {
 	uint32_t id;
+	uint32_t index;
 	uint32_t apic;
 	g_processor* next;
 	bool bsp;
@@ -134,7 +135,7 @@ uint32_t processorGetCurrentId();
 
 /**
  * Creates an id mapping table that contains a mapping
- * from APIC id to processor id.
+ * from APIC id to processor index.
  */
 void processorCreateMappingTable();
 

@@ -25,6 +25,7 @@
 
 static g_processor* processors = 0;
 static uint32_t processorsAvailable = 0;
+
 static uint32_t* apicIdToProcessorMapping = 0;
 
 void processorInitializeBsp()
@@ -66,7 +67,7 @@ void processorCreateMappingTable()
 	p = processors;
 	while(p)
 	{
-		mapping[p->apic] = p->id;
+		mapping[p->apic] = p->index;
 		p = p->next;
 	}
 	apicIdToProcessorMapping = mapping;
@@ -87,6 +88,7 @@ void processorAdd(uint32_t apicId, uint32_t processorId)
 
 	g_processor* core = (g_processor*) heapAllocate(sizeof(g_processor));
 	core->id = processorId;
+	core->index = processorsAvailable;
 	core->apic = apicId;
 	core->next = processors;
 
