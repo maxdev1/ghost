@@ -19,9 +19,10 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/tasking/tasking.hpp"
+#include "kernel/system/processor/processor.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/gdt.hpp"
-#include "kernel/system/processor/processor.hpp"
+#include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/kernel.hpp"
 #include "shared/logger/logger.hpp"
 
@@ -30,41 +31,11 @@ g_tasking_local* taskingLocal;
 static g_mutex taskingIdLock = 0;
 static g_tid taskingIdNext = 0;
 
-int as[4] =
-{ 0, 0, 0, 0 };
-int bs[4] =
-{ 0, 0, 0, 0 };
-
-void test()
-{
-	logInfo("Hi!");
-	for(;;)
-	{
-		as[processorGetCurrentId()]++;
-
-		if(as[processorGetCurrentId()] % 100000 == 0)
-		{
-			logInfo("%i says: a(%i %i %i %i), b(%i %i %i %i)", processorGetCurrentId(), as[0], as[1], as[2], as[3], bs[0], bs[1], bs[2], bs[3]);
-		}
-	}
-}
-void test2()
-{
-	for(;;)
-	{
-		bs[processorGetCurrentId()]++;
-	}
-}
-
 void taskingInitializeLocal(g_tasking_local* local)
 {
 	local->lock = 0;
 	local->list = 0;
 	local->current = 0;
-
-	// Create idle thread
-	taskingAssign(local, taskingCreateThread((g_virtual_address) test, G_SECURITY_LEVEL_KERNEL));
-	taskingAssign(local, taskingCreateThread((g_virtual_address) test2, G_SECURITY_LEVEL_KERNEL));
 }
 
 void taskingInitializeBsp()
@@ -135,21 +106,23 @@ void taskingApplySecurityLevel(g_processor_state* state, g_security_level securi
 	}
 }
 
-g_task* taskingCreateThread(g_virtual_address entry, g_security_level level)
+g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_security_level level)
 {
 	g_task* task = (g_task*) heapAllocate(sizeof(g_task));
 	task->id = taskingGetNextId();
-	task->pageDirectory = taskingCreatePageDirectory();
+	task->process = process;
 	task->securityLevel = level;
+
+	task->tlsCopy.location = 0;
+	task->tlsCopy.userThreadObject = 0;
 
 	// Switch to task directory
 	g_physical_address currentDir = (g_physical_address) pagingGetCurrentSpace();
-	pagingSwitchSpace(task->pageDirectory);
+	pagingSwitchToSpace(task->process->pageDirectory);
 
-	if(level == G_SECURITY_LEVEL_KERNEL)
+	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
 	{
 		task->kernelStack0 = 0;
-		task->virtualRangePool = 0;
 	} else
 	{
 		// User-space processes get a kernel stack
@@ -157,38 +130,45 @@ g_task* taskingCreateThread(g_virtual_address entry, g_security_level level)
 		g_virtual_address kernVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
 		pagingMapPage(kernVirt, kernPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
 		task->kernelStack0 = kernVirt + G_PAGE_SIZE;
-
-		// Create range pool
-		task->virtualRangePool = (g_address_range_pool*) heapAllocate(sizeof(g_address_range_pool));
-		addressRangePoolInitialize(task->virtualRangePool);
-		addressRangePoolAddRange(task->virtualRangePool, G_CONST_USER_VIRTUAL_RANGES_START, G_CONST_USER_VIRTUAL_RANGES_END);
 	}
 
 	// Create main stack
 	g_physical_address stackPhys = (g_physical_address) bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
 	g_virtual_address stackVirt;
-
-	if(level == G_SECURITY_LEVEL_KERNEL)
+	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
 	{
 		stackVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
 		pagingMapPage(stackVirt, stackPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
 	} else
 	{
-		stackVirt = addressRangePoolAllocate(task->virtualRangePool, 1);
+		stackVirt = addressRangePoolAllocate(process->virtualRangePool, 1);
 		pagingMapPage(stackVirt, stackPhys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
 	}
 	task->mainStack0 = stackVirt + G_PAGE_SIZE;
-	logInfo("%i Task %i stacks: %h, %h", processorGetCurrentId(), task->id, task->mainStack0, task->kernelStack0);
 
 	// Initialize task state
 	memorySetBytes((void*) &task->state, 0, sizeof(g_processor_state));
 	task->state.esp = task->mainStack0 - sizeof(g_processor_state);
-	task->state.eip = entry;
+	task->state.eip = eip;
 	task->state.eflags = 0x200;
-	taskingApplySecurityLevel(&task->state, level);
+	taskingApplySecurityLevel(&task->state, task->securityLevel);
 
 	// Switch back
-	pagingSwitchSpace(currentDir);
+	pagingSwitchToSpace(currentDir);
+
+	// Add to process
+	mutexAcquire(&process->lock);
+	g_task_entry* entry = (g_task_entry*) heapAllocate(sizeof(g_task_entry));
+	entry->task = task;
+	entry->next = process->tasks;
+	process->tasks = entry;
+	if(process->main == 0)
+	{
+		process->main = task;
+	}
+	taskingPrepareThreadLocalStorage(task);
+	mutexRelease(&process->lock);
+
 	return task;
 }
 
@@ -204,14 +184,14 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 	mutexRelease(&local->lock);
 }
 
-void taskingStore(g_virtual_address esp)
+bool taskingStore(g_virtual_address esp)
 {
 	g_tasking_local* local = taskingGetLocal();
 
 	if(!local->current)
 	{
 		taskingSchedule();
-		return;
+		return false;
 	}
 
 	// Copy registers to the tasks state structure
@@ -227,26 +207,34 @@ void taskingStore(g_virtual_address esp)
 	{
 		local->current->state.esp = esp;
 	}
+	return true;
 }
 
 g_virtual_address taskingRestore(g_virtual_address esp)
 {
 	g_tasking_local* local = taskingGetLocal();
-	if(!local->current)
+	g_task* task = local->current;
+	if(!task)
 		kernelPanic("%! tried to restore without a current task", "tasking");
 
-	pagingSwitchSpace(local->current->pageDirectory);
+	pagingSwitchToSpace(task->process->pageDirectory);
 
-	gdtSetTssEsp0(local->current->kernelStack0);
+	gdtSetTssEsp0(task->kernelStack0);
 
 	// Restore registers from tasks state structure
 	uint32_t stateSize = sizeof(g_processor_state);
-	if(local->current->securityLevel == G_SECURITY_LEVEL_KERNEL)
+	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
 	{
 		stateSize -= sizeof(uint32_t) * 2; // ESP & SS are not restored
-		esp = local->current->state.esp;
+		esp = task->state.esp;
 	}
-	memoryCopy((void*) esp, &local->current->state, stateSize);
+	memoryCopy((void*) esp, &task->state, stateSize);
+
+	// For TLS: write user thread address to GDT
+	gdtSetUserThreadObjectAddress(task->tlsCopy.userThreadObject);
+
+	// set GS of thread to user pointer segment
+	task->state.gs = 0x30;
 
 	return esp;
 }
@@ -304,5 +292,75 @@ g_tid taskingGetNextId()
 	g_tid next = taskingIdNext++;
 	mutexRelease(&taskingIdLock);
 	return next;
+}
+
+g_process* taskingCreateProcess()
+{
+	g_process* process = (g_process*) heapAllocate(sizeof(g_process));
+	process->main = 0;
+	process->tasks = 0;
+	process->lock = 0;
+
+	process->tlsMaster.location = 0;
+	process->tlsMaster.copysize = 0;
+	process->tlsMaster.totalsize = 0;
+	process->tlsMaster.alignment = 0;
+
+	process->pageDirectory = taskingCreatePageDirectory();
+
+	process->virtualRangePool = (g_address_range_pool*) heapAllocate(sizeof(g_address_range_pool));
+	addressRangePoolInitialize(process->virtualRangePool);
+	addressRangePoolAddRange(process->virtualRangePool, G_CONST_USER_VIRTUAL_RANGES_START, G_CONST_USER_VIRTUAL_RANGES_END);
+
+	return process;
+}
+
+void taskingPrepareThreadLocalStorage(g_task* thread)
+{
+	// if tls master copy available, copy it to thread
+	g_process* process = thread->process;
+	if(process->tlsMaster.location == 0)
+	{
+		logDebug("%! failed to copy tls master, not available in process", "tls");
+		return;
+	}
+
+	// calculate size that TLS needs including alignment
+	uint32_t alignedTotalSize = G_ALIGN_UP(process->tlsMaster.totalsize, process->tlsMaster.alignment);
+
+	// allocate virtual range with aligned size of TLS + size of {g_user_thread}
+	uint32_t requiredSize = alignedTotalSize + sizeof(g_user_thread);
+	uint32_t requiredPages = G_PAGE_ALIGN_UP(requiredSize) / G_PAGE_SIZE;
+	g_virtual_address tlsCopyVirt = addressRangePoolAllocate(process->virtualRangePool, requiredPages, G_PROC_VIRTUAL_RANGE_FLAG_PHYSICAL_OWNER);
+
+	// store executing space
+	g_physical_address currentPd = pagingGetCurrentSpace();
+
+	// temporarily switch to target process directory, copy TLS contents
+	pagingSwitchToSpace(process->pageDirectory);
+	for(uint32_t i = 0; i < requiredPages; i++)
+	{
+		g_physical_address phys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+		pagingMapPage(tlsCopyVirt + i * G_PAGE_SIZE, phys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+		pageReferenceTrackerIncrement(phys);
+	}
+
+	// zero & copy TLS content
+	memorySetBytes((void*) tlsCopyVirt, 0, process->tlsMaster.totalsize);
+	memoryCopy((void*) tlsCopyVirt, (void*) process->tlsMaster.location, process->tlsMaster.copysize);
+
+	// fill user thread
+	g_virtual_address userThreadObject = tlsCopyVirt + alignedTotalSize;
+	g_user_thread* userThread = (g_user_thread*) userThreadObject;
+	userThread->self = userThread;
+
+	// switch back
+	pagingSwitchToSpace(currentPd);
+
+	// set threads TLS location
+	thread->tlsCopy.userThreadObject = userThreadObject;
+	thread->tlsCopy.location = tlsCopyVirt;
+
+	logDebug("%! created tls copy in process %i, thread %i at %h", "threadmgr", process->main->id, thread->id, thread->tlsCopy.location);
 }
 

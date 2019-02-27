@@ -44,7 +44,14 @@ extern void (*__fini_array_end[])();
 /**
  * Application entry routine, called by the CRTs.
  */
-int __g_main() {
+int __g_main()
+{
+
+#warning "Test before syscalls get implemented"
+	for(;;)
+	{
+		g_sleep(100);
+	}
 
 	// initialize libc
 	__g_init_libc();
@@ -55,9 +62,11 @@ int __g_main() {
 	// parse arguments and call application main
 	int argc;
 	char** args;
-	if (parseargs(&argc, &args) == 0) {
+	if(parseargs(&argc, &args) == 0)
+	{
 		ret = main(argc, args);
-	} else {
+	} else
+	{
 		g_log("failed to parse command line arguments");
 	}
 
@@ -68,16 +77,19 @@ int __g_main() {
 /**
  * Initializes the C library
  */
-void __g_init_libc() {
+void __g_init_libc()
+{
 
 	// call global constructors
-	for (size_t i = 0; i < __preinit_array_end - __preinit_array_start; i++) {
+	for(size_t i = 0; i < __preinit_array_end - __preinit_array_start; i++)
+	{
 		(*__preinit_array_start[i])();
 	}
 
 	_init();
 
-	for (size_t i = 0; i < __init_array_end - __init_array_start; i++) {
+	for(size_t i = 0; i < __init_array_end - __init_array_start; i++)
+	{
 		(*__init_array_start[i])();
 	}
 
@@ -94,10 +106,12 @@ void __g_init_libc() {
 /**
  * Finalize the C library
  */
-void __g_fini_libc() {
+void __g_fini_libc()
+{
 
 	// call global destructors
-	for (size_t i = 0; i < __fini_array_end - __fini_array_start; i++) {
+	for(size_t i = 0; i < __fini_array_end - __fini_array_start; i++)
+	{
 		(*__fini_array_start[i])();
 	}
 

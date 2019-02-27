@@ -21,8 +21,8 @@
 #ifndef __KERNEL_EXCEPTIONS__
 #define __KERNEL_EXCEPTIONS__
 
-#include "kernel/system/processor/processor.hpp"
+#include "kernel/tasking/tasking.hpp"
 
-void exceptionsHandle(g_processor_state* state);
+void exceptionsHandle(g_task* task);
 
 #endif

@@ -74,7 +74,7 @@ void gdtSetTssEsp0(uint32_t esp0)
 	gdtList[processorGetCurrentId()]->tss.esp0 = esp0;
 }
 
-void gdtSetUserThreadAddress(g_virtual_address userThreadObjectAddress)
+void gdtSetUserThreadObjectAddress(g_virtual_address userThreadObjectAddress)
 {
 	g_gdt_list_entry* list_entry = gdtList[processorGetCurrentId()];
 	gdtCreateGate(&list_entry->entry[6], userThreadObjectAddress, 0xFFFFFFFF, G_ACCESS_BYTE__USER_DATA_SEGMENT, 0xCF);

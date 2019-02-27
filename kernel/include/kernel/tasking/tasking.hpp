@@ -27,18 +27,25 @@
 #include "kernel/memory/paging.hpp"
 #include "kernel/memory/address_range_pool.hpp"
 
+struct g_process;
+
 struct g_task
 {
+	g_process* process;
 	g_tid id;
-	g_processor_state state;
 	g_security_level securityLevel;
 
-	g_physical_address pageDirectory;
+	g_processor_state state;
 	g_virtual_address mainStack0;
-
 	// only for user-level tasks
 	g_virtual_address kernelStack0;
-	g_address_range_pool* virtualRangePool;
+
+	struct
+	{
+		g_virtual_address userThreadObject;
+		g_virtual_address location;
+	} tlsCopy;
+	;
 };
 
 struct g_task_entry
@@ -57,6 +64,37 @@ struct g_tasking_local
 };
 
 /**
+ * Constants used as flags on virtual ranges of processes
+ */
+#define G_PROC_VIRTUAL_RANGE_FLAG_NONE						0
+#define G_PROC_VIRTUAL_RANGE_FLAG_PHYSICAL_OWNER			1
+
+struct g_process
+{
+	g_mutex lock;
+
+	g_task* main;
+	g_task_entry* tasks;
+
+	g_physical_address pageDirectory;
+	g_address_range_pool* virtualRangePool;
+
+	struct
+	{
+		g_virtual_address location;
+		g_virtual_address copysize;
+		g_virtual_address totalsize;
+		g_virtual_address alignment;
+	} tlsMaster;
+
+	struct
+	{
+		g_virtual_address start;
+		g_virtual_address end;
+	} image;
+};
+
+/**
  * Basic initialization of the task management.
  */
 void taskingInitializeBsp();
@@ -69,7 +107,12 @@ void taskingInitializeAp();
 /**
  *
  */
-g_task* taskingCreateThread(g_virtual_address entry, g_security_level level);
+g_process* taskingCreateProcess();
+
+/**
+ *
+ */
+g_task* taskingCreateThread(g_virtual_address entry, g_process* process, g_security_level level);
 
 /**
  *
@@ -88,7 +131,7 @@ void taskingSchedule();
  * If there is no current task (because we just initialized the system) then it
  * switches to the first task.
  */
-void taskingStore(g_virtual_address esp);
+bool taskingStore(g_virtual_address esp);
 
 /**
  * Restores the state from the current task.
@@ -114,5 +157,10 @@ g_tid taskingGetNextId();
 g_physical_address taskingCreatePageDirectory();
 
 void taskingApplySecurityLevel(g_processor_state* state, g_security_level securityLevel);
+
+/**
+ * Clones the TLS master from the process.
+ */
+void taskingPrepareThreadLocalStorage(g_task* thread);
 
 #endif

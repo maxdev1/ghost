@@ -66,7 +66,7 @@ void pagingUnmapPage(g_virtual_address virt);
  * @param dir
  * 		the directory to switch to
  */
-void pagingSwitchSpace(g_physical_address dir);
+void pagingSwitchToSpace(g_physical_address dir);
 
 /**
  * Returns the currently set page directory.

@@ -18,11 +18,37 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_REQUESTS__
-#define __KERNEL_REQUESTS__
+#ifndef __KERNEL_PAGE_REF_TRACKER__
+#define __KERNEL_PAGE_REF_TRACKER__
 
-#include "kernel/tasking/tasking.hpp"
+#include "ghost/stdint.h"
+#include "ghost/kernel.h"
+#include "ghost/types.h"
 
-void requestsHandle(g_task* task);
+/**
+ *
+ */
+struct g_pp_reference_count_table
+{
+	int16_t referenceCount[1024];
+};
+
+/**
+ *
+ */
+struct g_pp_reference_count_directory
+{
+	g_pp_reference_count_table* tables[1024];
+};
+
+/**
+ * Increments the number of references on a physical page.
+ */
+void pageReferenceTrackerIncrement(g_physical_address address);
+
+/**
+ * Decrements the number of references on a physical page
+ */
+int16_t pageReferenceTrackerDecrement(g_physical_address address);
 
 #endif
