@@ -41,9 +41,10 @@ void test()
 	{
 		as[processorGetCurrentId()]++;
 
-		if(processorGetCurrentId() == 0 && as[processorGetCurrentId()] % 100000 == 0)
+		if(as[processorGetCurrentId()] % 100000 == 0)
 		{
-			logInfo("The processors are counting... a(%i %i %i %i), b(%i %i %i %i)", as[0], as[1], as[2], as[3], bs[0], bs[1], bs[2], bs[3]);
+			logInfo("%i says: The processors are counting... a(%i %i %i %i), b(%i %i %i %i)", processorGetCurrentId(), as[0], as[1], as[2], as[3], bs[0], bs[1],
+					bs[2], bs[3]);
 		}
 	}
 }
@@ -206,20 +207,24 @@ void taskingStore(g_virtual_address esp)
 {
 	g_tasking_local* local = taskingGetLocal();
 
-	if(local->current)
-	{
-		// For kernel tasks - ESP and SS were not pushed by the CPU
-		if(local->current->securityLevel == G_SECURITY_LEVEL_KERNEL)
-		{
-			memoryCopy(&local->current->state, (void*) esp, sizeof(g_processor_state) - sizeof(uint32_t) * 2);
-			local->current->state.esp = esp;
-		} else
-		{
-			memoryCopy(&local->current->state, (void*) esp, sizeof(g_processor_state));
-		}
-	} else
+	if(!local->current)
 	{
 		taskingSchedule();
+		return;
+	}
+
+	// Copy registers to the tasks state structure
+	uint32_t stateSize = sizeof(g_processor_state);
+	if(local->current->securityLevel == G_SECURITY_LEVEL_KERNEL)
+	{
+		stateSize -= sizeof(uint32_t) * 2; // ESP & SS were not pushed
+	}
+	memoryCopy(&local->current->state, (void*) esp, stateSize);
+
+	// We need to manually store the stack pointer in non-context switches
+	if(local->current->securityLevel == G_SECURITY_LEVEL_KERNEL)
+	{
+		local->current->state.esp = esp;
 	}
 }
 
@@ -233,16 +238,14 @@ g_virtual_address taskingRestore(g_virtual_address esp)
 
 	gdtSetTssEsp0(local->current->kernelStack0);
 
-	// For kernel tasks we will return to kernel stack
+	// Restore registers from tasks state structure
+	uint32_t stateSize = sizeof(g_processor_state);
 	if(local->current->securityLevel == G_SECURITY_LEVEL_KERNEL)
 	{
+		stateSize -= sizeof(uint32_t) * 2; // ESP & SS are not restored
 		esp = local->current->state.esp;
-		memoryCopy((void*) esp, &local->current->state, sizeof(g_processor_state) - sizeof(uint32_t) * 2);
-		// TODO ss
-	} else
-	{
-		memoryCopy((void*) esp, &local->current->state, sizeof(g_processor_state));
 	}
+	memoryCopy((void*) esp, &local->current->state, stateSize);
 
 	return esp;
 }
