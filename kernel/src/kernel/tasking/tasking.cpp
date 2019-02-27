@@ -187,7 +187,6 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 bool taskingStore(g_virtual_address esp)
 {
 	g_tasking_local* local = taskingGetLocal();
-
 	if(!local->current)
 	{
 		taskingSchedule();
@@ -204,22 +203,20 @@ bool taskingStore(g_virtual_address esp)
 
 	// We need to manually store the stack pointer in non-context switches
 	if(local->current->securityLevel == G_SECURITY_LEVEL_KERNEL)
-	{
 		local->current->state.esp = esp;
-	}
+
 	return true;
 }
 
 g_virtual_address taskingRestore(g_virtual_address esp)
 {
 	g_tasking_local* local = taskingGetLocal();
+
 	g_task* task = local->current;
 	if(!task)
 		kernelPanic("%! tried to restore without a current task", "tasking");
 
 	pagingSwitchToSpace(task->process->pageDirectory);
-
-	gdtSetTssEsp0(task->kernelStack0);
 
 	// Restore registers from tasks state structure
 	uint32_t stateSize = sizeof(g_processor_state);
@@ -232,6 +229,7 @@ g_virtual_address taskingRestore(g_virtual_address esp)
 
 	// For TLS: write user thread address to GDT
 	gdtSetUserThreadObjectAddress(task->tlsCopy.userThreadObject);
+	gdtSetTssEsp0(task->kernelStack0);
 
 	// set GS of thread to user pointer segment
 	task->state.gs = 0x30;
