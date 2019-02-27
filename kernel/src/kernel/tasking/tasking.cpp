@@ -30,25 +30,28 @@ g_tasking_local* taskingLocal;
 static g_mutex taskingIdLock = 0;
 static g_tid taskingIdNext = 0;
 
-static g_mutex mu = 0;
+int as[4] =
+{ 0, 0, 0, 0 };
+int bs[4] =
+{ 0, 0, 0, 0 };
+
 void test()
 {
-	int x = processorGetCurrentId();
-	mutexAcquire(&mu);
-	logInfo("Core %i: Test 1: Stack %h", x, &x);
-	mutexRelease(&mu);
 	for(;;)
 	{
+		as[processorGetCurrentId()]++;
+
+		if(processorGetCurrentId() == 0 && as[processorGetCurrentId()] % 100000 == 0)
+		{
+			logInfo("The processors are counting... a(%i %i %i %i), b(%i %i %i %i)", as[0], as[1], as[2], as[3], bs[0], bs[1], bs[2], bs[3]);
+		}
 	}
 }
 void test2()
 {
-	int x = processorGetCurrentId();
-	mutexAcquire(&mu);
-	logInfo("Core %i: Test 2: Stack %h", x, &x);
-	mutexRelease(&mu);
 	for(;;)
 	{
+		bs[processorGetCurrentId()]++;
 	}
 }
 
@@ -57,13 +60,6 @@ void taskingInitializeLocal(g_tasking_local* local)
 	local->lock = 0;
 	local->list = 0;
 	local->current = 0;
-
-	// Create local kernel stack
-	g_physical_address kernPhys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-	g_virtual_address kernVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
-	pagingMapPage(kernVirt, kernPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
-	local->kernelStackBase = kernVirt + G_PAGE_SIZE;
-	gdtSetTssEsp0(local->kernelStackBase);
 
 	// Create idle thread
 	taskingAssign(local, taskingCreateThread((g_virtual_address) test, G_SECURITY_LEVEL_KERNEL));
@@ -143,27 +139,48 @@ g_task* taskingCreateThread(g_virtual_address entry, g_security_level level)
 	g_task* task = (g_task*) heapAllocate(sizeof(g_task));
 	task->id = taskingGetNextId();
 	task->pageDirectory = taskingCreatePageDirectory();
+	task->securityLevel = level;
 
 	// Switch to task directory
 	g_physical_address currentDir = (g_physical_address) pagingGetCurrentSpace();
 	pagingSwitchSpace(task->pageDirectory);
 
-	// Create range pool
-	task->virtualRangePool = (g_address_range_pool*) heapAllocate(sizeof(g_address_range_pool));
-	addressRangePoolInitialize(task->virtualRangePool);
-	addressRangePoolAddRange(task->virtualRangePool, G_CONST_USER_VIRTUAL_RANGES_START, G_CONST_USER_VIRTUAL_RANGES_END);
+	if(level == G_SECURITY_LEVEL_KERNEL)
+	{
+		task->kernelStack0 = 0;
+		task->virtualRangePool = 0;
+	} else
+	{
+		// User-space processes get a kernel stack
+		g_physical_address kernPhys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+		g_virtual_address kernVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
+		pagingMapPage(kernVirt, kernPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+		task->kernelStack0 = kernVirt + G_PAGE_SIZE;
 
-	// Create stack
+		// Create range pool
+		task->virtualRangePool = (g_address_range_pool*) heapAllocate(sizeof(g_address_range_pool));
+		addressRangePoolInitialize(task->virtualRangePool);
+		addressRangePoolAddRange(task->virtualRangePool, G_CONST_USER_VIRTUAL_RANGES_START, G_CONST_USER_VIRTUAL_RANGES_END);
+	}
+
+	// Create main stack
 	g_physical_address stackPhys = (g_physical_address) bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-	g_virtual_address stackVirt = (g_virtual_address) addressRangePoolAllocate(task->virtualRangePool, 1);
-	pagingMapPage(stackVirt, stackPhys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
-	g_virtual_address esp = stackVirt + G_PAGE_SIZE;
-	logInfo("Core %i: Task %i stack: %h %h", processorGetCurrentId(), task->id, stackVirt, stackPhys);
-	task->stack = esp;
+	g_virtual_address stackVirt;
+
+	if(level == G_SECURITY_LEVEL_KERNEL)
+	{
+		stackVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
+		pagingMapPage(stackVirt, stackPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+	} else
+	{
+		stackVirt = addressRangePoolAllocate(task->virtualRangePool, 1);
+		pagingMapPage(stackVirt, stackPhys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+	}
+	task->mainStack0 = stackVirt + G_PAGE_SIZE;
 
 	// Initialize task state
 	memorySetBytes((void*) &task->state, 0, sizeof(g_processor_state));
-	task->state.esp = esp;
+	task->state.esp = task->mainStack0 - sizeof(g_processor_state);
 	task->state.eip = entry;
 	task->state.eflags = 0x200;
 	taskingApplySecurityLevel(&task->state, level);
@@ -185,25 +202,49 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 	mutexRelease(&local->lock);
 }
 
-void taskingStore(g_processor_state* stateIn)
+void taskingStore(g_virtual_address esp)
 {
 	g_tasking_local* local = taskingGetLocal();
 
 	if(local->current)
-		local->current->state = *stateIn;
-	else
+	{
+		// For kernel tasks - ESP and SS were not pushed by the CPU
+		if(local->current->securityLevel == G_SECURITY_LEVEL_KERNEL)
+		{
+			memoryCopy(&local->current->state, (void*) esp, sizeof(g_processor_state) - sizeof(uint32_t) * 2);
+			local->current->state.esp = esp;
+		} else
+		{
+			memoryCopy(&local->current->state, (void*) esp, sizeof(g_processor_state));
+		}
+	} else
+	{
 		taskingSchedule();
+	}
 }
 
-void taskingRestore(g_processor_state* stateOut)
+g_virtual_address taskingRestore(g_virtual_address esp)
 {
 	g_tasking_local* local = taskingGetLocal();
 	if(!local->current)
 		kernelPanic("%! tried to restore without a current task", "tasking");
 
-	*stateOut = local->current->state;
-
 	pagingSwitchSpace(local->current->pageDirectory);
+
+	gdtSetTssEsp0(local->current->kernelStack0);
+
+	// For kernel tasks we will return to kernel stack
+	if(local->current->securityLevel == G_SECURITY_LEVEL_KERNEL)
+	{
+		esp = local->current->state.esp;
+		memoryCopy((void*) esp, &local->current->state, sizeof(g_processor_state) - sizeof(uint32_t) * 2);
+		// TODO ss
+	} else
+	{
+		memoryCopy((void*) esp, &local->current->state, sizeof(g_processor_state));
+	}
+
+	return esp;
 }
 
 void taskingSchedule()

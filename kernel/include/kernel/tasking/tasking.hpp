@@ -31,8 +31,13 @@ struct g_task
 {
 	g_tid id;
 	g_processor_state state;
-	g_virtual_address stack;
+	g_security_level securityLevel;
+
 	g_physical_address pageDirectory;
+	g_virtual_address mainStack0;
+
+	// only for user-level tasks
+	g_virtual_address kernelStack0;
 	g_address_range_pool* virtualRangePool;
 };
 
@@ -83,12 +88,12 @@ void taskingSchedule();
  * If there is no current task (because we just initialized the system) then it
  * switches to the first task.
  */
-void taskingStore(g_processor_state* stateIn);
+void taskingStore(g_virtual_address esp);
 
 /**
  * Restores the state from the current task.
  */
-void taskingRestore(g_processor_state* stateOut);
+g_virtual_address taskingRestore(g_virtual_address esp);
 
 /**
  *
