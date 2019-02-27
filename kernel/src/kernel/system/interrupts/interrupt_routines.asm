@@ -30,6 +30,28 @@ extern _interruptHandler
 ; Handler routine
 ;
 interruptRoutine:
+	;
+	; The processor has now pushed registers to the stack. If it was an actual
+	; context switch, then SS and ESP are also pushed. For a same-ring switch
+	; it will not push them. Roughly equivalent to these instructions:
+	;
+	; [Ring 3 -> Ring 0]
+	;	push ss
+	;	push esp
+	;	push eflags
+	;	push cs
+	;	push eip
+	;
+	; [Ring 0 -> Ring 0]
+	;	push eflags
+	;	push cs
+	;	push eip
+	;
+	; This is the reason we give the stack pointer to our interrupt handler.
+	; The interrupt handler will then return the stack that we can pop the
+	; registers from.
+	;
+
 	; Store general purpose
 	push edi
 	push esi
@@ -78,7 +100,22 @@ interruptRoutine:
 	; Skip intr and error in Registers struct
 	add esp, 8
 
-	; Restore rest
+	;
+	; Now we return and on IRET the processor again pops specific registers.
+	; If we switch to a kernel-level task, ESP and SS will not be popped.
+	;
+	; [Ring 0 -> Ring 0]
+	;		pop eip
+	;		pop cs
+	;		pop eflags
+	;
+	; [Ring 0 -> Ring 3]
+	;		pop eip
+	;		pop cs
+	;		pop eflags
+	;		pop esp
+	;		pop ss
+	;
 	iret
 
 
