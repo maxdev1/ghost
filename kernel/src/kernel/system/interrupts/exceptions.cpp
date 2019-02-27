@@ -21,6 +21,7 @@
 #include "kernel/system/interrupts/exceptions.hpp"
 #include "shared/logger/logger.hpp"
 #include "kernel/memory/paging.hpp"
+#include "kernel/tasking/tasking.hpp"
 
 uint32_t exceptionsGetCR2()
 {
@@ -33,12 +34,10 @@ void exceptionsHandle(g_processor_state* state)
 {
 	logInfo("%*%! no resolution for exception %i, code %i, hanging system", 0x0C, "exception", state->intr, state->error);
 
-	for(;;);
 	if(state->intr == 0xE)
 	{
 		g_virtual_address accessedVirtual = G_PAGE_ALIGN_DOWN(exceptionsGetCR2());
-		g_physical_address accessedPhysical = pagingVirtualToPhysical(accessedVirtual);
-		logInfo("%# tried to access %h, points to %h", accessedVirtual, accessedPhysical);
+		logInfo("%# %i tried to access %h, EIP: %h", processorGetCurrentId(), accessedVirtual, taskingGetLocal()->current->state.eip);
 	}
 	for(;;)
 	{

@@ -21,7 +21,7 @@
 #ifndef __KERNEL_INTERRUPTS__
 #define __KERNEL_INTERRUPTS__
 
-#include "ghost/stdint.h"
+#include "ghost/types.h"
 #include "kernel/system/processor/processor.hpp"
 
 void interruptsCheckPrerequisites();
@@ -36,7 +36,7 @@ void interruptsDisable();
 
 void interruptsInstallRoutines();
 
-extern "C" g_processor_state* _interruptHandler(g_processor_state* state);
+extern "C" g_virtual_address _interruptHandler(g_virtual_address state);
 
 /**
  * @see assembly

@@ -20,6 +20,7 @@
 
 #include "kernel/memory/address_range_pool.hpp"
 #include "kernel/memory/heap.hpp"
+#include "kernel/kernel.hpp"
 
 #include "shared/memory/paging.hpp"
 #include "shared/logger/logger.hpp"
@@ -117,6 +118,9 @@ g_address_range* addressRangePoolGetRanges(g_address_range_pool* pool)
 
 g_address addressRangePoolAllocate(g_address_range_pool* pool, uint32_t requestedPages, uint8_t flags)
 {
+	if(pool == 0)
+		kernelPanic("%! tried to access null pool", "addrpool");
+
 	mutexAcquire(&pool->lock);
 
 	if(requestedPages == 0)

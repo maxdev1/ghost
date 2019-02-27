@@ -50,6 +50,8 @@ struct g_processor_state
 	uint32_t eip;
 	uint32_t cs;
 	uint32_t eflags;
+
+	// Only pushed on Ring switches
 	uint32_t esp;
 	uint32_t ss;
 }__attribute__((packed));

@@ -28,6 +28,7 @@
 #include "kernel/system/interrupts/idt.hpp"
 #include "shared/system/mutex.hpp"
 #include "kernel/tasking/tasking.hpp"
+#include "kernel/memory/gdt.hpp"
 #include "kernel/kernel.hpp"
 
 void interruptsInitializeBsp()
@@ -66,22 +67,19 @@ void interruptsCheckPrerequisites()
 
 /**
  * Interrupt handler routine, called by the interrupt stubs (assembly file)
- *
- * @param state pointer to the stack head
  */
-extern "C" g_processor_state* _interruptHandler(g_processor_state* state)
-{
-	taskingStore(state);
+extern "C" g_virtual_address _interruptHandler(g_virtual_address esp) {
+	taskingStore(esp);
 
+	g_processor_state* state = (g_processor_state*) esp;
 	if(state->intr < 0x20)
 		exceptionsHandle(state);
 	else
 		requestsHandle(state);
 
-	taskingRestore(state);
-
+	esp = taskingRestore(esp);
 	lapicSendEndOfInterrupt();
-	return state;
+	return esp;
 }
 
 void interruptsInstallRoutines()
