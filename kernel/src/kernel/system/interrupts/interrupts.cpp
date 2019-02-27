@@ -70,13 +70,17 @@ void interruptsCheckPrerequisites()
  */
 extern "C" g_virtual_address _interruptHandler(g_virtual_address esp)
 {
-	taskingStore(esp);
-
-	g_processor_state* state = (g_processor_state*) esp;
-	if(state->intr < 0x20)
-		exceptionsHandle(state);
-	else
-		requestsHandle(state);
+	if(taskingStore(esp))
+	{
+		g_tasking_local* local = taskingGetLocal();
+		if(local->current->state.intr < 0x20)
+		{
+			exceptionsHandle(local->current);
+		} else
+		{
+			requestsHandle(local->current);
+		}
+	}
 
 	esp = taskingRestore(esp);
 	lapicSendEndOfInterrupt();

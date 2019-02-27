@@ -27,16 +27,21 @@
 #include "shared/memory/memory.hpp"
 #include "shared/logger/logger.hpp"
 
-void requestsHandle(g_processor_state* state)
+#include "kernel/calls/syscalls.hpp"
+
+void requestsHandle(g_task* task)
 {
 	// Handle IRQ
-	const uint32_t irq = state->intr - 0x20;
+	const uint32_t irq = task->state.intr - 0x20;
 	if(irq == 0)
 	{
 		taskingSchedule();
+	} else if(irq == 0x60)
+	{
+		logInfo("#%i: Task %i (Priv %i) issued syscall: %i", processorGetCurrentId(), task->id,task->securityLevel, G_SYSCALL_CODE(task->state));
 	} else
 	{
-		logInfo("received unhandled irq %i", state->intr);
+		logInfo("received unhandled irq %i", task->state.intr);
 		for(;;)
 			;
 	}

@@ -150,7 +150,7 @@ g_address addressRangePoolAllocate(g_address_range_pool* pool, uint32_t requeste
 			splinter->used = false;
 			splinter->pages = remainingPages;
 			splinter->base = range->base + requestedPages * G_PAGE_SIZE;
-			splinter->flags = range->flags;
+			splinter->flags = 0;
 
 			splinter->next = range->next;
 			range->next = splinter;

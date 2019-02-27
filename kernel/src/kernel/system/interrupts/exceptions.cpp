@@ -30,11 +30,11 @@ uint32_t exceptionsGetCR2()
 	return addr;
 }
 
-void exceptionsHandle(g_processor_state* state)
+void exceptionsHandle(g_task* currentTask)
 {
-	logInfo("%*%! no resolution for exception %i, code %i, hanging system", 0x0C, "exception", state->intr, state->error);
+	logInfo("%*%! no resolution for exception %i, code %i, hanging system", 0x0C, "exception", currentTask->state.intr, currentTask->state.error);
 
-	if(state->intr == 0xE)
+	if(currentTask->state.intr == 0xE)
 	{
 		g_virtual_address accessedVirtual = G_PAGE_ALIGN_DOWN(exceptionsGetCR2());
 		logInfo("%# %i tried to access %h, EIP: %h", processorGetCurrentId(), accessedVirtual, taskingGetLocal()->current->state.eip);

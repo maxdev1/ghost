@@ -18,11 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_REQUESTS__
-#define __KERNEL_REQUESTS__
+#ifndef __KERNEL_SYSCALLS__
+#define __KERNEL_SYSCALLS__
 
-#include "kernel/tasking/tasking.hpp"
-
-void requestsHandle(g_task* task);
+#define G_SYSCALL_CODE(state)				state.eax
+#define G_SYSCALL_DATA(state)				state.ebx
 
 #endif
+
