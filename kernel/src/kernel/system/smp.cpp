@@ -42,7 +42,7 @@ void smpInitialize(g_physical_address initialPageDirectoryPhysical)
 
 	// Create enough stacks for all APs
 	g_physical_address* stackArray = (g_physical_address*) G_CONST_SMP_STARTUP_AREA_AP_STACK_ARRAY;
-	for(uint32_t i = 0; i < processorGetNumberOfCores(); i++)
+	for(uint32_t i = 0; i < processorGetNumberOfProcessors(); i++)
 	{
 
 		g_physical_address stackPhysical = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);

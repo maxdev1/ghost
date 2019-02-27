@@ -39,7 +39,7 @@ void systemInitializeBsp(g_physical_address initialPdPhys)
 	gdtPrepare();
 	gdtInitialize();
 
-	applicationCoresWaiting = processorGetNumberOfCores() - 1;
+	applicationCoresWaiting = processorGetNumberOfProcessors() - 1;
 	bspInitialized = true;
 }
 

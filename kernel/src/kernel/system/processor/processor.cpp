@@ -45,15 +45,15 @@ void processorInitializeAp()
 	processorEnableSSE();
 }
 
-void processorCreateMappingTable()
+void processorApicIdCreateMappingTable()
 {
 	uint32_t highestApicId = 0;
 	g_processor* p = processors;
 	while(p)
 	{
-		if(p->apic > highestApicId)
+		if(p->apicId > highestApicId)
 		{
-			highestApicId = p->apic;
+			highestApicId = p->apicId;
 		}
 		p = p->next;
 	}
@@ -67,18 +67,18 @@ void processorCreateMappingTable()
 	p = processors;
 	while(p)
 	{
-		mapping[p->apic] = p->index;
+		mapping[p->apicId] = p->id;
 		p = p->next;
 	}
 	apicIdToProcessorMapping = mapping;
 }
 
-void processorAdd(uint32_t apicId, uint32_t processorId)
+void processorAdd(uint32_t apicId, uint32_t processorHardwareId)
 {
 	g_processor* existing = processors;
 	while(existing)
 	{
-		if(existing->apic == apicId)
+		if(existing->apicId == apicId)
 		{
 			logWarn("%! ignoring core with irregular, duplicate apic id %i", "system", apicId);
 			return;
@@ -87,9 +87,9 @@ void processorAdd(uint32_t apicId, uint32_t processorId)
 	}
 
 	g_processor* core = (g_processor*) heapAllocate(sizeof(g_processor));
-	core->id = processorId;
-	core->index = processorsAvailable;
-	core->apic = apicId;
+	core->id = processorsAvailable;
+	core->hardwareId = processorHardwareId;
+	core->apicId = apicId;
 	core->next = processors;
 
 	// BSP executes this code
@@ -103,7 +103,7 @@ void processorAdd(uint32_t apicId, uint32_t processorId)
 	++processorsAvailable;
 }
 
-uint16_t processorGetNumberOfCores()
+uint16_t processorGetNumberOfProcessors()
 {
 	if(!processors)
 		kernelPanic("%! tried to retrieve number of cores before initializing system on BSP", "kern");
@@ -120,11 +120,6 @@ uint32_t processorGetCurrentId()
 bool processorListAvailable()
 {
 	return processors != 0;
-}
-
-uint32_t processorGetId(g_processor* proc)
-{
-	return proc->apic;
 }
 
 bool processorSupportsCpuid()

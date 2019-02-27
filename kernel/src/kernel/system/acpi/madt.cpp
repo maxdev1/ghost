@@ -79,5 +79,5 @@ void madtParse(g_acpi_table_header* madtSdtHeader)
 		pos += entryHeader->recordLength;
 	}
 
-	processorCreateMappingTable();
+	processorApicIdCreateMappingTable();
 }
