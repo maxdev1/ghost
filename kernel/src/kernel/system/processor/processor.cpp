@@ -19,12 +19,13 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/processor/processor.hpp"
-#include "kernel/memory/heap.hpp"
+#include "kernel/memory/memory.hpp"
 #include "kernel/kernel.hpp"
 #include "shared/logger/logger.hpp"
 
 static g_processor* processors = 0;
 static uint32_t processorsAvailable = 0;
+static uint32_t* apicIdToProcessorMapping = 0;
 
 void processorInitializeBsp()
 {
@@ -43,24 +44,57 @@ void processorInitializeAp()
 	processorEnableSSE();
 }
 
-void processorAdd(uint32_t apicId)
+void processorCreateMappingTable()
+{
+	uint32_t highestApicId = 0;
+	g_processor* p = processors;
+	while(p)
+	{
+		if(p->apic > highestApicId)
+		{
+			highestApicId = p->apic;
+		}
+		p = p->next;
+	}
+
+	if(highestApicId > 1024)
+		kernelPanic("%! weirdly high apic id detected: %i", "cpu", highestApicId);
+
+	uint32_t mappingSize = sizeof(uint32_t) * (highestApicId + 1);
+	uint32_t* mapping = (uint32_t*) heapAllocate(mappingSize);
+	memorySetBytes((void*) mapping, 0, mappingSize);
+	p = processors;
+	while(p)
+	{
+		mapping[p->apic] = p->id;
+		p = p->next;
+	}
+	apicIdToProcessorMapping = mapping;
+}
+
+void processorAdd(uint32_t apicId, uint32_t processorId)
 {
 	g_processor* existing = processors;
 	while(existing)
 	{
 		if(existing->apic == apicId)
 		{
-			logWarn("%! ignoring core with irregular, duplicate id %i", "system", apicId);
+			logWarn("%! ignoring core with irregular, duplicate apic id %i", "system", apicId);
 			return;
 		}
 		existing = existing->next;
 	}
 
 	g_processor* core = (g_processor*) heapAllocate(sizeof(g_processor));
+	core->id = processorId;
 	core->apic = apicId;
 	core->next = processors;
+
+	// BSP executes this code
 	if(apicId == lapicReadId())
+	{
 		core->bsp = true;
+	}
 
 	processors = core;
 
@@ -76,7 +110,9 @@ uint16_t processorGetNumberOfCores()
 
 uint32_t processorGetCurrentId()
 {
-	return lapicReadId();
+	if(apicIdToProcessorMapping == 0)
+		return 0;
+	return apicIdToProcessorMapping[lapicReadId()];
 }
 
 bool processorListAvailable()
@@ -158,7 +194,7 @@ void processorPrintInformation()
 	uint32_t edx;
 	processorCpuid(1, &eax, &ebx, &ecx, &edx);
 
-	logInfon("%! cpu features:", "cpu");
+	logInfon("%! available features:", "cpu");
 	if(edx & (int64_t) g_cpuid_standard_edx_feature::PAE)
 	{
 		logInfon(" PAE");

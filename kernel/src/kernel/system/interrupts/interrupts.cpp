@@ -68,7 +68,8 @@ void interruptsCheckPrerequisites()
 /**
  * Interrupt handler routine, called by the interrupt stubs (assembly file)
  */
-extern "C" g_virtual_address _interruptHandler(g_virtual_address esp) {
+extern "C" g_virtual_address _interruptHandler(g_virtual_address esp)
+{
 	taskingStore(esp);
 
 	g_processor_state* state = (g_processor_state*) esp;
