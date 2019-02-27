@@ -26,7 +26,7 @@
 #include "shared/video/console_video.hpp"
 #include "shared/debug/debug_interface.hpp"
 
-static const uint32_t LOGGER_HEADER_WIDTH = 15;
+static const uint32_t LOGGER_HEADER_WIDTH = 10;
 
 static bool logSerial = false;
 static bool logVideo = true;
@@ -81,7 +81,7 @@ void loggerPrintFormatted(const char *message_const, va_list valist)
 		} else if(*message == 's')
 		{ // string
 			char* val = va_arg(valist, char*);
-			loggerPrintPlain(val);
+			loggerPrintPlain (val);
 
 		} else if(*message == '#')
 		{ // indented printing
@@ -103,11 +103,9 @@ void loggerPrintFormatted(const char *message_const, va_list valist)
 				}
 			}
 
-			loggerPrintCharacter('[');
 			consoleVideoSetColor(headerColor);
-			loggerPrint(val);
+			loggerPrint (val);
 			consoleVideoSetColor(0x0F);
-			loggerPrintCharacter(']');
 
 		} else if(*message == '%')
 		{ // escaped %
@@ -115,82 +113,82 @@ void loggerPrintFormatted(const char *message_const, va_list valist)
 
 		} else if(*message == '*')
 		{ // header color change
-			headerColor = (uint16_t) (va_arg(valist, int));
-		}
-		++message;
+		headerColor = (uint16_t) (va_arg(valist, int));
 	}
+	++message;
+}
 }
 
 void loggerPrintNumber(uint32_t number, uint16_t base)
 {
 
-	// Remember if negative
-	uint8_t negative = 0;
-	if(base == 10)
-	{
-		negative = ((int32_t) number) < 0;
+// Remember if negative
+uint8_t negative = 0;
+if(base == 10)
+{
+	negative = ((int32_t) number) < 0;
 
-		if(negative)
-		{
-			number = -number;
-		}
-	}
-
-	// Write chars in reverse order, not nullterminated
-	char revbuf[32];
-
-	char *cbufp = revbuf;
-	int len = 0;
-	do
-	{
-		*cbufp++ = "0123456789ABCDEF"[number % base];
-		++len;
-		number /= base;
-	} while(number);
-
-	// If base is 16, write 0's until 8
-	if(base == 16)
-	{
-		while(len < 8)
-		{
-			*cbufp++ = '0';
-			++len;
-		}
-	}
-
-	// Reverse buffer
-	char buf[len + 1];
-	for(int i = 0; i < len; i++)
-	{
-		buf[i] = revbuf[len - i - 1];
-	}
-	buf[len] = 0;
-
-	// Print number
 	if(negative)
 	{
-		loggerPrintCharacter('-');
+		number = -number;
 	}
-	loggerPrintPlain(buf);
+}
+
+// Write chars in reverse order, not nullterminated
+char revbuf[32];
+
+char *cbufp = revbuf;
+int len = 0;
+do
+{
+	*cbufp++ = "0123456789ABCDEF"[number % base];
+	++len;
+	number /= base;
+} while(number);
+
+// If base is 16, write 0's until 8
+if(base == 16)
+{
+	while(len < 8)
+	{
+		*cbufp++ = '0';
+		++len;
+	}
+}
+
+// Reverse buffer
+char buf[len + 1];
+for(int i = 0; i < len; i++)
+{
+	buf[i] = revbuf[len - i - 1];
+}
+buf[len] = 0;
+
+// Print number
+if(negative)
+{
+	loggerPrintCharacter('-');
+}
+loggerPrintPlain(buf);
 }
 
 void loggerPrintPlain(const char* message_const)
 {
-	char* message = (char*) message_const;
-	while(*message)
-	{
-		loggerPrintCharacter(*message++);
-	}
+char* message = (char*) message_const;
+while(*message)
+{
+	loggerPrintCharacter(*message++);
+}
 }
 
 void loggerPrintCharacter(char c)
 {
-	if(logVideo)
-	{
-		consoleVideoPrint(c);
-	}
-	if(logSerial)
-	{
-		debugInterfaceWriteLogCharacter(c);
-	}
+if(logVideo)
+{
+	consoleVideoPrint(c);
+}
+if(logSerial)
+{
+	debugInterfaceWriteLogCharacter(c);
+}
 }

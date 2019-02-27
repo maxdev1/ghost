@@ -32,7 +32,8 @@ uint32_t exceptionsGetCR2()
 
 void exceptionsHandle(g_task* currentTask)
 {
-	logInfo("%*%! no resolution for exception %i, code %i, hanging system", 0x0C, "exception", currentTask->state.intr, currentTask->state.error);
+	logInfo("%*%! task %i caused exception %i (error %i) at EIP: %h ESP: %h", 0x0C, "exception", currentTask->id, currentTask->state.intr,
+			currentTask->state.error, currentTask->state.eip, currentTask->state.esp);
 
 	if(currentTask->state.intr == 0xE)
 	{
