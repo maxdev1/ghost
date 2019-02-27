@@ -55,7 +55,7 @@ void madtParse(g_acpi_table_header* madtSdtHeader)
 			if(entry->flags == 1)
 			{
 				logDebug("%# lapic, id: %i, processorId: %i, flags: %i", entry->apicId, entry->processorId, entry->flags);
-				processorAdd(entry->apicId);
+				processorAdd(entry->apicId, entry->processorId);
 			}
 
 		} else if(entryHeader->deviceType == 1) // IO APIC
@@ -78,4 +78,6 @@ void madtParse(g_acpi_table_header* madtSdtHeader)
 
 		pos += entryHeader->recordLength;
 	}
+
+	processorCreateMappingTable();
 }

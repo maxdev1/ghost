@@ -37,14 +37,14 @@ int bs[4] =
 
 void test()
 {
+	logInfo("Hi!");
 	for(;;)
 	{
 		as[processorGetCurrentId()]++;
 
 		if(as[processorGetCurrentId()] % 100000 == 0)
 		{
-			logInfo("%i says: The processors are counting... a(%i %i %i %i), b(%i %i %i %i)", processorGetCurrentId(), as[0], as[1], as[2], as[3], bs[0], bs[1],
-					bs[2], bs[3]);
+			logInfo("%i says: a(%i %i %i %i), b(%i %i %i %i)", processorGetCurrentId(), as[0], as[1], as[2], as[3], bs[0], bs[1], bs[2], bs[3]);
 		}
 	}
 }
@@ -178,6 +178,7 @@ g_task* taskingCreateThread(g_virtual_address entry, g_security_level level)
 		pagingMapPage(stackVirt, stackPhys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
 	}
 	task->mainStack0 = stackVirt + G_PAGE_SIZE;
+	logInfo("%i Task %i stacks: %h, %h", processorGetCurrentId(), task->id, task->mainStack0, task->kernelStack0);
 
 	// Initialize task state
 	memorySetBytes((void*) &task->state, 0, sizeof(g_processor_state));
