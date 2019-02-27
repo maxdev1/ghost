@@ -73,7 +73,7 @@ void pagingSwitchSpace(g_physical_address dir);
  *
  * @return the page directory
  */
-g_page_directory pagingGetCurrentSpace();
+g_physical_address pagingGetCurrentSpace();
 
 /**
  * Reads for a given virtual address (which must exist in the currently mapped

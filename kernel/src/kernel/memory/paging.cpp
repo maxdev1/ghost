@@ -157,11 +157,11 @@ void pagingSwitchSpace(g_physical_address dir)
 	asm volatile("mov %0, %%cr3":: "b"(dir));
 }
 
-g_page_directory pagingGetCurrentSpace()
+g_physical_address pagingGetCurrentSpace()
 {
 	uint32_t directory;
 	asm volatile("mov %%cr3, %0" : "=r"(directory));
-	return (g_page_directory) directory;
+	return directory;
 }
 
 g_physical_address pagingVirtualToPhysical(g_virtual_address addr)
