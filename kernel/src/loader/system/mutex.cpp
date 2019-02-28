@@ -18,31 +18,17 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL__
-#define __KERNEL__
+#include "shared/system/mutex.hpp"
 
-#include "ghost/types.h"
-#include "shared/setup_information.hpp"
-#include "shared/memory/bitmap_page_allocator.hpp"
-#include "shared/logger/logger.hpp"
+void mutexAcquire(g_mutex* mutex)
+{
+}
 
-extern int testSyscalls;
+void mutexRelease(g_mutex* mutex)
+{
+}
 
-extern g_bitmap_page_allocator* kernelPhysicalAllocator;
-
-extern "C" void kernelMain(g_setup_information* setupInformation);
-
-void kernelInitialize(g_setup_information* setupInformation);
-
-void kernelRunBootstrapCore(g_physical_address initialPdPhys);
-
-/**
- * This function is started by the SMP implementation.
- */
-void kernelRunApplicationCore();
-
-void kernelPanic(const char *msg, ...);
-
-void kernelHalt();
-
-#endif
+bool mutexIsAcquired(g_mutex* mutex)
+{
+	return false;
+}

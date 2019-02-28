@@ -20,9 +20,16 @@
 
 #include "shared/system/mutex.hpp"
 
+#include "kernel/tasking/tasking.hpp"
+
 #include "shared/logger/logger.hpp"
 
 void mutexAcquire(g_mutex* mutex)
+{
+	mutexAcquire(mutex, true);
+}
+
+void mutexAcquire(g_mutex* mutex, bool increaseCount)
 {
 #if G_DEBUG_LOCKS_DEADLOCKING
 	uint32_t deadlockCounter = 0;
@@ -33,20 +40,36 @@ void mutexAcquire(g_mutex* mutex)
 		asm("pause");
 #if G_DEBUG_LOCKS_DEADLOCKING
 		++deadlockCounter;
-		if (deadlockCounter > 100000000)
+		if(deadlockCounter > 10000000)
 		{
-			logInfo("%! looks like a deadlock", "lock");
+			loggerPrintPlain("deadlock");
 		}
 #endif
 	}
+
+	if(increaseCount)
+		__sync_fetch_and_add(&taskingGetLocal()->locksHeld, 1);
 }
 
 void mutexRelease(g_mutex* mutex)
 {
-	*mutex = 0;
+	mutexRelease(mutex, true);
 }
 
-bool mutexIsLocked(g_mutex* mutex)
+void mutexRelease(g_mutex* mutex, bool decreaseCount)
+{
+	if(*mutex == 0)
+	{
+		return;
+	}
+	*mutex = 0;
+
+	if(decreaseCount)
+		__sync_fetch_and_sub(&taskingGetLocal()->locksHeld, 1);
+}
+
+bool mutexIsAcquired(g_mutex* mutex)
 {
 	return *mutex;
 }
+

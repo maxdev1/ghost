@@ -28,6 +28,9 @@
 #include "shared/logger/logger.hpp"
 
 #include "kernel/calls/syscalls.hpp"
+#include "kernel/kernel.hpp"
+
+#include "shared/system/mutex.hpp"
 
 void requestsHandle(g_task* task)
 {
@@ -38,7 +41,11 @@ void requestsHandle(g_task* task)
 		taskingSchedule();
 	} else if(irq == 0x60)
 	{
-		logInfo("Userspace task %i %i sent IRQ", task->id, task->securityLevel);
+		testSyscalls++;
+		if(testSyscalls % 100000 == 0)
+		{
+			logInfo("Userspace task %i %i sent IRQ", task->id, task->securityLevel);
+		}
 	} else
 	{
 		logInfo("received unhandled irq %i", task->state.intr);

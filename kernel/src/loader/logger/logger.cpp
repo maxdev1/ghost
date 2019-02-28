@@ -20,7 +20,7 @@
 
 #include "shared/logger/logger.hpp"
 
-void loggerPrint(const char* message, ...)
+void loggerPrintLocked(const char* message, ...)
 {
 	va_list valist;
 	va_start(valist, message);
@@ -28,20 +28,12 @@ void loggerPrint(const char* message, ...)
 	va_end(valist);
 }
 
-void loggerPrintln(const char* message, ...)
+void loggerPrintlnLocked(const char* message, ...)
 {
 	va_list valist;
 	va_start(valist, message);
 	loggerPrintFormatted(message, valist);
 	va_end(valist);
 	loggerPrintCharacter('\n');
-}
-
-void loggerManualLock()
-{
-}
-
-void loggerManualUnlock()
-{
 }
 

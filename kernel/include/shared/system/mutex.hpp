@@ -25,10 +25,33 @@
 
 typedef volatile int g_mutex;
 
+/**
+ * Acquires the mutex. Increases the lock count for this processor.
+ */
 void mutexAcquire(g_mutex* mutex);
 
+/**
+ * Releases the mutex. Decreases the lock count for this processor.
+ */
 void mutexRelease(g_mutex* mutex);
 
+/**
+ * Acquires the mutex.
+ *
+ * The increaseCount parameter decides if the lock count for this processor should be increased.
+ */
+void mutexAcquire(g_mutex* mutex, bool increaseCount);
+
+/**
+ * Releases the mutex.
+ *
+ * The decreaseCount parameter decides if the lock count for this processor should be decreased.
+ */
+void mutexRelease(g_mutex* mutex, bool decreaseCount);
+
+/**
+ * Checks if this lock is acquired.
+ */
 bool mutexIsAcquired(g_mutex* mutex);
 
 #endif

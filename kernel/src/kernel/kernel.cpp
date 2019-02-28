@@ -45,6 +45,7 @@ int bs[4] =
 { 0, 0, 0, 0 };
 
 g_mutex testMutex = 0;
+int testSyscalls = 0;
 
 void test()
 {
@@ -59,7 +60,8 @@ void test()
 
 		if(as[processorGetCurrentId()] % 100000 == 0)
 		{
-			logInfo("#%i counts: A(%i %i %i %i), B(%i %i %i %i)", processorGetCurrentId(), as[0], as[1], as[2], as[3], bs[0], bs[1], bs[2], bs[3]);
+			logInfo("#%i counts: SYS%i A(%i %i %i %i), B(%i %i %i %i)", processorGetCurrentId(), testSyscalls, as[0], as[1], as[2], as[3], bs[0], bs[1], bs[2],
+					bs[3]);
 		}
 	}
 }
@@ -109,14 +111,11 @@ void kernelInitialize(g_setup_information* setupInformation)
 void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 {
 	logDebug("%! has entered kernel", "bsp");
-	mutexAcquire(&bootstrapCoreLock);
+	mutexAcquire(&bootstrapCoreLock, false);
 	systemInitializeBsp(initialPdPhys);
 	taskingInitializeBsp();
-	mutexRelease(&bootstrapCoreLock);
 
-	systemWaitForApplicationCores();
-
-	// Create test threads
+	// TEST THREADS
 	g_process* testProc = taskingCreateProcess();
 	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test, testProc, G_SECURITY_LEVEL_KERNEL));
 	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test2, testProc, G_SECURITY_LEVEL_KERNEL));
@@ -124,34 +123,46 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	g_task* userTask;
 	elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_APPLICATION, &userTask);
 
+	g_task* userTask2;
+	elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_APPLICATION, &userTask2);
+	// TEST THREADS END
+
+	mutexRelease(&bootstrapCoreLock, false);
+	systemWaitForApplicationCores();
 	interruptsEnable();
 }
 
 void kernelRunApplicationCore()
 {
 	logDebug("%! has entered kernel, waiting for bsp", "ap");
-	mutexAcquire(&bootstrapCoreLock);
-	mutexRelease(&bootstrapCoreLock);
+	mutexAcquire(&bootstrapCoreLock, false);
+	mutexRelease(&bootstrapCoreLock, false);
 
-	mutexAcquire(&applicationCoreLock);
+	mutexAcquire(&applicationCoreLock, false);
 
 	logDebug("%! initializing %i", "ap", processorGetCurrentId());
 	systemInitializeAp();
 	taskingInitializeAp();
 
-	// Create test threads
+	// TEST THREADS
 	g_process* testProc = taskingCreateProcess();
 	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test, testProc, G_SECURITY_LEVEL_KERNEL));
 	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test2, testProc, G_SECURITY_LEVEL_KERNEL));
 
-	mutexRelease(&applicationCoreLock);
+	g_task* userTask;
+	elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_APPLICATION, &userTask);
+
+	g_task* userTask2;
+	elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_APPLICATION, &userTask2);
+	// TEST THREADS END
+
+	mutexRelease(&applicationCoreLock, false);
 	systemWaitForApplicationCores();
 	interruptsEnable();
 }
 
 void kernelPanic(const char *msg, ...)
 {
-	loggerManualLock();
 	logInfo("%*%! an unrecoverable error has occured. reason:", 0x0C, "kernerr");
 
 	va_list valist;

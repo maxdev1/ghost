@@ -123,7 +123,6 @@ interruptRoutine:
 %macro handleRoutine 2
 global %1
 %1:
-	cli
 	push %2
 	jmp interruptRoutine
 %endmacro
@@ -132,7 +131,6 @@ global %1
 %macro handleRoutine 3
 global %1
 %1:
-	cli
 	push %2
 	push %3
 	jmp interruptRoutine

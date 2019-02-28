@@ -80,6 +80,8 @@ struct g_tasking_local
 	g_mutex lock;
 	g_task_entry* list;
 	g_task* current;
+
+	int locksHeld;
 };
 
 /**
