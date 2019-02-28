@@ -50,7 +50,7 @@ int __g_main()
 #warning "Test before syscalls get implemented"
 	for(;;)
 	{
-		g_sleep(100);
+		g_log("Hello from user space!");
 	}
 
 	// initialize libc

@@ -38,7 +38,7 @@ void requestsHandle(g_task* task)
 		taskingSchedule();
 	} else if(irq == 0x60)
 	{
-		logInfo("#%i: Task %i (Priv %i) issued syscall: %i", processorGetCurrentId(), task->id, task->securityLevel, G_SYSCALL_CODE(task->state));
+		logInfo("Userspace task %i %i sent IRQ", task->id, task->securityLevel);
 	} else
 	{
 		logInfo("received unhandled irq %i", task->state.intr);

@@ -88,7 +88,7 @@ fi
 
 
 # include package script
-source $PACKAGE/package.sh
+. $PACKAGE/package.sh
 if [ -z "$REMOTE_ARCHIVE" ]; then
 	fail "port did not specify REMOTE_ARCHIVE"
 fi

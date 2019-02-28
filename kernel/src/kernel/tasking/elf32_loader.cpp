@@ -47,7 +47,7 @@ g_elf32_spawn_status elf32SpawnFromRamdisk(g_ramdisk_entry* entry, g_security_le
 		pagingSwitchToSpace(process->pageDirectory);
 
 		// Load binary
-		elf32LoadBinaryToCurrentAddressSpace(header, process);
+		elf32LoadBinaryToCurrentAddressSpace(header, process, securityLevel);
 
 		// Create task
 		g_task* mainTask = taskingCreateThread(0, process, securityLevel);
@@ -78,17 +78,27 @@ g_elf32_spawn_status elf32SpawnFromRamdisk(g_ramdisk_entry* entry, g_security_le
  * This method loads the binary with the given header to the current address space. Once finished,
  * the start and end address of the executable image in memory are written to the respective out parameters.
  */
-void elf32LoadBinaryToCurrentAddressSpace(elf32_ehdr* header, g_process* process)
+void elf32LoadBinaryToCurrentAddressSpace(elf32_ehdr* header, g_process* process, g_security_level securityLevel)
 {
-	elf32LoadLoadSegment(header, process);
-	elf32LoadTlsMasterCopy(header, process);
+	elf32LoadLoadSegment(header, process, securityLevel);
+	elf32LoadTlsMasterCopy(header, process, securityLevel);
 }
 
 /**
  *
  */
-void elf32LoadLoadSegment(elf32_ehdr* header, g_process* process)
+void elf32LoadLoadSegment(elf32_ehdr* header, g_process* process, g_security_level securityLevel)
 {
+	// Flags for page tables/pages
+	uint32_t tableFlags;
+	uint32_t pageFlags;
+	if(securityLevel == G_SECURITY_LEVEL_KERNEL) {
+		tableFlags = DEFAULT_KERNEL_TABLE_FLAGS;
+		pageFlags = DEFAULT_KERNEL_PAGE_FLAGS;
+	} else {
+		tableFlags = DEFAULT_USER_TABLE_FLAGS;
+		pageFlags = DEFAULT_USER_PAGE_FLAGS;
+	}
 
 	// Initial values
 	uint32_t imageStart = 0xFFFFFFFF;
@@ -114,7 +124,7 @@ void elf32LoadLoadSegment(elf32_ehdr* header, g_process* process)
 	for(uint32_t virt = imageStart; virt < imageEnd; virt += G_PAGE_SIZE)
 	{
 		g_physical_address phys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-		pagingMapPage(virt, phys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+		pagingMapPage(virt, phys, tableFlags, pageFlags);
 		pageReferenceTrackerIncrement(phys);
 	}
 
@@ -136,12 +146,21 @@ void elf32LoadLoadSegment(elf32_ehdr* header, g_process* process)
 /**
  *
  */
-void elf32LoadTlsMasterCopy(elf32_ehdr* header, g_process* process)
+void elf32LoadTlsMasterCopy(elf32_ehdr* header, g_process* process, g_security_level securityLevel)
 {
-
-	uint32_t tlsSize = 0;
+	// Flags for page tables/pages
+	uint32_t tableFlags;
+	uint32_t pageFlags;
+	if(securityLevel == G_SECURITY_LEVEL_KERNEL) {
+		tableFlags = DEFAULT_KERNEL_TABLE_FLAGS;
+		pageFlags = DEFAULT_KERNEL_PAGE_FLAGS;
+	} else {
+		tableFlags = DEFAULT_USER_TABLE_FLAGS;
+		pageFlags = DEFAULT_USER_PAGE_FLAGS;
+	}
 
 	// Map pages for TLS master copy
+	uint32_t tlsSize = 0;
 	for(uint32_t i = 0; i < header->e_phnum; i++)
 	{
 		elf32_phdr* programHeader = (elf32_phdr*) (((uint32_t) header) + header->e_phoff + (header->e_phentsize * i));
@@ -156,7 +175,7 @@ void elf32LoadTlsMasterCopy(elf32_ehdr* header, g_process* process)
 			for(uint32_t virt = tlsStart; virt < tlsEnd; virt += G_PAGE_SIZE)
 			{
 				g_physical_address phys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-				pagingMapPage(virt, phys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+				pagingMapPage(virt, phys, tableFlags, pageFlags);
 				pageReferenceTrackerIncrement(phys);
 			}
 

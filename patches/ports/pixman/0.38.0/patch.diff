@@ -1,0 +1,12 @@
+diff -Naur pixman-0.38.0/config.sub pixman-0.38.0-ghost/config.sub
+--- pixman-0.38.0/config.sub	2019-02-28 12:14:24.589924400 +0100
++++ pixman-0.38.0-ghost/config.sub	2019-02-28 12:14:48.354233900 +0100
+@@ -1368,7 +1368,7 @@
+ 	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
+ 	      | -sym* | -kopensolaris* | -plan9* \
+ 	      | -amigaos* | -amigados* | -msdos* | -newsos* | -unicos* | -aof* \
+-	      | -aos* | -aros* | -cloudabi* | -sortix* \
++	      | -aos* | -aros* | -cloudabi* | -sortix* | -ghost* \
+ 	      | -nindy* | -vxsim* | -vxworks* | -ebmon* | -hms* | -mvs* \
+ 	      | -clix* | -riscos* | -uniplus* | -iris* | -rtu* | -xenix* \
+ 	      | -hiux* | -knetbsd* | -mirbsd* | -netbsd* \
