@@ -29,38 +29,57 @@
 
 struct g_process;
 
+/**
+ * A task is a single thread executing either in user or kernel level.
+ *
+ * When the task is a kernel-level task, the kernelStack information will be empty.
+ */
 struct g_task
 {
 	g_process* process;
 	g_tid id;
 	g_security_level securityLevel;
 
-	g_processor_state state;
-	g_virtual_address mainStack0;
-	// only for user-level tasks
-	g_virtual_address kernelStack0;
-
 	struct
 	{
 		g_virtual_address userThreadObject;
 		g_virtual_address location;
 	} tlsCopy;
-	;
+
+	g_processor_state state;
+
+	struct
+	{
+		g_virtual_address start;
+		g_virtual_address end;
+		g_virtual_address esp;
+	} kernelStack;
+
+	struct
+	{
+		g_virtual_address start;
+		g_virtual_address end;
+	} mainStack;
 };
 
+/**
+ * Task entry used in the task list.
+ */
 struct g_task_entry
 {
 	g_task* task;
 	g_task_entry* next;
 };
 
+/**
+ * Processor local tasking structure. For each processor there is one instance
+ * of this struct that contains the current state.
+ */
 struct g_tasking_local
 {
 	g_mutex lock;
 	g_task_entry* list;
 	g_task* current;
-
-	g_virtual_address kernelStackBase;
 };
 
 /**
@@ -69,6 +88,9 @@ struct g_tasking_local
 #define G_PROC_VIRTUAL_RANGE_FLAG_NONE						0
 #define G_PROC_VIRTUAL_RANGE_FLAG_PHYSICAL_OWNER			1
 
+/**
+ * A process groups multiple tasks.
+ */
 struct g_process
 {
 	g_mutex lock;
@@ -105,22 +127,25 @@ void taskingInitializeBsp();
 void taskingInitializeAp();
 
 /**
+ * Creates an empty process. Creates a new page directory with the kernel areas
+ * correctly mapped and instantiates a virtual range allocator.
  *
+ * Doesn't create a thread.
  */
 g_process* taskingCreateProcess();
 
 /**
- *
+ * Creates a task.
  */
 g_task* taskingCreateThread(g_virtual_address entry, g_process* process, g_security_level level);
 
 /**
- *
+ * Adds a task to the list of scheduled tasks on the given local.
  */
 void taskingAssign(g_tasking_local* local, g_task* task);
 
 /**
- *
+ * Schedules and sets the next task as the current.
  */
 void taskingSchedule();
 
@@ -139,7 +164,7 @@ bool taskingStore(g_virtual_address esp);
 g_virtual_address taskingRestore(g_virtual_address esp);
 
 /**
- *
+ * Returns the processor-local tasking structure.
  */
 g_tasking_local* taskingGetLocal();
 
@@ -156,6 +181,9 @@ g_tid taskingGetNextId();
  */
 g_physical_address taskingCreatePageDirectory();
 
+/**
+ * Applies a security level on the register state of a task.
+ */
 void taskingApplySecurityLevel(g_processor_state* state, g_security_level securityLevel);
 
 /**

@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/tasking/tasking.hpp"
+#include "kernel/tasking/scheduler.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/gdt.hpp"
@@ -122,14 +123,18 @@ g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_securit
 
 	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
 	{
-		task->kernelStack0 = 0;
+		task->kernelStack.start = 0;
+		task->kernelStack.end = 0;
+		task->kernelStack.esp = 0;
 	} else
 	{
 		// User-space processes get a kernel stack
 		g_physical_address kernPhys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
 		g_virtual_address kernVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
 		pagingMapPage(kernVirt, kernPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
-		task->kernelStack0 = kernVirt + G_PAGE_SIZE;
+		task->kernelStack.start = kernVirt;
+		task->kernelStack.end = kernVirt + G_PAGE_SIZE;
+		task->kernelStack.esp = task->kernelStack.end - sizeof(g_processor_state);
 	}
 
 	// Create main stack
@@ -144,11 +149,12 @@ g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_securit
 		stackVirt = addressRangePoolAllocate(process->virtualRangePool, 1);
 		pagingMapPage(stackVirt, stackPhys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
 	}
-	task->mainStack0 = stackVirt + G_PAGE_SIZE;
+	task->mainStack.start = stackVirt;
+	task->mainStack.end = stackVirt + G_PAGE_SIZE;
 
 	// Initialize task state
 	memorySetBytes((void*) &task->state, 0, sizeof(g_processor_state));
-	task->state.esp = task->mainStack0 - sizeof(g_processor_state);
+	task->state.esp = task->mainStack.end - sizeof(g_processor_state);
 	task->state.eip = eip;
 	task->state.eflags = 0x200;
 	taskingApplySecurityLevel(&task->state, task->securityLevel);
@@ -224,12 +230,15 @@ g_virtual_address taskingRestore(g_virtual_address esp)
 	{
 		stateSize -= sizeof(uint32_t) * 2; // ESP & SS are not restored
 		esp = task->state.esp;
+	} else
+	{
+		esp = task->kernelStack.esp;
 	}
 	memoryCopy((void*) esp, &task->state, stateSize);
 
 	// For TLS: write user thread address to GDT
 	gdtSetUserThreadObjectAddress(task->tlsCopy.userThreadObject);
-	gdtSetTssEsp0(task->kernelStack0);
+	gdtSetTssEsp0(task->kernelStack.end);
 
 	// set GS of thread to user pointer segment
 	task->state.gs = 0x30;
@@ -239,43 +248,9 @@ g_virtual_address taskingRestore(g_virtual_address esp)
 
 void taskingSchedule()
 {
-	// TODO
 	g_tasking_local* local = taskingGetLocal();
 	mutexAcquire(&local->lock);
-
-	if(local->current)
-	{
-		// Just find current entry and take next
-		g_task_entry* entry = local->list;
-		while(entry)
-		{
-			if(entry->task == local->current)
-			{
-				break;
-			}
-			entry = entry->next;
-		}
-		if(entry)
-		{
-			entry = entry->next;
-
-			if(entry)
-			{
-				local->current = entry->task;
-			} else
-			{
-				local->current = local->list->task;
-			}
-		} else
-		{
-			local->current = local->list->task;
-		}
-
-	} else
-	{
-		local->current = local->list->task;
-	}
-
+	schedulerSchedule(local);
 	mutexRelease(&local->lock);
 }
 

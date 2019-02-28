@@ -44,7 +44,7 @@ int as[4] =
 int bs[4] =
 { 0, 0, 0, 0 };
 
-static g_mutex testMutex;
+g_mutex testMutex = 0;
 
 void test()
 {
