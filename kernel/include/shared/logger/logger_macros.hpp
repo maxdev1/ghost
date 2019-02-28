@@ -24,8 +24,8 @@
 #include "build_config.hpp"
 
 #if G_LOG_LEVEL <= G_LOG_LEVEL_INFO
-#define logInfo(msg...)			loggerPrintln(msg)
-#define logInfon(msg...)		loggerPrint(msg)
+#define logInfo(msg...)			loggerPrintlnLocked(msg)
+#define logInfon(msg...)		loggerPrintLocked(msg)
 #define G_LOGGING_INFO			true
 #define G_IF_LOG_INFO(s)		s
 #else
@@ -36,8 +36,8 @@
 #endif
 
 #if G_LOG_LEVEL <= G_LOG_LEVEL_WARN
-#define logWarn(msg...)			loggerPrintln(msg)
-#define logWarnn(msg...)		loggerPrint(msg)
+#define logWarn(msg...)			loggerPrintlnLocked(msg)
+#define logWarnn(msg...)		loggerPrintLocked(msg)
 #define G_LOGGING_WARN			true
 #define G_IF_LOG_WARN(s)		s
 #else
@@ -48,8 +48,8 @@
 #endif
 
 #if G_LOG_LEVEL <= G_LOG_LEVEL_DEBUG
-#define logDebug(msg...)		loggerPrintln(msg)
-#define logDebugn(msg...)		loggerPrint(msg)
+#define logDebug(msg...)		loggerPrintlnLocked(msg)
+#define logDebugn(msg...)		loggerPrintLocked(msg)
 #define G_LOGGING_DEBUG			true
 #define G_IF_LOG_DEBUG(s)		s
 #else

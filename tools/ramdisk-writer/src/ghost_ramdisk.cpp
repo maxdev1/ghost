@@ -33,39 +33,47 @@
 /**
  *
  */
-int main(int argc, char** argv) {
-
+int main(int argc, char** argv)
+{
 	ghost_ramdisk ramdisk;
-	if (argc == 2) {
-		if (strcmp(argv[1], "--help") == 0) {
+	if(argc == 2)
+	{
+		if(strcmp(argv[1], "--help") == 0)
+		{
 			std::cout << std::endl;
 			std::cout << "NAME" << std::endl;
-			std::cout << "  Ghost Kernel ramdisk generator, by Max Schluessel"
-					<< std::endl;
+			std::cout << "  Ghost Kernel ramdisk generator, by Max Schluessel" << std::endl;
 			std::cout << std::endl;
 			std::cout << "DESCRIPTION" << std::endl;
-			std::cout
-					<< "  This program generates a Ghost ramdisk from a given source folder."
-					<< std::endl;
-			std::cout << "  To do so, use the following command syntax:"
-					<< std::endl;
+			std::cout << "  This program generates a Ghost ramdisk from a given source folder." << std::endl;
+			std::cout << "  To do so, use the following command syntax:" << std::endl;
 			std::cout << std::endl;
 			std::cout << "\tpath/to/source path/to/target" << std::endl;
 			std::cout << std::endl;
 			return 0;
 		}
 
-		std::cerr << "error: unrecognized command line option '" << argv[1]
-				<< std::endl << std::endl;
+		std::cerr << "error: unrecognized command line option '" << argv[1] << std::endl << std::endl;
 		return 1;
 	}
 
-	if (argc == 3) {
+	if(argc >= 3)
+	{
+
+		if(argc == 4)
+		{
+			char* flag = argv[3];
+			if(strcmp(flag, "-v") == 0)
+			{
+				ramdisk.verbose = true;
+			}
+		}
+
 		ramdisk.create(argv[1], argv[2]);
 		return 0;
-	} else {
-		std::cerr << "usage: " << argv[0] << " path/to/source path/to/target"
-				<< std::endl;
+	} else
+	{
+		std::cerr << "usage: " << argv[0] << " path/to/source path/to/target" << std::endl;
 		return 1;
 	}
 }
@@ -73,8 +81,10 @@ int main(int argc, char** argv) {
 /**
  *
  */
-std::string trim(std::string& str) {
-	if (str.length() > 0) {
+std::string trim(std::string& str)
+{
+	if(str.length() > 0)
+	{
 		size_t first = str.find_first_not_of(" \r\n\t");
 		size_t last = str.find_last_not_of(" \r\n\t");
 		return str.substr(first, (last - first + 1));
@@ -85,42 +95,46 @@ std::string trim(std::string& str) {
 /**
  *
  */
-void ghost_ramdisk::create(const char* sourcePath, const char* targetPath) {
+void ghost_ramdisk::create(const char* sourcePath, const char* targetPath)
+{
 
 	// read .rdignore if it exists
 	std::ifstream rdignore(std::string(sourcePath) + "/.rdignore");
-	if (rdignore.is_open()) {
+	if(rdignore.is_open())
+	{
 		std::string line;
-		while (std::getline(rdignore, line)) {
-			if (line.length() > 0) {
+		while(std::getline(rdignore, line))
+		{
+			if(line.length() > 0)
+			{
 				ignores.push_back(trim(line));
 			}
 		}
 	}
 
-	try {
+	try
+	{
 		out.open(targetPath, std::ios::out | std::ios::binary);
 
-		if (out.good()) {
-			std::cout << "status: packing folder \"" << sourcePath
-					<< "\" to ramdisk file \"" << targetPath << "\":"
-					<< std::endl;
+		if(out.good())
+		{
+			std::cout << "status: packing folder \"" << sourcePath << "\" to ramdisk file \"" << targetPath << "\":" << std::endl;
 			int64_t pos = out.tellp();
 			writeRecursive(sourcePath, sourcePath, "", 0, 0, false);
 			int64_t written = out.tellp() - pos;
-			std::cout << "status: ramdisk successfully created, wrote "
-					<< written << " bytes" << std::endl;
-		} else {
-			std::cerr << "error: could not write to file '" << targetPath << "'"
-					<< std::endl;
+			std::cout << "status: ramdisk successfully created, wrote " << written << " bytes" << std::endl;
+		} else
+		{
+			std::cerr << "error: could not write to file '" << targetPath << "'" << std::endl;
 		}
 
-	} catch (std::exception& e) {
-		std::cerr << "error: an error occured while creating the ramdisk"
-				<< std::endl;
+	} catch(std::exception& e)
+	{
+		std::cerr << "error: an error occured while creating the ramdisk" << std::endl;
 	}
 
-	if (out.is_open()) {
+	if(out.is_open())
+	{
 		out.close();
 	}
 }
@@ -128,30 +142,34 @@ void ghost_ramdisk::create(const char* sourcePath, const char* targetPath) {
 /**
  *
  */
-void ghost_ramdisk::writeRecursive(const char* basePath, const char* path,
-		const char* name, uint32_t contentLength, uint32_t parentId,
-		bool isFile) {
+void ghost_ramdisk::writeRecursive(const char* basePath, const char* path, const char* name, uint32_t contentLength, uint32_t parentId, bool isFile)
+{
 
 	// check whether to skip the file
 	std::string basePathStr(basePath);
 	std::string pathStr(path);
-	for (std::string ign : ignores) {
+	for(std::string ign : ignores)
+	{
 
 		// starts with star?
-		if (ign.find("*") == 0) {
+		if(ign.find("*") == 0)
+		{
 			std::string part = ign.substr(1);
-			if (pathStr.find(part) == pathStr.length() - part.length()) {
+			if(pathStr.find(part) == pathStr.length() - part.length())
+			{
 				std::cout << "  skipping: " << path << std::endl;
 				return;
 			}
 		}
 
 		// ends with star?
-		if (ign.find("*") == ign.length() - 1) {
+		if(ign.find("*") == ign.length() - 1)
+		{
 			std::string part = ign.substr(0, ign.length() - 1);
 			std::string absolutePartPath = basePathStr + "/" + part;
 
-			if (pathStr.find(absolutePartPath) == 0) {
+			if(pathStr.find(absolutePartPath) == 0)
+			{
 				std::cout << "  skipping: " << path << std::endl;
 				return;
 			}
@@ -159,7 +177,8 @@ void ghost_ramdisk::writeRecursive(const char* basePath, const char* path,
 
 		// full paths
 		std::string absolutePath = basePathStr + "/" + ign;
-		if (absolutePath == pathStr) {
+		if(absolutePath == pathStr)
+		{
 			std::cout << "  skipping: " << path << std::endl;
 			return;
 		}
@@ -169,12 +188,16 @@ void ghost_ramdisk::writeRecursive(const char* basePath, const char* path,
 	char* buffer = new char[bufferSize];
 	uint32_t entryId = idCounter++;
 
-	std::stringstream msg;
-	msg << " " << entryId << ": " << path << (isFile ? "" : "/");
-	std::cout << msg.str() << std::endl;
+	if(verbose)
+	{
+		std::stringstream msg;
+		msg << " " << entryId << ": " << path << (isFile ? "" : "/");
+		std::cout << msg.str() << std::endl;
+	}
 
 	// Root must not be written
-	if (entryId > 0) {
+	if(entryId > 0)
+	{
 		// file or folder
 		buffer[0] = isFile ? 1 : 0;
 		out.write(buffer, 1);
@@ -206,7 +229,8 @@ void ghost_ramdisk::writeRecursive(const char* basePath, const char* path,
 		out.write(buffer, namelen);
 	}
 
-	if (isFile) {
+	if(isFile)
+	{
 		// file length
 		buffer[0] = ((contentLength >> 0) & 0xFF);
 		buffer[1] = ((contentLength >> 8) & 0xFF);
@@ -219,19 +243,23 @@ void ghost_ramdisk::writeRecursive(const char* basePath, const char* path,
 		fileInput.open(path, std::ios::in | std::ios::binary);
 
 		int32_t length;
-		while (fileInput.good()) {
+		while(fileInput.good())
+		{
 			fileInput.read(buffer, bufferSize);
 			length = fileInput.gcount();
 			out.write(buffer, length);
 		}
 
 		fileInput.close();
-	} else {
+	} else
+	{
 		DIR *directory;
 		dirent *entry;
 
-		if ((directory = opendir(path)) != NULL) {
-			while ((entry = readdir(directory)) != NULL) {
+		if((directory = opendir(path)) != NULL)
+		{
+			while((entry = readdir(directory)) != NULL)
+			{
 				char entryPath[260];
 
 				std::stringstream str;
@@ -243,28 +271,30 @@ void ghost_ramdisk::writeRecursive(const char* basePath, const char* path,
 
 				struct stat s;
 				int32_t statr = stat(entryPath, &s);
-				if (statr == 0) {
+				if(statr == 0)
+				{
 
-					if (s.st_mode & S_IFREG) {
-						writeRecursive(basePath, entryPath, entry->d_name,
-								s.st_size, entryId, true);
+					if(s.st_mode & S_IFREG)
+					{
+						writeRecursive(basePath, entryPath, entry->d_name, s.st_size, entryId, true);
 
-					} else if (s.st_mode & S_IFDIR) {
-						if (!(strcmp(entry->d_name, ".") == 0
-								|| strcmp(entry->d_name, "..") == 0)) {
-							writeRecursive(basePath, entryPath, entry->d_name,
-									0, entryId, false);
+					} else if(s.st_mode & S_IFDIR)
+					{
+						if(!(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0))
+						{
+							writeRecursive(basePath, entryPath, entry->d_name, 0, entryId, false);
 						}
 					}
-				} else {
-					std::cerr << "error: could not read directory: '" << path
-							<< "'";
+				} else
+				{
+					std::cerr << "error: could not read directory: '" << path << "'";
 					break;
 				}
 			}
 
 			closedir(directory);
-		} else {
+		} else
+		{
 			std::cerr << "error: could not open directory: '" << path << "'";
 		}
 	}

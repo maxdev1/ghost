@@ -18,30 +18,31 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "kernel/system/mutex_reentrant.hpp"
 #include "kernel/system/smp.hpp"
+#include "kernel/system/mutex_reentrant.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/system/mutex.hpp"
 
 #include "shared/utils/string.hpp"
 #include "shared/video/console_video.hpp"
 
-static g_mutex_reentrant printLock;
+static g_mutex printLock;
 
-void loggerPrint(const char* message, ...)
+void loggerPrintLocked(const char* message, ...)
 {
-	mutexReentrantAcquire(&printLock);
+	mutexAcquire(&printLock);
 
 	va_list valist;
 	va_start(valist, message);
 	loggerPrintFormatted(message, valist);
 	va_end(valist);
 
-	mutexReentrantRelease(&printLock);
+	mutexRelease(&printLock);
 }
 
-void loggerPrintln(const char* message, ...)
+void loggerPrintlnLocked(const char* message, ...)
 {
-	mutexReentrantAcquire(&printLock);
+	mutexAcquire(&printLock);
 
 	va_list valist;
 	va_start(valist, message);
@@ -49,16 +50,6 @@ void loggerPrintln(const char* message, ...)
 	va_end(valist);
 	loggerPrintCharacter('\n');
 
-	mutexReentrantRelease(&printLock);
-}
-
-void loggerManualLock()
-{
-	mutexReentrantAcquire(&printLock);
-}
-
-void loggerManualUnlock()
-{
-	mutexReentrantRelease(&printLock);
+	mutexRelease(&printLock);
 }
 

@@ -37,6 +37,7 @@ void taskingInitializeLocal(g_tasking_local* local)
 	local->lock = 0;
 	local->list = 0;
 	local->current = 0;
+	local->locksHeld = 0;
 }
 
 void taskingInitializeBsp()
@@ -209,7 +210,12 @@ bool taskingStore(g_virtual_address esp)
 
 	// We need to manually store the stack pointer in non-context switches
 	if(local->current->securityLevel == G_SECURITY_LEVEL_KERNEL)
+	{
 		local->current->state.esp = esp;
+	} else
+	{
+		local->current->kernelStack.esp = esp;
+	}
 
 	return true;
 }
@@ -249,9 +255,15 @@ g_virtual_address taskingRestore(g_virtual_address esp)
 void taskingSchedule()
 {
 	g_tasking_local* local = taskingGetLocal();
-	mutexAcquire(&local->lock);
-	schedulerSchedule(local);
-	mutexRelease(&local->lock);
+
+	// If there are kernel locks held by the currently running task, we may not
+	// switch tasks - otherwise we will deadlock.
+	if(local->locksHeld == 0)
+	{
+		mutexAcquire(&local->lock);
+		schedulerSchedule(local);
+		mutexRelease(&local->lock);
+	}
 }
 
 g_tasking_local* taskingGetLocal()

@@ -26,17 +26,13 @@
 
 #include "shared/logger/logger_macros.hpp"
 
-void loggerManualLock();
+void loggerPrintLocked(const char *message, ...);
 
-void loggerManualUnlock();
+void loggerPrintlnLocked(const char *message, ...);
 
 void loggerEnableSerial(bool enable);
 
 void loggerEnableVideo(bool video);
-
-void loggerPrint(const char *message, ...);
-
-void loggerPrintln(const char *message, ...);
 
 void loggerPrintPlain(const char *message);
 
