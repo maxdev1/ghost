@@ -78,9 +78,18 @@ struct g_task_entry
 struct g_tasking_local
 {
 	g_mutex lock;
+
+	/**
+	 * Tasking information.
+	 */
 	g_task_entry* list;
 	g_task* current;
 
+	/**
+	 * The number of locks that are currently held on this processor. If this
+	 * number is greater than 0, the scheduler will re-schedule the current task
+	 * until all locks are resolved.
+	 */
 	int locksHeld;
 };
 
