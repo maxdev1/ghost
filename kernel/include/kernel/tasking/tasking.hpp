@@ -46,20 +46,24 @@ struct g_task
 		g_virtual_address location;
 	} tlsCopy;
 
-	g_processor_state state;
+	/**
+	 * Pointer to the top of the stack of where the registers of this task were pushed
+	 * during interruption. This may only be accessed when we are within the process
+	 * address space.
+	 */
+	g_processor_state* state;
 
 	struct
 	{
 		g_virtual_address start;
 		g_virtual_address end;
-		g_virtual_address esp;
-	} kernelStack;
+	} interruptStack;
 
 	struct
 	{
 		g_virtual_address start;
 		g_virtual_address end;
-	} mainStack;
+	} stack;
 };
 
 /**

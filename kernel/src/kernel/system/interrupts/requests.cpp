@@ -35,7 +35,7 @@
 void requestsHandle(g_task* task)
 {
 	// Handle IRQ
-	const uint32_t irq = task->state.intr - 0x20;
+	const uint32_t irq = task->state->intr - 0x20;
 	if(irq == 0)
 	{
 		taskingSchedule();
@@ -51,7 +51,7 @@ void requestsHandle(g_task* task)
 		}
 	} else
 	{
-		logInfo("received unhandled irq %i", task->state.intr);
+		logInfo("received unhandled irq %i", task->state->intr);
 		for(;;)
 			;
 	}
