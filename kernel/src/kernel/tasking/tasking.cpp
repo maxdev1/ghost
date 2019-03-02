@@ -129,7 +129,7 @@ g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_securit
 		task->kernelStack.esp = 0;
 	} else
 	{
-		// User-space processes get a kernel stack
+		// User-space processes get a dedicated kernel stack
 		g_physical_address kernPhys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
 		g_virtual_address kernVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
 		pagingMapPage(kernVirt, kernPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
@@ -194,27 +194,33 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 bool taskingStore(g_virtual_address esp)
 {
 	g_tasking_local* local = taskingGetLocal();
+
+	// Very first interrupt that happened on this processor
 	if(!local->current)
 	{
 		taskingSchedule();
 		return false;
 	}
 
+	// Check if we came from ring 3. Be careful when accessing the processor state
+	// here, ESP and SS were not pushed if we came from ring 0.
+	bool interruptedFromRing3 = ((g_processor_state*) esp)->cs & G_SEGMENT_SELECTOR_RING3;
+
 	// Copy registers to the tasks state structure
 	uint32_t stateSize = sizeof(g_processor_state);
-	if(local->current->securityLevel == G_SECURITY_LEVEL_KERNEL)
+	if(!interruptedFromRing3)
 	{
 		stateSize -= sizeof(uint32_t) * 2; // ESP & SS were not pushed
 	}
 	memoryCopy(&local->current->state, (void*) esp, stateSize);
 
-	// We need to manually store the stack pointer in non-context switches
-	if(local->current->securityLevel == G_SECURITY_LEVEL_KERNEL)
-	{
-		local->current->state.esp = esp;
-	} else
+	// Store stack pointer from where task must be restored from
+	if(interruptedFromRing3)
 	{
 		local->current->kernelStack.esp = esp;
+	} else
+	{
+		local->current->state.esp = esp;
 	}
 
 	return true;
@@ -228,17 +234,18 @@ g_virtual_address taskingRestore(g_virtual_address esp)
 	if(!task)
 		kernelPanic("%! tried to restore without a current task", "tasking");
 
+	// Switch to process address space
 	pagingSwitchToSpace(task->process->pageDirectory);
 
 	// Restore registers from tasks state structure
 	uint32_t stateSize = sizeof(g_processor_state);
-	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
+	if(task->state.cs & G_SEGMENT_SELECTOR_RING3)
+	{
+		esp = task->kernelStack.esp;
+	} else
 	{
 		stateSize -= sizeof(uint32_t) * 2; // ESP & SS are not restored
 		esp = task->state.esp;
-	} else
-	{
-		esp = task->kernelStack.esp;
 	}
 	memoryCopy((void*) esp, &task->state, stateSize);
 

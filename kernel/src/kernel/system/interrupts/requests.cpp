@@ -42,9 +42,12 @@ void requestsHandle(g_task* task)
 	} else if(irq == 0x60)
 	{
 		testSyscalls++;
+		if(task->securityLevel == 0) {
+			logInfo("Kernel syscall from %i %i", task->id, task->securityLevel);
+		}else
 		if(testSyscalls % 100000 == 0)
 		{
-			logInfo("Userspace task %i %i sent IRQ", task->id, task->securityLevel);
+			logInfo("Syscall from %i %i", task->id, task->securityLevel);
 		}
 	} else
 	{
