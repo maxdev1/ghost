@@ -326,3 +326,17 @@ void taskingPrepareThreadLocalStorage(g_task* thread)
 	logDebug("%! created tls copy in process %i, thread %i at %h", "threadmgr", process->main->id, thread->id, thread->tlsCopy.location);
 }
 
+void taskingKernelThreadYield() {
+
+	g_tasking_local* local = taskingGetLocal();
+	if(local->locksHeld > 0) {
+		logInfo("%! warning: kernel thread %i tried to yield while holding a kernel lock", "tasking", local->current->id);
+		return;
+	}
+
+	asm volatile ("int $0x81"
+			:
+			: "a"(0), "b"(0)
+			: "cc", "memory");
+}
+
