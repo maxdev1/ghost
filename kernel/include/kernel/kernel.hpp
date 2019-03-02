@@ -30,6 +30,11 @@ extern int testSyscalls;
 
 extern g_bitmap_page_allocator* kernelPhysicalAllocator;
 
+/**
+ * Main entry point of the kernel. The loader calls this function on the
+ * bootstrap processor. The setup information structure contains information
+ * about everything that the loader has prepared for the kernel.
+ */
 extern "C" void kernelMain(g_setup_information* setupInformation);
 
 void kernelInitialize(g_setup_information* setupInformation);

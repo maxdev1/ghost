@@ -31,7 +31,8 @@
 #include "shared/video/pretty_boot.hpp"
 
 /**
- * Can't put this on the stack as we change ESP before calling it.
+ * This must stay as a global variable. We can't put this on
+ * the stack because we change ESP before calling it.
  */
 static void (*kernelMain)(g_setup_information*);
 
@@ -94,18 +95,21 @@ void kernelLoaderCreateHeap()
 	loaderSetupInformation.heapEnd = heapEnd;
 }
 
-void kernelLoaderEnterMain(g_address entryAddress, g_address newEsp)
+void kernelLoaderEnterMain(g_address entryAddress, g_address kernelEsp)
 {
-	kernelMain = (void (*)(g_setup_information*)) entryAddress;asm("mov %0, %%esp\n"
-			"mov %%esp, %%ebp\n"
-			:: "r"(newEsp));
+	kernelMain = (void (*)(g_setup_information*)) entryAddress;
+
+	// Switch to kernel stack & enter kernel
+	asm("mov %0, %%esp\n"
+		"mov %%esp, %%ebp\n"
+		:: "r"(kernelEsp));
 	kernelMain(&loaderSetupInformation);
-	// Will never reach here, so no need to clean up the stack.
+	// Will never reach here, so no need to clean up the stack
+	loaderPanic("%! dropped out of kernel main, this should never happen", "kernload");
 }
 
 void kernelLoaderLoadBinary(elf32_ehdr* header)
 {
-
 	logDebug("%! loading binary to higher memory", "kernload");
 	uint32_t imageStart = UINT32_MAX;
 	uint32_t imageEnd = 0;

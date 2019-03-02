@@ -25,8 +25,18 @@
 #include "shared/multiboot/multiboot.hpp"
 
 /**
- * A struct filled by the initial loader containing important information about
- * memory areas, multiboot, stack or kernel image position.
+ * A struct filled by the initial loader containing information about things
+ * that the loader has prepared for the kernel.
+ * 
+ * Loader prepares a page directory where all page tables in the kernel area
+ * are allocated.
+ * - Kernel binary image is loaded at 0xC0000000
+ * - Kernel stack is allocated right after the image
+ * - Kernel heap is allocated right after the stack
+ * - Directory is recursively mapped
+ * 
+ * The given bitmap gives information about all the available physical memory
+ * in the system.
  */
 struct g_setup_information
 {

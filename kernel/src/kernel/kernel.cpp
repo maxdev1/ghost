@@ -130,6 +130,8 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	mutexRelease(&bootstrapCoreLock, false);
 	systemWaitForApplicationCores();
 	interruptsEnable();
+	for(;;)
+		asm("hlt");
 }
 
 void kernelRunApplicationCore()
@@ -159,6 +161,8 @@ void kernelRunApplicationCore()
 	mutexRelease(&applicationCoreLock, false);
 	systemWaitForApplicationCores();
 	interruptsEnable();
+	for(;;)
+		asm("hlt");
 }
 
 void kernelPanic(const char *msg, ...)
@@ -172,10 +176,14 @@ void kernelPanic(const char *msg, ...)
 	loggerPrintCharacter('\n');
 
 	interruptsDisable();
+	for(;;)
+		asm("hlt");
 }
 
 void kernelHalt()
 {
 	logInfo("%! execution finished, halting", "postkern");
 	interruptsDisable();
+	for(;;)
+		asm("hlt");
 }

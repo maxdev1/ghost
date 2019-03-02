@@ -351,13 +351,9 @@ void interruptsInstallRoutines()
 void interruptsEnable()
 {
 	asm("sti");
-	for(;;)
-		asm("hlt");
 }
 
 void interruptsDisable()
 {
 	asm("cli");
-	for(;;)
-		asm("hlt");
 }
