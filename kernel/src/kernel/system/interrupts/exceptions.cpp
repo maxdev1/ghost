@@ -32,13 +32,13 @@ uint32_t exceptionsGetCR2()
 
 void exceptionsHandle(g_task* currentTask)
 {
-	logInfo("%*%! task %i caused exception %i (error %i) at EIP: %h ESP: %h", 0x0C, "exception", currentTask->id, currentTask->state.intr,
-			currentTask->state.error, currentTask->state.eip, currentTask->state.esp);
+	logInfo("%*%! task %i caused exception %i (error %i) at EIP: %h ESP: %h", 0x0C, "exception", currentTask->id, currentTask->state->intr,
+			currentTask->state->error, currentTask->state->eip, currentTask->state->esp);
 
-	if(currentTask->state.intr == 0xE)
+	if(currentTask->state->intr == 0xE)
 	{
 		g_virtual_address accessedVirtual = G_PAGE_ALIGN_DOWN(exceptionsGetCR2());
-		logInfo("%# Tried to access %h, EIP: %h", accessedVirtual, taskingGetLocal()->current->state.eip);
+		logInfo("%# Tried to access %h, EIP: %h", accessedVirtual, taskingGetLocal()->current->state->eip);
 	}
 	for(;;)
 	{

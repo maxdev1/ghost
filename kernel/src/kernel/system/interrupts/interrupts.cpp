@@ -73,7 +73,7 @@ extern "C" g_virtual_address _interruptHandler(g_virtual_address esp)
 	if(taskingStore(esp))
 	{
 		g_tasking_local* local = taskingGetLocal();
-		if(local->current->state.intr < 0x20)
+		if(local->current->state->intr < 0x20)
 		{
 			exceptionsHandle(local->current);
 		} else

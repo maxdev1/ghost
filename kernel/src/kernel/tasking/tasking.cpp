@@ -124,18 +124,17 @@ g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_securit
 
 	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
 	{
-		task->kernelStack.start = 0;
-		task->kernelStack.end = 0;
-		task->kernelStack.esp = 0;
+		// For kernel level tasks, registers are stored on working stack on interrupt
+		task->interruptStack.start = 0;
+		task->interruptStack.end = 0;
 	} else
 	{
 		// User-space processes get a dedicated kernel stack
 		g_physical_address kernPhys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
 		g_virtual_address kernVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
 		pagingMapPage(kernVirt, kernPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
-		task->kernelStack.start = kernVirt;
-		task->kernelStack.end = kernVirt + G_PAGE_SIZE;
-		task->kernelStack.esp = task->kernelStack.end - sizeof(g_processor_state);
+		task->interruptStack.start = kernVirt;
+		task->interruptStack.end = kernVirt + G_PAGE_SIZE;
 	}
 
 	// Create main stack
@@ -150,15 +149,18 @@ g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_securit
 		stackVirt = addressRangePoolAllocate(process->virtualRangePool, 1);
 		pagingMapPage(stackVirt, stackPhys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
 	}
-	task->mainStack.start = stackVirt;
-	task->mainStack.end = stackVirt + G_PAGE_SIZE;
+	task->stack.start = stackVirt;
+	task->stack.end = stackVirt + G_PAGE_SIZE;
 
-	// Initialize task state
-	memorySetBytes((void*) &task->state, 0, sizeof(g_processor_state));
-	task->state.esp = task->mainStack.end - sizeof(g_processor_state);
-	task->state.eip = eip;
-	task->state.eflags = 0x200;
-	taskingApplySecurityLevel(&task->state, task->securityLevel);
+	// Initialize task state on main stack
+	g_virtual_address esp = task->stack.end - sizeof(g_processor_state);
+	task->state = (g_processor_state*) esp;
+
+	memorySetBytes((void*) task->state, 0, sizeof(g_processor_state));
+	task->state->esp = esp;
+	task->state->eip = eip;
+	task->state->eflags = 0x200;
+	taskingApplySecurityLevel(task->state, task->securityLevel);
 
 	// Switch back
 	pagingSwitchToSpace(currentDir);
@@ -193,70 +195,38 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 
 bool taskingStore(g_virtual_address esp)
 {
-	g_tasking_local* local = taskingGetLocal();
+	g_task* task = taskingGetLocal()->current;
 
 	// Very first interrupt that happened on this processor
-	if(!local->current)
+	if(!task)
 	{
 		taskingSchedule();
 		return false;
 	}
 
-	// Check if we came from ring 3. Be careful when accessing the processor state
-	// here, ESP and SS were not pushed if we came from ring 0.
-	bool interruptedFromRing3 = ((g_processor_state*) esp)->cs & G_SEGMENT_SELECTOR_RING3;
-
-	// Copy registers to the tasks state structure
-	uint32_t stateSize = sizeof(g_processor_state);
-	if(!interruptedFromRing3)
-	{
-		stateSize -= sizeof(uint32_t) * 2; // ESP & SS were not pushed
-	}
-	memoryCopy(&local->current->state, (void*) esp, stateSize);
-
-	// Store stack pointer from where task must be restored from
-	if(interruptedFromRing3)
-	{
-		local->current->kernelStack.esp = esp;
-	} else
-	{
-		local->current->state.esp = esp;
-	}
+	// Store where registers were pushed to
+	task->state = (g_processor_state*) esp;
 
 	return true;
 }
 
 g_virtual_address taskingRestore(g_virtual_address esp)
 {
-	g_tasking_local* local = taskingGetLocal();
-
-	g_task* task = local->current;
+	g_task* task = taskingGetLocal()->current;
 	if(!task)
 		kernelPanic("%! tried to restore without a current task", "tasking");
 
 	// Switch to process address space
 	pagingSwitchToSpace(task->process->pageDirectory);
 
-	// Restore registers from tasks state structure
-	uint32_t stateSize = sizeof(g_processor_state);
-	if(task->state.cs & G_SEGMENT_SELECTOR_RING3)
-	{
-		esp = task->kernelStack.esp;
-	} else
-	{
-		stateSize -= sizeof(uint32_t) * 2; // ESP & SS are not restored
-		esp = task->state.esp;
-	}
-	memoryCopy((void*) esp, &task->state, stateSize);
-
-	// For TLS: write user thread address to GDT
+	// For TLS: write user thread address to GDT & set GS of thread to user pointer segment
 	gdtSetUserThreadObjectAddress(task->tlsCopy.userThreadObject);
-	gdtSetTssEsp0(task->kernelStack.end);
+	task->state->gs = 0x30;
 
-	// set GS of thread to user pointer segment
-	task->state.gs = 0x30;
+	// Set TSS ESP0 for ring 3 tasks to return onto
+	gdtSetTssEsp0(task->interruptStack.end);
 
-	return esp;
+	return (g_virtual_address) task->state;
 }
 
 void taskingSchedule()

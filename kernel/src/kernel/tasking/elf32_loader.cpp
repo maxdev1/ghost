@@ -58,10 +58,11 @@ g_elf32_spawn_status elf32SpawnFromRamdisk(g_ramdisk_entry* entry, g_security_le
 		}
 
 		taskingPrepareThreadLocalStorage(mainTask);
-		pagingSwitchToSpace(thisPageDirectory);
-
+		
 		// Set the tasks entry point
-		mainTask->state.eip = header->e_entry;
+		mainTask->state->eip = header->e_entry;
+
+		pagingSwitchToSpace(thisPageDirectory);
 
 		// Add to scheduling list
 		taskingAssign(taskingGetLocal(), mainTask);
