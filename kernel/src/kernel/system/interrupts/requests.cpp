@@ -34,12 +34,13 @@
 
 void requestsHandle(g_task* task)
 {
-	// Handle IRQ
 	const uint32_t irq = task->state->intr - 0x20;
-	if(irq == 0)
+	
+	if(irq == 0 || irq == 0x61) // Timer interrupt or yield from kernel thread
 	{
 		taskingSchedule();
-	} else if(irq == 0x60)
+
+	} else if(irq == 0x60) // System calls
 	{
 		testSyscalls++;
 		if(task->securityLevel == 0) {

@@ -62,7 +62,7 @@ void test()
 		{
 			logInfo("#%i counts: SYS%i A(%i %i %i %i), B(%i %i %i %i)", processorGetCurrentId(), testSyscalls, as[0], as[1], as[2], as[3], bs[0], bs[1], bs[2],
 					bs[3]);
-			asm("int $0x80");
+			taskingKernelThreadYield();
 		}
 	}
 }

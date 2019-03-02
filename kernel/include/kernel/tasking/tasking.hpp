@@ -206,4 +206,10 @@ void taskingApplySecurityLevel(g_processor_state* state, g_security_level securi
  */
 void taskingPrepareThreadLocalStorage(g_task* thread);
 
+/**
+ * Yields control in a kernel task. This can only be called while no mutexes
+ * are currently acquired by this thread, otherwise the kernel could get deadlocked.
+ */
+void taskingKernelThreadYield();
+
 #endif
