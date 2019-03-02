@@ -18,10 +18,11 @@ NOTE: This file is supposed to be compiled with AsciiDoctor
 The contents of this documentation are split in sections for each system
 component. On the top of each page there's a link back to this home page.
 
-* *Kernel section* contains documentation about the kernel itself.
+* *<<building#,Building>>* - toolchain & system building instructions
+* *<<loader#,Loader>>* - initial boot code that loads the kernel to higher memory
+* *Kernel section* - documentation about the kernel itself
 	** <<threads#,Threads section>> contains everything about processes and threading
 	** <<memory#,Memory layout>> explains the memory layout
-* *<<building#,Building>>* - toolchain & system building instructions
 * *<<libapi#,libapi>>* - documentation for the kernel API wrapper library
 * *<<libc#,libc>>* - documentation for the C library implementation
 * *<<ramdisk-format#,Ramdisk>>* - documentation about the Ramdisk format & generation

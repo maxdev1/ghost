@@ -38,12 +38,11 @@ g_bitmap_page_allocator loaderPhysicalAllocator;
 
 extern "C" void loaderMain(g_multiboot_information* multibootInformation, uint32_t magicNumber)
 {
-	runtimeAbiCallGlobalConstructors();
-	loaderEnableLoggingFeatures();
-
 	if(magicNumber != G_MULTIBOOT_BOOTLOADER_MAGIC)
 		loaderPanic("%! invalid magic number in multiboot struct", "early");
 
+	runtimeAbiCallGlobalConstructors();
+	loaderEnableLoggingFeatures();
 	loaderSetupInformation.multibootInformation = multibootInformation;
 	loaderInitializeMemory();
 	loaderStartKernel();
@@ -52,7 +51,7 @@ extern "C" void loaderMain(g_multiboot_information* multibootInformation, uint32
 void loaderInitializeMemory()
 {
 	g_address gdtEnd = loaderSetupGdt();
-	loaderSetupInformation.bitmapStart = loadFindNextFreePages(gdtEnd, G_PAGE_ALIGN_UP(G_BITMAP_SIZE) / G_PAGE_SIZE);
+	loaderSetupInformation.bitmapStart = loaderFindNextFreePages(gdtEnd, G_PAGE_ALIGN_UP(G_BITMAP_SIZE) / G_PAGE_SIZE);
 	loaderSetupInformation.bitmapEnd = G_PAGE_ALIGN_UP(loaderSetupInformation.bitmapStart + G_BITMAP_SIZE);
 
 	g_address reservedAreaEnd = loaderSetupInformation.bitmapEnd;
@@ -83,12 +82,12 @@ void loaderStartKernel()
 g_address loaderSetupGdt()
 {
 	g_address loaderEndAddress = G_PAGE_ALIGN_UP((uint32_t ) &endAddress);
-	g_address gdtPage = loadFindNextFreePages(loaderEndAddress, 1);
+	g_address gdtPage = loaderFindNextFreePages(loaderEndAddress, 1);
 	gdtInitialize(gdtPage);
 	return gdtPage + G_PAGE_SIZE;
 }
 
-g_address loadFindNextFreePages(g_address start, int count)
+g_address loaderFindNextFreePages(g_address start, int count)
 {
 	logInfo("%! searching for %i free pages (starting at %h)", "loader", count, start);
 	g_physical_address location = start;
@@ -134,7 +133,7 @@ g_address loadFindNextFreePages(g_address start, int count)
 
 void loaderPanic(const char* msg, ...)
 {
-
+	asm("cli");
 	logInfo("%! an unrecoverable error has occured. reason:", "lpanic");
 
 	va_list valist;
@@ -143,7 +142,6 @@ void loaderPanic(const char* msg, ...)
 	va_end(valist);
 	loggerPrintCharacter('\n');
 
-	asm("cli");
 	for(;;)
 		asm("hlt");
 }

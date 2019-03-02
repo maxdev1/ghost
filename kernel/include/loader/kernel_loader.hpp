@@ -27,13 +27,12 @@
 #include "shared/setup_information.hpp"
 
 /**
- * The initial kernel heap is sized as 16MB. For example, the stacked
- * physical allocator needs this amount to convert its bitmap to stack pages.
+ * The initial kernel heap has a size of 16MiB.
  */
 #define G_KERNEL_HEAP_SIZE	0x1000000
 
 /**
- * Loads the given module as the kernel.
+ * Loads the given kernel binary module.
  *
  * @param kernelModule	the multiboot module containing the kernel
  */
@@ -42,14 +41,14 @@ void kernelLoaderLoad(g_multiboot_module* kernelModule);
 /**
  * Checks the ELF32 header for validity.
  *
- * @param header		the header to check
+ * @param header the header to check
  */
 void kernelLoaderCheckHeader(elf32_ehdr* header);
 
 /**
  * Loads the kernel binary starting at the given ELF header.
  *
- * @param header			the ELF header
+ * @param header the ELF header
  */
 void kernelLoaderLoadBinary(elf32_ehdr* header);
 

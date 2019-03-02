@@ -66,7 +66,7 @@ g_address loaderSetupGdt();
  * It is used to find a place to put the GDT and the bitmap, to avoid accidentally overwriting
  * multiboot modules.
  */
-g_address loadFindNextFreePages(g_address start, int pages);
+g_address loaderFindNextFreePages(g_address start, int pages);
 
 /**
  * Triggers a loader panic, means halting the entire system and displaying the given
