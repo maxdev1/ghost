@@ -47,10 +47,11 @@ extern void (*__fini_array_end[])();
 int __g_main()
 {
 
-#warning "Test before syscalls get implemented"
+#warning "TODO remove"
 	for(;;)
 	{
-		g_log("Hello from user space!");
+		g_sleep(1000);
+		g_read(0, 0, 0);
 	}
 
 	// initialize libc

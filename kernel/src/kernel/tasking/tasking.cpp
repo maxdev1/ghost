@@ -33,6 +33,15 @@ g_tasking_local* taskingLocal;
 static g_mutex taskingIdLock = 0;
 static g_tid taskingIdNext = 0;
 
+void taskingIdleThread()
+{
+	for(;;)
+	{
+		logInfo("idle!");
+		asm("hlt");
+	}
+}
+
 void taskingInitializeLocal(g_tasking_local* local)
 {
 	local->lock = 0;
@@ -40,6 +49,10 @@ void taskingInitializeLocal(g_tasking_local* local)
 	local->current = 0;
 	local->locksHeld = 0;
 	local->time = 0;
+	local->taskCount = 0;
+
+	g_process* idle = taskingCreateProcess();
+	taskingLocal->idleTask = taskingCreateThread((g_virtual_address) taskingIdleThread, idle, G_SECURITY_LEVEL_KERNEL);
 }
 
 void taskingInitializeBsp()
@@ -48,7 +61,7 @@ void taskingInitializeBsp()
 
 	g_tasking_local* local = &taskingLocal[processorGetCurrentId()];
 	taskingInitializeLocal(local);
-	
+
 	syscallRegisterAll();
 }
 
@@ -112,15 +125,35 @@ void taskingApplySecurityLevel(g_processor_state* state, g_security_level securi
 	}
 }
 
+void taskingResetTaskState(g_task* task)
+{
+	g_virtual_address esp = task->stack.end - sizeof(g_processor_state);
+	task->state = (g_processor_state*) esp;
+
+	memorySetBytes((void*) task->state, 0, sizeof(g_processor_state));
+	task->state->eflags = 0x200;
+	task->state->esp = (g_virtual_address) task->state;
+	taskingApplySecurityLevel(task->state, task->securityLevel);
+}
+
 g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_security_level level)
 {
 	g_task* task = (g_task*) heapAllocate(sizeof(g_task));
 	task->id = taskingGetNextId();
 	task->process = process;
 	task->securityLevel = level;
+	task->status = G_THREAD_STATUS_RUNNING;
 
 	task->tlsCopy.location = 0;
 	task->tlsCopy.userThreadObject = 0;
+
+	task->syscall.processingTask = 0;
+	task->syscall.sourceTask = 0;
+	task->syscall.handler = 0;
+	task->syscall.data = 0;
+
+	task->waitResolver = 0;
+	task->waitData = 0;
 
 	// Switch to task directory
 	g_physical_address currentDir = (g_physical_address) pagingGetCurrentSpace();
@@ -157,14 +190,8 @@ g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_securit
 	task->stack.end = stackVirt + G_PAGE_SIZE;
 
 	// Initialize task state on main stack
-	g_virtual_address esp = task->stack.end - sizeof(g_processor_state);
-	task->state = (g_processor_state*) esp;
-
-	memorySetBytes((void*) task->state, 0, sizeof(g_processor_state));
-	task->state->esp = esp;
+	taskingResetTaskState(task);
 	task->state->eip = eip;
-	task->state->eflags = 0x200;
-	taskingApplySecurityLevel(task->state, task->securityLevel);
 
 	// Switch back
 	pagingSwitchToSpace(currentDir);
@@ -189,10 +216,27 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 {
 	mutexAcquire(&local->lock);
 
-	g_task_entry* newEntry = (g_task_entry*) heapAllocate(sizeof(g_task_entry));
-	newEntry->task = task;
-	newEntry->next = local->list;
-	local->list = newEntry;
+	bool alreadyInList = false;
+	g_task_entry* existing = local->list;
+	while(existing)
+	{
+		if(existing->task == task)
+		{
+			alreadyInList = true;
+			break;
+		}
+		existing = existing->next;
+	}
+
+	if(!alreadyInList)
+	{
+		g_task_entry* newEntry = (g_task_entry*) heapAllocate(sizeof(g_task_entry));
+		newEntry->task = task;
+		newEntry->next = local->list;
+		local->list = newEntry;
+
+		local->taskCount++;
+	}
 
 	mutexRelease(&local->lock);
 }
@@ -243,6 +287,20 @@ void taskingSchedule()
 	{
 		mutexAcquire(&local->lock);
 		schedulerSchedule(local);
+		mutexRelease(&local->lock);
+	}
+}
+
+void taskingScheduleTo(g_task* task)
+{
+	g_tasking_local* local = taskingGetLocal();
+
+	// If there are kernel locks held by the currently running task, we may not
+	// switch tasks - otherwise we will deadlock.
+	if(local->locksHeld == 0)
+	{
+		mutexAcquire(&local->lock);
+		local->current = task;
 		mutexRelease(&local->lock);
 	}
 }
@@ -330,10 +388,12 @@ void taskingPrepareThreadLocalStorage(g_task* thread)
 	logDebug("%! created tls copy in process %i, thread %i at %h", "threadmgr", process->main->id, thread->id, thread->tlsCopy.location);
 }
 
-void taskingKernelThreadYield() {
+void taskingKernelThreadYield()
+{
 
 	g_tasking_local* local = taskingGetLocal();
-	if(local->locksHeld > 0) {
+	if(local->locksHeld > 0)
+	{
 		logInfo("%! warning: kernel thread %i tried to yield while holding a kernel lock", "tasking", local->current->id);
 		return;
 	}
@@ -344,3 +404,8 @@ void taskingKernelThreadYield() {
 			: "cc", "memory");
 }
 
+void taskingKernelThreadExit()
+{
+	taskingGetLocal()->current->status = G_THREAD_STATUS_DEAD;
+	taskingKernelThreadYield();
+}

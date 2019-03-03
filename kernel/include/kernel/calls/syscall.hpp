@@ -21,24 +21,32 @@
 #ifndef __KERNEL_SYSCALLS__
 #define __KERNEL_SYSCALLS__
 
-#include "ghost/calls/calls.h"
-#include "kernel/tasking/tasking.hpp"
+struct g_task;
 
-struct g_syscall_registration {
-    void(*handler)(g_task* task, void* data);
-    bool threaded;
+typedef void (*g_syscall_handler)(g_task*, void*);
+
+struct g_syscall_registration
+{
+	g_syscall_handler handler;
+	bool threaded;
 };
 
-void syscallRegister(int call, void(*handler)(g_task*, void*), bool threaded);
+void syscallRegister(int call, g_syscall_handler handler, bool threaded);
 
 /**
  * Creates the syscall table.
  */
 void syscallRegisterAll();
 
+/**
+ *
+ */
 void syscallHandle(g_task* task);
 
-void syscallSleep(g_task* task, g_syscall_sleep* data);
+/**
+ * Entry point for syscall processing threads.
+ */
+void syscallThreadEntry();
 
 #endif
 

@@ -19,6 +19,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/tasking/scheduler.hpp"
+#include "kernel/memory/heap.hpp"
+#include "shared/logger/logger.hpp"
 
 void schedulerSchedule(g_tasking_local* local)
 {
@@ -38,21 +40,57 @@ void schedulerSchedule(g_tasking_local* local)
 		}
 		entry = entry->next;
 	}
-
-	// Select next in list
-	if(entry)
+	if(!entry)
 	{
+		entry = local->list;
+	}
+
+	bool switched = false;
+	int max = local->taskCount;
+	while(max-- > 0)
+	{
+		// Select next in list
 		entry = entry->next;
-
-		if(entry)
+		if(!entry)
 		{
-			local->current = entry->task;
-		} else
-		{
-			local->current = local->list->task;
+			entry = local->list;
 		}
-	} else
+
+		// Check task status
+		g_task* task = entry->task;
+		if(task->status == G_THREAD_STATUS_RUNNING)
+		{
+
+			// Can go there
+			local->current = task;
+			switched = true;
+			break;
+		}
+
+		// Check wait resolver for waiting tasks
+		if(task->status == G_THREAD_STATUS_WAITING && task->waitResolver && task->waitResolver(task))
+		{
+			// Wake task again
+			task->status = G_THREAD_STATUS_RUNNING;
+			task->waitResolver = 0;
+
+			// Free wait data if necessary
+			if(task->waitData)
+			{
+				heapFree((void*) task->waitData);
+				task->waitData = 0;
+			}
+
+			local->current = task;
+			switched = true;
+			break;
+		}
+	}
+
+	// Could not schedule, do idle
+	if(!switched)
 	{
-		local->current = local->list->task;
+		local->current = local->idleTask;
+		logInfo("idle!");
 	}
 }

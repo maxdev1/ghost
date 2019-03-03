@@ -58,13 +58,15 @@ void test()
 	{
 		as[processorGetCurrentId()]++;
 
-		if(as[processorGetCurrentId()] % 100000 == 0)
+		if(as[processorGetCurrentId()] % 10000 == 0)
 		{
 			logInfo("#%i counts: SYS%i A(%i %i %i %i), B(%i %i %i %i)", processorGetCurrentId(), testSyscalls, as[0], as[1], as[2], as[3], bs[0], bs[1], bs[2],
 					bs[3]);
-			taskingKernelThreadYield();
 		}
+		taskingKernelThreadYield();
 	}
+
+	taskingKernelThreadExit();
 }
 void test2()
 {
@@ -75,7 +77,10 @@ void test2()
 	for(;;)
 	{
 		bs[processorGetCurrentId()]++;
+		taskingKernelThreadYield();
 	}
+
+	taskingKernelThreadExit();
 }
 /* TESTING */
 

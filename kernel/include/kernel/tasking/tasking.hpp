@@ -26,8 +26,12 @@
 #include "shared/system/mutex.hpp"
 #include "kernel/memory/paging.hpp"
 #include "kernel/memory/address_range_pool.hpp"
+#include "kernel/calls/syscall.hpp"
 
 struct g_process;
+struct g_task;
+
+typedef bool(*g_wait_resolver)(g_task*);
 
 /**
  * A task is a single thread executing either in user or kernel level.
@@ -39,6 +43,7 @@ struct g_task
 	g_process* process;
 	g_tid id;
 	g_security_level securityLevel;
+	g_thread_status status;
 
 	struct
 	{
@@ -64,6 +69,25 @@ struct g_task
 		g_virtual_address start;
 		g_virtual_address end;
 	} stack;
+
+	/**
+	 * When the task issues a long-running syscall, a kernel task is created to execute it.
+	 * In the executing task, the syscallTask field is filled with the task that processes the
+	 * syscall. In the processing task, the syscallSourceTask is the task that issued the syscall.
+	 */
+	struct {
+		g_task* processingTask;
+		g_task* sourceTask;
+		g_syscall_handler handler;
+		void* data;
+	} syscall;
+
+	/**
+	 * Wait resolver is used when a syscall must wait for something, but a kernel task
+	 * would be too much overhead. The wait data is used by the resolver.
+	 */
+	g_wait_resolver waitResolver;
+	void* waitData;
 };
 
 /**
@@ -88,6 +112,7 @@ struct g_tasking_local
 	 */
 	g_task_entry* list;
 	g_task* current;
+	int taskCount;
 
 	/**
 	 * The number of locks that are currently held on this processor. If this
@@ -100,6 +125,8 @@ struct g_tasking_local
 	 * Approximation of milliseconds that this processor has run.
 	 */
 	uint32_t time;
+
+	g_task* idleTask;
 };
 
 /**
@@ -170,6 +197,11 @@ void taskingAssign(g_tasking_local* local, g_task* task);
 void taskingSchedule();
 
 /**
+ * Sets the given task as the current task.
+ */
+void taskingScheduleTo(g_task* task);
+
+/**
  * Stores the registers from the given state pointer (pointing to the top of the
  * kernel stack) to the state structure of the current task.
  * 
@@ -216,5 +248,12 @@ void taskingPrepareThreadLocalStorage(g_task* thread);
  * are currently acquired by this thread, otherwise the kernel could get deadlocked.
  */
 void taskingKernelThreadYield();
+
+void taskingKernelThreadExit();
+
+/**
+ * Used to initialize or reset the state of a task.
+ */
+void taskingResetTaskState(g_task* task);
 
 #endif
