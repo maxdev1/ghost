@@ -27,7 +27,7 @@
 #include "shared/memory/memory.hpp"
 #include "shared/logger/logger.hpp"
 
-#include "kernel/calls/syscalls.hpp"
+#include "kernel/calls/syscall.hpp"
 #include "kernel/kernel.hpp"
 
 #include "shared/system/mutex.hpp"
@@ -36,20 +36,19 @@ void requestsHandle(g_task* task)
 {
 	const uint32_t irq = task->state->intr - 0x20;
 	
-	if(irq == 0 || irq == 0x61) // Timer interrupt or yield from kernel thread
+	if(irq == 0) // Timer interrupt
+	{
+		taskingGetLocal()->time += APIC_MILLISECONDS_PER_TICK;
+		taskingSchedule();
+
+	} else if( irq == 0x61) // Yield from kernel thread
 	{
 		taskingSchedule();
 
 	} else if(irq == 0x60) // System calls
 	{
-		testSyscalls++;
-		if(task->securityLevel == 0) {
-			logInfo("Kernel syscall from %i %i", task->id, task->securityLevel);
-		}else
-		if(testSyscalls % 100000 == 0)
-		{
-			logInfo("Syscall from %i %i", task->id, task->securityLevel);
-		}
+		syscallHandle(task);
+
 	} else
 	{
 		logInfo("received unhandled irq %i", task->state->intr);
