@@ -18,53 +18,106 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include "ghost/calls/calls.h"
 #include "kernel/calls/syscall.hpp"
 #include "kernel/memory/memory.hpp"
+#include "kernel/tasking/tasking.hpp"
 #include "kernel/kernel.hpp"
+
+#include "kernel/calls/syscall_general.hpp"
+#include "kernel/calls/syscall_fs.hpp"
 
 static g_syscall_registration* syscallRegistrations = 0;
 
-void syscallRegister(int callId, void(*handler)(g_task*, void*), bool threaded) {
-    
-    if(callId > G_SYSCALL_MAX) {
-        kernelPanic("%! tried to register syscall with id %i, maximum is %i", "syscall", callId, G_SYSCALL_MAX);
-    }
+void syscallRegister(int callId, g_syscall_handler handler, bool threaded)
+{
 
-    syscallRegistrations[callId].handler = handler;
-    syscallRegistrations[callId].threaded = threaded;
+	if(callId > G_SYSCALL_MAX)
+	{
+		kernelPanic("%! tried to register syscall with id %i, maximum is %i", "syscall", callId, G_SYSCALL_MAX);
+	}
+
+	syscallRegistrations[callId].handler = handler;
+	syscallRegistrations[callId].threaded = threaded;
 }
 
-void syscallRegisterAll() {
-    syscallRegistrations = (g_syscall_registration*) heapAllocate(sizeof(g_syscall_registration) * G_SYSCALL_MAX);
-    for(int i = 0; i < G_SYSCALL_MAX; i++) {
-        syscallRegistrations[i].handler = 0;
-    }
+void syscallRegisterAll()
+{
+	syscallRegistrations = (g_syscall_registration*) heapAllocate(sizeof(g_syscall_registration) * G_SYSCALL_MAX);
+	for(int i = 0; i < G_SYSCALL_MAX; i++)
+	{
+		syscallRegistrations[i].handler = 0;
+	}
 
-    syscallRegister(G_SYSCALL_SLEEP, (void(*)(g_task*, void*)) syscallSleep, false);
+	syscallRegister(G_SYSCALL_SLEEP, (g_syscall_handler) syscallSleep, false);
+	syscallRegister(G_SYSCALL_FS_READ, (g_syscall_handler) syscallFsRead, true);
 }
 
-void syscallHandle(g_task* task) {
-    uint32_t callId = task->state->eax;
-    void* syscallData = (void*) task->state->ebx;
+void syscallRunInProcessingTask(g_syscall_handler handler, g_task* caller, void* syscallData)
+{
+	// Create or reuse processing task
+	g_task* proc = caller->syscall.processingTask;
+	if(proc == 0)
+	{
+		proc = taskingCreateThread(0, caller->process, G_SECURITY_LEVEL_KERNEL);
+	} else
+	{
+		taskingResetTaskState(proc);
+		proc->status = G_THREAD_STATUS_RUNNING;
+	}
+	proc->state->eip = (g_virtual_address) syscallThreadEntry;
 
-    if(callId > G_SYSCALL_MAX) {
-        logInfo("%! task %i tried to use out-of-range syscall %i", "syscall", task->id, callId);
-        return;
-    }
+	// Put task in scheduling
+	taskingAssign(taskingGetLocal(), proc);
+	taskingScheduleTo(proc);
 
-    g_syscall_registration* reg = &syscallRegistrations[callId];
-    if(reg->handler == 0) {
-        logInfo("%! task %i tried to use unknown syscall %i", "syscall", task->id, callId);
-        return;
-    }
+	// Put task information
+	caller->syscall.processingTask = proc;
+	proc->syscall.sourceTask = caller;
+	caller->syscall.handler = handler;
+	caller->syscall.data = syscallData;
 
-    if(reg->threaded) {
-        #warning "TODO implement"
-    } else {
-        reg->handler(task, syscallData);
-    }
+	// Let task wait
+	caller->status = G_THREAD_STATUS_WAITING;
+	caller->waitResolver = 0;
+	caller->waitData = 0;
 }
 
-void syscallSleep(g_task* task, g_syscall_sleep* data) {
-    logInfo("Task %i: sleep requested for %i ms", task->id, data->milliseconds);
+void syscallHandle(g_task* task)
+{
+	uint32_t callId = task->state->eax;
+	void* syscallData = (void*) task->state->ebx;
+
+	if(callId > G_SYSCALL_MAX)
+	{
+		logInfo("%! task %i tried to use out-of-range syscall %i", "syscall", task->id, callId);
+		return;
+	}
+
+	g_syscall_registration* reg = &syscallRegistrations[callId];
+	if(reg->handler == 0)
+	{
+		logInfo("%! task %i tried to use unknown syscall %i", "syscall", task->id, callId);
+		return;
+	}
+
+	if(reg->threaded)
+		syscallRunInProcessingTask(reg->handler, task, syscallData);
+	else
+		reg->handler(task, syscallData);
+}
+
+void syscallThreadEntry()
+{
+	g_task* sourceTask = taskingGetLocal()->current->syscall.sourceTask;
+
+	// Call handler
+	sourceTask->syscall.handler(sourceTask, sourceTask->syscall.data);
+
+	// Unwait source task
+	sourceTask->status = G_THREAD_STATUS_RUNNING;
+
+	// Mark this task as unused and yield
+	taskingGetLocal()->current->status = G_THREAD_STATUS_UNUSED;
+	taskingKernelThreadYield();
 }

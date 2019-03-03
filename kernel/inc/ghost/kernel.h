@@ -97,6 +97,16 @@ static const g_thread_priority G_THREAD_PRIORITY_IDLE = 1;
 #define G_THREAD_USER_STACK_RESERVED_VIRTUAL_PAGES		16
 
 /**
+ * Task states
+ */
+typedef uint8_t g_thread_status;
+
+static const g_thread_status G_THREAD_STATUS_DEAD = 0;
+static const g_thread_status G_THREAD_STATUS_RUNNING = 1;
+static const g_thread_status G_THREAD_STATUS_WAITING = 2;
+static const g_thread_status G_THREAD_STATUS_UNUSED = 3;
+
+/**
  * Pipes
  */
 #define G_PIPE_DEFAULT_CAPACITY		0x400
