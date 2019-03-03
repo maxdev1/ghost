@@ -44,7 +44,7 @@ void pagingInitialize(g_virtual_address reservedAreaEnd)
 	pagingIdentityMap(pageDirectory, 0, reservedAreaEnd, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
 	pagingRelocateMultibootModules(pageDirectory, reservedAreaEnd);
 	pagingEnableGlobalPageFlag();
-	pagingSwitchToSpace(pageDirectory);
+	pagingSwitchToSpace(pageDirPhys);
 	pagingEnable();
 }
 
@@ -156,11 +156,6 @@ bool pagingMapPageToRecursiveDirectory(uint32_t virtualAddress, uint32_t physica
 		logDebug("%! tried to map area that was already mapped, virt %h -> phys %h, table contains %h", "paging", virtualAddress, physicalAddress, table[pi]);
 	}
 	return false;
-}
-
-void pagingSwitchToSpace(g_page_directory directory)
-{
-	asm volatile("mov %0, %%cr3":: "b"(directory));
 }
 
 void pagingEnable()

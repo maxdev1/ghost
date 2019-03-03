@@ -64,13 +64,6 @@ void pagingEnable();
 void pagingRelocateMultibootModules(g_page_directory pageDirectory, g_virtual_address reservedAreaEnd);
 
 /**
- * Switches to the given directory.
- *
- * @param directory		the directory to switch to
- */
-void pagingSwitchToSpace(g_page_directory directory);
-
-/**
  * Identity-maps the area from start to end to the page directory directory, using the given tableFlags and pageFlags.
  * This only works while paging is disable, thus it is private for the paging initializer.
  *
