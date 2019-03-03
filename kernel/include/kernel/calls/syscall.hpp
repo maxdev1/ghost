@@ -21,8 +21,24 @@
 #ifndef __KERNEL_SYSCALLS__
 #define __KERNEL_SYSCALLS__
 
-#define G_SYSCALL_CODE(state)				state.eax
-#define G_SYSCALL_DATA(state)				state.ebx
+#include "ghost/calls/calls.h"
+#include "kernel/tasking/tasking.hpp"
+
+struct g_syscall_registration {
+    void(*handler)(g_task* task, void* data);
+    bool threaded;
+};
+
+void syscallRegister(int call, void(*handler)(g_task*, void*), bool threaded);
+
+/**
+ * Creates the syscall table.
+ */
+void syscallRegisterAll();
+
+void syscallHandle(g_task* task);
+
+void syscallSleep(g_task* task, g_syscall_sleep* data);
 
 #endif
 

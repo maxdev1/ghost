@@ -95,6 +95,11 @@ struct g_tasking_local
 	 * until all locks are resolved.
 	 */
 	int locksHeld;
+
+	/**
+	 * Approximation of milliseconds that this processor has run.
+	 */
+	uint32_t time;
 };
 
 /**

@@ -20,6 +20,7 @@
 
 #include "kernel/tasking/tasking.hpp"
 #include "kernel/tasking/scheduler.hpp"
+#include "kernel/calls/syscall.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/gdt.hpp"
@@ -38,6 +39,7 @@ void taskingInitializeLocal(g_tasking_local* local)
 	local->list = 0;
 	local->current = 0;
 	local->locksHeld = 0;
+	local->time = 0;
 }
 
 void taskingInitializeBsp()
@@ -46,6 +48,8 @@ void taskingInitializeBsp()
 
 	g_tasking_local* local = &taskingLocal[processorGetCurrentId()];
 	taskingInitializeLocal(local);
+	
+	syscallRegisterAll();
 }
 
 void taskingInitializeAp()
