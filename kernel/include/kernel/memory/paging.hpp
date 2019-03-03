@@ -61,14 +61,6 @@ void pagingMapToTemporaryMappedDirectory(g_physical_address directory, g_virtual
 void pagingUnmapPage(g_virtual_address virt);
 
 /**
- * Switches to the given page directory.
- *
- * @param dir
- * 		the directory to switch to
- */
-void pagingSwitchToSpace(g_physical_address dir);
-
-/**
  * Returns the currently set page directory.
  *
  * @return the page directory

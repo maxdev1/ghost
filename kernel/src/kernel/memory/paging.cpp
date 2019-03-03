@@ -152,11 +152,6 @@ void pagingUnmapPage(g_virtual_address virt)
 	G_INVLPG(virt);
 }
 
-void pagingSwitchToSpace(g_physical_address dir)
-{
-	asm volatile("mov %0, %%cr3":: "b"(dir));
-}
-
 g_physical_address pagingGetCurrentSpace()
 {
 	uint32_t directory;
