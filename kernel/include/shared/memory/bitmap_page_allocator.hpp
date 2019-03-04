@@ -36,8 +36,8 @@ void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, g_bitmap_
 
 void bitmapPageAllocatorRefresh(g_bitmap_page_allocator* allocator);
 
-void bitmapPageAllocatorMarkFree(g_bitmap_page_allocator* allocator, uint32_t address);
+void bitmapPageAllocatorMarkFree(g_bitmap_page_allocator* allocator, g_physical_address address);
 
-g_address bitmapPageAllocatorAllocate(g_bitmap_page_allocator* allocator);
+g_physical_address bitmapPageAllocatorAllocate(g_bitmap_page_allocator* allocator);
 
 #endif

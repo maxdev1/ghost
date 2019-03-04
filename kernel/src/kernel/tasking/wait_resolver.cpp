@@ -18,34 +18,13 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL__
-#define __KERNEL__
+#include "kernel/tasking/wait_resolver.hpp"
 
-#include "ghost/types.h"
-#include "shared/setup_information.hpp"
-#include "shared/memory/bitmap_page_allocator.hpp"
+#include "kernel/memory/heap.hpp"
 #include "shared/logger/logger.hpp"
 
-extern g_bitmap_page_allocator* kernelPhysicalAllocator;
-
-/**
- * Main entry point of the kernel. The loader calls this function on the
- * bootstrap processor. The setup information structure contains information
- * about everything that the loader has prepared for the kernel.
- */
-extern "C" void kernelMain(g_setup_information* setupInformation);
-
-void kernelInitialize(g_setup_information* setupInformation);
-
-void kernelRunBootstrapCore(g_physical_address initialPdPhys);
-
-/**
- * This function is started by the SMP implementation.
- */
-void kernelRunApplicationCore();
-
-void kernelPanic(const char *msg, ...);
-
-void kernelHalt();
-
-#endif
+bool waitResolverSleep(g_task* task)
+{
+	g_wait_resolver_sleep_data* waitData = (g_wait_resolver_sleep_data*) task->waitData;
+	return taskingGetLocal()->time > waitData->wakeTime;
+}

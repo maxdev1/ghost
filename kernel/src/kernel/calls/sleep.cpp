@@ -19,29 +19,13 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/calls/syscall_general.hpp"
+#include "kernel/tasking/wait.hpp"
 
 #include "kernel/memory/heap.hpp"
 #include "shared/logger/logger.hpp"
 
-struct g_syscall_sleep_wait_data
-{
-	uint64_t wakeTime;
-};
-
-bool syscallSleepWaitResolver(g_task* task)
-{
-	g_syscall_sleep_wait_data* waitData = (g_syscall_sleep_wait_data*) task->waitData;
-	return taskingGetLocal()->time > waitData->wakeTime;
-}
-
 void syscallSleep(g_task* task, g_syscall_sleep* data)
 {
-	task->status = G_THREAD_STATUS_WAITING;
-	task->waitResolver = syscallSleepWaitResolver;
-
-	g_syscall_sleep_wait_data* waitData = (g_syscall_sleep_wait_data*) heapAllocate(sizeof(g_syscall_sleep_wait_data));
-	waitData->wakeTime = taskingGetLocal()->time + data->milliseconds;
-	task->waitData = waitData;
-
+	waitSleep(task, data->milliseconds);
 	taskingSchedule();
 }

@@ -29,6 +29,72 @@
 
 static g_syscall_registration* syscallRegistrations = 0;
 
+void syscallHandle(g_task* task)
+{
+	uint32_t callId = task->state->eax;
+	void* syscallData = (void*) task->state->ebx;
+
+	if(callId > G_SYSCALL_MAX)
+	{
+		logInfo("%! task %i tried to use out-of-range syscall %i", "syscall", task->id, callId);
+		return;
+	}
+
+	g_syscall_registration* reg = &syscallRegistrations[callId];
+	if(reg->handler == 0)
+	{
+		logInfo("%! task %i tried to use unknown syscall %i", "syscall", task->id, callId);
+		return;
+	}
+
+	if(reg->threaded)
+		syscallRunThreaded(reg->handler, task, syscallData);
+	else
+		reg->handler(task, syscallData);
+}
+
+void syscallRunThreaded(g_syscall_handler handler, g_task* caller, void* syscallData)
+{
+	g_task* proc = caller->syscall.processingTask;
+	if(proc == 0)
+	{
+		proc = taskingCreateThread(0, caller->process, G_SECURITY_LEVEL_KERNEL);
+		caller->syscall.processingTask = proc;
+		proc->syscall.sourceTask = caller;
+	} else
+	{
+		taskingResetTaskState(proc);
+		proc->status = G_THREAD_STATUS_RUNNING;
+	}
+	proc->state->eip = (g_virtual_address) syscallThreadEntry;
+
+	// Put task in scheduling
+	taskingAssign(taskingGetLocal(), proc);
+	taskingScheduleTo(proc);
+
+	// Store call information
+	caller->syscall.handler = handler;
+	caller->syscall.data = syscallData;
+
+	// Let caller task wait
+	caller->status = G_THREAD_STATUS_WAITING;
+}
+
+void syscallThreadEntry()
+{
+	g_task* sourceTask = taskingGetLocal()->current->syscall.sourceTask;
+
+	// Call handler
+	sourceTask->syscall.handler(sourceTask, sourceTask->syscall.data);
+
+	// Unwait source task
+	sourceTask->status = G_THREAD_STATUS_RUNNING;
+
+	// Mark this task as unused (can be reused later) and yield
+	taskingGetLocal()->current->status = G_THREAD_STATUS_UNUSED;
+	taskingKernelThreadYield();
+}
+
 void syscallRegister(int callId, g_syscall_handler handler, bool threaded)
 {
 
@@ -51,73 +117,4 @@ void syscallRegisterAll()
 
 	syscallRegister(G_SYSCALL_SLEEP, (g_syscall_handler) syscallSleep, false);
 	syscallRegister(G_SYSCALL_FS_READ, (g_syscall_handler) syscallFsRead, true);
-}
-
-void syscallRunInProcessingTask(g_syscall_handler handler, g_task* caller, void* syscallData)
-{
-	// Create or reuse processing task
-	g_task* proc = caller->syscall.processingTask;
-	if(proc == 0)
-	{
-		proc = taskingCreateThread(0, caller->process, G_SECURITY_LEVEL_KERNEL);
-	} else
-	{
-		taskingResetTaskState(proc);
-		proc->status = G_THREAD_STATUS_RUNNING;
-	}
-	proc->state->eip = (g_virtual_address) syscallThreadEntry;
-
-	// Put task in scheduling
-	taskingAssign(taskingGetLocal(), proc);
-	taskingScheduleTo(proc);
-
-	// Put task information
-	caller->syscall.processingTask = proc;
-	proc->syscall.sourceTask = caller;
-	caller->syscall.handler = handler;
-	caller->syscall.data = syscallData;
-
-	// Let task wait
-	caller->status = G_THREAD_STATUS_WAITING;
-	caller->waitResolver = 0;
-	caller->waitData = 0;
-}
-
-void syscallHandle(g_task* task)
-{
-	uint32_t callId = task->state->eax;
-	void* syscallData = (void*) task->state->ebx;
-
-	if(callId > G_SYSCALL_MAX)
-	{
-		logInfo("%! task %i tried to use out-of-range syscall %i", "syscall", task->id, callId);
-		return;
-	}
-
-	g_syscall_registration* reg = &syscallRegistrations[callId];
-	if(reg->handler == 0)
-	{
-		logInfo("%! task %i tried to use unknown syscall %i", "syscall", task->id, callId);
-		return;
-	}
-
-	if(reg->threaded)
-		syscallRunInProcessingTask(reg->handler, task, syscallData);
-	else
-		reg->handler(task, syscallData);
-}
-
-void syscallThreadEntry()
-{
-	g_task* sourceTask = taskingGetLocal()->current->syscall.sourceTask;
-
-	// Call handler
-	sourceTask->syscall.handler(sourceTask, sourceTask->syscall.data);
-
-	// Unwait source task
-	sourceTask->status = G_THREAD_STATUS_RUNNING;
-
-	// Mark this task as unused and yield
-	taskingGetLocal()->current->status = G_THREAD_STATUS_UNUSED;
-	taskingKernelThreadYield();
 }

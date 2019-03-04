@@ -31,7 +31,7 @@
 struct g_process;
 struct g_task;
 
-typedef bool(*g_wait_resolver)(g_task*);
+typedef bool (*g_wait_resolver)(g_task*);
 
 /**
  * A task is a single thread executing either in user or kernel level.
@@ -48,7 +48,8 @@ struct g_task
 	struct
 	{
 		g_virtual_address userThreadObject;
-		g_virtual_address location;
+		g_virtual_address start;
+		g_virtual_address end;
 	} tlsCopy;
 
 	/**
@@ -72,10 +73,11 @@ struct g_task
 
 	/**
 	 * When the task issues a long-running syscall, a kernel task is created to execute it.
-	 * In the executing task, the syscallTask field is filled with the task that processes the
-	 * syscall. In the processing task, the syscallSourceTask is the task that issued the syscall.
+	 * In the executing task, the processingTask field is filled with the task that processes the
+	 * syscall. In the processing task, the sourceTask is the task that issued the syscall.
 	 */
-	struct {
+	struct
+	{
 		g_task* processingTask;
 		g_task* sourceTask;
 		g_syscall_handler handler;
@@ -255,5 +257,15 @@ void taskingKernelThreadExit();
  * Used to initialize or reset the state of a task.
  */
 void taskingResetTaskState(g_task* task);
+
+/**
+ * Kernel thread, cleaning up dead tasks.
+ */
+void taskingCleanupThread();
+
+/**
+ * Removes a thread. Cleaning up all allocated data where possible.
+ */
+void taskingRemoveThread(g_task* task);
 
 #endif
