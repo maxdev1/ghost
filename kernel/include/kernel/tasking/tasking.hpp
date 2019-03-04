@@ -176,6 +176,21 @@ void taskingInitializeBsp();
 void taskingInitializeAp();
 
 /**
+ * Adds a task to the list of scheduled tasks on the given local.
+ */
+void taskingAssign(g_tasking_local* local, g_task* task);
+
+/**
+ * Returns the processor-local tasking structure.
+ */
+g_tasking_local* taskingGetLocal();
+
+/**
+ * Returns the next assignable task id.
+ */
+g_tid taskingGetNextId();
+
+/**
  * Creates an empty process. Creates a new page directory with the kernel areas
  * correctly mapped and instantiates a virtual range allocator.
  *
@@ -184,14 +199,37 @@ void taskingInitializeAp();
 g_process* taskingCreateProcess();
 
 /**
+ * Creates a new page directory to use for a new process. Clones the kernel space
+ * into the page directory, maps the lower memory and adds recursive mapping.
+ *
+ * @return the physical address of the directory
+ */
+g_physical_address taskingCreatePageDirectory();
+
+/**
  * Creates a task.
  */
 g_task* taskingCreateThread(g_virtual_address entry, g_process* process, g_security_level level);
 
 /**
- * Adds a task to the list of scheduled tasks on the given local.
+ * Applies a security level on the register state of a task.
  */
-void taskingAssign(g_tasking_local* local, g_task* task);
+void taskingApplySecurityLevel(g_processor_state* state, g_security_level securityLevel);
+
+/**
+ * Clones the TLS master from the process.
+ */
+void taskingPrepareThreadLocalStorage(g_task* thread);
+
+/**
+ * Removes a thread. Cleaning up all allocated data where possible.
+ */
+void taskingRemoveThread(g_task* task);
+
+/**
+ * Used to initialize or reset the state of a task.
+ */
+void taskingResetTaskState(g_task* task);
 
 /**
  * Schedules and sets the next task as the current.
@@ -218,45 +256,15 @@ bool taskingStore(g_virtual_address esp);
 g_virtual_address taskingRestore(g_virtual_address esp);
 
 /**
- * Returns the processor-local tasking structure.
- */
-g_tasking_local* taskingGetLocal();
-
-/**
- * Returns the next assignable task id.
- */
-g_tid taskingGetNextId();
-
-/**
- * Creates a new page directory to use for a new process. Clones the kernel space
- * into the page directory, maps the lower memory and adds recursive mapping.
- *
- * @return the physical address of the directory
- */
-g_physical_address taskingCreatePageDirectory();
-
-/**
- * Applies a security level on the register state of a task.
- */
-void taskingApplySecurityLevel(g_processor_state* state, g_security_level securityLevel);
-
-/**
- * Clones the TLS master from the process.
- */
-void taskingPrepareThreadLocalStorage(g_task* thread);
-
-/**
  * Yields control in a kernel task. This can only be called while no mutexes
  * are currently acquired by this thread, otherwise the kernel could get deadlocked.
  */
 void taskingKernelThreadYield();
 
-void taskingKernelThreadExit();
-
 /**
- * Used to initialize or reset the state of a task.
+ * Exits a kernel task. Sets the status of the caller task to dead and yields.
  */
-void taskingResetTaskState(g_task* task);
+void taskingKernelThreadExit();
 
 /**
  * Kernel thread, cleaning up dead tasks.
@@ -264,8 +272,8 @@ void taskingResetTaskState(g_task* task);
 void taskingCleanupThread();
 
 /**
- * Removes a thread. Cleaning up all allocated data where possible.
+ * Kernel thread, used by the scheduler when it should idle.
  */
-void taskingRemoveThread(g_task* task);
+void taskingIdleThread();
 
 #endif

@@ -35,15 +35,6 @@ g_tasking_local* taskingLocal;
 static g_mutex taskingIdLock = 0;
 static g_tid taskingIdNext = 0;
 
-void taskingIdleThread()
-{
-	for(;;)
-	{
-		logInfo("idle!");
-		asm("hlt");
-	}
-}
-
 void taskingInitializeLocal(g_tasking_local* local)
 {
 	local->lock = 0;
@@ -249,6 +240,19 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 	mutexRelease(&local->lock);
 }
 
+g_tasking_local* taskingGetLocal()
+{
+	return &taskingLocal[processorGetCurrentId()];
+}
+
+g_tid taskingGetNextId()
+{
+	mutexAcquire(&taskingIdLock);
+	g_tid next = taskingIdNext++;
+	mutexRelease(&taskingIdLock);
+	return next;
+}
+
 bool taskingStore(g_virtual_address esp)
 {
 	g_task* task = taskingGetLocal()->current;
@@ -311,19 +315,6 @@ void taskingScheduleTo(g_task* task)
 		local->current = task;
 		mutexRelease(&local->lock);
 	}
-}
-
-g_tasking_local* taskingGetLocal()
-{
-	return &taskingLocal[processorGetCurrentId()];
-}
-
-g_tid taskingGetNextId()
-{
-	mutexAcquire(&taskingIdLock);
-	g_tid next = taskingIdNext++;
-	mutexRelease(&taskingIdLock);
-	return next;
 }
 
 g_process* taskingCreateProcess()
@@ -417,6 +408,14 @@ void taskingKernelThreadExit()
 {
 	taskingGetLocal()->current->status = G_THREAD_STATUS_DEAD;
 	taskingKernelThreadYield();
+}
+
+void taskingIdleThread()
+{
+	for(;;)
+	{
+		asm("hlt");
+	}
 }
 
 void taskingCleanupThread()
