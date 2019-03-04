@@ -23,30 +23,51 @@
 
 struct g_task;
 
+/**
+ * Type of a system call handler
+ */
 typedef void (*g_syscall_handler)(g_task*, void*);
 
+/**
+ * Registration structure
+ */
 struct g_syscall_registration
 {
 	g_syscall_handler handler;
 	bool threaded;
 };
 
-void syscallRegister(int call, g_syscall_handler handler, bool threaded);
-
 /**
- * Creates the syscall table.
- */
-void syscallRegisterAll();
-
-/**
+ * Handles a system call for the given task. Reads EAX and EBX from the caller task
+ * to find the issued system call and data.
  *
+ * Depending on the call registration, it is then processed either synchronously by
+ * calling the respective handler or a thread is created and the source task is put
+ * to waiting state.
  */
 void syscallHandle(g_task* task);
 
 /**
- * Entry point for syscall processing threads.
+ * Executes a system call within a thread. This creates or reuses the system call task on the
+ * caller task and starts it within syscallThreadEntry.
+ */
+void syscallRunThreaded(g_syscall_handler handler, g_task* caller, void* syscallData);
+
+/**
+ * Entry point for threaded system call processing. Reads the system call information from the
+ * source task and enters the system call handler accordingly.
  */
 void syscallThreadEntry();
+
+/**
+ * Creates a system call registration.
+ */
+void syscallRegister(int call, g_syscall_handler handler, bool threaded);
+
+/**
+ * Creates the system call table.
+ */
+void syscallRegisterAll();
 
 #endif
 

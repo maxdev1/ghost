@@ -45,7 +45,6 @@ int bs[4] =
 { 0, 0, 0, 0 };
 
 g_mutex testMutex = 0;
-int testSyscalls = 0;
 
 void test()
 {
@@ -58,10 +57,9 @@ void test()
 	{
 		as[processorGetCurrentId()]++;
 
-		if(as[processorGetCurrentId()] % 10000 == 0)
+		if(as[processorGetCurrentId()] % 1000000 == 0)
 		{
-			logInfo("#%i counts: SYS%i A(%i %i %i %i), B(%i %i %i %i)", processorGetCurrentId(), testSyscalls, as[0], as[1], as[2], as[3], bs[0], bs[1], bs[2],
-					bs[3]);
+			logInfo("#%i: A(%i %i %i %i), B(%i %i %i %i)", processorGetCurrentId(), as[0], as[1], as[2], as[3], bs[0], bs[1], bs[2], bs[3]);
 		}
 		taskingKernelThreadYield();
 	}
@@ -80,6 +78,16 @@ void test2()
 		taskingKernelThreadYield();
 	}
 
+	taskingKernelThreadExit();
+}
+
+#include "kernel/tasking/wait.hpp"
+void simpleEndingTask()
+{
+	logInfo("Hey! I am task %i", taskingGetLocal()->current->id);
+	waitSleep(taskingGetLocal()->current, 1000);
+	taskingKernelThreadYield();
+	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) simpleEndingTask, taskingGetLocal()->current->process, G_SECURITY_LEVEL_KERNEL));
 	taskingKernelThreadExit();
 }
 /* TESTING */
@@ -121,10 +129,17 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	systemInitializeBsp(initialPdPhys);
 	taskingInitializeBsp();
 
+	g_process* localSysProc = taskingCreateProcess();
+	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) taskingCleanupThread, localSysProc, G_SECURITY_LEVEL_KERNEL));
+
 	// TEST THREADS
 	g_process* testProc = taskingCreateProcess();
 	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test, testProc, G_SECURITY_LEVEL_KERNEL));
 	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test2, testProc, G_SECURITY_LEVEL_KERNEL));
+
+	g_process* dyingProc = taskingCreateProcess();
+	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) simpleEndingTask, dyingProc, G_SECURITY_LEVEL_KERNEL));
+	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) simpleEndingTask, dyingProc, G_SECURITY_LEVEL_KERNEL));
 
 	g_task* userTask;
 	elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_APPLICATION, &userTask);
@@ -151,6 +166,9 @@ void kernelRunApplicationCore()
 	logDebug("%! initializing %i", "ap", processorGetCurrentId());
 	systemInitializeAp();
 	taskingInitializeAp();
+
+	g_process* localSysProc = taskingCreateProcess();
+	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) taskingCleanupThread, localSysProc, G_SECURITY_LEVEL_KERNEL));
 
 	// TEST THREADS
 	g_process* testProc = taskingCreateProcess();
