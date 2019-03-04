@@ -546,6 +546,6 @@ void taskingRemoveThread(g_task* task)
 	// Switch back
 	pagingSwitchToSpace(currentDir);
 
-	logInfo("Removed task %i", task->id);
+	logInfo("Removed task %i (%i total free)", task->id, memoryPhysicalAllocator.freePageCount);
 	heapFree(task);
 }
