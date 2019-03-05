@@ -23,6 +23,7 @@
 #include "kernel/system/interrupts/requests.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/tasking/tasking.hpp"
+#include "kernel/tasking/scheduler.hpp"
 
 #include "shared/memory/memory.hpp"
 #include "shared/logger/logger.hpp"
@@ -39,6 +40,7 @@ void requestsHandle(g_task* task)
 	if(irq == 0) // Timer interrupt
 	{
 		taskingGetLocal()->time += APIC_MILLISECONDS_PER_TICK;
+		schedulerNewTimeSlot();
 		taskingSchedule();
 
 	} else if( irq == 0x61) // Yield from kernel thread
@@ -51,8 +53,6 @@ void requestsHandle(g_task* task)
 
 	} else
 	{
-		logInfo("received unhandled irq %i", task->state->intr);
-		for(;;)
-			;
+		logInfo("%! unhandled irq %i in task %i", "requests", task->state->intr, task->id);
 	}
 }

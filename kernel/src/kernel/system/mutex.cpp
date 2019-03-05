@@ -21,8 +21,20 @@
 #include "shared/system/mutex.hpp"
 
 #include "kernel/tasking/tasking.hpp"
+#include "kernel/kernel.hpp"
 
 #include "shared/logger/logger.hpp"
+
+void mutexInitialize(g_mutex* mutex)
+{
+	if(__sync_bool_compare_and_swap(&mutex->initialized, 0, 1))
+	{
+		mutex->initialized = 1;
+		mutex->mutex = 0;
+		mutex->depth = 0;
+		mutex->owner = -1;
+	}
+}
 
 void mutexAcquire(g_mutex* mutex)
 {
@@ -31,21 +43,32 @@ void mutexAcquire(g_mutex* mutex)
 
 void mutexAcquire(g_mutex* mutex, bool increaseCount)
 {
+	mutexInitialize(mutex);
+
 #if G_DEBUG_LOCKS_DEADLOCKING
 	uint32_t deadlockCounter = 0;
 #endif
 
-	while(!__sync_bool_compare_and_swap(mutex, 0, 1))
+	while(!__sync_bool_compare_and_swap(&mutex->mutex, 0, 1))
 	{
+		if(mutex->owner == processorGetCurrentId())
+		{
+			++mutex->depth;
+			return;
+		}
 		asm("pause");
+
 #if G_DEBUG_LOCKS_DEADLOCKING
 		++deadlockCounter;
-		if(deadlockCounter > 10000000)
+		if (deadlockCounter > 100000000)
 		{
-			loggerPrintPlain("deadlock");
+			logInfo("%! looks like a deadlock", "rlock");
 		}
 #endif
+
 	}
+	mutex->owner = processorGetCurrentId();
+	mutex->depth = 0;
 
 	if(increaseCount)
 		__sync_fetch_and_add(&taskingGetLocal()->locksHeld, 1);
@@ -58,11 +81,17 @@ void mutexRelease(g_mutex* mutex)
 
 void mutexRelease(g_mutex* mutex, bool decreaseCount)
 {
-	if(*mutex == 0)
+	if(!mutex->initialized)
+		kernelPanic("%! tried to use uninitialized mutex", "mutex");
+
+	if(mutex->depth > 0)
 	{
+		--mutex->depth;
 		return;
 	}
-	*mutex = 0;
+
+	mutex->owner = -1;
+	mutex->mutex = 0;
 
 	if(decreaseCount)
 		__sync_fetch_and_sub(&taskingGetLocal()->locksHeld, 1);
@@ -70,6 +99,6 @@ void mutexRelease(g_mutex* mutex, bool decreaseCount)
 
 bool mutexIsAcquired(g_mutex* mutex)
 {
-	return *mutex;
+	return mutex->mutex;
 }
 

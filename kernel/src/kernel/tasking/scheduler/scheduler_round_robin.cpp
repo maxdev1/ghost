@@ -21,17 +21,47 @@
 #include "kernel/tasking/scheduler.hpp"
 #include "kernel/memory/heap.hpp"
 #include "shared/logger/logger.hpp"
+#include "kernel/tasking/wait.hpp"
 
+void schedulerInitializeLocal()
+{
+	taskingGetLocal()->schedulerRound = 1;
+}
+
+void schedulerNewTimeSlot()
+{
+	taskingGetLocal()->schedulerRound++;
+}
+
+void schedulerPrepareEntry(g_schedule_entry* entry)
+{
+	entry->schedulerRound = 0;
+}
+
+/**
+ * This scheduler implementation keeps a round counter on the
+ * local tasking structure and each schedule entry. A new round
+ * starts when a new timeslot starts.
+ * 
+ * When looking for a new task to schedule, each task in the list
+ * is checked once. Only tasks that have not been scheduled in this
+ * round are taken into account.
+ * 
+ * If all tasks are waiting/were already scheduled, the idle task is run.
+ */
 void schedulerSchedule(g_tasking_local* local)
 {
+	mutexAcquire(&local->lock);
+
 	if(!local->current)
 	{
 		local->current = local->list->task;
+		mutexRelease(&local->lock);
 		return;
 	}
 
 	// Find current task in list
-	g_task_entry* entry = local->list;
+	g_schedule_entry* entry = local->list;
 	while(entry)
 	{
 		if(entry->task == local->current)
@@ -46,7 +76,7 @@ void schedulerSchedule(g_tasking_local* local)
 	}
 
 	bool switched = false;
-	int max = local->taskCount;
+	uint32_t max = local->taskCount;
 	while(max-- > 0)
 	{
 		// Select next in list
@@ -56,41 +86,36 @@ void schedulerSchedule(g_tasking_local* local)
 			entry = local->list;
 		}
 
-		// Check task status
+		// Check if task was already processed this round
+		if(entry->schedulerRound >= local->schedulerRound)
+		{
+			continue;
+		}
+		entry->schedulerRound = local->schedulerRound;
+
+		// Running task can be scheduled
 		g_task* task = entry->task;
 		if(task->status == G_THREAD_STATUS_RUNNING)
 		{
-
-			// Can go there
 			local->current = task;
 			switched = true;
 			break;
 		}
 
-		// Check wait resolver for waiting tasks
-		if(task->status == G_THREAD_STATUS_WAITING && task->waitResolver && task->waitResolver(task))
+		// Waiting task must be checked
+		if(task->status == G_THREAD_STATUS_WAITING && waitTryWake(task))
 		{
-			// Wake task again
-			task->status = G_THREAD_STATUS_RUNNING;
-			task->waitResolver = 0;
-
-			// Free wait data if necessary
-			if(task->waitData)
-			{
-				heapFree((void*) task->waitData);
-				task->waitData = 0;
-			}
-
 			local->current = task;
 			switched = true;
 			break;
 		}
 	}
 
-	// Could not schedule, do idle
+	// Nothing to schedule, idle
 	if(!switched)
 	{
 		local->current = local->idleTask;
-		logInfo("idle!");
 	}
+	
+	mutexRelease(&local->lock);
 }

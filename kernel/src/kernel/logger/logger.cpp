@@ -19,7 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/smp.hpp"
-#include "kernel/system/mutex_reentrant.hpp"
+#include "shared/system/mutex.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/system/mutex.hpp"
 
@@ -53,3 +53,10 @@ void loggerPrintlnLocked(const char* message, ...)
 	mutexRelease(&printLock);
 }
 
+void loggerManualLock() {
+	mutexAcquire(&printLock);
+}
+
+void loggerManualUnlock() {
+	mutexRelease(&printLock);
+}

@@ -37,7 +37,7 @@ Stacks
 Each thread has two stacks, a user space stack and a kernel space stack.
 
 Kernel space stack
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
 The kernel space stack is the one that the kernel operates on during system
 calls and where the state of the thread is stored during interruptions. It is
 statically assigned to 1 page and mapped into <<Kernelspace,kernel space>>.

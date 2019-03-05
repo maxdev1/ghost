@@ -20,6 +20,13 @@
 
 #include "shared/system/mutex.hpp"
 
+void mutexInitialize(g_mutex* mutex)
+{
+	if(mutex->initialized)
+		return;
+	mutex->initialized = 1;
+}
+
 void mutexAcquire(g_mutex* mutex)
 {
 }
