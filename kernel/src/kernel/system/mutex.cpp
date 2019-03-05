@@ -81,8 +81,8 @@ void mutexRelease(g_mutex* mutex)
 
 void mutexRelease(g_mutex* mutex, bool decreaseCount)
 {
-	if(!mutex->initialized)
-		kernelPanic("%! tried to use uninitialized mutex", "mutex");
+	if(!mutex->mutex)
+		return;
 
 	if(mutex->depth > 0)
 	{
