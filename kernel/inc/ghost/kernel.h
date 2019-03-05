@@ -79,16 +79,16 @@ typedef struct {
  */
 typedef uint8_t g_thread_type;
 
-static const g_thread_type G_THREAD_TYPE_DEFAULT = 0;
-static const g_thread_type G_THREAD_TYPE_VM86 = 1;
+#define G_THREAD_TYPE_DEFAULT ((g_thread_type) 0)
+#define G_THREAD_TYPE_VM86 ((g_thread_type) 1)
 
 /**
  * Task priority
  */
 typedef uint8_t g_thread_priority;
 
-static const g_thread_priority G_THREAD_PRIORITY_NORMAL = 0;
-static const g_thread_priority G_THREAD_PRIORITY_IDLE = 1;
+#define G_THREAD_PRIORITY_NORMAL ((g_thread_priority) 0)
+#define G_THREAD_PRIORITY_IDLE ((g_thread_priority) 1)
 
 /**
  * Task setup constants
@@ -100,10 +100,10 @@ static const g_thread_priority G_THREAD_PRIORITY_IDLE = 1;
  */
 typedef uint8_t g_thread_status;
 
-static const g_thread_status G_THREAD_STATUS_DEAD = 0;
-static const g_thread_status G_THREAD_STATUS_RUNNING = 1;
-static const g_thread_status G_THREAD_STATUS_WAITING = 2;
-static const g_thread_status G_THREAD_STATUS_UNUSED = 3;
+#define G_THREAD_STATUS_DEAD ((g_thread_status) 0)
+#define G_THREAD_STATUS_RUNNING ((g_thread_status) 1)
+#define G_THREAD_STATUS_WAITING ((g_thread_status) 2)
+#define G_THREAD_STATUS_UNUSED ((g_thread_status) 3)
 
 /**
  * Pipes

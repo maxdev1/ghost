@@ -49,29 +49,29 @@ typedef struct _g_message_header {
 
 // modes for message sending
 typedef int g_message_send_mode;
-static const g_message_send_mode G_MESSAGE_SEND_MODE_BLOCKING = 0;
-static const g_message_send_mode G_MESSAGE_SEND_MODE_NON_BLOCKING = 1;
+#define G_MESSAGE_SEND_MODE_BLOCKING ((g_message_send_mode) 0)
+#define G_MESSAGE_SEND_MODE_NON_BLOCKING ((g_message_send_mode) 1)
 
 // modes for message receiving
 typedef int g_message_receive_mode;
-static const g_message_receive_mode G_MESSAGE_RECEIVE_MODE_BLOCKING = 0;
-static const g_message_receive_mode G_MESSAGE_RECEIVE_MODE_NON_BLOCKING = 1;
+#define G_MESSAGE_RECEIVE_MODE_BLOCKING ((g_message_receive_mode) 0)
+#define G_MESSAGE_RECEIVE_MODE_NON_BLOCKING ((g_message_receive_mode) 1)
 
 // status for message sending
 typedef int g_message_send_status;
-static const g_message_send_status G_MESSAGE_SEND_STATUS_SUCCESSFUL = 1;
-static const g_message_send_status G_MESSAGE_SEND_STATUS_QUEUE_FULL = 2;
-static const g_message_send_status G_MESSAGE_SEND_STATUS_FAILED = 3;
-static const g_message_send_status G_MESSAGE_SEND_STATUS_EXCEEDS_MAXIMUM = 4;
+#define G_MESSAGE_SEND_STATUS_SUCCESSFUL ((g_message_send_status) 1)
+#define G_MESSAGE_SEND_STATUS_QUEUE_FULL ((g_message_send_status) 2)
+#define G_MESSAGE_SEND_STATUS_FAILED ((g_message_send_status) 3)
+#define G_MESSAGE_SEND_STATUS_EXCEEDS_MAXIMUM ((g_message_send_status) 4)
 
 // status for message receiving
 typedef int g_message_receive_status;
-static const g_message_receive_status G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL = 1;
-static const g_message_receive_status G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY = 2;
-static const g_message_receive_status G_MESSAGE_RECEIVE_STATUS_FAILED = 3;
-static const g_message_receive_status G_MESSAGE_RECEIVE_STATUS_FAILED_NOT_PERMITTED = 4;
-static const g_message_receive_status G_MESSAGE_RECEIVE_STATUS_EXCEEDS_BUFFER_SIZE = 5;
-static const g_message_receive_status G_MESSAGE_RECEIVE_STATUS_INTERRUPTED = 6;
+#define G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL ((g_message_receive_status) 1)
+#define G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY ((g_message_receive_status) 2)
+#define G_MESSAGE_RECEIVE_STATUS_FAILED ((g_message_receive_status) 3)
+#define G_MESSAGE_RECEIVE_STATUS_FAILED_NOT_PERMITTED ((g_message_receive_status) 4)
+#define G_MESSAGE_RECEIVE_STATUS_EXCEEDS_BUFFER_SIZE ((g_message_receive_status) 5)
+#define G_MESSAGE_RECEIVE_STATUS_INTERRUPTED ((g_message_receive_status) 6)
 
 __END_C
 
