@@ -23,7 +23,18 @@
 
 #include "ghost/stdint.h"
 
-typedef volatile int g_mutex;
+struct g_mutex
+{
+	volatile int initialized = 0;
+	volatile int mutex = 0;
+	uint8_t depth = 0;
+	uint32_t owner = -1;
+};
+
+/**
+ * Initializes the mutex.
+ */
+void mutexInitialize(g_mutex* mutex);
 
 /**
  * Acquires the mutex. Increases the lock count for this processor.

@@ -101,6 +101,13 @@ struct g_task_entry
 	g_task_entry* next;
 };
 
+struct g_schedule_entry
+{
+	g_task* task;
+	uint32_t schedulerRound;
+	g_schedule_entry* next;
+};
+
 /**
  * Processor local tasking structure. For each processor there is one instance
  * of this struct that contains the current state.
@@ -112,7 +119,7 @@ struct g_tasking_local
 	/**
 	 * Tasking information.
 	 */
-	g_task_entry* list;
+	g_schedule_entry* list;
 	g_task* current;
 	int taskCount;
 
@@ -129,6 +136,7 @@ struct g_tasking_local
 	uint32_t time;
 
 	g_task* idleTask;
+	uint32_t schedulerRound;
 };
 
 /**
@@ -166,6 +174,16 @@ struct g_process
 };
 
 /**
+ * Returns the processor-local tasking structure.
+ */
+g_tasking_local* taskingGetLocal();
+
+/**
+ * Returns the next assignable task id.
+ */
+g_tid taskingGetNextId();
+
+/**
  * Basic initialization of the task management.
  */
 void taskingInitializeBsp();
@@ -176,19 +194,14 @@ void taskingInitializeBsp();
 void taskingInitializeAp();
 
 /**
+ * Initializes the processor-local tasking structure.
+ */
+void taskingInitializeLocal();
+
+/**
  * Adds a task to the list of scheduled tasks on the given local.
  */
 void taskingAssign(g_tasking_local* local, g_task* task);
-
-/**
- * Returns the processor-local tasking structure.
- */
-g_tasking_local* taskingGetLocal();
-
-/**
- * Returns the next assignable task id.
- */
-g_tid taskingGetNextId();
 
 /**
  * Creates an empty process. Creates a new page directory with the kernel areas

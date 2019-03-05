@@ -30,6 +30,10 @@ void loggerPrintLocked(const char *message, ...);
 
 void loggerPrintlnLocked(const char *message, ...);
 
+void loggerManualLock();
+
+void loggerManualUnlock();
+
 void loggerEnableSerial(bool enable);
 
 void loggerEnableVideo(bool video);

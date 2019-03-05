@@ -87,17 +87,18 @@ void syscallThreadEntry()
 	// Call handler
 	sourceTask->syscall.handler(sourceTask, sourceTask->syscall.data);
 
-	// Unwait source task
+	// Switch back to source task
+	mutexAcquire(&taskingGetLocal()->lock);
 	sourceTask->status = G_THREAD_STATUS_RUNNING;
-
-	// Mark this task as unused (can be reused later) and yield
 	taskingGetLocal()->current->status = G_THREAD_STATUS_UNUSED;
+	taskingScheduleTo(sourceTask);
+	mutexRelease(&taskingGetLocal()->lock);
+
 	taskingKernelThreadYield();
 }
 
 void syscallRegister(int callId, g_syscall_handler handler, bool threaded)
 {
-
 	if(callId > G_SYSCALL_MAX)
 	{
 		kernelPanic("%! tried to register syscall with id %i, maximum is %i", "syscall", callId, G_SYSCALL_MAX);

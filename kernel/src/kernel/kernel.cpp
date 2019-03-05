@@ -33,6 +33,7 @@
 #include "shared/video/pretty_boot.hpp"
 #include "shared/system/serial_port.hpp"
 
+#include "kernel/calls/syscall.hpp"
 #include "kernel/tasking/elf32_loader.hpp"
 
 static g_mutex bootstrapCoreLock;
@@ -44,8 +45,9 @@ int as[4] =
 int bs[4] =
 { 0, 0, 0, 0 };
 
-g_mutex testMutex = 0;
+g_mutex testMutex;
 
+#include "kernel/tasking/wait.hpp"
 void test()
 {
 	mutexAcquire(&testMutex);
@@ -57,15 +59,15 @@ void test()
 	{
 		as[processorGetCurrentId()]++;
 
-		if(as[processorGetCurrentId()] % 1000000 == 0)
-		{
+		if(as[processorGetCurrentId()] % 10000 == 0)
 			logInfo("#%i: A(%i %i %i %i), B(%i %i %i %i)", processorGetCurrentId(), as[0], as[1], as[2], as[3], bs[0], bs[1], bs[2], bs[3]);
-		}
+
 		taskingKernelThreadYield();
 	}
 
 	taskingKernelThreadExit();
 }
+
 void test2()
 {
 	mutexAcquire(&testMutex);
@@ -81,15 +83,6 @@ void test2()
 	taskingKernelThreadExit();
 }
 
-#include "kernel/tasking/wait.hpp"
-void simpleEndingTask()
-{
-	logInfo("Hey! I am task %i", taskingGetLocal()->current->id);
-	waitSleep(taskingGetLocal()->current, 1000);
-	taskingKernelThreadYield();
-	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) simpleEndingTask, taskingGetLocal()->current->process, G_SECURITY_LEVEL_KERNEL));
-	taskingKernelThreadExit();
-}
 /* TESTING */
 
 extern "C" void kernelMain(g_setup_information* setupInformation)
@@ -128,18 +121,12 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	mutexAcquire(&bootstrapCoreLock, false);
 	systemInitializeBsp(initialPdPhys);
 	taskingInitializeBsp();
-
-	g_process* localSysProc = taskingCreateProcess();
-	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) taskingCleanupThread, localSysProc, G_SECURITY_LEVEL_KERNEL));
+	syscallRegisterAll();
 
 	// TEST THREADS
 	g_process* testProc = taskingCreateProcess();
 	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test, testProc, G_SECURITY_LEVEL_KERNEL));
 	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test2, testProc, G_SECURITY_LEVEL_KERNEL));
-
-	g_process* dyingProc = taskingCreateProcess();
-	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) simpleEndingTask, dyingProc, G_SECURITY_LEVEL_KERNEL));
-	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) simpleEndingTask, dyingProc, G_SECURITY_LEVEL_KERNEL));
 
 	g_task* userTask;
 	elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_APPLICATION, &userTask);
@@ -167,9 +154,6 @@ void kernelRunApplicationCore()
 	systemInitializeAp();
 	taskingInitializeAp();
 
-	g_process* localSysProc = taskingCreateProcess();
-	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) taskingCleanupThread, localSysProc, G_SECURITY_LEVEL_KERNEL));
-
 	// TEST THREADS
 	g_process* testProc = taskingCreateProcess();
 	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test, testProc, G_SECURITY_LEVEL_KERNEL));
@@ -193,11 +177,13 @@ void kernelPanic(const char *msg, ...)
 {
 	logInfo("%*%! an unrecoverable error has occured. reason:", 0x0C, "kernerr");
 
+	loggerManualLock();
 	va_list valist;
 	va_start(valist, msg);
 	loggerPrintFormatted(msg, valist);
 	va_end(valist);
 	loggerPrintCharacter('\n');
+	loggerManualUnlock();
 
 	interruptsDisable();
 	for(;;)

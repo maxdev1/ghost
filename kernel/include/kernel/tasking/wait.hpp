@@ -25,6 +25,13 @@
 #include "kernel/tasking/tasking.hpp"
 
 /**
+ * Checks if this task can be woken up by calling its wait resolver.
+ * If it has finished waiting, the wait data is freed and the task set to
+ * running state.
+ */
+bool waitTryWake(g_task* task);
+
+/**
  * Puts the task to wait and lets it sleep for the given number of milliseconds.
  * If executed from the current task, you must yield.
  */

@@ -79,9 +79,8 @@ typedef struct {
  */
 typedef uint8_t g_thread_type;
 
-static const g_thread_type G_THREAD_TYPE_MAIN = 0;
-static const g_thread_type G_THREAD_TYPE_SUB = 1;
-static const g_thread_type G_THREAD_TYPE_VM86 = 2;
+static const g_thread_type G_THREAD_TYPE_DEFAULT = 0;
+static const g_thread_type G_THREAD_TYPE_VM86 = 1;
 
 /**
  * Task priority

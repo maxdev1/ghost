@@ -24,6 +24,21 @@
 #include "kernel/memory/heap.hpp"
 #include "shared/logger/logger.hpp"
 
+bool waitTryWake(g_task* task) {
+	if(task->waitResolver && task->waitResolver(task)) {
+		task->waitResolver = 0;
+		if(task->waitData)
+		{
+			heapFree((void*) task->waitData);
+			task->waitData = 0;
+		}
+
+		task->status = G_THREAD_STATUS_RUNNING;
+		return true;
+	}
+	return false;
+}
+
 void waitSleep(g_task* task, uint64_t milliseconds)
 {
 	g_wait_resolver_sleep_data* waitData = (g_wait_resolver_sleep_data*) heapAllocate(sizeof(g_wait_resolver_sleep_data));

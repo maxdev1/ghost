@@ -32,7 +32,7 @@ static g_virtual_address heapEnd = 0;
 static uint32_t heapAmountInUse = 0;
 static bool heapInitialized = false;
 
-static g_mutex heapLock = 0;
+static g_mutex heapLock;
 
 void heapInitialize(g_virtual_address start, g_virtual_address end)
 {

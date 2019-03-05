@@ -22,7 +22,6 @@
 #include "kernel/tasking/scheduler.hpp"
 #include "kernel/tasking/wait.hpp"
 
-#include "kernel/calls/syscall.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/gdt.hpp"
@@ -30,14 +29,37 @@
 #include "kernel/kernel.hpp"
 #include "shared/logger/logger.hpp"
 
-g_tasking_local* taskingLocal;
-
-static g_mutex taskingIdLock = 0;
+static g_tasking_local* taskingLocal;
+static g_mutex taskingIdLock;
 static g_tid taskingIdNext = 0;
 
-void taskingInitializeLocal(g_tasking_local* local)
+g_tasking_local* taskingGetLocal()
 {
-	local->lock = 0;
+	return &taskingLocal[processorGetCurrentId()];
+}
+
+g_tid taskingGetNextId()
+{
+	mutexAcquire(&taskingIdLock);
+	g_tid next = taskingIdNext++;
+	mutexRelease(&taskingIdLock);
+	return next;
+}
+
+void taskingInitializeBsp()
+{
+	taskingLocal = (g_tasking_local*) heapAllocate(sizeof(g_tasking_local) * processorGetNumberOfProcessors());
+	taskingInitializeLocal();
+}
+
+void taskingInitializeAp()
+{
+	taskingInitializeLocal();
+}
+
+void taskingInitializeLocal()
+{
+	g_tasking_local* local = taskingGetLocal();
 	local->list = 0;
 	local->current = 0;
 	local->locksHeld = 0;
@@ -45,23 +67,14 @@ void taskingInitializeLocal(g_tasking_local* local)
 	local->taskCount = 0;
 
 	g_process* idle = taskingCreateProcess();
-	taskingLocal->idleTask = taskingCreateThread((g_virtual_address) taskingIdleThread, idle, G_SECURITY_LEVEL_KERNEL);
-}
+	taskingGetLocal()->idleTask = taskingCreateThread((g_virtual_address) taskingIdleThread, idle, G_SECURITY_LEVEL_KERNEL);
+	logInfo("%! core: %i idle task: %i", "tasking", processorGetCurrentId(), idle->main->id);
 
-void taskingInitializeBsp()
-{
-	taskingLocal = (g_tasking_local*) heapAllocate(sizeof(g_tasking_local) * processorGetNumberOfProcessors());
+	g_process* cleanup = taskingCreateProcess();
+	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) taskingCleanupThread, cleanup, G_SECURITY_LEVEL_KERNEL));
+	logInfo("%! core: %i cleanup task: %i", "tasking", processorGetCurrentId(), cleanup->main->id);
 
-	g_tasking_local* local = &taskingLocal[processorGetCurrentId()];
-	taskingInitializeLocal(local);
-
-	syscallRegisterAll();
-}
-
-void taskingInitializeAp()
-{
-	g_tasking_local* local = &taskingLocal[processorGetCurrentId()];
-	taskingInitializeLocal(local);
+	schedulerInitializeLocal();
 }
 
 g_physical_address taskingCreatePageDirectory()
@@ -216,7 +229,7 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 	mutexAcquire(&local->lock);
 
 	bool alreadyInList = false;
-	g_task_entry* existing = local->list;
+	g_schedule_entry* existing = local->list;
 	while(existing)
 	{
 		if(existing->task == task)
@@ -229,28 +242,16 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 
 	if(!alreadyInList)
 	{
-		g_task_entry* newEntry = (g_task_entry*) heapAllocate(sizeof(g_task_entry));
+		g_schedule_entry* newEntry = (g_schedule_entry*) heapAllocate(sizeof(g_schedule_entry));
 		newEntry->task = task;
 		newEntry->next = local->list;
+		schedulerPrepareEntry(newEntry);
 		local->list = newEntry;
 
 		local->taskCount++;
 	}
 
 	mutexRelease(&local->lock);
-}
-
-g_tasking_local* taskingGetLocal()
-{
-	return &taskingLocal[processorGetCurrentId()];
-}
-
-g_tid taskingGetNextId()
-{
-	mutexAcquire(&taskingIdLock);
-	g_tid next = taskingIdNext++;
-	mutexRelease(&taskingIdLock);
-	return next;
 }
 
 bool taskingStore(g_virtual_address esp)
@@ -297,9 +298,7 @@ void taskingSchedule()
 	// switch tasks - otherwise we will deadlock.
 	if(local->locksHeld == 0)
 	{
-		mutexAcquire(&local->lock);
 		schedulerSchedule(local);
-		mutexRelease(&local->lock);
 	}
 }
 
@@ -322,7 +321,6 @@ g_process* taskingCreateProcess()
 	g_process* process = (g_process*) heapAllocate(sizeof(g_process));
 	process->main = 0;
 	process->tasks = 0;
-	process->lock = 0;
 
 	process->tlsMaster.location = 0;
 	process->tlsMaster.copysize = 0;
@@ -425,13 +423,13 @@ void taskingCleanupThread()
 	for(;;)
 	{
 		// Find and remove dead tasks from local scheduling list
-		g_task_entry* deadList = 0;
+		g_schedule_entry* deadList = 0;
 		mutexAcquire(&local->lock);
-		g_task_entry* entry = local->list;
-		g_task_entry* previous = 0;
+		g_schedule_entry* entry = local->list;
+		g_schedule_entry* previous = 0;
 		while(entry)
 		{
-			g_task_entry* next = entry->next;
+			g_schedule_entry* next = entry->next;
 			if(entry->task->status == G_THREAD_STATUS_DEAD)
 			{
 				if(previous)
@@ -452,7 +450,7 @@ void taskingCleanupThread()
 		// Remove each task
 		while(deadList)
 		{
-			g_task_entry* next = deadList->next;
+			g_schedule_entry* next = deadList->next;
 			taskingRemoveThread(deadList->task);
 			heapFree(deadList);
 			deadList = next;
@@ -485,8 +483,8 @@ void taskingRemoveThread(g_task* task)
 					bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, pagePhys);
 				pagingUnmapPage(page);
 			}
-			addressRangePoolFree(memoryVirtualRangePool, page);
 		}
+		addressRangePoolFree(memoryVirtualRangePool, task->interruptStack.start);
 	}
 	for(g_virtual_address page = task->stack.start; page < task->stack.end; page += G_PAGE_SIZE)
 	{
@@ -497,12 +495,11 @@ void taskingRemoveThread(g_task* task)
 				bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, pagePhys);
 			pagingUnmapPage(page);
 		}
-
-		if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
-			addressRangePoolFree(memoryVirtualRangePool, page);
-		else
-			addressRangePoolFree(task->process->virtualRangePool, page);
 	}
+	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
+		addressRangePoolFree(memoryVirtualRangePool, task->stack.start);
+	else
+		addressRangePoolFree(task->process->virtualRangePool, task->stack.start);
 
 	// Free TLS copy if available
 	if(task->tlsCopy.start)

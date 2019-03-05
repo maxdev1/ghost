@@ -21,7 +21,7 @@ component. On the top of each page there's a link back to this home page.
 * *<<building#,Building>>* - toolchain & system building instructions
 * *<<loader#,Loader>>* - initial boot code that loads the kernel to higher memory
 * *Kernel section* - documentation about the kernel itself
-	** <<threads#,Threads section>> contains everything about processes and threading
+	** <<tasking#,Tasking>> contains everything about processes and threading
 	** <<memory#,Memory layout>> explains the memory layout
 * *<<libapi#,libapi>>* - documentation for the kernel API wrapper library
 * *<<libc#,libc>>* - documentation for the C library implementation

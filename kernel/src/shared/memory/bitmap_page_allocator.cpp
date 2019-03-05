@@ -28,7 +28,7 @@ void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, g_bitmap_
 {
 	allocator->bitmap = bitmap;
 	allocator->freePageCount = 0;
-	allocator->lock = 0;
+	mutexInitialize(&allocator->lock);
 
 	for(uint32_t i = 0; i < G_BITMAP_SIZE; i++)
 		allocator->bitmap[i] = 0;

@@ -28,7 +28,7 @@
 void addressRangePoolInitialize(g_address_range_pool* pool)
 {
 	pool->first = 0;
-	pool->lock = 0;
+	mutexInitialize(&pool->lock);
 }
 
 void addressRangePoolAddRange(g_address_range_pool* pool, g_address start, g_address end)
