@@ -208,7 +208,7 @@ if [ $STEP_BUILD_BINUTILS == 1 ]; then
 	pushd temp/build-binutils
 
 	echo "    Configuring"
-	../$BINUTILS_UNPACKED/configure --target=$TARGET --prefix=$TOOLCHAIN_BASE --disable-nls --disable-werror --with-sysroot=$SYSROOT >>ghost-build.log 2>&1
+	../$BINUTILS_UNPACKED/configure --target=$TARGET --prefix=$TOOLCHAIN_BASE --disable-nls --enable-shared --disable-werror --with-sysroot=$SYSROOT >>ghost-build.log 2>&1
 	failOnError
 
 	echo "    Building"
@@ -234,7 +234,7 @@ if [ $STEP_BUILD_GCC == 1 ]; then
 	pushd temp/build-gcc
 	
 	echo "    Configuration"
-	../$GCC_UNPACKED/configure --target=$TARGET --prefix=$TOOLCHAIN_BASE --disable-nls --enable-languages=c,c++ --with-sysroot=$SYSROOT $BUILD_GCC_ADDITIONAL_FLAGS >>ghost-build.log 2>&1
+	../$GCC_UNPACKED/configure --target=$TARGET --prefix=$TOOLCHAIN_BASE --disable-nls --enable-languages=c,c++ --enable-shared --with-sysroot=$SYSROOT $BUILD_GCC_ADDITIONAL_FLAGS >>ghost-build.log 2>&1
 	failOnError
 
 	echo "    Building core"
