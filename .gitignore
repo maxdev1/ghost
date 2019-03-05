@@ -22,7 +22,8 @@ libapi/libghostapi.a
 libuser/libghostuser.a
 
 applications/**/*.bin
-applications/**/obj/*
+applications/**/obj/*.o
+applications/**/*.so
 applications/**/obj-*
 
 patches/ports/build/*

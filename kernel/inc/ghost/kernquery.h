@@ -31,8 +31,8 @@ __BEGIN_C
  *
  */
 typedef int g_kernquery_status;
-static const g_kernquery_status G_KERNQUERY_STATUS_SUCCESSFUL = 0;
-static const g_kernquery_status G_KERNQUERY_STATUS_UNKNOWN_ID = 1;
+#define G_KERNQUERY_STATUS_SUCCESSFUL ((g_kernquery_status) 0)
+#define G_KERNQUERY_STATUS_UNKNOWN_ID ((g_kernquery_status) 1)
 
 /**
  * Command IDs

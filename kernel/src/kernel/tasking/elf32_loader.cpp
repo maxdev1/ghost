@@ -40,6 +40,7 @@ g_elf32_spawn_status elf32SpawnFromRamdisk(g_ramdisk_entry* entry, g_security_le
 
 	if(status == ELF32_VALIDATION_SUCCESSFUL)
 	{
+		logInfo("%! loading binary: %s", "elf32", entry->name);
 		g_process* process = taskingCreateProcess();
 
 		// Temporarily switch to process space
@@ -58,7 +59,7 @@ g_elf32_spawn_status elf32SpawnFromRamdisk(g_ramdisk_entry* entry, g_security_le
 		}
 
 		taskingPrepareThreadLocalStorage(mainTask);
-		
+
 		// Set the tasks entry point
 		mainTask->state->eip = header->e_entry;
 
@@ -93,10 +94,12 @@ void elf32LoadLoadSegment(elf32_ehdr* header, g_process* process, g_security_lev
 	// Flags for page tables/pages
 	uint32_t tableFlags;
 	uint32_t pageFlags;
-	if(securityLevel == G_SECURITY_LEVEL_KERNEL) {
+	if(securityLevel == G_SECURITY_LEVEL_KERNEL)
+	{
 		tableFlags = DEFAULT_KERNEL_TABLE_FLAGS;
 		pageFlags = DEFAULT_KERNEL_PAGE_FLAGS;
-	} else {
+	} else
+	{
 		tableFlags = DEFAULT_USER_TABLE_FLAGS;
 		pageFlags = DEFAULT_USER_PAGE_FLAGS;
 	}
@@ -152,10 +155,12 @@ void elf32LoadTlsMasterCopy(elf32_ehdr* header, g_process* process, g_security_l
 	// Flags for page tables/pages
 	uint32_t tableFlags;
 	uint32_t pageFlags;
-	if(securityLevel == G_SECURITY_LEVEL_KERNEL) {
+	if(securityLevel == G_SECURITY_LEVEL_KERNEL)
+	{
 		tableFlags = DEFAULT_KERNEL_TABLE_FLAGS;
 		pageFlags = DEFAULT_KERNEL_PAGE_FLAGS;
-	} else {
+	} else
+	{
 		tableFlags = DEFAULT_USER_TABLE_FLAGS;
 		pageFlags = DEFAULT_USER_PAGE_FLAGS;
 	}
