@@ -27,13 +27,14 @@
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/filesystem/ramdisk.hpp"
 #include "kernel/logger/kernel_logger.hpp"
+#include "kernel/calls/syscall.hpp"
+#include "kernel/filesystem/filesystem.hpp"
 
 #include "shared/runtime/constructors.hpp"
 #include "shared/video/console_video.hpp"
 #include "shared/video/pretty_boot.hpp"
 #include "shared/system/serial_port.hpp"
 
-#include "kernel/calls/syscall.hpp"
 #include "kernel/tasking/elf32_loader.hpp"
 
 static g_mutex bootstrapCoreLock;
@@ -115,6 +116,7 @@ void kernelInitialize(g_setup_information* setupInformation)
 	ramdiskLoadFromModule(ramdiskModule);
 }
 
+#include "kernel/utils/stringbuffer.hpp"
 void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 {
 	logDebug("%! has entered kernel", "bsp");
@@ -122,8 +124,16 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	systemInitializeBsp(initialPdPhys);
 	taskingInitializeBsp();
 	syscallRegisterAll();
+	filesystemInitialize();
 
 	// TEST THREADS
+	g_stringbuffer* buf = stringbufferCreate(16);
+	stringbufferAppend(buf, "Hello ");
+	stringbufferAppend(buf, "World");
+	stringbufferAppend(buf, "! WAZZUP");
+	logInfo("Buffer content: '%s'", stringbufferGet(buf));
+	stringbufferRelease(buf);
+
 	g_process* testProc = taskingCreateProcess();
 	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test, testProc, G_SECURITY_LEVEL_KERNEL));
 	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test2, testProc, G_SECURITY_LEVEL_KERNEL));

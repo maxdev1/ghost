@@ -18,53 +18,24 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __SYSTEM_SMP_MUTEX__
-#define __SYSTEM_SMP_MUTEX__
+#ifndef __UTILS_HASHMAP_UINT32__
+#define __UTILS_HASHMAP_UINT32__
 
-#include "ghost/stdint.h"
+#include "kernel/utils/hashmap.hpp"
 
-struct g_mutex
-{
-	volatile int initialized = 0;
-	volatile int lock = 0;
-	int depth = 0;
-	uint32_t owner = -1;
-};
+const char* hashmapKeyCopyString(const char* key);
+int hashmapKeyHashString(const char* key);
+void hashmapKeyFreeString(const char* key);
+bool hashmapKeyEqualsString(const char* k1, const char* k2);
 
-/**
- * Initializes the mutex.
- */
-void mutexInitialize(g_mutex* mutex);
-
-/**
- * Acquires the mutex. Increases the lock count for this processor.
- */
-void mutexAcquire(g_mutex* mutex);
-bool mutexTryAcquire(g_mutex* mutex);
-
-/**
- * Releases the mutex. Decreases the lock count for this processor.
- */
-void mutexRelease(g_mutex* mutex);
-
-/**
- * Acquires the mutex.
- *
- * The increaseCount parameter decides if the lock count for this processor should be increased.
- */
-void mutexAcquire(g_mutex* mutex, bool increaseCount);
-bool mutexTryAcquire(g_mutex* mutex, bool increaseCount);
-
-/**
- * Releases the mutex.
- *
- * The decreaseCount parameter decides if the lock count for this processor should be decreased.
- */
-void mutexRelease(g_mutex* mutex, bool decreaseCount);
-
-/**
- * Checks if this lock is acquired.
- */
-bool mutexIsAcquired(g_mutex* mutex);
+template<typename V>
+g_hashmap<const char*, V>* hashmapCreateString(int bucketCount) {
+	g_hashmap<const char*, V>* map = hashmapInternalCreate<const char*, V>(bucketCount);
+	map->keyCopy = hashmapKeyCopyString;
+	map->keyHash = hashmapKeyHashString;
+	map->keyFree = hashmapKeyFreeString;
+	map->keyEquals = hashmapKeyEqualsString;
+	return map;
+}
 
 #endif

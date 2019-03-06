@@ -102,3 +102,13 @@ void stringReplace(char* str, char character, char replacement)
 	}
 }
 
+int stringHash(const char* str) {
+	uint32_t hash = 5381;
+    int c;
+
+    while((c = *str++) > 0) {
+        hash = ((hash << 5) + hash) + c;
+	}
+
+    return hash;
+}

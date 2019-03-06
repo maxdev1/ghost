@@ -18,53 +18,61 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __SYSTEM_SMP_MUTEX__
-#define __SYSTEM_SMP_MUTEX__
+#ifndef __UTILS_STRING_BUFFER__
+#define __UTILS_STRING_BUFFER__
 
-#include "ghost/stdint.h"
-
-struct g_mutex
-{
-	volatile int initialized = 0;
-	volatile int lock = 0;
-	int depth = 0;
-	uint32_t owner = -1;
-};
+#include "ghost/types.h"
 
 /**
- * Initializes the mutex.
+ * String buffer type
  */
-void mutexInitialize(g_mutex* mutex);
+struct g_stringbuffer;
 
 /**
- * Acquires the mutex. Increases the lock count for this processor.
+ * Creates a new string buffer with a given initial capacity.
+ * 
+ * @param initialCapacity the initially reserved capacity
+ * @return buffer instance
  */
-void mutexAcquire(g_mutex* mutex);
-bool mutexTryAcquire(g_mutex* mutex);
+g_stringbuffer* stringbufferCreate(uint16_t initialCapacity);
 
 /**
- * Releases the mutex. Decreases the lock count for this processor.
+ * Appends a character to the buffer.
+ * 
+ * @param buffer instance
+ * @param c the character
  */
-void mutexRelease(g_mutex* mutex);
+void stringbufferAppend(g_stringbuffer* buffer, char c);
 
 /**
- * Acquires the mutex.
- *
- * The increaseCount parameter decides if the lock count for this processor should be increased.
+ * Appends a string to the buffer.
+ * 
+ * @param buffer instance
+ * @param str the string
  */
-void mutexAcquire(g_mutex* mutex, bool increaseCount);
-bool mutexTryAcquire(g_mutex* mutex, bool increaseCount);
+void stringbufferAppend(struct g_stringbuffer* buffer, const char* str);
 
 /**
- * Releases the mutex.
- *
- * The decreaseCount parameter decides if the lock count for this processor should be decreased.
+ * Returns the content buffer.
+ * 
+ * @param buffer instance
+ * @return the content buffer
  */
-void mutexRelease(g_mutex* mutex, bool decreaseCount);
+char* stringbufferGet(g_stringbuffer* buffer);
 
 /**
- * Checks if this lock is acquired.
+ * Returns the content buffer and releases other allocated memory.
+ * 
+ * @param buffer instance
+ * @return the content buffer
  */
-bool mutexIsAcquired(g_mutex* mutex);
+char* stringbufferTake(g_stringbuffer* buffer);
+
+/**
+ * Releases all allocated memory including the content buffer.
+ * 
+ * @param buffer
+ */
+void stringbufferRelease(g_stringbuffer* buffer);
 
 #endif

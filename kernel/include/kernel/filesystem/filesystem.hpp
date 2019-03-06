@@ -18,53 +18,36 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __SYSTEM_SMP_MUTEX__
-#define __SYSTEM_SMP_MUTEX__
+#ifndef __KERNEL_FILESYSTEM__
+#define __KERNEL_FILESYSTEM__
 
-#include "ghost/stdint.h"
+#include "ghost/fs.h"
 
-struct g_mutex
-{
-	volatile int initialized = 0;
-	volatile int lock = 0;
-	int depth = 0;
-	uint32_t owner = -1;
+struct g_fs_node;
+
+struct g_fs_node_entry {
+	g_fs_node* node;
+	g_fs_node_entry* next;
 };
 
-/**
- * Initializes the mutex.
- */
-void mutexInitialize(g_mutex* mutex);
+struct g_fs_node {
+	g_fs_virt_id id;
+	g_fs_phys_id physicalId;
+	g_fs_node_type type;
 
-/**
- * Acquires the mutex. Increases the lock count for this processor.
- */
-void mutexAcquire(g_mutex* mutex);
-bool mutexTryAcquire(g_mutex* mutex);
+	char* name;
+	g_fs_node* parent;
+	g_fs_node_entry* children;
 
-/**
- * Releases the mutex. Decreases the lock count for this processor.
- */
-void mutexRelease(g_mutex* mutex);
+	bool blocking;
+	bool upToDate;
+};
 
-/**
- * Acquires the mutex.
- *
- * The increaseCount parameter decides if the lock count for this processor should be increased.
- */
-void mutexAcquire(g_mutex* mutex, bool increaseCount);
-bool mutexTryAcquire(g_mutex* mutex, bool increaseCount);
 
-/**
- * Releases the mutex.
- *
- * The decreaseCount parameter decides if the lock count for this processor should be decreased.
- */
-void mutexRelease(g_mutex* mutex, bool decreaseCount);
+void filesystemInitialize();
 
-/**
- * Checks if this lock is acquired.
- */
-bool mutexIsAcquired(g_mutex* mutex);
+g_fs_virt_id filesystemGetNextId();
+
+g_fs_node* filesystemCreateNode(g_fs_node_type type, const char* name);
 
 #endif

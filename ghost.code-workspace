@@ -7,7 +7,8 @@
 	"settings": {
 		"files.associations": {
 			"cstdlib": "cpp",
-			"fstream": "cpp"
+			"fstream": "cpp",
+			"type_traits": "cpp"
 		}
 	}
 }

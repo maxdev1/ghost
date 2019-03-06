@@ -30,8 +30,9 @@
 
 struct g_process;
 struct g_task;
+struct g_tasking_local;
 
-typedef bool (*g_wait_resolver)(g_task*);
+typedef bool(*g_wait_resolver)(g_task*);
 
 /**
  * A task is a single thread executing either in user or kernel level.
@@ -44,6 +45,9 @@ struct g_task
 	g_tid id;
 	g_security_level securityLevel;
 	g_thread_status status;
+	g_thread_type type;
+
+	g_tasking_local* assignment;
 
 	struct
 	{
@@ -119,7 +123,7 @@ struct g_tasking_local
 	/**
 	 * Tasking information.
 	 */
-	g_schedule_entry* list;
+	g_schedule_entry* scheduleList;
 	g_task* current;
 	int taskCount;
 
@@ -288,5 +292,10 @@ void taskingCleanupThread();
  * Kernel thread, used by the scheduler when it should idle.
  */
 void taskingIdleThread();
+
+/**
+ * Finds a task by its id.
+ */
+g_task* taskingGetById(g_tid id);
 
 #endif
