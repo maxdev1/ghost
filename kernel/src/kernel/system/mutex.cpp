@@ -93,7 +93,7 @@ void mutexRelease(g_mutex* mutex, bool decreaseCount)
 		asm("pause");
 	}
 
-	if(--mutex->depth <= 0)
+	if(mutex->depth > 0 && --mutex->depth == 0)
 	{
 		mutex->depth = 0;
 		mutex->owner = -1;
