@@ -55,13 +55,13 @@ void schedulerSchedule(g_tasking_local* local)
 
 	if(!local->current)
 	{
-		local->current = local->list->task;
+		local->current = local->scheduleList->task;
 		mutexRelease(&local->lock);
 		return;
 	}
 
 	// Find current task in list
-	g_schedule_entry* entry = local->list;
+	g_schedule_entry* entry = local->scheduleList;
 	while(entry)
 	{
 		if(entry->task == local->current)
@@ -72,7 +72,7 @@ void schedulerSchedule(g_tasking_local* local)
 	}
 	if(!entry)
 	{
-		entry = local->list;
+		entry = local->scheduleList;
 	}
 
 	bool switched = false;
@@ -83,7 +83,7 @@ void schedulerSchedule(g_tasking_local* local)
 		entry = entry->next;
 		if(!entry)
 		{
-			entry = local->list;
+			entry = local->scheduleList;
 		}
 
 		// Check if task was already processed this round

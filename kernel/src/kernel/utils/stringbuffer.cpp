@@ -18,89 +18,58 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "shared/system/mutex.hpp"
+#include "kernel/utils/stringbuffer.hpp"
+#include "kernel/memory/memory.hpp"
 
-#include "kernel/tasking/tasking.hpp"
-#include "kernel/kernel.hpp"
+struct g_stringbuffer {
+	char* content;
+	uint16_t size;
+	uint16_t capacity;
+};
 
-#include "shared/logger/logger.hpp"
+g_stringbuffer* stringbufferCreate(uint16_t initialCapacity) {
+	g_stringbuffer* buffer = (g_stringbuffer*) heapAllocate(sizeof(struct g_stringbuffer));
+	buffer->capacity = initialCapacity;
+	buffer->content = (char*) heapAllocate(sizeof(char) * buffer->capacity);
+	buffer->size = 0;
+	return buffer;
+}
 
-void mutexInitialize(g_mutex* mutex)
-{
-	if(__sync_bool_compare_and_swap(&mutex->initialized, 0, 1))
-	{
-		mutex->initialized = 1;
-		mutex->lock = 0;
-		mutex->depth = 0;
-		mutex->owner = -1;
+void stringbufferExtend(struct g_stringbuffer* buffer) {
+	uint16_t oldCapacity = buffer->capacity;
+	buffer->capacity += 16;
+
+	char* newBuffer = (char*) heapAllocate(sizeof(char) * buffer->capacity);
+	memoryCopy(newBuffer, buffer->content, oldCapacity);
+	heapFree(buffer->content);
+	buffer->content = newBuffer;
+}
+
+void stringbufferAppend(struct g_stringbuffer* buffer, char c) {
+	buffer->content[buffer->size++] = c;
+
+	if(buffer->size >= buffer->capacity) {
+		stringbufferExtend(buffer);
 	}
 }
 
-void mutexAcquire(g_mutex* mutex)
-{
-	mutexAcquire(mutex, true);
-}
-
-bool mutexTryAcquire(g_mutex* mutex)
-{
-	return mutexTryAcquire(mutex, true);
-}
-
-bool mutexTryAcquire(g_mutex* mutex, bool increaseCount)
-{
-	while(!__sync_bool_compare_and_swap(&mutex->lock, 0, 1))
-	{
-		asm("pause");
-	}
-
-	bool success = false;
-	if(mutex->depth == 0)
-	{
-		mutex->owner = processorGetCurrentId();
-		mutex->depth = 1;
-		if(increaseCount)
-			__sync_fetch_and_add(&taskingGetLocal()->locksHeld, 1);
-		success = true;
-
-	} else if(mutex->owner == processorGetCurrentId())
-	{
-		mutex->depth++;
-		success = true;
-	}
-
-	mutex->lock = 0;
-	return success;
-}
-
-void mutexAcquire(g_mutex* mutex, bool increaseCount)
-{
-	while(!mutexTryAcquire(mutex, increaseCount))
-	{
-		asm("pause");
+void stringbufferAppend(struct g_stringbuffer* buffer, const char* str) {
+	while(*str) {
+		stringbufferAppend(buffer, *str++);
 	}
 }
 
-void mutexRelease(g_mutex* mutex)
-{
-	mutexRelease(mutex, true);
+char* stringbufferGet(struct g_stringbuffer* buffer) {
+	return buffer->content;
 }
 
-void mutexRelease(g_mutex* mutex, bool decreaseCount)
-{
-	while(!__sync_bool_compare_and_swap(&mutex->lock, 0, 1))
-	{
-		asm("pause");
-	}
-
-	if(--mutex->depth <= 0)
-	{
-		mutex->depth = 0;
-		mutex->owner = -1;
-
-		if(decreaseCount)
-			__sync_fetch_and_sub(&taskingGetLocal()->locksHeld, 1);
-	}
-
-	mutex->lock = 0;
+char* stringbufferTake(struct g_stringbuffer* buffer) {
+	char* b = buffer->content;
+	heapFree(buffer);
+	return b;
 }
 
+void stringbufferRelease(struct g_stringbuffer* buffer) {
+	heapFree(buffer->content);
+	heapFree(buffer);
+}

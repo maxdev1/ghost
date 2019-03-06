@@ -18,35 +18,40 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __UTILS_HASHABLE__
-#define __UTILS_HASHABLE__
+#include "kernel/filesystem/filesystem.hpp"
+#include "kernel/memory/memory.hpp"
+#include "shared/system/mutex.hpp"
+#include "shared/utils/string.hpp"
 
-#include "ghost/stdint.h"
+static g_fs_node* filesystemRoot;
 
-class g_hashable
-{
-public:
-	virtual ~g_hashable()
-	{
-	}
+static g_fs_virt_id filesystemNextId;
+static g_mutex filesystemNextIdLock;
 
-	template<typename T>
-	uint32_t hashcode(const T *p)
-	{
-		return (uint64_t) p;
-	}
 
-	static uint32_t hashcode(const g_hashable &value)
-	{
-		return value.hashcode();
-	}
 
-	static uint32_t hashcode(uint64_t value)
-	{
-		return value;
-	}
+void filesystemInitialize() {
+	filesystemNextId = 0;
 
-	virtual uint32_t hashcode() const = 0;
-};
+	filesystemRoot = filesystemCreateNode(G_FS_NODE_TYPE_ROOT, "root");
+}
 
-#endif
+g_fs_node* filesystemCreateNode(g_fs_node_type type, const char* name) {
+	g_fs_node* node = (g_fs_node*) heapAllocate(sizeof(g_fs_node));
+	node->id = filesystemGetNextId();
+	node->type = type;
+	node->name = stringDuplicate(name);;
+	node->parent = 0;
+	node->children = 0;
+	node->blocking = false;
+	node->upToDate = false;
+	return node;
+}
+
+g_fs_virt_id filesystemGetNextId() {
+	mutexAcquire(&filesystemNextIdLock);
+	g_fs_virt_id nextId = filesystemNextId++;
+	mutexRelease(&filesystemNextIdLock);
+	return nextId;
+}
+

@@ -28,10 +28,13 @@
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/kernel.hpp"
 #include "shared/logger/logger.hpp"
+#include "kernel/utils/hashmap.hpp"
 
 static g_tasking_local* taskingLocal;
 static g_mutex taskingIdLock;
 static g_tid taskingIdNext = 0;
+
+static g_hashmap<g_tid, g_task*>* taskGlobalMap;
 
 g_tasking_local* taskingGetLocal()
 {
@@ -46,9 +49,14 @@ g_tid taskingGetNextId()
 	return next;
 }
 
+g_task* taskingGetById(g_tid id) {
+	return hashmapGet(taskGlobalMap, id, (g_task*) 0);
+}
+
 void taskingInitializeBsp()
 {
 	taskingLocal = (g_tasking_local*) heapAllocate(sizeof(g_tasking_local) * processorGetNumberOfProcessors());
+	taskGlobalMap = hashmapCreateNumeric<g_tid, g_task*>(128);
 	taskingInitializeLocal();
 }
 
@@ -60,7 +68,7 @@ void taskingInitializeAp()
 void taskingInitializeLocal()
 {
 	g_tasking_local* local = taskingGetLocal();
-	local->list = 0;
+	local->scheduleList = 0;
 	local->current = 0;
 	local->locksHeld = 0;
 	local->time = 0;
@@ -149,6 +157,7 @@ g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_securit
 	task->process = process;
 	task->securityLevel = level;
 	task->status = G_THREAD_STATUS_RUNNING;
+	task->type = G_THREAD_TYPE_DEFAULT;
 
 	task->tlsCopy.start = 0;
 	task->tlsCopy.end = 0;
@@ -221,6 +230,7 @@ g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_securit
 	}
 	mutexRelease(&process->lock);
 
+	hashmapPut(taskGlobalMap, task->id, task);
 	return task;
 }
 
@@ -229,7 +239,7 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 	mutexAcquire(&local->lock);
 
 	bool alreadyInList = false;
-	g_schedule_entry* existing = local->list;
+	g_schedule_entry* existing = local->scheduleList;
 	while(existing)
 	{
 		if(existing->task == task)
@@ -244,12 +254,14 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 	{
 		g_schedule_entry* newEntry = (g_schedule_entry*) heapAllocate(sizeof(g_schedule_entry));
 		newEntry->task = task;
-		newEntry->next = local->list;
+		newEntry->next = local->scheduleList;
 		schedulerPrepareEntry(newEntry);
-		local->list = newEntry;
+		local->scheduleList = newEntry;
 
 		local->taskCount++;
 	}
+
+	task->assignment = local;
 
 	mutexRelease(&local->lock);
 }
@@ -396,6 +408,12 @@ void taskingKernelThreadYield()
 		return;
 	}
 
+	if(local->current->securityLevel == G_SECURITY_LEVEL_APPLICATION
+		&& local->current->type == G_THREAD_TYPE_DEFAULT) {
+		logInfo("%! warning: user thread %i tried to yield in kernel space (probably processing a non-threaded syscall)", "tasking", local->current->id);
+		return;
+	}
+
 	asm volatile ("int $0x81"
 			:
 			: "a"(0), "b"(0)
@@ -423,19 +441,22 @@ void taskingCleanupThread()
 	for(;;)
 	{
 		// Find and remove dead tasks from local scheduling list
-		g_schedule_entry* deadList = 0;
 		mutexAcquire(&local->lock);
-		g_schedule_entry* entry = local->list;
+
+		g_schedule_entry* deadList = 0;
+		g_schedule_entry* entry = local->scheduleList;
 		g_schedule_entry* previous = 0;
 		while(entry)
 		{
 			g_schedule_entry* next = entry->next;
 			if(entry->task->status == G_THREAD_STATUS_DEAD)
 			{
+				hashmapRemove(taskGlobalMap, entry->task->id);
+
 				if(previous)
 					previous->next = next;
 				else
-					local->list = next;
+					local->scheduleList = next;
 
 				entry->next = deadList;
 				deadList = entry;
@@ -445,6 +466,7 @@ void taskingCleanupThread()
 			}
 			entry = next;
 		}
+
 		mutexRelease(&local->lock);
 
 		// Remove each task
@@ -544,5 +566,6 @@ void taskingRemoveThread(g_task* task)
 	pagingSwitchToSpace(currentDir);
 
 	logInfo("Removed task %i (%i total free)", task->id, memoryPhysicalAllocator.freePageCount);
+
 	heapFree(task);
 }

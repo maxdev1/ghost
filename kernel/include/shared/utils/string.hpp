@@ -24,16 +24,20 @@
 #include "ghost/stdint.h"
 #include <stddef.h>
 
-void stringConcat(const char *a, const char *b, char *out);
+void stringConcat(const char* a, const char* b, char* out);
 
-void stringCopy(char *target, const char *source);
+void stringCopy(char* target, const char* source);
 
-int stringLength(const char *str);
+int stringLength(const char* str);
 
-int stringIndexOf(const char *str, char c);
+int stringIndexOf(const char* str, char c);
 
-bool stringEquals(const char *stra, const char *strb);
+bool stringEquals(const char* stra, const char* strb);
 
-void stringReplace(char *str, char character, char replacement);
+void stringReplace(char* str, char character, char replacement);
+
+int stringHash(const char* str);
+
+char* stringDuplicate(const char* str);
 
 #endif

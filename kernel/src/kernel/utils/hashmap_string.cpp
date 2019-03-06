@@ -18,89 +18,22 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "shared/system/mutex.hpp"
+#include "kernel/utils/hashmap_string.hpp"
+#include "kernel/memory/memory.hpp"
+#include "shared/utils/string.hpp"
 
-#include "kernel/tasking/tasking.hpp"
-#include "kernel/kernel.hpp"
-
-#include "shared/logger/logger.hpp"
-
-void mutexInitialize(g_mutex* mutex)
-{
-	if(__sync_bool_compare_and_swap(&mutex->initialized, 0, 1))
-	{
-		mutex->initialized = 1;
-		mutex->lock = 0;
-		mutex->depth = 0;
-		mutex->owner = -1;
-	}
+const char* hashmapKeyCopyString(const char* key) {
+	return stringDuplicate(key);
 }
 
-void mutexAcquire(g_mutex* mutex)
-{
-	mutexAcquire(mutex, true);
+int hashmapKeyHashString(const char* key) {
+	return stringHash(key);
 }
 
-bool mutexTryAcquire(g_mutex* mutex)
-{
-	return mutexTryAcquire(mutex, true);
+void hashmapKeyFreeString(const char* key) {
+	heapFree((void*) key);
 }
 
-bool mutexTryAcquire(g_mutex* mutex, bool increaseCount)
-{
-	while(!__sync_bool_compare_and_swap(&mutex->lock, 0, 1))
-	{
-		asm("pause");
-	}
-
-	bool success = false;
-	if(mutex->depth == 0)
-	{
-		mutex->owner = processorGetCurrentId();
-		mutex->depth = 1;
-		if(increaseCount)
-			__sync_fetch_and_add(&taskingGetLocal()->locksHeld, 1);
-		success = true;
-
-	} else if(mutex->owner == processorGetCurrentId())
-	{
-		mutex->depth++;
-		success = true;
-	}
-
-	mutex->lock = 0;
-	return success;
+bool hashmapKeyEqualsString(const char* k1, const char* k2) {
+	return stringEquals(k1, k2);
 }
-
-void mutexAcquire(g_mutex* mutex, bool increaseCount)
-{
-	while(!mutexTryAcquire(mutex, increaseCount))
-	{
-		asm("pause");
-	}
-}
-
-void mutexRelease(g_mutex* mutex)
-{
-	mutexRelease(mutex, true);
-}
-
-void mutexRelease(g_mutex* mutex, bool decreaseCount)
-{
-	while(!__sync_bool_compare_and_swap(&mutex->lock, 0, 1))
-	{
-		asm("pause");
-	}
-
-	if(--mutex->depth <= 0)
-	{
-		mutex->depth = 0;
-		mutex->owner = -1;
-
-		if(decreaseCount)
-			__sync_fetch_and_sub(&taskingGetLocal()->locksHeld, 1);
-	}
-
-	mutex->lock = 0;
-}
-

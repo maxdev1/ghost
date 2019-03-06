@@ -59,8 +59,9 @@ void syscallRunThreaded(g_syscall_handler handler, g_task* caller, void* syscall
 	if(proc == 0)
 	{
 		proc = taskingCreateThread(0, caller->process, G_SECURITY_LEVEL_KERNEL);
-		caller->syscall.processingTask = proc;
+		proc->type = G_THREAD_TYPE_SYSCALL;
 		proc->syscall.sourceTask = caller;
+		caller->syscall.processingTask = proc;
 	} else
 	{
 		taskingResetTaskState(proc);
