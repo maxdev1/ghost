@@ -62,9 +62,4 @@ bool mutexTryAcquire(g_mutex* mutex, bool increaseCount);
  */
 void mutexRelease(g_mutex* mutex, bool decreaseCount);
 
-/**
- * Checks if this lock is acquired.
- */
-bool mutexIsAcquired(g_mutex* mutex);
-
 #endif

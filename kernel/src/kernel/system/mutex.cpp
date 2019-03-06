@@ -74,6 +74,7 @@ bool mutexTryAcquire(g_mutex* mutex, bool increaseCount)
 
 void mutexAcquire(g_mutex* mutex, bool increaseCount)
 {
+	mutexInitialize(mutex);
 	while(!mutexTryAcquire(mutex, increaseCount))
 	{
 		asm("pause");
