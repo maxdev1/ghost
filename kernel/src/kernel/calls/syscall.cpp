@@ -55,6 +55,8 @@ void syscallHandle(g_task* task)
 
 void syscallRunThreaded(g_syscall_handler handler, g_task* caller, void* syscallData)
 {
+	mutexAcquire(&taskingGetLocal()->lock);
+
 	g_task* proc = caller->syscall.processingTask;
 	if(proc == 0)
 	{
@@ -79,6 +81,8 @@ void syscallRunThreaded(g_syscall_handler handler, g_task* caller, void* syscall
 
 	// Let caller task wait
 	caller->status = G_THREAD_STATUS_WAITING;
+
+	mutexRelease(&taskingGetLocal()->lock);
 }
 
 void syscallThreadEntry()
