@@ -104,6 +104,7 @@ extern "C" void kernelMain(g_setup_information* setupInformation)
 
 void kernelInitialize(g_setup_information* setupInformation)
 {
+	loggerInitialize();
 	kernelLoggerInitialize(setupInformation);
 	memoryInitialize(setupInformation);
 
@@ -120,20 +121,16 @@ void kernelInitialize(g_setup_information* setupInformation)
 void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 {
 	logDebug("%! has entered kernel", "bsp");
+	mutexInitialize(&bootstrapCoreLock);
 	mutexAcquire(&bootstrapCoreLock, false);
+	
 	systemInitializeBsp(initialPdPhys);
 	taskingInitializeBsp();
 	syscallRegisterAll();
 	filesystemInitialize();
 
 	// TEST THREADS
-	g_stringbuffer* buf = stringbufferCreate(16);
-	stringbufferAppend(buf, "Hello ");
-	stringbufferAppend(buf, "World");
-	stringbufferAppend(buf, "! WAZZUP");
-	logInfo("Buffer content: '%s'", stringbufferGet(buf));
-	stringbufferRelease(buf);
-
+	mutexInitialize(&testMutex);
 	g_process* testProc = taskingCreateProcess();
 	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test, testProc, G_SECURITY_LEVEL_KERNEL));
 	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test2, testProc, G_SECURITY_LEVEL_KERNEL));
@@ -158,6 +155,7 @@ void kernelRunApplicationCore()
 	mutexAcquire(&bootstrapCoreLock, false);
 	mutexRelease(&bootstrapCoreLock, false);
 
+	mutexInitialize(&applicationCoreLock);
 	mutexAcquire(&applicationCoreLock, false);
 
 	logDebug("%! initializing %i", "ap", processorGetCurrentId());

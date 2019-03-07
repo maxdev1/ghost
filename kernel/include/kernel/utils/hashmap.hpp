@@ -51,6 +51,8 @@ g_hashmap<K, V>* hashmapInternalCreate(int bucketCount) {
 	map->bucketCount = bucketCount;
 	map->buckets = (g_hashmap_entry<K, V>**) heapAllocate(sizeof(g_hashmap_entry<K, V>*) * bucketCount);
 
+	mutexInitialize(&map->lock);
+
 	for(int i = 0; i < bucketCount; i++) {
 		map->buckets[i] = 0;
 	}
@@ -149,7 +151,7 @@ K hashmapKeyCopyNumeric(K key) {
 template<typename K,
     typename = typename std::enable_if<std::is_arithmetic<K>::value, K>::type>
 int hashmapKeyHashNumeric(K key) {
-	return key;
+	return key < 0 ? -key : key;
 }
 
 template<typename K,

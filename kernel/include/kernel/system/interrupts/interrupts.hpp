@@ -34,6 +34,8 @@ void interruptsEnable();
 
 void interruptsDisable();
 
+bool interruptsAreEnabled();
+
 void interruptsInstallRoutines();
 
 extern "C" g_virtual_address _interruptHandler(g_virtual_address state);

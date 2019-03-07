@@ -19,10 +19,9 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/calls/syscall_fs.hpp"
-
 #include "shared/logger/logger.hpp"
 
 void syscallFsRead(g_task* task, g_syscall_log* data)
 {
-	logInfo("%i wants to read data", task->id);
+	logInfo("%! %i: %i wants to read data", "fsread", processorGetCurrentId(), task->id);
 }

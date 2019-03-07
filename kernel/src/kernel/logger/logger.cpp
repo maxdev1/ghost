@@ -28,6 +28,11 @@
 
 static g_mutex printLock;
 
+void loggerInitialize()
+{
+	mutexInitialize(&printLock);
+}
+
 void loggerPrintLocked(const char* message, ...)
 {
 	mutexAcquire(&printLock);
@@ -51,6 +56,23 @@ void loggerPrintlnLocked(const char* message, ...)
 	loggerPrintCharacter('\n');
 
 	mutexRelease(&printLock);
+}
+
+void loggerPrintUnlocked(const char* message, ...)
+{
+	va_list valist;
+	va_start(valist, message);
+	loggerPrintFormatted(message, valist);
+	va_end(valist);
+}
+
+void loggerPrintlnUnlocked(const char* message, ...)
+{
+	va_list valist;
+	va_start(valist, message);
+	loggerPrintFormatted(message, valist);
+	va_end(valist);
+	loggerPrintCharacter('\n');
 }
 
 void loggerManualLock() {

@@ -36,6 +36,7 @@ static g_mutex heapLock;
 
 void heapInitialize(g_virtual_address start, g_virtual_address end)
 {
+	mutexInitialize(&heapLock);
 	mutexAcquire(&heapLock);
 
 	chunkAllocatorInitialize(&heapAllocator, start, end);
@@ -106,7 +107,9 @@ void heapFree(void* ptr)
 	if(!heapInitialized)
 		kernelPanic("%! tried to use uninitialized kernel heap", "kernheap");
 
+	mutexAcquire(&heapLock);
 	heapAmountInUse -= chunkAllocatorFree(&heapAllocator, ptr);
+	mutexRelease(&heapLock);
 }
 
 uint32_t heapGetUsedAmount()

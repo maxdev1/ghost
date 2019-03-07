@@ -75,6 +75,7 @@ g_physical_address bitmapPageAllocatorAllocate(g_bitmap_page_allocator* allocato
 			{
 				G_BITMAP_UNSET(allocator->bitmap, i, b);
 				allocator->freePageCount--;
+
 				mutexRelease(&allocator->lock);
 				return G_BITMAP_TO_ADDRESS(i, b);
 			}
