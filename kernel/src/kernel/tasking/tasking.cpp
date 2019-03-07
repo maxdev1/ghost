@@ -415,12 +415,6 @@ void taskingKernelThreadYield()
 		return;
 	}
 
-	if(local->current->securityLevel == G_SECURITY_LEVEL_APPLICATION
-		&& local->current->type == G_THREAD_TYPE_DEFAULT) {
-		logInfo("%! warning: user thread %i tried to yield in kernel space (probably processing a non-threaded syscall)", "tasking", local->current->id);
-		return;
-	}
-
 	asm volatile ("int $0x81"
 			:
 			: "a"(0), "b"(0)
