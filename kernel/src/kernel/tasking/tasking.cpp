@@ -116,7 +116,7 @@ g_physical_address taskingCreatePageDirectory()
 	return directoryPhys;
 }
 
-void taskingApplySecurityLevel(g_processor_state* state, g_security_level securityLevel)
+void taskingApplySecurityLevel(volatile g_processor_state* state, g_security_level securityLevel)
 {
 	if(securityLevel == G_SECURITY_LEVEL_KERNEL)
 	{
