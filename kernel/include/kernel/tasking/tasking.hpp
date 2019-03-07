@@ -61,7 +61,7 @@ struct g_task
 	 * during interruption. This may only be accessed when we are within the process
 	 * address space.
 	 */
-	g_processor_state* state;
+	volatile g_processor_state* state;
 
 	struct
 	{
@@ -231,7 +231,7 @@ g_task* taskingCreateThread(g_virtual_address entry, g_process* process, g_secur
 /**
  * Applies a security level on the register state of a task.
  */
-void taskingApplySecurityLevel(g_processor_state* state, g_security_level securityLevel);
+void taskingApplySecurityLevel(volatile g_processor_state* state, g_security_level securityLevel);
 
 /**
  * Clones the TLS master from the process.

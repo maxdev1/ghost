@@ -55,7 +55,8 @@ void syscallHandle(g_task* task)
 
 void syscallRunThreaded(g_syscall_handler handler, g_task* caller, void* syscallData)
 {
-	mutexAcquire(&taskingGetLocal()->lock);
+	g_tasking_local* local = taskingGetLocal();
+	mutexAcquire(&local->lock);
 
 	g_task* proc = caller->syscall.processingTask;
 	if(proc == 0)
@@ -64,16 +65,11 @@ void syscallRunThreaded(g_syscall_handler handler, g_task* caller, void* syscall
 		proc->type = G_THREAD_TYPE_SYSCALL;
 		proc->syscall.sourceTask = caller;
 		caller->syscall.processingTask = proc;
-	} else
-	{
-		taskingResetTaskState(proc);
-		proc->status = G_THREAD_STATUS_RUNNING;
 	}
-	proc->state->eip = (g_virtual_address) syscallThreadEntry;
 
-	// Put task in scheduling
-	taskingAssign(taskingGetLocal(), proc);
-	taskingScheduleTo(proc);
+	taskingResetTaskState(proc);
+	proc->status = G_THREAD_STATUS_RUNNING;
+	proc->state->eip = (g_virtual_address) syscallThreadEntry;
 
 	// Store call information
 	caller->syscall.handler = handler;
@@ -82,22 +78,27 @@ void syscallRunThreaded(g_syscall_handler handler, g_task* caller, void* syscall
 	// Let caller task wait
 	caller->status = G_THREAD_STATUS_WAITING;
 
-	mutexRelease(&taskingGetLocal()->lock);
+	// Put task in scheduling
+	taskingAssign(local, proc);
+	taskingScheduleTo(proc);
+
+	mutexRelease(&local->lock);
 }
 
 void syscallThreadEntry()
 {
-	g_task* sourceTask = taskingGetLocal()->current->syscall.sourceTask;
+	g_tasking_local* local = taskingGetLocal();
+	g_task* sourceTask = local->current->syscall.sourceTask;
 
 	// Call handler
 	sourceTask->syscall.handler(sourceTask, sourceTask->syscall.data);
 
 	// Switch back to source task
-	mutexAcquire(&taskingGetLocal()->lock);
+	mutexAcquire(&local->lock);
 	sourceTask->status = G_THREAD_STATUS_RUNNING;
-	taskingGetLocal()->current->status = G_THREAD_STATUS_UNUSED;
+	local->current->status = G_THREAD_STATUS_UNUSED;
 	taskingScheduleTo(sourceTask);
-	mutexRelease(&taskingGetLocal()->lock);
+	mutexRelease(&local->lock);
 
 	taskingKernelThreadYield();
 }
