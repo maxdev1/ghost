@@ -46,4 +46,6 @@ void waitSleep(g_task* task, uint64_t milliseconds)
 	task->waitData = waitData;
 	task->waitResolver = waitResolverSleep;
 	task->status = G_THREAD_STATUS_WAITING;
+
+	logInfo("Task %i waits until %i (time is %i)", task->id, (uint32_t) waitData->wakeTime, taskingGetLocal()->time);
 }

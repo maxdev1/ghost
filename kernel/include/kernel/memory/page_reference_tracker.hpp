@@ -41,6 +41,8 @@ struct g_pp_reference_count_directory
 	g_pp_reference_count_table* tables[1024];
 };
 
+void pageReferenceTrackerInitialize();
+
 /**
  * Increments the number of references on a physical page.
  */

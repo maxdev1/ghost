@@ -55,6 +55,7 @@ g_task* taskingGetById(g_tid id) {
 
 void taskingInitializeBsp()
 {
+	mutexInitialize(&taskingIdLock);
 	taskingLocal = (g_tasking_local*) heapAllocate(sizeof(g_tasking_local) * processorGetNumberOfProcessors());
 	taskGlobalMap = hashmapCreateNumeric<g_tid, g_task*>(128);
 	taskingInitializeLocal();
@@ -73,6 +74,8 @@ void taskingInitializeLocal()
 	local->locksHeld = 0;
 	local->time = 0;
 	local->taskCount = 0;
+
+	mutexInitialize(&local->lock);
 
 	g_process* idle = taskingCreateProcess();
 	taskingGetLocal()->idleTask = taskingCreateThread((g_virtual_address) taskingIdleThread, idle, G_SECURITY_LEVEL_KERNEL);
@@ -216,6 +219,7 @@ g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_securit
 
 	// Add to process
 	mutexAcquire(&process->lock);
+	
 	g_task_entry* entry = (g_task_entry*) heapAllocate(sizeof(g_task_entry));
 	entry->task = task;
 	entry->next = process->tasks;
@@ -228,6 +232,7 @@ g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_securit
 	{
 		taskingPrepareThreadLocalStorage(task);
 	}
+
 	mutexRelease(&process->lock);
 
 	hashmapPut(taskGlobalMap, task->id, task);
@@ -334,6 +339,8 @@ g_process* taskingCreateProcess()
 	process->main = 0;
 	process->tasks = 0;
 
+	mutexInitialize(&process->lock);
+
 	process->tlsMaster.location = 0;
 	process->tlsMaster.copysize = 0;
 	process->tlsMaster.totalsize = 0;
@@ -404,7 +411,7 @@ void taskingKernelThreadYield()
 	g_tasking_local* local = taskingGetLocal();
 	if(local->locksHeld > 0)
 	{
-		logInfo("%! warning: kernel thread %i tried to yield while holding a kernel lock", "tasking", local->current->id);
+		logInfo("%! warning: kernel thread %i tried to yield while holding %i kernel locks", "tasking", local->current->id, local->locksHeld);
 		return;
 	}
 
@@ -541,6 +548,7 @@ void taskingRemoveThread(g_task* task)
 
 	// Remove self from process
 	mutexAcquire(&task->process->lock);
+
 	g_task_entry* entry = task->process->tasks;
 	g_task_entry* previous = 0;
 	while(entry)
@@ -560,6 +568,7 @@ void taskingRemoveThread(g_task* task)
 		previous = entry;
 		entry = entry->next;
 	}
+
 	mutexRelease(&task->process->lock);
 
 	// Switch back

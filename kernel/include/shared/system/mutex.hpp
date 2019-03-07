@@ -50,16 +50,16 @@ void mutexRelease(g_mutex* mutex);
 /**
  * Acquires the mutex.
  *
- * The increaseCount parameter decides if the lock count for this processor should be increased.
+ * The smp parameter decides if the lock count for this processor should be increased.
  */
-void mutexAcquire(g_mutex* mutex, bool increaseCount);
-bool mutexTryAcquire(g_mutex* mutex, bool increaseCount);
+void mutexAcquire(g_mutex* mutex, bool smp);
+bool mutexTryAcquire(g_mutex* mutex, bool smp);
 
 /**
  * Releases the mutex.
  *
- * The decreaseCount parameter decides if the lock count for this processor should be decreased.
+ * The smp parameter decides if the lock count for this processor should be decreased.
  */
-void mutexRelease(g_mutex* mutex, bool decreaseCount);
+void mutexRelease(g_mutex* mutex, bool smp);
 
 #endif

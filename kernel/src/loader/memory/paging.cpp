@@ -51,9 +51,9 @@ void pagingInitialize(g_virtual_address reservedAreaEnd)
 void pagingEnableGlobalPageFlag()
 {
 	uint32_t cr4;
-	asm("mov %%cr4, %0" : "=r"(cr4));
+	asm volatile("mov %%cr4, %0" : "=r"(cr4));
 	cr4 |= (1 << 7);
-	asm("mov %0, %%cr4" :: "b"(cr4));
+	asm volatile("mov %0, %%cr4" :: "b"(cr4));
 }
 
 void pagingRelocateMultibootModules(g_page_directory pageDirectory, g_address startAt)

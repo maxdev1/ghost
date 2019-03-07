@@ -27,7 +27,9 @@ const char* hashmapKeyCopyString(const char* key) {
 }
 
 int hashmapKeyHashString(const char* key) {
-	return stringHash(key);
+	int hash = stringHash(key);
+	if(hash < 0) hash = -hash;
+	return hash;
 }
 
 void hashmapKeyFreeString(const char* key) {

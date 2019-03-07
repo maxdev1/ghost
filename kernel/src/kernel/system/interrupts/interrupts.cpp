@@ -65,6 +65,22 @@ void interruptsCheckPrerequisites()
 		kernelPanic("%! no processors found", "system");
 }
 
+void interruptsEnable()
+{
+	asm("sti");
+}
+
+void interruptsDisable()
+{
+	asm("cli");
+}
+
+bool interruptsAreEnabled()
+{
+    uint32_t eflags = processorReadEflags();
+    return eflags & (1 << 9);
+}
+
 /**
  * Interrupt handler routine, called by the interrupt stubs (assembly file)
  */
@@ -345,14 +361,4 @@ void interruptsInstallRoutines()
 	idtCreateGate(253, (uint32_t) _ireq221, 0x08, 0x8E);
 	idtCreateGate(254, (uint32_t) _ireq222, 0x08, 0x8E);
 	idtCreateGate(255, (uint32_t) _ireq223, 0x08, 0x8E);
-}
-
-void interruptsEnable()
-{
-	asm("sti");
-}
-
-void interruptsDisable()
-{
-	asm("cli");
 }

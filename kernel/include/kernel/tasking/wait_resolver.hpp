@@ -26,7 +26,7 @@
 
 struct g_wait_resolver_sleep_data
 {
-	uint64_t wakeTime;
+	uint32_t wakeTime;
 };
 
 bool waitResolverSleep(g_task* task);

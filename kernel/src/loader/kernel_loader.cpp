@@ -100,7 +100,7 @@ void kernelLoaderEnterMain(g_address entryAddress, g_address kernelEsp)
 	kernelMain = (void (*)(g_setup_information*)) entryAddress;
 
 	// Switch to kernel stack & enter kernel
-	asm("mov %0, %%esp\n"
+	asm volatile("mov %0, %%esp\n"
 		"mov %%esp, %%ebp\n"
 		:: "r"(kernelEsp));
 	kernelMain(&loaderSetupInformation);

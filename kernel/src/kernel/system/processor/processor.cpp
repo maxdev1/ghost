@@ -226,3 +226,10 @@ void processorWriteMsr(uint32_t msr, uint32_t lo, uint32_t hi)
 	asm volatile("wrmsr" : : "a"(lo), "d"(hi), "c"(msr));
 }
 
+uint32_t processorReadEflags() {
+    uint32_t eflags;
+    asm volatile("pushf\n"
+                	"pop %0"
+                   : "=g"(eflags));
+	return eflags;
+}

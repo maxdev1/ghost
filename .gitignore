@@ -9,10 +9,10 @@ language.settings.xml
 
 **/.DS_Store
 **/ghost-build.log
-**/obj/*
-**/crtobj/*.o
-**/bin/*.o
-**/.settings/*
+**/obj
+**/crtobj
+**/bin
+**/.settings
 
 tools/changes/changes*
 tools/ramdisk-writer/ramdisk-writer*

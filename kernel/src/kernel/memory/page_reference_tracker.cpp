@@ -25,9 +25,11 @@
 static g_pp_reference_count_directory directory;
 static g_mutex lock;
 
-/**
- *
- */
+void pageReferenceTrackerInitialize()
+{
+	mutexInitialize(&lock);
+}
+
 void pageReferenceTrackerIncrement(g_physical_address address)
 {
 	mutexAcquire(&lock);
@@ -50,9 +52,6 @@ void pageReferenceTrackerIncrement(g_physical_address address)
 	mutexRelease(&lock);
 }
 
-/**
- *
- */
 int16_t pageReferenceTrackerDecrement(g_physical_address address)
 {
 	mutexAcquire(&lock);

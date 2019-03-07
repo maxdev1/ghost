@@ -23,6 +23,7 @@
 
 #include "ghost/types.h"
 #include "shared/logger/logger.hpp"
+#include "shared/system/mutex.hpp"
 
 #define G_CHUNK_ALLOCATOR_MIN_ALLOC	8
 
@@ -35,6 +36,7 @@ struct g_chunk_header
 
 struct g_chunk_allocator
 {
+	g_mutex lock;
 	g_chunk_header* first;
 };
 

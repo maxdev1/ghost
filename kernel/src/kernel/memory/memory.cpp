@@ -24,6 +24,7 @@
 #include "kernel/memory/paging.hpp"
 #include "kernel/kernel.hpp"
 #include "kernel/debug/debug_interface.hpp"
+#include "kernel/memory/page_reference_tracker.hpp"
 
 g_bitmap_page_allocator memoryPhysicalAllocator;
 static g_bitmap_entry memoryPhysicalBitmap[G_BITMAP_SIZE];
@@ -38,6 +39,8 @@ void memoryInitialize(g_setup_information* setupInformation)
 	memoryVirtualRangePool = (g_address_range_pool*) heapAllocate(sizeof(g_address_range_pool));
 	addressRangePoolInitialize(memoryVirtualRangePool);
 	addressRangePoolAddRange(memoryVirtualRangePool, G_CONST_KERNEL_VIRTUAL_RANGES_START, G_CONST_KERNEL_VIRTUAL_RANGES_END);
+
+	pageReferenceTrackerInitialize();
 }
 
 void memoryInitializePhysicalAllocator(g_setup_information* setupInformation)

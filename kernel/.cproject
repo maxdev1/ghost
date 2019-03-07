@@ -29,7 +29,8 @@
 							<tool id="cdt.managedbuild.tool.gnu.archiver.cygwin.base.529892916" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.cygwin.base"/>
 							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.cygwin.base.1415591963" name="Cygwin C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.cygwin.base">
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="gnu.cpp.compiler.option.include.paths.927410269" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/api/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/libapi/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/kernel/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/kernel/include}&quot;"/>
 									<listOptionValue builtIn="false" value="/ghost/lib/gcc/i686-ghost/8.2.0/include"/>
 									<listOptionValue builtIn="false" value="/ghost/lib/gcc/i686-ghost/8.2.0/include-fixed"/>
@@ -72,12 +73,13 @@
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.cygwin.base.1825949203" name="Cygwin C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.cygwin.base">
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="gnu.c.compiler.option.include.paths.1188219539" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/api/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/libapi/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/kernel/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/kernel/include}&quot;"/>
 									<listOptionValue builtIn="false" value="/ghost/lib/gcc/i686-ghost/8.2.0/include"/>
 									<listOptionValue builtIn="false" value="/ghost/lib/gcc/i686-ghost/8.2.0/include-fixed"/>
-									<listOptionValue builtIn="false" value="C:/cygwin/ghost/lib/gcc/i686-ghost/8.2.0/include"/>
-									<listOptionValue builtIn="false" value="C:/cygwin/ghost/lib/gcc/i686-ghost/8.2.0/include-fixed"/>
+									<listOptionValue builtIn="false" value="C:/ghost/lib/gcc/i686-ghost/8.2.0/include"/>
+									<listOptionValue builtIn="false" value="C:/ghost/lib/gcc/i686-ghost/8.2.0/include-fixed"/>
 								</option>
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="gnu.c.compiler.option.preprocessor.def.symbols.1317851832" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="_GHOST_KERNEL_=1"/>

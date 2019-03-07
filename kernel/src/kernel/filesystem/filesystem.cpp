@@ -33,6 +33,7 @@ static g_mutex filesystemNextIdLock;
 void filesystemInitialize() {
 	filesystemNextId = 0;
 
+	mutexInitialize(&filesystemNextIdLock);
 	filesystemRoot = filesystemCreateNode(G_FS_NODE_TYPE_ROOT, "root");
 }
 

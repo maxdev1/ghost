@@ -21,19 +21,33 @@
 #include "shared/system/mutex.hpp"
 
 #include "kernel/tasking/tasking.hpp"
-#include "kernel/kernel.hpp"
+#include "kernel/system/interrupts/interrupts.hpp"
 
 #include "shared/logger/logger.hpp"
+#include "shared/video/console_video.hpp"
+
+volatile int mutexInitializerLock = 0;
+#define G_MUTEX_INITIALIZED 0xFEED
+
+void mutexErrorUninitialized(g_mutex* mutex)
+{
+	loggerPrintlnUnlocked("%! %i: tried to use uninitialized mutex %h", "mutex", processorGetCurrentId(), mutex);
+	for(;;);
+}
 
 void mutexInitialize(g_mutex* mutex)
 {
-	if(__sync_bool_compare_and_swap(&mutex->initialized, 0, 1))
-	{
-		mutex->initialized = 1;
+	while(!__sync_bool_compare_and_swap(&mutexInitializerLock, 0, 1))
+		asm("pause");
+
+	if(mutex->initialized != G_MUTEX_INITIALIZED) {
+		mutex->initialized = G_MUTEX_INITIALIZED;
 		mutex->lock = 0;
 		mutex->depth = 0;
 		mutex->owner = -1;
 	}
+
+	mutexInitializerLock = 0;
 }
 
 void mutexAcquire(g_mutex* mutex)
@@ -41,25 +55,40 @@ void mutexAcquire(g_mutex* mutex)
 	mutexAcquire(mutex, true);
 }
 
+void mutexAcquire(g_mutex* mutex, bool smp)
+{
+	if(mutex->initialized != G_MUTEX_INITIALIZED)
+		mutexErrorUninitialized(mutex);
+
+	while(!mutexTryAcquire(mutex, smp))
+		asm("pause");
+}
+
 bool mutexTryAcquire(g_mutex* mutex)
 {
 	return mutexTryAcquire(mutex, true);
 }
 
-bool mutexTryAcquire(g_mutex* mutex, bool increaseCount)
+bool mutexTryAcquire(g_mutex* mutex, bool smp)
 {
-	while(!__sync_bool_compare_and_swap(&mutex->lock, 0, 1))
-	{
-		asm("pause");
-	}
+	if(mutex->initialized != G_MUTEX_INITIALIZED)
+		mutexErrorUninitialized(mutex);
 
+	// Disable scheduling
+	bool enableInt = interruptsAreEnabled();
+	if(enableInt) interruptsDisable();
+
+	// Lock editing
+	while(!__sync_bool_compare_and_swap(&mutex->lock, 0, 1))
+		asm("pause");
+
+	// Update mutex
 	bool success = false;
 	if(mutex->depth == 0)
 	{
 		mutex->owner = processorGetCurrentId();
 		mutex->depth = 1;
-		if(increaseCount)
-			__sync_fetch_and_add(&taskingGetLocal()->locksHeld, 1);
+		if(smp) __sync_fetch_and_add(&taskingGetLocal()->locksHeld, 1);
 		success = true;
 
 	} else if(mutex->owner == processorGetCurrentId())
@@ -68,17 +97,13 @@ bool mutexTryAcquire(g_mutex* mutex, bool increaseCount)
 		success = true;
 	}
 
+	// Allow editing again
 	mutex->lock = 0;
-	return success;
-}
 
-void mutexAcquire(g_mutex* mutex, bool increaseCount)
-{
-	mutexInitialize(mutex);
-	while(!mutexTryAcquire(mutex, increaseCount))
-	{
-		asm("pause");
-	}
+	// Enable interrupts
+	if(enableInt) interruptsEnable();
+
+	return success;
 }
 
 void mutexRelease(g_mutex* mutex)
@@ -86,22 +111,32 @@ void mutexRelease(g_mutex* mutex)
 	mutexRelease(mutex, true);
 }
 
-void mutexRelease(g_mutex* mutex, bool decreaseCount)
+void mutexRelease(g_mutex* mutex, bool smp)
 {
-	while(!__sync_bool_compare_and_swap(&mutex->lock, 0, 1))
-	{
-		asm("pause");
-	}
+	if(mutex->initialized != G_MUTEX_INITIALIZED)
+		mutexErrorUninitialized(mutex);
 
+	// Disable interrupts
+	bool enableInt = interruptsAreEnabled();
+	if(enableInt) interruptsDisable();
+
+	// Lock editing
+	while(!__sync_bool_compare_and_swap(&mutex->lock, 0, 1))
+		asm("pause");
+
+	// Update mutex
 	if(mutex->depth > 0 && --mutex->depth == 0)
 	{
 		mutex->depth = 0;
 		mutex->owner = -1;
 
-		if(decreaseCount)
-			__sync_fetch_and_sub(&taskingGetLocal()->locksHeld, 1);
+		if(smp) __sync_fetch_and_sub(&taskingGetLocal()->locksHeld, 1);
 	}
 
+	// Allow editing again
 	mutex->lock = 0;
+
+	// Enable interrupts
+	if(enableInt) interruptsEnable();
 }
 
