@@ -80,7 +80,7 @@ void syscallRunThreaded(g_syscall_handler handler, g_task* caller, void* syscall
 
 	// Put task in scheduling
 	taskingAssign(local, proc);
-	taskingScheduleTo(proc);
+	local->current = proc;
 
 	mutexRelease(&local->lock);
 }
@@ -97,10 +97,11 @@ void syscallThreadEntry()
 	mutexAcquire(&local->lock);
 	sourceTask->status = G_THREAD_STATUS_RUNNING;
 	local->current->status = G_THREAD_STATUS_UNUSED;
-	taskingScheduleTo(sourceTask);
+	local->current = sourceTask;
 	mutexRelease(&local->lock);
 
-	taskingKernelThreadYield();
+#warning TODO why?
+	for(;;) taskingKernelThreadYield();
 }
 
 void syscallRegister(int callId, g_syscall_handler handler, bool threaded)
