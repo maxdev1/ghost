@@ -40,7 +40,7 @@ void stringCopy(char* target, const char* source)
 int stringLength(const char* str)
 {
 	int size = 0;
-	while (*str++)
+	while(*str++)
 	{
 		++size;
 	}
@@ -50,9 +50,9 @@ int stringLength(const char* str)
 int stringIndexOf(const char* str, char c)
 {
 	int pos = 0;
-	while (*str)
+	while(*str)
 	{
-		if (*str == c)
+		if(*str == c)
 		{
 			return pos;
 		}
@@ -64,51 +64,78 @@ int stringIndexOf(const char* str, char c)
 
 bool stringEquals(const char* stra, const char* strb)
 {
-
-	if (stra == strb)
+	if(stra == strb)
 		return true;
 
 	int alen = stringLength(stra);
 	int blen = stringLength(strb);
 
-	if (alen != blen)
-	{
+	if(alen != blen)
 		return false;
-	}
 
-	while (alen-- > 0)
+	while(alen--)
 	{
-		if (stra[alen] != strb[alen])
-		{
+		if(stra[alen] != strb[alen])
 			return false;
-		}
+	}
+	return true;
+}
+
+bool stringEquals(const char* straStart, const char* straEnd, const char* strbStart, const char* strbEnd)
+{
+	if(straEnd - straStart != strbEnd - strbStart)
+		return false;
+
+	while(straStart < straEnd)
+	{
+		if(*straStart != *strbStart)
+			return false;
+		++straStart;
+		++strbStart;
+	}
+	return true;
+}
+
+bool stringEquals(const char* straStart, const char* straEnd, const char* strb)
+{
+	int blen = stringLength(strb);
+
+	if(straEnd - straStart != blen)
+		return false;
+
+	while(blen--)
+	{
+		if(straStart[blen] != strb[blen])
+			return false;
 	}
 	return true;
 }
 
 void stringReplace(char* str, char character, char replacement)
 {
-	for (uint32_t i = 0;; i++)
+	for(uint32_t i = 0;; i++)
 	{
-		if (str[i] == 0)
+		if(str[i] == 0)
 		{
 			break;
 		}
 
-		if (str[i] == character)
+		if(str[i] == character)
 		{
 			str[i] = replacement;
 		}
 	}
 }
 
-int stringHash(const char* str) {
+int stringHash(const char* str)
+{
 	uint32_t hash = 5381;
-    int c;
+	int c;
 
-    while((c = *str++) > 0) {
-        hash = ((hash << 5) + hash) + c;
+	while((c = *str++) > 0)
+	{
+		hash = ((hash << 5) + hash) + c;
 	}
 
-    return hash;
+	return hash;
 }

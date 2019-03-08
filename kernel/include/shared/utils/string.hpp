@@ -34,6 +34,10 @@ int stringIndexOf(const char* str, char c);
 
 bool stringEquals(const char* stra, const char* strb);
 
+bool stringEquals(const char* straStart, const char* straEnd, const char* strbStart, const char* strbEnd);
+
+bool stringEquals(const char* straStart, const char* straEnd, const char* strb);
+
 void stringReplace(char* str, char character, char replacement);
 
 int stringHash(const char* str);
