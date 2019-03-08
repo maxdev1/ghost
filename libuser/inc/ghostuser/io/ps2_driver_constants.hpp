@@ -21,8 +21,8 @@
 #ifndef GHOSTLIBRARY_IO_PS2DRIVERCONSTANTS
 #define GHOSTLIBRARY_IO_PS2DRIVERCONSTANTS
 
-#include <stdint.h>
 #include <ghost.h>
+#include <ghost/types.h>
 
 #define G_PS2_DRIVER_IDENTIFIER							"ps2driver"
 
