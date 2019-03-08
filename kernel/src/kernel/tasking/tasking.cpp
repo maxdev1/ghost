@@ -69,16 +69,20 @@ void taskingInitializeAp()
 void taskingInitializeLocal()
 {
 	g_tasking_local* local = taskingGetLocal();
-	local->scheduleList = 0;
-	local->current = 0;
 	local->locksHeld = 0;
 	local->time = 0;
-	local->taskCount = 0;
+
+	local->scheduling.current = 0;
+	local->scheduling.list = 0;
+	local->scheduling.taskCount = 0;
+	local->scheduling.round = 0;
+	local->scheduling.idleTask = 0;
+	local->scheduling.preferredNextTask = 0;
 
 	mutexInitialize(&local->lock);
 
 	g_process* idle = taskingCreateProcess();
-	taskingGetLocal()->idleTask = taskingCreateThread((g_virtual_address) taskingIdleThread, idle, G_SECURITY_LEVEL_KERNEL);
+	local->scheduling.idleTask = taskingCreateThread((g_virtual_address) taskingIdleThread, idle, G_SECURITY_LEVEL_KERNEL);
 	logInfo("%! core: %i idle task: %i", "tasking", processorGetCurrentId(), idle->main->id);
 
 	g_process* cleanup = taskingCreateProcess();
@@ -244,7 +248,7 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 	mutexAcquire(&local->lock);
 
 	bool alreadyInList = false;
-	g_schedule_entry* existing = local->scheduleList;
+	g_schedule_entry* existing = local->scheduling.list;
 	while(existing)
 	{
 		if(existing->task == task)
@@ -259,11 +263,11 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 	{
 		g_schedule_entry* newEntry = (g_schedule_entry*) heapAllocate(sizeof(g_schedule_entry));
 		newEntry->task = task;
-		newEntry->next = local->scheduleList;
+		newEntry->next = local->scheduling.list;
 		schedulerPrepareEntry(newEntry);
-		local->scheduleList = newEntry;
+		local->scheduling.list = newEntry;
 
-		local->taskCount++;
+		local->scheduling.taskCount++;
 	}
 
 	task->assignment = local;
@@ -273,7 +277,7 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 
 bool taskingStore(g_virtual_address esp)
 {
-	g_task* task = taskingGetLocal()->current;
+	g_task* task = taskingGetLocal()->scheduling.current;
 
 	// Very first interrupt that happened on this processor
 	if(!task)
@@ -290,7 +294,7 @@ bool taskingStore(g_virtual_address esp)
 
 g_virtual_address taskingRestore(g_virtual_address esp)
 {
-	g_task* task = taskingGetLocal()->current;
+	g_task* task = taskingGetLocal()->scheduling.current;
 	if(!task)
 		kernelPanic("%! tried to restore without a current task", "tasking");
 
@@ -311,6 +315,9 @@ void taskingSchedule()
 {
 	g_tasking_local* local = taskingGetLocal();
 
+	if(!local->inInterruptHandler)
+		kernelPanic("%! scheduling may only be triggered during interrupt handling", "tasking");
+
 	// If there are kernel locks held by the currently running task, we may not
 	// switch tasks - otherwise we will deadlock.
 	if(local->locksHeld == 0)
@@ -319,18 +326,8 @@ void taskingSchedule()
 	}
 }
 
-void taskingScheduleTo(g_task* task)
-{
-	g_tasking_local* local = taskingGetLocal();
-
-	// If there are kernel locks held by the currently running task, we may not
-	// switch tasks - otherwise we will deadlock.
-	if(local->locksHeld == 0)
-	{
-		mutexAcquire(&local->lock);
-		local->current = task;
-		mutexRelease(&local->lock);
-	}
+void taskingPleaseSchedule(g_task* task) {
+	schedulerPleaseSchedule(task);
 }
 
 g_process* taskingCreateProcess()
@@ -411,7 +408,7 @@ void taskingKernelThreadYield()
 	g_tasking_local* local = taskingGetLocal();
 	if(local->locksHeld > 0)
 	{
-		logInfo("%! warning: kernel thread %i tried to yield while holding %i kernel locks", "tasking", local->current->id, local->locksHeld);
+		logInfo("%! warning: kernel thread %i tried to yield while holding %i kernel locks", "tasking", local->scheduling.current->id, local->locksHeld);
 		return;
 	}
 
@@ -423,7 +420,7 @@ void taskingKernelThreadYield()
 
 void taskingKernelThreadExit()
 {
-	taskingGetLocal()->current->status = G_THREAD_STATUS_DEAD;
+	taskingGetLocal()->scheduling.current->status = G_THREAD_STATUS_DEAD;
 	taskingKernelThreadYield();
 }
 
@@ -438,14 +435,14 @@ void taskingIdleThread()
 void taskingCleanupThread()
 {
 	g_tasking_local* local = taskingGetLocal();
-	g_task* task = local->current;
+	g_task* task = local->scheduling.current;
 	for(;;)
 	{
 		// Find and remove dead tasks from local scheduling list
 		mutexAcquire(&local->lock);
 
 		g_schedule_entry* deadList = 0;
-		g_schedule_entry* entry = local->scheduleList;
+		g_schedule_entry* entry = local->scheduling.list;
 		g_schedule_entry* previous = 0;
 		while(entry)
 		{
@@ -457,7 +454,7 @@ void taskingCleanupThread()
 				if(previous)
 					previous->next = next;
 				else
-					local->scheduleList = next;
+					local->scheduling.list = next;
 
 				entry->next = deadList;
 				deadList = entry;

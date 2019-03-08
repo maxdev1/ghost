@@ -38,7 +38,7 @@ void exceptionsHandle(g_task* currentTask)
 	if(currentTask->state->intr == 0xE)
 	{
 		g_virtual_address accessedVirtual = G_PAGE_ALIGN_DOWN(exceptionsGetCR2());
-		logInfo("%# Tried to access %h, EIP: %h", accessedVirtual, taskingGetLocal()->current->state->eip);
+		logInfo("%# Tried to access %h, EIP: %h", accessedVirtual, taskingGetLocal()->scheduling.current->state->eip);
 	}
 	for(;;)
 	{

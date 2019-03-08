@@ -86,17 +86,20 @@ bool interruptsAreEnabled()
  */
 extern "C" g_virtual_address _interruptHandler(g_virtual_address esp)
 {
+	g_tasking_local* local = taskingGetLocal();
+	local->inInterruptHandler = true;
+
 	if(taskingStore(esp))
 	{
-		g_tasking_local* local = taskingGetLocal();
-		if(local->current->state->intr < 0x20)
+		if(local->scheduling.current->state->intr < 0x20)
 		{
-			exceptionsHandle(local->current);
+			exceptionsHandle(local->scheduling.current);
 		} else {
-			requestsHandle(local->current);
+			requestsHandle(local->scheduling.current);
 		}
 	}
 
+	local->inInterruptHandler = false;
 	esp = taskingRestore(esp);
 	lapicSendEndOfInterrupt();
 	return esp;

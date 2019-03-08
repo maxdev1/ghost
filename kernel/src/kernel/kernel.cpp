@@ -52,8 +52,8 @@ g_mutex testMutex;
 void test()
 {
 	mutexAcquire(&testMutex);
-	logInfo("#%i: Task %i (Priv %i) says hello from test()!", processorGetCurrentId(), taskingGetLocal()->current->id,
-			taskingGetLocal()->current->securityLevel);
+	logInfo("#%i: Task %i (Priv %i) says hello from test()!", processorGetCurrentId(), taskingGetLocal()->scheduling.current->id,
+			taskingGetLocal()->scheduling.current->securityLevel);
 	mutexRelease(&testMutex);
 	int x = 0;
 	for(;;)
@@ -72,8 +72,8 @@ void test()
 void test2()
 {
 	mutexAcquire(&testMutex);
-	logInfo("#%i: Task %i (Priv %i) says hello from test2()!", processorGetCurrentId(), taskingGetLocal()->current->id,
-			taskingGetLocal()->current->securityLevel);
+	logInfo("#%i: Task %i (Priv %i) says hello from test2()!", processorGetCurrentId(), taskingGetLocal()->scheduling.current->id,
+			taskingGetLocal()->scheduling.current->securityLevel);
 	mutexRelease(&testMutex);
 	for(;;)
 	{
@@ -183,7 +183,8 @@ void kernelRunApplicationCore()
 
 void kernelPanic(const char *msg, ...)
 {
-	logInfo("%*%! an unrecoverable error has occured. reason:", 0x0C, "kernerr");
+	interruptsDisable();
+	logInfo("%*%! unrecoverable error on processor %i", 0x0C, "kernerr", processorGetCurrentId());
 
 	loggerManualLock();
 	va_list valist;
@@ -193,7 +194,6 @@ void kernelPanic(const char *msg, ...)
 	loggerPrintCharacter('\n');
 	loggerManualUnlock();
 
-	interruptsDisable();
 	for(;;)
 		asm("hlt");
 }

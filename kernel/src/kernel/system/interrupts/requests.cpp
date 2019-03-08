@@ -32,6 +32,7 @@
 #include "kernel/kernel.hpp"
 
 #include "shared/system/mutex.hpp"
+#include "shared/system/io_port.hpp"
 
 void requestsHandle(g_task* task)
 {
@@ -53,6 +54,10 @@ void requestsHandle(g_task* task)
 
 	} else
 	{
-		logInfo("%! unhandled irq %i in task %i", "requests", task->state->intr, task->id);
+		if(task->state->intr == 33) {
+			logInfo("%! key pressed: %c", "irq", ioPortReadByte(0x60));
+		} else {
+			logInfo("%! unhandled irq %i in task %i", "requests", task->state->intr, task->id);
+		}
 	}
 }

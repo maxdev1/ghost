@@ -123,24 +123,29 @@ struct g_tasking_local
 	/**
 	 * Tasking information.
 	 */
-	g_schedule_entry* scheduleList;
-	g_task* current;
-	int taskCount;
+	struct {
+		g_schedule_entry* list;
+		g_task* current;
+		int taskCount;
+
+		uint32_t round;
+		g_task* idleTask;
+		g_task* preferredNextTask;
+	} scheduling;
 
 	/**
-	 * The number of locks that are currently held on this processor. If this
-	 * number is greater than 0, the scheduler will re-schedule the current task
-	 * until all locks are resolved.
+	 * The number of locks that are currently held on this processor.
+	 * While locksHeld > 0 interrupts are disabled.
 	 */
 	int locksHeld;
+	int locksReenableInt;
+	bool inInterruptHandler;
 
 	/**
 	 * Approximation of milliseconds that this processor has run.
 	 */
 	uint32_t time;
 
-	g_task* idleTask;
-	uint32_t schedulerRound;
 };
 
 /**
@@ -249,14 +254,16 @@ void taskingRemoveThread(g_task* task);
 void taskingResetTaskState(g_task* task);
 
 /**
- * Schedules and sets the next task as the current.
+ * Schedules and sets the next task as the current. This may only be called
+ * during interrupt handling! If you want to schedule a task as the next one,
+ * use taskingPleaseSchedule below.
  */
 void taskingSchedule();
 
 /**
- * Sets the given task as the current task.
+ * Sets the given task as the next one the scheduler should try to use.
  */
-void taskingScheduleTo(g_task* task);
+void taskingPleaseSchedule(g_task* task);
 
 /**
  * Stores the registers from the given state pointer (pointing to the top of the
