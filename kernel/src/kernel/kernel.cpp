@@ -117,13 +117,12 @@ void kernelInitialize(g_setup_information* setupInformation)
 	ramdiskLoadFromModule(ramdiskModule);
 }
 
-#include "kernel/utils/stringbuffer.hpp"
 void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 {
 	logDebug("%! has entered kernel", "bsp");
 	mutexInitialize(&bootstrapCoreLock);
 	mutexAcquire(&bootstrapCoreLock, false);
-	
+
 	systemInitializeBsp(initialPdPhys);
 	taskingInitializeBsp();
 	syscallRegisterAll();

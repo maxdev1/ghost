@@ -18,59 +18,33 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_FILESYSTEM__
-#define __KERNEL_FILESYSTEM__
+#include "kernel/filesystem/filesystem_ramdiskdelegate.hpp"
+#include "kernel/filesystem/ramdisk.hpp"
 
-#include "ghost/fs.h"
+#include "kernel/memory/memory.hpp"
+#include "kernel/kernel.hpp"
 #include "shared/system/mutex.hpp"
+#include "shared/utils/string.hpp"
 
-struct g_fs_node;
-struct g_fs_node_entry;
-struct g_fs_delegate;
-
-struct g_fs_node_entry
+g_fs_node* filesystemRamdiskDelegateDiscoverChild(g_fs_node* parent, const char* name)
 {
-	g_fs_node* node;
-	g_fs_node_entry* next;
-};
+	g_ramdisk_entry* parentEntry;
 
-struct g_fs_node
-{
-	g_fs_virt_id id;
-	g_fs_phys_id physicalId;
-	g_fs_node_type type;
+	if(parent->type == G_FS_NODE_TYPE_MOUNTPOINT)
+		parentEntry = ramdiskGetRoot();
+	else
+		parentEntry = ramdiskFindById(parent->physicalId);
 
-	char* name;
-	g_fs_node* parent;
-	g_fs_node_entry* children;
+	if(!parentEntry)
+		return 0;
 
-	g_fs_delegate* delegate;
+	g_ramdisk_entry* ramdiskEntry = ramdiskFindChild(parentEntry, name);
+	if(!ramdiskEntry)
+		return 0;
 
-	bool blocking;
-	bool upToDate;
-};
-
-struct g_fs_delegate
-{
-	g_mutex lock;
-
-	g_fs_node*(*discoverChild)(g_fs_node* parent, const char* name);
-};
-
-void filesystemInitialize();
-
-g_fs_virt_id filesystemGetNextId();
-
-g_fs_node* filesystemCreateNode(g_fs_node_type type, const char* name);
-
-g_fs_node* filesystemFindChild(g_fs_node* parent, const char* name);
-
-g_fs_node* filesystemFind(g_fs_node* parent, const char* path);
-
-void filesystemAddChild(g_fs_node* parent, g_fs_node* child);
-
-g_fs_delegate* filesystemCreateDelegate();
-
-g_fs_delegate* filesystemFindDelegate(g_fs_node* node);
-
-#endif
+	g_fs_node_type nodeType = ramdiskEntry->type == G_RAMDISK_ENTRY_TYPE_FILE ? G_FS_NODE_TYPE_FILE : G_FS_NODE_TYPE_FOLDER;
+	g_fs_node* newNode = filesystemCreateNode(nodeType, name);
+	newNode->physicalId = ramdiskEntry->id;
+	filesystemAddChild(parent, newNode);
+	return newNode;
+}

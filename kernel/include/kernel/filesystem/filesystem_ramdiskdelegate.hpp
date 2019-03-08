@@ -18,59 +18,13 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_FILESYSTEM__
-#define __KERNEL_FILESYSTEM__
+#ifndef __KERNEL_FILESYSTEM_RAMDISK_DELEGATE__
+#define __KERNEL_FILESYSTEM_RAMDISK_DELEGATE__
 
 #include "ghost/fs.h"
 #include "shared/system/mutex.hpp"
+#include "kernel/filesystem/filesystem.hpp"
 
-struct g_fs_node;
-struct g_fs_node_entry;
-struct g_fs_delegate;
-
-struct g_fs_node_entry
-{
-	g_fs_node* node;
-	g_fs_node_entry* next;
-};
-
-struct g_fs_node
-{
-	g_fs_virt_id id;
-	g_fs_phys_id physicalId;
-	g_fs_node_type type;
-
-	char* name;
-	g_fs_node* parent;
-	g_fs_node_entry* children;
-
-	g_fs_delegate* delegate;
-
-	bool blocking;
-	bool upToDate;
-};
-
-struct g_fs_delegate
-{
-	g_mutex lock;
-
-	g_fs_node*(*discoverChild)(g_fs_node* parent, const char* name);
-};
-
-void filesystemInitialize();
-
-g_fs_virt_id filesystemGetNextId();
-
-g_fs_node* filesystemCreateNode(g_fs_node_type type, const char* name);
-
-g_fs_node* filesystemFindChild(g_fs_node* parent, const char* name);
-
-g_fs_node* filesystemFind(g_fs_node* parent, const char* path);
-
-void filesystemAddChild(g_fs_node* parent, g_fs_node* child);
-
-g_fs_delegate* filesystemCreateDelegate();
-
-g_fs_delegate* filesystemFindDelegate(g_fs_node* node);
+g_fs_node* filesystemRamdiskDelegateDiscoverChild(g_fs_node* parent, const char* name);
 
 #endif
