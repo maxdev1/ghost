@@ -43,4 +43,9 @@ void schedulerPrepareEntry(g_schedule_entry* entry);
  */
 void schedulerSchedule(g_tasking_local* local);
 
+/**
+ * Prefers the given task when next schedule is requested.
+ */
+void schedulerPleaseSchedule(g_task* task);
+
 #endif

@@ -25,17 +25,21 @@
 
 void schedulerInitializeLocal()
 {
-	taskingGetLocal()->schedulerRound = 1;
+	taskingGetLocal()->scheduling.round = 1;
 }
 
 void schedulerNewTimeSlot()
 {
-	taskingGetLocal()->schedulerRound++;
+	taskingGetLocal()->scheduling.round++;
 }
 
 void schedulerPrepareEntry(g_schedule_entry* entry)
 {
 	entry->schedulerRound = 0;
+}
+
+void schedulerPleaseSchedule(g_task* task) {
+
 }
 
 /**
@@ -53,18 +57,20 @@ void schedulerSchedule(g_tasking_local* local)
 {
 	mutexAcquire(&local->lock);
 
-	if(!local->current)
+	if(!local->scheduling.current)
 	{
-		local->current = local->scheduleList->task;
+		local->scheduling.current = local->scheduling.list->task;
 		mutexRelease(&local->lock);
 		return;
 	}
 
-	// Find current task in list
-	g_schedule_entry* entry = local->scheduleList;
+	// Find task in list
+	bool switchToPreferred = local->scheduling.preferredNextTask != 0;
+	g_task* searchTask = switchToPreferred ? local->scheduling.preferredNextTask : local->scheduling.current;
+	g_schedule_entry* entry = local->scheduling.list;
 	while(entry)
 	{
-		if(entry->task == local->current)
+		if(entry->task == searchTask)
 		{
 			break;
 		}
@@ -72,32 +78,34 @@ void schedulerSchedule(g_tasking_local* local)
 	}
 	if(!entry)
 	{
-		entry = local->scheduleList;
+		entry = local->scheduling.list;
 	}
-
-	bool switched = false;
-	uint32_t max = local->taskCount;
-	while(max-- > 0)
-	{
-		// Select next in list
+		
+	// Select next in list
+	if(!switchToPreferred) {
 		entry = entry->next;
 		if(!entry)
 		{
-			entry = local->scheduleList;
+			entry = local->scheduling.list;
 		}
+	}
 
+	bool switched = false;
+	uint32_t max = local->scheduling.taskCount;
+	while(max-- > 0)
+	{
 		// Check if task was already processed this round
-		if(entry->schedulerRound >= local->schedulerRound)
+		if(entry->schedulerRound >= local->scheduling.round)
 		{
 			continue;
 		}
-		entry->schedulerRound = local->schedulerRound;
+		entry->schedulerRound = local->scheduling.round;
 
 		// Running task can be scheduled
 		g_task* task = entry->task;
 		if(task->status == G_THREAD_STATUS_RUNNING)
 		{
-			local->current = task;
+			local->scheduling.current = task;
 			switched = true;
 			break;
 		}
@@ -105,16 +113,23 @@ void schedulerSchedule(g_tasking_local* local)
 		// Waiting task must be checked
 		if(task->status == G_THREAD_STATUS_WAITING && waitTryWake(task))
 		{
-			local->current = task;
+			local->scheduling.current = task;
 			switched = true;
 			break;
+		}
+
+		// Select next in list
+		entry = entry->next;
+		if(!entry)
+		{
+			entry = local->scheduling.list;
 		}
 	}
 
 	// Nothing to schedule, idle
 	if(!switched)
 	{
-		local->current = local->idleTask;
+		local->scheduling.current = local->scheduling.idleTask;
 	}
 	
 	mutexRelease(&local->lock);

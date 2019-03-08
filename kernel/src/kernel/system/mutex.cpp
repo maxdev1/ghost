@@ -74,9 +74,9 @@ bool mutexTryAcquire(g_mutex* mutex, bool smp)
 	if(mutex->initialized != G_MUTEX_INITIALIZED)
 		mutexErrorUninitialized(mutex);
 
-	// Disable scheduling
+	// Disable interrupts
 	bool enableInt = interruptsAreEnabled();
-	if(enableInt) interruptsDisable();
+	interruptsDisable();
 
 	// Lock editing
 	while(!__sync_bool_compare_and_swap(&mutex->lock, 0, 1))
@@ -88,7 +88,10 @@ bool mutexTryAcquire(g_mutex* mutex, bool smp)
 	{
 		mutex->owner = processorGetCurrentId();
 		mutex->depth = 1;
-		if(smp) __sync_fetch_and_add(&taskingGetLocal()->locksHeld, 1);
+		if(smp) {
+			taskingGetLocal()->locksHeld++;
+			taskingGetLocal()->locksReenableInt = enableInt;
+		}
 		success = true;
 
 	} else if(mutex->owner == processorGetCurrentId())
@@ -99,9 +102,6 @@ bool mutexTryAcquire(g_mutex* mutex, bool smp)
 
 	// Allow editing again
 	mutex->lock = 0;
-
-	// Enable interrupts
-	if(enableInt) interruptsEnable();
 
 	return success;
 }
@@ -116,9 +116,7 @@ void mutexRelease(g_mutex* mutex, bool smp)
 	if(mutex->initialized != G_MUTEX_INITIALIZED)
 		mutexErrorUninitialized(mutex);
 
-	// Disable interrupts
-	bool enableInt = interruptsAreEnabled();
-	if(enableInt) interruptsDisable();
+	bool enableInt = false;
 
 	// Lock editing
 	while(!__sync_bool_compare_and_swap(&mutex->lock, 0, 1))
@@ -130,7 +128,11 @@ void mutexRelease(g_mutex* mutex, bool smp)
 		mutex->depth = 0;
 		mutex->owner = -1;
 
-		if(smp) __sync_fetch_and_sub(&taskingGetLocal()->locksHeld, 1);
+		if(smp) {
+			taskingGetLocal()->locksHeld--;
+			if(taskingGetLocal()->locksHeld == 0)
+				enableInt = taskingGetLocal()->locksReenableInt;
+		}
 	}
 
 	// Allow editing again
