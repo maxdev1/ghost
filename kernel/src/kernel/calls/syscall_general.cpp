@@ -23,6 +23,7 @@
 
 #include "kernel/memory/heap.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/utils/string.hpp"
 
 void syscallAtomicLock(g_task* task, g_syscall_atomic_lock* data)
 {
@@ -47,13 +48,6 @@ void syscallAtomicLock(g_task* task, g_syscall_atomic_lock* data)
 	}
 }
 
-void syscallWaitForIrq(g_task* task, g_syscall_wait_for_irq* data)
-{
-	logInfo("syscall not implemented: wait for irq");
-	for(;;)
-		;
-}
-
 void syscallLog(g_task* task, g_syscall_log* data)
 {
 	logInfo("%! %i: %s", "log", task->id, data->message);
@@ -66,16 +60,26 @@ void syscallSetVideoLog(g_task* task, g_syscall_set_video_log* data)
 
 void syscallTest(g_task* task, g_syscall_test* data)
 {
-	logInfo("syscall not implemented: test");
+	data->result = data->test;
 }
 
 void syscallReleaseCliArguments(g_task* task, g_syscall_cli_args_release* data)
 {
-	data->buffer[0] = 0;
-	logInfo("syscall not implemented: release cli arguments");
+	if(task->process->environment.arguments)
+		stringCopy(data->buffer, task->process->environment.arguments);
+	else
+		data->buffer[0] = 0;
 }
 
 void syscallGetMilliseconds(g_task* task, g_syscall_millis* data)
 {
 	data->millis = taskingGetLocal()->time;
+}
+
+void syscallGetExecutablePath(g_task* task, g_syscall_fs_get_executable_path* data)
+{
+	if(task->process->environment.executablePath)
+		stringCopy(data->buffer, task->process->environment.executablePath);
+	else
+		data->buffer[0] = 0;
 }

@@ -37,6 +37,9 @@ bool waitTryWake(g_task* task);
  */
 void waitSleep(g_task* task, uint64_t milliseconds);
 
+/**
+ * Lets the task wait until it can set an atom.
+ */
 void waitAtomicLock(g_task* task);
 
 #endif
