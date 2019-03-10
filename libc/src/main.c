@@ -46,8 +46,6 @@ extern void (*__fini_array_end[])();
  */
 int __g_main()
 {
-
-#warning "TODO remove"
 	// initialize libc
 	__g_init_libc();
 
