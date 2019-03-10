@@ -213,6 +213,7 @@ public:
  */
 struct g_process
 {
+	g_pid id;
 	g_mutex lock;
 
 	g_task* main;

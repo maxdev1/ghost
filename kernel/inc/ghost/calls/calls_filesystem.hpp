@@ -41,7 +41,6 @@
 typedef struct {
 	char* path;
 	int32_t flags;
-	int32_t mode;
 
 	g_fs_open_status status;
 	g_fd fd;

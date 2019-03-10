@@ -27,4 +27,8 @@
 
 g_fs_node* filesystemRamdiskDelegateDiscoverChild(g_fs_node* parent, const char* name);
 
+g_fs_read_status filesystemRamdiskDelegateRead(g_fs_node* node, uint8_t* buffer, uint64_t position, uint64_t length, int64_t* outRead);
+
+g_fs_length_status filesystemRamdiskDelegateGetLength(g_fs_node* node, int64_t* outLength);
+
 #endif

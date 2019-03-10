@@ -48,3 +48,27 @@ g_fs_node* filesystemRamdiskDelegateDiscoverChild(g_fs_node* parent, const char*
 	filesystemAddChild(parent, newNode);
 	return newNode;
 }
+
+g_fs_read_status filesystemRamdiskDelegateRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead)
+{
+	g_ramdisk_entry* entry = ramdiskFindById(node->physicalId);
+	if(!entry)
+		return G_FS_READ_ERROR;
+
+	if(offset + length > entry->dataSize)
+		length = entry->dataSize - offset;
+
+	memoryCopy(buffer, &entry->data[offset], length);
+	*outRead = length;
+	return G_FS_READ_SUCCESSFUL;
+}
+
+g_fs_length_status filesystemRamdiskDelegateGetLength(g_fs_node* node, int64_t* outLength)
+{
+	g_ramdisk_entry* entry = ramdiskFindById(node->physicalId);
+	if(!entry)
+		return G_FS_LENGTH_ERROR;
+
+	*outLength = entry->dataSize;
+	return G_FS_LENGTH_SUCCESSFUL;
+}
