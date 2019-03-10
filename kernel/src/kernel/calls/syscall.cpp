@@ -139,6 +139,7 @@ void syscallRegisterAll()
 	syscallRegister(G_SYSCALL_TEST, (g_syscall_handler) syscallTest, false);
 	syscallRegister(G_SYSCALL_RELEASE_CLI_ARGUMENTS, (g_syscall_handler) syscallReleaseCliArguments, false);
 	syscallRegister(G_SYSCALL_GET_EXECUTABLE_PATH, (g_syscall_handler) syscallGetExecutablePath, false);
+	syscallRegister(G_SYSCALL_GET_WORKING_DIRECTORY, (g_syscall_handler) syscallGetWorkingDirectory, false);
 
 	syscallRegister(G_SYSCALL_REGISTER_SIGNAL_HANDLER, (g_syscall_handler) syscallRegisterSignalHandler, false);
 	syscallRegister(G_SYSCALL_REGISTER_IRQ_HANDLER, (g_syscall_handler) syscallRegisterIrqHandler, false);

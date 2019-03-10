@@ -182,8 +182,8 @@ typedef struct {
  */
 typedef struct {
 	uint8_t irq;
-	uintptr_t handlerAddress;
-	uintptr_t returnAddress;
+	g_virtual_address handlerAddress;
+	g_virtual_address returnAddress;
 	g_register_irq_handler_status status;
 }__attribute__((packed)) g_syscall_register_irq_handler;
 

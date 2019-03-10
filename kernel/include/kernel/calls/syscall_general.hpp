@@ -38,4 +38,6 @@ void syscallGetMilliseconds(g_task* task, g_syscall_millis* data);
 
 void syscallGetExecutablePath(g_task* task, g_syscall_fs_get_executable_path* data);
 
+void syscallGetWorkingDirectory(g_task* task, g_syscall_fs_get_working_directory* data);
+
 #endif
