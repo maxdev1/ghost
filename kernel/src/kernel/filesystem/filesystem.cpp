@@ -19,7 +19,9 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/filesystem/filesystem.hpp"
+#include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/filesystem/filesystem_ramdiskdelegate.hpp"
+
 #include "kernel/memory/memory.hpp"
 #include "kernel/kernel.hpp"
 #include "shared/system/mutex.hpp"
@@ -36,6 +38,12 @@ void filesystemInitialize()
 	mutexInitialize(&filesystemNextIdLock);
 	filesystemNextId = 0;
 
+	filesystemProcessInitialize();
+	filesystemCreateRoot();
+}
+
+void filesystemCreateRoot()
+{
 	g_fs_delegate* ramdiskDelegate = filesystemCreateDelegate();
 	ramdiskDelegate->discoverChild = filesystemRamdiskDelegateDiscoverChild;
 

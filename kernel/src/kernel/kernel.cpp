@@ -124,9 +124,10 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	mutexAcquire(&bootstrapCoreLock, false);
 
 	systemInitializeBsp(initialPdPhys);
+	filesystemInitialize();
+
 	taskingInitializeBsp();
 	syscallRegisterAll();
-	filesystemInitialize();
 
 	// TEST THREADS
 	mutexInitialize(&testMutex);

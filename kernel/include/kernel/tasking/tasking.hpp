@@ -32,7 +32,7 @@ struct g_process;
 struct g_task;
 struct g_tasking_local;
 
-typedef bool(*g_wait_resolver)(g_task*);
+typedef bool (*g_wait_resolver)(g_task*);
 
 /**
  * A task is a single thread executing either in user or kernel level.
@@ -48,6 +48,13 @@ struct g_task
 	g_thread_type type;
 
 	g_tasking_local* assignment;
+
+	/**
+	 * Sometimes a task needs to do work in the address space of a different process.
+	 * If the override page directory is set, it switches here instead of the current
+	 * process directory.
+	 */
+	g_physical_address overridePageDirectory;
 
 	struct
 	{
@@ -123,7 +130,8 @@ struct g_tasking_local
 	/**
 	 * Tasking information.
 	 */
-	struct {
+	struct
+	{
 		g_schedule_entry* list;
 		g_task* current;
 		int taskCount;
@@ -249,6 +257,16 @@ void taskingPrepareThreadLocalStorage(g_task* thread);
 void taskingRemoveThread(g_task* task);
 
 /**
+ * Removes a process. Cleaning up all allocated data where possible.
+ */
+void taskingRemoveProcess(g_process* process);
+
+/**
+ * Kills all tasks of a process.
+ */
+void taskingKillProcess(g_pid pid);
+
+/**
  * Used to initialize or reset the state of a task.
  */
 void taskingResetTaskState(g_task* task);
@@ -304,5 +322,15 @@ void taskingIdleThread();
  * Finds a task by its id.
  */
 g_task* taskingGetById(g_tid id);
+
+/**
+ * Temporarily switches this task to a different address space.
+ */
+g_physical_address taskingTemporarySwitchToSpace(g_physical_address pageDirectory);
+
+/**
+ * Switches back.
+ */
+void taskingTemporarySwitchBack(g_physical_address pageDirectory);
 
 #endif

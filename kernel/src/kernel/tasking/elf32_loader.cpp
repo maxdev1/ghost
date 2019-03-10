@@ -43,8 +43,7 @@ g_elf32_spawn_status elf32SpawnFromRamdisk(g_ramdisk_entry* entry, g_security_le
 		g_process* process = taskingCreateProcess();
 
 		// Temporarily switch to process space
-		g_physical_address thisPageDirectory = pagingGetCurrentSpace();
-		pagingSwitchToSpace(process->pageDirectory);
+		g_physical_address returnDirectory = taskingTemporarySwitchToSpace(process->pageDirectory);
 
 		// Load binary
 		elf32LoadBinaryToCurrentAddressSpace(header, process, securityLevel);
@@ -62,7 +61,7 @@ g_elf32_spawn_status elf32SpawnFromRamdisk(g_ramdisk_entry* entry, g_security_le
 		// Set the tasks entry point
 		mainTask->state->eip = header->e_entry;
 
-		pagingSwitchToSpace(thisPageDirectory);
+		taskingTemporarySwitchBack(returnDirectory);
 
 		// Add to scheduling list
 		taskingAssign(taskingGetLocal(), mainTask);

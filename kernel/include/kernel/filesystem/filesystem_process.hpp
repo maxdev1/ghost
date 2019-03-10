@@ -18,70 +18,47 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_FILESYSTEM__
-#define __KERNEL_FILESYSTEM__
+#ifndef __KERNEL_FILESYSTEM_PROCESS__
+#define __KERNEL_FILESYSTEM_PROCESS__
 
+#include "ghost/kernel.h"
 #include "ghost/fs.h"
-#include "shared/system/mutex.hpp"
-
-struct g_fs_node;
-struct g_fs_node_entry;
-struct g_fs_delegate;
+#include "kernel/utils/hashmap.hpp"
 
 /**
- * A node on the file system.
+ * Structure of a file descriptor.
  */
-struct g_fs_node
+struct g_file_descriptor
 {
-	g_fs_virt_id id;
-	g_fs_phys_id physicalId;
-	g_fs_node_type type;
-
-	char* name;
-	g_fs_node* parent;
-	g_fs_node_entry* children;
-
-	g_fs_delegate* delegate;
-
-	bool blocking;
-	bool upToDate;
+	g_fd id;
+	int64_t offset;
+	g_fs_virt_id nodeId;
+	int32_t openFlags;
 };
 
 /**
- * An entry in the node tree.
+ * Per-process file system information structure.
  */
-struct g_fs_node_entry
+struct g_filesystem_process
 {
-	g_fs_node* node;
-	g_fs_node_entry* next;
+	g_fd nextDescriptor;
+	g_mutex nextDescriptorLock;
+	g_hashmap<g_fd, g_file_descriptor>* descriptors;
 };
 
 /**
- * A file system delegate.
+ * Initializes this unit.
  */
-struct g_fs_delegate
-{
-	g_mutex lock;
+void filesystemProcessInitialize();
 
-	g_fs_node*(*discoverChild)(g_fs_node* parent, const char* name);
-};
+/**
+ * Creates a file system information structure for a process.
+ */
+void filesystemProcessCreate(g_pid pid);
 
-void filesystemInitialize();
-
-void filesystemCreateRoot();
-
-g_fs_virt_id filesystemGetNextId();
-
-g_fs_node* filesystemCreateNode(g_fs_node_type type, const char* name);
-
-g_fs_node* filesystemFindChild(g_fs_node* parent, const char* name);
-
-g_fs_node* filesystemFind(g_fs_node* parent, const char* path);
-
-void filesystemAddChild(g_fs_node* parent, g_fs_node* child);
-
-g_fs_delegate* filesystemCreateDelegate();
-
-g_fs_delegate* filesystemFindDelegate(g_fs_node* node);
+/**
+ * Removes file system information for a process.
+ */
+void filesystemProcessRemove(g_pid pid);
 
 #endif
