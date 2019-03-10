@@ -53,6 +53,6 @@ about the technical design as well as building instructions.
 If you want to get in contact, contribute to the project or have any questions,
 feel free to contact me at:
 
-	max.schluessel@gmail.com
+	lokoxe@gmail.com
 	
--Max Schl√ºssel
+-Max Schlüssel
