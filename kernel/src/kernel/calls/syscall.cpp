@@ -134,11 +134,11 @@ void syscallRegisterAll()
 	syscallRegister(G_SYSCALL_JOIN, (g_syscall_handler) syscallJoin, false);
 	syscallRegister(G_SYSCALL_SLEEP, (g_syscall_handler) syscallSleep, false);
 	syscallRegister(G_SYSCALL_ATOMIC_LOCK, (g_syscall_handler) syscallAtomicLock, false);
-	syscallRegister(G_SYSCALL_WAIT_FOR_IRQ, (g_syscall_handler) syscallWaitForIrq, false);
 	syscallRegister(G_SYSCALL_LOG, (g_syscall_handler) syscallLog, false);
 	syscallRegister(G_SYSCALL_SET_VIDEO_LOG, (g_syscall_handler) syscallSetVideoLog, false);
 	syscallRegister(G_SYSCALL_TEST, (g_syscall_handler) syscallTest, false);
 	syscallRegister(G_SYSCALL_RELEASE_CLI_ARGUMENTS, (g_syscall_handler) syscallReleaseCliArguments, false);
+	syscallRegister(G_SYSCALL_GET_EXECUTABLE_PATH, (g_syscall_handler) syscallGetExecutablePath, false);
 
 	syscallRegister(G_SYSCALL_REGISTER_SIGNAL_HANDLER, (g_syscall_handler) syscallRegisterSignalHandler, false);
 	syscallRegister(G_SYSCALL_REGISTER_IRQ_HANDLER, (g_syscall_handler) syscallRegisterIrqHandler, false);

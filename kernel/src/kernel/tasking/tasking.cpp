@@ -372,6 +372,12 @@ g_process* taskingCreateProcess()
 	}
 
 	process->heap.brk = 0;
+	process->heap.start = 0;
+	process->heap.pages = 0;
+
+	process->environment.arguments = 0;
+	process->environment.executablePath = 0;
+	process->environment.workingDirectory = 0;
 
 	return process;
 }

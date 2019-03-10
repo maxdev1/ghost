@@ -243,6 +243,13 @@ struct g_process
 		g_virtual_address start;
 		int pages;
 	} heap;
+
+	struct
+	{
+		const char* arguments;
+		const char* executablePath;
+		const char* workingDirectory;
+	} environment;
 };
 
 /**

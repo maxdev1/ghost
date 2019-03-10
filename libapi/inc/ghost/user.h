@@ -590,16 +590,6 @@ uint8_t g_task_register_id(const char* identifier);
 g_tid g_task_get_id(const char* identifier);
 
 /**
- * The executing thread waits for the interrupt request with the given number.
- *
- * @param irq
- * 		the irq number
- *
- * @security-level DRIVER
- */
-void g_wait_for_irq(uint8_t irq);
-
-/**
  * Maps the given physical address to the executing processes address space so
  * it can access it directly.
  *
