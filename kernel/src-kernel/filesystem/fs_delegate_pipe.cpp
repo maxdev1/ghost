@@ -18,11 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <kernel.hpp>
 #include "filesystem/fs_delegate_pipe.hpp"
 #include "filesystem/filesystem.hpp"
 #include "utils/string.hpp"
 #include "logger/logger.hpp"
-#include "kernel.hpp"
 
 /**
  * Pipes do not support discovery. We put a warning out though.

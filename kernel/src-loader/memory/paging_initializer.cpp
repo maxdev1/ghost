@@ -66,9 +66,9 @@ void g_paging_initializer::initialize(uint32_t reservedAreaEnd, g_setup_informat
 void g_paging_initializer::enableGlobalPageFlag() {
 
 	uint32_t cr4;
-	asm("mov %%cr4, %0" : "=r"(cr4));
+	asm volatile("mov %%cr4, %0" : "=r"(cr4));
 	cr4 |= (1 << 7); // set page global enable bit
-	asm("mov %0, %%cr4" :: "b"(cr4));
+	asm volatile("mov %0, %%cr4" :: "b"(cr4));
 }
 
 /**

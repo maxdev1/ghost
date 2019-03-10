@@ -38,8 +38,8 @@ class g_scheduler {
 private:
 	uint64_t milliseconds;
 	uint32_t coreId;
+	uint32_t currentRound;
 
-	g_task_entry* wait_queue;
 	g_task_entry* run_queue;
 	g_task_entry* idle_entry;
 	g_task_entry* current_entry;
@@ -95,19 +95,20 @@ private:
 	void _printDeadlockWarning();
 
 	/**
-	 * Processes all threads in the wait queue. Checks the waiting state for each
-	 * thread in the wait queue.
-	 */
-	void _processWaitQueue();
-
-	/**
 	 * Checks the thread for any waiting operations, performs these and moves the
 	 * thread to the run queue if possible.
 	 *
 	 * @param thread
 	 * 		the thread to check
 	 */
-	void _checkWaitingState(g_thread* thread);
+	bool _checkWaitingState(g_thread* thread);
+
+	/**
+	 * Chooses which thread should next be scheduled.
+	 */
+	void selectNext();
+
+	g_task_entry* findEntry(g_thread* thread);
 
 public:
 	/**
@@ -123,11 +124,11 @@ public:
 	 * last executed and returns a pointer to this thread. If there is
 	 * no last thread, scheduling is performed.
 	 *
-	 * @param cpuState
+	 * @param statePtr
 	 * 		pointer to the CPU structure on the process stack
 	 * @return the last executed thread
 	 */
-	g_thread* save(g_processor_state* cpuState);
+	g_thread* save(g_processor_state* statePtr);
 
 	/**
 	 * Performs the scheduling. This processes the waiting tasks and then
@@ -136,6 +137,7 @@ public:
 	 * @return the next task to execute
 	 */
 	g_thread* schedule();
+	g_thread* schedule(g_thread* thread);
 
 	/**
 	 * Adds the given thread to the run queue.
@@ -182,24 +184,6 @@ public:
 	 * @return the thread or nullptr if not existant
 	 */
 	g_thread* getTaskByIdentifier(const char* identifier);
-
-	/**
-	 * Removes the given thread from the wait queue and adds it to the
-	 * run queue.
-	 *
-	 * @param thread
-	 * 		the thread to move
-	 */
-	void moveToRunQueue(g_thread* thread);
-
-	/**
-	 * Removes the given thread from the run queue and adds it to the
-	 * wait queue.
-	 *
-	 * @param thread
-	 * 		the thread to move
-	 */
-	void moveToWaitQueue(g_thread* thread);
 
 	/**
 	 * Sets all threads of the given process to not alive and returns

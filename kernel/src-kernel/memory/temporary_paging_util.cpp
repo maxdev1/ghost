@@ -18,13 +18,13 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <kernel.hpp>
 #include <memory/temporary_paging_util.hpp>
 #include <memory/address_space.hpp>
 #include <memory/paging.hpp>
 #include <memory/constants.hpp>
 #include <memory/physical/pp_allocator.hpp>
 #include <memory/collections/address_stack.hpp>
-#include <kernel.hpp>
 #include <logger/logger.hpp>
 
 static g_address_stack addressStack;
@@ -50,7 +50,7 @@ g_virtual_address g_temporary_paging_util::map(g_physical_address phys) {
 	g_virtual_address virt = addressStack.pop();
 
 	if (virt == 0) {
-		g_kernel::panic("%! unable to temporary map physical address %h, no free addresses", "vtemp", phys);
+		kernelPanic("%! unable to temporary map physical address %h, no free addresses", "vtemp", phys);
 	}
 
 	g_address_space::map(virt, phys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);

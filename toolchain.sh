@@ -1,6 +1,8 @@
 #!/bin/bash
-source ghost.sh
-
+if [ -f variables.sh ]; then
+	. variables.sh
+fi
+. ghost.sh
 
 # Define globals
 GCC_ARCHIVE=https://ftp.gnu.org/gnu/gcc/gcc-8.2.0/gcc-8.2.0.tar.gz
@@ -47,6 +49,23 @@ for var in "$@"; do
 		STEP_BUILD_GCC=0
 	elif [ $var == "--clean" ]; then
 		STEP_CLEAN=1
+	elif [ $var == "--help" ]; then
+		echo "Ghost Toolchain setup script"
+		echo "Run this script to build a toolchain for your system."
+		echo "The following flags are available:"
+		echo
+		echo "	--skip-download			Skips the downloading of binutils/gcc archives"
+		echo "	--skip-unpack			Skips the unpacking of said archives"
+		echo "	--skip-patch			Skips the patching of the unpacked sources"
+		echo "	--skip-build-binutils		Skips building binutils"
+		echo "	--skip-build-gcc		Skips building gcc"
+		echo "	--clean				Cleans everything"
+		echo
+		echo "To specify a different path for your TOOLCHAIN_BASE/SYSROOT,"
+		echo "copy 'variables.sh.template' to 'variables.sh' and use export"
+		echo "to set the respective variables."
+		echo
+		exit
 	else
 		echo "unknown parameter: $var"
 		exit
@@ -170,9 +189,6 @@ $SH build.sh						>>ghost-build.log 2>&1
 popd
 
 
-
-
-
 # Install headers
 echo "Installing libc and libapi headers"
 pushd libc
@@ -192,7 +208,7 @@ if [ $STEP_BUILD_BINUTILS == 1 ]; then
 	pushd temp/build-binutils
 
 	echo "    Configuring"
-	../$BINUTILS_UNPACKED/configure --target=$TARGET --prefix=$TOOLCHAIN_BASE --disable-nls --disable-werror --with-sysroot=$SYSROOT >>ghost-build.log 2>&1
+	../$BINUTILS_UNPACKED/configure --target=$TARGET --prefix=$TOOLCHAIN_BASE --disable-nls --enable-shared --disable-werror --with-sysroot=$SYSROOT >>ghost-build.log 2>&1
 	failOnError
 
 	echo "    Building"
@@ -210,15 +226,15 @@ else
 fi
 
 
-# Build GCC
+# Build gcc
 if [ $STEP_BUILD_GCC == 1 ]; then
 
-	echo "Building GCC"
+	echo "Building gcc"
 	mkdir -p temp/build-gcc
 	pushd temp/build-gcc
 	
 	echo "    Configuration"
-	../$GCC_UNPACKED/configure --target=$TARGET --prefix=$TOOLCHAIN_BASE --disable-nls --enable-languages=c,c++ --with-sysroot=$SYSROOT $BUILD_GCC_ADDITIONAL_FLAGS >>ghost-build.log 2>&1
+	../$GCC_UNPACKED/configure --target=$TARGET --prefix=$TOOLCHAIN_BASE --disable-nls --enable-languages=c,c++ --enable-shared --with-sysroot=$SYSROOT $BUILD_GCC_ADDITIONAL_FLAGS >>ghost-build.log 2>&1
 	failOnError
 
 	echo "    Building core"
@@ -243,13 +259,13 @@ else
 fi
 
 
-
 # Build libc
 echo "Building libc"
 pushd libc
 $SH build.sh all						>>ghost-build.log 2>&1
 failOnError
 popd
+
 
 # Build libapi
 echo "Building libapi"

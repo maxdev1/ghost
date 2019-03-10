@@ -18,6 +18,7 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <kernel.hpp>
 #include <memory/address_space.hpp>
 #include <memory/paging.hpp>
 #include <memory/memory.hpp>
@@ -26,7 +27,6 @@
 #include <memory/constants.hpp>
 #include <tasking/tasking.hpp>
 
-#include <kernel.hpp>
 #include <logger/logger.hpp>
 
 /**
@@ -37,7 +37,7 @@ bool g_address_space::map(g_virtual_address virtual_addr, g_physical_address phy
 
 	// check if addresses are aligned
 	if ((virtual_addr & G_PAGE_ALIGN_MASK) || (physical_addr & G_PAGE_ALIGN_MASK)) {
-		g_kernel::panic("%! tried to map unaligned addresses: virt %h to phys %h", "addrspace", virtual_addr, physical_addr);
+		kernelPanic("%! tried to map unaligned addresses: virt %h to phys %h", "addrspace", virtual_addr, physical_addr);
 	}
 
 	// calculate table & page indices
@@ -52,7 +52,7 @@ bool g_address_space::map(g_virtual_address virtual_addr, g_physical_address phy
 	if (directory[ti] == 0) {
 		g_physical_address new_table_phys = g_pp_allocator::allocate();
 		if (new_table_phys == 0) {
-			g_kernel::panic("%! no pages left for mapping", "addrspace");
+			kernelPanic("%! no pages left for mapping", "addrspace");
 		}
 
 		// insert table
@@ -67,7 +67,7 @@ bool g_address_space::map(g_virtual_address virtual_addr, g_physical_address phy
 		// this is illegal and an unrecoverable error
 		if (table_flags & G_PAGE_TABLE_USERSPACE) {
 			if (((directory[ti] & G_PAGE_ALIGN_MASK) & G_PAGE_TABLE_USERSPACE) == 0) {
-				g_kernel::panic("%! tried to map user page in kernel space table, virt %h", "addrspace", virtual_addr);
+				kernelPanic("%! tried to map user page in kernel space table, virt %h", "addrspace", virtual_addr);
 			}
 		}
 	}
@@ -105,7 +105,7 @@ void g_address_space::map_to_temporary_mapped_directory(g_page_directory directo
 
 	// check if addresses are aligned
 	if ((virtual_addr & G_PAGE_ALIGN_MASK) || (physical_addr & G_PAGE_ALIGN_MASK)) {
-		g_kernel::panic("%! tried to map unaligned addresses: virt %h to phys %h", "addrspace", virtual_addr, physical_addr);
+		kernelPanic("%! tried to map unaligned addresses: virt %h to phys %h", "addrspace", virtual_addr, physical_addr);
 	}
 
 	// calculate table & page indices
@@ -116,7 +116,7 @@ void g_address_space::map_to_temporary_mapped_directory(g_page_directory directo
 	if (directory[ti] == 0) {
 		g_physical_address new_table_phys = g_pp_allocator::allocate();
 		if (new_table_phys == 0) {
-			g_kernel::panic("%! no pages left for mapping", "addrspace");
+			kernelPanic("%! no pages left for mapping", "addrspace");
 		}
 
 		// temporary map the table and insert it
@@ -143,7 +143,7 @@ void g_address_space::map_to_temporary_mapped_directory(g_page_directory directo
 	} else {
 		g_log_warn("%! tried to map area to virtual pd %h that was already mapped, virt %h -> phys %h, table contains %h", "addrspace", directory, virtual_addr,
 				physical_addr, table[pi]);
-		g_kernel::panic("%! duplicate mapping", "addrspace");
+		kernelPanic("%! duplicate mapping", "addrspace");
 	}
 	g_temporary_paging_util::unmap(temp_table_addr);
 }

@@ -1,4 +1,4 @@
-ENTRY (loadKernel)
+ENTRY (kernelMain)
 
 SECTIONS
 {

@@ -4,7 +4,7 @@
 
 # Include user variables if available
 if [ -f variables.sh ]; then
-	source variables.sh
+	. variables.sh
 fi
 
 #
@@ -101,12 +101,12 @@ target_headline() {
 
 
 # Global variables
-with CROSS_PREFIX		"i686-ghost-"
-with CROSS_CC			$CROSS_PREFIX"gcc"
-with CROSS_CXX			$CROSS_PREFIX"g++"
-with CROSS_LD			$CROSS_PREFIX"ld"
-with CROSS_GAS			$CROSS_PREFIX"as"
-with CROSS_AR			$CROSS_PREFIX"ar"
+with CROSS_HOST			"i686-ghost"
+with CROSS_CC			$CROSS_HOST"-gcc"
+with CROSS_CXX			$CROSS_HOST"-g++"
+with CROSS_LD			$CROSS_HOST"-ld"
+with CROSS_GAS			$CROSS_HOST"-as"
+with CROSS_AR			$CROSS_HOST"-ar"
 
 with TOOLCHAIN_BASE		"/ghost"
 with SYSROOT			$TOOLCHAIN_BASE"/sysroot"
@@ -119,3 +119,5 @@ SYSROOT_APPLICATIONS=$SYSROOT/applications
 SYSROOT_SYSTEM=$SYSROOT/system
 SYSROOT_SYSTEM_INCLUDE=$SYSROOT_SYSTEM/include
 SYSROOT_SYSTEM_LIB=$SYSROOT_SYSTEM/lib
+
+export PATH=$PATH:$TOOLCHAIN_BASE/bin

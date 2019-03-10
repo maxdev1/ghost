@@ -30,6 +30,14 @@
 #include <tasking/scheduling/scheduler.hpp>
 
 /**
+ * Uses the scheduler of this core to save the state pointer of
+ * the last running thread.
+ * 
+ * @param stateLocation pointer to the processor state
+ */
+g_thread* taskingSave(g_processor_state* stateLocation);
+
+/**
  *
  */
 class g_tasking {
@@ -48,7 +56,7 @@ public:
 	/**
 	 * Saves the current CPU state and returns the current thread.
 	 */
-	static g_thread* save(g_processor_state* cpuState);
+	static g_thread* save(g_processor_state* statePtr);
 
 	/**
 	 * Called to switch tasks. Function returns the task to execute next.
@@ -56,14 +64,14 @@ public:
 	static g_thread* schedule();
 
 	/**
+	 * Switches to the given task.
+	 */
+	static g_thread* schedule(g_thread* thread);
+
+	/**
 	 * Adds the task to the least loaded cores scheduler
 	 */
 	static void addTask(g_thread* proc, bool enforceCurrentCore = false);
-
-	/**
-	 * Pushes the given thread to the top of the wait queue.
-	 */
-	static void increaseWaitPriority(g_thread* proc);
 
 	/**
 	 * Returns the current task on the current core

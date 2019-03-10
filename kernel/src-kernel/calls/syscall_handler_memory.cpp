@@ -20,9 +20,9 @@
 
 #include <calls/syscall_handler.hpp>
 
-#include <kernel.hpp>
 #include <logger/logger.hpp>
 #include <executable/elf32_loader.hpp>
+#include <kernel.hpp>
 #include <tasking/tasking.hpp>
 #include <tasking/thread_manager.hpp>
 #include <memory/physical/pp_allocator.hpp>
@@ -43,7 +43,7 @@ G_SYSCALL_HANDLER(alloc_mem) {
 
 	g_process* process = current_thread->process;
 
-	g_syscall_alloc_mem* data = (g_syscall_alloc_mem*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_alloc_mem* data = (g_syscall_alloc_mem*) G_SYSCALL_DATA(current_thread->statePtr);
 	data->virtualResult = 0;
 
 	// Get the number of pages
@@ -111,7 +111,7 @@ G_SYSCALL_HANDLER(share_mem) {
 
 	G_IF_LOG_WARN(g_process* process = current_thread->process);
 
-	g_syscall_share_mem* data = (g_syscall_share_mem*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_share_mem* data = (g_syscall_share_mem*) G_SYSCALL_DATA(current_thread->statePtr);
 	data->virtualAddress = 0;
 
 	// Get the number of pages
@@ -175,7 +175,7 @@ G_SYSCALL_HANDLER(map_mmio) {
 
 	g_process* process = current_thread->process;
 
-	g_syscall_map_mmio* data = (g_syscall_map_mmio*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_map_mmio* data = (g_syscall_map_mmio*) G_SYSCALL_DATA(current_thread->statePtr);
 	data->virtualAddress = 0;
 
 	// Only kernel and drivers may do this
@@ -216,7 +216,7 @@ G_SYSCALL_HANDLER(unmap) {
 
 	g_process* process = current_thread->process;
 
-	g_syscall_unmap* data = (g_syscall_unmap*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_unmap* data = (g_syscall_unmap*) G_SYSCALL_DATA(current_thread->statePtr);
 	g_virtual_address base = data->virtualBase;
 
 	// Search for the range
@@ -262,7 +262,7 @@ G_SYSCALL_HANDLER(unmap) {
 G_SYSCALL_HANDLER(sbrk) {
 
 	g_process* process = current_thread->process;
-	g_syscall_sbrk* data = (g_syscall_sbrk*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_sbrk* data = (g_syscall_sbrk*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	// initialize the heap if necessary
 	if (process->heapBreak == 0) {
@@ -329,7 +329,7 @@ G_SYSCALL_HANDLER(sbrk) {
 G_SYSCALL_HANDLER(lower_malloc) {
 
 	g_process* process = current_thread->process;
-	g_syscall_lower_malloc* data = (g_syscall_lower_malloc*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_lower_malloc* data = (g_syscall_lower_malloc*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	// check the security
 	if (process->securityLevel <= G_SECURITY_LEVEL_DRIVER) {
@@ -348,7 +348,7 @@ G_SYSCALL_HANDLER(lower_malloc) {
 G_SYSCALL_HANDLER(lower_free) {
 
 	g_process* process = current_thread->process;
-	g_syscall_lower_free* data = (g_syscall_lower_free*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_lower_free* data = (g_syscall_lower_free*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	if (process->securityLevel <= G_SECURITY_LEVEL_DRIVER) {
 		g_lower_heap::free(data->memory);

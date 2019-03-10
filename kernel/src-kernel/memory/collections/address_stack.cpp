@@ -18,10 +18,10 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <kernel.hpp>
 #include <memory/collections/address_stack.hpp>
 #include <memory/kernel_heap.hpp>
 #include <logger/logger.hpp>
-#include <kernel.hpp>
 
 /**
  *

@@ -21,8 +21,8 @@
 #ifndef GHOST_SHARED_UTILS_ADDRESS_SPACE_BOUND
 #define GHOST_SHARED_UTILS_ADDRESS_SPACE_BOUND
 
+#include <kernel.hpp>
 #include "memory/address_space.hpp"
-#include "kernel.hpp"
 
 /**
  * Safe wrapper for variables that are bound to a specific address space (context).
@@ -70,7 +70,7 @@ public:
 		if (space != 0) {
 			g_page_directory current_space = g_address_space::get_current_space();
 			if (current_space != space) {
-				g_kernel::panic("%! tried to access a value from within another context", "contextual");
+				kernelPanic("%! tried to access a value from within another context", "contextual");
 			}
 		}
 		return value;

@@ -18,11 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <kernel.hpp>
 #include "filesystem/fs_delegate_ramdisk.hpp"
 #include "filesystem/filesystem.hpp"
 #include "utils/string.hpp"
 #include "logger/logger.hpp"
-#include "kernel.hpp"
 #include "ghost/utils/local.hpp"
 
 /**
@@ -62,13 +62,13 @@ g_fs_transaction_id g_fs_delegate_ramdisk::request_discovery(g_thread* requester
 	// find on ramdisk
 	g_ramdisk_entry* ramdisk_parent;
 	if (parent->type == G_FS_NODE_TYPE_MOUNTPOINT) {
-		ramdisk_parent = g_kernel::ramdisk->getRoot();
+		ramdisk_parent = kernelRamdisk->getRoot();
 	} else {
-		ramdisk_parent = g_kernel::ramdisk->findById(parent->phys_fs_id);
+		ramdisk_parent = kernelRamdisk->findById(parent->phys_fs_id);
 	}
 
 	if (ramdisk_parent) {
-		g_ramdisk_entry* ramdisk_node = g_kernel::ramdisk->findChild(ramdisk_parent, child);
+		g_ramdisk_entry* ramdisk_node = kernelRamdisk->findChild(ramdisk_parent, child);
 
 		if (ramdisk_node) {
 			// create the VFS node
@@ -106,7 +106,7 @@ g_fs_transaction_id g_fs_delegate_ramdisk::request_read(g_thread* requester, g_f
 		id = g_fs_transaction_store::next_transaction();
 	}
 
-	g_ramdisk_entry* ramdisk_node = g_kernel::ramdisk->findById(node->phys_fs_id);
+	g_ramdisk_entry* ramdisk_node = kernelRamdisk->findById(node->phys_fs_id);
 	if (ramdisk_node == 0) {
 		handler->status = G_FS_READ_INVALID_FD;
 		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
@@ -154,7 +154,7 @@ g_fs_transaction_id g_fs_delegate_ramdisk::request_write(g_thread* requester, g_
 		id = g_fs_transaction_store::next_transaction();
 	}
 
-	g_ramdisk_entry* ramdisk_node = g_kernel::ramdisk->findById(node->phys_fs_id);
+	g_ramdisk_entry* ramdisk_node = kernelRamdisk->findById(node->phys_fs_id);
 	if (ramdisk_node == 0) {
 		handler->status = G_FS_WRITE_INVALID_FD;
 		g_fs_transaction_store::set_status(id, G_FS_TRANSACTION_FINISHED);
@@ -218,7 +218,7 @@ g_fs_transaction_id g_fs_delegate_ramdisk::request_get_length(g_thread* requeste
 	// the ramdisk handler is doing it's work immediately and doesn't request another process
 	g_fs_transaction_id id = g_fs_transaction_store::next_transaction();
 
-	g_ramdisk_entry* ramdisk_node = g_kernel::ramdisk->findById(node->phys_fs_id);
+	g_ramdisk_entry* ramdisk_node = kernelRamdisk->findById(node->phys_fs_id);
 	if (ramdisk_node == 0) {
 		handler->status = G_FS_LENGTH_NOT_FOUND;
 		handler->length = 0;
@@ -246,7 +246,7 @@ g_fs_transaction_id g_fs_delegate_ramdisk::request_directory_refresh(g_thread* r
 
 	g_fs_transaction_id id = g_fs_transaction_store::next_transaction();
 
-	g_ramdisk_entry* rd_folder = g_kernel::ramdisk->findById(folder->phys_fs_id);
+	g_ramdisk_entry* rd_folder = kernelRamdisk->findById(folder->phys_fs_id);
 	if (rd_folder == 0) {
 		handler->status = G_FS_DIRECTORY_REFRESH_ERROR;
 
@@ -256,7 +256,7 @@ g_fs_transaction_id g_fs_delegate_ramdisk::request_directory_refresh(g_thread* r
 		int position = 0;
 		g_ramdisk_entry* rd_child;
 
-		while ((rd_child = g_kernel::ramdisk->getChildAt(folder->phys_fs_id, position++)) != 0) {
+		while ((rd_child = kernelRamdisk->getChildAt(folder->phys_fs_id, position++)) != 0) {
 
 			// get real path to parent
 			g_local<char> absolute(new char[G_PATH_MAX]);
@@ -304,7 +304,7 @@ g_fs_transaction_id g_fs_delegate_ramdisk::request_open(g_thread* requester, g_f
 
 	g_fs_transaction_id id = g_fs_transaction_store::next_transaction();
 
-	g_ramdisk_entry* ramdisk_node = g_kernel::ramdisk->findById(node->phys_fs_id);
+	g_ramdisk_entry* ramdisk_node = kernelRamdisk->findById(node->phys_fs_id);
 
 	if (handler->discovery_status == G_FS_DISCOVERY_SUCCESSFUL) {
 
@@ -331,7 +331,7 @@ g_fs_transaction_id g_fs_delegate_ramdisk::request_open(g_thread* requester, g_f
 
 		if (flags & G_FILE_FLAG_MODE_CREATE) {
 			// create the filesystem file
-			g_ramdisk_entry* new_ramdisk_entry = g_kernel::ramdisk->createChild(ramdisk_node, filename);
+			g_ramdisk_entry* new_ramdisk_entry = kernelRamdisk->createChild(ramdisk_node, filename);
 
 			handler->node = create_vfs_node(new_ramdisk_entry, node);
 			handler->status = G_FS_OPEN_SUCCESSFUL;

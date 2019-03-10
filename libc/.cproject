@@ -30,23 +30,26 @@
 							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.cygwin.base.1015314126" name="Cygwin C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.cygwin.base">
 								<option id="gnu.cpp.compiler.option.optimization.level.1436547920" name="Optimization Level" superClass="gnu.cpp.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.optimization.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.debugging.level.1056188265" name="Debug Level" superClass="gnu.cpp.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.debugging.level.max" valueType="enumerated"/>
-								<option id="gnu.cpp.compiler.option.include.paths.803738867" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
+								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="gnu.cpp.compiler.option.include.paths.803738867" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/libc/inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/api/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/libapi/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/kernel/inc}&quot;"/>
-									<listOptionValue builtIn="false" value="C:/cygwin/ghost/sysroot/system/include"/>
-									<listOptionValue builtIn="false" value="C:/cygwin/ghost/lib/gcc/i686-ghost/4.9.1/include"/>
+									<listOptionValue builtIn="false" value="C:/ghost/sysroot/system/include"/>
+									<listOptionValue builtIn="false" value="C:/ghost/lib/gcc/i686-ghost/8.2.0/include"/>
+									<listOptionValue builtIn="false" value="C:/ghost/lib/gcc/i686-ghost/8.2.0/include-fixed"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.cygwin.2067327657" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input.cygwin"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.cygwin.base.725906938" name="Cygwin C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.cygwin.base">
 								<option defaultValue="gnu.c.optimization.level.none" id="gnu.c.compiler.option.optimization.level.1213448223" name="Optimization Level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.debugging.level.750178911" name="Debug Level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.max" valueType="enumerated"/>
-								<option id="gnu.c.compiler.option.include.paths.1553390579" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
+								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="gnu.c.compiler.option.include.paths.1553390579" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/libc/inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/api/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/libapi/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/kernel/inc}&quot;"/>
-									<listOptionValue builtIn="false" value="C:/cygwin/ghost/sysroot/system/include"/>
+									<listOptionValue builtIn="false" value="C:/ghost/sysroot/system/include"/>
+									<listOptionValue builtIn="false" value="C:/ghost/lib/gcc/i686-ghost/8.2.0/include"/>
+									<listOptionValue builtIn="false" value="C:/ghost/lib/gcc/i686-ghost/8.2.0/include-fixed"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.cygwin.249408301" superClass="cdt.managedbuild.tool.gnu.c.compiler.input.cygwin"/>
 							</tool>
@@ -69,7 +72,7 @@
 		</cconfiguration>
 	</storageModule>
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-		<project id="GhostAPI.cdt.managedbuild.target.gnu.cross.so.463972572" name="Shared Library" projectType="cdt.managedbuild.target.gnu.cross.so"/>
+		<project id="GhostAPI.cdt.managedbuild.target.gnu.cross.so.463972572" name="Shared Library"/>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="refreshScope" versionNumber="2">

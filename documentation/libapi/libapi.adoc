@@ -7,8 +7,9 @@ include::../common/homelink.adoc[]
 
 About
 -----
-libapi is a wrapper library that uses the system call interface provided by the
-kernel to build a facade of C functions.
+*libapi* is a wrapper library that uses the system call interface provided by the
+kernel to build a facade of C functions. These functions are the base of many
+libc components.
 
 Tasking
 -------

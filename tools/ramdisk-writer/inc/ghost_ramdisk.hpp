@@ -31,7 +31,8 @@
 /**
  *
  */
-class ghost_ramdisk {
+class ghost_ramdisk
+{
 private:
 	int idCounter;
 	std::ofstream out;
@@ -41,9 +42,11 @@ private:
 
 public:
 	ghost_ramdisk() :
-			idCounter(0) {
+			idCounter(0), verbose(false)
+	{
 	}
 
+	bool verbose;
 	void create(const char* sourcePath, const char* targetPath);
 };
 

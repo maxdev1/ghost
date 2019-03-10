@@ -1,2 +1,2 @@
 
-Requires <<threads#SecurityLevels,user security level>>.
+Requires <<threads#SecurityLevels,G_SECURITY_LEVEL_APPLICATION>>.

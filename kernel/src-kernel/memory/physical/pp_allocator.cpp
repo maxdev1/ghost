@@ -18,11 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <kernel.hpp>
 #include <memory/physical/pp_allocator.hpp>
 #include <memory/bitmap/bitmap.hpp>
 #include <memory/bitmap/bitmap_page_allocator.hpp>
 #include <logger/logger.hpp>
-#include <kernel.hpp>
 #include "debug/debug_interface_kernel.hpp"
 
 static uint32_t freePageCount = 0;
@@ -50,7 +50,7 @@ void g_pp_allocator::initializeFromBitmap(g_physical_address bitmapStart, g_phys
 	if (bitmapBytes == bitmapExpectedBytes) {
 		g_log_debug("%! bitmap check successful", "ppa");
 	} else {
-		g_kernel::panic("%! bitmap has wrong length", "ppa");
+		kernelPanic("%! bitmap has wrong length", "ppa");
 	}
 
 	// Copy the bitmap and count the pages
@@ -92,7 +92,7 @@ g_physical_address g_pp_allocator::allocate() {
 
 	if (page == 0) {
 		g_log_info("%! critical: physical page allocator has no pages left", "ppa");
-		g_kernel::panic("%! out of physical memory", "ppa");
+		kernelPanic("%! out of physical memory", "ppa");
 	}
 
 	--freePageCount;

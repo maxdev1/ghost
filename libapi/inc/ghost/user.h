@@ -167,7 +167,6 @@ void g_syscall(uint32_t call, uint32_t data);
 g_fd g_open(const char* path);
 g_fd g_open_f(const char* path, int32_t flags);
 g_fd g_open_fs(const char* path, int32_t flags, g_fs_open_status* out_status);
-g_fd g_open_fms(const char* path, int32_t flags, int32_t mode, g_fs_open_status* out_status);
 
 /**
  * Closes a file.
@@ -590,16 +589,6 @@ uint8_t g_task_register_id(const char* identifier);
 g_tid g_task_get_id(const char* identifier);
 
 /**
- * The executing thread waits for the interrupt request with the given number.
- *
- * @param irq
- * 		the irq number
- *
- * @security-level DRIVER
- */
-void g_wait_for_irq(uint8_t irq);
-
-/**
  * Maps the given physical address to the executing processes address space so
  * it can access it directly.
  *
@@ -694,7 +683,7 @@ void g_set_video_log(uint8_t enabled);
  *
  * @param security-level KERNEL
  */
-g_ramdisk_spawn_status g_ramdisk_spawn(const char* path, g_security_level securityLevel);
+g_spawn_status g_ramdisk_spawn(const char* path, g_security_level securityLevel);
 
 /**
  * Finds a ramdisk entry by its absolute path.
@@ -1087,7 +1076,7 @@ void g_restore_interrupted_state();
  *
  * @security-level DRIVER
  */
-void* g_register_signal_handler(int signal, void* handler);
+void* g_register_signal_handler(int signal, void(*handler)(int));
 
 /**
  * Raises the <signal> in the <process>.

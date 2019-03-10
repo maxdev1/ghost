@@ -21,10 +21,10 @@
 #include "ghost/calls/calls.h"
 #include <calls/syscall_handler.hpp>
 
-#include <kernel.hpp>
 #include <build_config.hpp>
 #include <ramdisk/ramdisk.hpp>
 #include <executable/elf32_loader.hpp>
+#include <kernel.hpp>
 #include <logger/logger.hpp>
 #include <tasking/tasking.hpp>
 #include <tasking/thread_manager.hpp>
@@ -46,7 +46,7 @@
  */
 g_thread* g_syscall_handle(g_thread* current_thread) {
 
-	uint32_t call = G_SYSCALL_CODE(current_thread->cpuState);
+	uint32_t call = G_SYSCALL_CODE(current_thread->statePtr);
 
 	switch (call) {
 		SYSCALL_LINK(G_SYSCALL_YIELD, yield);
@@ -130,7 +130,7 @@ g_thread* g_syscall_handle(g_thread* current_thread) {
 	// The system call could not be handled, this might mean that the
 	// process was compiled for a deprecated/messed up API library and
 	// is therefore not able to run well.
-	g_log_debug("%! process %i tried to use non-existing syscall %i", "syscall", current_thread->id, G_SYSCALL_CODE(current_thread->cpuState));
+	g_log_debug("%! process %i tried to use non-existing syscall %i", "syscall", current_thread->id, G_SYSCALL_CODE(current_thread->statePtr));
 	current_thread->alive = false;
 	return g_tasking::schedule();
 }

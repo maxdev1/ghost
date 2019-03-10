@@ -34,7 +34,7 @@
  */
 G_SYSCALL_HANDLER(log) {
 	g_process* process = current_thread->process;
-	g_syscall_log* data = (g_syscall_log*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_log* data = (g_syscall_log*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	// % signs are not permitted, because the internal logger would get confused.
 	uint32_t len = g_string::length(data->message);
@@ -69,7 +69,7 @@ G_SYSCALL_HANDLER(log) {
  * Sets the log output to the screen enabled or disabled.
  */
 G_SYSCALL_HANDLER(set_video_log) {
-	g_syscall_set_video_log* data = (g_syscall_set_video_log*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_set_video_log* data = (g_syscall_set_video_log*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	g_logger::setVideo(data->enabled);
 
@@ -81,7 +81,7 @@ G_SYSCALL_HANDLER(set_video_log) {
  */
 G_SYSCALL_HANDLER(test) {
 
-	g_syscall_test* data = (g_syscall_test*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_test* data = (g_syscall_test*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	if (data->test == 1) {
 		data->result = g_pp_allocator::getFreePageCount();
@@ -98,7 +98,7 @@ G_SYSCALL_HANDLER(test) {
  */
 G_SYSCALL_HANDLER(kernquery) {
 
-	g_syscall_kernquery* data = (g_syscall_kernquery*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_kernquery* data = (g_syscall_kernquery*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	// get the short query command
 	uint16_t queryCommand = data->command;
