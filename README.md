@@ -33,6 +33,8 @@ check the legacy branch out.
 * Virtual 8086 for BIOS calls
 * Copy-on-write implementation, `fork()`
 
+![Screenshot of 0.5.6b](https://ghostkernel.org/files/ghost-0.5.6-highres.png)
+
 ## Ported software
 * musl (libm part of Ghost's libc)
 * cairo
