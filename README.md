@@ -1,19 +1,23 @@
 # ABOUT GHOST
-**Ghost** is an operating system for the Intel x86 platform. The project is licensed as GPLv3. It was started as a research project to learn more about low-level software programming and computer internals. This repository is occasionally updated with the new sources.
+**Ghost** is an operating system for the Intel x86 platform. The project is licensed as GPLv3.
+The kernel and the userspace applications are written from scratch in C++ and Assembly (and some C).
+The kernel is not based on any existing kernel and partially Unix-compatible.
 
-The kernel and the userspace applications are written from scratch in C++ and Assembly (and some C). The kernel is not based on any existing kernel and not Unix-compatible. There is a relatively small POSIX.1 compatibility layer that allows porting some software to the system though.
+This is the main development repository.
 
-The most advanced features are SMP support (symmetric multiprocessing) to run on multiple processors, a v8086 monitor for executing BIOS calls (which also introduced VESA support), support for ELF binary loading (including thread-local-storage and all the other little things), as well as signal support. And there is a fancy little GUI that makes it all good-looking :-)
+*Project website:* http://ghostkernel.org/
 
-## Status
-This is the legacy branch of Ghost, containing the kernel implementation of versions until 0.5.6b.
-Ghost redux, the reimplementation of the kernel, was merged back to the master branch.
+## Status of redux
+With the `redux` branch I started a re-implementation of the kernel.
+At the moment, most lower-level stuff is up again and I'm working on the filesystem.
+Once a ready-to-run version is there, I will post a live CD on the website.
 
-![Current highres-screenshot](https://ghostkernel.org/files/ghost-0.5.6-highres.png)
+If you are looking for the previous kernel implementation (versions up to 0.5.6b),
+check the legacy branch out.
 
 ## Features
 * Pure micro-kernel
-* Multiprocessor- & multitasking support
+* Multiprocessor- & multitasking support (SMP)
 * IPC - pipes, signals, messages, shared memory
 * Window server (GUI with homemade toolkit)
 * Patched GCC (OS specific toolchain)
