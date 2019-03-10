@@ -64,6 +64,8 @@ struct g_fs_delegate
 	g_mutex lock;
 
 	g_fs_node*(*discoverChild)(g_fs_node* parent, const char* name);
+	g_fs_read_status (*read)(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
+	g_fs_length_status (*getLength)(g_fs_node* node, int64_t* outLength);
 };
 
 void filesystemInitialize();
@@ -78,10 +80,16 @@ g_fs_node* filesystemFindChild(g_fs_node* parent, const char* name);
 
 g_fs_node* filesystemFind(g_fs_node* parent, const char* path);
 
+g_fs_node* filesystemGetNode(g_fs_virt_id id);
+
 void filesystemAddChild(g_fs_node* parent, g_fs_node* child);
 
 g_fs_delegate* filesystemCreateDelegate();
 
 g_fs_delegate* filesystemFindDelegate(g_fs_node* node);
+
+g_fs_read_status filesystemRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
+
+g_fs_length_status filesystemGetLength(g_fs_node* node, int64_t* outLength);
 
 #endif

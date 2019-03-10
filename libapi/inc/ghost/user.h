@@ -167,7 +167,6 @@ void g_syscall(uint32_t call, uint32_t data);
 g_fd g_open(const char* path);
 g_fd g_open_f(const char* path, int32_t flags);
 g_fd g_open_fs(const char* path, int32_t flags, g_fs_open_status* out_status);
-g_fd g_open_fms(const char* path, int32_t flags, int32_t mode, g_fs_open_status* out_status);
 
 /**
  * Closes a file.

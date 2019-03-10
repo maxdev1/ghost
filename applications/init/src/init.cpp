@@ -41,6 +41,16 @@ int main(int argc, char** argv) {
 
 	g_raise_signal(g_get_pid(), 12);
 
+	g_fd in = g_open("/README");
+	klog("opened file: %i", in);
+	uint8_t buf[128];
+	int len;
+	while ((len = g_read(in, buf, 127)) > 0) {
+		buf[len] = 0;
+		g_log((const char*) buf);
+	}
+	g_close(in);
+
 	int x = 0;
 	int bla = 0;
 	for (;;) {

@@ -24,7 +24,13 @@
 #include "ghost/calls/calls.h"
 #include "kernel/tasking/tasking.hpp"
 
-void syscallFsRead(g_task* task, g_syscall_log* data);
+void syscallFsOpen(g_task* task, g_syscall_fs_open* data);
+
+void syscallFsSeek(g_task* task, g_syscall_fs_seek* data);
+
+void syscallFsRead(g_task* task, g_syscall_fs_read* data);
+
+void syscallFsClose(g_task* task, g_syscall_fs_close* data);
 
 #endif
 

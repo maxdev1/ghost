@@ -24,6 +24,7 @@
 #include "ghost/kernel.h"
 #include "ghost/fs.h"
 #include "kernel/utils/hashmap.hpp"
+#include "kernel/filesystem/filesystem.hpp"
 
 /**
  * Structure of a file descriptor.
@@ -43,7 +44,7 @@ struct g_filesystem_process
 {
 	g_fd nextDescriptor;
 	g_mutex nextDescriptorLock;
-	g_hashmap<g_fd, g_file_descriptor>* descriptors;
+	g_hashmap<g_fd, g_file_descriptor*>* descriptors;
 };
 
 /**
@@ -60,5 +61,20 @@ void filesystemProcessCreate(g_pid pid);
  * Removes file system information for a process.
  */
 void filesystemProcessRemove(g_pid pid);
+
+/**
+ * Creates a file descriptor opening a node.
+ */
+g_fd filesystemProcessCreateDescriptor(g_pid pid, g_fs_node* node, int32_t flags);
+
+/**
+ * Finds a file descriptor.
+ */
+g_file_descriptor* filesystemProcessGetDescriptor(g_pid pid, g_fd fd);
+
+/**
+ * Closes a file descriptor.
+ */
+void filesystemProcessRemoveDescriptor(g_pid pid, g_fd fd);
 
 #endif

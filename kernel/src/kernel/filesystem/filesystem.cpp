@@ -21,6 +21,7 @@
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/filesystem/filesystem_ramdiskdelegate.hpp"
+#include "kernel/tasking/tasking.hpp"
 
 #include "kernel/memory/memory.hpp"
 #include "kernel/kernel.hpp"
@@ -33,10 +34,14 @@ static g_fs_node* mountFolder;
 static g_fs_virt_id filesystemNextId;
 static g_mutex filesystemNextIdLock;
 
+static g_hashmap<g_fs_virt_id, g_fs_node*>* filesystemNodes;
+
 void filesystemInitialize()
 {
 	mutexInitialize(&filesystemNextIdLock);
 	filesystemNextId = 0;
+
+	filesystemNodes = hashmapCreateNumeric<g_fs_virt_id, g_fs_node*>(1024);
 
 	filesystemProcessInitialize();
 	filesystemCreateRoot();
@@ -46,6 +51,8 @@ void filesystemCreateRoot()
 {
 	g_fs_delegate* ramdiskDelegate = filesystemCreateDelegate();
 	ramdiskDelegate->discoverChild = filesystemRamdiskDelegateDiscoverChild;
+	ramdiskDelegate->read = filesystemRamdiskDelegateRead;
+	ramdiskDelegate->getLength = filesystemRamdiskDelegateGetLength;
 
 	filesystemRoot = filesystemCreateNode(G_FS_NODE_TYPE_ROOT, "root");
 	filesystemRoot->delegate = ramdiskDelegate;
@@ -70,6 +77,8 @@ g_fs_node* filesystemCreateNode(g_fs_node_type type, const char* name)
 	node->delegate = 0;
 	node->blocking = false;
 	node->upToDate = false;
+
+	hashmapPut<g_fs_virt_id, g_fs_node*>(filesystemNodes, node->id, node);
 	return node;
 }
 
@@ -128,6 +137,10 @@ g_fs_node* filesystemFindChild(g_fs_node* parent, const char* name)
 
 g_fs_node* filesystemFind(g_fs_node* parent, const char* path)
 {
+	if(parent == 0)
+	{
+		parent = filesystemRoot;
+	}
 	char* nameBuf = (char*) heapAllocate(sizeof(char) * (G_FILENAME_MAX + 1));
 
 	const char* pathPos = path;
@@ -166,6 +179,11 @@ g_fs_node* filesystemFind(g_fs_node* parent, const char* path)
 	return node;
 }
 
+g_fs_node* filesystemGetNode(g_fs_virt_id id)
+{
+	return hashmapGet<g_fs_virt_id, g_fs_node*>(filesystemNodes, id, 0);
+}
+
 g_fs_delegate* filesystemCreateDelegate()
 {
 	g_fs_delegate* delegate = (g_fs_delegate*) heapAllocate(sizeof(g_fs_delegate));
@@ -182,4 +200,22 @@ g_fs_delegate* filesystemFindDelegate(g_fs_node* node)
 	if(delegate == 0)
 		kernelPanic("%! failed to find delegate for node %i", "filesystem", node->id);
 	return delegate;
+}
+
+g_fs_read_status filesystemRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead)
+{
+	g_fs_delegate* delegate = filesystemFindDelegate(node);
+	if(!delegate->read)
+		return G_FS_READ_ERROR;
+
+	return delegate->read(node, buffer, offset, length, outRead);
+}
+
+g_fs_length_status filesystemGetLength(g_fs_node* node, int64_t* outLength)
+{
+	g_fs_delegate* delegate = filesystemFindDelegate(node);
+	if(!delegate->getLength)
+		return G_FS_LENGTH_ERROR;
+
+	return delegate->getLength(node, outLength);
 }

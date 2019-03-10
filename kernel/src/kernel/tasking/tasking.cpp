@@ -62,6 +62,7 @@ void taskingInitializeBsp()
 	mutexInitialize(&taskingIdLock);
 	taskingLocal = (g_tasking_local*) heapAllocate(sizeof(g_tasking_local) * processorGetNumberOfProcessors());
 	taskGlobalMap = hashmapCreateNumeric<g_tid, g_task*>(128);
+
 	taskingInitializeLocal();
 }
 
@@ -238,6 +239,7 @@ g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_securit
 	if(process->main == 0)
 	{
 		process->main = task;
+		process->id = task->id;
 		filesystemProcessCreate((g_pid) task->id);
 	}
 	if(task->securityLevel != G_SECURITY_LEVEL_KERNEL)
@@ -563,6 +565,8 @@ void taskingRemoveThread(g_task* task)
 		addressRangePoolFree(memoryVirtualRangePool, task->tlsCopy.start);
 	}
 
+	taskingTemporarySwitchBack(returnDirectory);
+
 	// Remove self from process
 	mutexAcquire(&task->process->lock);
 
@@ -586,21 +590,16 @@ void taskingRemoveThread(g_task* task)
 		entry = entry->next;
 	}
 
+	mutexRelease(&task->process->lock);
+
 	if(task->process->tasks == 0)
 	{
 		taskingRemoveProcess(task->process);
 
 	} else if(task->process->main == task)
 	{
-		taskingKillProcess(task->process->main->id);
+		taskingKillProcess(task->process->id);
 	}
-
-	mutexRelease(&task->process->lock);
-
-	// Switch back
-	taskingTemporarySwitchBack(returnDirectory);
-
-	logInfo("Removed task %i (%i total free)", task->id, memoryPhysicalAllocator.freePageCount);
 
 	heapFree(task);
 }
@@ -657,6 +656,8 @@ void taskingRemoveProcess(g_process* process)
 	taskingTemporarySwitchBack(returnDirectory);
 	mutexRelease(&process->lock);
 
+	filesystemProcessRemove(process->id);
+
 	heapFree(process->virtualRangePool);
 	bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, process->pageDirectory);
 	heapFree(process);
@@ -664,10 +665,14 @@ void taskingRemoveProcess(g_process* process)
 
 g_physical_address taskingTemporarySwitchToSpace(g_physical_address pageDirectory)
 {
+
 	g_physical_address back = pagingGetCurrentSpace();
 	g_tasking_local* local = taskingGetLocal();
 	if(local->scheduling.current)
 	{
+		if(local->scheduling.current->overridePageDirectory != 0)
+			kernelPanic("%! tried temporary directory switching twice", "tasking");
+
 		local->scheduling.current->overridePageDirectory = pageDirectory;
 	}
 	pagingSwitchToSpace(pageDirectory);

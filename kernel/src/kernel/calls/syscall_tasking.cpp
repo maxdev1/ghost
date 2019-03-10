@@ -46,7 +46,7 @@ void syscallExit(g_task* task, g_syscall_exit* data)
 
 void syscallGetProcessId(g_task* task, g_syscall_get_pid* data)
 {
-	data->id = taskingGetLocal()->scheduling.current->process->main->id;
+	data->id = taskingGetLocal()->scheduling.current->process->id;
 }
 
 void syscallGetTaskId(g_task* task, g_syscall_get_tid* data)
@@ -59,7 +59,7 @@ void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
 	g_task* theTask = taskingGetById(data->tid);
 	if(theTask)
 	{
-		data->pid = theTask->process->main->id;
+		data->pid = theTask->process->id;
 	} else
 	{
 		data->pid = -1;

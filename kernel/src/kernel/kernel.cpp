@@ -110,6 +110,8 @@ void kernelInitialize(g_setup_information* setupInformation)
 	ramdiskLoadFromModule(ramdiskModule);
 }
 
+#include "kernel/utils/hashmap.hpp"
+
 void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 {
 	logDebug("%! has entered kernel", "bsp");
@@ -130,8 +132,8 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	g_task* userTask;
 	elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_APPLICATION, &userTask);
 
-	g_task* userTask2;
-	elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_DRIVER, &userTask2);
+	//g_task* userTask2;
+	//elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_DRIVER, &userTask2);
 	// TEST THREADS END
 
 	mutexRelease(&bootstrapCoreLock, false);
@@ -159,11 +161,11 @@ void kernelRunApplicationCore()
 	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test, testProc, G_SECURITY_LEVEL_KERNEL));
 	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test2, testProc, G_SECURITY_LEVEL_KERNEL));
 
-	g_task* userTask;
-	elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_APPLICATION, &userTask);
+	//g_task* userTask;
+	//elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_APPLICATION, &userTask);
 
-	g_task* userTask2;
-	elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_APPLICATION, &userTask2);
+	//g_task* userTask2;
+	//elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_APPLICATION, &userTask2);
 	// TEST THREADS END
 
 	mutexRelease(&applicationCoreLock, false);
