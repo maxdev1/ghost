@@ -111,6 +111,32 @@ To install third-party libraries, it is usually necessary to provide some parame
 There is also a simplified port installation script in `patches/ports` that allows automatically
 downloads, patches and installs some third-party libraries.
 
+
+Creating a bootable USB stick
+-----------------------------
+You can create a bootable USB stick with the following steps.
+
+1. Convert the `image.iso` file to an .img 
+
+	hdiutil convert -format UDRO -o converted.img image.iso
+
+2. Find out which drive the USB stick is with
+
+	diskutil list
+	
+3. Unmount the disk
+	
+	diskutil unmountDisk /dev/diskN
+	
+4. Write the image to the stick
+
+	sudo dd if=converted.img of=/dev/rdiskN bs=1m
+
+5. Unmount it again
+	
+	diskutil unmountDisk /dev/diskN
+
+
 Tips
 ----
 * To specify a different toolchain base directory, modify `TOOLCHAIN_BASE`, copy the

@@ -2,10 +2,7 @@
 <projectDescription>
 	<name>ghost</name>
 	<comment>Main repository of the Ghost operating system project</comment>
-	<projects>
-	</projects>
-	<buildSpec>
-	</buildSpec>
-	<natures>
-	</natures>
+	<projects></projects>
+	<buildSpec></buildSpec>
+	<natures></natures>
 </projectDescription>

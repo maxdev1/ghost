@@ -15,6 +15,10 @@ Once a ready-to-run version is there, I will post a live CD on the website.
 If you are looking for the previous kernel implementation (versions up to 0.5.6b),
 check the legacy branch out.
 
+## Documentation
+See the `documentation` folder. It contains information about the technical design as well
+as building instructions.
+
 ## Features
 * Pure micro-kernel
 * Multiprocessor- & multitasking support (SMP)
@@ -44,10 +48,6 @@ check the legacy branch out.
 * zlib
 * nasm
 * bash (in progress)
-
-## Documentation
-See the `documentation` folder for documentation. It contains information
-about the technical design as well as building instructions.
 
 ## Contact
 If you want to get in contact, contribute to the project or have any questions,
