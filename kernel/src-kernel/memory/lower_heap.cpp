@@ -18,8 +18,8 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <memory/lower_heap.hpp>
 #include <kernel.hpp>
+#include <memory/lower_heap.hpp>
 #include <logger/logger.hpp>
 #include <memory/allocators/chunk_allocator.hpp>
 

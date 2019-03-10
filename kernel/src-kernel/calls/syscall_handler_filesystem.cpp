@@ -40,7 +40,7 @@
  */
 G_SYSCALL_HANDLER(get_working_directory) {
 
-	g_syscall_fs_get_working_directory* data = (g_syscall_fs_get_working_directory*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_get_working_directory* data = (g_syscall_fs_get_working_directory*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	char* cwd = current_thread->process->workingDirectory;
 	if (cwd) {
@@ -62,7 +62,7 @@ G_SYSCALL_HANDLER(get_working_directory) {
  */
 G_SYSCALL_HANDLER(get_executable_path) {
 
-	g_syscall_fs_get_executable_path* data = (g_syscall_fs_get_executable_path*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_get_executable_path* data = (g_syscall_fs_get_executable_path*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	if (current_thread->process->source_path == nullptr) {
 		data->buffer[0] = 0;
@@ -78,7 +78,7 @@ G_SYSCALL_HANDLER(get_executable_path) {
  */
 G_SYSCALL_HANDLER(fs_register_as_delegate) {
 
-	g_syscall_fs_register_as_delegate* data = (g_syscall_fs_register_as_delegate*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_register_as_delegate* data = (g_syscall_fs_register_as_delegate*) G_SYSCALL_DATA(current_thread->statePtr);
 	data->result = g_filesystem::create_delegate(current_thread, data->name, data->phys_mountpoint_id, &data->mountpoint_id, &data->transaction_storage);
 	return current_thread;
 }
@@ -88,7 +88,7 @@ G_SYSCALL_HANDLER(fs_register_as_delegate) {
  */
 G_SYSCALL_HANDLER(fs_set_transaction_status) {
 
-	g_syscall_fs_set_transaction_status* data = (g_syscall_fs_set_transaction_status*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_set_transaction_status* data = (g_syscall_fs_set_transaction_status*) G_SYSCALL_DATA(current_thread->statePtr);
 	g_fs_transaction_store::set_status(data->transaction, data->status);
 	return current_thread;
 }
@@ -98,7 +98,7 @@ G_SYSCALL_HANDLER(fs_set_transaction_status) {
  */
 G_SYSCALL_HANDLER(fs_create_node) {
 
-	g_syscall_fs_create_node* data = (g_syscall_fs_create_node*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_create_node* data = (g_syscall_fs_create_node*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	// check for parent
 	g_fs_node* parent = g_filesystem::get_node_by_id(data->parent_id);
@@ -137,7 +137,7 @@ G_SYSCALL_HANDLER(fs_create_node) {
  */
 G_SYSCALL_HANDLER(set_working_directory) {
 
-	g_syscall_fs_set_working_directory* data = (g_syscall_fs_set_working_directory*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_set_working_directory* data = (g_syscall_fs_set_working_directory*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	// find the target thread
 	g_thread* target = nullptr;
@@ -184,7 +184,7 @@ G_SYSCALL_HANDLER(set_working_directory) {
  */
 G_SYSCALL_HANDLER(fs_open) {
 
-	g_syscall_fs_open* data = (g_syscall_fs_open*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_open* data = (g_syscall_fs_open*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	// create an absolute path from the given path
 	g_local<char> target_path(new char[G_PATH_MAX]);
@@ -213,7 +213,7 @@ G_SYSCALL_HANDLER(fs_open) {
  */
 G_SYSCALL_HANDLER(fs_read) {
 
-	g_syscall_fs_read* data = (g_syscall_fs_read*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_read* data = (g_syscall_fs_read*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	// find the filesystem node
 	g_fs_node* node;
@@ -247,7 +247,7 @@ G_SYSCALL_HANDLER(fs_read) {
  */
 G_SYSCALL_HANDLER(fs_write) {
 
-	g_syscall_fs_write* data = (g_syscall_fs_write*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_write* data = (g_syscall_fs_write*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	// find the filesystem node
 	g_fs_node* node;
@@ -281,7 +281,7 @@ G_SYSCALL_HANDLER(fs_write) {
  */
 G_SYSCALL_HANDLER(fs_close) {
 
-	g_syscall_fs_close* data = (g_syscall_fs_close*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_close* data = (g_syscall_fs_close*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	// find the filesystem node
 	g_fs_node* node;
@@ -314,7 +314,7 @@ G_SYSCALL_HANDLER(fs_close) {
  */
 G_SYSCALL_HANDLER(fs_seek) {
 
-	g_syscall_fs_seek* data = (g_syscall_fs_seek*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_seek* data = (g_syscall_fs_seek*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	// find the node
 	g_fs_node* node;
@@ -347,7 +347,7 @@ G_SYSCALL_HANDLER(fs_seek) {
  */
 G_SYSCALL_HANDLER(fs_length) {
 
-	g_syscall_fs_length* data = (g_syscall_fs_length*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_length* data = (g_syscall_fs_length*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	bool by_fd = (data->mode & G_SYSCALL_FS_LENGTH_MODE_BY_MASK) == G_SYSCALL_FS_LENGTH_BY_FD;
 	bool follow_symlinks = (data->mode & G_SYSCALL_FS_LENGTH_MODE_SYMLINK_MASK) == G_SYSCALL_FS_LENGTH_FOLLOW_SYMLINKS;
@@ -410,7 +410,7 @@ G_SYSCALL_HANDLER(fs_length) {
  */
 G_SYSCALL_HANDLER(fs_tell) {
 
-	g_syscall_fs_tell* data = (g_syscall_fs_tell*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_tell* data = (g_syscall_fs_tell*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	g_fs_node* node;
 	g_file_descriptor_content* fd;
@@ -430,7 +430,7 @@ G_SYSCALL_HANDLER(fs_tell) {
  */
 G_SYSCALL_HANDLER(fs_clonefd) {
 
-	g_syscall_fs_clonefd* data = (g_syscall_fs_clonefd*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_clonefd* data = (g_syscall_fs_clonefd*) G_SYSCALL_DATA(current_thread->statePtr);
 	data->result = g_filesystem::clonefd(data->source_fd, data->source_pid, data->target_fd, data->target_pid, &data->status);
 
 	return current_thread;
@@ -441,7 +441,7 @@ G_SYSCALL_HANDLER(fs_clonefd) {
  */
 G_SYSCALL_HANDLER(fs_pipe) {
 
-	g_syscall_fs_pipe* data = (g_syscall_fs_pipe*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_pipe* data = (g_syscall_fs_pipe*) G_SYSCALL_DATA(current_thread->statePtr);
 	data->status = g_filesystem::pipe(current_thread, data->blocking, &data->write_fd, &data->read_fd);
 	return current_thread;
 }
@@ -451,7 +451,7 @@ G_SYSCALL_HANDLER(fs_pipe) {
  */
 G_SYSCALL_HANDLER(fs_open_directory) {
 
-	g_syscall_fs_open_directory* data = (g_syscall_fs_open_directory*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_open_directory* data = (g_syscall_fs_open_directory*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	// get absolute path for the requested path, relative to process working directory
 	g_local<char> absolute_path(new char[G_PATH_MAX]);
@@ -469,7 +469,7 @@ G_SYSCALL_HANDLER(fs_open_directory) {
  */
 G_SYSCALL_HANDLER(fs_read_directory) {
 
-	g_syscall_fs_read_directory* data = (g_syscall_fs_read_directory*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_read_directory* data = (g_syscall_fs_read_directory*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	// create handler
 	g_contextual<g_syscall_fs_read_directory*> bound_data(data, current_thread->process->pageDirectory);
@@ -514,7 +514,7 @@ G_SYSCALL_HANDLER(fs_read_directory) {
  */
 G_SYSCALL_HANDLER(fs_stat) {
 
-	g_syscall_fs_stat* data = (g_syscall_fs_stat*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_stat* data = (g_syscall_fs_stat*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	data->result = -1;
 
@@ -526,7 +526,7 @@ G_SYSCALL_HANDLER(fs_stat) {
  */
 G_SYSCALL_HANDLER(fs_fstat) {
 
-	g_syscall_fs_fstat* data = (g_syscall_fs_fstat*) G_SYSCALL_DATA(current_thread->cpuState);
+	g_syscall_fs_fstat* data = (g_syscall_fs_fstat*) G_SYSCALL_DATA(current_thread->statePtr);
 
 	data->result = -1;
 

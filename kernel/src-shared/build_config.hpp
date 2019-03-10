@@ -28,7 +28,7 @@
 #error "No architecture defined for build. Need to specify either _ARCH_X86_ or _ARCH_x86_64_"
 #endif
 
-#define G_PRETTY_BOOT									true
+#define G_PRETTY_BOOT									false
 
 // logging settings
 #define G_LOG_LEVEL										G_LOG_LEVEL_INFO

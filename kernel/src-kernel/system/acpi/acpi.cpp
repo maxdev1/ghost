@@ -18,10 +18,10 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <kernel.hpp>
 #include <system/acpi/acpi.hpp>
 #include <system/acpi/rsdp_lookup_util.hpp>
 #include <logger/logger.hpp>
-#include <kernel.hpp>
 #include <utils/string.hpp>
 #include <memory/address_space.hpp>
 #include <system/acpi/MADT.hpp>
@@ -182,7 +182,7 @@ uint32_t g_acpi::getLengthOfUnmappedSDT(g_physical_address tableLocation) {
 	// Align the location down, we will allocate 2 pages to make sure the
 	// header is within the range
 	g_physical_address physStart = G_PAGE_ALIGN_DOWN(tableLocation);
-	g_virtual_address virtualBase = g_kernel::virtual_range_pool->allocate(2);
+	g_virtual_address virtualBase = kernelMemoryVirtualRangePool->allocate(2);
 
 	if (!g_address_space::map(virtualBase, physStart, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS)) {
 		g_log_warn("%! could not create virtual mapping (1) for SDT %h", "acpi", tableLocation);
@@ -203,7 +203,7 @@ uint32_t g_acpi::getLengthOfUnmappedSDT(g_physical_address tableLocation) {
 	// Unmap the two mapped pages
 	g_address_space::unmap(virtualBase);
 	g_address_space::unmap(virtualBase + G_PAGE_SIZE);
-	g_kernel::virtual_range_pool->free(virtualBase);
+	kernelMemoryVirtualRangePool->free(virtualBase);
 
 	return length;
 }
@@ -235,7 +235,7 @@ g_acpi_table_header* g_acpi::mapSDT(g_physical_address tableLocation) {
 
 	// Calculate amount of physical pages and allocate virtual range
 	uint32_t pages = (physEnd - physStart) / G_PAGE_SIZE;
-	g_virtual_address virtualBase = g_kernel::virtual_range_pool->allocate(pages);
+	g_virtual_address virtualBase = kernelMemoryVirtualRangePool->allocate(pages);
 
 	// Could not find a virtual range of that size
 	if (virtualBase == 0) {

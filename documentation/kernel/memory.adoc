@@ -15,45 +15,29 @@ Each <<threads#Processes,process>> has its own address space. All threads of
 the same process share the same address space and therefore have access to the
 same regions of memory.
 
+The layout of each address space looks as follows.
 
-[[LowerMemory]]
-Lower memory
-------------
+image::../diagrams/Memory-Layout.png[]
 
-[[Userspace]]
-User space
-----------
-The user space is the area of virtual address space that can possibly be
-accessed by a user space process. 
+The _kernel memory_ part of the layout is identical for all processes in the system.
 
-The layout of this part of the virtual address space is as follows.
-
-[options="header"]
-|===============================================================================
-| Adress range				| Description
-| 0x00100000 - 0x80000000	| The program executable is loaded in this area.
-	Right after the last used page of the process image, the process heap starts
-	and may possibly expand up to the end of this area.
-| 0x80000000 - 0xA0000000	| _Currently unused_
-| 0xA0000000 - 0xC0000000	| "Virtual ranges" area. This area is handled
-	by a kind of "range allocator" that manages the address ranges within. These
-	address ranges are used for various things: the user space stacks,
-	allocating shared memory, thread-local-storage and more.
-|===============================================================================
-
-[[Kernelspace]]
-Kernel space
-------------
-
-
+|=====
+| *Recursively mapped page directory* | Contains the page directory
+| *Kernel virtual ranges* | Used whenever a chunk of the virtual address space in the kernel area is needed.
+| *Kernel binary, stack & heap* | The kernel binary image is loaded to this area. Right after it, the kernel setup stack is created. Anything after is used as heap area for the kernel.
+| *User virtual ranges* | Used whenever a chunk of the virtual address space in the user area is needed.
+| *User heap* | The remaining memory after the user binary is used as the kernel heap area.
+| *User binary* | The user binary image is loaded to this area.
+| *Lower memory* | The lower memory area is used for SMP setup and VM86 calls.
+|=====
 
 [[Stacks]]
 Stacks
 ------
-Each thread has two stacks: a user space stack and a kernel space stack.
+Each thread has two stacks, a user space stack and a kernel space stack.
 
 Kernel space stack
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
 The kernel space stack is the one that the kernel operates on during system
 calls and where the state of the thread is stored during interruptions. It is
 statically assigned to 1 page and mapped into <<Kernelspace,kernel space>>.
@@ -72,3 +56,15 @@ memory than necessary. When the stack overflows, a page fault is triggered
 and the kernel handles the situation by inserting a new physical page.
 
 image::../diagrams/Stack-Overflow.png[]
+
+
+Address range pools
+--------------------
+The `g_address_range_pool` is an allocator for ranges of addresses. The kernel
+has one main allocator for virtual ranges in the kernel space. Each process has an
+allocator assigned to manage ranges in the user space.
+
+Chunk allocator
+---------------
+The `g_chunk_allocator` a simple allocator that is used by the kernel heap.
+It keeps a list of all free chunks and merges them when possibly.

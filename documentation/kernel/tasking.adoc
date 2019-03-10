@@ -1,0 +1,136 @@
+# Tasking management
+:toc: left
+:toclevels: 4
+:last-update-label!:
+:source-highlighter: prettify 
+:numbered:
+include::../common/homelink.adoc[]
+
+[[Processes]]
+== Processes
+A process contains one or more threads. It holds information that
+is common for all of its threads. Each process has a main thread and can
+have multiple child threads.
+
+A process itself has no id, it is identified by the id of its main thread.
+
+
+[[Threads]]
+== Threads
+A thread is a single stream of execution. `g_task` is the data structure
+that contains information for a thread.
+
+Threads running in kernel-level only have one stack, user-space threads have an additional
+stack that is used during interrupt handling. The <<memory#Stacks,stack section>> describes
+how these stacks are handled.
+
+=== Types
+The following constants of type `g_thread_type` denote types of threads.
+[options="header"]
+|==========================================================
+| Identifier			| Description
+| G_THREAD_TYPE_DEFAULT	| Normal thread
+| G_THREAD_TYPE_VM86	| Virtual 8086 thread
+|==========================================================
+
+
+
+=== Kernel-level
+==== Creating a thread
+In kernel space, a thread can be created by using `taskingCreateThread` and
+assigning it to scheduling with `taskingAssign`.
+
+==== Considerations
+There are some things to consider when implementing a thread in kernel-level.
+When a kernel-lock is taken by a task, scheduling is disabled until the task
+releases the lock. This is inevitable as it could cause a deadlock if the task
+is interrupted while holding a lock.
+
+To minimize any blocking, locks should therefore be used around critical parts
+but acquired as late and released as soon as possible.
+
+==== Exiting a thread
+A kernel thread must be exited using `taskingKernelThreadExit`, otherwise the
+task will run into nirvana and cause a failure.
+
+
+=== User-level
+==== Creating a thread
+To create a thread from userspace, the `<<libapi#g_create_thread,g_create_thread>>`
+API function is used. This function must be supplied with an address pointing to
+code that the thread shall execute. Additionally to the entry point, a pointer
+to user data can be passed.
+
+A simple example could look like this:
+
+[source,c]
+-----
+void myThreadedCounter(int* counter) {
+	for(;;) {
+		(*counter)++;
+	}
+}
+
+int main(int argc, char** argv) {
+	int counter = 0;
+	g_create_thread_d(myThreadedCounter, &counter);
+	
+	for(;;) {
+		g_sleep(1000);
+		printf("The counter is: %i\n", counter);
+	}
+}
+-----
+
+Each thread has a unique id of type `g_tid`. This id can be obtained from within
+the thread using `<<libapi#g_get_tid,g_get_tid>>`.
+
+==== Internal initialization
+The thread initialization sequence uses a wrapper function for starting
+the thread. First, the `G_SYSCALL_CREATE_THREAD` system call is called
+and supplied with a "thread setup routine" and the "user entry" (the function
+given to `g_create_thread`).
+
+This setup routine is the first piece of code that is executed from within the
+newly created thread, but does initially not know where to start execution.
+To get this information, it uses `G_SYSCALL_GET_THREAD_ENTRY` which returns
+the user entry to start executing at.
+
+This entire procedure is done to avoid that the kernel must modify the user
+stack to put the necessary values on it, but rather do it from within code which
+is inherently ABI compatible.
+
+
+==== Exiting a thread
+A thread is automatically destroyed once the entry function finishes execution.
+To stop execution from an arbitrary point, the `<<libapi#g_exit,g_exit>>` API
+function can be used.
+
+A single thread can not be killed from a different process; using the
+`<<libapi#g_kill,g_kill>>` always causes the entire process to exit.
+
+When the main thread of a <<Processes,process>> dies, all threads of the process
+are killed.
+
+
+
+[[SecurityLevels]]
+=== Security Levels
+When creating a process, a security level is used to determine what permissions
+the threads of the process have. This security level is stored on the process
+and applied on thread creation.
+
+==== Existing security levels
+The following constants of type `g_security_level` denote the different
+security levels.
+[options="header"]
+|==========================================================
+| Identifier					| Description
+| `G_SECURITY_LEVEL_APPLICATION`| Has no specific permissions.
+| `G_SECURITY_LEVEL_DRIVER`		| Has I/O permission level 3 (may use `out` and
+		`in` commands to access the CPU I/O ports) and is permitted to
+		use a variety of driver-related system calls.
+| `G_SECURITY_LEVEL_KERNEL`		| Runs in kernel space
+|==========================================================
+
+

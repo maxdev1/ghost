@@ -33,11 +33,6 @@ public:
 	 */
 	static void install();
 
-	/**
-	 * Dispatches the interrupt handling and EOIs.
-	 */
-	static g_processor_state* handle(g_processor_state* state);
-
 };
 
 #endif

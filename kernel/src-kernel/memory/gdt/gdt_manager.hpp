@@ -22,10 +22,10 @@
 #define GHOST_GDT_INITIALIZER
 
 #include "ghost/stdint.h"
-#include <memory/gdt/gdt.hpp>
-#include <memory/gdt/tss.hpp>
-#include <memory/paging.hpp>
-#include <memory/memory.hpp>
+#include "memory/gdt/gdt.hpp"
+#include "memory/gdt/tss.hpp"
+#include "memory/paging.hpp"
+#include "memory/memory.hpp"
 
 /**
  * Number of entries in a GDT

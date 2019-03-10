@@ -1,7 +1,14 @@
 #!/bin/bash
-source ../../ghost.sh
+ROOT="../.."
+if [ -f "$ROOT/variables.sh" ]; then
+	. "$ROOT/variables.sh"
+fi
+. "$ROOT/ghost.sh"
+
 
 TARGET=$1
+with TARGET "all"
+
 ARTIFACT_LOCAL=$OBJ/$ARTIFACT_NAME
 ARTIFACT_TARGET=$SYSROOT_APPLICATIONS/$ARTIFACT_NAME
 

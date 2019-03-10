@@ -1,6 +1,12 @@
 #!/bin/bash
-source ghost.sh
+ROOT="."
+if [ -f "$ROOT/variables.sh" ]; then
+	. "$ROOT/variables.sh"
+fi
+. "$ROOT/ghost.sh"
 
+
+# Define some helpers
 pushd() {
     command pushd "$@" > /dev/null
 }
@@ -8,6 +14,12 @@ pushd() {
 popd() {
     command popd "$@" > /dev/null
 }
+
+
+# Install pkg-config wrapper
+pushd tools/pkg-config
+$SH build.sh all
+popd
 
 
 # First build necessary ports (if not done yet)

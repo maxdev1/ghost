@@ -1,4 +1,9 @@
 #!/bin/bash
 
-# Copy this file as variables.sh.
+#
+# Copy this file to "variables.sh"
 # Here you can change settings for the build scripts.
+#
+# To use a different toolchain base:
+#	export TOOLCHAIN_BASE="/path/to/base"
+#

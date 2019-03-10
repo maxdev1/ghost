@@ -25,13 +25,6 @@
 
 __BEGIN_C
 
-// ramdisk spawning status codes
-typedef uint8_t g_ramdisk_spawn_status;
-#define G_RAMDISK_SPAWN_STATUS_SUCCESSFUL			1
-#define G_RAMDISK_SPAWN_STATUS_FAILED_NOT_FOUND		2
-#define G_RAMDISK_SPAWN_STATUS_FAILED_NOT_VALID		3
-#define G_RAMDISK_SPAWN_STATUS_FAILED_NOT_PERMITTED	4
-
 /**
  * Maximum length of paths within the ramdisk
  */
@@ -42,6 +35,8 @@ typedef int g_ramdisk_entry_type;
 #define G_RAMDISK_ENTRY_TYPE_UNKNOWN	-1
 #define G_RAMDISK_ENTRY_TYPE_FOLDER		0
 #define G_RAMDISK_ENTRY_TYPE_FILE		1
+
+typedef uint32_t g_ramdisk_id;
 
 /**
  * Ramdisk entry information struct used within system calls

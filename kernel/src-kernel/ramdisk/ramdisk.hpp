@@ -113,4 +113,14 @@ public:
 
 };
 
+/**
+ * Creates a ramdisk instance for a multiboot module. The contents of the
+ * ramdisk are relocated into kernel memory.
+ *
+ * @param module source multiboot module
+ * @return a ramdisk instance
+ */
+g_ramdisk* ramdiskLoadFromModule(g_multiboot_module* module);
+
+
 #endif

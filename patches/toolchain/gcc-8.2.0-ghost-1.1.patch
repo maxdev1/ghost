@@ -25,7 +25,7 @@ diff -Nur gcc-8.2.0/fixincludes/mkfixinc.sh gcc-8.2.0-ghost/fixincludes/mkfixinc
 diff -Nur gcc-8.2.0/gcc/config/ghost.h gcc-8.2.0-ghost/gcc/config/ghost.h
 --- gcc-8.2.0/gcc/config/ghost.h	1970-01-01 01:00:00.000000000 +0100
 +++ gcc-8.2.0-ghost/gcc/config/ghost.h	2018-12-23 00:16:47.000000000 +0100
-@@ -0,0 +1,32 @@
+@@ -0,0 +1,36 @@
 +// built-in defines
 +#undef TARGET_OS_CPP_BUILTINS
 +#define TARGET_OS_CPP_BUILTINS()		\
@@ -43,6 +43,10 @@ diff -Nur gcc-8.2.0/gcc/config/ghost.h gcc-8.2.0-ghost/gcc/config/ghost.h
 +// don't automatically add extern "C" { } around header files
 +#undef	NO_IMPLICIT_EXTERN_C
 +#define	NO_IMPLICIT_EXTERN_C 1
++
++// required for dynamic linking
++#undef LINK_SPEC
++#define LINK_SPEC "%{shared:-shared} %{static:-static} %{!shared: %{!static: %{rdynamic:-export-dynamic}}}"
 +
 +// define the default library specifications
 +#undef	LIB_SPEC

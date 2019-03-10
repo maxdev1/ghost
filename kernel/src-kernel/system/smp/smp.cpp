@@ -18,6 +18,7 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <kernel.hpp>
 #include <system/smp/smp.hpp>
 #include <system/system.hpp>
 #include <logger/logger.hpp>
@@ -27,7 +28,6 @@
 #include <system/interrupts/lapic.hpp>
 #include <memory/address_space.hpp>
 #include <memory/physical/pp_allocator.hpp>
-#include <kernel.hpp>
 
 /**
  *
@@ -36,7 +36,7 @@ void g_smp::initialize(g_physical_address initialPageDirectoryPhysical) {
 
 	// Write values to lower memory for use within startup code
 	*((uint32_t*) G_CONST_SMP_STARTUP_AREA_PAGE_DIRECTORY) = initialPageDirectoryPhysical;
-	*((uint32_t*) G_CONST_SMP_STARTUP_AREA_AP_START_ADDRESS) = (g_virtual_address) g_kernel::run_ap;
+	*((uint32_t*) G_CONST_SMP_STARTUP_AREA_AP_START_ADDRESS) = (g_virtual_address) kernelRunApplicationCore;
 	*((uint32_t*) G_CONST_SMP_STARTUP_AREA_AP_COUNTER) = 0;
 
 	g_log_debug("%! initial page directory for APs: %h", "smp", *((uint32_t*) G_CONST_SMP_STARTUP_AREA_PAGE_DIRECTORY));
@@ -52,7 +52,7 @@ void g_smp::initialize(g_physical_address initialPageDirectoryPhysical) {
 			g_log_info("%*%! could not allocate physical page for AP stack", 0x0C, "smp");
 			return;
 		}
-		g_virtual_address stackVirtual = g_kernel::virtual_range_pool->allocate(1);
+		g_virtual_address stackVirtual = kernelMemoryVirtualRangePool->allocate(1);
 		if (stackPhysical == 0) {
 			g_log_info("%*%! could not allocate virtual range for AP stack", 0x0C, "smp");
 			return;
@@ -68,7 +68,7 @@ void g_smp::initialize(g_physical_address initialPageDirectoryPhysical) {
 
 	// Copy start object from ramdisk to lower memory
 	const char* ap_startup_location = "system/lib/apstartup.o";
-	g_ramdisk_entry* startupObject = g_kernel::ramdisk->findAbsolute(ap_startup_location);
+	g_ramdisk_entry* startupObject = kernelRamdisk->findAbsolute(ap_startup_location);
 	if (startupObject == 0) {
 		g_log_info("%*%! could not initialize due to missing apstartup object at '%s'", 0x0C, "smp", ap_startup_location);
 		return;

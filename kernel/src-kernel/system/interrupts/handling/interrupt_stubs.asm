@@ -22,7 +22,7 @@
 BITS 32
 
 ;
-; C handler functions
+; C handler functions (see interrupts.hpp)
 ;
 extern _interruptHandler
 

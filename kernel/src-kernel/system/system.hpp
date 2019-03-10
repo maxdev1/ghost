@@ -21,7 +21,7 @@
 #ifndef GHOST_SHARED_SYSTEM_SYSTEM
 #define GHOST_SHARED_SYSTEM_SYSTEM
 
-#include <system/processor.hpp>
+#include "system/processor.hpp"
 
 #include "ghost/stdint.h"
 

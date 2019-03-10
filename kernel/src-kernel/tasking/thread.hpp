@@ -50,9 +50,8 @@ struct g_thread_information_vm86 {
 /**
  *
  */
-enum class g_thread_interruption_info_type
-	: uint8_t {
-		NONE, IRQ, SIGNAL
+enum class g_thread_interruption_info_type : uint8_t {
+	NONE, IRQ, SIGNAL
 };
 
 /**
@@ -60,8 +59,8 @@ enum class g_thread_interruption_info_type
  */
 class g_thread_interruption_info {
 public:
-	g_processor_state cpuState;
-	g_processor_state* cpuStateAddress;
+	g_processor_state state;
+	g_processor_state* statePtr;
 	g_waiter* waitManager;
 
 	g_thread_interruption_info_type type = g_thread_interruption_info_type::NONE;
@@ -91,12 +90,16 @@ public:
 	g_waiter* waitManager;
 	uint32_t waitCount;
 
+	// Scheduling informaiton
 	uint64_t rounds;
+	uint64_t lastRunTime;
+	uint32_t schedulerRound;
 
 	void* userData;
 	void* threadEntry;
 
-	g_processor_state* cpuState;
+	g_processor_state* statePtr;
+	g_processor_state state;
 	g_virtual_address kernelStackPageVirt;
 	g_virtual_address kernelStackEsp0;
 	g_virtual_address userStackAreaStart;
@@ -117,7 +120,8 @@ public:
 
 	void raise_signal(int signal);
 	void enter_irq_handler(uintptr_t address, uint8_t irq, uintptr_t callback);
-	void enter_signal_handler(uintptr_t address, int signal, uintptr_t callback);
+	void enter_signal_handler(uintptr_t address, int signal,
+			uintptr_t callback);
 	bool start_prepare_interruption();
 	void finish_prepare_interruption(uintptr_t address, uintptr_t callback);
 
