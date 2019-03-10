@@ -83,3 +83,24 @@ void syscallGetExecutablePath(g_task* task, g_syscall_fs_get_executable_path* da
 	else
 		data->buffer[0] = 0;
 }
+
+void syscallGetWorkingDirectory(g_task* task, g_syscall_fs_get_working_directory* data)
+{
+	const char* workingDirectory = task->process->environment.workingDirectory;
+	if(workingDirectory)
+	{
+		size_t length = stringLength(workingDirectory);
+		if(length + 1 > data->maxlen)
+		{
+			data->result = G_GET_WORKING_DIRECTORY_SIZE_EXCEEDED;
+		} else
+		{
+			stringCopy(data->buffer, workingDirectory);
+			data->result = G_GET_WORKING_DIRECTORY_SUCCESSFUL;
+		}
+	} else
+	{
+		stringCopy(data->buffer, "/");
+		data->result = G_GET_WORKING_DIRECTORY_SUCCESSFUL;
+	}
+}
