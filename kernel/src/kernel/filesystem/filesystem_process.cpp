@@ -18,70 +18,24 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_FILESYSTEM__
-#define __KERNEL_FILESYSTEM__
+#include "kernel/filesystem/filesystem_process.hpp"
+#include "kernel/memory/memory.hpp"
 
-#include "ghost/fs.h"
-#include "shared/system/mutex.hpp"
+static g_hashmap<g_pid, g_filesystem_process*>* filesystemProcessInfo;
 
-struct g_fs_node;
-struct g_fs_node_entry;
-struct g_fs_delegate;
-
-/**
- * A node on the file system.
- */
-struct g_fs_node
+void filesystemProcessInitialize()
 {
-	g_fs_virt_id id;
-	g_fs_phys_id physicalId;
-	g_fs_node_type type;
+	filesystemProcessInfo = hashmapCreateNumeric<g_pid, g_filesystem_process*>(128);
+}
 
-	char* name;
-	g_fs_node* parent;
-	g_fs_node_entry* children;
-
-	g_fs_delegate* delegate;
-
-	bool blocking;
-	bool upToDate;
-};
-
-/**
- * An entry in the node tree.
- */
-struct g_fs_node_entry
+void filesystemProcessCreate(g_pid pid)
 {
-	g_fs_node* node;
-	g_fs_node_entry* next;
-};
+	g_filesystem_process* info = (g_filesystem_process*) heapAllocate(sizeof(g_filesystem_process));
 
-/**
- * A file system delegate.
- */
-struct g_fs_delegate
-{
-	g_mutex lock;
+	info->nextDescriptor = 3; // after stdin, stdout, stderr
+	mutexInitialize(&info->nextDescriptorLock);
+	info->descriptors = hashmapCreateNumeric<g_fd, g_file_descriptor>(128);
 
-	g_fs_node*(*discoverChild)(g_fs_node* parent, const char* name);
-};
+	hashmapPut(filesystemProcessInfo, pid, info);
+}
 
-void filesystemInitialize();
-
-void filesystemCreateRoot();
-
-g_fs_virt_id filesystemGetNextId();
-
-g_fs_node* filesystemCreateNode(g_fs_node_type type, const char* name);
-
-g_fs_node* filesystemFindChild(g_fs_node* parent, const char* name);
-
-g_fs_node* filesystemFind(g_fs_node* parent, const char* path);
-
-void filesystemAddChild(g_fs_node* parent, g_fs_node* child);
-
-g_fs_delegate* filesystemCreateDelegate();
-
-g_fs_delegate* filesystemFindDelegate(g_fs_node* node);
-
-#endif
