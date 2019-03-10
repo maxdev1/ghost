@@ -24,8 +24,10 @@
 #include "kernel/memory/heap.hpp"
 #include "shared/logger/logger.hpp"
 
-bool waitTryWake(g_task* task) {
-	if(task->waitResolver && task->waitResolver(task)) {
+bool waitTryWake(g_task* task)
+{
+	if(task->waitResolver && task->waitResolver(task))
+	{
 		task->waitResolver = 0;
 		if(task->waitData)
 		{
@@ -45,5 +47,14 @@ void waitSleep(g_task* task, uint64_t milliseconds)
 	waitData->wakeTime = taskingGetLocal()->time + milliseconds;
 	task->waitData = waitData;
 	task->waitResolver = waitResolverSleep;
+	task->status = G_THREAD_STATUS_WAITING;
+}
+
+void waitAtomicLock(g_task* task)
+{
+	g_wait_resolver_atomic_lock_data* waitData = (g_wait_resolver_atomic_lock_data*) heapAllocate(sizeof(g_wait_resolver_atomic_lock_data));
+	waitData->startTime = taskingGetLocal()->time;
+	task->waitData = waitData;
+	task->waitResolver = waitResolverAtomicLock;
 	task->status = G_THREAD_STATUS_WAITING;
 }

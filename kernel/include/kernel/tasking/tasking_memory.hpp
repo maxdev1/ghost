@@ -18,14 +18,14 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost/user.h"
+#ifndef __KERNEL_TASKING_MEMORY__
+#define __KERNEL_TASKING_MEMORY__
+
+#include "kernel/tasking/tasking.hpp"
 
 /**
- *
+ * Extends the heap of the task by an amount.
  */
-void g_attach_created_process(g_process_creation_identifier process, g_address eip) {
-	g_syscall_attach_created_process data;
-	data.eip = eip;
-	data.processObject = process;
-	g_syscall(G_SYSCALL_ATTACH_CREATED_PROCESS, (uint32_t) &data);
-}
+bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress);
+
+#endif

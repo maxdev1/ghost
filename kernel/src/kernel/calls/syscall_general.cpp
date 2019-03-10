@@ -18,17 +18,64 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost/user.h"
-#include "__internal.h"
+#include "kernel/calls/syscall_general.hpp"
+#include "kernel/tasking/wait.hpp"
 
-/**
- *
- */
-g_register_irq_handler_status g_register_irq_handler(uint8_t irq, void (*handler)(uint8_t)) {
-	g_syscall_register_irq_handler data;
-	data.irq = irq;
-	data.handlerAddress = (uintptr_t) handler;
-	data.returnAddress = (uintptr_t) __g_restore_interrupted_state_callback;
-	g_syscall(G_SYSCALL_REGISTER_IRQ_HANDLER, (uint32_t) &data);
-	return data.status;
+#include "kernel/memory/heap.hpp"
+#include "shared/logger/logger.hpp"
+
+void syscallAtomicLock(g_task* task, g_syscall_atomic_lock* data)
+{
+	if(*data->atom_1 && (!data->atom_2 || *data->atom_2))
+	{
+		if(data->is_try)
+		{
+			data->was_set = false;
+		} else
+		{
+			waitAtomicLock(task);
+			taskingSchedule();
+		}
+	} else
+	{
+		*data->atom_1 = true;
+		if(data->atom_2)
+		{
+			*data->atom_2 = true;
+		}
+		data->was_set = true;
+	}
+}
+
+void syscallWaitForIrq(g_task* task, g_syscall_wait_for_irq* data)
+{
+	logInfo("syscall not implemented: wait for irq");
+	for(;;)
+		;
+}
+
+void syscallLog(g_task* task, g_syscall_log* data)
+{
+	logInfo("%! %i: %s", "log", task->id, data->message);
+}
+
+void syscallSetVideoLog(g_task* task, g_syscall_set_video_log* data)
+{
+	loggerEnableVideo(data->enabled);
+}
+
+void syscallTest(g_task* task, g_syscall_test* data)
+{
+	logInfo("syscall not implemented: test");
+}
+
+void syscallReleaseCliArguments(g_task* task, g_syscall_cli_args_release* data)
+{
+	data->buffer[0] = 0;
+	logInfo("syscall not implemented: release cli arguments");
+}
+
+void syscallGetMilliseconds(g_task* task, g_syscall_millis* data)
+{
+	data->millis = taskingGetLocal()->time;
 }

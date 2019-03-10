@@ -18,17 +18,12 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost/user.h"
-#include "__internal.h"
+#ifndef __KERNEL_SYSCALL_MEMORY__
+#define __KERNEL_SYSCALL_MEMORY__
 
-/**
- *
- */
-g_register_irq_handler_status g_register_irq_handler(uint8_t irq, void (*handler)(uint8_t)) {
-	g_syscall_register_irq_handler data;
-	data.irq = irq;
-	data.handlerAddress = (uintptr_t) handler;
-	data.returnAddress = (uintptr_t) __g_restore_interrupted_state_callback;
-	g_syscall(G_SYSCALL_REGISTER_IRQ_HANDLER, (uint32_t) &data);
-	return data.status;
-}
+#include "ghost/calls/calls.h"
+#include "kernel/tasking/tasking.hpp"
+
+void syscallSbrk(g_task* task, g_syscall_sbrk* data);
+
+#endif

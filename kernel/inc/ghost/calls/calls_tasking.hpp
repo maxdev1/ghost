@@ -102,7 +102,7 @@ typedef struct {
  * 		whether or not to set the atom once finished
  *
  * @field try_only
- * 		whether or not to only try setting the atom
+ * 		whether or not to only try locking the atom
  *
  * @field was_set
  * 		whether the atom was set, when trying only
@@ -182,29 +182,29 @@ typedef struct {
  */
 typedef struct {
 	uint8_t irq;
-	uintptr_t handler;
-	uintptr_t callback;
+	uintptr_t handlerAddress;
+	uintptr_t returnAddress;
 	g_register_irq_handler_status status;
 }__attribute__((packed)) g_syscall_register_irq_handler;
 
 /**
  * @field signal
  * 		signal to register for
- * @field handler
+ * @field handlerAddress
  * 		address of the handler function
- * @field callback
+ * @field callbackAddress
  * 		address of the function to be returned to when
  * 		the handler function returns
- * @field previous_handler
+ * @field previousHandlerAddress
  * 		address of the previously registered handler
  * @field status
  * 		result of the command
  */
 typedef struct {
 	int signal;
-	uintptr_t handler;
-	uintptr_t callback;
-	uintptr_t previous_handler;
+	g_virtual_address handlerAddress;
+	g_virtual_address returnAddress;
+	g_virtual_address previousHandlerAddress;
 	g_register_signal_handler_status status;
 }__attribute__((packed)) g_syscall_register_signal_handler;
 

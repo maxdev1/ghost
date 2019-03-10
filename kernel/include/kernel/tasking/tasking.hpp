@@ -21,7 +21,10 @@
 #ifndef __KERNEL_TASKING__
 #define __KERNEL_TASKING__
 
+#include "ghost/signal.h"
+#include "ghost/system.h"
 #include "ghost/kernel.h"
+
 #include "kernel/system/processor/processor.hpp"
 #include "shared/system/mutex.hpp"
 #include "kernel/memory/paging.hpp"
@@ -33,6 +36,29 @@ struct g_task;
 struct g_tasking_local;
 
 typedef bool (*g_wait_resolver)(g_task*);
+
+/**
+ *
+ */
+typedef uint8_t g_task_interruption_info_type;
+
+#define G_TASK_INTERRUPT_INFO_TYPE_NONE		((g_task_interruption_info_type) 0)
+#define G_TASK_INTERRUPT_INFO_TYPE_IRQ		((g_task_interruption_info_type) 1)
+#define G_TASK_INTERRUPT_INFO_TYPE_SIGNAL	((g_task_interruption_info_type) 2)
+
+/**
+ *
+ */
+class g_task_interruption_info
+{
+public:
+	g_processor_state state;
+	g_processor_state* statePtr;
+
+	g_thread_status previousStatus;
+	void* previousWaitData;
+	g_wait_resolver previousWaitResolver;
+};
 
 /**
  * A task is a single thread executing either in user or kernel level.
@@ -83,16 +109,19 @@ struct g_task
 	} stack;
 
 	/**
+	 * For all syscalls (threaded and non-threaded) the handler and data field are filled.
+	 *
 	 * When the task issues a long-running syscall, a kernel task is created to execute it.
 	 * In the executing task, the processingTask field is filled with the task that processes the
 	 * syscall. In the processing task, the sourceTask is the task that issued the syscall.
 	 */
 	struct
 	{
-		g_task* processingTask;
-		g_task* sourceTask;
 		g_syscall_handler handler;
 		void* data;
+
+		g_task* processingTask;
+		g_task* sourceTask;
 	} syscall;
 
 	/**
@@ -101,6 +130,12 @@ struct g_task
 	 */
 	g_wait_resolver waitResolver;
 	void* waitData;
+
+	/**
+	 * If the task gets interrupted by a signal or an IRQ, the current state is stored in this
+	 * structure and later restored from it.
+	 */
+	g_task_interruption_info* interruptionInfo;
 };
 
 /**
@@ -157,6 +192,17 @@ struct g_tasking_local
 };
 
 /**
+ * A signal handler registration.
+ */
+struct g_signal_handler
+{
+public:
+	g_virtual_address handlerAddress = 0;
+	g_virtual_address returnAddress = 0;
+	g_tid task = 0;
+};
+
+/**
  * Constants used as flags on virtual ranges of processes
  */
 #define G_PROC_VIRTUAL_RANGE_FLAG_NONE						0
@@ -175,6 +221,8 @@ struct g_process
 	g_physical_address pageDirectory;
 	g_address_range_pool* virtualRangePool;
 
+	g_signal_handler signalHandlers[SIG_COUNT];
+
 	struct
 	{
 		g_virtual_address location;
@@ -188,6 +236,13 @@ struct g_process
 		g_virtual_address start;
 		g_virtual_address end;
 	} image;
+
+	struct
+	{
+		g_virtual_address brk;
+		g_virtual_address start;
+		int pages;
+	} heap;
 };
 
 /**
@@ -329,8 +384,20 @@ g_task* taskingGetById(g_tid id);
 g_physical_address taskingTemporarySwitchToSpace(g_physical_address pageDirectory);
 
 /**
- * Switches back.
+ * Switches back from temporarily switching to a different directory.
  */
 void taskingTemporarySwitchBack(g_physical_address pageDirectory);
+
+/**
+ * Raises a signal in the task.
+ */
+g_raise_signal_status taskingRaiseSignal(g_task* task, int signal);
+
+/**
+ * Interrupts a task and continues its execution at entry. The given variadic arguments are passed to the
+ * entry function. The returnAddress must point to a function that can be executed in the tasks space
+ * and is called once the entry function exits.
+ */
+void taskingInterruptTask(g_task* task, g_virtual_address entry, g_virtual_address returnAddress, int argumentCount, ...);
 
 #endif

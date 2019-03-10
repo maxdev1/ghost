@@ -46,22 +46,19 @@ int as[4] =
 int bs[4] =
 { 0, 0, 0, 0 };
 
-g_mutex testMutex;
-
 #include "kernel/tasking/wait.hpp"
+
 void test()
 {
-	mutexAcquire(&testMutex);
-	logInfo("#%i: Task %i (Priv %i) says hello from test()!", processorGetCurrentId(), taskingGetLocal()->scheduling.current->id,
-			taskingGetLocal()->scheduling.current->securityLevel);
-	mutexRelease(&testMutex);
 	int x = 0;
 	for(;;)
 	{
 		as[processorGetCurrentId()]++;
 
 		if(as[processorGetCurrentId()] % 10000 == 0)
+		{
 			logInfo("#%i: A(%i %i %i %i), B(%i %i %i %i)", processorGetCurrentId(), as[0], as[1], as[2], as[3], bs[0], bs[1], bs[2], bs[3]);
+		}
 
 		taskingKernelThreadYield();
 	}
@@ -71,10 +68,6 @@ void test()
 
 void test2()
 {
-	mutexAcquire(&testMutex);
-	logInfo("#%i: Task %i (Priv %i) says hello from test2()!", processorGetCurrentId(), taskingGetLocal()->scheduling.current->id,
-			taskingGetLocal()->scheduling.current->securityLevel);
-	mutexRelease(&testMutex);
 	for(;;)
 	{
 		bs[processorGetCurrentId()]++;
@@ -130,7 +123,6 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	syscallRegisterAll();
 
 	// TEST THREADS
-	mutexInitialize(&testMutex);
 	g_process* testProc = taskingCreateProcess();
 	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test, testProc, G_SECURITY_LEVEL_KERNEL));
 	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test2, testProc, G_SECURITY_LEVEL_KERNEL));
@@ -139,7 +131,7 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_APPLICATION, &userTask);
 
 	g_task* userTask2;
-	elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_APPLICATION, &userTask2);
+	elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_DRIVER, &userTask2);
 	// TEST THREADS END
 
 	mutexRelease(&bootstrapCoreLock, false);

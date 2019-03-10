@@ -25,6 +25,8 @@
 #include "kernel/kernel.hpp"
 
 #include "kernel/calls/syscall_general.hpp"
+#include "kernel/calls/syscall_tasking.hpp"
+#include "kernel/calls/syscall_memory.hpp"
 #include "kernel/calls/syscall_fs.hpp"
 
 static g_syscall_registration* syscallRegistrations = 0;
@@ -46,6 +48,10 @@ void syscallHandle(g_task* task)
 		logInfo("%! task %i tried to use unknown syscall %i", "syscall", task->id, callId);
 		return;
 	}
+
+	// Store call information
+	task->syscall.handler = reg->handler;
+	task->syscall.data = syscallData;
 
 	if(reg->threaded)
 		syscallRunThreaded(reg->handler, task, syscallData);
@@ -70,10 +76,6 @@ void syscallRunThreaded(g_syscall_handler handler, g_task* caller, void* syscall
 	taskingResetTaskState(proc);
 	proc->status = G_THREAD_STATUS_RUNNING;
 	proc->state->eip = (g_virtual_address) syscallThreadEntry;
-
-	// Store call information
-	caller->syscall.handler = handler;
-	caller->syscall.data = syscallData;
 
 	// Let caller task wait
 	caller->status = G_THREAD_STATUS_WAITING;
@@ -123,6 +125,29 @@ void syscallRegisterAll()
 		syscallRegistrations[i].handler = 0;
 	}
 
+	syscallRegister(G_SYSCALL_EXIT, (g_syscall_handler) syscallExit, false);
+	syscallRegister(G_SYSCALL_YIELD, (g_syscall_handler) syscallYield, false);
+	syscallRegister(G_SYSCALL_GET_PROCESS_ID, (g_syscall_handler) syscallGetProcessId, false);
+	syscallRegister(G_SYSCALL_GET_TASK_ID, (g_syscall_handler) syscallGetTaskId, false);
+	syscallRegister(G_SYSCALL_GET_PROCESS_ID_FOR_TASK_ID, (g_syscall_handler) syscallGetProcessIdForTaskId, false);
+	syscallRegister(G_SYSCALL_FORK, (g_syscall_handler) syscallFork, false);
+	syscallRegister(G_SYSCALL_JOIN, (g_syscall_handler) syscallJoin, false);
 	syscallRegister(G_SYSCALL_SLEEP, (g_syscall_handler) syscallSleep, false);
+	syscallRegister(G_SYSCALL_ATOMIC_LOCK, (g_syscall_handler) syscallAtomicLock, false);
+	syscallRegister(G_SYSCALL_WAIT_FOR_IRQ, (g_syscall_handler) syscallWaitForIrq, false);
+	syscallRegister(G_SYSCALL_LOG, (g_syscall_handler) syscallLog, false);
+	syscallRegister(G_SYSCALL_SET_VIDEO_LOG, (g_syscall_handler) syscallSetVideoLog, false);
+	syscallRegister(G_SYSCALL_TEST, (g_syscall_handler) syscallTest, false);
+	syscallRegister(G_SYSCALL_RELEASE_CLI_ARGUMENTS, (g_syscall_handler) syscallReleaseCliArguments, false);
+
+	syscallRegister(G_SYSCALL_REGISTER_SIGNAL_HANDLER, (g_syscall_handler) syscallRegisterSignalHandler, false);
+	syscallRegister(G_SYSCALL_REGISTER_IRQ_HANDLER, (g_syscall_handler) syscallRegisterIrqHandler, false);
+	syscallRegister(G_SYSCALL_RESTORE_INTERRUPTED_STATE, (g_syscall_handler) syscallRestoreInterruptedState, false);
+	syscallRegister(G_SYSCALL_RAISE_SIGNAL, (g_syscall_handler) syscallRaiseSignal, false);
+
+	syscallRegister(G_SYSCALL_GET_MILLISECONDS, (g_syscall_handler) syscallGetMilliseconds, false);
+
+	syscallRegister(G_SYSCALL_SBRK, (g_syscall_handler) syscallSbrk, false);
+
 	syscallRegister(G_SYSCALL_FS_READ, (g_syscall_handler) syscallFsRead, true);
 }

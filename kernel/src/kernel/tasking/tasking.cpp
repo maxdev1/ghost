@@ -18,6 +18,8 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include "ghost/calls/calls.h"
+
 #include "kernel/tasking/tasking.hpp"
 #include "kernel/tasking/scheduler.hpp"
 #include "kernel/tasking/wait.hpp"
@@ -181,6 +183,8 @@ g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_securit
 
 	task->waitResolver = 0;
 	task->waitData = 0;
+
+	task->interruptionInfo = 0;
 
 	// Switch to task directory
 	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(task->process->pageDirectory);
@@ -359,6 +363,15 @@ g_process* taskingCreateProcess()
 	process->virtualRangePool = (g_address_range_pool*) heapAllocate(sizeof(g_address_range_pool));
 	addressRangePoolInitialize(process->virtualRangePool);
 	addressRangePoolAddRange(process->virtualRangePool, G_CONST_USER_VIRTUAL_RANGES_START, G_CONST_USER_VIRTUAL_RANGES_END);
+
+	for(int i = 0; i < SIG_COUNT; i++)
+	{
+		process->signalHandlers[i].handlerAddress = 0;
+		process->signalHandlers[i].returnAddress = 0;
+		process->signalHandlers[i].task = 0;
+	}
+
+	process->heap.brk = 0;
 
 	return process;
 }
@@ -663,4 +676,85 @@ void taskingTemporarySwitchBack(g_physical_address back)
 		local->scheduling.current->overridePageDirectory = 0;
 	}
 	pagingSwitchToSpace(back);
+}
+
+g_raise_signal_status taskingRaiseSignal(g_task* task, int signal)
+{
+	// get handler from process
+	g_signal_handler* handler = &(task->process->signalHandlers[signal]);
+	if(handler->handlerAddress)
+	{
+		g_task* handlingTask = 0;
+		if(handler->task == task->id)
+			handlingTask = task;
+		else
+			handlingTask = taskingGetById(handler->task);
+
+		if(!handlingTask)
+		{
+			logInfo("%! signal(%i, %i): registered signal handler task %i doesn't exist", "signal", task->id, signal, handler->task);
+			return G_RAISE_SIGNAL_STATUS_INVALID_TARGET;
+		}
+
+		if(handlingTask->interruptionInfo)
+		{
+			logInfo("%! can't raise signal in currently interrupted task %i", "signal", task->id);
+			return G_RAISE_SIGNAL_STATUS_INVALID_STATE;
+		}
+
+		taskingInterruptTask(task, handler->handlerAddress, handler->returnAddress, 1, signal);
+
+	} else if(signal == SIGSEGV)
+	{
+		logInfo("%! thread %i killed by SIGSEGV", "signal", task->id);
+		task->status = G_THREAD_STATUS_DEAD;
+		if(taskingGetLocal()->scheduling.current == task)
+			taskingSchedule();
+	}
+
+	return G_RAISE_SIGNAL_STATUS_SUCCESSFUL;
+}
+
+void taskingInterruptTask(g_task* task, g_virtual_address entry, g_virtual_address returnAddress, int argumentCount, ...)
+{
+	mutexAcquire(&task->process->lock);
+	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(task->process->pageDirectory);
+
+	task->interruptionInfo = (g_task_interruption_info*) heapAllocate(sizeof(g_task_interruption_info));
+	task->interruptionInfo->previousWaitData = task->waitData;
+	task->interruptionInfo->previousWaitResolver = task->waitResolver;
+	task->interruptionInfo->previousStatus = task->status;
+	task->waitData = 0;
+	task->waitResolver = 0;
+	task->status = G_THREAD_STATUS_RUNNING;
+
+	// save processor state
+	memoryCopy(&task->interruptionInfo->state, task->state, sizeof(g_processor_state));
+	task->interruptionInfo->statePtr = (g_processor_state*) task->state;
+
+	// set the new entry
+	task->state->eip = entry;
+
+	// jump to next stack value
+	uint32_t* esp = (uint32_t*) (task->state->esp);
+
+	// pass parameter value
+	va_list args;
+	va_start(args, argumentCount);
+	while(argumentCount--)
+	{
+		--esp;
+		*esp = va_arg(args, uint32_t);
+	}
+	va_end(args);
+
+	// put callback as return address on stack
+	--esp;
+	*esp = returnAddress;
+
+	// set new ESP
+	task->state->esp = (uint32_t) esp;
+
+	taskingTemporarySwitchBack(returnDirectory);
+	mutexRelease(&task->process->lock);
 }

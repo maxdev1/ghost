@@ -21,17 +21,31 @@
 #include <ghost.h>
 #include <ghostuser/utils/logger.hpp>
 
+void helloirq(uint8_t irq) {
+
+	klog("hello keyboard: %i", irq);
+}
+
+void hellosignal(int sig) {
+
+	klog("hello signal: %i", sig);
+}
+
 /**
  *
  */
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
+
+	g_register_irq_handler(1, helloirq);
+	g_register_signal_handler(12, hellosignal);
+
+	g_raise_signal(g_get_pid(), 12);
 
 	int x = 0;
 	int bla = 0;
-	for(;;)
-	{
+	for (;;) {
 		g_sleep(1000);
+		klog("Hello world!");
 	}
 
 	/*

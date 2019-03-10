@@ -24,6 +24,18 @@
 #include "ghost/calls/calls.h"
 #include "kernel/tasking/tasking.hpp"
 
-void syscallSleep(g_task* task, g_syscall_sleep* data);
+void syscallAtomicLock(g_task* task, g_syscall_atomic_lock* data);
+
+void syscallLog(g_task* task, g_syscall_log* data);
+
+void syscallWaitForIrq(g_task* task, g_syscall_wait_for_irq* data);
+
+void syscallSetVideoLog(g_task* task, g_syscall_set_video_log* data);
+
+void syscallTest(g_task* task, g_syscall_test* data);
+
+void syscallReleaseCliArguments(g_task* task, g_syscall_cli_args_release* data);
+
+void syscallGetMilliseconds(g_task* task, g_syscall_millis* data);
 
 #endif

@@ -40,12 +40,23 @@ void* memorySetWords(void* target, uint16_t value, int32_t length)
 	return target;
 }
 
-void* memoryCopy(void* target, const void* source, int32_t length)
+void* memoryCopy(void* target, const void* source, int32_t size)
 {
 	uint8_t* targetPos = (uint8_t*) target;
 	const uint8_t* sourcePos = (const uint8_t*) source;
 
-	while(length--)
+	while(size--)
+		*targetPos++ = *sourcePos++;
+
+	return target;
+}
+
+volatile void* memoryCopy(volatile void* target, const volatile void *source, int32_t size)
+{
+	uint8_t* targetPos = (uint8_t*) target;
+	const uint8_t* sourcePos = (const uint8_t*) source;
+
+	while(size--)
 		*targetPos++ = *sourcePos++;
 
 	return target;

@@ -694,7 +694,7 @@ void g_set_video_log(uint8_t enabled);
  *
  * @param security-level KERNEL
  */
-g_ramdisk_spawn_status g_ramdisk_spawn(const char* path, g_security_level securityLevel);
+g_spawn_status g_ramdisk_spawn(const char* path, g_security_level securityLevel);
 
 /**
  * Finds a ramdisk entry by its absolute path.
@@ -1087,7 +1087,7 @@ void g_restore_interrupted_state();
  *
  * @security-level DRIVER
  */
-void* g_register_signal_handler(int signal, void* handler);
+void* g_register_signal_handler(int signal, void(*handler)(int));
 
 /**
  * Raises the <signal> in the <process>.
