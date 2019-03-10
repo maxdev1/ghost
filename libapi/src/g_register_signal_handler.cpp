@@ -24,11 +24,11 @@
 /**
  *
  */
-void* g_register_signal_handler(int signal, void* handler) {
+void* g_register_signal_handler(int signal, void(*handler)(int)) {
 	g_syscall_register_signal_handler data;
 	data.signal = signal;
-	data.handler = (uintptr_t) handler;
-	data.callback = (uintptr_t) __g_restore_interrupted_state_callback;
+	data.handlerAddress = (uintptr_t) handler;
+	data.returnAddress = (uintptr_t) __g_restore_interrupted_state_callback;
 	g_syscall(G_SYSCALL_REGISTER_SIGNAL_HANDLER, (uint32_t) &data);
-	return (void*) data.previous_handler;
+	return (void*) data.previousHandlerAddress;
 }

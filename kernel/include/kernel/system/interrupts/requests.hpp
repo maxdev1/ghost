@@ -23,6 +23,23 @@
 
 #include "kernel/tasking/tasking.hpp"
 
+/**
+ * Type of an interrupt handler
+ */
+typedef struct
+{
+	g_tid task;
+	g_virtual_address handlerAddress;
+	g_virtual_address returnAddress;
+} g_irq_handler;
+
+/**
+ * Handles an interrupt request.
+ */
 void requestsHandle(g_task* task);
+
+void requestsRegisterHandler(uint8_t irq, g_tid handlerTask, g_virtual_address handlerAddress, g_virtual_address returnAddress);
+
+void requestsCallUserspaceHandler(g_task* task, uint8_t irq);
 
 #endif

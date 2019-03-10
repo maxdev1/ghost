@@ -48,12 +48,6 @@ int __g_main()
 {
 
 #warning "TODO remove"
-	for(;;)
-	{
-		g_sleep(5000);
-		g_read(0, 0, 0);
-	}
-
 	// initialize libc
 	__g_init_libc();
 

@@ -18,16 +18,14 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost/user.h"
+#include "ghost/signal.h"
 
-/**
- *
- */
-void* g_create_pages_in_spaces(g_process_creation_identifier process, uint32_t virtualAddress, int numberOfPages) {
-	g_syscall_create_pages_in_space data;
-	data.processObject = process;
-	data.targetSpaceVirtualAddress = virtualAddress;
-	data.numberOfPages = numberOfPages;
-	g_syscall(G_SYSCALL_CREATE_PAGES_IN_SPACE, (uint32_t) &data);
-	return (void*) data.resultVirtualAddress;
+#include "kernel/calls/syscall_memory.hpp"
+#include "kernel/tasking/tasking_memory.hpp"
+
+#include "shared/logger/logger.hpp"
+
+void syscallSbrk(g_task* task, g_syscall_sbrk* data)
+{
+	data->successful = taskingMemoryExtendHeap(task, data->amount, &data->address);
 }

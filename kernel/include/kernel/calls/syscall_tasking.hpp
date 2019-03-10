@@ -18,14 +18,34 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "kernel/calls/syscall_general.hpp"
-#include "kernel/tasking/wait.hpp"
+#ifndef __KERNEL_SYSCALL_TASKING__
+#define __KERNEL_SYSCALL_TASKING__
 
-#include "kernel/memory/heap.hpp"
-#include "shared/logger/logger.hpp"
+#include "ghost/calls/calls.h"
+#include "kernel/tasking/tasking.hpp"
 
-void syscallSleep(g_task* task, g_syscall_sleep* data)
-{
-	waitSleep(task, data->milliseconds);
-	taskingSchedule();
-}
+void syscallExit(g_task* task, g_syscall_exit* data);
+
+void syscallYield(g_task* task);
+
+void syscallGetProcessId(g_task* task, g_syscall_get_pid* data);
+
+void syscallGetTaskId(g_task* task, g_syscall_get_tid* data);
+
+void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data);
+
+void syscallFork(g_task* task, g_syscall_get_pid_for_tid* data);
+
+void syscallJoin(g_task* task, g_syscall_get_pid_for_tid* data);
+
+void syscallSleep(g_task* task, g_syscall_sleep* data);
+
+void syscallRegisterSignalHandler(g_task* task, g_syscall_register_signal_handler* data);
+
+void syscallRegisterIrqHandler(g_task* task, g_syscall_register_irq_handler* data);
+
+void syscallRestoreInterruptedState(g_task* task);
+
+void syscallRaiseSignal(g_task* task, g_syscall_raise_signal* data);
+
+#endif

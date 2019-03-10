@@ -53,5 +53,6 @@ void* memorySetWords(void* target, uint16_t value, int32_t number);
  * @param size		number of bytes to copy
  */
 void* memoryCopy(void* target, const void *source, int32_t size);
+volatile void* memoryCopy(volatile void* target, const volatile void *source, int32_t size);
 
 #endif

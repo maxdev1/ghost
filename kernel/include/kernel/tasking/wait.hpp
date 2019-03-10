@@ -37,4 +37,6 @@ bool waitTryWake(g_task* task);
  */
 void waitSleep(g_task* task, uint64_t milliseconds);
 
+void waitAtomicLock(g_task* task);
+
 #endif

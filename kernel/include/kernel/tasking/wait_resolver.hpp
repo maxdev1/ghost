@@ -29,6 +29,13 @@ struct g_wait_resolver_sleep_data
 	uint32_t wakeTime;
 };
 
+struct g_wait_resolver_atomic_lock_data
+{
+	uint32_t startTime;
+};
+
 bool waitResolverSleep(g_task* task);
+
+bool waitResolverAtomicLock(g_task* task);
 
 #endif
