@@ -106,6 +106,6 @@ g_ramdisk_entry* ramdiskGetRoot();
 /**
  * Creates a new child node on the ramdisk.
  */
-g_ramdisk_entry* ramdiskCreateFile(g_ramdisk_entry* parent, char* filename);
+g_ramdisk_entry* ramdiskCreateFile(g_ramdisk_entry* parent, const char* filename);
 
 #endif

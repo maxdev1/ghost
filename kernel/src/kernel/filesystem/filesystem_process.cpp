@@ -40,26 +40,31 @@ void filesystemProcessCreate(g_pid pid)
 	hashmapPut(filesystemProcessInfo, pid, info);
 }
 
-g_fd filesystemProcessCreateDescriptor(g_pid pid, g_fs_node* node, int32_t flags)
+g_file_descriptor* filesystemProcessCreateDescriptor(g_pid pid, g_fs_virt_id nodeId, int32_t flags, g_fd optionalFd)
 {
 	g_filesystem_process* info = hashmapGet<g_pid, g_filesystem_process*>(filesystemProcessInfo, pid, 0);
 	if(!info)
 	{
 		logInfo("%! tried to create file descriptor in process %i that doesn't exist", "filesystem", pid);
-		return -1;
+		return 0;
 	}
 
 	g_file_descriptor* descriptor = (g_file_descriptor*) heapAllocate(sizeof(g_file_descriptor));
-	mutexAcquire(&info->nextDescriptorLock);
-	descriptor->id = info->nextDescriptor++;
-	mutexRelease(&info->nextDescriptorLock);
-	descriptor->nodeId = node->id;
+
+	if(optionalFd == -1) {
+		mutexAcquire(&info->nextDescriptorLock);
+		descriptor->id = info->nextDescriptor++;
+		mutexRelease(&info->nextDescriptorLock);
+	} else {
+		descriptor->id = optionalFd;
+	}
+	descriptor->nodeId = nodeId;
 	descriptor->offset = 0;
 	descriptor->openFlags = flags;
 
 	hashmapPut<g_fd, g_file_descriptor*>(info->descriptors, descriptor->id, descriptor);
 
-	return descriptor->id;
+	return descriptor;
 }
 
 g_file_descriptor* filesystemProcessGetDescriptor(g_pid pid, g_fd fd)
@@ -101,4 +106,17 @@ void filesystemProcessRemoveDescriptor(g_pid pid, g_fd fd)
 
 	hashmapRemove(info->descriptors, fd);
 	heapFree(descriptor);
+}
+
+g_file_descriptor* filesystemProcessCloneDescriptor(g_file_descriptor* sourceFd, g_pid targetPid, g_fd targetFd) {
+
+	if(targetFd != -1)
+		filesystemProcessRemoveDescriptor(targetPid, targetFd);
+	
+	g_file_descriptor* descriptor = filesystemProcessCreateDescriptor(targetPid, sourceFd->nodeId, sourceFd->openFlags, targetFd);
+	if(!descriptor)
+		return 0;
+
+	descriptor->offset = sourceFd->offset;
+	return descriptor;
 }

@@ -32,7 +32,7 @@
 struct g_file_descriptor
 {
 	g_fd id;
-	int64_t offset;
+	uint64_t offset;
 	g_fs_virt_id nodeId;
 	int32_t openFlags;
 };
@@ -65,7 +65,7 @@ void filesystemProcessRemove(g_pid pid);
 /**
  * Creates a file descriptor opening a node.
  */
-g_fd filesystemProcessCreateDescriptor(g_pid pid, g_fs_node* node, int32_t flags);
+g_file_descriptor* filesystemProcessCreateDescriptor(g_pid pid, g_fs_virt_id nodeId, int32_t flags, g_fd optionalFd = -1);
 
 /**
  * Finds a file descriptor.
@@ -76,5 +76,10 @@ g_file_descriptor* filesystemProcessGetDescriptor(g_pid pid, g_fd fd);
  * Closes a file descriptor.
  */
 void filesystemProcessRemoveDescriptor(g_pid pid, g_fd fd);
+
+/**
+ * Clones a file descriptor.
+ */
+g_file_descriptor* filesystemProcessCloneDescriptor(g_file_descriptor* descriptor, g_pid targetPid, g_fd targetFd);
 
 #endif

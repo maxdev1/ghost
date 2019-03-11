@@ -253,9 +253,8 @@ g_ramdisk_entry* ramdiskGetRoot()
 	return ramdiskMain->root;
 }
 
-g_ramdisk_entry* ramdiskCreateFile(g_ramdisk_entry* parent, char* filename)
+g_ramdisk_entry* ramdiskCreateFile(g_ramdisk_entry* parent, const char* filename)
 {
-
 	g_ramdisk_entry* entry = new g_ramdisk_entry();
 	entry->next = ramdiskMain->firstEntry;
 	ramdiskMain->firstEntry = entry;

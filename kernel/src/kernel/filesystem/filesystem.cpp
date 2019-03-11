@@ -52,6 +52,9 @@ void filesystemCreateRoot()
 	g_fs_delegate* ramdiskDelegate = filesystemCreateDelegate();
 	ramdiskDelegate->discoverChild = filesystemRamdiskDelegateDiscoverChild;
 	ramdiskDelegate->read = filesystemRamdiskDelegateRead;
+	ramdiskDelegate->write = filesystemRamdiskDelegateWrite;
+	ramdiskDelegate->truncate = filesystemRamdiskDelegateTruncate;
+	ramdiskDelegate->create = filesystemRamdiskDelegateCreate;
 	ramdiskDelegate->getLength = filesystemRamdiskDelegateGetLength;
 
 	filesystemRoot = filesystemCreateNode(G_FS_NODE_TYPE_ROOT, "root");
@@ -211,11 +214,38 @@ g_fs_read_status filesystemRead(g_fs_node* node, uint8_t* buffer, uint64_t offse
 	return delegate->read(node, buffer, offset, length, outRead);
 }
 
-g_fs_length_status filesystemGetLength(g_fs_node* node, int64_t* outLength)
+g_fs_length_status filesystemGetLength(g_fs_node* node, uint64_t* outLength)
 {
 	g_fs_delegate* delegate = filesystemFindDelegate(node);
 	if(!delegate->getLength)
 		return G_FS_LENGTH_ERROR;
 
 	return delegate->getLength(node, outLength);
+}
+
+g_fs_write_status filesystemWrite(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote)
+{
+	g_fs_delegate* delegate = filesystemFindDelegate(node);
+	if(!delegate->write)
+		return G_FS_WRITE_ERROR;
+
+	return delegate->write(node, buffer, offset, length, outWrote);
+}
+
+g_fs_open_status filesystemCreateFile(g_fs_node* parent, const char* path, g_fs_node** outFile)
+{
+	g_fs_delegate* delegate = filesystemFindDelegate(parent);
+	if(!delegate->write)
+		return G_FS_OPEN_ERROR;
+
+	return delegate->create(parent, path, outFile);
+}
+
+g_fs_open_status filesystemTruncate(g_fs_node* file)
+{
+	g_fs_delegate* delegate = filesystemFindDelegate(file);
+	if(!delegate->truncate)
+		return G_FS_OPEN_ERROR;
+
+	return delegate->truncate(file);
 }

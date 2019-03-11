@@ -63,7 +63,49 @@ g_fs_read_status filesystemRamdiskDelegateRead(g_fs_node* node, uint8_t* buffer,
 	return G_FS_READ_SUCCESSFUL;
 }
 
-g_fs_length_status filesystemRamdiskDelegateGetLength(g_fs_node* node, int64_t* outLength)
+g_fs_write_status filesystemRamdiskDelegateWrite(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote)
+{
+	g_ramdisk_entry* entry = ramdiskFindById(node->physicalId);
+	if(!entry)
+		return G_FS_WRITE_ERROR;
+
+	// copy data from ramdisk memory into variable memory
+	if (entry->dataOnRamdisk) {
+		uint32_t buflen = entry->dataSize * 1.2;
+		uint8_t* new_buffer = (uint8_t*) heapAllocate(sizeof(uint8_t) * buflen);
+		memoryCopy(new_buffer, entry->data, entry->dataSize);
+		entry->data = new_buffer;
+		entry->notOnRdBufferLength = buflen;
+
+	} else if (entry->data == nullptr) {
+		uint32_t initbuflen = 32;
+		entry->data = (uint8_t*) heapAllocate(sizeof(uint8_t) * initbuflen);
+		entry->notOnRdBufferLength = initbuflen;
+	}
+	
+	entry->dataOnRamdisk = false;
+
+
+	// expand buffer until enough space is available
+	uint32_t space;
+	while ((space = entry->notOnRdBufferLength - offset) < length) {
+		uint32_t buflen = entry->notOnRdBufferLength * 1.2;
+		uint8_t* new_buffer = new uint8_t[buflen];
+		memoryCopy(new_buffer, entry->data, entry->dataSize);
+		heapFree(entry->data);
+		entry->data = new_buffer;
+		entry->notOnRdBufferLength = buflen;
+	}
+
+	// copy data
+	memoryCopy(&entry->data[offset], buffer, length);
+	entry->dataSize = offset + length;
+	*outWrote = length;
+
+	return G_FS_WRITE_SUCCESSFUL;
+}
+
+g_fs_length_status filesystemRamdiskDelegateGetLength(g_fs_node* node, uint64_t* outLength)
 {
 	g_ramdisk_entry* entry = ramdiskFindById(node->physicalId);
 	if(!entry)
@@ -71,4 +113,35 @@ g_fs_length_status filesystemRamdiskDelegateGetLength(g_fs_node* node, int64_t* 
 
 	*outLength = entry->dataSize;
 	return G_FS_LENGTH_SUCCESSFUL;
+}
+
+g_fs_open_status filesystemRamdiskDelegateCreate(g_fs_node* parent, const char* name, g_fs_node** outFile)
+{
+	g_ramdisk_entry* entry = ramdiskFindById(parent->physicalId);
+	if(!entry)
+		return G_FS_OPEN_ERROR;
+
+	g_ramdisk_entry* newFile = ramdiskCreateFile(entry, name);
+
+	g_fs_node* newNode = filesystemCreateNode(G_FS_NODE_TYPE_FILE, name);
+	newNode->physicalId = newFile->id;
+	filesystemAddChild(parent, newNode);
+	*outFile = newNode;
+
+	return G_FS_OPEN_SUCCESSFUL;
+};
+
+g_fs_open_status filesystemRamdiskDelegateTruncate(g_fs_node* file)
+{
+	g_ramdisk_entry* entry = ramdiskFindById(file->physicalId);
+	if(!entry)
+		return G_FS_OPEN_ERROR;
+
+	if (!entry->dataOnRamdisk) {
+		entry->dataSize = 0;
+		entry->notOnRdBufferLength = 0;
+		heapFree(entry->data);
+		entry->data = 0;
+	}
+	return G_FS_OPEN_SUCCESSFUL;
 }
