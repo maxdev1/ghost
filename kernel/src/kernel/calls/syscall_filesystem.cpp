@@ -18,10 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "kernel/calls/syscall_fs.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/calls/syscall_filesystem.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
+
+#include "shared/logger/logger.hpp"
 
 void syscallFsOpen(g_task* task, g_syscall_fs_open* data)
 {
@@ -38,14 +39,29 @@ void syscallFsOpen(g_task* task, g_syscall_fs_open* data)
 	}
 
 	g_fs_node* file = filesystemFind(relative, data->path);
-	if(!file)
+	if(file)
 	{
-		data->status = G_FS_OPEN_NOT_FOUND;
-		return;
+		if (data->flags & G_FILE_FLAG_MODE_TRUNCATE) {
+			if(filesystemTruncate(file) != G_FS_OPEN_SUCCESSFUL) {
+				logInfo("%! failed to truncate file %i", "filesystem", file->id);
+				data->status = G_FS_OPEN_ERROR;
+			}
+		}
+	} else {
+		if (data->flags & G_FILE_FLAG_MODE_CREATE) {
+			if(filesystemCreateFile(relative, data->path, &file) != G_FS_OPEN_SUCCESSFUL) {
+				logInfo("%! failed to create file '%s' in parent %i", "filesystem", data->path, relative->id);
+				data->status = G_FS_OPEN_ERROR;
+				return;
+			}
+		} else {
+			data->status = G_FS_OPEN_NOT_FOUND;
+			return;
+		}
 	}
 
-	g_fd fd = filesystemProcessCreateDescriptor(task->process->id, file, data->flags);
-	data->fd = fd;
+	g_file_descriptor* descriptor = filesystemProcessCreateDescriptor(task->process->id, file->id, data->flags);
+	data->fd = descriptor->id;
 	data->status = G_FS_OPEN_SUCCESSFUL;
 }
 
@@ -65,9 +81,10 @@ void syscallFsSeek(g_task* task, g_syscall_fs_seek* data)
 		return;
 	}
 
-	int64_t length;
+	uint64_t length;
 	if(filesystemGetLength(node, &length) != G_FS_LENGTH_SUCCESSFUL)
 	{
+		logInfo("%! failed to seek in file %i, could not get length", "filesystem", node->id);
 		data->status = G_FS_SEEK_ERROR;
 		return;
 	}
@@ -130,3 +147,85 @@ void syscallFsClose(g_task* task, g_syscall_fs_close* data)
 	filesystemProcessRemoveDescriptor(task->process->id, data->fd);
 }
 
+void syscallFsWrite(g_task* task, g_syscall_fs_write* data)
+{
+	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(task->process->id, data->fd);
+	if(!descriptor)
+	{
+		data->status = G_FS_WRITE_INVALID_FD;
+		data->result = -1;
+		return;
+	}
+
+	g_fs_node* node = filesystemGetNode(descriptor->nodeId);
+	if(!node)
+	{
+		data->status = G_FS_WRITE_INVALID_FD;
+		data->result = -1;
+		return;
+	}
+
+	uint64_t startOffset = descriptor->offset;
+	if (descriptor->openFlags & G_FILE_FLAG_MODE_APPEND) {
+		if(filesystemGetLength(node, &startOffset) != G_FS_LENGTH_SUCCESSFUL) {
+			logInfo("%! failed to append to file %i, could not get length", "filesystem", node->id);
+			data->status = G_FS_WRITE_ERROR;
+			data->result = -1;
+			return;
+		}
+	}
+
+	int64_t wrote;
+	data->status = filesystemWrite(node, data->buffer, startOffset, data->length, &wrote);
+	if(wrote > 0)
+	{
+		descriptor->offset = startOffset + wrote;
+	}
+	data->result = wrote;
+}
+
+void syscallFsCloneFd(g_task* task, g_syscall_fs_clonefd* data)
+{
+	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(data->source_pid, data->source_fd);
+	if(!descriptor)
+	{
+		data->status = G_FS_CLONEFD_INVALID_SOURCE_FD;
+		data->result = -1;
+		return;
+	}
+
+	g_file_descriptor* clone = filesystemProcessCloneDescriptor(descriptor, data->target_pid, data->target_fd);
+	if(!clone)
+	{
+		data->result = -1;
+		data->status = G_FS_CLONEFD_ERROR;
+		return;
+	}
+	
+	data->result = clone->id;
+	data->status = G_FS_CLONEFD_SUCCESSFUL;
+}
+
+void syscallFsTell(g_task* task, g_syscall_fs_tell* data) {
+
+	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(task->process->id, data->fd);
+	if(!descriptor)
+	{
+		data->status = G_FS_TELL_INVALID_FD;
+		data->result = -1;
+		return;
+	}
+
+	data->result = descriptor->offset;
+	data->status = G_FS_TELL_SUCCESSFUL;
+}
+
+void syscallFsStat(g_task* task, g_syscall_fs_stat* data)
+{
+	logInfo("%! stat not implemented", "syscall");
+}
+
+void syscallFsFstat(g_task* task, g_syscall_fs_fstat* data)
+{
+	logInfo("%! fstat not implemented", "syscall");
+}
