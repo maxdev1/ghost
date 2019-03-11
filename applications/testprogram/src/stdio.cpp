@@ -21,6 +21,8 @@
 #include "tester.hpp"
 #include <ghost.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <string.h>
 
 void openReadClose()
 {
@@ -33,7 +35,7 @@ void openReadClose()
 
 	int len;
 	int total = 0;
-	while((len = g_read(fd, buffer, len)) > 0)
+	while((len = g_read(fd, buffer, buflen)) > 0)
 	{
 		total += len;
 	}
@@ -44,7 +46,59 @@ void openReadClose()
 	TEST_SUCCESSFUL;
 }
 
+void openNonExistingFails()
+{
+	g_fd fd = g_open("/non-existing-file.txt");
+	ASSERT(fd == -1);
+	TEST_SUCCESSFUL;
+}
+
+void createFile()
+{
+	// Create file
+	{
+		g_fd fd = g_open_f("/create.txt", O_CREAT);
+		ASSERT(fd != -1);
+
+		const char* buf = "Hello world!";
+		int len = strlen(buf);
+		int off = 0;
+		while(off < len)
+		{
+			int written = g_write(fd, &buf[off], len - off);
+			ASSERT(written != -1);
+			off += written;
+		}
+
+		g_close(fd);
+	}
+
+	// Read file again
+	{
+		g_fd fd = g_open("/create.txt");
+		ASSERT(fd != -1);
+
+		int buflen = 128;
+		uint8_t* buffer = (uint8_t*) malloc(buflen);
+		ASSERT(buffer != 0);
+
+		int len = 0;
+		int total = 0;
+		while((len = g_read(fd, buffer, buflen)) > 0)
+		{
+			total += len;
+		}
+
+		ASSERT(total == 12);
+		g_close(fd);
+	}
+
+	TEST_SUCCESSFUL;
+}
+
 void runStdioTest()
 {
 	openReadClose();
+	openNonExistingFails();
+	createFile();
 }

@@ -136,7 +136,8 @@ g_fs_open_status filesystemFindChild(g_fs_node* parent, const char* name, g_fs_n
 	}
 
 	g_fs_delegate* delegate = filesystemFindDelegate(lastKnown);
-	if(!delegate->discover) {
+	if(!delegate->discover)
+	{
 		*outChild = 0;
 		return G_FS_OPEN_ERROR;
 	}
@@ -178,7 +179,8 @@ g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node**
 		nameBuf[nameLen] = 0;
 
 		status = filesystemFindChild(node, nameBuf, &node);
-		if(status != G_FS_OPEN_SUCCESSFUL) {
+		if(status != G_FS_OPEN_SUCCESSFUL)
+		{
 			break;
 		}
 
@@ -195,6 +197,11 @@ g_fs_node* filesystemGetNode(g_fs_virt_id id)
 	return hashmapGet<g_fs_virt_id, g_fs_node*>(filesystemNodes, id, 0);
 }
 
+g_fs_node* filesystemGetRoot()
+{
+	return filesystemRoot;
+}
+
 g_fs_delegate* filesystemCreateDelegate()
 {
 	g_fs_delegate* delegate = (g_fs_delegate*) heapAllocate(sizeof(g_fs_delegate));
@@ -204,6 +211,9 @@ g_fs_delegate* filesystemCreateDelegate()
 
 g_fs_delegate* filesystemFindDelegate(g_fs_node* node)
 {
+	if(!node)
+		kernelPanic("%! tried to find delegate for null node", "filesystem");
+
 	if(!node->delegate && node->parent)
 		return filesystemFindDelegate(node->parent);
 
@@ -243,7 +253,7 @@ g_fs_write_status filesystemWrite(g_fs_node* node, uint8_t* buffer, uint64_t off
 g_fs_open_status filesystemCreateFile(g_fs_node* parent, const char* path, g_fs_node** outFile)
 {
 	g_fs_delegate* delegate = filesystemFindDelegate(parent);
-	if(!delegate->write)
+	if(!delegate->create)
 		return G_FS_OPEN_ERROR;
 
 	return delegate->create(parent, path, outFile);

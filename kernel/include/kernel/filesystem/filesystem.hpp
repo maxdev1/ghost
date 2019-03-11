@@ -121,6 +121,11 @@ void filesystemAddChild(g_fs_node* parent, g_fs_node* child);
 g_fs_delegate* filesystemCreateDelegate();
 
 /**
+ * Returns the file system root.
+ */
+g_fs_node* filesystemGetRoot();
+
+/**
  * Searches for the delegate responsible for this node.
  */
 g_fs_delegate* filesystemFindDelegate(g_fs_node* node);

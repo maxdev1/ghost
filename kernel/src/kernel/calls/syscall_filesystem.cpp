@@ -36,11 +36,11 @@ void syscallFsOpen(g_task* task, g_syscall_fs_open* data)
 			workingDirectoryPath = "/";
 		}
 
-		if(filesystemFind(0, workingDirectoryPath, &relative) != G_FS_OPEN_SUCCESSFUL)
-		{
-			relative = 0;
-		}
+		filesystemFind(0, workingDirectoryPath, &relative);
 	}
+
+	if(!relative)
+		relative = filesystemGetRoot();
 
 	g_fs_node* file;
 	g_fs_open_status status = filesystemFind(relative, data->path, &file);
