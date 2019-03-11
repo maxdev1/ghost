@@ -32,5 +32,6 @@ void exit(int code) {
 
 	// quit task
 	g_exit(code);
+
 	__builtin_unreachable();
 }

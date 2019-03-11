@@ -164,6 +164,7 @@ void syscallFsRead(g_task* task, g_syscall_fs_read* data)
 void syscallFsClose(g_task* task, g_syscall_fs_close* data)
 {
 	filesystemProcessRemoveDescriptor(task->process->id, data->fd);
+	data->status = G_FS_CLOSE_SUCCESSFUL;
 }
 
 void syscallFsWrite(g_task* task, g_syscall_fs_write* data)

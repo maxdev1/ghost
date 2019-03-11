@@ -18,17 +18,33 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <stdio.h>
+#include "tester.hpp"
+#include <ghost.h>
+#include <stdlib.h>
 
-#define ASSERT(expression)	\
-	if(!(expression)) {		\
-		klog("%s %i: assertion failed: " #expression, __FUNCTION__, __LINE__);	\
-		return;																		\
+void openReadClose()
+{
+	g_fd fd = g_open("/system/lib/crti.o");
+	ASSERT(fd != -1);
+
+	int buflen = 128;
+	uint8_t* buffer = (uint8_t*) malloc(buflen);
+	ASSERT(buffer != 0);
+
+	int len;
+	int total = 0;
+	while((len = g_read(fd, buffer, len)) > 0)
+	{
+		total += len;
 	}
 
-#define TEST_SUCCESSFUL		\
-	klog("%s %i: test successful", __FUNCTION__, __LINE__)
+	ASSERT(total == 620);
+	g_close(fd);
 
-void runMessageTest();
+	TEST_SUCCESSFUL;
+}
 
-void runStdioTest();
+void runStdioTest()
+{
+	openReadClose();
+}

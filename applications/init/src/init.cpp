@@ -21,41 +21,16 @@
 #include <ghost.h>
 #include <ghostuser/utils/logger.hpp>
 
-void helloirq(uint8_t irq) {
-
-	klog("hello keyboard: %i", irq);
-}
-
-void hellosignal(int sig) {
-
-	klog("hello signal: %i", sig);
-}
-
 /**
  *
  */
 int main(int argc, char** argv) {
 
-	g_register_irq_handler(1, helloirq);
-	g_register_signal_handler(12, hellosignal);
-
-	g_raise_signal(g_get_pid(), 12);
-
-	g_fd in = g_open("/README");
-	klog("opened file: %i", in);
-	uint8_t buf[128];
-	int len;
-	while ((len = g_read(in, buf, 127)) > 0) {
-		buf[len] = 0;
-		g_log((const char*) buf);
-	}
-	g_close(in);
-
 	int x = 0;
 	int bla = 0;
 	for (;;) {
-		g_sleep(1000);
 		klog("Hello world!");
+		g_sleep(5000);
 	}
 
 	/*
