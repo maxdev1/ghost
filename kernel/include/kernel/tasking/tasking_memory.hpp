@@ -28,4 +28,23 @@
  */
 bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress);
 
+/**
+ * Creates the stacks for a newly created task.
+ * 
+ * For a task running on kernel-level, only the main stack is created. On interrupt
+ * handling the current state is always pushed on top of this stack.
+ * 
+ * For user-space tasks, there is a user-space stack and a dedicated interrupt stack
+ * that is switched to when handling interrupts.
+ */
+void taskingMemoryCreateStacks(g_task* task);
+
+/**
+ * Creates a new page directory to use for a new process. Clones the kernel space
+ * into the page directory, maps the lower memory and adds recursive mapping.
+ *
+ * @return the physical address of the directory
+ */
+g_physical_address taskingMemoryCreatePageDirectory();
+
 #endif

@@ -21,6 +21,7 @@
 #include "ghost/calls/calls.h"
 
 #include "kernel/tasking/tasking.hpp"
+#include "kernel/tasking/tasking_memory.hpp"
 #include "kernel/tasking/scheduler.hpp"
 #include "kernel/tasking/wait.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
@@ -97,34 +98,6 @@ void taskingInitializeLocal()
 	schedulerInitializeLocal();
 }
 
-g_physical_address taskingCreatePageDirectory()
-{
-	g_page_directory directoryCurrent = (g_page_directory) G_CONST_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
-
-	g_physical_address directoryPhys = (g_physical_address) bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-	g_virtual_address directoryTempVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
-	g_page_directory directoryTemp = (g_page_directory) directoryTempVirt;
-	pagingMapPage(directoryTempVirt, directoryPhys);
-
-	// clone kernel space mappings
-	for(uint32_t ti = 0; ti < 1024; ti++)
-	{
-		if(!((directoryCurrent[ti] & G_PAGE_ALIGN_MASK) & G_PAGE_TABLE_USERSPACE))
-			directoryTemp[ti] = directoryCurrent[ti];
-		else
-			directoryTemp[ti] = 0;
-	}
-
-	// clone mappings for the lowest 4 MiB TODO
-	directoryTemp[0] = directoryCurrent[0];
-
-	// recursive self-map
-	directoryTemp[1023] = directoryPhys | DEFAULT_KERNEL_TABLE_FLAGS;
-
-	pagingUnmapPage(directoryTempVirt);
-	return directoryPhys;
-}
-
 void taskingApplySecurityLevel(volatile g_processor_state* state, g_security_level securityLevel)
 {
 	if(securityLevel == G_SECURITY_LEVEL_KERNEL)
@@ -190,43 +163,10 @@ g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_securit
 	// Switch to task directory
 	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(task->process->pageDirectory);
 
-	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
-	{
-		// For kernel level tasks, registers are stored on working stack on interrupt
-		task->interruptStack.start = 0;
-		task->interruptStack.end = 0;
-	} else
-	{
-		// User-space processes get a dedicated kernel stack
-		g_physical_address kernPhys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-		g_virtual_address kernVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
-		pagingMapPage(kernVirt, kernPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
-		pageReferenceTrackerIncrement(kernPhys);
-		task->interruptStack.start = kernVirt;
-		task->interruptStack.end = kernVirt + G_PAGE_SIZE;
-	}
-
-	// Create main stack
-	g_physical_address stackPhys = (g_physical_address) bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-	pageReferenceTrackerIncrement(stackPhys);
-	g_virtual_address stackVirt;
-	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
-	{
-		stackVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
-		pagingMapPage(stackVirt, stackPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
-	} else
-	{
-		stackVirt = addressRangePoolAllocate(process->virtualRangePool, 1);
-		pagingMapPage(stackVirt, stackPhys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
-	}
-	task->stack.start = stackVirt;
-	task->stack.end = stackVirt + G_PAGE_SIZE;
-
-	// Initialize task state on main stack
+	taskingMemoryCreateStacks(task);
 	taskingResetTaskState(task);
 	task->state->eip = eip;
 
-	// Switch back
 	taskingTemporarySwitchBack(returnDirectory);
 
 	// Add to process
@@ -360,7 +300,7 @@ g_process* taskingCreateProcess()
 	process->tlsMaster.totalsize = 0;
 	process->tlsMaster.alignment = 0;
 
-	process->pageDirectory = taskingCreatePageDirectory();
+	process->pageDirectory = taskingMemoryCreatePageDirectory();
 
 	process->virtualRangePool = (g_address_range_pool*) heapAllocate(sizeof(g_address_range_pool));
 	addressRangePoolInitialize(process->virtualRangePool);
@@ -627,12 +567,12 @@ void taskingKillProcess(g_pid pid)
 
 void taskingRemoveProcess(g_process* process)
 {
-	// remove & free user-space mappings
 	mutexAcquire(&process->lock);
 	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(process->pageDirectory);
 
+	// Clear mappings and free physical space above 4 MiB
 	g_page_directory directoryCurrent = (g_page_directory) G_CONST_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
-	for(uint32_t ti = 0; ti < 1024; ti++)
+	for(uint32_t ti = 1; ti < 1024; ti++)
 	{
 		if((directoryCurrent[ti] & G_PAGE_ALIGN_MASK) & G_PAGE_TABLE_USERSPACE)
 		{
@@ -691,7 +631,6 @@ void taskingTemporarySwitchBack(g_physical_address back)
 
 g_raise_signal_status taskingRaiseSignal(g_task* task, int signal)
 {
-	// get handler from process
 	g_signal_handler* handler = &(task->process->signalHandlers[signal]);
 	if(handler->handlerAddress)
 	{
@@ -728,9 +667,16 @@ g_raise_signal_status taskingRaiseSignal(g_task* task, int signal)
 
 void taskingInterruptTask(g_task* task, g_virtual_address entry, g_virtual_address returnAddress, int argumentCount, ...)
 {
+	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
+	{
+		logInfo("%! kernel task %i can not be interrupted", "tasking", task->id);
+		return;
+	}
+
 	mutexAcquire(&task->process->lock);
 	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(task->process->pageDirectory);
 
+	// Prepare interruption
 	task->interruptionInfo = (g_task_interruption_info*) heapAllocate(sizeof(g_task_interruption_info));
 	task->interruptionInfo->previousWaitData = task->waitData;
 	task->interruptionInfo->previousWaitResolver = task->waitResolver;
@@ -739,17 +685,15 @@ void taskingInterruptTask(g_task* task, g_virtual_address entry, g_virtual_addre
 	task->waitResolver = 0;
 	task->status = G_THREAD_STATUS_RUNNING;
 
-	// save processor state
+	// Save processor state
 	memoryCopy(&task->interruptionInfo->state, task->state, sizeof(g_processor_state));
 	task->interruptionInfo->statePtr = (g_processor_state*) task->state;
 
-	// set the new entry
+	// Set the new entry
 	task->state->eip = entry;
 
-	// jump to next stack value
+	// Pass parameters on stack
 	uint32_t* esp = (uint32_t*) (task->state->esp);
-
-	// pass parameter value
 	va_list args;
 	va_start(args, argumentCount);
 	while(argumentCount--)
@@ -759,11 +703,11 @@ void taskingInterruptTask(g_task* task, g_virtual_address entry, g_virtual_addre
 	}
 	va_end(args);
 
-	// put callback as return address on stack
+	// Put return address on stack
 	--esp;
 	*esp = returnAddress;
 
-	// set new ESP
+	// Set new ESP
 	task->state->esp = (uint32_t) esp;
 
 	taskingTemporarySwitchBack(returnDirectory);
