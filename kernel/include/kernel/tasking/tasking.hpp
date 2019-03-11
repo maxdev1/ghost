@@ -292,14 +292,6 @@ void taskingAssign(g_tasking_local* local, g_task* task);
 g_process* taskingCreateProcess();
 
 /**
- * Creates a new page directory to use for a new process. Clones the kernel space
- * into the page directory, maps the lower memory and adds recursive mapping.
- *
- * @return the physical address of the directory
- */
-g_physical_address taskingCreatePageDirectory();
-
-/**
  * Creates a task.
  */
 g_task* taskingCreateThread(g_virtual_address entry, g_process* process, g_security_level level);
