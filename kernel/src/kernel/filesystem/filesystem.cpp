@@ -31,15 +31,15 @@
 static g_fs_node* filesystemRoot;
 static g_fs_node* mountFolder;
 
-static g_fs_virt_id filesystemNextId;
-static g_mutex filesystemNextIdLock;
+static g_fs_virt_id filesystemNextNodeId;
+static g_mutex filesystemNextNodeIdLock;
 
 static g_hashmap<g_fs_virt_id, g_fs_node*>* filesystemNodes;
 
 void filesystemInitialize()
 {
-	mutexInitialize(&filesystemNextIdLock);
-	filesystemNextId = 0;
+	mutexInitialize(&filesystemNextNodeIdLock);
+	filesystemNextNodeId = 0;
 
 	filesystemNodes = hashmapCreateNumeric<g_fs_virt_id, g_fs_node*>(1024);
 
@@ -50,7 +50,7 @@ void filesystemInitialize()
 void filesystemCreateRoot()
 {
 	g_fs_delegate* ramdiskDelegate = filesystemCreateDelegate();
-	ramdiskDelegate->discoverChild = filesystemRamdiskDelegateDiscoverChild;
+	ramdiskDelegate->discover = filesystemRamdiskDelegateDiscover;
 	ramdiskDelegate->read = filesystemRamdiskDelegateRead;
 	ramdiskDelegate->write = filesystemRamdiskDelegateWrite;
 	ramdiskDelegate->truncate = filesystemRamdiskDelegateTruncate;
@@ -72,7 +72,7 @@ void filesystemCreateRoot()
 g_fs_node* filesystemCreateNode(g_fs_node_type type, const char* name)
 {
 	g_fs_node* node = (g_fs_node*) heapAllocate(sizeof(g_fs_node));
-	node->id = filesystemGetNextId();
+	node->id = filesystemGetNextNodeId();
 	node->type = type;
 	node->name = stringDuplicate(name);
 	node->parent = 0;
@@ -100,24 +100,26 @@ void filesystemAddChild(g_fs_node* parent, g_fs_node* child)
 	mutexRelease(&delegate->lock);
 }
 
-g_fs_virt_id filesystemGetNextId()
+g_fs_virt_id filesystemGetNextNodeId()
 {
-	mutexAcquire(&filesystemNextIdLock);
-	g_fs_virt_id nextId = filesystemNextId++;
-	mutexRelease(&filesystemNextIdLock);
+	mutexAcquire(&filesystemNextNodeIdLock);
+	g_fs_virt_id nextId = filesystemNextNodeId++;
+	mutexRelease(&filesystemNextNodeIdLock);
 	return nextId;
 }
 
-g_fs_node* filesystemFindChild(g_fs_node* parent, const char* name)
+g_fs_open_status filesystemFindChild(g_fs_node* parent, const char* name, g_fs_node** outChild)
 {
 	if(stringEquals(name, ".."))
 	{
-		return parent->parent;
+		*outChild = parent->parent;
+		return G_FS_OPEN_SUCCESSFUL;
 	}
 
 	if(stringEquals(name, "."))
 	{
-		return parent;
+		*outChild = parent;
+		return G_FS_OPEN_SUCCESSFUL;
 	}
 
 	g_fs_node_entry* child = parent->children;
@@ -126,19 +128,22 @@ g_fs_node* filesystemFindChild(g_fs_node* parent, const char* name)
 	{
 		if(stringEquals(name, child->node->name))
 		{
-			return child->node;
+			*outChild = child->node;
+			return G_FS_OPEN_SUCCESSFUL;
 		}
 		lastKnown = child->node;
 		child = child->next;
 	}
 
 	g_fs_delegate* delegate = filesystemFindDelegate(lastKnown);
-	if(!delegate->discoverChild)
-		return 0;
-	return delegate->discoverChild(lastKnown, name);
+	if(!delegate->discover) {
+		*outChild = 0;
+		return G_FS_OPEN_ERROR;
+	}
+	return delegate->discover(lastKnown, name, outChild);
 }
 
-g_fs_node* filesystemFind(g_fs_node* parent, const char* path)
+g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node** outChild)
 {
 	if(parent == 0)
 	{
@@ -148,6 +153,7 @@ g_fs_node* filesystemFind(g_fs_node* parent, const char* path)
 
 	const char* pathPos = path;
 	g_fs_node* node = parent;
+	g_fs_open_status status = G_FS_OPEN_SUCCESSFUL;
 
 	while(pathPos)
 	{
@@ -171,15 +177,17 @@ g_fs_node* filesystemFind(g_fs_node* parent, const char* path)
 		memoryCopy(nameBuf, pathPos, nameLen);
 		nameBuf[nameLen] = 0;
 
-		node = filesystemFindChild(node, nameBuf);
-		if(!node)
+		status = filesystemFindChild(node, nameBuf, &node);
+		if(status != G_FS_OPEN_SUCCESSFUL) {
 			break;
+		}
 
 		pathPos = nameEnd;
 	}
 
 	heapFree(nameBuf);
-	return node;
+	*outChild = node;
+	return status;
 }
 
 g_fs_node* filesystemGetNode(g_fs_virt_id id)
