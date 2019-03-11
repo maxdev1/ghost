@@ -21,6 +21,7 @@
 #include "kernel/tasking/tasking_memory.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
+#include "shared/logger/logger.hpp"
 
 bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 {
@@ -43,20 +44,21 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 	}
 
 	// calculate new address
-	g_virtual_address brk_old = process->heap.brk;
-	g_virtual_address brk_new = brk_old + amount;
+	g_virtual_address oldBrk = process->heap.brk;
+	g_virtual_address newBrk = oldBrk + amount;
 
 	// heap expansion is limited
 	bool success = false;
-	if(brk_new >= G_CONST_USER_MAXIMUM_HEAP_BREAK)
+	if(newBrk >= G_CONST_USER_MAXIMUM_HEAP_BREAK)
 	{
+		logInfo("%! process %i went out of memory during sbrk", "syscall", process->main->id);
 		*outAddress = -1;
 
 	} else
 	{
 		// expand if necessary
 		g_virtual_address virt_above;
-		while(brk_new > (virt_above = process->heap.start + process->heap.pages * G_PAGE_SIZE))
+		while(newBrk > (virt_above = process->heap.start + process->heap.pages * G_PAGE_SIZE))
 		{
 			g_physical_address phys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
 			pagingMapPage(virt_above, phys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
@@ -66,7 +68,7 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 
 		// shrink if possible
 		g_virtual_address virtAligned;
-		while(brk_new < (virtAligned = process->heap.start + process->heap.pages * G_PAGE_SIZE - G_PAGE_SIZE))
+		while(newBrk < (virtAligned = process->heap.start + process->heap.pages * G_PAGE_SIZE - G_PAGE_SIZE))
 		{
 			g_physical_address phys = pagingVirtualToPhysical(virtAligned);
 			pagingUnmapPage(virtAligned);
@@ -77,8 +79,8 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 			--process->heap.pages;
 		}
 
-		process->heap.brk = brk_new;
-		*outAddress = brk_old;
+		process->heap.brk = newBrk;
+		*outAddress = oldBrk;
 		success = true;
 	}
 

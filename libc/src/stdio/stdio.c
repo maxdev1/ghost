@@ -69,12 +69,10 @@ void __fini_stdio() {
 	while (f) {
 		FILE* n = f->next;
 		if (g_atomic_try_lock(&n->lock)) {
-			__fflush_unlocked(f);
 			__fclose_static_unlocked(f);
 			n->lock = 0;
 		}
 		f = n;
 	}
-
 }
 

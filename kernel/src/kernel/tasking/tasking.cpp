@@ -418,8 +418,6 @@ void taskingCleanupThread()
 			g_schedule_entry* next = entry->next;
 			if(entry->task->status == G_THREAD_STATUS_DEAD)
 			{
-				hashmapRemove(taskGlobalMap, entry->task->id);
-
 				if(previous)
 					previous->next = next;
 				else
@@ -541,6 +539,7 @@ void taskingRemoveThread(g_task* task)
 		taskingKillProcess(task->process->id);
 	}
 
+	hashmapRemove(taskGlobalMap, task->id);
 	heapFree(task);
 }
 

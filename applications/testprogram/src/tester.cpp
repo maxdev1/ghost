@@ -24,20 +24,17 @@
 #include <string.h>
 #include <malloc.h>
 
+void printUsage()
+{
+	klog("please specify which test to execute: stdio, messaging");
+}
+
 /**
  *
  */
-int main(int argc, char** argv) {
-
-	if (argc > 1) {
-		char* dirbuf = strdup(argv[1]);
-		char* basebuf = strdup(argv[1]);
-		printf("basename: %s\n", dirname(dirbuf));
-		printf("dirname:  %s\n", basename(basebuf));
-		free(dirbuf);
-		free(basebuf);
-	} else {
-		fprintf(stderr, "specify a path name");
-	}
-
+int main(int argc, char** argv)
+{
+	runStdioTest();
+//	runMessageTest();
+	klog("test suite finished");
 }
