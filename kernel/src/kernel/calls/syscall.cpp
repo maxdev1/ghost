@@ -27,7 +27,7 @@
 #include "kernel/calls/syscall_general.hpp"
 #include "kernel/calls/syscall_tasking.hpp"
 #include "kernel/calls/syscall_memory.hpp"
-#include "kernel/calls/syscall_fs.hpp"
+#include "kernel/calls/syscall_filesystem.hpp"
 
 static g_syscall_registration* syscallRegistrations = 0;
 
@@ -153,5 +153,10 @@ void syscallRegisterAll()
 	syscallRegister(G_SYSCALL_FS_OPEN, (g_syscall_handler) syscallFsOpen, true);
 	syscallRegister(G_SYSCALL_FS_SEEK, (g_syscall_handler) syscallFsSeek, true);
 	syscallRegister(G_SYSCALL_FS_READ, (g_syscall_handler) syscallFsRead, true);
+	syscallRegister(G_SYSCALL_FS_WRITE, (g_syscall_handler) syscallFsWrite, true);
 	syscallRegister(G_SYSCALL_FS_CLOSE, (g_syscall_handler) syscallFsClose, false);
+	syscallRegister(G_SYSCALL_FS_CLONEFD, (g_syscall_handler) syscallFsCloneFd, false);
+	syscallRegister(G_SYSCALL_FS_TELL, (g_syscall_handler) syscallFsTell, false);
+	syscallRegister(G_SYSCALL_FS_STAT, (g_syscall_handler) syscallFsStat, true);
+	syscallRegister(G_SYSCALL_FS_FSTAT, (g_syscall_handler) syscallFsFstat, true);
 }
