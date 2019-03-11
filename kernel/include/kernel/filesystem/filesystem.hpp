@@ -65,7 +65,10 @@ struct g_fs_delegate
 
 	g_fs_node*(*discoverChild)(g_fs_node* parent, const char* name);
 	g_fs_read_status (*read)(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
-	g_fs_length_status (*getLength)(g_fs_node* node, int64_t* outLength);
+	g_fs_write_status (*write)(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote);
+	g_fs_length_status (*getLength)(g_fs_node* node, uint64_t* outLength);
+	g_fs_open_status (*create)(g_fs_node* parent, const char* name, g_fs_node** outFile);
+	g_fs_open_status (*truncate)(g_fs_node* file);
 };
 
 void filesystemInitialize();
@@ -90,6 +93,12 @@ g_fs_delegate* filesystemFindDelegate(g_fs_node* node);
 
 g_fs_read_status filesystemRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
 
-g_fs_length_status filesystemGetLength(g_fs_node* node, int64_t* outLength);
+g_fs_write_status filesystemWrite(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote);
+
+g_fs_length_status filesystemGetLength(g_fs_node* node, uint64_t* outLength);
+
+g_fs_open_status filesystemCreateFile(g_fs_node* parent, const char* path, g_fs_node** outFile);
+
+g_fs_open_status filesystemTruncate(g_fs_node* file);
 
 #endif
