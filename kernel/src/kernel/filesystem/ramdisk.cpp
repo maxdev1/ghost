@@ -255,12 +255,12 @@ g_ramdisk_entry* ramdiskGetRoot()
 
 g_ramdisk_entry* ramdiskCreateFile(g_ramdisk_entry* parent, const char* filename)
 {
-	g_ramdisk_entry* entry = new g_ramdisk_entry();
+	g_ramdisk_entry* entry = (g_ramdisk_entry*) heapAllocate(sizeof(g_ramdisk_entry));
 	entry->next = ramdiskMain->firstEntry;
 	ramdiskMain->firstEntry = entry;
 
 	int namelen = stringLength(filename);
-	entry->name = new char[namelen + 1];
+	entry->name = (char*) heapAllocate(sizeof(char) * (namelen + 1));
 	stringCopy(entry->name, filename);
 
 	entry->type = G_RAMDISK_ENTRY_TYPE_FILE;
