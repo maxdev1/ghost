@@ -35,29 +35,48 @@ void syscallFsOpen(g_task* task, g_syscall_fs_open* data)
 		{
 			workingDirectoryPath = "/";
 		}
-		relative = filesystemFind(0, workingDirectoryPath);
+
+		if(filesystemFind(0, workingDirectoryPath, &relative) != G_FS_OPEN_SUCCESSFUL)
+		{
+			relative = 0;
+		}
 	}
 
-	g_fs_node* file = filesystemFind(relative, data->path);
-	if(file)
+	g_fs_node* file;
+	g_fs_open_status status = filesystemFind(relative, data->path, &file);
+	if(status == G_FS_OPEN_SUCCESSFUL)
 	{
-		if (data->flags & G_FILE_FLAG_MODE_TRUNCATE) {
-			if(filesystemTruncate(file) != G_FS_OPEN_SUCCESSFUL) {
+		if(data->flags & G_FILE_FLAG_MODE_TRUNCATE)
+		{
+			if(filesystemTruncate(file) != G_FS_OPEN_SUCCESSFUL)
+			{
 				logInfo("%! failed to truncate file %i", "filesystem", file->id);
+				data->fd = -1;
 				data->status = G_FS_OPEN_ERROR;
 			}
 		}
-	} else {
-		if (data->flags & G_FILE_FLAG_MODE_CREATE) {
-			if(filesystemCreateFile(relative, data->path, &file) != G_FS_OPEN_SUCCESSFUL) {
+	} else if(status == G_FS_OPEN_NOT_FOUND)
+	{
+		if(data->flags & G_FILE_FLAG_MODE_CREATE)
+		{
+			if(filesystemCreateFile(relative, data->path, &file) != G_FS_OPEN_SUCCESSFUL)
+			{
 				logInfo("%! failed to create file '%s' in parent %i", "filesystem", data->path, relative->id);
+				data->fd = -1;
 				data->status = G_FS_OPEN_ERROR;
 				return;
 			}
-		} else {
+		} else
+		{
+			data->fd = -1;
 			data->status = G_FS_OPEN_NOT_FOUND;
 			return;
 		}
+	} else
+	{
+		data->fd = -1;
+		data->status = status;
+		return;
 	}
 
 	g_file_descriptor* descriptor = filesystemProcessCreateDescriptor(task->process->id, file->id, data->flags);
@@ -166,8 +185,10 @@ void syscallFsWrite(g_task* task, g_syscall_fs_write* data)
 	}
 
 	uint64_t startOffset = descriptor->offset;
-	if (descriptor->openFlags & G_FILE_FLAG_MODE_APPEND) {
-		if(filesystemGetLength(node, &startOffset) != G_FS_LENGTH_SUCCESSFUL) {
+	if(descriptor->openFlags & G_FILE_FLAG_MODE_APPEND)
+	{
+		if(filesystemGetLength(node, &startOffset) != G_FS_LENGTH_SUCCESSFUL)
+		{
 			logInfo("%! failed to append to file %i, could not get length", "filesystem", node->id);
 			data->status = G_FS_WRITE_ERROR;
 			data->result = -1;
@@ -201,12 +222,13 @@ void syscallFsCloneFd(g_task* task, g_syscall_fs_clonefd* data)
 		data->status = G_FS_CLONEFD_ERROR;
 		return;
 	}
-	
+
 	data->result = clone->id;
 	data->status = G_FS_CLONEFD_SUCCESSFUL;
 }
 
-void syscallFsTell(g_task* task, g_syscall_fs_tell* data) {
+void syscallFsTell(g_task* task, g_syscall_fs_tell* data)
+{
 
 	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(task->process->id, data->fd);
 	if(!descriptor)

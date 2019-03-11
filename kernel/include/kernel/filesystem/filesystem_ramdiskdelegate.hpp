@@ -25,7 +25,7 @@
 #include "shared/system/mutex.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 
-g_fs_node* filesystemRamdiskDelegateDiscoverChild(g_fs_node* parent, const char* name);
+g_fs_open_status filesystemRamdiskDelegateDiscover(g_fs_node* parent, const char* name, g_fs_node** outNode);
 
 g_fs_read_status filesystemRamdiskDelegateRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
 
