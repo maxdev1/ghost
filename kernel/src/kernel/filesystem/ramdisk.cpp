@@ -51,7 +51,8 @@ void ramdiskLoadFromModule(g_multiboot_module* module)
 
 	ramdiskMain = (g_ramdisk*) heapAllocate(sizeof(g_ramdisk));
 	ramdiskParseContents(module);
-	logInfo("%! ramdisk loaded", "ramdisk");
+	logInfo("%! module loaded: %i MB", "ramdisk", (module->moduleEnd - module->moduleStart) / 1024 / 1024);
+	logDebug("%! relocated to kernel space: %h -> %h", "ramdisk", module->moduleStart, G_PAGE_ALIGN_UP(module->moduleEnd));
 }
 
 void ramdiskParseContents(g_multiboot_module* module)

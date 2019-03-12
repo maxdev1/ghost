@@ -138,6 +138,7 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	//elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_DRIVER, &userTask2);
 	// TEST THREADS END
 
+	logInfo("%! booting on %i cores", "kernel", processorGetNumberOfProcessors());
 	mutexRelease(&bootstrapCoreLock, false);
 	systemWaitForApplicationCores();
 	interruptsEnable();

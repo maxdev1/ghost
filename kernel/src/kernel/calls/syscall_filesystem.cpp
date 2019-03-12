@@ -43,7 +43,11 @@ void syscallFsOpen(g_task* task, g_syscall_fs_open* data)
 		relative = filesystemGetRoot();
 
 	g_fs_node* file;
-	g_fs_open_status status = filesystemFind(relative, data->path, &file);
+	bool foundAllButLast;
+	g_fs_node* lastFoundParent;
+	const char* filenameStart;
+	g_fs_open_status status = filesystemFind(relative, data->path, &file, &foundAllButLast, &lastFoundParent, &filenameStart);
+
 	if(status == G_FS_OPEN_SUCCESSFUL)
 	{
 		if(data->flags & G_FILE_FLAG_MODE_TRUNCATE)
@@ -53,13 +57,19 @@ void syscallFsOpen(g_task* task, g_syscall_fs_open* data)
 				logInfo("%! failed to truncate file %i", "filesystem", file->id);
 				data->fd = -1;
 				data->status = G_FS_OPEN_ERROR;
+				return;
 			}
 		}
 	} else if(status == G_FS_OPEN_NOT_FOUND)
 	{
 		if(data->flags & G_FILE_FLAG_MODE_CREATE)
 		{
-			if(filesystemCreateFile(relative, data->path, &file) != G_FS_OPEN_SUCCESSFUL)
+			if(!foundAllButLast) {
+				logInfo("%! failed to create file '%s' in parent %i because folders do not exist", "filesystem", data->path, relative->id);
+				data->fd = -1;
+				data->status = G_FS_OPEN_ERROR;
+			}
+			else if(filesystemCreateFile(lastFoundParent, filenameStart, &file) != G_FS_OPEN_SUCCESSFUL)
 			{
 				logInfo("%! failed to create file '%s' in parent %i", "filesystem", data->path, relative->id);
 				data->fd = -1;

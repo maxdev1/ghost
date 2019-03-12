@@ -22,13 +22,36 @@
 
 #define ASSERT(expression)	\
 	if(!(expression)) {		\
-		klog("%s %i: assertion failed: " #expression, __FUNCTION__, __LINE__);	\
-		return;																		\
+		klog("[Test failed] %s, line %i: " #expression, __FUNCTION__, __LINE__);	\
+		return test_result_t(0, 1);													\
 	}
 
 #define TEST_SUCCESSFUL		\
-	klog("%s %i: test successful", __FUNCTION__, __LINE__)
+	klog("[Test successful] %s, line %i", __FUNCTION__, __LINE__); \
+	return test_result_t(1, 0)
 
-void runMessageTest();
 
-void runStdioTest();
+class test_result_t {
+public:
+	int successful;
+	int failed;
+	test_result_t() : successful(0), failed(0) {}
+	test_result_t(int successful, int failed) : successful(successful), failed(failed) {}
+
+	friend test_result_t operator+(const test_result_t& a, const test_result_t& b) {
+		test_result_t out;
+		out.successful = a.successful + b.successful;
+		out.failed = a.failed + b.failed;
+		return out;
+	}
+
+	test_result_t& operator+=(const test_result_t& other) {
+		this->successful += other.successful;
+		this->failed += other.failed;
+		return *this;
+	}
+};
+
+test_result_t runMessageTest();
+
+test_result_t runStdioTest();

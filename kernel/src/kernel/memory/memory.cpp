@@ -54,7 +54,7 @@ void memoryInitializePhysicalAllocator(g_setup_information* setupInformation)
 	bitmapPageAllocatorRefresh(&memoryPhysicalAllocator);
 
 	G_DEBUG_INTERFACE_SYSTEM_INFORMATION("memory.freePageCount", memoryPhysicalAllocator.freePageCount);
-	logInfo("%! bitmap analyzed, got %i free pages", "memory", memoryPhysicalAllocator.freePageCount);
+	logInfo("%! available memory: %i MB", "memory", (memoryPhysicalAllocator.freePageCount * G_PAGE_SIZE) / 1024 / 1024);
 }
 
 void memoryUnmapSetupMemory()

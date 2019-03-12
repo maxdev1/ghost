@@ -68,7 +68,7 @@ g_elf32_spawn_status elf32SpawnFromRamdisk(g_ramdisk_entry* entry, g_security_le
 
 		// Set out parameter
 		*target = mainTask;
-		logInfo("%! loading binary: %s to task: %i", "elf32", entry->name, mainTask->id);
+		logDebug("%! loading binary: %s to task: %i", "elf32", entry->name, mainTask->id);
 		return ELF32_SPAWN_STATUS_SUCCESSFUL;
 	}
 

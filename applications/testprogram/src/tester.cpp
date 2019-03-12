@@ -24,17 +24,14 @@
 #include <string.h>
 #include <malloc.h>
 
-void printUsage()
-{
-	klog("please specify which test to execute: stdio, messaging");
-}
-
-/**
- *
- */
 int main(int argc, char** argv)
 {
-	runStdioTest();
-//	runMessageTest();
-	klog("test suite finished");
+	g_sleep(3000);
+	klog("Starting test suite...");
+
+	test_result_t result;
+	result += runStdioTest();
+//	result += runMessageTest();
+
+	klog("Test suite finished: %i successful, %i failed", result.successful, result.failed);
 }

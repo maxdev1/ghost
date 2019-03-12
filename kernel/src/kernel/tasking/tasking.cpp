@@ -89,11 +89,11 @@ void taskingInitializeLocal()
 
 	g_process* idle = taskingCreateProcess();
 	local->scheduling.idleTask = taskingCreateThread((g_virtual_address) taskingIdleThread, idle, G_SECURITY_LEVEL_KERNEL);
-	logInfo("%! core: %i idle task: %i", "tasking", processorGetCurrentId(), idle->main->id);
+	logDebug("%! core: %i idle task: %i", "tasking", processorGetCurrentId(), idle->main->id);
 
 	g_process* cleanup = taskingCreateProcess();
 	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) taskingCleanupThread, cleanup, G_SECURITY_LEVEL_KERNEL));
-	logInfo("%! core: %i cleanup task: %i", "tasking", processorGetCurrentId(), cleanup->main->id);
+	logDebug("%! core: %i cleanup task: %i", "tasking", processorGetCurrentId(), cleanup->main->id);
 
 	schedulerInitializeLocal();
 }
