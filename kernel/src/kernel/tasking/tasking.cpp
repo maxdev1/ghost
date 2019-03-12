@@ -137,28 +137,12 @@ void taskingResetTaskState(g_task* task)
 
 g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_security_level level)
 {
-	g_task* task = (g_task*) heapAllocate(sizeof(g_task));
+	g_task* task = (g_task*) heapAllocateClear(sizeof(g_task));
 	task->id = taskingGetNextId();
 	task->process = process;
 	task->securityLevel = level;
 	task->status = G_THREAD_STATUS_RUNNING;
 	task->type = G_THREAD_TYPE_DEFAULT;
-
-	task->overridePageDirectory = 0;
-
-	task->tlsCopy.start = 0;
-	task->tlsCopy.end = 0;
-	task->tlsCopy.userThreadObject = 0;
-
-	task->syscall.processingTask = 0;
-	task->syscall.sourceTask = 0;
-	task->syscall.handler = 0;
-	task->syscall.data = 0;
-
-	task->waitResolver = 0;
-	task->waitData = 0;
-
-	task->interruptionInfo = 0;
 
 	// Switch to task directory
 	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(task->process->pageDirectory);

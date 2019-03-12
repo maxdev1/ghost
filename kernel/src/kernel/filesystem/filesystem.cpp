@@ -219,7 +219,7 @@ g_fs_node* filesystemGetRoot()
 
 g_fs_delegate* filesystemCreateDelegate()
 {
-	g_fs_delegate* delegate = (g_fs_delegate*) heapAllocate(sizeof(g_fs_delegate));
+	g_fs_delegate* delegate = (g_fs_delegate*) heapAllocateClear(sizeof(g_fs_delegate));
 	mutexInitialize(&delegate->lock);
 	return delegate;
 }

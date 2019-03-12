@@ -42,6 +42,13 @@ bool heapExpand();
 void* heapAllocate(uint32_t size);
 
 /**
+ * Allocates a number of bytes on the kernel heap and clears it.
+ *
+ * Causes a panic if it fails.
+ */
+void* heapAllocateClear(uint32_t size);
+
+/**
  * Frees the given range.
  */
 void heapFree(void* memory);

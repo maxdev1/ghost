@@ -102,6 +102,13 @@ void* heapAllocate(uint32_t size)
 	return ptr;
 }
 
+void* heapAllocateClear(uint32_t size)
+{
+	void* ptr = heapAllocate(size);
+	memorySetBytes(ptr, 0, size);
+	return ptr;
+}
+
 void heapFree(void* ptr)
 {
 	if(!heapInitialized)
