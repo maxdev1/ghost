@@ -18,30 +18,48 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_WAIT_RESOLVER__
-#define __KERNEL_WAIT_RESOLVER__
+#include "kernel/filesystem/filesystem_pipedelegate.hpp"
 
-#include "ghost/types.h"
-#include "kernel/tasking/tasking.hpp"
+#include "kernel/memory/memory.hpp"
+#include "kernel/kernel.hpp"
+#include "shared/system/mutex.hpp"
+#include "shared/utils/string.hpp"
 
-struct g_wait_resolver_sleep_data
+g_fs_open_status filesystemPipeDelegateDiscover(g_fs_node* parent, const char* name, g_fs_node** outNode)
 {
-	uint32_t wakeTime;
-};
+	return G_FS_OPEN_ERROR;
+}
 
-struct g_wait_resolver_atomic_lock_data
+g_fs_read_status filesystemPipeDelegateRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead)
 {
-	uint32_t startTime;
-};
+}
 
-struct g_wait_resolver_for_file_data
+g_fs_write_status filesystemRamdiskDelegateWrite(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote)
 {
-	bool (*waitResolverFromDelegate)(g_task*);
-	g_fs_node* node;
-};
+}
 
-bool waitResolverSleep(g_task* task);
+g_fs_length_status filesystemRamdiskDelegateGetLength(g_fs_node* node, uint64_t* outLength)
+{
 
-bool waitResolverAtomicLock(g_task* task);
+}
 
-#endif
+g_fs_open_status filesystemRamdiskDelegateCreate(g_fs_node* parent, const char* name, g_fs_node** outFile)
+{
+}
+
+g_fs_open_status filesystemRamdiskDelegateTruncate(g_fs_node* file)
+{
+	// TODO empty pipe
+}
+
+bool filesystemPipeDelegateWaitResolverRead(g_task* task)
+{
+	g_wait_resolver_for_file_data* waitData = (g_wait_resolver_for_file_data*) task->waitData;
+	// TODO return whether we can now read from the pipe in waitData
+}
+
+bool filesystemPipeDelegateWaitResolverWrite(g_task* task)
+{
+	g_wait_resolver_for_file_data* waitData = (g_wait_resolver_for_file_data*) task->waitData;
+	// TODO return whether we can now write to the pipe in waitData
+}

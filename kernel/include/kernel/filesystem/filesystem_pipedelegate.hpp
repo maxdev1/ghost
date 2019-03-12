@@ -18,30 +18,28 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_WAIT_RESOLVER__
-#define __KERNEL_WAIT_RESOLVER__
+#ifndef __KERNEL_FILESYSTEM_PIPE_DELEGATE__
+#define __KERNEL_FILESYSTEM_PIPE_DELEGATE__
 
-#include "ghost/types.h"
+#include "ghost/fs.h"
+#include "shared/system/mutex.hpp"
+#include "kernel/filesystem/filesystem.hpp"
 #include "kernel/tasking/tasking.hpp"
 
-struct g_wait_resolver_sleep_data
-{
-	uint32_t wakeTime;
-};
+g_fs_open_status filesystemPipeDelegateDiscover(g_fs_node* parent, const char* name, g_fs_node** outNode);
 
-struct g_wait_resolver_atomic_lock_data
-{
-	uint32_t startTime;
-};
+g_fs_read_status filesystemPipeDelegateRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
 
-struct g_wait_resolver_for_file_data
-{
-	bool (*waitResolverFromDelegate)(g_task*);
-	g_fs_node* node;
-};
+g_fs_write_status filesystemPipeDelegateWrite(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote);
 
-bool waitResolverSleep(g_task* task);
+g_fs_length_status filesystemPipeDelegateGetLength(g_fs_node* node, uint64_t* outLength);
 
-bool waitResolverAtomicLock(g_task* task);
+g_fs_open_status filesystemPipeDelegateCreate(g_fs_node* parent, const char* name, g_fs_node** outFile);
+
+g_fs_open_status filesystemPipeDelegateTruncate(g_fs_node* file);
+
+bool filesystemPipeDelegateWaitResolverRead(g_task* task);
+
+bool filesystemPipeDelegateWaitResolverWrite(g_task* task);
 
 #endif

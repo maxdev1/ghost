@@ -18,30 +18,22 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_WAIT_RESOLVER__
-#define __KERNEL_WAIT_RESOLVER__
+#ifndef __KERNEL_IPC_PIPES__
+#define __KERNEL_IPC_PIPES__
 
-#include "ghost/types.h"
-#include "kernel/tasking/tasking.hpp"
+#include "ghost.h"
 
-struct g_wait_resolver_sleep_data
-{
-	uint32_t wakeTime;
-};
+/**
+ * Creates a new pipe.
+ */
+g_fs_phys_id pipeCreate();
 
-struct g_wait_resolver_atomic_lock_data
-{
-	uint32_t startTime;
-};
+g_fs_read_status pipeRead(g_fs_phys_id pipeId, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
 
-struct g_wait_resolver_for_file_data
-{
-	bool (*waitResolverFromDelegate)(g_task*);
-	g_fs_node* node;
-};
+g_fs_write_status pipeWrite(g_fs_phys_id pipeId, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote);
 
-bool waitResolverSleep(g_task* task);
+g_fs_length_status pipeGetLength(g_fs_phys_id pipeId, uint64_t* outLength);
 
-bool waitResolverAtomicLock(g_task* task);
+g_fs_open_status pipeTruncate(g_fs_phys_id pipeId);
 
 #endif
