@@ -47,9 +47,9 @@ void kernelLoggerPrintHeader(g_setup_information* info)
 	logInfo("");
 	logInfo("  Copyright (C) 2019, Max Schluessel <lokoxe@gmail.com>");
 	logInfo("");
-	logInfo("%! loading", "prekern");
+	logInfo("%! initializing core services", "kernel");
 
-	logDebug("%! setup information:", "prekern");
+	logDebug("%! setup information:", "kernel");
 	logDebug("%#   reserved: %h - %h", info->kernelImageStart, info->kernelImageEnd);
 	logDebug("%#   stack:    %h - %h", info->stackStart, info->stackEnd);
 	logDebug("%#   bitmap:   %h - %h", info->bitmapStart, info->bitmapEnd);

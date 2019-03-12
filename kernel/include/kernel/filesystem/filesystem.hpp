@@ -101,7 +101,7 @@ g_fs_open_status filesystemFindChild(g_fs_node* parent, const char* name, g_fs_n
  * Searches for a node by a path relative to the parent node. Uses filesystemFindChild
  * to search for a child.
  */
-g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node** outChild);
+g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node** outChild, bool* outFoundAllButLast = 0, g_fs_node** outLastFoundNode = 0, const char** outFileNameStart = 0);
 
 /**
  * Retrieves a node by its virtual id.

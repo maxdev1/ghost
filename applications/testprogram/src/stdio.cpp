@@ -24,7 +24,7 @@
 #include <fcntl.h>
 #include <string.h>
 
-void openReadClose()
+test_result_t openReadClose()
 {
 	g_fd fd = g_open("/system/lib/crti.o");
 	ASSERT(fd != -1);
@@ -46,14 +46,14 @@ void openReadClose()
 	TEST_SUCCESSFUL;
 }
 
-void openNonExistingFails()
+test_result_t openNonExistingFails()
 {
 	g_fd fd = g_open("/non-existing-file.txt");
 	ASSERT(fd == -1);
 	TEST_SUCCESSFUL;
 }
 
-void createFile()
+test_result_t createFile()
 {
 	// Create file
 	{
@@ -96,9 +96,11 @@ void createFile()
 	TEST_SUCCESSFUL;
 }
 
-void runStdioTest()
+test_result_t runStdioTest()
 {
-	openReadClose();
-	openNonExistingFails();
-	createFile();
+	test_result_t result;
+	result += openReadClose();
+	result += openNonExistingFails();
+	result += createFile();
+	return result;
 }

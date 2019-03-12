@@ -144,7 +144,7 @@ g_fs_open_status filesystemFindChild(g_fs_node* parent, const char* name, g_fs_n
 	return delegate->discover(lastKnown, name, outChild);
 }
 
-g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node** outChild)
+g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node** outChild, bool* outFoundAllButLast, g_fs_node** outLastFoundParent, const char** outFileNameStart)
 {
 	if(parent == 0)
 	{
@@ -152,20 +152,24 @@ g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node**
 	}
 	char* nameBuf = (char*) heapAllocate(sizeof(char) * (G_FILENAME_MAX + 1));
 
-	const char* pathPos = path;
+	const char* nameStart = path;
+	const char* nameEnd = nameStart;
 	g_fs_node* node = parent;
+	g_fs_node* lastFoundParent = node;
 	g_fs_open_status status = G_FS_OPEN_SUCCESSFUL;
 
-	while(pathPos)
+	while(nameStart)
 	{
-		while(*pathPos == '/')
-			++pathPos;
+		// Find where next name starts and ends
+		while(*nameStart == '/')
+			++nameStart;
 
-		const char* nameEnd = pathPos;
+		nameEnd = nameStart;
 		while(*nameEnd && *nameEnd != '/')
 			++nameEnd;
 
-		int nameLen = nameEnd - pathPos;
+		// Nothing left to resolve, we found the node
+		int nameLen = nameEnd - nameStart;
 		if(nameLen == 0)
 			break;
 
@@ -175,17 +179,27 @@ g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node**
 			heapFree(nameBuf);
 			return 0;
 		}
-		memoryCopy(nameBuf, pathPos, nameLen);
+
+		// Copy name into temporary buffer
+		memoryCopy(nameBuf, nameStart, nameLen);
 		nameBuf[nameLen] = 0;
 
+		// Find child with this name
+		lastFoundParent = node;
 		status = filesystemFindChild(node, nameBuf, &node);
 		if(status != G_FS_OPEN_SUCCESSFUL)
-		{
 			break;
-		}
 
-		pathPos = nameEnd;
+		nameStart = nameEnd;
 	}
+
+	// Provide output values if requested
+	if(outFoundAllButLast)
+		*outFoundAllButLast = ((nameEnd - nameStart) > 0);
+	if(outLastFoundParent)
+		*outLastFoundParent = lastFoundParent;
+	if(outFileNameStart)
+		*outFileNameStart = nameStart;
 
 	heapFree(nameBuf);
 	*outChild = node;
@@ -250,13 +264,13 @@ g_fs_write_status filesystemWrite(g_fs_node* node, uint8_t* buffer, uint64_t off
 	return delegate->write(node, buffer, offset, length, outWrote);
 }
 
-g_fs_open_status filesystemCreateFile(g_fs_node* parent, const char* path, g_fs_node** outFile)
+g_fs_open_status filesystemCreateFile(g_fs_node* parent, const char* name, g_fs_node** outFile)
 {
 	g_fs_delegate* delegate = filesystemFindDelegate(parent);
 	if(!delegate->create)
 		return G_FS_OPEN_ERROR;
 
-	return delegate->create(parent, path, outFile);
+	return delegate->create(parent, name, outFile);
 }
 
 g_fs_open_status filesystemTruncate(g_fs_node* file)

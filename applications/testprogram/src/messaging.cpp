@@ -31,7 +31,7 @@ static g_tid message_receiver_tid;
 /**
  *
  */
-void message_test_receiver()
+test_result_t message_test_receiver()
 {
 	message_receiver_tid = g_get_tid();
 
@@ -54,12 +54,14 @@ void message_test_receiver()
 		g_message_header* message = (g_message_header*) buf;
 		klog("content: %i times * %i = %i, '%s'", 1000, message->length, 1000 * message->length, G_MESSAGE_CONTENT(message));
 	}
+
+	TEST_SUCCESSFUL;
 }
 
 /**
  *
  */
-void message_test_sender()
+test_result_t message_test_sender()
 {
 
 	g_sleep(1000);
@@ -79,14 +81,18 @@ void message_test_sender()
 		klog("%i took %i ms", c, g_millis() - start);
 		g_sleep(1000);
 	}
+
+	TEST_SUCCESSFUL;
 }
 
 /**
  *
  */
-void runMessageTest()
+test_result_t runMessageTest()
 {
+	test_result_t result;
 	g_create_thread((void*) message_test_receiver);
-	message_test_sender();
+	result += message_test_sender();
+	return result;
 }
 
