@@ -23,6 +23,7 @@
 
 #include "ghost/types.h"
 #include "kernel/tasking/tasking.hpp"
+#include "kernel/filesystem/filesystem.hpp"
 
 /**
  * Checks if this task can be woken up by calling its wait resolver.
@@ -41,5 +42,10 @@ void waitSleep(g_task* task, uint64_t milliseconds);
  * Lets the task wait until it can set an atom.
  */
 void waitAtomicLock(g_task* task);
+
+/**
+ * Called by the file system if a task needs to wait until it can read from/write to a file.
+ */
+void waitForFile(g_task* task, g_fs_node* file, bool (*waitResolverFromDelegate)(g_task*));
 
 #endif

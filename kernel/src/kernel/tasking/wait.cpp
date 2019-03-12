@@ -43,18 +43,40 @@ bool waitTryWake(g_task* task)
 
 void waitSleep(g_task* task, uint64_t milliseconds)
 {
+	mutexAcquire(&task->process->lock);
+
 	g_wait_resolver_sleep_data* waitData = (g_wait_resolver_sleep_data*) heapAllocate(sizeof(g_wait_resolver_sleep_data));
 	waitData->wakeTime = taskingGetLocal()->time + milliseconds;
 	task->waitData = waitData;
 	task->waitResolver = waitResolverSleep;
 	task->status = G_THREAD_STATUS_WAITING;
+
+	mutexRelease(&task->process->lock);
 }
 
 void waitAtomicLock(g_task* task)
 {
+	mutexAcquire(&task->process->lock);
+
 	g_wait_resolver_atomic_lock_data* waitData = (g_wait_resolver_atomic_lock_data*) heapAllocate(sizeof(g_wait_resolver_atomic_lock_data));
 	waitData->startTime = taskingGetLocal()->time;
 	task->waitData = waitData;
 	task->waitResolver = waitResolverAtomicLock;
 	task->status = G_THREAD_STATUS_WAITING;
+
+	mutexRelease(&task->process->lock);
+}
+
+void waitForFile(g_task* task, g_fs_node* file, bool (*waitResolverFromDelegate)(g_task*))
+{
+	mutexAcquire(&task->process->lock);
+
+	g_wait_resolver_for_file_data* waitData = (g_wait_resolver_for_file_data*) heapAllocate(sizeof(g_wait_resolver_for_file_data));
+	waitData->waitResolverFromDelegate = waitResolverFromDelegate;
+	waitData->node = file;
+	task->waitData = waitData;
+	task->waitResolver = waitResolverFromDelegate;
+	task->status = G_THREAD_STATUS_WAITING;
+
+	mutexRelease(&task->process->lock);
 }

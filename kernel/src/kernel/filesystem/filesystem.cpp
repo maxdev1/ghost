@@ -144,7 +144,8 @@ g_fs_open_status filesystemFindChild(g_fs_node* parent, const char* name, g_fs_n
 	return delegate->discover(lastKnown, name, outChild);
 }
 
-g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node** outChild, bool* outFoundAllButLast, g_fs_node** outLastFoundParent, const char** outFileNameStart)
+g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node** outChild, bool* outFoundAllButLast, g_fs_node** outLastFoundParent,
+		const char** outFileNameStart)
 {
 	if(parent == 0)
 	{
@@ -280,4 +281,22 @@ g_fs_open_status filesystemTruncate(g_fs_node* file)
 		return G_FS_OPEN_ERROR;
 
 	return delegate->truncate(file);
+}
+
+void filesystemWaitToWrite(g_task* task, g_fs_node* file)
+{
+	g_fs_delegate* delegate = filesystemFindDelegate(file);
+	if(!delegate->waitResolverWrite)
+		kernelPanic("%! task %i tried to wait for file %i but delegate didn't provide wait resolver", "filesytem", task->id, file->id);
+
+	waitForFile(task, file, delegate->waitResolverWrite);
+}
+
+void filesystemWaitToRead(g_task* task, g_fs_node* file)
+{
+	g_fs_delegate* delegate = filesystemFindDelegate(file);
+	if(!delegate->waitResolverRead)
+		kernelPanic("%! task %i tried to wait for file %i but delegate didn't provide wait resolver", "filesytem", task->id, file->id);
+
+	waitForFile(task, file, delegate->waitResolverRead);
 }

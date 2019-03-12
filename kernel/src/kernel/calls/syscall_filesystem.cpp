@@ -64,12 +64,12 @@ void syscallFsOpen(g_task* task, g_syscall_fs_open* data)
 	{
 		if(data->flags & G_FILE_FLAG_MODE_CREATE)
 		{
-			if(!foundAllButLast) {
+			if(!foundAllButLast)
+			{
 				logInfo("%! failed to create file '%s' in parent %i because folders do not exist", "filesystem", data->path, relative->id);
 				data->fd = -1;
 				data->status = G_FS_OPEN_ERROR;
-			}
-			else if(filesystemCreateFile(lastFoundParent, filenameStart, &file) != G_FS_OPEN_SUCCESSFUL)
+			} else if(filesystemCreateFile(lastFoundParent, filenameStart, &file) != G_FS_OPEN_SUCCESSFUL)
 			{
 				logInfo("%! failed to create file '%s' in parent %i", "filesystem", data->path, relative->id);
 				data->fd = -1;
@@ -163,18 +163,16 @@ void syscallFsRead(g_task* task, g_syscall_fs_read* data)
 	}
 
 	int64_t read;
-	data->status = filesystemRead(node, data->buffer, descriptor->offset, data->length, &read);
+	while((data->status = filesystemRead(node, data->buffer, descriptor->offset, data->length, &read)) == G_FS_READ_BUSY && node->blocking)
+	{
+		filesystemWaitToRead(task, node);
+		taskingKernelThreadYield();
+	}
 	if(read > 0)
 	{
 		descriptor->offset += read;
 	}
 	data->result = read;
-}
-
-void syscallFsClose(g_task* task, g_syscall_fs_close* data)
-{
-	filesystemProcessRemoveDescriptor(task->process->id, data->fd);
-	data->status = G_FS_CLOSE_SUCCESSFUL;
 }
 
 void syscallFsWrite(g_task* task, g_syscall_fs_write* data)
@@ -208,12 +206,22 @@ void syscallFsWrite(g_task* task, g_syscall_fs_write* data)
 	}
 
 	int64_t wrote;
-	data->status = filesystemWrite(node, data->buffer, startOffset, data->length, &wrote);
+	while((data->status = filesystemWrite(node, data->buffer, startOffset, data->length, &wrote)) == G_FS_WRITE_BUSY && node->blocking)
+	{
+		filesystemWaitToWrite(task, node);
+		taskingKernelThreadYield();
+	}
 	if(wrote > 0)
 	{
 		descriptor->offset = startOffset + wrote;
 	}
 	data->result = wrote;
+}
+
+void syscallFsClose(g_task* task, g_syscall_fs_close* data)
+{
+	filesystemProcessRemoveDescriptor(task->process->id, data->fd);
+	data->status = G_FS_CLOSE_SUCCESSFUL;
 }
 
 void syscallFsCloneFd(g_task* task, g_syscall_fs_clonefd* data)

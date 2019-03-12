@@ -69,6 +69,12 @@ struct g_fs_delegate
 	g_fs_length_status (*getLength)(g_fs_node* node, uint64_t* outLength);
 	g_fs_open_status (*create)(g_fs_node* parent, const char* name, g_fs_node** outFile);
 	g_fs_open_status (*truncate)(g_fs_node* file);
+
+	/**
+	 * When resolvers used when a task needs to wait for a file.
+	 */
+	bool (*waitResolverRead)(g_task* task);
+	bool (*waitResolverWrite)(g_task* task);
 };
 
 /**
@@ -101,7 +107,8 @@ g_fs_open_status filesystemFindChild(g_fs_node* parent, const char* name, g_fs_n
  * Searches for a node by a path relative to the parent node. Uses filesystemFindChild
  * to search for a child.
  */
-g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node** outChild, bool* outFoundAllButLast = 0, g_fs_node** outLastFoundNode = 0, const char** outFileNameStart = 0);
+g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node** outChild, bool* outFoundAllButLast = 0, g_fs_node** outLastFoundNode = 0,
+		const char** outFileNameStart = 0);
 
 /**
  * Retrieves a node by its virtual id.
@@ -154,5 +161,17 @@ g_fs_open_status filesystemCreateFile(g_fs_node* parent, const char* name, g_fs_
  * Truncates a file.
  */
 g_fs_open_status filesystemTruncate(g_fs_node* file);
+
+/**
+ * The task just tried to write to this file but the file was busy. This puts a waiter on the task
+ * which lets the task wait until it can write to the file again.
+ */
+void filesystemWaitToWrite(g_task* task, g_fs_node* file);
+
+/**
+ * The task just tried to read from this file but the file was busy. This puts a waiter on the task
+ * which lets the task wait until it can read from the file again.
+ */
+void filesystemWaitToRead(g_task* task, g_fs_node* file);
 
 #endif
