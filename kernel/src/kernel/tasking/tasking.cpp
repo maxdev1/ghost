@@ -314,7 +314,7 @@ void taskingPrepareThreadLocalStorage(g_task* thread)
 	g_process* process = thread->process;
 	if(process->tlsMaster.location == 0)
 	{
-		logDebug("%! failed to copy tls master, not available in process", "tls");
+		logInfo("%! failed to copy tls master for task %i, not available in process", "tls", thread->id);
 		return;
 	}
 
@@ -484,7 +484,7 @@ void taskingRemoveThread(g_task* task)
 				pagingUnmapPage(page);
 			}
 		}
-		addressRangePoolFree(memoryVirtualRangePool, task->tlsCopy.start);
+		addressRangePoolFree(task->process->virtualRangePool, task->tlsCopy.start);
 	}
 
 	taskingTemporarySwitchBack(returnDirectory);
