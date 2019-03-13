@@ -44,4 +44,6 @@ int stringHash(const char* str);
 
 char* stringDuplicate(const char* str);
 
+char* stringWriteNumber(char* buffer, int number);
+
 #endif

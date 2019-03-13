@@ -139,3 +139,28 @@ int stringHash(const char* str)
 
 	return hash;
 }
+
+char* stringWriteNumber(char* buffer, int number)
+{
+	uint8_t negative = ((int32_t) number) < 0;
+	if(negative)
+	{
+		number = -number;
+	}
+
+	char revbuf[32];
+	char *cbufp = revbuf;
+	int len = 0;
+	do
+	{
+		*cbufp++ = "0123456789ABCDEF"[number % 10];
+		++len;
+		number /= 10;
+	} while(number);
+
+	for(int i = 0; i < len; i++)
+	{
+		buffer[i] = revbuf[len - i - 1];
+	}
+	return &buffer[len];
+}
