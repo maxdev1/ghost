@@ -45,16 +45,18 @@ typedef uint64_t g_fs_phys_id; // a physical filesystem node identifier
 /**
  * File mode flags
  */
+typedef uint32_t g_file_flag_mode;
 #define G_FILE_FLAGS_MODE_RANGE				(0xFFFF)	// flags are in this range
-#define G_FILE_FLAG_MODE_READ				(1 << 0)	// read mode
-#define G_FILE_FLAG_MODE_WRITE				(1 << 1)	// write mode
-#define G_FILE_FLAG_MODE_BINARY				(1 << 2)	// binary mode
-#define G_FILE_FLAG_MODE_TEXTUAL			(1 << 3)	// textual mode
-#define G_FILE_FLAG_MODE_TRUNCATE			(1 << 4)	// truncate mode
-#define G_FILE_FLAG_MODE_APPEND				(1 << 5)	// append mode
-#define G_FILE_FLAG_MODE_CREATE				(1 << 6)	// create mode
-#define G_FILE_FLAG_MODE_EXCLUSIVE			(1 << 7)	// exclusive mode
-// currently, 16 bits are reserved for flags. adjust mode mask if necessary
+#define G_FILE_FLAG_MODE_READ				((g_file_flag_mode) (1 << 0))	// read mode
+#define G_FILE_FLAG_MODE_WRITE				((g_file_flag_mode) (1 << 1))	// write mode
+#define G_FILE_FLAG_MODE_BINARY				((g_file_flag_mode) (1 << 2))	// binary mode
+#define G_FILE_FLAG_MODE_TEXTUAL			((g_file_flag_mode) (1 << 3))	// textual mode
+#define G_FILE_FLAG_MODE_TRUNCATE			((g_file_flag_mode) (1 << 4))	// truncate mode
+#define G_FILE_FLAG_MODE_APPEND				((g_file_flag_mode) (1 << 5))	// append mode
+#define G_FILE_FLAG_MODE_CREATE				((g_file_flag_mode) (1 << 6))	// create mode
+#define G_FILE_FLAG_MODE_EXCLUSIVE			((g_file_flag_mode) (1 << 7))	// exclusive mode
+#define G_FILE_FLAG_MODE_BLOCKING			((g_file_flag_mode) (1 << 8))	// blocking mode
+// currently, 15 bits are reserved for flags. adjust mode mask if necessary
 
 /**
  * Seek modes
