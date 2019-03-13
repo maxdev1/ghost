@@ -35,9 +35,22 @@ extern g_bitmap_page_allocator* kernelPhysicalAllocator;
  */
 extern "C" void kernelMain(g_setup_information* setupInformation);
 
+/**
+ * Initializes the very basic components and then starts the BSP initialization sequence.
+ */
 void kernelInitialize(g_setup_information* setupInformation);
 
+/**
+ * Bootstrap processor (BSP) initialization sequence.
+ */
 void kernelRunBootstrapCore(g_physical_address initialPdPhys);
+
+/**
+ * Once the kernel is set up and all application processors are ready, this is the first thread
+ * that can perform any work. This is necessary because we need an initial process so we can
+ * open files and other resources.
+ */
+void kernelInitializationThread();
 
 /**
  * This function is started by the SMP implementation.

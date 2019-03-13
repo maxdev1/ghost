@@ -25,18 +25,12 @@
 /**
  * Spawns a ramdisk file as a process.
  */
-g_elf32_spawn_status elf32SpawnFromRamdisk(g_ramdisk_entry* entry, g_security_level securityLevel, g_task** target)
+g_elf32_spawn_status elf32Spawn(g_task* caller, g_fd fd, g_security_level securityLevel, g_task** target)
 {
 
-	// Check file
-	if(entry == 0 || entry->type != G_RAMDISK_ENTRY_TYPE_FILE)
-	{
-		return ELF32_SPAWN_STATUS_FILE_NOT_FOUND;
-	}
-
 	// Get and validate ELF header
-	elf32_ehdr* header = (elf32_ehdr*) entry->data;
-	g_elf32_validation_status status = elf32Validate(header);
+	elf32_ehdr header;
+	g_elf32_validation_status status = elf32ReadAndValidateHeader(caller, fd, &header);
 
 	if(status == ELF32_VALIDATION_SUCCESSFUL)
 	{
@@ -46,7 +40,7 @@ g_elf32_spawn_status elf32SpawnFromRamdisk(g_ramdisk_entry* entry, g_security_le
 		g_physical_address returnDirectory = taskingTemporarySwitchToSpace(process->pageDirectory);
 
 		// Load binary
-		elf32LoadBinaryToCurrentAddressSpace(header, process, securityLevel);
+		elf32LoadBinaryToCurrentAddressSpace(&header, process, securityLevel);
 
 		// Create task
 		g_task* mainTask = taskingCreateThread(0, process, securityLevel);
@@ -59,7 +53,7 @@ g_elf32_spawn_status elf32SpawnFromRamdisk(g_ramdisk_entry* entry, g_security_le
 		taskingPrepareThreadLocalStorage(mainTask);
 
 		// Set the tasks entry point
-		mainTask->state->eip = header->e_entry;
+		mainTask->state->eip = header.e_entry;
 
 		taskingTemporarySwitchBack(returnDirectory);
 
@@ -73,6 +67,25 @@ g_elf32_spawn_status elf32SpawnFromRamdisk(g_ramdisk_entry* entry, g_security_le
 	}
 
 	return ELF32_SPAWN_STATUS_VALIDATION_ERROR;
+}
+
+g_elf32_validation_status elf32ReadAndValidateHeader(g_task* caller, g_fd file, elf32_ehdr* headerBuffer)
+{
+
+	uint32_t remain = sizeof(elf32_ehdr);
+	while(remain)
+	{
+		int32_t read;
+		g_fs_read_status readStatus = filesystemRead(caller, file, (uint8_t*) &headerBuffer[sizeof(elf32_ehdr) - remain], remain, &read);
+		if(readStatus != G_FS_READ_SUCCESSFUL)
+		{
+			logInfo("%! failed to read file %i with status %i", "spawn", file, readStatus);
+			return ELF32_SPAWN_STATUS_READ_ERROR;
+		}
+		remain -= read;
+	}
+
+	return elf32Validate(headerBuffer);
 }
 
 /**

@@ -149,17 +149,24 @@ g_fs_open_status filesystemOpen(g_fs_node* file, g_file_flag_mode flags, g_task*
 /**
  * Reads bytes from a file.
  */
+g_fs_read_status filesystemRead(g_task* task, g_fd fd, uint8_t* buffer, uint64_t length, int64_t* outRead);
 g_fs_read_status filesystemRead(g_fs_node* file, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
 
 /**
  * Writes bytes to a file.
  */
+g_fs_write_status filesystemWrite(g_task* task, g_fd fd, uint8_t* buffer, uint64_t length, int64_t* outWrote);
 g_fs_write_status filesystemWrite(g_fs_node* file, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote);
 
 /**
  * Closes a file descriptor.
  */
 g_fs_close_status filesystemClose(g_task* task, g_fd fd);
+
+/**
+ * Seeks in a file.
+ */
+g_fs_seek_status filesystemSeek(g_task* task, g_fd fd, g_fs_seek_mode mode, int64_t amount, int64_t* outResult);
 
 /**
  * Retrieves the length of a file.

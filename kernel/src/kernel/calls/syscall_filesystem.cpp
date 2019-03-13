@@ -27,135 +27,36 @@ void syscallFsOpen(g_task* task, g_syscall_fs_open* data)
 {
 	g_fd fd;
 	data->status = filesystemOpen(data->path, data->flags, task, &fd);
-	if(data->status == G_FS_OPEN_SUCCESSFUL) {
+	if(data->status == G_FS_OPEN_SUCCESSFUL)
+	{
 		data->fd = fd;
-	} else {
+	} else
+	{
 		data->fd = -1;
 	}
 }
 
 void syscallFsSeek(g_task* task, g_syscall_fs_seek* data)
 {
-	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(task->process->id, data->fd);
-	if(!descriptor)
-	{
-		data->status = G_FS_SEEK_INVALID_FD;
-		return;
-	}
-
-	g_fs_node* node = filesystemGetNode(descriptor->nodeId);
-	if(!node)
-	{
-		data->status = G_FS_SEEK_INVALID_FD;
-		return;
-	}
-
-	uint64_t length;
-	if(filesystemGetLength(node, &length) != G_FS_LENGTH_SUCCESSFUL)
-	{
-		logInfo("%! failed to seek in file %i, could not get length", "filesystem", node->id);
-		data->status = G_FS_SEEK_ERROR;
-		return;
-	}
-
-	// add amount to offset
-	if(data->mode == G_FS_SEEK_CUR)
-	{
-		descriptor->offset += data->amount;
-	} else if(data->mode == G_FS_SEEK_SET)
-	{
-		descriptor->offset = data->amount;
-	} else if(data->mode == G_FS_SEEK_END)
-	{
-		descriptor->offset = length - data->amount;
-	}
-
-	// validate offset
-	if(descriptor->offset > length)
-	{
-		descriptor->offset = length;
-	}
-	if(descriptor->offset < 0)
-	{
-		descriptor->offset = 0;
-	}
-
-	data->result = descriptor->offset;
-	data->status = G_FS_SEEK_SUCCESSFUL;
+	data->status = filesystemSeek(task, data->fd, data->mode, data->amount, &data->result);
 }
 
 void syscallFsRead(g_task* task, g_syscall_fs_read* data)
 {
-	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(task->process->id, data->fd);
-	if(!descriptor)
+	data->status = filesystemRead(task, data->fd, data->buffer, data->length, &data->result);
+	if(data->status != G_FS_READ_SUCCESSFUL)
 	{
-		data->status = G_FS_READ_INVALID_FD;
 		data->result = -1;
-		return;
 	}
-
-	g_fs_node* node = filesystemGetNode(descriptor->nodeId);
-	if(!node)
-	{
-		data->status = G_FS_READ_INVALID_FD;
-		data->result = -1;
-		return;
-	}
-
-	int64_t read;
-	while((data->status = filesystemRead(node, data->buffer, descriptor->offset, data->length, &read)) == G_FS_READ_BUSY && node->blocking)
-	{
-		filesystemWaitToRead(task, node);
-		taskingKernelThreadYield();
-	}
-	if(read > 0)
-	{
-		descriptor->offset += read;
-	}
-	data->result = read;
 }
 
 void syscallFsWrite(g_task* task, g_syscall_fs_write* data)
 {
-	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(task->process->id, data->fd);
-	if(!descriptor)
+	data->status = filesystemWrite(task, data->fd, data->buffer, data->length, &data->result);
+	if(data->status != G_FS_WRITE_SUCCESSFUL)
 	{
-		data->status = G_FS_WRITE_INVALID_FD;
 		data->result = -1;
-		return;
 	}
-
-	g_fs_node* node = filesystemGetNode(descriptor->nodeId);
-	if(!node)
-	{
-		data->status = G_FS_WRITE_INVALID_FD;
-		data->result = -1;
-		return;
-	}
-
-	uint64_t startOffset = descriptor->offset;
-	if(descriptor->openFlags & G_FILE_FLAG_MODE_APPEND)
-	{
-		if(filesystemGetLength(node, &startOffset) != G_FS_LENGTH_SUCCESSFUL)
-		{
-			logInfo("%! failed to append to file %i, could not get length", "filesystem", node->id);
-			data->status = G_FS_WRITE_ERROR;
-			data->result = -1;
-			return;
-		}
-	}
-
-	int64_t wrote;
-	while((data->status = filesystemWrite(node, data->buffer, startOffset, data->length, &wrote)) == G_FS_WRITE_BUSY && node->blocking)
-	{
-		filesystemWaitToWrite(task, node);
-		taskingKernelThreadYield();
-	}
-	if(wrote > 0)
-	{
-		descriptor->offset = startOffset + wrote;
-	}
-	data->result = wrote;
 }
 
 void syscallFsClose(g_task* task, g_syscall_fs_close* data)
@@ -221,11 +122,12 @@ void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 		data->read_fd = -1;
 		data->write_fd = -1;
 		return;
-	}	
+	}
 
 	g_file_flag_mode writeFlags = (G_FILE_FLAG_MODE_WRITE | (data->blocking ? G_FILE_FLAG_MODE_BLOCKING : 0));
 	g_fs_open_status writeOpen = filesystemOpen(pipeNode, writeFlags, task, &data->write_fd);
-	if(writeOpen != G_FS_OPEN_SUCCESSFUL) {
+	if(writeOpen != G_FS_OPEN_SUCCESSFUL)
+	{
 		logInfo("%! failed to open write end of pipe %i for task %i with status %i", "filesystem", pipeNode->id, task->id, writeOpen);
 		data->status = G_FS_PIPE_ERROR;
 		return;
@@ -233,8 +135,10 @@ void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 
 	g_file_flag_mode readFlags = (G_FILE_FLAG_MODE_READ | (data->blocking ? G_FILE_FLAG_MODE_BLOCKING : 0));
 	g_fs_open_status readOpen = filesystemOpen(pipeNode, readFlags, task, &data->read_fd);
-	if(readOpen != G_FS_OPEN_SUCCESSFUL) {
-		if(filesystemClose(task, writeOpen) != G_FS_CLOSE_SUCCESSFUL) {
+	if(readOpen != G_FS_OPEN_SUCCESSFUL)
+	{
+		if(filesystemClose(task, writeOpen) != G_FS_CLOSE_SUCCESSFUL)
+		{
 			logInfo("%! failed to close write end of pipe %i for task %i after failing to open read end", "filesystem", pipeNode->id, task->id);
 		}
 		logInfo("%! failed to open read end of pipe %i for task %i with status %i", "filesystem", pipeNode->id, task->id, readOpen);

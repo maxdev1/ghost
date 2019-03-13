@@ -40,46 +40,6 @@
 static g_mutex bootstrapCoreLock;
 static g_mutex applicationCoreLock;
 
-/* TESTING */
-int as[4] =
-{ 0, 0, 0, 0 };
-int bs[4] =
-{ 0, 0, 0, 0 };
-
-#include "kernel/tasking/wait.hpp"
-
-void test()
-{
-	int x = 0;
-	for(;;)
-	{
-		as[processorGetCurrentId()]++;
-
-		if(as[processorGetCurrentId()] % 10000 == 0)
-		{
-			logInfo("#%i: A(%i %i %i %i), B(%i %i %i %i)", processorGetCurrentId(), as[0], as[1], as[2], as[3], bs[0], bs[1], bs[2], bs[3]);
-		}
-
-		taskingKernelThreadYield();
-	}
-
-	taskingKernelThreadExit();
-}
-
-void test2()
-{
-	for(;;)
-	{
-		bs[processorGetCurrentId()]++;
-		taskingKernelThreadYield();
-	}
-
-	taskingKernelThreadExit();
-}
-
-#include "shared/utils/string.hpp"
-/* END TESTING */
-
 extern "C" void kernelMain(g_setup_information* setupInformation)
 {
 	runtimeAbiCallGlobalConstructors();
@@ -123,20 +83,8 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	taskingInitializeBsp();
 	syscallRegisterAll();
 
-	// TEST THREADS
-	g_process* testProc = taskingCreateProcess();
-	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test, testProc, G_SECURITY_LEVEL_KERNEL));
-	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test2, testProc, G_SECURITY_LEVEL_KERNEL));
-
-	g_task* userTask;
-	elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_APPLICATION, &userTask);
-
-	g_task* testTask;
-	elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/tester.bin"), G_SECURITY_LEVEL_APPLICATION, &testTask);
-
-	//g_task* userTask2;
-	//elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_DRIVER, &userTask2);
-	// TEST THREADS END
+	g_process* initializationProcess = taskingCreateProcess();
+	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) kernelInitializationThread, initializationProcess, G_SECURITY_LEVEL_KERNEL));
 
 	logInfo("%! booting on %i cores", "kernel", processorGetNumberOfProcessors());
 	mutexRelease(&bootstrapCoreLock, false);
@@ -159,23 +107,38 @@ void kernelRunApplicationCore()
 	systemInitializeAp();
 	taskingInitializeAp();
 
-	// TEST THREADS
-	g_process* testProc = taskingCreateProcess();
-	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test, testProc, G_SECURITY_LEVEL_KERNEL));
-	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) test2, testProc, G_SECURITY_LEVEL_KERNEL));
-
-	//g_task* userTask;
-	//elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_APPLICATION, &userTask);
-
-	//g_task* userTask2;
-	//elf32SpawnFromRamdisk(ramdiskFindAbsolute("applications/init.bin"), G_SECURITY_LEVEL_APPLICATION, &userTask2);
-	// TEST THREADS END
-
 	mutexRelease(&applicationCoreLock, false);
 	systemWaitForApplicationCores();
 	interruptsEnable();
 	for(;;)
 		asm("hlt");
+}
+
+void kernelInitializationThread()
+{
+	logInfo("%! initializing system services", "kernel");
+
+	g_task* currentTask = taskingGetLocal()->scheduling.current;
+
+	g_fd fd;
+	g_fs_open_status open = filesystemOpen("/applications/tester.bin", G_FILE_FLAG_MODE_READ, currentTask, &fd);
+	if(open != G_FS_OPEN_SUCCESSFUL)
+	{
+		logInfo("%! failed to find tester binary with status %i", "kernel", open);
+	} else
+	{
+		g_task* testerTask;
+		g_elf32_spawn_status spawn = elf32Spawn(currentTask, fd, G_SECURITY_LEVEL_APPLICATION, &testerTask);
+		if(spawn != ELF32_SPAWN_STATUS_SUCCESSFUL)
+		{
+			logInfo("%! failed to spawn tester binary with status %i", "kernel", spawn);
+		} else
+		{
+			logInfo("%! test suite spawned successfully to task %i", "kernel", testerTask->id);
+		}
+	}
+
+	taskingKernelThreadExit();
 }
 
 void kernelPanic(const char *msg, ...)

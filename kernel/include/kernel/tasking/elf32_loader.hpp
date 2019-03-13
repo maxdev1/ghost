@@ -31,7 +31,11 @@
  */
 enum g_elf32_spawn_status
 {
-	ELF32_SPAWN_STATUS_SUCCESSFUL, ELF32_SPAWN_STATUS_FILE_NOT_FOUND, ELF32_SPAWN_STATUS_VALIDATION_ERROR, ELF32_SPAWN_STATUS_PROCESS_CREATION_FAILED
+	ELF32_SPAWN_STATUS_SUCCESSFUL,
+	ELF32_SPAWN_STATUS_FILE_NOT_FOUND,
+	ELF32_SPAWN_STATUS_VALIDATION_ERROR,
+	ELF32_SPAWN_STATUS_PROCESS_CREATION_FAILED,
+	ELF32_SPAWN_STATUS_READ_ERROR
 };
 
 /**
@@ -48,9 +52,9 @@ enum g_elf32_validation_status
 	ELF32_VALIDATION_NOT_STANDARD_ELF
 };
 
-g_elf32_spawn_status elf32SpawnFromRamdisk(g_ramdisk_entry* binaryFile, g_security_level securityLevel, g_task** taskOut);
+g_elf32_spawn_status elf32Spawn(g_task* caller, g_fd file, g_security_level securityLevel, g_task** taskOut);
 
-g_elf32_validation_status elf32Validate(elf32_ehdr* header);
+g_elf32_validation_status elf32ReadAndValidateHeader(g_task* caller, g_fd file, elf32_ehdr* headerBuffer);
 
 void elf32LoadBinaryToCurrentAddressSpace(elf32_ehdr* binaryHeader, g_process* process, g_security_level securityLevel);
 
