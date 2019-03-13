@@ -858,10 +858,8 @@ g_fd g_clone_fd_ts(g_fd source_fd, g_pid source_process, g_fd target_fd, g_pid t
  *
  * @security-level APPLICATION
  */
-void g_pipe(g_fd* out_write, g_fd* out_read);
-void g_pipe_s(g_fd* out_write, g_fd* out_read, g_fs_pipe_status* out_status);
-void g_pipe_b(g_fd* out_write, g_fd* out_read, g_bool blocking);
-void g_pipe_bs(g_fd* out_write, g_fd* out_read, g_bool blocking, g_fs_pipe_status* out_status);
+g_fs_pipe_status g_pipe(g_fd* out_write, g_fd* out_read);
+g_fs_pipe_status g_pipe_b(g_fd* out_write, g_fd* out_read, g_bool blocking);
 
 /**
  * Stores command line arguments for a created process.

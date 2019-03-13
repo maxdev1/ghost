@@ -269,8 +269,7 @@ void run_tests() {
 		// create a pipe
 		g_fd write_end;
 		g_fd read_end;
-		g_fs_pipe_status stat;
-		g_pipe_s(&write_end, &read_end, &stat);
+		g_fs_pipe_status stat = g_pipe(&write_end, &read_end);
 
 		if (stat == G_FS_PIPE_SUCCESSFUL) {
 			g_logger::log("successfully created pipe: %i, %i", write_end, read_end);

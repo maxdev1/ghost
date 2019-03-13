@@ -132,25 +132,23 @@ void terminal_t::start_shell() {
 	g_fs_pipe_status stdin_stat;
 	g_fd shellin_w;
 	g_fd shellin_r;
-	g_pipe_s(&shellin_w, &shellin_r, &stdin_stat);
+	stdin_stat = g_pipe(&shellin_w, &shellin_r);
 	if (stdin_stat != G_FS_PIPE_SUCCESSFUL) {
 		klog("Terminal: Failed to setup stdin pipe for shell");
 		return;
 	}
 
-	g_fs_pipe_status stdout_stat;
 	g_fd shellout_w;
 	g_fd shellout_r;
-	g_pipe_s(&shellout_w, &shellout_r, &stdout_stat);
+	g_fs_pipe_status stdout_stat = g_pipe(&shellout_w, &shellout_r);
 	if (stdout_stat != G_FS_PIPE_SUCCESSFUL) {
 		klog("Terminal: Failed to setup stdout pipe for shell");
 		return;
 	}
 
-	g_fs_pipe_status stderr_stat;
 	g_fd shellerr_w;
 	g_fd shellerr_r;
-	g_pipe_s(&shellerr_w, &shellerr_r, &stderr_stat);
+	g_fs_pipe_status stderr_stat = g_pipe(&shellerr_w, &shellerr_r);
 	if (stderr_stat != G_FS_PIPE_SUCCESSFUL) {
 		klog("Terminal: Failed to setup stderr pipe for shell");
 		return;
