@@ -22,30 +22,18 @@
 #include "ghost/stdint.h"
 
 // redirect
-void g_pipe(g_fd* out_write, g_fd* out_read) {
-	return g_pipe_bs(out_write, out_read, true, 0);
+g_fs_pipe_status g_pipe(g_fd* out_write, g_fd* out_read)
+{
+	return g_pipe_b(out_write, out_read, true);
 }
 
-void g_pipe_s(g_fd* out_write, g_fd* out_read, g_fs_pipe_status* out_status) {
-	return g_pipe_bs(out_write, out_read, true, out_status);
-}
-
-void g_pipe_b(g_fd* out_write, g_fd* out_read, g_bool blocking) {
-	return g_pipe_bs(out_write, out_read, blocking, 0);
-}
-
-/**
- *
- */
-void g_pipe_bs(g_fd* out_write, g_fd* out_read, g_bool blocking, g_fs_pipe_status* out_status) {
-
+g_fs_pipe_status g_pipe_b(g_fd* out_write, g_fd* out_read, g_bool blocking)
+{
 	g_syscall_fs_pipe data;
 	data.blocking = blocking;
 
 	g_syscall(G_SYSCALL_FS_PIPE, (uint32_t) &data);
 	*out_write = data.write_fd;
 	*out_read = data.read_fd;
-	if (out_status) {
-		*out_status = data.status;
-	}
+	return data.status;
 }

@@ -145,8 +145,7 @@ bool create_pipe(g_pid this_pid, g_pid requester_pid, g_pid target_pid,
 
 		// create pipe
 		g_fd pipe[2];
-		g_fs_pipe_status pipe_stat;
-		g_pipe_s(&pipe[0], &pipe[1], &pipe_stat);
+		g_fs_pipe_status pipe_stat = g_pipe(&pipe[0], &pipe[1]);
 
 		if (pipe_stat == G_FS_PIPE_SUCCESSFUL) {
 			// map into target & requester

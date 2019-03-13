@@ -28,7 +28,7 @@
 
 #define TEST_SUCCESSFUL		\
 	klog("[Test successful] %s, line %i", __FUNCTION__, __LINE__); \
-	return test_result_t(1, 0)
+	return test_result_t(1, 0);
 
 
 class test_result_t {

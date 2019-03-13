@@ -290,8 +290,7 @@ int main(int argc, char *argv[]) {
 			g_fd out_pipe_w;
 			g_fd out_pipe_r;
 			if (num_calls > 1 && c < num_calls - 1) {
-				g_fs_pipe_status pipe_stat;
-				g_pipe_s(&out_pipe_w, &out_pipe_r, &pipe_stat);
+				g_fs_pipe_status pipe_stat = g_pipe(&out_pipe_w, &out_pipe_r);
 
 				if (pipe_stat != G_FS_PIPE_SUCCESSFUL) {
 					std::cerr << "failed to create output pipe when spawning '"

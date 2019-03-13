@@ -398,10 +398,9 @@ bool terminal_t::run_term_command(std::string command, g_fd* term_in,
 		g_fd* term_out, g_fd* term_err, g_pid* int_pid) {
 
 	// create initial pipe
-	g_fs_pipe_status first_pipe_stat;
 	g_fd first_pipe_w;
 	g_fd first_pipe_r;
-	g_pipe_s(&first_pipe_w, &first_pipe_r, &first_pipe_stat);
+	g_fs_pipe_status first_pipe_stat = g_pipe(&first_pipe_w, &first_pipe_r);
 	if (first_pipe_stat != G_FS_PIPE_SUCCESSFUL) {
 		writeToScreen(screen, "unable to create process pipe",
 				SC_COLOR(SC_BLACK, SC_RED));
@@ -432,11 +431,9 @@ bool terminal_t::run_term_command(std::string command, g_fd* term_in,
 		}
 
 		// create pipes
-		g_fs_pipe_status pipe_stat;
-
 		g_fd out_pipe_w;
 		g_fd out_pipe_r;
-		g_pipe_s(&out_pipe_w, &out_pipe_r, &pipe_stat);
+		g_fs_pipe_status pipe_stat = g_pipe(&out_pipe_w, &out_pipe_r);
 		if (pipe_stat != G_FS_PIPE_SUCCESSFUL) {
 			writeToScreen(screen, "unable to create process out pipe",
 					SC_COLOR(SC_BLACK, SC_RED));
@@ -454,7 +451,7 @@ bool terminal_t::run_term_command(std::string command, g_fd* term_in,
 		if (i == numparts - 1) { // stderr only for last
 			g_fd err_pipe_w;
 			g_fd err_pipe_r;
-			g_pipe_s(&err_pipe_w, &err_pipe_r, &pipe_stat);
+			pipe_stat = g_pipe(&err_pipe_w, &err_pipe_r);
 			if (pipe_stat != G_FS_PIPE_SUCCESSFUL) {
 				writeToScreen(screen, "unable to create process err pipe",
 						SC_COLOR(SC_BLACK, SC_RED));

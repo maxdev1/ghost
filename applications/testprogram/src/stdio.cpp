@@ -43,14 +43,14 @@ test_result_t openReadClose()
 	ASSERT(total == 620);
 	g_close(fd);
 
-	TEST_SUCCESSFUL;
+	TEST_SUCCESSFUL
 }
 
 test_result_t openNonExistingFails()
 {
 	g_fd fd = g_open("/non-existing-file.txt");
 	ASSERT(fd == -1);
-	TEST_SUCCESSFUL;
+	TEST_SUCCESSFUL
 }
 
 test_result_t createFile()
@@ -96,11 +96,20 @@ test_result_t createFile()
 	TEST_SUCCESSFUL;
 }
 
+test_result_t createPipe()
+{
+	g_fd write;
+	g_fd read;
+	g_pipe_status pipeStat = g_pipe_s(&write, &read);
+	ASSERT(pipeStat == G_FS_PIPE_SUCCESSFUL);
+}
+
 test_result_t runStdioTest()
 {
 	test_result_t result;
 	result += openReadClose();
 	result += openNonExistingFails();
 	result += createFile();
+	result += createPipe();
 	return result;
 }
