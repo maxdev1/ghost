@@ -74,7 +74,7 @@ void filesystemCreateRoot()
 	ramdiskMountpoint->physicalId = 0;
 	ramdiskMountpoint->delegate = ramdiskDelegate;
 	filesystemAddChild(mountFolder, ramdiskMountpoint);
-	
+
 	// Mount pipes
 	g_fs_delegate* pipeDelegate = filesystemCreateDelegate();
 	pipeDelegate->open = filesystemPipeDelegateOpen;
@@ -328,13 +328,43 @@ g_fs_open_status filesystemOpen(g_fs_node* file, g_file_flag_mode flags, g_task*
 	g_fs_delegate* delegate = filesystemFindDelegate(file);
 	if(!delegate->open)
 		kernelPanic("%! failed to open file %i, delegate had no implementation", "filesystem", file->id);
-	
+
 	g_fs_open_status status = delegate->open(file);
-	if(status == G_FS_OPEN_SUCCESSFUL) {
+	if(status == G_FS_OPEN_SUCCESSFUL)
+	{
 		g_file_descriptor* descriptor;
 		filesystemProcessCreateDescriptor(task->process->id, file->id, flags, &descriptor);
 		*outFd = descriptor->id;
 	}
+	return status;
+}
+
+g_fs_read_status filesystemRead(g_task* task, g_fd fd, uint8_t* buffer, uint64_t length, int64_t* outRead)
+{
+	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(task->process->id, fd);
+	if(!descriptor)
+	{
+		return G_FS_READ_INVALID_FD;
+	}
+
+	g_fs_node* node = filesystemGetNode(descriptor->nodeId);
+	if(!node)
+	{
+		return G_FS_READ_INVALID_FD;
+	}
+
+	int64_t read;
+	g_fs_read_status status;
+	while((status = filesystemRead(node, buffer, descriptor->offset, length, &read)) == G_FS_READ_BUSY && node->blocking)
+	{
+		filesystemWaitToRead(task, node);
+		taskingKernelThreadYield();
+	}
+	if(read > 0)
+	{
+		descriptor->offset += read;
+	}
+	*outRead = read;
 	return status;
 }
 
@@ -354,6 +384,45 @@ g_fs_length_status filesystemGetLength(g_fs_node* node, uint64_t* outLength)
 		return G_FS_LENGTH_ERROR;
 
 	return delegate->getLength(node, outLength);
+}
+
+g_fs_write_status filesystemWrite(g_task* task, g_fd fd, uint8_t* buffer, uint64_t length, int64_t* outWrote)
+{
+	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(task->process->id, fd);
+	if(!descriptor)
+	{
+		return G_FS_WRITE_INVALID_FD;
+	}
+
+	g_fs_node* node = filesystemGetNode(descriptor->nodeId);
+	if(!node)
+	{
+		return G_FS_WRITE_INVALID_FD;
+	}
+
+	uint64_t startOffset = descriptor->offset;
+	if(descriptor->openFlags & G_FILE_FLAG_MODE_APPEND)
+	{
+		if(filesystemGetLength(node, &startOffset) != G_FS_LENGTH_SUCCESSFUL)
+		{
+			logInfo("%! failed to append to file %i, could not get length", "filesystem", node->id);
+			return G_FS_WRITE_ERROR;
+		}
+	}
+
+	int64_t wrote;
+	g_fs_write_status status;
+	while((status = filesystemWrite(node, buffer, startOffset, length, &wrote)) == G_FS_WRITE_BUSY && node->blocking)
+	{
+		filesystemWaitToWrite(task, node);
+		taskingKernelThreadYield();
+	}
+	if(wrote > 0)
+	{
+		descriptor->offset = startOffset + wrote;
+	}
+	*outWrote = wrote;
+	return status;
 }
 
 g_fs_write_status filesystemWrite(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote)
@@ -416,7 +485,7 @@ g_fs_pipe_status filesystemCreatePipe(g_bool blocking, g_fs_node** outPipeNode)
 	int pipePrefixLen = stringLength(pipePrefix);
 	memoryCopy(pipeName, pipePrefix, pipePrefixLen);
 	char* numberEnd = stringWriteNumber(&pipeName[pipePrefixLen], pipeId);
-	*numberEnd = 0;	
+	*numberEnd = 0;
 
 	g_fs_node* pipeNode = filesystemCreateNode(G_FS_NODE_TYPE_PIPE, pipeName);
 	pipeNode->physicalId = pipeId;
@@ -428,13 +497,15 @@ g_fs_pipe_status filesystemCreatePipe(g_bool blocking, g_fs_node** outPipeNode)
 g_fs_close_status filesystemClose(g_task* task, g_fd fd)
 {
 	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(task->process->id, fd);
-	if(!descriptor) {
+	if(!descriptor)
+	{
 		logInfo("%! failed to close fd %i in process %i, illegal descriptor", "filesystem", fd, task->process->id);
 		return G_FS_CLOSE_INVALID_FD;
 	}
 
 	g_fs_node* file = filesystemGetNode(descriptor->nodeId);
-	if(!file) {
+	if(!file)
+	{
 		logInfo("%! failed to close fd %i in process %i, illegal node", "filesystem", fd, task->process->id);
 		return G_FS_CLOSE_INVALID_FD;
 	}
@@ -444,8 +515,56 @@ g_fs_close_status filesystemClose(g_task* task, g_fd fd)
 		kernelPanic("%! failed to close file %i, delegate had no implementation", "filesystem", file->id);
 
 	g_fs_close_status status = delegate->close(file);
-	if(status == G_FS_CLOSE_SUCCESSFUL) {
+	if(status == G_FS_CLOSE_SUCCESSFUL)
+	{
 		filesystemProcessRemoveDescriptor(task->process->id, fd);
 	}
 	return status;
+}
+
+g_fs_seek_status filesystemSeek(g_task* task, g_fd fd, g_fs_seek_mode mode, int64_t amount, int64_t* outResult)
+{
+	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(task->process->id, fd);
+	if(!descriptor)
+	{
+		return G_FS_SEEK_INVALID_FD;
+	}
+
+	g_fs_node* node = filesystemGetNode(descriptor->nodeId);
+	if(!node)
+	{
+		return G_FS_SEEK_INVALID_FD;
+	}
+
+	uint64_t length;
+	if(filesystemGetLength(node, &length) != G_FS_LENGTH_SUCCESSFUL)
+	{
+		logInfo("%! failed to seek in file %i, could not get length", "filesystem", node->id);
+		return G_FS_SEEK_ERROR;
+	}
+
+	// add amount to offset
+	if(mode == G_FS_SEEK_CUR)
+	{
+		descriptor->offset += amount;
+	} else if(mode == G_FS_SEEK_SET)
+	{
+		descriptor->offset = amount;
+	} else if(mode == G_FS_SEEK_END)
+	{
+		descriptor->offset = length - amount;
+	}
+
+	// validate offset
+	if(descriptor->offset > length)
+	{
+		descriptor->offset = length;
+	}
+	if(descriptor->offset < 0)
+	{
+		descriptor->offset = 0;
+	}
+
+	*outResult = descriptor->offset;
+	return G_FS_SEEK_SUCCESSFUL;
 }
