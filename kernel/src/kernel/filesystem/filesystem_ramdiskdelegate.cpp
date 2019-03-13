@@ -26,6 +26,16 @@
 #include "shared/system/mutex.hpp"
 #include "shared/utils/string.hpp"
 
+g_fs_open_status filesystemRamdiskDelegateOpen(g_fs_node* node)
+{
+	return G_FS_OPEN_SUCCESSFUL;
+}
+
+g_fs_close_status filesystemRamdiskDelegateClose(g_fs_node* node)
+{
+	return G_FS_CLOSE_SUCCESSFUL;
+}
+
 g_fs_open_status filesystemRamdiskDelegateDiscover(g_fs_node* parent, const char* name, g_fs_node** outNode)
 {
 	g_ramdisk_entry* parentEntry;

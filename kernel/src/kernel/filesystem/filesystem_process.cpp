@@ -40,13 +40,13 @@ void filesystemProcessCreate(g_pid pid)
 	hashmapPut(filesystemProcessInfo, pid, info);
 }
 
-g_file_descriptor* filesystemProcessCreateDescriptor(g_pid pid, g_fs_virt_id nodeId, int32_t flags, g_fd optionalFd)
+g_fs_open_status filesystemProcessCreateDescriptor(g_pid pid, g_fs_virt_id nodeId, g_file_flag_mode flags, g_file_descriptor** outDescriptor, g_fd optionalFd)
 {
 	g_filesystem_process* info = hashmapGet<g_pid, g_filesystem_process*>(filesystemProcessInfo, pid, 0);
 	if(!info)
 	{
 		logInfo("%! tried to create file descriptor in process %i that doesn't exist", "filesystem", pid);
-		return 0;
+		return G_FS_OPEN_ERROR;
 	}
 
 	g_file_descriptor* descriptor = (g_file_descriptor*) heapAllocate(sizeof(g_file_descriptor));
@@ -63,8 +63,8 @@ g_file_descriptor* filesystemProcessCreateDescriptor(g_pid pid, g_fs_virt_id nod
 	descriptor->openFlags = flags;
 
 	hashmapPut<g_fd, g_file_descriptor*>(info->descriptors, descriptor->id, descriptor);
-
-	return descriptor;
+	*outDescriptor = descriptor;
+	return G_FS_OPEN_SUCCESSFUL;
 }
 
 g_file_descriptor* filesystemProcessGetDescriptor(g_pid pid, g_fd fd)
@@ -113,10 +113,14 @@ g_file_descriptor* filesystemProcessCloneDescriptor(g_file_descriptor* sourceFd,
 	if(targetFd != -1)
 		filesystemProcessRemoveDescriptor(targetPid, targetFd);
 	
-	g_file_descriptor* descriptor = filesystemProcessCreateDescriptor(targetPid, sourceFd->nodeId, sourceFd->openFlags, targetFd);
-	if(!descriptor)
+	g_file_descriptor* createdFd;
+	g_fs_open_status status = filesystemProcessCreateDescriptor(targetPid, sourceFd->nodeId, sourceFd->openFlags, &createdFd, targetFd);
+	if(status != G_FS_OPEN_SUCCESSFUL)
+	{
+		logInfo("%! failed to clone descriptor %i to process %i in descriptor %i with status %i", "filesystem", sourceFd->id, targetPid, targetFd, status);
 		return 0;
+	}
 
-	descriptor->offset = sourceFd->offset;
-	return descriptor;
+	createdFd->offset = sourceFd->offset;
+	return createdFd;
 }

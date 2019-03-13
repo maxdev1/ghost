@@ -159,4 +159,5 @@ void syscallRegisterAll()
 	syscallRegister(G_SYSCALL_FS_TELL, (g_syscall_handler) syscallFsTell, false);
 	syscallRegister(G_SYSCALL_FS_STAT, (g_syscall_handler) syscallFsStat, true);
 	syscallRegister(G_SYSCALL_FS_FSTAT, (g_syscall_handler) syscallFsFstat, true);
+	syscallRegister(G_SYSCALL_FS_PIPE, (g_syscall_handler) syscallFsPipe, true);
 }

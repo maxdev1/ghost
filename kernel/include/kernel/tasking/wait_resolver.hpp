@@ -24,6 +24,8 @@
 #include "ghost/types.h"
 #include "kernel/tasking/tasking.hpp"
 
+struct g_fs_node;
+
 struct g_wait_resolver_sleep_data
 {
 	uint32_t wakeTime;
