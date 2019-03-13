@@ -23,19 +23,19 @@
 #include <stdarg.h>
 
 // redirect
-int32_t g_open(const char *name) {
+g_fd g_open(const char *name) {
 	return g_open_fs(name, 0, 0);
 }
 
 // redirect
-int32_t g_open_f(const char *name, int32_t flags) {
+g_fd g_open_f(const char *name, g_file_flag_mode flags) {
 	return g_open_fs(name, flags, 0);
 }
 
 /**
  *
  */
-int32_t g_open_fs(const char *name, int32_t flags, g_fs_open_status* out_status) {
+g_fd g_open_fs(const char *name, g_file_flag_mode flags, g_fs_open_status* out_status) {
 
 	g_syscall_fs_open data;
 	data.path = (char*) name;
