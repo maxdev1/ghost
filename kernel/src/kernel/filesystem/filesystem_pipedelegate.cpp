@@ -19,11 +19,24 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/filesystem/filesystem_pipedelegate.hpp"
-
+#include "kernel/tasking/wait_resolver.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/kernel.hpp"
+
 #include "shared/system/mutex.hpp"
 #include "shared/utils/string.hpp"
+
+g_fs_open_status filesystemPipeDelegateOpen(g_fs_node* node)
+{
+	// TODO increase pipe references
+	return G_FS_OPEN_ERROR;
+}
+
+g_fs_close_status filesystemPipeDelegateClose(g_fs_node* node)
+{
+	// TODO decrease pipe references
+	return G_FS_CLOSE_ERROR;
+}
 
 g_fs_open_status filesystemPipeDelegateDiscover(g_fs_node* parent, const char* name, g_fs_node** outNode)
 {
@@ -32,34 +45,40 @@ g_fs_open_status filesystemPipeDelegateDiscover(g_fs_node* parent, const char* n
 
 g_fs_read_status filesystemPipeDelegateRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead)
 {
+	return G_FS_READ_ERROR;
 }
 
-g_fs_write_status filesystemRamdiskDelegateWrite(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote)
+g_fs_write_status filesystemPipeDelegateWrite(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote)
 {
+	return G_FS_WRITE_ERROR;
 }
 
-g_fs_length_status filesystemRamdiskDelegateGetLength(g_fs_node* node, uint64_t* outLength)
+g_fs_length_status filesystemPipeDelegateGetLength(g_fs_node* node, uint64_t* outLength)
 {
-
+	return G_FS_LENGTH_ERROR;
 }
 
-g_fs_open_status filesystemRamdiskDelegateCreate(g_fs_node* parent, const char* name, g_fs_node** outFile)
+g_fs_open_status filesystemPipeDelegateCreate(g_fs_node* parent, const char* name, g_fs_node** outFile)
 {
+	return G_FS_OPEN_ERROR;
 }
 
-g_fs_open_status filesystemRamdiskDelegateTruncate(g_fs_node* file)
+g_fs_open_status filesystemPipeDelegateTruncate(g_fs_node* file)
 {
 	// TODO empty pipe
+	return G_FS_OPEN_ERROR;
 }
 
 bool filesystemPipeDelegateWaitResolverRead(g_task* task)
 {
 	g_wait_resolver_for_file_data* waitData = (g_wait_resolver_for_file_data*) task->waitData;
 	// TODO return whether we can now read from the pipe in waitData
+	return false;
 }
 
 bool filesystemPipeDelegateWaitResolverWrite(g_task* task)
 {
 	g_wait_resolver_for_file_data* waitData = (g_wait_resolver_for_file_data*) task->waitData;
 	// TODO return whether we can now write to the pipe in waitData
+	return false;
 }

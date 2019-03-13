@@ -21,77 +21,17 @@
 #include "kernel/calls/syscall_filesystem.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
-
 #include "shared/logger/logger.hpp"
 
 void syscallFsOpen(g_task* task, g_syscall_fs_open* data)
 {
-	g_fs_node* relative = 0;
-
-	if(data->path[0] != '/')
-	{
-		const char* workingDirectoryPath = task->process->environment.workingDirectory;
-		if(workingDirectoryPath == 0)
-		{
-			workingDirectoryPath = "/";
-		}
-
-		filesystemFind(0, workingDirectoryPath, &relative);
-	}
-
-	if(!relative)
-		relative = filesystemGetRoot();
-
-	g_fs_node* file;
-	bool foundAllButLast;
-	g_fs_node* lastFoundParent;
-	const char* filenameStart;
-	g_fs_open_status status = filesystemFind(relative, data->path, &file, &foundAllButLast, &lastFoundParent, &filenameStart);
-
-	if(status == G_FS_OPEN_SUCCESSFUL)
-	{
-		if(data->flags & G_FILE_FLAG_MODE_TRUNCATE)
-		{
-			if(filesystemTruncate(file) != G_FS_OPEN_SUCCESSFUL)
-			{
-				logInfo("%! failed to truncate file %i", "filesystem", file->id);
-				data->fd = -1;
-				data->status = G_FS_OPEN_ERROR;
-				return;
-			}
-		}
-	} else if(status == G_FS_OPEN_NOT_FOUND)
-	{
-		if(data->flags & G_FILE_FLAG_MODE_CREATE)
-		{
-			if(!foundAllButLast)
-			{
-				logInfo("%! failed to create file '%s' in parent %i because folders do not exist", "filesystem", data->path, relative->id);
-				data->fd = -1;
-				data->status = G_FS_OPEN_ERROR;
-			} else if(filesystemCreateFile(lastFoundParent, filenameStart, &file) != G_FS_OPEN_SUCCESSFUL)
-			{
-				logInfo("%! failed to create file '%s' in parent %i", "filesystem", data->path, relative->id);
-				data->fd = -1;
-				data->status = G_FS_OPEN_ERROR;
-				return;
-			}
-		} else
-		{
-			data->fd = -1;
-			data->status = G_FS_OPEN_NOT_FOUND;
-			return;
-		}
-	} else
-	{
+	g_fd fd;
+	data->status = filesystemOpen(data->path, data->flags, task, &fd);
+	if(data->status == G_FS_OPEN_SUCCESSFUL) {
+		data->fd = fd;
+	} else {
 		data->fd = -1;
-		data->status = status;
-		return;
 	}
-
-	g_file_descriptor* descriptor = filesystemProcessCreateDescriptor(task->process->id, file->id, data->flags);
-	data->fd = descriptor->id;
-	data->status = G_FS_OPEN_SUCCESSFUL;
 }
 
 void syscallFsSeek(g_task* task, g_syscall_fs_seek* data)
@@ -220,8 +160,7 @@ void syscallFsWrite(g_task* task, g_syscall_fs_write* data)
 
 void syscallFsClose(g_task* task, g_syscall_fs_close* data)
 {
-	filesystemProcessRemoveDescriptor(task->process->id, data->fd);
-	data->status = G_FS_CLOSE_SUCCESSFUL;
+	data->status = filesystemClose(task, data->fd);
 }
 
 void syscallFsCloneFd(g_task* task, g_syscall_fs_clonefd* data)
@@ -269,4 +208,39 @@ void syscallFsStat(g_task* task, g_syscall_fs_stat* data)
 void syscallFsFstat(g_task* task, g_syscall_fs_fstat* data)
 {
 	logInfo("%! fstat not implemented", "syscall");
+}
+
+void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
+{
+	g_fs_node* pipeNode;
+	data->status = filesystemCreatePipe(data->blocking, &pipeNode);
+
+	if(data->status != G_FS_PIPE_SUCCESSFUL)
+	{
+		logInfo("%! failed to create pipe for task %i with status %i", "filesystem", task->id, data->status);
+		data->read_fd = -1;
+		data->write_fd = -1;
+		return;
+	}	
+
+	g_file_flag_mode writeFlags = (G_FILE_FLAG_MODE_WRITE | (data->blocking ? G_FILE_FLAG_MODE_BLOCKING : 0));
+	g_fs_open_status writeOpen = filesystemOpen(pipeNode, writeFlags, task, &data->write_fd);
+	if(writeOpen != G_FS_OPEN_SUCCESSFUL) {
+		logInfo("%! failed to open write end of pipe %i for task %i with status %i", "filesystem", pipeNode->id, task->id, writeOpen);
+		data->status = G_FS_PIPE_ERROR;
+		return;
+	}
+
+	g_file_flag_mode readFlags = (G_FILE_FLAG_MODE_READ | (data->blocking ? G_FILE_FLAG_MODE_BLOCKING : 0));
+	g_fs_open_status readOpen = filesystemOpen(pipeNode, readFlags, task, &data->read_fd);
+	if(readOpen != G_FS_OPEN_SUCCESSFUL) {
+		if(filesystemClose(task, writeOpen) != G_FS_CLOSE_SUCCESSFUL) {
+			logInfo("%! failed to close write end of pipe %i for task %i after failing to open read end", "filesystem", pipeNode->id, task->id);
+		}
+		logInfo("%! failed to open read end of pipe %i for task %i with status %i", "filesystem", pipeNode->id, task->id, readOpen);
+		data->status = G_FS_PIPE_ERROR;
+		return;
+	}
+
+	data->status = G_FS_PIPE_SUCCESSFUL;
 }

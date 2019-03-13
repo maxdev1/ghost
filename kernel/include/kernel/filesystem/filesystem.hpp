@@ -22,6 +22,7 @@
 #define __KERNEL_FILESYSTEM__
 
 #include "ghost/fs.h"
+#include "kernel/tasking/tasking.hpp"
 #include "shared/system/mutex.hpp"
 
 struct g_fs_node;
@@ -63,12 +64,14 @@ struct g_fs_delegate
 {
 	g_mutex lock;
 
+	g_fs_open_status (*open)(g_fs_node* node);
 	g_fs_open_status (*discover)(g_fs_node* parent, const char* name, g_fs_node** outNode);
 	g_fs_read_status (*read)(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
 	g_fs_write_status (*write)(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote);
 	g_fs_length_status (*getLength)(g_fs_node* node, uint64_t* outLength);
 	g_fs_open_status (*create)(g_fs_node* parent, const char* name, g_fs_node** outFile);
 	g_fs_open_status (*truncate)(g_fs_node* file);
+	g_fs_close_status (*close)(g_fs_node* node);
 
 	/**
 	 * When resolvers used when a task needs to wait for a file.
@@ -138,6 +141,12 @@ g_fs_node* filesystemGetRoot();
 g_fs_delegate* filesystemFindDelegate(g_fs_node* node);
 
 /**
+ * Opens a file, creating a file descriptor.
+ */
+g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task* task, g_fd* outFd);
+g_fs_open_status filesystemOpen(g_fs_node* file, g_file_flag_mode flags, g_task* task, g_fd* outFd);
+
+/**
  * Reads bytes from a file.
  */
 g_fs_read_status filesystemRead(g_fs_node* file, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
@@ -146,6 +155,11 @@ g_fs_read_status filesystemRead(g_fs_node* file, uint8_t* buffer, uint64_t offse
  * Writes bytes to a file.
  */
 g_fs_write_status filesystemWrite(g_fs_node* file, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote);
+
+/**
+ * Closes a file descriptor.
+ */
+g_fs_close_status filesystemClose(g_task* task, g_fd fd);
 
 /**
  * Retrieves the length of a file.
@@ -173,5 +187,10 @@ void filesystemWaitToWrite(g_task* task, g_fs_node* file);
  * which lets the task wait until it can read from the file again.
  */
 void filesystemWaitToRead(g_task* task, g_fs_node* file);
+
+/**
+ * Creates a new pipe on the filesystem.
+ */
+g_fs_pipe_status filesystemCreatePipe(g_bool blocking, g_fs_node** outPipeNode);
 
 #endif

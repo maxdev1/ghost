@@ -26,6 +26,10 @@
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/tasking/tasking.hpp"
 
+g_fs_open_status filesystemPipeDelegateOpen(g_fs_node* node);
+
+g_fs_close_status filesystemPipeDelegateClose(g_fs_node* node);
+
 g_fs_open_status filesystemPipeDelegateDiscover(g_fs_node* parent, const char* name, g_fs_node** outNode);
 
 g_fs_read_status filesystemPipeDelegateRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
