@@ -186,6 +186,11 @@ void elf32LoadTlsMasterCopy(elf32_ehdr* header, g_process* process, g_security_l
 
 			memorySetBytes((void*) tlsStart, 0, programHeader->p_memsz);
 			memoryCopy((void*) tlsStart, (uint8_t*) (((uint32_t) header) + programHeader->p_offset), programHeader->p_filesz);
+
+			process->tlsMaster.location = tlsStart;
+			process->tlsMaster.alignment = programHeader->p_align;
+			process->tlsMaster.copysize = programHeader->p_filesz;
+			process->tlsMaster.totalsize = programHeader->p_memsz;
 			break;
 		}
 	}
