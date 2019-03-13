@@ -64,13 +64,14 @@ void __init_stdio() {
  */
 void __fini_stdio() {
 
-	// flush & close everything
+	// close all descriptors
+	// skip stdin/stdout/stderr
 	FILE* f = __open_file_list;
 	while (f) {
 		FILE* n = f->next;
-		if (g_atomic_try_lock(&n->lock)) {
+		if(f->file_descriptor > STDERR_FILENO && g_atomic_try_lock(&f->lock)) {
 			__fclose_static_unlocked(f);
-			n->lock = 0;
+			f->lock = 0;
 		}
 		f = n;
 	}
