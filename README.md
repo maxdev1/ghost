@@ -8,8 +8,8 @@ This is the main development repository.
 *Project website:* http://ghostkernel.org/
 
 ## Status of redux
-With the `redux` branch I started a re-implementation of the kernel.
-At the moment, most lower-level stuff is up again and I'm working on the filesystem.
+With `redux` I started a re-implementation of the kernel which is now present in the `master` branch.
+Currently I'm working on rewriting most of the filesystem related calls.
 Once a ready-to-run version is there, I will post a live CD on the website.
 
 If you are looking for the previous kernel implementation (versions up to 0.5.6b),
