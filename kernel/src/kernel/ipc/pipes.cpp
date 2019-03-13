@@ -18,22 +18,12 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_IPC_PIPES__
-#define __KERNEL_IPC_PIPES__
-
-#include "ghost.h"
+#include "kernel/ipc/pipes.hpp"
 
 /**
  * Creates a new pipe.
  */
-g_fs_pipe_status pipeCreate(g_fs_phys_id* outPipeId);
-
-g_fs_read_status pipeRead(g_fs_phys_id pipeId, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
-
-g_fs_write_status pipeWrite(g_fs_phys_id pipeId, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote);
-
-g_fs_length_status pipeGetLength(g_fs_phys_id pipeId, uint64_t* outLength);
-
-g_fs_open_status pipeTruncate(g_fs_phys_id pipeId);
-
-#endif
+g_fs_pipe_status pipeCreate(g_fs_phys_id* outPipeId)
+{
+	return G_FS_PIPE_ERROR;
+}
