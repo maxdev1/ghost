@@ -93,15 +93,17 @@ test_result_t createFile()
 		g_close(fd);
 	}
 
-	TEST_SUCCESSFUL;
+	TEST_SUCCESSFUL
 }
 
 test_result_t createPipe()
 {
 	g_fd write;
 	g_fd read;
-	g_pipe_status pipeStat = g_pipe_s(&write, &read);
+	g_fs_pipe_status pipeStat = g_pipe(&write, &read);
 	ASSERT(pipeStat == G_FS_PIPE_SUCCESSFUL);
+
+	TEST_SUCCESSFUL
 }
 
 test_result_t runStdioTest()
