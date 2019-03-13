@@ -40,7 +40,7 @@
  */
 typedef struct {
 	char* path;
-	int32_t flags;
+	g_file_flag_mode flags;
 
 	g_fs_open_status status;
 	g_fd fd;

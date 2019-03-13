@@ -10,7 +10,8 @@
 			"fstream": "cpp",
 			"type_traits": "cpp",
 			"string": "cpp",
-			"iostream": "cpp"
+			"iostream": "cpp",
+			"errno.h": "c"
 		}
 	}
 }
