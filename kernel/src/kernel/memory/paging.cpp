@@ -60,6 +60,7 @@ bool pagingMapPage(g_virtual_address virt, g_physical_address phys, uint32_t tab
 	}
 
 #warning "TODO: implement following code"
+	logInfo("%! warning: tried duplicate mapping of page %h", "paging", virt);
 	/*
 	 g_thread* failor = g_tasking::lastThread();
 	 if(failor != 0)

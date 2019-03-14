@@ -48,4 +48,6 @@ void syscallRestoreInterruptedState(g_task* task);
 
 void syscallRaiseSignal(g_task* task, g_syscall_raise_signal* data);
 
+void syscallSpawn(g_task* task, g_syscall_spawn* data);
+
 #endif

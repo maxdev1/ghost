@@ -24,6 +24,7 @@
 #include "kernel/tasking/wait.hpp"
 #include "kernel/system/interrupts/requests.hpp"
 #include "kernel/memory/memory.hpp"
+#include "kernel/tasking/elf32_loader.hpp"
 
 #include "shared/logger/logger.hpp"
 
@@ -46,12 +47,12 @@ void syscallExit(g_task* task, g_syscall_exit* data)
 
 void syscallGetProcessId(g_task* task, g_syscall_get_pid* data)
 {
-	data->id = taskingGetLocal()->scheduling.current->process->id;
+	data->id = taskingGetCurrentTask()->process->id;
 }
 
 void syscallGetTaskId(g_task* task, g_syscall_get_tid* data)
 {
-	data->id = taskingGetLocal()->scheduling.current->id;
+	data->id = taskingGetCurrentTask()->id;
 }
 
 void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
@@ -147,4 +148,26 @@ void syscallRestoreInterruptedState(g_task* task)
 void syscallRaiseSignal(g_task* task, g_syscall_raise_signal* data)
 {
 	data->status = taskingRaiseSignal(task, data->signal);
+}
+
+void syscallSpawn(g_task* task, g_syscall_spawn* data)
+{
+	g_fd fd;
+	g_fs_open_status open = filesystemOpen(data->path, G_FILE_FLAG_MODE_READ, task, &fd);
+	if(open == G_FS_OPEN_SUCCESSFUL)
+	{
+		g_task* targetTask;
+		data->spawnStatus = elf32Spawn(task, fd, G_SECURITY_LEVEL_APPLICATION, &targetTask, &data->validationDetails);
+		if(data->spawnStatus == G_SPAWN_STATUS_SUCCESSFUL)
+		{
+			data->pid = targetTask->process->id;
+
+#warning TODO finish implementation
+			logInfo("%! task %i spawned task %i, pass arguments etc...", "syscall", task->id, targetTask->id);
+		}
+	} else
+	{
+		data->spawnStatus = G_SPAWN_STATUS_IO_ERROR;
+		logInfo("%! failed to find binary '%s'", "kernel", data->path);
+	}
 }

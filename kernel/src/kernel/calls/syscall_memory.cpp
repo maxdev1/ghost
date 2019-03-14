@@ -29,3 +29,4 @@ void syscallSbrk(g_task* task, g_syscall_sbrk* data)
 {
 	data->successful = taskingMemoryExtendHeap(task, data->amount, &data->address);
 }
+

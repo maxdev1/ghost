@@ -26,40 +26,35 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/tasking.hpp"
 
-/**
- * Executable spawn status
- */
-enum g_elf32_spawn_status
-{
-	ELF32_SPAWN_STATUS_SUCCESSFUL,
-	ELF32_SPAWN_STATUS_FILE_NOT_FOUND,
-	ELF32_SPAWN_STATUS_VALIDATION_ERROR,
-	ELF32_SPAWN_STATUS_PROCESS_CREATION_FAILED,
-	ELF32_SPAWN_STATUS_READ_ERROR
-};
 
 /**
- * ELF validation status
+ * Spawns an ELF32 binary to a new process.
  */
-enum g_elf32_validation_status
-{
-	ELF32_VALIDATION_SUCCESSFUL,
-	ELF32_VALIDATION_NOT_ELF,
-	ELF32_VALIDATION_NOT_EXECUTABLE,
-	ELF32_VALIDATION_NOT_I386,
-	ELF32_VALIDATION_NOT_32BIT,
-	ELF32_VALIDATION_NOT_LITTLE_ENDIAN,
-	ELF32_VALIDATION_NOT_STANDARD_ELF
-};
+g_spawn_status elf32Spawn(g_task* caller, g_fd file, g_security_level securityLevel, g_task** outTask = 0, g_spawn_validation_details* outValidationDetails = 0);
 
-g_elf32_spawn_status elf32Spawn(g_task* caller, g_fd file, g_security_level securityLevel, g_task** taskOut);
+/**
+ * Reads the ELF header from the file.
+ */
+g_spawn_validation_details elf32ReadAndValidateHeader(g_task* caller, g_fd file, elf32_ehdr* headerBuffer);
 
-g_elf32_validation_status elf32ReadAndValidateHeader(g_task* caller, g_fd file, elf32_ehdr* headerBuffer);
+/**
+ * Validates the given ELF header.
+ */
+g_spawn_validation_details elf32Validate(elf32_ehdr* header);
 
-void elf32LoadBinaryToCurrentAddressSpace(elf32_ehdr* binaryHeader, g_process* process, g_security_level securityLevel);
+/**
+ * Loads a binary to the address space of the target process. Temporarily switches to the address space of the target process.
+ */
+g_spawn_status elf32LoadBinaryToProcessSpace(g_task* caller, g_fd file, elf32_ehdr* header, g_process* targetProcess, g_security_level securityLevel);
 
-void elf32LoadTlsMasterCopy(elf32_ehdr* header, g_process* process, g_security_level securityLevel);
+/**
+ * Loads a load segment to memory, must be called while within the target process address space.
+ */
+g_spawn_status elf32LoadLoadSegment(g_task* caller, g_fd fd, elf32_phdr* phdr, g_process* targetProcess);
 
-void elf32LoadLoadSegment(elf32_ehdr* header, g_process* process, g_security_level securityLevel);
+/**
+ * Loads the TLS master to memory, must be called while within the target process address space.
+ */
+g_spawn_status elf32LoadTlsMasterCopy(g_task* caller, g_fd file, elf32_phdr* header, g_process* targetProcess);
 
 #endif
