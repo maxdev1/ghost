@@ -38,8 +38,9 @@ void schedulerPrepareEntry(g_schedule_entry* entry)
 	entry->schedulerRound = 0;
 }
 
-void schedulerPleaseSchedule(g_task* task) {
-
+void schedulerPleaseSchedule(g_task* task)
+{
+	taskingGetLocal()->scheduling.preferredNextTask = task;
 }
 
 /**
@@ -80,9 +81,10 @@ void schedulerSchedule(g_tasking_local* local)
 	{
 		entry = local->scheduling.list;
 	}
-		
+
 	// Select next in list
-	if(!switchToPreferred) {
+	if(!switchToPreferred)
+	{
 		entry = entry->next;
 		if(!entry)
 		{
@@ -126,11 +128,14 @@ void schedulerSchedule(g_tasking_local* local)
 		}
 	}
 
-	// Nothing to schedule, idle
-	if(!switched)
+	if(switched)
 	{
+		local->scheduling.current->timesScheduled++;
+	} else
+	{
+		// Nothing to schedule, idle
 		local->scheduling.current = local->scheduling.idleTask;
 	}
-	
+
 	mutexRelease(&local->lock);
 }
