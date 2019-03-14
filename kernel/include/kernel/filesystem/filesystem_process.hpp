@@ -58,14 +58,15 @@ void filesystemProcessInitialize();
 void filesystemProcessCreate(g_pid pid);
 
 /**
- * Removes file system information for a process.
+ * Removes file system information for a process. Closes all file descriptors of this process.
  */
 void filesystemProcessRemove(g_pid pid);
 
 /**
  * Creates a file descriptor opening a node.
  */
-g_fs_open_status filesystemProcessCreateDescriptor(g_pid pid, g_fs_virt_id nodeId, g_file_flag_mode flags,  g_file_descriptor** outDescriptor, g_fd optionalFd = -1);
+g_fs_open_status filesystemProcessCreateDescriptor(g_pid pid, g_fs_virt_id nodeId, g_file_flag_mode flags, g_file_descriptor** outDescriptor, g_fd optionalFd =
+		-1);
 
 /**
  * Finds a file descriptor.

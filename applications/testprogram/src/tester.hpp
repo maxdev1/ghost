@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <stdio.h>
+#include <ghost.h>
 
 #define ASSERT(expression)	\
 	if(!(expression)) {		\

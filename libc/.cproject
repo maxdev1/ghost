@@ -51,6 +51,36 @@
 									<listOptionValue builtIn="false" value="C:/ghost/lib/gcc/i686-ghost/8.2.0/include"/>
 									<listOptionValue builtIn="false" value="C:/ghost/lib/gcc/i686-ghost/8.2.0/include-fixed"/>
 								</option>
+								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="gnu.c.compiler.option.preprocessor.def.symbols.1317851832" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" useByScannerDiscovery="false" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="&quot;__UINT8_TYPE__=unsigned char&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__INT8_TYPE__=signed char&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__UINT16_TYPE__=unsigned short&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__INT16_TYPE__=signed short&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__UINT32_TYPE__=unsigned int&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__INT32_TYPE__=signed int&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__UINT64_TYPE__=unsigned long long int&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__INT64_TYPE__=signed long long int&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__INT_LEAST8_TYPE__=signed char&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__UINT_LEAST8_TYPE__=unsigned char&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__INT_LEAST16_TYPE__=signed short&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__UINT_LEAST16_TYPE__=unsigned short&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__INT_LEAST32_TYPE__=signed int&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__UINT_LEAST32_TYPE__=unsigned int&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__INT_LEAST64_TYPE__=signed long long int&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__UINT_LEAST64_TYPE__=unsigned long long int&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__INT_FAST8_TYPE__=signed char&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__UINT_FAST8_TYPE__=unsigned char&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__INT_FAST16_TYPE__=signed short&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__UINT_FAST16_TYPE__=unsigned short&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__INT_FAST32_TYPE__=signed int&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__UINT_FAST32_TYPE__=unsigned int&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__INT_FAST64_TYPE__=signed long long int&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__UINT_FAST64_TYPE__=unsigned long long int&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__INTPTR_TYPE__=signed int*&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__UINTPTR_TYPE__=unsigned int*&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__INTMAX_TYPE__=signed long long int*&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;__UINTMAX_TYPE__=unsigned long long int*&quot;"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.cygwin.249408301" superClass="cdt.managedbuild.tool.gnu.c.compiler.input.cygwin"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.cygwin.base.1230309040" name="Cygwin C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.cygwin.base"/>

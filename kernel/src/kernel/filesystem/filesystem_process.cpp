@@ -89,9 +89,13 @@ void filesystemProcessRemove(g_pid pid)
 	while(hashmapIteratorHasNext<g_fd, g_file_descriptor*>(&iter))
 	{
 		g_hashmap_entry<g_fd, g_file_descriptor*>* entry = hashmapIteratorNext<g_fd, g_file_descriptor*>(&iter);
+		filesystemClose(pid, entry->key, false);
 		heapFree(entry->value);
 	}
 	hashmapIteratorEnd<g_fd, g_file_descriptor*>(&iter);
+
+	heapFree(info);
+	hashmapRemove<g_pid, g_filesystem_process*>(filesystemProcessInfo, pid);
 }
 
 void filesystemProcessRemoveDescriptor(g_pid pid, g_fd fd)

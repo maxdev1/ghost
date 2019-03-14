@@ -45,7 +45,8 @@ g_tasking_local* taskingGetLocal()
 	return &taskingLocal[processorGetCurrentId()];
 }
 
-g_task* taskingGetCurrentTask() {
+g_task* taskingGetCurrentTask()
+{
 	return taskingGetLocal()->scheduling.current;
 }
 
@@ -142,9 +143,11 @@ void taskingResetTaskState(g_task* task)
 g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_security_level level)
 {
 	g_task* task = (g_task*) heapAllocateClear(sizeof(g_task));
-	if(process->main == 0) {
+	if(process->main == 0)
+	{
 		task->id = process->id;
-	} else {
+	} else
+	{
 		task->id = taskingGetNextId();
 	}
 	task->process = process;
@@ -565,6 +568,9 @@ void taskingKillProcess(g_pid pid)
 void taskingRemoveProcess(g_process* process)
 {
 	mutexAcquire(&process->lock);
+
+	filesystemProcessRemove(process->id);
+
 	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(process->pageDirectory);
 
 	// Clear mappings and free physical space above 4 MiB
@@ -592,8 +598,6 @@ void taskingRemoveProcess(g_process* process)
 
 	taskingTemporarySwitchBack(returnDirectory);
 	mutexRelease(&process->lock);
-
-	filesystemProcessRemove(process->id);
 
 	heapFree(process->virtualRangePool);
 	bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, process->pageDirectory);

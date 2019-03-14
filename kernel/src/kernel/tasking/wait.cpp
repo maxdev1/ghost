@@ -73,7 +73,7 @@ void waitForFile(g_task* task, g_fs_node* file, bool (*waitResolverFromDelegate)
 
 	g_wait_resolver_for_file_data* waitData = (g_wait_resolver_for_file_data*) heapAllocate(sizeof(g_wait_resolver_for_file_data));
 	waitData->waitResolverFromDelegate = waitResolverFromDelegate;
-	waitData->node = file;
+	waitData->nodeId = file->id;
 	task->waitData = waitData;
 	task->waitResolver = waitResolverFromDelegate;
 	task->status = G_THREAD_STATUS_WAITING;

@@ -161,7 +161,7 @@ g_fs_write_status filesystemWrite(g_fs_node* file, uint8_t* buffer, uint64_t off
 /**
  * Closes a file descriptor.
  */
-g_fs_close_status filesystemClose(g_task* task, g_fd fd);
+g_fs_close_status filesystemClose(g_pid process, g_fd fd, g_bool removeDescriptor);
 
 /**
  * Seeks in a file.

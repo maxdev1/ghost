@@ -47,6 +47,7 @@ void filesystemInitialize()
 
 	filesystemNodes = hashmapCreateNumeric<g_fs_virt_id, g_fs_node*>(1024);
 
+	pipeInitialize();
 	filesystemProcessInitialize();
 	filesystemCreateRoot();
 }
@@ -78,11 +79,9 @@ void filesystemCreateRoot()
 	// Mount pipes
 	g_fs_delegate* pipeDelegate = filesystemCreateDelegate();
 	pipeDelegate->open = filesystemPipeDelegateOpen;
-	pipeDelegate->discover = filesystemPipeDelegateDiscover;
 	pipeDelegate->read = filesystemPipeDelegateRead;
 	pipeDelegate->write = filesystemPipeDelegateWrite;
 	pipeDelegate->truncate = filesystemPipeDelegateTruncate;
-	pipeDelegate->create = filesystemPipeDelegateCreate;
 	pipeDelegate->getLength = filesystemPipeDelegateGetLength;
 	pipeDelegate->waitResolverRead = filesystemPipeDelegateWaitResolverRead;
 	pipeDelegate->waitResolverWrite = filesystemPipeDelegateWaitResolverWrite;
@@ -95,7 +94,7 @@ void filesystemCreateRoot()
 
 g_fs_node* filesystemCreateNode(g_fs_node_type type, const char* name)
 {
-	g_fs_node* node = (g_fs_node*) heapAllocate(sizeof(g_fs_node));
+	g_fs_node* node = (g_fs_node*) heapAllocateClear(sizeof(g_fs_node));
 	node->id = filesystemGetNextNodeId();
 	node->type = type;
 	node->name = stringDuplicate(name);
@@ -152,14 +151,14 @@ g_fs_delegate* filesystemCreateDelegate()
 g_fs_delegate* filesystemFindDelegate(g_fs_node* node)
 {
 	if(!node)
-		kernelPanic("%! tried to find delegate for null node", "filesystem");
+		kernelPanic("%! tried to find delegate for null node", "fs");
 
 	if(!node->delegate && node->parent)
 		return filesystemFindDelegate(node->parent);
 
 	g_fs_delegate* delegate = node->delegate;
 	if(delegate == 0)
-		kernelPanic("%! failed to find delegate for node %i", "filesystem", node->id);
+		kernelPanic("%! failed to find delegate for node %i", "fs", node->id);
 	return delegate;
 }
 
@@ -231,7 +230,7 @@ g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node**
 
 		if(nameLen > G_FILENAME_MAX)
 		{
-			logInfo("%! tried to resolve path with filename (%i) longer than max (%i): %s", "filesystem", nameLen, G_FILENAME_MAX, path);
+			logInfo("%! tried to resolve path with filename (%i) longer than max (%i): %s", "fs", nameLen, G_FILENAME_MAX, path);
 			heapFree(nameBuf);
 			return 0;
 		}
@@ -293,7 +292,7 @@ g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task
 		{
 			if(filesystemTruncate(file) != G_FS_OPEN_SUCCESSFUL)
 			{
-				logInfo("%! failed to truncate file %i", "filesystem", file->id);
+				logInfo("%! failed to truncate file %i", "fs", file->id);
 				return G_FS_OPEN_ERROR;
 			}
 		}
@@ -303,11 +302,11 @@ g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task
 		{
 			if(!foundAllButLast)
 			{
-				logInfo("%! failed to create file '%s' in parent %i because folders do not exist", "filesystem", path, relative->id);
+				logInfo("%! failed to create file '%s' in parent %i because folders do not exist", "fs", path, relative->id);
 				return G_FS_OPEN_ERROR;
 			} else if(filesystemCreateFile(lastFoundParent, filenameStart, &file) != G_FS_OPEN_SUCCESSFUL)
 			{
-				logInfo("%! failed to create file '%s' in parent %i", "filesystem", path, relative->id);
+				logInfo("%! failed to create file '%s' in parent %i", "fs", path, relative->id);
 				return G_FS_OPEN_ERROR;
 			}
 		} else
@@ -327,7 +326,7 @@ g_fs_open_status filesystemOpen(g_fs_node* file, g_file_flag_mode flags, g_task*
 {
 	g_fs_delegate* delegate = filesystemFindDelegate(file);
 	if(!delegate->open)
-		kernelPanic("%! failed to open file %i, delegate had no implementation", "filesystem", file->id);
+		kernelPanic("%! failed to open file %i, delegate had no implementation", "fs", file->id);
 
 	g_fs_open_status status = delegate->open(file);
 	if(status == G_FS_OPEN_SUCCESSFUL)
@@ -405,7 +404,7 @@ g_fs_write_status filesystemWrite(g_task* task, g_fd fd, uint8_t* buffer, uint64
 	{
 		if(filesystemGetLength(node, &startOffset) != G_FS_LENGTH_SUCCESSFUL)
 		{
-			logInfo("%! failed to append to file %i, could not get length", "filesystem", node->id);
+			logInfo("%! failed to append to file %i, could not get length", "fs", node->id);
 			return G_FS_WRITE_ERROR;
 		}
 	}
@@ -476,7 +475,7 @@ g_fs_pipe_status filesystemCreatePipe(g_bool blocking, g_fs_node** outPipeNode)
 	g_fs_pipe_status status = pipeCreate(&pipeId);
 	if(status != G_FS_PIPE_SUCCESSFUL)
 	{
-		logInfo("%! failed to create pipe with status %i", "filesystem", status);
+		logInfo("%! failed to create pipe with status %i", "fs", status);
 		return status;
 	}
 
@@ -489,36 +488,40 @@ g_fs_pipe_status filesystemCreatePipe(g_bool blocking, g_fs_node** outPipeNode)
 
 	g_fs_node* pipeNode = filesystemCreateNode(G_FS_NODE_TYPE_PIPE, pipeName);
 	pipeNode->physicalId = pipeId;
+	pipeNode->blocking = true;
 	filesystemAddChild(pipesFolder, pipeNode);
 	*outPipeNode = pipeNode;
 	return G_FS_PIPE_SUCCESSFUL;
 }
 
-g_fs_close_status filesystemClose(g_task* task, g_fd fd)
+g_fs_close_status filesystemClose(g_pid pid, g_fd fd, g_bool removeDescriptor)
 {
-	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(task->process->id, fd);
+	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(pid, fd);
 	if(!descriptor)
 	{
-		logInfo("%! failed to close fd %i in process %i, illegal descriptor", "filesystem", fd, task->process->id);
+		logInfo("%! failed to close fd %i in process %i, illegal descriptor", "fs", fd, pid);
 		return G_FS_CLOSE_INVALID_FD;
 	}
 
 	g_fs_node* file = filesystemGetNode(descriptor->nodeId);
 	if(!file)
 	{
-		logInfo("%! failed to close fd %i in process %i, illegal node", "filesystem", fd, task->process->id);
+		logInfo("%! failed to close fd %i in process %i, illegal node", "fs", pid);
 		return G_FS_CLOSE_INVALID_FD;
 	}
 
 	g_fs_delegate* delegate = filesystemFindDelegate(file);
 	if(!delegate->close)
-		kernelPanic("%! failed to close file %i, delegate had no implementation", "filesystem", file->id);
+		kernelPanic("%! failed to close file %i, delegate had no implementation", "fs", file->id);
 
 	g_fs_close_status status = delegate->close(file);
-	if(status == G_FS_CLOSE_SUCCESSFUL)
+	if(status == G_FS_CLOSE_SUCCESSFUL && removeDescriptor)
 	{
-		filesystemProcessRemoveDescriptor(task->process->id, fd);
+		filesystemProcessRemoveDescriptor(pid, fd);
 	}
+
+	logDebug("%! closed file descriptor %i in process %i", "fs", fd, pid);
+
 	return status;
 }
 
@@ -539,7 +542,7 @@ g_fs_seek_status filesystemSeek(g_task* task, g_fd fd, g_fs_seek_mode mode, int6
 	uint64_t length;
 	if(filesystemGetLength(node, &length) != G_FS_LENGTH_SUCCESSFUL)
 	{
-		logInfo("%! failed to seek in file %i, could not get length", "filesystem", node->id);
+		logInfo("%! failed to seek in file %i, could not get length", "fs", node->id);
 		return G_FS_SEEK_ERROR;
 	}
 

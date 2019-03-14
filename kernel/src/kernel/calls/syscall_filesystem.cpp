@@ -61,7 +61,7 @@ void syscallFsWrite(g_task* task, g_syscall_fs_write* data)
 
 void syscallFsClose(g_task* task, g_syscall_fs_close* data)
 {
-	data->status = filesystemClose(task, data->fd);
+	data->status = filesystemClose(task->process->id, data->fd, true);
 }
 
 void syscallFsCloneFd(g_task* task, g_syscall_fs_clonefd* data)
@@ -137,7 +137,7 @@ void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 	g_fs_open_status readOpen = filesystemOpen(pipeNode, readFlags, task, &data->read_fd);
 	if(readOpen != G_FS_OPEN_SUCCESSFUL)
 	{
-		if(filesystemClose(task, writeOpen) != G_FS_CLOSE_SUCCESSFUL)
+		if(filesystemClose(task->process->id, writeOpen, true) != G_FS_CLOSE_SUCCESSFUL)
 		{
 			logInfo("%! failed to close write end of pipe %i for task %i after failing to open read end", "filesystem", pipeNode->id, task->id);
 		}

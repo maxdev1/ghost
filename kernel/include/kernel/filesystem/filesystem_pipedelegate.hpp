@@ -30,15 +30,11 @@ g_fs_open_status filesystemPipeDelegateOpen(g_fs_node* node);
 
 g_fs_close_status filesystemPipeDelegateClose(g_fs_node* node);
 
-g_fs_open_status filesystemPipeDelegateDiscover(g_fs_node* parent, const char* name, g_fs_node** outNode);
-
 g_fs_read_status filesystemPipeDelegateRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
 
 g_fs_write_status filesystemPipeDelegateWrite(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote);
 
 g_fs_length_status filesystemPipeDelegateGetLength(g_fs_node* node, uint64_t* outLength);
-
-g_fs_open_status filesystemPipeDelegateCreate(g_fs_node* parent, const char* name, g_fs_node** outFile);
 
 g_fs_open_status filesystemPipeDelegateTruncate(g_fs_node* file);
 
