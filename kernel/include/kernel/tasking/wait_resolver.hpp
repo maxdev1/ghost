@@ -39,7 +39,7 @@ struct g_wait_resolver_atomic_lock_data
 struct g_wait_resolver_for_file_data
 {
 	bool (*waitResolverFromDelegate)(g_task*);
-	g_fs_node* node;
+	g_fs_virt_id nodeId;
 };
 
 bool waitResolverSleep(g_task* task);

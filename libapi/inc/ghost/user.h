@@ -23,12 +23,12 @@
 
 #include <stdarg.h>
 #include <stddef.h>
+#include "ghost/types.h"
 #include "ghost/common.h"
 #include "ghost/kernel.h"
 #include "ghost/system.h"
 #include "ghost/ramdisk.h"
 #include "ghost/ipc.h"
-#include "ghost/types.h"
 #include "ghost/fs.h"
 #include "ghost/calls/calls.h"
 
@@ -83,21 +83,14 @@ g_bool g_atomic_block_dual_to(g_atom* a1, g_atom* a2, uint64_t timeout);
 /**
  * Spawns a program binary.
  *
- * @param path
- * 		absolute path of the executable
- * @param args
- * 		unparsed arguments
- * @param workdir
- * 		working directory for the execution
- * @param securityLevel
- * 		security level to spawn the process to
- * @param outProcessId
- * 		is filled with the process id
- * @param out_stdio
- * 		is filled with stdio file descriptors, 0 is write end of stdin,
+ * @param path absolute path of the executable
+ * @param args unparsed arguments
+ * @param workdir working directory for the execution
+ * @param securityLevel security level to spawn the process to
+ * @param outProcessId is filled with the process id
+ * @param outStdio is filled with stdio file descriptors, 0 is write end of stdin,
  * 		1 is read end of stdout, 2 is read end of stderr
- * @param in_stdio
- * 		if supplied, the given descriptors which are valid for the executing process
+ * @param inStdio if supplied, the given descriptors which are valid for the executing process
  * 		are used as the stdin/out/err for the spawned process; an entry might be -1
  * 		to be ignored and default behaviour being applied
  *
