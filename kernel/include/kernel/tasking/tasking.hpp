@@ -73,7 +73,15 @@ struct g_task
 	g_thread_status status;
 	g_thread_type type;
 
+	/**
+	 * Pointer to the processor-local tasking structure that this task is currently scheduled on.
+	 */
 	g_tasking_local* assignment;
+
+	/**
+	 * Number of times this task was ever scheduled.
+	 */
+	int timesScheduled;
 
 	/**
 	 * Sometimes a task needs to do work in the address space of a different process.
@@ -257,6 +265,12 @@ struct g_process
  * Returns the processor-local tasking structure.
  */
 g_tasking_local* taskingGetLocal();
+
+/**
+ * Returns the task that is on this processor currently running or was
+ * last running when within a system call handler.
+ */
+g_task* taskingGetCurrentTask();
 
 /**
  * Returns the next assignable task id.
