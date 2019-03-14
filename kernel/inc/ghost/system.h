@@ -38,12 +38,22 @@ __BEGIN_C
 #define G_SPAWN_COMMAND_SPAWN_RESPONSE	2
 
 // status codes for spawning
-typedef int g_spawn_status;
-#define G_SPAWN_STATUS_SUCCESSFUL 		((g_spawn_status) 0)
-#define G_SPAWN_STATUS_IO_ERROR			((g_spawn_status) 1)
-#define G_SPAWN_STATUS_MEMORY_ERROR		((g_spawn_status) 2)
-#define G_SPAWN_STATUS_FORMAT_ERROR		((g_spawn_status) 3)
-#define G_SPAWN_STATUS_UNKNOWN			((g_spawn_status) 4)
+typedef uint8_t g_spawn_status;
+#define G_SPAWN_STATUS_SUCCESSFUL 						((g_spawn_status) 0)
+#define G_SPAWN_STATUS_IO_ERROR							((g_spawn_status) 1)
+#define G_SPAWN_STATUS_MEMORY_ERROR						((g_spawn_status) 2)
+#define G_SPAWN_STATUS_FORMAT_ERROR						((g_spawn_status) 3)
+#define G_SPAWN_STATUS_TASKING_ERROR					((g_spawn_status) 4)
+
+typedef uint8_t g_spawn_validation_details;
+#define G_SPAWN_VALIDATION_SUCCESSFUL				((g_spawn_validation_details) 0)
+#define G_SPAWN_VALIDATION_ELF32_NOT_ELF			((g_spawn_validation_details) 1)
+#define G_SPAWN_VALIDATION_ELF32_NOT_EXECUTABLE		((g_spawn_validation_details) 2)
+#define G_SPAWN_VALIDATION_ELF32_NOT_I386			((g_spawn_validation_details) 3)
+#define G_SPAWN_VALIDATION_ELF32_NOT_32BIT			((g_spawn_validation_details) 4)
+#define G_SPAWN_VALIDATION_ELF32_NOT_LITTLE_ENDIAN	((g_spawn_validation_details) 5)
+#define G_SPAWN_VALIDATION_ELF32_NOT_STANDARD_ELF	((g_spawn_validation_details) 6)
+#define G_SPAWN_VALIDATION_ELF32_IO_ERROR			((g_spawn_validation_details) 7)
 
 // command structs
 typedef struct {

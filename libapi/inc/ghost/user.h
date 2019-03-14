@@ -107,9 +107,9 @@ g_bool g_atomic_block_dual_to(g_atom* a1, g_atom* a2, uint64_t timeout);
  */
 g_spawn_status g_spawn(const char* path, const char* args, const char* workdir, g_security_level securityLevel);
 g_spawn_status g_spawn_p(const char* path, const char* args, const char* workdir, g_security_level securityLevel, g_pid* pid);
-g_spawn_status g_spawn_po(const char* path, const char* args, const char* workdir, g_security_level securityLevel, g_pid* pid, g_fd out_stdio[3]);
-g_spawn_status g_spawn_poi(const char* path, const char* args, const char* workdir, g_security_level securityLevel, g_pid* pid, g_fd out_stdio[3],
-		g_fd in_stdio[3]);
+g_spawn_status g_spawn_po(const char* path, const char* args, const char* workdir, g_security_level securityLevel, g_pid* pid, g_fd outStdio[3]);
+g_spawn_status g_spawn_poi(const char* path, const char* args, const char* workdir, g_security_level securityLevel, g_pid* pid, g_fd outStdio[3], g_fd inStdio[3]);
+g_spawn_status g_spawn_poid(const char* path, const char* args, const char* workdir, g_security_level securityLevel, g_pid* pid, g_fd outStdio[3], g_fd inStdio[3], g_spawn_validation_details* outValidationDetails);
 
 /**
  * Kills a process.
