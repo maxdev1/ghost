@@ -116,27 +116,21 @@ void kernelRunApplicationCore()
 
 void kernelInitializationThread()
 {
-	logInfo("%! initializing system services", "kernel");
-
-	g_task* currentTask = taskingGetLocal()->scheduling.current;
+	g_task* currentTask = taskingGetCurrentTask();
+	logInfo("%! initializing system services in spawner %i", "kernel", currentTask->id);
 
 	g_fd fd;
 	g_fs_open_status open = filesystemOpen("/applications/tester.bin", G_FILE_FLAG_MODE_READ, currentTask, &fd);
-	if(open != G_FS_OPEN_SUCCESSFUL)
-	{
-		logInfo("%! failed to find tester binary with status %i", "kernel", open);
-	} else
+	if(open == G_FS_OPEN_SUCCESSFUL)
 	{
 		g_task* testerTask;
-		g_elf32_spawn_status spawn = elf32Spawn(currentTask, fd, G_SECURITY_LEVEL_APPLICATION, &testerTask);
-		if(spawn != ELF32_SPAWN_STATUS_SUCCESSFUL)
-		{
-			logInfo("%! failed to spawn tester binary with status %i", "kernel", spawn);
-		} else
-		{
+		g_spawn_status spawn = elf32Spawn(currentTask, fd, G_SECURITY_LEVEL_APPLICATION, &testerTask);
+		if(spawn == G_SPAWN_STATUS_SUCCESSFUL)
 			logInfo("%! test suite spawned successfully to task %i", "kernel", testerTask->id);
-		}
-	}
+		else
+			logInfo("%! failed to spawn tester binary with status %i", "kernel", spawn);
+	} else
+		logInfo("%! failed to find tester binary with status %i", "kernel", open);
 
 	taskingKernelThreadExit();
 }

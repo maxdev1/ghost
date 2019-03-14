@@ -147,6 +147,7 @@ void syscallRegisterAll()
 	syscallRegister(G_SYSCALL_RAISE_SIGNAL, (g_syscall_handler) syscallRaiseSignal, false);
 
 	syscallRegister(G_SYSCALL_GET_MILLISECONDS, (g_syscall_handler) syscallGetMilliseconds, false);
+	syscallRegister(G_SYSCALL_SPAWN, (g_syscall_handler) syscallSpawn, true);
 
 	syscallRegister(G_SYSCALL_SBRK, (g_syscall_handler) syscallSbrk, false);
 

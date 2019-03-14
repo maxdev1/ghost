@@ -45,6 +45,10 @@ g_tasking_local* taskingGetLocal()
 	return &taskingLocal[processorGetCurrentId()];
 }
 
+g_task* taskingGetCurrentTask() {
+	return taskingGetLocal()->scheduling.current;
+}
+
 g_tid taskingGetNextId()
 {
 	mutexAcquire(&taskingIdLock);
@@ -138,7 +142,11 @@ void taskingResetTaskState(g_task* task)
 g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_security_level level)
 {
 	g_task* task = (g_task*) heapAllocateClear(sizeof(g_task));
-	task->id = taskingGetNextId();
+	if(process->main == 0) {
+		task->id = process->id;
+	} else {
+		task->id = taskingGetNextId();
+	}
 	task->process = process;
 	task->securityLevel = level;
 	task->status = G_THREAD_STATUS_RUNNING;
@@ -211,7 +219,7 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 
 bool taskingStore(g_virtual_address esp)
 {
-	g_task* task = taskingGetLocal()->scheduling.current;
+	g_task* task = taskingGetCurrentTask();
 
 	// Very first interrupt that happened on this processor
 	if(!task)
@@ -228,7 +236,7 @@ bool taskingStore(g_virtual_address esp)
 
 g_virtual_address taskingRestore(g_virtual_address esp)
 {
-	g_task* task = taskingGetLocal()->scheduling.current;
+	g_task* task = taskingGetCurrentTask();
 	if(!task)
 		kernelPanic("%! tried to restore without a current task", "tasking");
 
@@ -274,6 +282,7 @@ void taskingPleaseSchedule(g_task* task)
 g_process* taskingCreateProcess()
 {
 	g_process* process = (g_process*) heapAllocate(sizeof(g_process));
+	process->id = taskingGetNextId();
 	process->main = 0;
 	process->tasks = 0;
 
@@ -359,6 +368,11 @@ void taskingPrepareThreadLocalStorage(g_task* thread)
 void taskingKernelThreadYield()
 {
 	g_tasking_local* local = taskingGetLocal();
+	if(local->inInterruptHandler)
+	{
+		logInfo("%! warning: kernel tried to yield while within interrupt handler");
+		return;
+	}
 	if(local->locksHeld > 0)
 	{
 		logInfo("%! warning: kernel thread %i tried to yield while holding %i kernel locks", "tasking", local->scheduling.current->id, local->locksHeld);
@@ -373,7 +387,7 @@ void taskingKernelThreadYield()
 
 void taskingKernelThreadExit()
 {
-	taskingGetLocal()->scheduling.current->status = G_THREAD_STATUS_DEAD;
+	taskingGetCurrentTask()->status = G_THREAD_STATUS_DEAD;
 	taskingKernelThreadYield();
 }
 
@@ -641,7 +655,7 @@ g_raise_signal_status taskingRaiseSignal(g_task* task, int signal)
 	{
 		logInfo("%! thread %i killed by SIGSEGV", "signal", task->id);
 		task->status = G_THREAD_STATUS_DEAD;
-		if(taskingGetLocal()->scheduling.current == task)
+		if(taskingGetCurrentTask() == task)
 			taskingSchedule();
 	}
 

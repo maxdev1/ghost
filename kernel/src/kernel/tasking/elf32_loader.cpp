@@ -20,242 +20,283 @@
 
 #include "kernel/tasking/elf32_loader.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
+#include "kernel/filesystem/filesystem.hpp"
+#include "kernel/memory/memory.hpp"
 #include "shared/logger/logger.hpp"
 
-/**
- * Spawns a ramdisk file as a process.
- */
-g_elf32_spawn_status elf32Spawn(g_task* caller, g_fd fd, g_security_level securityLevel, g_task** target)
+#define MAXIMUM_LOAD_PAGES_AT_ONCE 0x10
+
+g_spawn_status elf32Spawn(g_task* caller, g_fd fd, g_security_level securityLevel, g_task** outTask, g_spawn_validation_details* outValidationDetails)
 {
-
-	// Get and validate ELF header
 	elf32_ehdr header;
-	g_elf32_validation_status status = elf32ReadAndValidateHeader(caller, fd, &header);
-
-	if(status == ELF32_VALIDATION_SUCCESSFUL)
+	g_spawn_validation_details status = elf32ReadAndValidateHeader(caller, fd, &header);
+	if(outValidationDetails)
+		*outValidationDetails = status;
+	if(status != G_SPAWN_VALIDATION_SUCCESSFUL)
 	{
-		g_process* process = taskingCreateProcess();
-
-		// Temporarily switch to process space
-		g_physical_address returnDirectory = taskingTemporarySwitchToSpace(process->pageDirectory);
-
-		// Load binary
-		elf32LoadBinaryToCurrentAddressSpace(&header, process, securityLevel);
-
-		// Create task
-		g_task* mainTask = taskingCreateThread(0, process, securityLevel);
-		if(mainTask == 0)
-		{
-			logInfo("%! failed to create main thread to spawn ELF binary from ramdisk", "elf32");
-			return ELF32_SPAWN_STATUS_PROCESS_CREATION_FAILED;
-		}
-
-		taskingPrepareThreadLocalStorage(mainTask);
-
-		// Set the tasks entry point
-		mainTask->state->eip = header.e_entry;
-
-		taskingTemporarySwitchBack(returnDirectory);
-
-		// Add to scheduling list
-		taskingAssign(taskingGetLocal(), mainTask);
-
-		// Set out parameter
-		*target = mainTask;
-		logDebug("%! loading binary: %s to task: %i", "elf32", entry->name, mainTask->id);
-		return ELF32_SPAWN_STATUS_SUCCESSFUL;
+		return G_SPAWN_STATUS_FORMAT_ERROR;
 	}
 
-	return ELF32_SPAWN_STATUS_VALIDATION_ERROR;
+	// Create a new process & load binary
+	g_process* targetProcess = taskingCreateProcess();
+	g_spawn_status spawnStatus = elf32LoadBinaryToProcessSpace(caller, fd, &header, targetProcess, securityLevel);
+	if(spawnStatus != G_SPAWN_STATUS_SUCCESSFUL)
+	{
+		logInfo("%! failed to load binary to current address space", "spawner");
+		return spawnStatus;
+	}
+
+	// Create main task AFTER loading binary so it can copy it's TLS
+	g_task* targetTask = taskingCreateThread(header.e_entry, targetProcess, securityLevel);
+	if(targetTask == 0)
+	{
+		logInfo("%! failed to create main thread to spawn ELF binary from ramdisk", "elf32");
+		return G_SPAWN_STATUS_TASKING_ERROR;
+	}
+
+	// Add to scheduling list
+	taskingAssign(taskingGetLocal(), targetTask);
+
+	// Set out parameter
+	if(outTask)
+		*outTask = targetTask;
+	logDebug("%! loading binary: %s to task: %i", "elf32", entry->name, targetTask->id);
+	return G_SPAWN_STATUS_SUCCESSFUL;
 }
 
-g_elf32_validation_status elf32ReadAndValidateHeader(g_task* caller, g_fd file, elf32_ehdr* headerBuffer)
+bool elf32ReadAllBytes(g_task* caller, g_fd fd, size_t offset, uint8_t* buffer, uint64_t len)
 {
+	int64_t seeked;
+	g_fs_seek_status seekStatus = filesystemSeek(caller, fd, G_FS_SEEK_SET, offset, &seeked);
+	if(seekStatus != G_FS_SEEK_SUCCESSFUL)
+		return false;
+	if(seeked != offset)
+		logInfo("%! tried to seek in file to position %i but only got to %i", "spawner", (uint32_t )offset, (uint32_t )seeked);
 
-	uint32_t remain = sizeof(elf32_ehdr);
+	uint64_t remain = len;
 	while(remain)
 	{
-		int32_t read;
-		g_fs_read_status readStatus = filesystemRead(caller, file, (uint8_t*) &headerBuffer[sizeof(elf32_ehdr) - remain], remain, &read);
+		int64_t read;
+		g_fs_read_status readStatus = filesystemRead(caller, fd, &buffer[len - remain], remain, &read);
 		if(readStatus != G_FS_READ_SUCCESSFUL)
 		{
-			logInfo("%! failed to read file %i with status %i", "spawn", file, readStatus);
-			return ELF32_SPAWN_STATUS_READ_ERROR;
+			logInfo("%! failed to read binary from fd %i", "spawner", fd);
+			return false;
 		}
 		remain -= read;
 	}
+	return true;
+}
 
+g_spawn_validation_details elf32ReadAndValidateHeader(g_task* caller, g_fd file, elf32_ehdr* headerBuffer)
+{
+	if(!elf32ReadAllBytes(caller, file, 0, (uint8_t*) headerBuffer, sizeof(elf32_ehdr)))
+	{
+		logInfo("%! failed to spawn file %i due to io error", "spawner", file);
+		return G_SPAWN_VALIDATION_ELF32_IO_ERROR;
+	}
 	return elf32Validate(headerBuffer);
 }
 
-/**
- * This method loads the binary with the given header to the current address space. Once finished,
- * the start and end address of the executable image in memory are written to the respective out parameters.
- */
-void elf32LoadBinaryToCurrentAddressSpace(elf32_ehdr* header, g_process* process, g_security_level securityLevel)
+g_spawn_validation_details elf32Validate(elf32_ehdr* header)
 {
-	elf32LoadLoadSegment(header, process, securityLevel);
-	elf32LoadTlsMasterCopy(header, process, securityLevel);
-}
-
-/**
- *
- */
-void elf32LoadLoadSegment(elf32_ehdr* header, g_process* process, g_security_level securityLevel)
-{
-	// Flags for page tables/pages
-	uint32_t tableFlags;
-	uint32_t pageFlags;
-	if(securityLevel == G_SECURITY_LEVEL_KERNEL)
-	{
-		tableFlags = DEFAULT_KERNEL_TABLE_FLAGS;
-		pageFlags = DEFAULT_KERNEL_PAGE_FLAGS;
-	} else
-	{
-		tableFlags = DEFAULT_USER_TABLE_FLAGS;
-		pageFlags = DEFAULT_USER_PAGE_FLAGS;
-	}
-
-	// Initial values
-	uint32_t imageStart = 0xFFFFFFFF;
-	uint32_t imageEnd = 0;
-
-	// First find out how much place the image needs in memory
-	for(uint32_t i = 0; i < header->e_phnum; i++)
-	{
-		elf32_phdr* programHeader = (elf32_phdr*) (((uint32_t) header) + header->e_phoff + (header->e_phentsize * i));
-		if(programHeader->p_type != PT_LOAD)
-			continue;
-		if(programHeader->p_vaddr < imageStart)
-			imageStart = programHeader->p_vaddr;
-		if(programHeader->p_vaddr + programHeader->p_memsz > imageEnd)
-			imageEnd = programHeader->p_vaddr + programHeader->p_memsz;
-	}
-
-	// Align the addresses
-	imageStart = G_PAGE_ALIGN_DOWN(imageStart);
-	imageEnd = G_PAGE_ALIGN_UP(imageEnd);
-
-	// Map pages for the executable
-	for(uint32_t virt = imageStart; virt < imageEnd; virt += G_PAGE_SIZE)
-	{
-		g_physical_address phys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-		pagingMapPage(virt, phys, tableFlags, pageFlags);
-		pageReferenceTrackerIncrement(phys);
-	}
-
-	// Write the image to memory
-	for(uint32_t i = 0; i < header->e_phnum; i++)
-	{
-		elf32_phdr* programHeader = (elf32_phdr*) (((uint32_t) header) + header->e_phoff + (header->e_phentsize * i));
-		if(programHeader->p_type != PT_LOAD)
-			continue;
-		memorySetBytes((void*) programHeader->p_vaddr, 0, programHeader->p_memsz);
-		memoryCopy((void*) programHeader->p_vaddr, (uint8_t*) (((uint32_t) header) + programHeader->p_offset), programHeader->p_filesz);
-	}
-
-	// Set out parameters
-	process->image.start = imageStart;
-	process->image.end = imageEnd;
-}
-
-/**
- *
- */
-void elf32LoadTlsMasterCopy(elf32_ehdr* header, g_process* process, g_security_level securityLevel)
-{
-	// Flags for page tables/pages
-	uint32_t tableFlags;
-	uint32_t pageFlags;
-	if(securityLevel == G_SECURITY_LEVEL_KERNEL)
-	{
-		tableFlags = DEFAULT_KERNEL_TABLE_FLAGS;
-		pageFlags = DEFAULT_KERNEL_PAGE_FLAGS;
-	} else
-	{
-		tableFlags = DEFAULT_USER_TABLE_FLAGS;
-		pageFlags = DEFAULT_USER_PAGE_FLAGS;
-	}
-
-	// Map pages for TLS master copy
-	uint32_t tlsSize = 0;
-	for(uint32_t i = 0; i < header->e_phnum; i++)
-	{
-		elf32_phdr* programHeader = (elf32_phdr*) (((uint32_t) header) + header->e_phoff + (header->e_phentsize * i));
-		if(programHeader->p_type == PT_TLS)
-		{
-			tlsSize = G_PAGE_ALIGN_UP(programHeader->p_memsz);
-
-			uint32_t tlsPages = tlsSize / G_PAGE_SIZE;
-			uint32_t tlsStart = addressRangePoolAllocate(process->virtualRangePool, tlsPages);
-			uint32_t tlsEnd = tlsStart + tlsSize;
-
-			for(uint32_t virt = tlsStart; virt < tlsEnd; virt += G_PAGE_SIZE)
-			{
-				g_physical_address phys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-				pagingMapPage(virt, phys, tableFlags, pageFlags);
-				pageReferenceTrackerIncrement(phys);
-			}
-
-			memorySetBytes((void*) tlsStart, 0, programHeader->p_memsz);
-			memoryCopy((void*) tlsStart, (uint8_t*) (((uint32_t) header) + programHeader->p_offset), programHeader->p_filesz);
-
-			process->tlsMaster.location = tlsStart;
-			process->tlsMaster.alignment = programHeader->p_align;
-			process->tlsMaster.copysize = programHeader->p_filesz;
-			process->tlsMaster.totalsize = programHeader->p_memsz;
-			break;
-		}
-	}
-
-}
-
-/**
- * Validates if the executable with the given header can be run on this system.
- */
-g_elf32_validation_status elf32Validate(elf32_ehdr* header)
-{
-
 	// Valid ELF header
 	if(/**/(header->e_ident[EI_MAG0] != ELFMAG0) || // 0x7F
-			(header->e_ident[EI_MAG1] != ELFMAG1) || // E
-			(header->e_ident[EI_MAG2] != ELFMAG2) || // L
-			(header->e_ident[EI_MAG3] != ELFMAG3))   // F
+			(header->e_ident[EI_MAG1] != ELFMAG1) ||	  // E
+			(header->e_ident[EI_MAG2] != ELFMAG2) ||	  // L
+			(header->e_ident[EI_MAG3] != ELFMAG3))		  // F
 	{
-		return ELF32_VALIDATION_NOT_ELF;
+		return G_SPAWN_VALIDATION_ELF32_NOT_ELF;
 	}
 
 	// Must be executable
 	if(header->e_type != ET_EXEC)
 	{
-		return ELF32_VALIDATION_NOT_EXECUTABLE;
+		return G_SPAWN_VALIDATION_ELF32_NOT_EXECUTABLE;
 	}
 
 	// Must be i386 architecture compatible
 	if(header->e_machine != EM_386)
 	{
-		return ELF32_VALIDATION_NOT_I386;
+		return G_SPAWN_VALIDATION_ELF32_NOT_I386;
 	}
 
 	// Must be 32 bit
 	if(header->e_ident[EI_CLASS] != ELFCLASS32)
 	{
-		return ELF32_VALIDATION_NOT_32BIT;
+		return G_SPAWN_VALIDATION_ELF32_NOT_32BIT;
 	}
 
 	// Must be little endian
 	if(header->e_ident[EI_DATA] != ELFDATA2LSB)
 	{
-		return ELF32_VALIDATION_NOT_LITTLE_ENDIAN;
+		return G_SPAWN_VALIDATION_ELF32_NOT_LITTLE_ENDIAN;
 	}
 
 	// Must comply to current ELF standard
 	if(header->e_version != EV_CURRENT)
 	{
-		return ELF32_VALIDATION_NOT_STANDARD_ELF;
+		return G_SPAWN_VALIDATION_ELF32_NOT_STANDARD_ELF;
 	}
 
 	// All fine
-	return ELF32_VALIDATION_SUCCESSFUL;
+	return G_SPAWN_VALIDATION_SUCCESSFUL;
 }
 
+g_spawn_status elf32LoadBinaryToProcessSpace(g_task* caller, g_fd file, elf32_ehdr* header, g_process* targetProcess, g_security_level securityLevel)
+{
+	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(targetProcess->pageDirectory);
+	g_spawn_status status = G_SPAWN_STATUS_SUCCESSFUL;
+
+	for(uint32_t i = 0; i < header->e_phnum; i++)
+	{
+		uint32_t phdrOffset = header->e_phoff + header->e_phentsize * i;
+		uint32_t phdrLength = sizeof(elf32_phdr);
+		uint8_t phdrBuffer[phdrLength];
+
+		if(!elf32ReadAllBytes(caller, file, phdrOffset, phdrBuffer, phdrLength))
+		{
+			logInfo("%! failed to read segment header from file %i", "spawner", file);
+			status = G_SPAWN_STATUS_IO_ERROR;
+			break;
+		} else
+		{
+			elf32_phdr* phdr = (elf32_phdr*) phdrBuffer;
+
+			if(phdr->p_type == PT_LOAD)
+			{
+				status = elf32LoadLoadSegment(caller, file, phdr, targetProcess);
+				if(status != G_SPAWN_STATUS_SUCCESSFUL)
+				{
+					logInfo("%! unable to load PT_LOAD segment from file", "spawner");
+					break;
+				}
+			} else if(phdr->p_type == PT_TLS)
+			{
+				status = elf32LoadTlsMasterCopy(caller, file, phdr, targetProcess);
+				if(status != G_SPAWN_STATUS_SUCCESSFUL)
+				{
+					logInfo("%! unable to load PT_TLS segment from file", "spawner");
+					break;
+				}
+			}
+		}
+	}
+
+	taskingTemporarySwitchBack(returnDirectory);
+	return status;
+}
+
+g_spawn_status elf32LoadLoadSegment(g_task* caller, g_fd file, elf32_phdr* phdr, g_process* targetProcess)
+{
+	uint32_t imageStart = phdr->p_vaddr & ~0xFFF;
+	uint32_t imageEnd = ((phdr->p_vaddr + phdr->p_memsz) + 0x1000) & ~0xFFF;
+
+	uint32_t pagesTotal = (imageEnd - imageStart) / 0x1000;
+	uint32_t pagesLoaded = 0;
+
+	uint32_t offsetInFile = 0;
+
+	while(pagesLoaded < pagesTotal)
+	{
+		uint32_t startVirt = imageStart + pagesLoaded * G_PAGE_SIZE;
+
+		// Map next chunk of memory
+		uint32_t chunkPages = (pagesTotal - pagesLoaded);
+		if(chunkPages > MAXIMUM_LOAD_PAGES_AT_ONCE)
+		{
+			chunkPages = MAXIMUM_LOAD_PAGES_AT_ONCE;
+		}
+		for(uint32_t i = 0; i < chunkPages; i++)
+		{
+			g_physical_address page = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+			pageReferenceTrackerIncrement(page);
+			pagingMapPage(startVirt + i * G_PAGE_SIZE, page, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+		}
+		uint8_t* area = (uint8_t*) startVirt;
+
+		// Is there anything left to copy?
+		uint32_t virtualFileEnd = phdr->p_vaddr + phdr->p_filesz;
+		uint32_t bytesToCopy = 0;
+
+		if(startVirt < virtualFileEnd)
+		{
+			// Check if file ends in this area
+			if((virtualFileEnd >= startVirt) && (virtualFileEnd < (startVirt + chunkPages * G_PAGE_SIZE)))
+			{
+				bytesToCopy = virtualFileEnd - startVirt;
+			} else
+			{
+				bytesToCopy = chunkPages * G_PAGE_SIZE;
+			}
+		}
+
+		// Read file to memory
+		if(!elf32ReadAllBytes(caller, file, phdr->p_offset + offsetInFile, area, bytesToCopy))
+		{
+			logInfo("%! unable to read LOAD segment", "spawner");
+			return G_SPAWN_STATUS_IO_ERROR;
+		}
+
+		// Zero area before content in memory (if we are at the start)
+		if(imageStart == startVirt && phdr->p_vaddr - startVirt > 0)
+		{
+			memorySetBytes(area, 0, startVirt);
+		}
+
+		// Zero memory after content in memory
+		if(bytesToCopy < chunkPages * G_PAGE_SIZE)
+		{
+			uint32_t endZeroAreaStart = ((uint32_t) area) + bytesToCopy;
+			uint32_t endZeroAreaLength = (chunkPages * G_PAGE_SIZE) - bytesToCopy;
+			memorySetBytes((void*) endZeroAreaStart, 0, endZeroAreaLength);
+		}
+
+		pagesLoaded += chunkPages;
+		offsetInFile += bytesToCopy;
+	}
+
+	targetProcess->image.start = imageStart;
+	targetProcess->image.end = imageEnd;
+	return G_SPAWN_STATUS_SUCCESSFUL;
+}
+
+g_spawn_status elf32LoadTlsMasterCopy(g_task* caller, g_fd file, elf32_phdr* phdr, g_process* targetProcess)
+{
+	uint32_t bytesToCopy = phdr->p_filesz;
+	uint32_t bytesToZero = phdr->p_memsz;
+
+	uint8_t* tlsContentBuffer = (uint8_t*) heapAllocate(bytesToCopy);
+
+	g_spawn_status status;
+	if(!elf32ReadAllBytes(caller, file, phdr->p_offset, (uint8_t*) tlsContentBuffer, bytesToCopy))
+	{
+		status = G_SPAWN_STATUS_IO_ERROR;
+		logInfo("%! unable to read TLS segment from file", "spawner");
+	} else
+	{
+		uint32_t requiredPages = G_PAGE_ALIGN_UP(bytesToZero) / G_PAGE_SIZE;
+		g_virtual_address tlsStart = addressRangePoolAllocate(targetProcess->virtualRangePool, requiredPages, G_PROC_VIRTUAL_RANGE_FLAG_PHYSICAL_OWNER);
+
+		for(uint32_t i = 0; i < requiredPages; i++)
+		{
+			g_physical_address page = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+			pagingMapPage(tlsStart + i * G_PAGE_SIZE, page, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+			pageReferenceTrackerIncrement(page);
+		}
+
+		memorySetBytes((uint8_t*) tlsStart, 0, bytesToZero);
+		memoryCopy((uint8_t*) tlsStart, tlsContentBuffer, bytesToCopy);
+
+		logDebug("%! initialized TLS with size of %i pages for target process %i", "spawner", requiredPages, targetProcess->id);
+
+		targetProcess->tlsMaster.location = tlsStart;
+		targetProcess->tlsMaster.alignment = phdr->p_align;
+		targetProcess->tlsMaster.copysize = phdr->p_filesz;
+		targetProcess->tlsMaster.totalsize = phdr->p_memsz;
+		status = G_SPAWN_STATUS_SUCCESSFUL;
+	}
+
+	heapFree(tlsContentBuffer);
+	return status;
+}
