@@ -39,8 +39,14 @@ typedef struct
 {
 	char* path;
 	g_security_level securityLevel;
+	const char* args;
+	const char* workdir;
+	g_fd inStdio[3];
 
+	g_fd outStdio[3];
+	g_pid pid;
 	g_spawn_status spawnStatus;
+	g_spawn_validation_details validationDetails;
 }__attribute__((packed)) g_syscall_spawn;
 
 /**

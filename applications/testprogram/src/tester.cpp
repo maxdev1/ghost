@@ -34,4 +34,6 @@ int main(int argc, char** argv)
 //	result += runMessageTest();
 
 	klog("Test suite finished: %i successful, %i failed", result.successful, result.failed);
+
+	g_spawn("/applications/tester.bin", "-respawned", "/", G_SECURITY_LEVEL_APPLICATION);
 }
