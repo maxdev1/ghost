@@ -1,0 +1,7 @@
+This folder contains the libm sources taken from the musl libc.
+
+The architecture folders are currently not really taken into account, everything
+that is found in all subfolders is simply built.
+
+When copying those files from musl, I removed the C files for which an
+architecture-specific implementation is present.

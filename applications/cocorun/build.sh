@@ -11,7 +11,7 @@ SRC=src
 OBJ=obj
 ARTIFACT_NAME=cocorun.bin
 CFLAGS="-std=c++11 -I$SRC"
-LDFLAGS="-lcoconut -Wl,-Bdynamic"
+LDFLAGS=""
 
 # Include application build tasks
 . "../applications.sh"

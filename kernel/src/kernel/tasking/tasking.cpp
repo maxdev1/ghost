@@ -291,10 +291,10 @@ g_process* taskingCreateProcess()
 
 	mutexInitialize(&process->lock);
 
-	process->tlsMaster.location = 0;
-	process->tlsMaster.copysize = 0;
-	process->tlsMaster.totalsize = 0;
 	process->tlsMaster.alignment = 0;
+	process->tlsMaster.copysize = 0;
+	process->tlsMaster.location = 0;
+	process->tlsMaster.totalsize = 0;
 
 	process->pageDirectory = taskingMemoryCreatePageDirectory();
 
@@ -326,7 +326,7 @@ void taskingPrepareThreadLocalStorage(g_task* thread)
 	g_process* process = thread->process;
 	if(process->tlsMaster.location == 0)
 	{
-		logInfo("%! failed to copy tls master for task %i, not available in process", "tls", thread->id);
+		logDebug("%! while loading task %i: process %i does not have a tls", "tls", thread->id, process->id);
 		return;
 	}
 

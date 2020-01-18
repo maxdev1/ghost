@@ -18,8 +18,11 @@ tools/changes/changes*
 tools/ramdisk-writer/ramdisk-writer*
 
 libc/libc.a
+libc/libc.so
 libapi/libghostapi.a
+libapi/libghostapi.so
 libuser/libghostuser.a
+libuser/libghostuser.so
 
 applications/**/*.bin
 applications/**/obj/*.o

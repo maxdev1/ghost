@@ -52,7 +52,7 @@ target_compile() {
 
 target_link() {
 	echo "linking:"
-	$CROSS_CXX -o $ARTIFACT_LOCAL $OBJ/*.o -lghostuser $LDFLAGS
+	$CROSS_CXX -o $ARTIFACT_LOCAL $OBJ/*.o $LDFLAGS
 	list $ARTIFACT_LOCAL
 }
 	
