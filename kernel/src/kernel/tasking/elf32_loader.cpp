@@ -26,7 +26,7 @@
 
 #define MAXIMUM_LOAD_PAGES_AT_ONCE 0x10
 
-#define ELF_LOADER_LOG_INFO	1
+#define ELF_LOADER_LOG_INFO	0
 #if ELF_LOADER_LOG_INFO
 #undef logDebug
 #undef logDebugn
@@ -58,7 +58,7 @@ g_spawn_status elf32LoadExecutable(g_task* caller, g_fd fd, g_security_level sec
 	targetProcess->tlsMaster.copysize = executableObject->tlsMaster.copysize;
 	targetProcess->tlsMaster.location = executableObject->tlsMaster.location;
 	targetProcess->tlsMaster.totalsize = executableObject->tlsMaster.totalsize;
-	logInfo("%! process loaded to %h - %h", "elf", targetProcess->image.start, targetProcess->image.end);
+	logDebug("%! process loaded to %h - %h", "elf", targetProcess->image.start, targetProcess->image.end);
 
 	/* Create main thread */
 	g_task* thread = taskingCreateThread(executableObject->header.e_entry, targetProcess, securityLevel);
@@ -203,7 +203,7 @@ g_virtual_address elf32LoadDependencies(g_task* caller, g_elf_object* object, g_
 
 		} else if(status == G_SPAWN_STATUS_DEPENDENCY_DUPLICATE)
 		{
-			logInfo("%!   -> duplicate dependency ignored: %s -> %s", "elf", object->name, dependency->name);
+			logDebug("%!   -> duplicate dependency ignored: %s -> %s", "elf", object->name, dependency->name);
 
 		} else
 		{
@@ -455,7 +455,7 @@ void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object) {
 				
 				cS = hashmapGet<const char*, g_virtual_address>(executableObject->symbols, symbolName, 0);
 				if(cS == 0) {
-					logInfo("%# symbol '%s' not found (%h, type %i)", symbolName, cP, type);
+					logInfo("%! missing symbol '%s' (%h, type %i)", "elf", symbolName, cP, type);
 				}
 			}
 

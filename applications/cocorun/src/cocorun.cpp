@@ -29,7 +29,15 @@ __thread int bla;
  */
 int main(int argc, char** argv)
 {
-	coconutThrow();
+	klog("Writing thread local value...");
 	bla = 5;
 	klog("Thread local value: %i", bla);
+
+	try {
+		klog("Throwing a coconut...");
+		coconutThrow();
+		klog("Shouldn't be here");
+	} catch(int x) {
+		klog("Exceptions work: %i", x);
+	}
 }
