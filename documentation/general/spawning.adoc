@@ -4,4 +4,3 @@ include::../common/homelink.adoc[]
 
 :numbered:
 
-include::arguments.adoc[]
