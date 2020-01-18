@@ -37,7 +37,11 @@ with HOST_CXX	g++
 
 # Parse parameters
 for var in "$@"; do
-	if [ $var == "--skip-download" ]; then
+	if [ $var == "--skip-archives" ]; then
+		STEP_DOWNLOAD=0
+		STEP_UNPACK=0
+		STEP_PATCH=0
+	elif [ $var == "--skip-download" ]; then
 		STEP_DOWNLOAD=0
 	elif [ $var == "--skip-unpack" ]; then
 		STEP_UNPACK=0
