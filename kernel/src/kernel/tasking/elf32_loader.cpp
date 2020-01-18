@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max SchlÃ¼ssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -273,7 +273,6 @@ void elf32InspectObject(g_elf_object* object) {
 				if(it->st_shndx && hashmapGet<const char*, g_virtual_address>(executableObject->symbols, symbol, 0) == 0)
 				{
 					hashmapPut<const char*, g_virtual_address>(executableObject->symbols, symbol, object->baseAddress + it->st_value);
-					logDebug("%!      found symbol %s with value %h", "elf", symbol, object->baseAddress + it->st_value);
 				}
 
 				it++;
