@@ -3,5 +3,5 @@
 
 void coconutThrow()
 {
-	g_log("Hello world!");
+	g_log("Coconut thrown!");
 }

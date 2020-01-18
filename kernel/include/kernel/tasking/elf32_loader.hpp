@@ -137,6 +137,11 @@ g_spawn_status elf32LoadLoadSegment(g_task* caller, g_fd fd, elf32_phdr* phdr, g
 g_spawn_status elf32LoadTlsMasterCopy(g_task* caller, g_fd file, elf32_phdr* header, g_elf_object* object, g_address_range_pool* rangeAllocator);
 
 /**
+ * Applies relocations on the given object.
+ */
+void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object);
+
+/**
  * Reads the ELF header from the file.
  */
 g_spawn_validation_details elf32ReadAndValidateHeader(g_task* caller, g_fd file, elf32_ehdr* headerBuffer, bool executable);

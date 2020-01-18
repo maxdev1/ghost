@@ -105,6 +105,7 @@ g_spawn_status elf32LoadObject(g_task* caller, g_elf_object* parentObject, const
 	bool isExecutable = (parentObject == 0);
 	g_spawn_status status = G_SPAWN_STATUS_SUCCESSFUL;
 
+	/* Create ELF object */
 	g_elf_object* object = elf32AllocateObject();
 	object->name = stringDuplicate(name);
 	object->parent = parentObject;
@@ -115,6 +116,14 @@ g_spawn_status elf32LoadObject(g_task* caller, g_elf_object* parentObject, const
 		object->symbols = hashmapCreateString<g_virtual_address>(128);
 	}
 	*outObject = object;
+
+	/* Put in list of loaded dependencies */
+	g_elf_object* executableObject = object;
+	while(executableObject->parent)
+	{
+		executableObject = executableObject->parent;
+	}
+	hashmapPut<const char*, g_elf_object*>(executableObject->loadedDependencies, name, object);
 	
 	/* Read and validate the ELF header */
 	g_spawn_validation_details validationStatus = elf32ReadAndValidateHeader(caller, file, &object->header, isExecutable);
@@ -172,6 +181,7 @@ g_spawn_status elf32LoadObject(g_task* caller, g_elf_object* parentObject, const
 	if(status == G_SPAWN_STATUS_SUCCESSFUL) {
 		elf32InspectObject(object);
 		*outNextBase = elf32LoadDependencies(caller, object, rangeAllocator);
+		elf32ApplyRelocations(caller, file, object);
 	}
 
 	return status;
@@ -189,13 +199,7 @@ g_virtual_address elf32LoadDependencies(g_task* caller, g_elf_object* object, g_
 
 		if(status == G_SPAWN_STATUS_SUCCESSFUL)
 		{
-			g_elf_object* executableObject = object;
-			while(executableObject->parent)
-			{
-				executableObject = executableObject->parent;
-			}
-			hashmapPut<const char*, g_elf_object*>(executableObject->loadedDependencies, dependency->name, dependencyObject);
-			logDebug("%!  -> successfully loaded dependency", "elf");
+			logDebug("%!   -> successfully loaded dependency", "elf");
 
 		} else if(status == G_SPAWN_STATUS_DEPENDENCY_DUPLICATE)
 		{
@@ -273,6 +277,7 @@ void elf32InspectObject(g_elf_object* object) {
 				if(it->st_shndx && hashmapGet<const char*, g_virtual_address>(executableObject->symbols, symbol, 0) == 0)
 				{
 					hashmapPut<const char*, g_virtual_address>(executableObject->symbols, symbol, object->baseAddress + it->st_value);
+					//logDebug("%#     found symbol: %s, %h", symbol, object->baseAddress + it->st_value);
 				}
 
 				it++;
@@ -412,6 +417,84 @@ g_spawn_status elf32LoadTlsMasterCopy(g_task* caller, g_fd file, elf32_phdr* phd
 
 	heapFree(tlsContentBuffer);
 	return G_SPAWN_STATUS_SUCCESSFUL;
+}
+
+void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object) {
+
+	logDebug("%!   applying relocations for '%s'", "elf", object->name);
+	g_elf_object* executableObject = object;
+	while(executableObject->parent) {
+		executableObject = executableObject->parent;
+	}
+	
+	for(uint32_t p = 0; p < object->header.e_shnum * object->header.e_shentsize; p += object->header.e_shentsize) {
+		
+		elf32_shdr sectionHeader;
+		if(!elf32ReadToMemory(caller, file, object->header.e_shoff + p, (uint8_t*) &sectionHeader, object->header.e_shentsize)) {
+			logInfo("%! failed to read section header from file", "elf");
+			break;
+		}
+
+		// TODO only resolve relocations in PLT if LD_BIND_NOW is set
+		if(sectionHeader.sh_type != SHT_REL) {
+			continue;
+		}
+
+		elf32_rel* entry = (elf32_rel*) (object->baseAddress + sectionHeader.sh_addr);
+		while(entry < (elf32_rel*) (object->baseAddress + sectionHeader.sh_addr + sectionHeader.sh_size)) {
+			uint32_t symbolIndex = ELF32_R_SYM(entry->r_info);
+			uint8_t type = ELF32_R_TYPE(entry->r_info);
+
+			uint32_t cS;
+			g_virtual_address cP = object->baseAddress + entry->r_offset;
+			elf32_word symbolSize;
+			if (type == R_386_32 || type == R_386_PC32 || type == R_386_GLOB_DAT || type == R_386_JMP_SLOT || type == R_386_GOTOFF || type == R_386_COPY) {
+				elf32_sym* symbol = &object->symbolTable[symbolIndex];
+				const char* symbolName = &object->stringTable[symbol->st_name];
+				symbolSize = symbol->st_size;
+				
+				cS = hashmapGet<const char*, g_virtual_address>(executableObject->symbols, symbolName, 0);
+				if(cS == 0) {
+					logInfo("%# symbol '%s' not found (%h, type %i)", symbolName, cP, type);
+				}
+			}
+
+			if(type == R_386_32)
+			{
+				int32_t cA = *((int32_t*) cP);
+				*((uint32_t*) cP) = cS + cA;
+
+			} else if(type == R_386_PC32)
+			{
+				int32_t cA = *((int32_t*) cP);
+				*((uint32_t*) cP) = cS + cA - cP;
+
+			} else if(type == R_386_COPY)
+			{
+				if(cS)
+				{
+					memoryCopy((void*) cP, (void*) cS, symbolSize);
+				}
+
+			} else if(type == R_386_JMP_SLOT || type == R_386_GLOB_DAT)
+			{
+				*((uint32_t*) cP) = cS;
+
+			} else if(type == R_386_RELATIVE)
+			{
+				uint32_t cB = object->baseAddress;
+				int32_t cA = *((int32_t*) cP);
+				*((uint32_t*) cP) = cB + cA;
+
+			} else
+			{
+				logDebug("%#     skipping relocation entry with unknown type %i", type);
+			}
+
+			entry++;
+		}
+	}
+
 }
 
 bool elf32ReadToMemory(g_task* caller, g_fd fd, size_t offset, uint8_t* buffer, uint64_t len)
