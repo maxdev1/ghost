@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <ghost.h>
+#include <stdio.h>
 #include "../libcoconut/inc/coconut.h"
 
 __thread int bla;
@@ -28,6 +29,7 @@ __thread int bla;
  */
 int main(int argc, char** argv)
 {
-	g_log("Hello world");
-	bla = 1;
+	coconutThrow();
+	bla = 5;
+	klog("Thread local value: %i", bla);
 }
