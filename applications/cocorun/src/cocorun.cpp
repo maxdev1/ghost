@@ -21,10 +21,13 @@
 #include <ghost.h>
 #include "../libcoconut/inc/coconut.h"
 
+__thread int bla;
+
 /**
  *
  */
 int main(int argc, char** argv)
 {
-	coconutThrow();
+	g_log("Hello world");
+	bla = 1;
 }

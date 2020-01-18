@@ -67,9 +67,8 @@ void ioapicInitialize(g_ioapic* io)
 
 	// Get version
 	uint32_t versionValue = ioapicRead(io, IOAPIC_VER);
-	uint32_t version = versionValue & 0xFF;
 	io->redirectEntryCount = (versionValue >> 16) & 0xFF;
-	logDebug("%! id %i: version %i, redirect entries: %i", "ioapic", io->id, version, io->redirectEntryCount);
+	logDebug("%! id %i: version %i, redirect entries: %i", "ioapic", io->id, versionValue & 0xFF, io->redirectEntryCount);
 }
 
 void ioapicCreateMapping(g_ioapic* io)

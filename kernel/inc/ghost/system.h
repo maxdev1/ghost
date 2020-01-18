@@ -44,6 +44,8 @@ typedef uint8_t g_spawn_status;
 #define G_SPAWN_STATUS_MEMORY_ERROR						((g_spawn_status) 2)
 #define G_SPAWN_STATUS_FORMAT_ERROR						((g_spawn_status) 3)
 #define G_SPAWN_STATUS_TASKING_ERROR					((g_spawn_status) 4)
+#define G_SPAWN_STATUS_DEPENDENCY_ERROR					((g_spawn_status) 5)
+#define G_SPAWN_STATUS_DEPENDENCY_DUPLICATE				((g_spawn_status) 6)
 
 typedef uint8_t g_spawn_validation_details;
 #define G_SPAWN_VALIDATION_SUCCESSFUL				((g_spawn_validation_details) 0)

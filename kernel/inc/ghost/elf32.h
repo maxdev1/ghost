@@ -121,15 +121,72 @@ typedef struct {
 #define PF_MASKPROC		0xF0000000
 
 typedef struct {
-	elf32_word p_type; // Type of the segment
-	elf32_off p_offset; // Offset of the segment in the binary file
-	elf32_addr p_vaddr; // Virtual address
-	elf32_addr p_paddr; // Not relevant for System V
-	elf32_word p_filesz; // Size of the segment in the binary file
-	elf32_word p_memsz; // Size of the segment in memory
-	elf32_word p_flags; // Segment flags
-	elf32_word p_align; // Alignment information
+	elf32_word	p_type;		// Type of the segment
+	elf32_off	p_offset;	// Offset of the segment in the binary file
+	elf32_addr	p_vaddr;	// Virtual address
+	elf32_addr	p_paddr;	// Not relevant for System V
+	elf32_word	p_filesz;	// Size of the segment in the binary file
+	elf32_word	p_memsz;	// Size of the segment in memory
+	elf32_word	p_flags;	// Segment flags
+	elf32_word	p_align;	// Alignment information
 } __attribute__((packed)) elf32_phdr;
+
+/**
+ * ELF dynamic section structure
+ */
+typedef struct {
+	elf32_sword d_tag; // Controls interpretation of d_un, see DT_*
+	union {
+		elf32_word d_val;
+		elf32_addr d_ptr;
+	} d_un;
+} __attribute__((packed)) elf32_dyn;
+
+#define DT_NULL		0
+#define DT_NEEDED	1
+#define DT_PLTRELSZ	2
+#define DT_PLTGOT	3
+#define DT_HASH		4
+#define DT_STRTAB	5
+#define DT_SYMTAB	6
+#define DT_RELA		7
+#define DT_RELASZ	8
+#define DT_RELAENT	9
+#define DT_STRSZ	10
+#define DT_SYMENT	11
+#define DT_INIT		12
+#define DT_FINI		13
+#define DT_SONAME	14
+#define DT_RPATH	15
+#define DT_SYMBOLIC	16
+#define DT_REL		17
+#define DT_RELSZ	18
+#define DT_RELENT	19
+#define DT_PLTREL	20
+#define DT_DEBUG	21
+#define DT_TEXTREL	22
+#define DT_JMPREL	23
+#define DT_LOPROC	0x70000000
+#define DT_HIPROC	0x7fffffff
+
+
+/**
+ * ELF symbol table
+ */
+typedef struct {
+	elf32_word	st_name;	// Index to symbol string name
+	elf32_addr	st_value;	// Value of associated symbol
+	elf32_word	st_size;	// Size of the symbol
+	uint8_t		st_info;	// Type and binding attributes
+	uint8_t		st_other;	// Undefined
+	elf32_half	st_shndx;	// Section header table index
+} elf32_sym;
+
+#define STB_LOCAL	0
+#define STB_GLOBAL	1
+#define STB_WEAK	2
+#define STB_LOPROC	13
+#define STB_HIPROC	15
 
 __END_C
 

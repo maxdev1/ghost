@@ -45,7 +45,7 @@ void kernelLoggerPrintHeader(g_setup_information* info)
 	consoleVideoSetColor(0x0F);
 	logInfo(" Version %i.%i.%i", G_VERSION_MAJOR, G_VERSION_MINOR, G_VERSION_PATCH);
 	logInfo("");
-	logInfo("  Copyright (C) 2019, Max Schluessel <lokoxe@gmail.com>");
+	logInfo("  Copyright (C) 2020, Max Schluessel <lokoxe@gmail.com>");
 	logInfo("");
 	logInfo("%! initializing core services", "kernel");
 

@@ -157,7 +157,7 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 	if(open == G_FS_OPEN_SUCCESSFUL)
 	{
 		g_task* targetTask;
-		data->spawnStatus = elf32Spawn(task, fd, G_SECURITY_LEVEL_APPLICATION, &targetTask, &data->validationDetails);
+		data->spawnStatus = elf32LoadExecutable(task, fd, G_SECURITY_LEVEL_APPLICATION, &targetTask, &data->validationDetails);
 		if(data->spawnStatus == G_SPAWN_STATUS_SUCCESSFUL)
 		{
 			data->pid = targetTask->process->id;

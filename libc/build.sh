@@ -17,11 +17,15 @@ with INC_API				"../libapi/inc"
 with INC_KERNEL				"../kernel/inc"
 
 with ARTIFACT_NAME			"libc.a"
-ARTIFACT_LOCAL="$ARTIFACT_NAME"
-ARTIFACT_TARGET="$SYSROOT_SYSTEM_LIB/$ARTIFACT_NAME"
+with ARTIFACT_LOCAL			"$ARTIFACT_NAME"
+with ARTIFACT_TARGET		"$SYSROOT_SYSTEM_LIB/$ARTIFACT_NAME"
+with ARTIFACT_NAME_SHARED	"libc.so"
+with ARTIFACT_LOCAL_SHARED	"$ARTIFACT_NAME_SHARED"
+with ARTIFACT_TARGET_SHARED	"$SYSROOT_SYSTEM_LIB/$ARTIFACT_NAME_SHARED"
 
-with CFLAGS					"-std=c11 -I$INC -I$INC_API -I$INC_KERNEL -I$SRC/musl -Wno-narrowing"
-with CCFLAGS				"-std=c11 -I$INC -I$INC_API -I$INC_KERNEL"
+with CFLAGS					"-std=c11 -fpic -I$INC -I$INC_API -I$INC_KERNEL -I$SRC/musl -Wno-narrowing"
+with CCFLAGS				"-std=c11 -fpic -I$INC -I$INC_API -I$INC_KERNEL"
+with LDFLAGS				"-shared"
 
 with CRT_SRC				"crt"
 with CRT_OBJ				"crtobj"
@@ -41,6 +45,7 @@ mkdir -p $CRT_OBJ
 target_clean() {
 	echo "cleaning:"
 	rm $ARTIFACT_LOCAL
+	rm $ARTIFACT_LOCAL_SHARED
 	cleanDirectory $OBJ
 	cleanDirectory $CRT_OBJ
 	changes --clear
@@ -115,6 +120,7 @@ target_assemble_crts() {
 target_archive() {
 	echo "archiving:"
 	$CROSS_AR -r $ARTIFACT_LOCAL $OBJ/*.o
+	$CROSS_CC $LDFLAGS -o $ARTIFACT_LOCAL_SHARED $OBJ/*.o
 }
 
 target_install_headers() {
@@ -134,8 +140,9 @@ target_install() {
 	echo "creating lib installation directory"
 	mkdir -p $SYSROOT_SYSTEM_LIB
 	
-	echo "installing artifact"
+	echo "installing artifacts"
 	cp $ARTIFACT_LOCAL $ARTIFACT_TARGET
+	cp $ARTIFACT_LOCAL_SHARED $ARTIFACT_TARGET_SHARED
 	
 	echo "installing crts"
 	for name in ${CRT_NAMES[@]}; do
@@ -147,7 +154,7 @@ target_install() {
 	$CROSS_AR -r $SYSROOT_SYSTEM_LIB/libm.a
 	
 	# c'mon
-	chmod -R 0777 $SYSROOT
+	sudo chmod -R 0777 $SYSROOT
 }
 
 

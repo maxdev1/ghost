@@ -117,14 +117,14 @@ void kernelRunApplicationCore()
 void kernelInitializationThread()
 {
 	g_task* currentTask = taskingGetCurrentTask();
-	logInfo("%! initializing system services in spawner %i", "kernel", currentTask->id);
+	logInfo("%! initializing system services in task %i", "kernel", currentTask->id);
 
 	g_fd fd;
-	g_fs_open_status open = filesystemOpen("/applications/tester.bin", G_FILE_FLAG_MODE_READ, currentTask, &fd);
+	g_fs_open_status open = filesystemOpen("/applications/cocorun.bin", G_FILE_FLAG_MODE_READ, currentTask, &fd);
 	if(open == G_FS_OPEN_SUCCESSFUL)
 	{
 		g_task* testerTask;
-		g_spawn_status spawn = elf32Spawn(currentTask, fd, G_SECURITY_LEVEL_APPLICATION, &testerTask);
+		g_spawn_status spawn = elf32LoadExecutable(currentTask, fd, G_SECURITY_LEVEL_APPLICATION, &testerTask);
 		if(spawn == G_SPAWN_STATUS_SUCCESSFUL)
 			logInfo("%! test suite spawned successfully to task %i", "kernel", testerTask->id);
 		else
