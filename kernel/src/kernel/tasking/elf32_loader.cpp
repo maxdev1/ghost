@@ -26,7 +26,7 @@
 
 #define MAXIMUM_LOAD_PAGES_AT_ONCE 0x10
 
-#define ELF_LOADER_LOG_INFO	0
+#define ELF_LOADER_LOG_INFO 1
 #if ELF_LOADER_LOG_INFO
 #undef logDebug
 #undef logDebugn
@@ -392,7 +392,6 @@ g_spawn_status elf32LoadTlsMasterCopy(g_task* caller, g_fd file, elf32_phdr* phd
 {
 	uint32_t bytesToCopy = phdr->p_filesz;
 	uint32_t bytesToZero = phdr->p_memsz;
-	logDebug("%!   loading TLS master copy %h", "elf", phdr->p_vaddr);
 
 	/* Read TLS content to a buffer */
 	uint8_t* tlsContentBuffer = (uint8_t*) heapAllocate(bytesToCopy);
@@ -417,7 +416,7 @@ g_spawn_status elf32LoadTlsMasterCopy(g_task* caller, g_fd file, elf32_phdr* phd
 	memorySetBytes((uint8_t*) tlsStart, 0, bytesToZero);
 	memoryCopy((uint8_t*) tlsStart, tlsContentBuffer, bytesToCopy);
 
-	logDebug("%!   initialized TLS with size of %i pages", "elf", requiredPages);
+	logDebug("%!   TLS master: %h, size: %i pages", "elf", tlsStart, requiredPages);
 
 	/* Write object information */
 	object->tlsMaster.location = tlsStart;
