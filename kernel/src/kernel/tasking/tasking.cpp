@@ -365,7 +365,7 @@ void taskingPrepareThreadLocalStorage(g_task* thread)
 	thread->tlsCopy.start = tlsCopyStart;
 	thread->tlsCopy.end = tlsCopyEnd;
 
-	logDebug("%! created tls copy in process %i, thread %i at %h", "threadmgr", process->main->id, thread->id, thread->tlsCopy.location);
+	logInfo("%! created tls copy in process %i, thread %i at %h", "threadmgr", process->main->id, thread->id, thread->tlsCopy.start);
 }
 
 void taskingKernelThreadYield()
