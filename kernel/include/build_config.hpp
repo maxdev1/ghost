@@ -44,7 +44,7 @@
 
 // version
 #define G_VERSION_MAJOR		0
-#define G_VERSION_MINOR		6
+#define G_VERSION_MINOR		7
 #define G_VERSION_PATCH		0
 
 // paths to system binaries
