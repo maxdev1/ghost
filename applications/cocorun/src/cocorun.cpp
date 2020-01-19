@@ -30,11 +30,11 @@ __thread int foo = 5;
  */
 int main(int argc, char** argv)
 {
-	klog("errno %h = %i", &errno, errno);
+	klog("errno %x = %i", &errno, errno);
 	errno = 123;
 	klog("%i", errno);
 
-	klog("foo %h = %i", &foo, foo);
+	klog("foo %x = %i", &foo, foo);
 	foo = 6;
 	klog("%i == 6", foo);
 

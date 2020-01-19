@@ -7,11 +7,11 @@ __thread int bar = 54;
 
 void coconutThrow()
 {
-	klog("errno %h = %i", &errno, errno);
+	klog("errno %x = %i", &errno, errno);
 	errno = 321;
 	klog("%i", errno);
 
-	klog("bar %h = %i", &bar, bar);
+	klog("bar %x = %i", &bar, bar);
 	bar = 25;
 	klog("%i == 25", bar);
 
