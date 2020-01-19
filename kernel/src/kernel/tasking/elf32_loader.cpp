@@ -462,17 +462,17 @@ void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 
 			} else if(type == R_386_TLS_TPOFF)
 			{
-				*((uint32_t*) cP) = object->tlsMaster.offset + executableObject->tlsMasterUserThreadOffset + symbolInfo.value;
+				*((uint32_t*) cP) = symbolInfo.object->tlsMaster.offset - executableObject->tlsMasterUserThreadOffset + symbolInfo.value;
 				logInfo("%!      R_386_TLS_TPOFF: %s, %h = %h", "elf", symbolName, cP, *((uint32_t*) cP));
 				
 			} else if(type == R_386_TLS_DTPMOD32)
 			{
-				*((uint32_t*) cP) = object->tlsMaster.offset + executableObject->tlsMasterUserThreadOffset + symbolInfo.value;
+				*((uint32_t*) cP) = symbolInfo.object->tlsMaster.offset - executableObject->tlsMasterUserThreadOffset + symbolInfo.value;
 				logInfo("%!      R_386_TLS_DTPMOD32: %s, %h = %h", "elf", symbolName, cP, *((uint32_t*) cP));
 				
 			} else if(type == R_386_TLS_DTPOFF32)
 			{
-				*((uint32_t*) cP) = object->tlsMaster.offset + executableObject->tlsMasterUserThreadOffset + symbolInfo.value;
+				*((uint32_t*) cP) = symbolInfo.object->tlsMaster.offset - executableObject->tlsMasterUserThreadOffset + symbolInfo.value;
 				logInfo("%!      R_386_TLS_DTPOFF32: %s, %h = %h", "elf", symbolName, cP, *((uint32_t*) cP));
 
 			} else
