@@ -36,6 +36,12 @@ struct g_elf_dependency {
 	g_elf_dependency* next;
 };
 
+struct g_elf_symbol_info {
+	g_elf_object* object;
+	g_virtual_address absolute;
+	g_virtual_address value;
+};
+
 /**
  * Structure of an ELF32 object in memory.
  */
@@ -59,7 +65,7 @@ struct g_elf_object {
 	} tlsMaster;
 
 	/* Only relevant for an executable object */
-	g_hashmap<const char*, g_virtual_address>* symbols;
+	g_hashmap<const char*, g_elf_symbol_info>* symbols;
 	g_hashmap<const char*, g_elf_object*>* loadedDependencies;
 
 	/* In-address-space memory pointers */
