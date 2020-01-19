@@ -18,23 +18,13 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "tester.hpp"
-#include <libgen.h>
-#include <stdio.h>
-#include <string.h>
-#include <malloc.h>
+#include "ghost/user.h"
 
-int main(int argc, char** argv)
-{
-	klog("Starting test suite...");
-
-	test_result_t result;
-	result += runStdioTest();
-	result += runMessageTest();
-
-	klog("Test suite finished: %i successful, %i failed", result.successful, result.failed);
-
-	g_sleep(3000);
-	klog("Test-suite is restarting itself...");
-	g_spawn("/applications/tester.bin", "-respawned", "/", G_SECURITY_LEVEL_APPLICATION);
+/**
+ *
+ */
+void g_cli_args_release(char* buffer) {
+	g_syscall_cli_args_release data;
+	data.buffer = buffer;
+	g_syscall(G_SYSCALL_RELEASE_CLI_ARGUMENTS, (uint32_t) &data);
 }

@@ -25,7 +25,6 @@
 #include "ghost/calls/calls_memory.hpp"
 #include "ghost/calls/calls_misc.hpp"
 #include "ghost/calls/calls_messaging.hpp"
-#include "ghost/calls/calls_ramdisk.hpp"
 #include "ghost/calls/calls_spawning.hpp"
 #include "ghost/calls/calls_tasking.hpp"
 #include "ghost/calls/calls_vm86.hpp"
@@ -79,13 +78,7 @@ __BEGIN_C
 #define G_SYSCALL_MESSAGE_RECEIVE				93
 #define G_SYSCALL_MESSAGE_RECEIVE_TRANSACTION	94
 
-#define G_SYSCALL_RAMDISK_FIND					95
-#define G_SYSCALL_RAMDISK_FIND_CHILD			96
-#define G_SYSCALL_RAMDISK_INFO					97
-#define G_SYSCALL_RAMDISK_READ					98
-#define G_SYSCALL_RAMDISK_CHILD_COUNT			99
-#define G_SYSCALL_RAMDISK_CHILD_AT				100
-#define G_SYSCALL_GET_MILLISECONDS				101
+#define G_SYSCALL_GET_MILLISECONDS				100
 
 #define G_SYSCALL_FS_OPEN						120
 #define G_SYSCALL_FS_READ						121
