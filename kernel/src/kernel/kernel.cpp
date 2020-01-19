@@ -120,7 +120,7 @@ void kernelInitializationThread()
 	logInfo("%! initializing system services in task %i", "kernel", currentTask->id);
 
 	g_fd fd;
-	g_fs_open_status open = filesystemOpen("/applications/cocorun.bin", G_FILE_FLAG_MODE_READ, currentTask, &fd);
+	g_fs_open_status open = filesystemOpen("/applications/tester.bin", G_FILE_FLAG_MODE_READ, currentTask, &fd);
 	if(open == G_FS_OPEN_SUCCESSFUL)
 	{
 		g_task* testerTask;

@@ -35,8 +35,7 @@ g_spawn_status g_spawn_po(const char* path, const char* args, const char* workdi
 	return g_spawn_poid(path, args, workdir, securityLevel, pid, outStdio, 0, 0);
 }
 
-g_spawn_status g_spawn_poi(const char* path, const char* args, const char* workdir, g_security_level securityLevel, g_pid* pid, g_fd outStdio[3],
-		g_fd inStdio[3], g_spawn_validation_details* outValidationDetails)
+g_spawn_status g_spawn_poi(const char* path, const char* args, const char* workdir, g_security_level securityLevel, g_pid* pid, g_fd outStdio[3], g_fd inStdio[3])
 {
 	return g_spawn_poid(path, args, workdir, securityLevel, pid, outStdio, inStdio, 0);
 }
