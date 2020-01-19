@@ -453,10 +453,13 @@ void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object) {
 
 			uint32_t cS;
 			g_virtual_address cP = object->baseAddress + entry->r_offset;
+
 			elf32_word symbolSize;
-			if (type == R_386_32 || type == R_386_PC32 || type == R_386_GLOB_DAT || type == R_386_JMP_SLOT || type == R_386_GOTOFF || type == R_386_COPY) {
+			const char* symbolName;
+			if (type == R_386_32 || type == R_386_PC32 || type == R_386_GLOB_DAT || type == R_386_JMP_SLOT || type == R_386_GOTOFF ||
+				type == R_386_COPY || type == R_386_TLS_DTPMOD32 || type == R_386_TLS_DTPOFF32) {
 				elf32_sym* symbol = &object->symbolTable[symbolIndex];
-				const char* symbolName = &object->stringTable[symbol->st_name];
+				symbolName = &object->stringTable[symbol->st_name];
 				symbolSize = symbol->st_size;
 				
 				cS = hashmapGet<const char*, g_virtual_address>(executableObject->symbols, symbolName, 0);
@@ -492,9 +495,19 @@ void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object) {
 				int32_t cA = *((int32_t*) cP);
 				*((uint32_t*) cP) = cB + cA;
 
-			} else
+			} else if(type == R_386_TLS_DTPMOD32)
 			{
-				logDebug("%#     skipping relocation entry with unknown type %i", type);
+				uint32_t tlsoff = entry->r_offset;
+			//	logInfo("R_386_TLS_DTPMOD32: %s, %h, %h", symbolName, cS, tlsoff);
+				
+			} else if(type == R_386_TLS_DTPOFF32)
+			{
+				uint32_t tlsoff = entry->r_offset;
+			//	logInfo("R_386_TLS_DTPOFF32: %s, %h, %h", symbolName, cS, tlsoff);
+
+			} else if(type)
+			{
+				logInfo("%! binary contains unhandled relocation: %i", "elf", type);
 			}
 
 			entry++;

@@ -35,9 +35,6 @@ int main(int argc, char** argv)
 
 	klog("Test suite finished: %i successful, %i failed", result.successful, result.failed);
 
-	klog("Calling shared library test...");
-	g_spawn("/applications/cocorun.bin", "", "/", G_SECURITY_LEVEL_APPLICATION);
-
 	g_sleep(3000);
 	klog("Restarting myself");
 	g_spawn("/applications/tester.bin", "-respawned", "/", G_SECURITY_LEVEL_APPLICATION);
