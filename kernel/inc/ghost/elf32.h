@@ -247,6 +247,19 @@ typedef struct {
 #define R_386_GOTOFF	9
 #define R_386_GOTPC		10
 
+// Thread-local storage related relocation types
+#define R_386_TLS_GD_PLT	12
+#define R_386_TLS_LDM_PLT	13
+#define R_386_TLS_TPOFF		14
+#define R_386_TLS_IE		15
+#define R_386_TLS_GOTIE		16
+#define R_386_TLS_LE		17
+#define R_386_TLS_GD		18
+#define R_386_TLS_LDM		19
+#define R_386_TLS_LDO_32	32
+#define R_386_TLS_DTPMOD32	35
+#define R_386_TLS_DTPOFF32	36
+
 __END_C
 
 #endif
