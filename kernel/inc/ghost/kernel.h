@@ -29,11 +29,6 @@
 __BEGIN_C
 
 /**
- * Type of a process creation identifier
- */
-typedef void* g_process_creation_identifier;
-
-/**
  * Thread & process ids
  */
 typedef int32_t g_tid;
