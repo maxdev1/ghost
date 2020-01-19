@@ -877,6 +877,18 @@ g_raise_signal_status g_raise_signal(g_pid process, int signal);
  */
 g_kernquery_status g_kernquery(uint16_t command, uint8_t* buffer);
 
+/**
+ * Returns and releases the command line arguments for the executing process.
+ * This buffer must have a length of at least {PROCESS_COMMAND_LINE_ARGUMENTS_BUFFER_LENGTH} bytes.
+ * If no arguments were supplied for the executing process, the buffer is null-terminated only.
+ *
+ * @param buffer
+ * 		target buffer to store the arguments to
+ *
+ * @security-level KERNEL
+ */
+void g_cli_args_release(char* buffer);
+
 __END_C
 
 #endif

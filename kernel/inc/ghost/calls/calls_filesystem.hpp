@@ -289,9 +289,6 @@ typedef struct {
  * @field path
  * 		buffer containing the path
  *
- * @field process
- * 		process to set working directory for, -1 to set for current
- *
  * @field result
  * 		one of the {g_set_working_directory_status} codes
  *
@@ -299,7 +296,6 @@ typedef struct {
  */
 typedef struct {
 	char* path;
-	g_process_creation_identifier process;
 
 	g_set_working_directory_status result;
 }__attribute__((packed)) g_syscall_fs_set_working_directory;
