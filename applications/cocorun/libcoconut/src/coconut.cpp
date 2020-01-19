@@ -1,15 +1,20 @@
 #include <ghost.h>
+#include <errno.h>
 #include "coconut.h"
 #include "stdio.h"
 
-__thread int y;
+__thread int bar = 54;
 
 void coconutThrow()
 {
-	klog("Lib writing a thread-local value...");
-	y = 3;
-	klog("Lib wrote thread-local value: %i", y);
+	klog("errno %h = %i", &errno, errno);
+	errno = 321;
+	klog("%i", errno);
 
-	klog("Lib throws exception");
+	klog("bar %h = %i", &bar, bar);
+	bar = 25;
+	klog("%i == 25", bar);
+
+	klog("throwing exception...");
 	throw 20;
 }
