@@ -20,24 +20,27 @@
 
 #include <ghost.h>
 #include <stdio.h>
+#include <errno.h>
 #include "../libcoconut/inc/coconut.h"
 
-__thread int bla;
+__thread int foo = 5;
 
 /**
  *
  */
 int main(int argc, char** argv)
 {
-	klog("Writing thread local value...");
-	bla = 5;
-	klog("Thread local value: %i", bla);
+	klog("errno %h = %i", &errno, errno);
+	errno = 123;
+	klog("%i", errno);
+
+	klog("foo %h = %i", &foo, foo);
+	foo = 6;
+	klog("%i == 6", foo);
 
 	try {
-		klog("Throwing a coconut...");
 		coconutThrow();
-		klog("Shouldn't be here");
 	} catch(int x) {
-		klog("Exceptions work: %i", x);
+		klog("exceptions work: %i", x);
 	}
 }
