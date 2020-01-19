@@ -25,18 +25,33 @@
 
 __thread int foo = 5;
 
+class GlobCtorTest {
+public:
+	int x = 5;
+	GlobCtorTest() {
+		klog("global constructor called");
+		x = 12;
+	}
+};
+
+GlobCtorTest test;
+
 /**
  *
  */
 int main(int argc, char** argv)
 {
-	klog("errno %x = %i", &errno, errno);
-	errno = 123;
-	klog("%i", errno);
-
-	klog("foo %x = %i", &foo, foo);
+	klog("executable: foo from local");
+	klog("foo %x = %i == 5?", &foo, foo);
 	foo = 6;
-	klog("%i == 6", foo);
+	klog("-> %i == 6?", foo);
+
+	klog("executable: errno from libc.so");
+	klog("errno %x = %i == undef", &errno, errno);
+	errno = 123;
+	klog("-> %i == 123?", errno);
+
+	klog("global ctor called: %i", test.x == 12);
 
 	try {
 		coconutThrow();
