@@ -39,10 +39,16 @@ g_spawn_status elf32LoadExecutable(g_task* caller, g_fd fd, g_security_level sec
 	/* Create process and load binary */
 	g_process* targetProcess = taskingCreateProcess();
 	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(targetProcess->pageDirectory);
+
 	g_elf_object* executableObject;
 	g_virtual_address executableEnd;
-	g_spawn_status spawnStatus = elf32LoadObject(caller, 0, "main", fd, 0, targetProcess->virtualRangePool, &executableEnd, &executableObject, outValidationDetails);
+	g_spawn_validation_details validationDetails;
+	g_spawn_status spawnStatus = elf32LoadObject(caller, 0, "main", fd, 0, targetProcess->virtualRangePool, &executableEnd, &executableObject, &validationDetails);
+
 	taskingTemporarySwitchBack(returnDirectory);
+
+	if(outValidationDetails) *outValidationDetails = validationDetails;
+
 	if(spawnStatus != G_SPAWN_STATUS_SUCCESSFUL)
 	{
 		logInfo("%! failed to load binary to current address space", "elf");
