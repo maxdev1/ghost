@@ -119,7 +119,7 @@ g_spawn_status elf32LoadObject(g_task* caller, g_elf_object* parentObject, const
 	if(isExecutable)
 	{
 		object->loadedDependencies = hashmapCreateString<g_elf_object*>(128);
-		object->symbols = hashmapCreateString<g_virtual_address>(128);
+		object->symbols = hashmapCreateString<g_elf_symbol_info>(128);
 	}
 	*outObject = object;
 
@@ -280,9 +280,13 @@ void elf32InspectObject(g_elf_object* object) {
 			while(pos < object->symbolTableSize)
 			{
 				const char* symbol = (const char*) (object->stringTable + it->st_name);
-				if(it->st_shndx && hashmapGet<const char*, g_virtual_address>(executableObject->symbols, symbol, 0) == 0)
+				if(it->st_shndx && hashmapGetEntry<const char*, g_elf_symbol_info>(executableObject->symbols, symbol) == 0)
 				{
-					hashmapPut<const char*, g_virtual_address>(executableObject->symbols, symbol, object->baseAddress + it->st_value);
+					g_elf_symbol_info symbolInfo;
+					symbolInfo.object = object;
+					symbolInfo.absolute = object->baseAddress + it->st_value;
+					symbolInfo.value = it->st_value;
+					hashmapPut<const char*, g_elf_symbol_info>(executableObject->symbols, symbol, symbolInfo);
 					//logDebug("%#     found symbol: %s, %h", symbol, object->baseAddress + it->st_value);
 				}
 
@@ -456,15 +460,21 @@ void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object) {
 
 			elf32_word symbolSize;
 			const char* symbolName;
+			g_elf_symbol_info symbolInfo;
+
 			if (type == R_386_32 || type == R_386_PC32 || type == R_386_GLOB_DAT || type == R_386_JMP_SLOT || type == R_386_GOTOFF ||
-				type == R_386_COPY || type == R_386_TLS_DTPMOD32 || type == R_386_TLS_DTPOFF32) {
+				type == R_386_COPY || type == R_386_TLS_DTPMOD32 || type == R_386_TLS_DTPOFF32 || type == R_386_TLS_TPOFF) {
 				elf32_sym* symbol = &object->symbolTable[symbolIndex];
 				symbolName = &object->stringTable[symbol->st_name];
 				symbolSize = symbol->st_size;
 				
-				cS = hashmapGet<const char*, g_virtual_address>(executableObject->symbols, symbolName, 0);
+				auto entry = hashmapGetEntry<const char*, g_elf_symbol_info>(executableObject->symbols, symbolName);
 				if(cS == 0) {
 					logInfo("%! missing symbol '%s' (%h, type %i)", "elf", symbolName, cP, type);
+				}
+				else {
+					symbolInfo = entry->value;
+					cS = symbolInfo.absolute;
 				}
 			}
 
@@ -495,15 +505,17 @@ void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object) {
 				int32_t cA = *((int32_t*) cP);
 				*((uint32_t*) cP) = cB + cA;
 
+			} else if(type == R_386_TLS_TPOFF)
+			{
+				logInfo("%! R_386_TLS_TPOFF: %s, %h -> %h", "elf", symbolName, symbolInfo.value, cP);
+				
 			} else if(type == R_386_TLS_DTPMOD32)
 			{
-				uint32_t tlsoff = entry->r_offset;
-			//	logInfo("R_386_TLS_DTPMOD32: %s, %h, %h", symbolName, cS, tlsoff);
+				logInfo("%! R_386_TLS_DTPMOD32: %s, %h -> %h", "elf", symbolName, symbolInfo.value, cP);
 				
 			} else if(type == R_386_TLS_DTPOFF32)
 			{
-				uint32_t tlsoff = entry->r_offset;
-			//	logInfo("R_386_TLS_DTPOFF32: %s, %h, %h", symbolName, cS, tlsoff);
+				logInfo("%! R_386_TLS_DTPOFF32: %s, %h -> %h", "elf", symbolName, symbolInfo.value, cP);
 
 			} else if(type)
 			{
