@@ -12,9 +12,12 @@ with SRC					"src"
 with OBJ					"obj"
 with INC					"inc"
 
-with ARTIFACT_NAME			"libcoconut.so"
-ARTIFACT_LOCAL="$ARTIFACT_NAME"
-ARTIFACT_TARGET="$SYSROOT_SYSTEM_LIB/$ARTIFACT_NAME"
+with ARTIFACT_NAME			"libcoconut.a"
+with ARTIFACT_LOCAL			"$ARTIFACT_NAME"
+with ARTIFACT_TARGET		"$SYSROOT_SYSTEM_LIB/$ARTIFACT_NAME"
+with ARTIFACT_NAME_SHARED	"libcoconut.so"
+with ARTIFACT_LOCAL_SHARED	"$ARTIFACT_NAME_SHARED"
+with ARTIFACT_TARGET_SHARED	"$SYSROOT_SYSTEM_LIB/$ARTIFACT_NAME_SHARED"
 
 with CFLAGS					"-std=c++11 -fpic -I$INC -I$SRC"
 with LDFLAGS				"-shared"
@@ -27,6 +30,7 @@ requireTool changes
 target_clean() {
 	echo "cleaning:"
 	rm $ARTIFACT_LOCAL
+	rm $ARTIFACT_LOCAL_SHARED
 	cleanDirectory $OBJ
 	changes --clear
 }
@@ -60,7 +64,8 @@ target_compile() {
 
 target_archive() {
 	echo "archiving:"
-	$CROSS_CC $LDFLAGS -o $ARTIFACT_LOCAL $OBJ/*.o
+	$CROSS_AR -r $ARTIFACT_LOCAL $OBJ/*.o
+	$CROSS_CC $LDFLAGS -o $ARTIFACT_LOCAL_SHARED $OBJ/*.o
 }
 	
 target_clean_target() {
@@ -82,8 +87,9 @@ target_install() {
 	target_clean_target
 	target_install_headers
 	
-	echo "installing artifact"
+	echo "installing artifacts"
 	cp $ARTIFACT_LOCAL $ARTIFACT_TARGET
+	cp $ARTIFACT_LOCAL_SHARED $ARTIFACT_TARGET_SHARED
 	
 	# c'mon
 	chmod -R 777 $SYSROOT

@@ -10,7 +10,9 @@ TARGET=$1
 with TARGET "all"
 
 ARTIFACT_LOCAL=$OBJ/$ARTIFACT_NAME
+ARTIFACT_LOCAL_STATIC=$OBJ/$ARTIFACT_NAME_STATIC
 ARTIFACT_TARGET=$SYSROOT_APPLICATIONS/$ARTIFACT_NAME
+ARTIFACT_TARGET_STATIC=$SYSROOT_APPLICATIONS/$ARTIFACT_NAME_STATIC
 
 echo "target: $TARGET"
 requireTool changes
@@ -19,6 +21,11 @@ requireTool changes
 target_clean() {
 	echo "cleaning:"
 	remove $ARTIFACT_LOCAL
+
+	if [ "$MAKE_STATIC" == 1 ]; then
+		remove $ARTIFACT_LOCAL_STATIC
+	fi
+
 	cleanDirectory $OBJ
 	changes --clear
 }
@@ -54,6 +61,11 @@ target_link() {
 	echo "linking:"
 	$CROSS_CXX -o $ARTIFACT_LOCAL $OBJ/*.o $LDFLAGS
 	list $ARTIFACT_LOCAL
+
+	if [ "$MAKE_STATIC" == 1 ]; then
+		$CROSS_CXX -static -o $ARTIFACT_LOCAL_STATIC $OBJ/*.o $LDFLAGS
+		list $ARTIFACT_LOCAL_STATIC
+	fi
 }
 	
 target_clean_target() {
@@ -61,6 +73,11 @@ target_clean_target() {
 	echo "cleaning target:"
 	rm $ARTIFACT_TARGET 2&> /dev/null
 	list $ARTIFACT_TARGET
+
+	if [ "$MAKE_STATIC" == 1 ]; then
+		rm $ARTIFACT_TARGET_STATIC 2&> /dev/null
+		list $ARTIFACT_TARGET_STATIC
+	fi
 }
 
 target_install() {
@@ -69,6 +86,11 @@ target_install() {
 	
 	echo "installing artifact"
 	cp $ARTIFACT_LOCAL $ARTIFACT_TARGET
+
+	if [ "$MAKE_STATIC" == 1 ]; then
+		echo "installing static artifact"
+		cp $ARTIFACT_LOCAL_STATIC $ARTIFACT_TARGET_STATIC
+	fi
 }
 
 
