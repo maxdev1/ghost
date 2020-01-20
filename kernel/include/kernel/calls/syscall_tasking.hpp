@@ -50,4 +50,6 @@ void syscallRaiseSignal(g_task* task, g_syscall_raise_signal* data);
 
 void syscallSpawn(g_task* task, g_syscall_spawn* data);
 
+void syscallTaskGetTls(g_task* task, g_syscall_task_get_tls* data);
+
 #endif

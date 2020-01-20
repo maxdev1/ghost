@@ -49,6 +49,7 @@ struct g_elf_object {
 	g_elf_object* parent;
 	char* name;
 	bool executable;
+	uint16_t id;
 
 	elf32_ehdr header;
 	g_elf_dependency* dependencies;
@@ -72,6 +73,7 @@ struct g_elf_object {
 	/* Only relevant for an executable object */
 	g_hashmap<const char*, g_elf_symbol_info>* symbols;
 	g_hashmap<const char*, g_elf_object*>* loadedObjects;
+	uint16_t nextObjectId;
 	uint32_t tlsMasterTotalSize;
 	uint32_t tlsMasterUserThreadOffset;
 
