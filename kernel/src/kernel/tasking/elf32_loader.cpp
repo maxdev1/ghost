@@ -102,7 +102,6 @@ g_spawn_status elf32LoadLibrary(g_task* caller, g_elf_object* parentObject, cons
 g_spawn_status elf32LoadObject(g_task* caller, g_elf_object* parentObject, const char* name, g_fd file, g_virtual_address baseAddress,
 	g_address_range_pool* rangeAllocator, g_virtual_address* outNextBase, g_elf_object** outObject, g_spawn_validation_details* outValidationDetails)
 {
-	logDebug("%! loading object '%s' to %h", "elf", name, baseAddress);
 	g_spawn_status status = G_SPAWN_STATUS_SUCCESSFUL;
 
 	/* Create ELF object */
@@ -115,6 +114,7 @@ g_spawn_status elf32LoadObject(g_task* caller, g_elf_object* parentObject, const
 	{
 		object->loadedObjects = hashmapCreateString<g_elf_object*>(128);
 		object->symbols = hashmapCreateString<g_elf_symbol_info>(128);
+		object->nextObjectId = 0;
 	}
 	*outObject = object;
 
@@ -124,8 +124,11 @@ g_spawn_status elf32LoadObject(g_task* caller, g_elf_object* parentObject, const
 	{
 		executableObject = executableObject->parent;
 	}
+	object->id = executableObject->nextObjectId++;
 	hashmapPut<const char*, g_elf_object*>(executableObject->loadedObjects, name, object);
 	
+	logDebug("%! loading object '%s' (%i) to %h", "elf", name, object->id, baseAddress);
+
 	/* Read and validate the ELF header */
 	g_spawn_validation_details validationStatus = elf32ReadAndValidateHeader(caller, file, &object->header, object->executable);
 	if(outValidationDetails)
@@ -424,8 +427,9 @@ void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 				symbolSize = symbol->st_size;
 				
 				auto entry = hashmapGetEntry<const char*, g_elf_symbol_info>(executableObject->symbols, symbolName);
-				if(cS == 0) {
-					logInfo("%! missing symbol '%s' (%h, type %i)", "elf", symbolName, cP, type);
+				if(entry == 0) {
+					logInfo("%!     missing symbol '%s' (%h, type %i)", "elf", symbolName, cP, type);
+					cS = 0;
 				}
 				else {
 					symbolInfo = entry->value;
@@ -462,22 +466,41 @@ void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 
 			} else if(type == R_386_TLS_TPOFF)
 			{
-				*((uint32_t*) cP) = symbolInfo.object->tlsMaster.offset - executableObject->tlsMasterUserThreadOffset + symbolInfo.value;
-				logInfo("%!      R_386_TLS_TPOFF: %s, %h = %h", "elf", symbolName, cP, *((uint32_t*) cP));
-				
+				if(cS)
+				{
+					/**
+					 * For TLS_TPOFF we insert the offset relative to the g_user_thread which is put
+					 * into the segment referenced in GS.
+					 */
+					*((uint32_t*) cP) = symbolInfo.object->tlsMaster.offset - executableObject->tlsMasterUserThreadOffset + symbolInfo.value;
+					logDebug("%!      R_386_TLS_TPOFF: %s, %h = %h", "elf", symbolName, cP, *((uint32_t*) cP));
+				}
+
 			} else if(type == R_386_TLS_DTPMOD32)
 			{
-				*((uint32_t*) cP) = symbolInfo.object->tlsMaster.offset - executableObject->tlsMasterUserThreadOffset + symbolInfo.value;
-				logInfo("%!      R_386_TLS_DTPMOD32: %s, %h = %h", "elf", symbolName, cP, *((uint32_t*) cP));
+				if(cS)
+				{
+					/**
+					 * DTPMOD32 expects the module ID to be written which will be passed to ___tls_get_addr.
+					 */
+					*((uint32_t*) cP) = symbolInfo.object->id;
+					logDebug("%!      R_386_TLS_DTPMOD32: %s, %h = %h", "elf", symbolName, cP, *((uint32_t*) cP));
+				}
 				
 			} else if(type == R_386_TLS_DTPOFF32)
 			{
-				*((uint32_t*) cP) = symbolInfo.object->tlsMaster.offset - executableObject->tlsMasterUserThreadOffset + symbolInfo.value;
-				logInfo("%!      R_386_TLS_DTPOFF32: %s, %h = %h", "elf", symbolName, cP, *((uint32_t*) cP));
+				if(cS)
+				{
+					/**
+					 * DTPOFF32 expects the symbol offset to be written which will be passed to ___tls_get_addr.
+					 */
+					*((uint32_t*) cP) = symbolInfo.object->tlsMaster.offset - executableObject->tlsMasterUserThreadOffset + symbolInfo.value;
+					logDebug("%!      R_386_TLS_DTPOFF32: %s, %h = %h", "elf", symbolName, cP, *((uint32_t*) cP));
+				}
 
 			} else
 			{
-				logInfo("%!     binary contains unhandled relocation: %i", "elf", type);
+				logDebug("%!     binary contains unhandled relocation: %i", "elf", type);
 			}
 
 			entry++;

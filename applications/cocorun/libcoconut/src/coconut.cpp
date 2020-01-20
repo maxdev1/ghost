@@ -19,8 +19,8 @@ void coconutThrow()
 	klog("-> %i == 25", bar);
 
 	klog("library: bee from local");
-	klog("bee %x = %i", &bar, bar);
-	bar = 13;
+	klog("bee %x = %i", &bee, bee);
+	bee = 13;
 	klog("-> %i == 13", bee);
 
 	klog("throwing exception...");
