@@ -44,6 +44,7 @@ g_spawn_status elf32LoadExecutable(g_task* caller, g_fd fd, g_security_level sec
 	g_virtual_address executableEnd;
 	g_spawn_validation_details validationDetails;
 	g_spawn_status spawnStatus = elf32LoadObject(caller, 0, "main", fd, 0, targetProcess->virtualRangePool, &executableEnd, &executableObject, &validationDetails);
+	elf32TlsCreateMasterImage(caller, fd, targetProcess, executableObject);
 
 	taskingTemporarySwitchBack(returnDirectory);
 
@@ -58,12 +59,6 @@ g_spawn_status elf32LoadExecutable(g_task* caller, g_fd fd, g_security_level sec
 	/* Update process */	
 	targetProcess->image.start = executableObject->startAddress;
 	targetProcess->image.end = executableEnd;
-
-	#warning TODO tls segments of shared libraries are not taken into account...
-	targetProcess->tlsMaster.alignment = executableObject->tlsMaster.alignment;
-	targetProcess->tlsMaster.copysize = executableObject->tlsMaster.copysize;
-	targetProcess->tlsMaster.location = executableObject->tlsMaster.location;
-	targetProcess->tlsMaster.totalsize = executableObject->tlsMaster.totalsize;
 	logDebug("%! process loaded to %h - %h", "elf", targetProcess->image.start, targetProcess->image.end);
 
 	/* Create main thread */
@@ -88,7 +83,7 @@ g_spawn_status elf32LoadLibrary(g_task* caller, g_elf_object* parentObject, cons
 	{
 		executableObject = executableObject->parent;
 	}
-	if(hashmapGet(executableObject->loadedDependencies, name, (g_elf_object*) 0))
+	if(hashmapGet(executableObject->loadedObjects, name, (g_elf_object*) 0))
 	{
 		return G_SPAWN_STATUS_DEPENDENCY_DUPLICATE;
 	}
@@ -107,8 +102,6 @@ g_spawn_status elf32LoadLibrary(g_task* caller, g_elf_object* parentObject, cons
 g_spawn_status elf32LoadObject(g_task* caller, g_elf_object* parentObject, const char* name, g_fd file, g_virtual_address baseAddress,
 	g_address_range_pool* rangeAllocator, g_virtual_address* outNextBase, g_elf_object** outObject, g_spawn_validation_details* outValidationDetails)
 {
-	logDebug("%! loading object '%s' to %h", "elf", name, baseAddress);
-	bool isExecutable = (parentObject == 0);
 	g_spawn_status status = G_SPAWN_STATUS_SUCCESSFUL;
 
 	/* Create ELF object */
@@ -116,10 +109,12 @@ g_spawn_status elf32LoadObject(g_task* caller, g_elf_object* parentObject, const
 	object->name = stringDuplicate(name);
 	object->parent = parentObject;
 	object->baseAddress = baseAddress;
-	if(isExecutable)
+	object->executable = (parentObject == 0);
+	if(object->executable)
 	{
-		object->loadedDependencies = hashmapCreateString<g_elf_object*>(128);
+		object->loadedObjects = hashmapCreateString<g_elf_object*>(128);
 		object->symbols = hashmapCreateString<g_elf_symbol_info>(128);
+		object->nextObjectId = 0;
 	}
 	*outObject = object;
 
@@ -129,10 +124,13 @@ g_spawn_status elf32LoadObject(g_task* caller, g_elf_object* parentObject, const
 	{
 		executableObject = executableObject->parent;
 	}
-	hashmapPut<const char*, g_elf_object*>(executableObject->loadedDependencies, name, object);
+	object->id = executableObject->nextObjectId++;
+	hashmapPut<const char*, g_elf_object*>(executableObject->loadedObjects, name, object);
 	
+	logDebug("%! loading object '%s' (%i) to %h", "elf", name, object->id, baseAddress);
+
 	/* Read and validate the ELF header */
-	g_spawn_validation_details validationStatus = elf32ReadAndValidateHeader(caller, file, &object->header, isExecutable);
+	g_spawn_validation_details validationStatus = elf32ReadAndValidateHeader(caller, file, &object->header, object->executable);
 	if(outValidationDetails)
 	{
 		*outValidationDetails = validationStatus;
@@ -169,7 +167,7 @@ g_spawn_status elf32LoadObject(g_task* caller, g_elf_object* parentObject, const
 
 		} else if(phdr->p_type == PT_TLS)
 		{
-			status = elf32LoadTlsMasterCopy(caller, file, phdr, object, rangeAllocator);
+			status = elf32LoadTlsData(caller, file, phdr, object, rangeAllocator);
 			if(status != G_SPAWN_STATUS_SUCCESSFUL)
 			{
 				logInfo("%! unable to load PT_TLS segment from file", "elf");
@@ -205,11 +203,11 @@ g_virtual_address elf32LoadDependencies(g_task* caller, g_elf_object* object, g_
 
 		if(status == G_SPAWN_STATUS_SUCCESSFUL)
 		{
-			logDebug("%!   -> successfully loaded dependency", "elf");
+			logDebug("%!   successfully loaded dependency", "elf");
 
 		} else if(status == G_SPAWN_STATUS_DEPENDENCY_DUPLICATE)
 		{
-			logDebug("%!   -> duplicate dependency ignored: %s -> %s", "elf", object->name, dependency->name);
+			logDebug("%!   duplicate dependency ignored: %s -> %s", "elf", object->name, dependency->name);
 
 		} else
 		{
@@ -388,48 +386,8 @@ g_spawn_status elf32LoadLoadSegment(g_task* caller, g_fd file, elf32_phdr* phdr,
 	return G_SPAWN_STATUS_SUCCESSFUL;
 }
 
-g_spawn_status elf32LoadTlsMasterCopy(g_task* caller, g_fd file, elf32_phdr* phdr, g_elf_object* object, g_address_range_pool* rangeAllocator)
+void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 {
-	uint32_t bytesToCopy = phdr->p_filesz;
-	uint32_t bytesToZero = phdr->p_memsz;
-
-	/* Read TLS content to a buffer */
-	uint8_t* tlsContentBuffer = (uint8_t*) heapAllocate(bytesToCopy);
-	if(!elf32ReadToMemory(caller, file, phdr->p_offset, (uint8_t*) tlsContentBuffer, bytesToCopy))
-	{
-		logInfo("%! unable to read TLS segment from file", "elf");
-		heapFree(tlsContentBuffer);
-		return G_SPAWN_STATUS_IO_ERROR;
-
-	}
-
-	/* Allocate memory */
-	uint32_t requiredPages = G_PAGE_ALIGN_UP(bytesToZero) / G_PAGE_SIZE;
-	g_virtual_address tlsStart = addressRangePoolAllocate(rangeAllocator, requiredPages, G_PROC_VIRTUAL_RANGE_FLAG_PHYSICAL_OWNER);
-	for(uint32_t i = 0; i < requiredPages; i++)
-	{
-		g_physical_address page = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-		pagingMapPage(tlsStart + i * G_PAGE_SIZE, page, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
-		pageReferenceTrackerIncrement(page);
-	}
-
-	memorySetBytes((uint8_t*) tlsStart, 0, bytesToZero);
-	memoryCopy((uint8_t*) tlsStart, tlsContentBuffer, bytesToCopy);
-
-	logDebug("%!   TLS master: %h, size: %i pages", "elf", tlsStart, requiredPages);
-
-	/* Write object information */
-	object->tlsMaster.location = tlsStart;
-	object->tlsMaster.alignment = phdr->p_align;
-	object->tlsMaster.copysize = phdr->p_filesz;
-	object->tlsMaster.totalsize = phdr->p_memsz;
-
-	heapFree(tlsContentBuffer);
-	return G_SPAWN_STATUS_SUCCESSFUL;
-}
-
-void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object) {
-
 	logDebug("%!   applying relocations for '%s'", "elf", object->name);
 	g_elf_object* executableObject = object;
 	while(executableObject->parent) {
@@ -462,7 +420,8 @@ void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object) {
 			g_elf_symbol_info symbolInfo;
 
 			if (type == R_386_32 || type == R_386_PC32 || type == R_386_GLOB_DAT || type == R_386_JMP_SLOT || type == R_386_GOTOFF ||
-				type == R_386_COPY || type == R_386_TLS_DTPMOD32 || type == R_386_TLS_DTPOFF32 || type == R_386_TLS_TPOFF) {
+				type == R_386_COPY || type == R_386_TLS_TPOFF || type == R_386_TLS_DTPMOD32 || type == R_386_TLS_DTPOFF32)
+			{
 				elf32_sym* symbol = &object->symbolTable[symbolIndex];
 				symbolName = &object->stringTable[symbol->st_name];
 				symbolSize = symbol->st_size;
@@ -506,19 +465,32 @@ void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object) {
 
 			} else if(type == R_386_TLS_TPOFF)
 			{
-				logInfo("%! R_386_TLS_TPOFF: %s, %h -> %h", "elf", symbolName, symbolInfo.value, cP);
-				
+				/**
+				 * For TLS_TPOFF we insert the offset relative to the g_user_thread which is put
+				 * into the segment referenced in GS.
+				 */
+				*((uint32_t*) cP) = symbolInfo.object->tlsMaster.offset - executableObject->tlsMasterUserThreadOffset + symbolInfo.value;
+				logDebug("%!      R_386_TLS_TPOFF: %s, %h = %h", "elf", symbolName, cP, *((uint32_t*) cP));
+
 			} else if(type == R_386_TLS_DTPMOD32)
 			{
-				logInfo("%! R_386_TLS_DTPMOD32: %s, %h -> %h", "elf", symbolName, symbolInfo.value, cP);
+				/**
+				 * DTPMOD32 expects the module ID to be written which will be passed to ___tls_get_addr.
+				 */
+				*((uint32_t*) cP) = symbolInfo.object->id;
+				logDebug("%!      R_386_TLS_DTPMOD32: %s, %h = %h", "elf", symbolName, cP, *((uint32_t*) cP));
 				
 			} else if(type == R_386_TLS_DTPOFF32)
 			{
-				logInfo("%! R_386_TLS_DTPOFF32: %s, %h -> %h", "elf", symbolName, symbolInfo.value, cP);
+				/**
+				 * DTPOFF32 expects the symbol offset to be written which will be passed to ___tls_get_addr.
+				 */
+				*((uint32_t*) cP) = symbolInfo.object->tlsMaster.offset - executableObject->tlsMasterUserThreadOffset + symbolInfo.value;
+				logDebug("%!      R_386_TLS_DTPOFF32: %s, %h = %h", "elf", symbolName, cP, *((uint32_t*) cP));
 
-			} else if(type)
+			} else
 			{
-				logInfo("%! binary contains unhandled relocation: %i", "elf", type);
+				logDebug("%!     binary contains unhandled relocation: %i", "elf", type);
 			}
 
 			entry++;
@@ -646,3 +618,78 @@ g_fd elf32OpenLibrary(g_task* caller, const char* name)
 	return fd;
 }
 
+
+g_spawn_status elf32LoadTlsData(g_task* caller, g_fd file, elf32_phdr* phdr, g_elf_object* object, g_address_range_pool* rangeAllocator)
+{
+	uint32_t bytesToCopy = phdr->p_filesz;
+
+	/* Read TLS content to a buffer */
+	uint8_t* tlsContentBuffer = (uint8_t*) heapAllocate(bytesToCopy);
+	if(!elf32ReadToMemory(caller, file, phdr->p_offset, (uint8_t*) tlsContentBuffer, bytesToCopy))
+	{
+		logInfo("%! unable to read TLS segment from file", "elf");
+		heapFree(tlsContentBuffer);
+		return G_SPAWN_STATUS_IO_ERROR;
+	}
+
+	/* Write object information */
+	object->tlsMaster.content = tlsContentBuffer;
+	object->tlsMaster.alignment = phdr->p_align;
+	object->tlsMaster.copysize = phdr->p_filesz;
+	object->tlsMaster.totalsize = phdr->p_memsz;
+
+	/* Calculate offset in TLS master image */
+	if(object->executable) {
+		/* Executable gets offset 0 and is followed with the g_user_thread */
+		object->tlsMaster.offset = 0;
+		uint32_t size = G_ALIGN_UP(object->tlsMaster.totalsize, object->tlsMaster.alignment);
+		object->tlsMasterTotalSize = size + sizeof(g_user_thread);
+		object->tlsMasterUserThreadOffset = size;
+	}
+	else {
+		/* Shared libraries just get the next free position */
+		g_elf_object* executableObject = object;
+		while(executableObject->parent) executableObject = executableObject->parent;
+		object->tlsMaster.offset = executableObject->tlsMasterTotalSize;
+		executableObject->tlsMasterTotalSize += G_ALIGN_UP(object->tlsMaster.totalsize, object->tlsMaster.alignment);
+	}
+
+	return G_SPAWN_STATUS_SUCCESSFUL;
+}
+
+void elf32TlsCreateMasterImage(g_task* caller, g_fd file, g_process* process, g_elf_object* executableObject)
+{
+	/* Allocate memory */
+	uint32_t sizeInPages = G_PAGE_ALIGN_UP(executableObject->tlsMasterTotalSize);
+	uint32_t requiredPages = sizeInPages / G_PAGE_SIZE;
+	g_virtual_address tlsStart = addressRangePoolAllocate(process->virtualRangePool, requiredPages, G_PROC_VIRTUAL_RANGE_FLAG_PHYSICAL_OWNER);
+	for(uint32_t i = 0; i < requiredPages; i++)
+	{
+		g_physical_address page = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+		pagingMapPage(tlsStart + i * G_PAGE_SIZE, page, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+		pageReferenceTrackerIncrement(page);
+	}
+
+
+	/* Copy all contents */
+	memorySetBytes((uint8_t*) tlsStart, 0, executableObject->tlsMasterTotalSize);
+
+	logDebug("%!   write TLS master image", "elf");
+	auto it = hashmapIteratorStart(executableObject->loadedObjects);
+	while(hashmapIteratorHasNext(&it))
+	{
+		g_elf_object* object = hashmapIteratorNext(&it)->value;
+		if(object->tlsMaster.content)
+		{
+			memoryCopy((uint8_t*) (tlsStart + object->tlsMaster.offset), object->tlsMaster.content, object->tlsMaster.copysize);
+			logDebug("%!    [%h, size %h, binary %s]", "elf", tlsStart + object->tlsMaster.offset, object->tlsMaster.totalsize, object->name);
+		}
+	}
+	hashmapIteratorEnd(&it);
+
+	/* Update process */
+	process->tlsMaster.location = tlsStart;
+	process->tlsMaster.size = sizeInPages;
+	process->tlsMaster.userThreadOffset = executableObject->tlsMasterUserThreadOffset;
+	logDebug("%!   created TLS master: %h, size: %h", "elf", process->tlsMaster.location, process->tlsMaster.size);
+}

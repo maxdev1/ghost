@@ -103,4 +103,13 @@ typedef struct
 	char* buffer;
 }__attribute__((packed)) g_syscall_cli_args_release;
 
+/**
+ * @field userThreadObject
+ * 		pointer to the user thread object in TLS
+ */
+typedef struct
+{
+	void* userThreadObject;
+}__attribute__((packed)) g_syscall_task_get_tls;
+
 #endif

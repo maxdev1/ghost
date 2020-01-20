@@ -48,6 +48,8 @@ struct g_elf_symbol_info {
 struct g_elf_object {
 	g_elf_object* parent;
 	char* name;
+	bool executable;
+	uint16_t id;
 
 	elf32_ehdr header;
 	g_elf_dependency* dependencies;
@@ -58,15 +60,22 @@ struct g_elf_object {
 
 	struct
 	{
-		g_virtual_address location;
+		uint8_t* content;
 		g_virtual_address copysize;
 		g_virtual_address totalsize;
 		g_virtual_address alignment;
+
+		/* Offset of this objects TLS content within the TLS master image
+		that is created for the whole executable. */
+		uint32_t offset;
 	} tlsMaster;
 
 	/* Only relevant for an executable object */
 	g_hashmap<const char*, g_elf_symbol_info>* symbols;
-	g_hashmap<const char*, g_elf_object*>* loadedDependencies;
+	g_hashmap<const char*, g_elf_object*>* loadedObjects;
+	uint16_t nextObjectId;
+	uint32_t tlsMasterTotalSize;
+	uint32_t tlsMasterUserThreadOffset;
 
 	/* In-address-space memory pointers */
 	elf32_dyn* dynamicSection;
@@ -138,11 +147,6 @@ g_virtual_address elf32LoadDependencies(g_task* caller, g_elf_object* parentObje
 g_spawn_status elf32LoadLoadSegment(g_task* caller, g_fd fd, elf32_phdr* phdr, g_virtual_address baseAddress, g_elf_object* object);
 
 /**
- * Loads the TLS master to memory, must be called while within the target process address space.
- */
-g_spawn_status elf32LoadTlsMasterCopy(g_task* caller, g_fd file, elf32_phdr* header, g_elf_object* object, g_address_range_pool* rangeAllocator);
-
-/**
  * Applies relocations on the given object.
  */
 void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object);
@@ -171,5 +175,23 @@ void elf32InspectObject(g_elf_object* elfObject);
  * Utility function to read data to memory.
  */
 bool elf32ReadToMemory(g_task* caller, g_fd fd, size_t offset, uint8_t* buffer, uint64_t len);
+
+/**
+ * Loads the TLS master for this object into a buffer. Then, the offset where this TLS data
+ * will be loaded into the TLS master image is calculated and put into the object.
+ */
+g_spawn_status elf32LoadTlsData(g_task* caller, g_fd file, elf32_phdr* header, g_elf_object* object, g_address_range_pool* rangeAllocator);
+
+/**
+ * Creates the TLS master image. The positions for each part of this image where already specified
+ * when the TLS data is being loaded from each binary. The in-memory representation of our master
+ * image looks like this:
+ * 
+ * [Executable TLS content|g_user_thread|Shared lib TLS content|Shared lib TLS content|...]
+ * 
+ * When a new thread is created, a copy of this master image is created. The address of g_user_thread
+ * is then put into the GDT entry.
+ */
+void elf32TlsCreateMasterImage(g_task* caller, g_fd file, g_process* process, g_elf_object* executableObject);
 
 #endif

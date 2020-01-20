@@ -889,6 +889,11 @@ g_kernquery_status g_kernquery(uint16_t command, uint8_t* buffer);
  */
 void g_cli_args_release(char* buffer);
 
+/**
+ * @return a pointer to the user-thread object in the TLS of the current thread.
+ */
+void* g_task_get_tls();
+
 __END_C
 
 #endif
