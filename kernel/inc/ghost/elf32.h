@@ -182,6 +182,10 @@ typedef struct {
 	elf32_half	st_shndx;	// Section header table index
 } elf32_sym;
 
+#define ELF32_ST_BIND(i)	((i) >> 4)
+#define ELF32_ST_TYPE(i)	((i) & 0xf)
+#define ELF32_ST_INFO(b, t)	(((b) << 4) + ((t) & 0xf) 
+
 #define STN_UNDEF	0
 
 #define STB_LOCAL	0
@@ -189,6 +193,14 @@ typedef struct {
 #define STB_WEAK	2
 #define STB_LOPROC	13
 #define STB_HIPROC	15
+
+#define STT_NOTYPE	0
+#define STT_OBJECT	1
+#define STT_FUNC	2
+#define STT_SECTION	3
+#define STT_FILE	4
+#define STT_LOPROC	13
+#define STT_HIPROC	15
 
 /**
  * ELF section header

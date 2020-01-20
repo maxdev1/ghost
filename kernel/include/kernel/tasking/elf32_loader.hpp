@@ -79,12 +79,11 @@ struct g_elf_object {
 
 	/* In-address-space memory pointers */
 	elf32_dyn* dynamicSection;
-
-	char* stringTable;
-	elf32_word stringTableSize;
-	elf32_sym* symbolTable;
-	elf32_word symbolTableSize;
-	elf32_word* symbolHashTable;
+	char* dynamicStringTable;
+	elf32_word dynamicStringTableSize;
+	elf32_sym* dynamicSymbolTable;
+	elf32_word dynamicSymbolTableSize;
+	elf32_word* dynamicSymbolHashTable;
 
 	void (*init)();
 	void (*fini)();

@@ -229,18 +229,18 @@ void elf32InspectObject(g_elf_object* object) {
 		while(it->d_tag) {
 			switch(it->d_tag) {
 				case DT_STRTAB:
-					object->stringTable = (char*) (object->baseAddress + it->d_un.d_ptr);
+					object->dynamicStringTable = (char*) (object->baseAddress + it->d_un.d_ptr);
 					break;
 				case DT_STRSZ:
-					object->stringTableSize = it->d_un.d_val;
+					object->dynamicStringTableSize = it->d_un.d_val;
 					break;
 				case DT_HASH:
-					object->symbolHashTable = (elf32_word*) (object->baseAddress + it->d_un.d_ptr);
+					object->dynamicSymbolHashTable = (elf32_word*) (object->baseAddress + it->d_un.d_ptr);
 					/*  The number of symbol table entries should equal nchain; so symbol table indexes also select chain table entries. */
-					object->symbolTableSize = object->symbolHashTable[1]; 
+					object->dynamicSymbolTableSize = object->dynamicSymbolHashTable[1]; 
 					break;
 				case DT_SYMTAB:
-					object->symbolTable = (elf32_sym*) (object->baseAddress + it->d_un.d_ptr);
+					object->dynamicSymbolTable = (elf32_sym*) (object->baseAddress + it->d_un.d_ptr);
 					break;
 				case DT_INIT:
 					object->init = (void(*)()) (object->baseAddress + it->d_un.d_ptr);
@@ -258,15 +258,15 @@ void elf32InspectObject(g_elf_object* object) {
 		while(it->d_tag) {
 			if(it->d_tag == DT_NEEDED) {
 				g_elf_dependency* dep = (g_elf_dependency*) heapAllocate(sizeof(g_elf_dependency));
-				dep->name = stringDuplicate(object->stringTable + it->d_un.d_val);
+				dep->name = stringDuplicate(object->dynamicStringTable + it->d_un.d_val);
 				dep->next = object->dependencies;
 				object->dependencies = dep;
 			}
 			it++;
 		}
 
-		/* Put symbols into executables symbol table */
-		if(object->symbolTable) {
+		/* Put symbols into executables dynamic symbol table */
+		if(object->dynamicSymbolTable) {
 			g_elf_object* executableObject = object;
 			while(executableObject->parent)
 			{
@@ -274,10 +274,10 @@ void elf32InspectObject(g_elf_object* object) {
 			}
 
 			uint32_t pos = 0;
-			elf32_sym* it = object->symbolTable;
-			while(pos < object->symbolTableSize)
+			elf32_sym* it = object->dynamicSymbolTable;
+			while(pos < object->dynamicSymbolTableSize)
 			{
-				const char* symbol = (const char*) (object->stringTable + it->st_name);
+				const char* symbol = (const char*) (object->dynamicStringTable + it->st_name);
 				if(it->st_shndx && hashmapGetEntry<const char*, g_elf_symbol_info>(executableObject->symbols, symbol) == 0)
 				{
 					g_elf_symbol_info symbolInfo;
@@ -285,7 +285,7 @@ void elf32InspectObject(g_elf_object* object) {
 					symbolInfo.absolute = object->baseAddress + it->st_value;
 					symbolInfo.value = it->st_value;
 					hashmapPut<const char*, g_elf_symbol_info>(executableObject->symbols, symbol, symbolInfo);
-					//logDebug("%#     found symbol: %s, %h", symbol, object->baseAddress + it->st_value);
+					// logDebug("%#     found symbol: %s, %h", symbol, object->baseAddress + it->st_value);
 				}
 
 				it++;
@@ -422,8 +422,8 @@ void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 			if (type == R_386_32 || type == R_386_PC32 || type == R_386_GLOB_DAT || type == R_386_JMP_SLOT || type == R_386_GOTOFF ||
 				type == R_386_COPY || type == R_386_TLS_TPOFF || type == R_386_TLS_DTPMOD32 || type == R_386_TLS_DTPOFF32)
 			{
-				elf32_sym* symbol = &object->symbolTable[symbolIndex];
-				symbolName = &object->stringTable[symbol->st_name];
+				elf32_sym* symbol = &object->dynamicSymbolTable[symbolIndex];
+				symbolName = &object->dynamicStringTable[symbol->st_name];
 				symbolSize = symbol->st_size;
 				
 				auto entry = hashmapGetEntry<const char*, g_elf_symbol_info>(executableObject->symbols, symbolName);
