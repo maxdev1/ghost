@@ -34,12 +34,12 @@
 extern void _init();
 extern void _fini();
 
-extern void (*__init_array_start[])();
-extern void (*__init_array_end[])();
-extern void (*__preinit_array_start[])();
-extern void (*__preinit_array_end[])();
-extern void (*__fini_array_start[])();
-extern void (*__fini_array_end[])();
+extern void (*__preinit_array_start []) (void) __attribute__((weak));
+extern void (*__preinit_array_end []) (void) __attribute__((weak));
+extern void (*__init_array_start []) (void) __attribute__((weak));
+extern void (*__init_array_end []) (void) __attribute__((weak));
+extern void (*__fini_array_start []) (void) __attribute__((weak));
+extern void (*__fini_array_end []) (void) __attribute__((weak));
 
 /**
  * Application entry routine, called by the CRTs.
