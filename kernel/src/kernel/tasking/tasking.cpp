@@ -291,10 +291,9 @@ g_process* taskingCreateProcess()
 
 	mutexInitialize(&process->lock);
 
-	process->tlsMaster.alignment = 0;
-	process->tlsMaster.copysize = 0;
+	process->tlsMaster.size = 0;
 	process->tlsMaster.location = 0;
-	process->tlsMaster.totalsize = 0;
+	process->tlsMaster.userThreadOffset = 0;
 
 	process->pageDirectory = taskingMemoryCreatePageDirectory();
 
@@ -330,11 +329,8 @@ void taskingPrepareThreadLocalStorage(g_task* thread)
 		return;
 	}
 
-	// calculate size that TLS needs including alignment
-	uint32_t alignedTotalSize = G_ALIGN_UP(process->tlsMaster.totalsize, process->tlsMaster.alignment);
-
-	// allocate virtual range with aligned size of TLS + size of {g_user_thread}
-	uint32_t requiredSize = alignedTotalSize + sizeof(g_user_thread);
+	// allocate virtual range with required size
+	uint32_t requiredSize = process->tlsMaster.size;
 	uint32_t requiredPages = G_PAGE_ALIGN_UP(requiredSize) / G_PAGE_SIZE;
 	g_virtual_address tlsCopyStart = addressRangePoolAllocate(process->virtualRangePool, requiredPages, G_PROC_VIRTUAL_RANGE_FLAG_PHYSICAL_OWNER);
 	g_virtual_address tlsCopyEnd = tlsCopyStart + requiredPages * G_PAGE_SIZE;
@@ -349,11 +345,11 @@ void taskingPrepareThreadLocalStorage(g_task* thread)
 	}
 
 	// zero & copy TLS content
-	memorySetBytes((void*) tlsCopyStart, 0, process->tlsMaster.totalsize);
-	memoryCopy((void*) tlsCopyStart, (void*) process->tlsMaster.location, process->tlsMaster.copysize);
+	memorySetBytes((void*) tlsCopyStart, 0, process->tlsMaster.size);
+	memoryCopy((void*) tlsCopyStart, (void*) process->tlsMaster.location, process->tlsMaster.size);
 
 	// fill user thread
-	g_virtual_address userThreadObject = tlsCopyStart + alignedTotalSize;
+	g_virtual_address userThreadObject = tlsCopyStart + process->tlsMaster.userThreadOffset;
 	g_user_thread* userThread = (g_user_thread*) userThreadObject;
 	userThread->self = userThread;
 

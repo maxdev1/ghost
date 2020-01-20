@@ -171,3 +171,8 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 		logInfo("%! failed to find binary '%s'", "kernel", data->path);
 	}
 }
+
+void syscallTaskGetTls(g_task* task, g_syscall_task_get_tls* data)
+{
+	data->userThreadObject = (void*) task->tlsCopy.userThreadObject;
+}

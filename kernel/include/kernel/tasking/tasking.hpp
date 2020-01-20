@@ -235,9 +235,9 @@ struct g_process
 	struct
 	{
 		g_virtual_address location;
-		g_virtual_address copysize;
-		g_virtual_address totalsize;
-		g_virtual_address alignment;
+		uint32_t size;
+
+		uint32_t userThreadOffset;
 	} tlsMaster;
 
 	struct
