@@ -428,7 +428,8 @@ void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 				
 				auto entry = hashmapGetEntry<const char*, g_elf_symbol_info>(executableObject->symbols, symbolName);
 				if(entry == 0) {
-					logInfo("%! missing symbol '%s' (%h, type %i)", "elf", symbolName, cP, type);
+					logInfo("%!     missing symbol '%s' (%h, type %i)", "elf", symbolName, cP, type);
+					cS = 0;
 				}
 				else {
 					symbolInfo = entry->value;
@@ -465,28 +466,37 @@ void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 
 			} else if(type == R_386_TLS_TPOFF)
 			{
-				/**
-				 * For TLS_TPOFF we insert the offset relative to the g_user_thread which is put
-				 * into the segment referenced in GS.
-				 */
-				*((uint32_t*) cP) = symbolInfo.object->tlsMaster.offset - executableObject->tlsMasterUserThreadOffset + symbolInfo.value;
-				logDebug("%!      R_386_TLS_TPOFF: %s, %h = %h", "elf", symbolName, cP, *((uint32_t*) cP));
+				if(cS)
+				{
+					/**
+					 * For TLS_TPOFF we insert the offset relative to the g_user_thread which is put
+					 * into the segment referenced in GS.
+					 */
+					*((uint32_t*) cP) = symbolInfo.object->tlsMaster.offset - executableObject->tlsMasterUserThreadOffset + symbolInfo.value;
+					logDebug("%!      R_386_TLS_TPOFF: %s, %h = %h", "elf", symbolName, cP, *((uint32_t*) cP));
+				}
 
 			} else if(type == R_386_TLS_DTPMOD32)
 			{
-				/**
-				 * DTPMOD32 expects the module ID to be written which will be passed to ___tls_get_addr.
-				 */
-				*((uint32_t*) cP) = symbolInfo.object->id;
-				logDebug("%!      R_386_TLS_DTPMOD32: %s, %h = %h", "elf", symbolName, cP, *((uint32_t*) cP));
+				if(cS)
+				{
+					/**
+					 * DTPMOD32 expects the module ID to be written which will be passed to ___tls_get_addr.
+					 */
+					*((uint32_t*) cP) = symbolInfo.object->id;
+					logDebug("%!      R_386_TLS_DTPMOD32: %s, %h = %h", "elf", symbolName, cP, *((uint32_t*) cP));
+				}
 				
 			} else if(type == R_386_TLS_DTPOFF32)
 			{
-				/**
-				 * DTPOFF32 expects the symbol offset to be written which will be passed to ___tls_get_addr.
-				 */
-				*((uint32_t*) cP) = symbolInfo.object->tlsMaster.offset - executableObject->tlsMasterUserThreadOffset + symbolInfo.value;
-				logDebug("%!      R_386_TLS_DTPOFF32: %s, %h = %h", "elf", symbolName, cP, *((uint32_t*) cP));
+				if(cS)
+				{
+					/**
+					 * DTPOFF32 expects the symbol offset to be written which will be passed to ___tls_get_addr.
+					 */
+					*((uint32_t*) cP) = symbolInfo.object->tlsMaster.offset - executableObject->tlsMasterUserThreadOffset + symbolInfo.value;
+					logDebug("%!      R_386_TLS_DTPOFF32: %s, %h = %h", "elf", symbolName, cP, *((uint32_t*) cP));
+				}
 
 			} else
 			{
