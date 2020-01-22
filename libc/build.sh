@@ -152,9 +152,6 @@ target_install() {
 	
 	echo "installing empty libm"
 	$CROSS_AR -r $SYSROOT_SYSTEM_LIB/libm.a
-	
-	# c'mon
-	sudo chmod -R 0777 $SYSROOT
 }
 
 
