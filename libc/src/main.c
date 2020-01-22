@@ -28,18 +28,8 @@
 #include "main_internal.h"
 #include "stdio/stdio_internal.h"
 
-/**
- * Global ctor/dtor functions
- */
-extern void _init();
-extern void _fini();
-
-extern void (*__preinit_array_start []) (void) __attribute__((weak));
-extern void (*__preinit_array_end []) (void) __attribute__((weak));
-extern void (*__init_array_start []) (void) __attribute__((weak));
-extern void (*__init_array_end []) (void) __attribute__((weak));
-extern void (*__fini_array_start []) (void) __attribute__((weak));
-extern void (*__fini_array_end []) (void) __attribute__((weak));
+void __g_init_libc_call_init();
+void __g_fini_libc_call_fini();
 
 /**
  * Application entry routine, called by the CRTs.
@@ -72,19 +62,8 @@ int __g_main()
  */
 void __g_init_libc()
 {
-
-	// call global constructors
-	for(size_t i = 0; i < __preinit_array_end - __preinit_array_start; i++)
-	{
-		(*__preinit_array_start[i])();
-	}
-
-	_init();
-
-	for(size_t i = 0; i < __init_array_end - __init_array_start; i++)
-	{
-		(*__init_array_start[i])();
-	}
+	// call init functions
+	__g_init_libc_call_init();
 
 	// set default locale (N1548-7.11.1.1-4)
 	setlocale(LC_ALL, "C");
@@ -101,16 +80,66 @@ void __g_init_libc()
  */
 void __g_fini_libc()
 {
-
-	// call global destructors
-	for(size_t i = 0; i < __fini_array_end - __fini_array_start; i++)
-	{
-		(*__fini_array_start[i])();
-	}
-
-	_fini();
+	// call fini functions
+	__g_fini_libc_call_fini();
 
 	// Finalize the standard I/O
 	__fini_stdio();
 }
 
+/**
+ * Asks the kernel for the process info and calls all necessary init functions
+ * of all objects.
+ */
+void __g_init_libc_call_init()
+{
+	g_process_info* processInfo = g_process_get_info();
+	for(int i = 0; i < processInfo->objectInfosSize; i++)
+	{
+		g_object_info* objectInfo = &processInfo->objectInfos[i];
+		if(objectInfo->preinitArray)
+		{
+			for(uint32_t i = 0; i < objectInfo->preinitArraySize; i++)
+			{
+				klog("%s.preinit[%i]:%x()", objectInfo->name, i, objectInfo->preinitArray[i]);
+				objectInfo->preinitArray[i]();
+			}
+		}
+
+		if(objectInfo->init)
+		{
+			klog("%s.init:%x()", objectInfo->name, objectInfo->init);
+			objectInfo->init();
+		}
+
+		if(objectInfo->initArray)
+		{
+			for(uint32_t i = 0; i < objectInfo->initArraySize; i++)
+			{
+				klog("%s.init[%i]:%x()", objectInfo->name, i, objectInfo->initArray[i]);
+				objectInfo->initArray[i]();
+			}
+		}
+	}
+}
+
+/**
+ * Asks the kernel for process info and calls all necessary fini functions
+ * of all objects.
+ */
+void __g_fini_libc_call_fini()
+{
+	g_process_info* processInfo = g_process_get_info();
+	for(int i = 0; i < processInfo->objectInfosSize; i++)
+	{
+		g_object_info* objectInfo = &processInfo->objectInfos[i];
+		if(objectInfo->finiArray)
+		{
+			for(uint32_t i = 0; i < objectInfo->finiArraySize; i++)
+			{
+				klog("%s.fini[%i]:%x()", objectInfo->name, i, objectInfo->finiArray[i]);
+				objectInfo->finiArray[i]();
+			}
+		}
+	}
+}
