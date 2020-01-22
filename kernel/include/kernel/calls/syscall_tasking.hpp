@@ -52,4 +52,6 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data);
 
 void syscallTaskGetTls(g_task* task, g_syscall_task_get_tls* data);
 
+void syscallProcessGetInfo(g_task* task, g_syscall_process_get_info* data);
+
 #endif
