@@ -189,6 +189,9 @@ if [[ $TARGET == "all" ]]; then
 
 elif [[ $TARGET == "repack" ]]; then
 	target_repack
+
+elif [[ $TARGET == "repack-run" ]]; then
+	target_repack
 	target_qemu
 	
 elif [[ $TARGET == "ramdisk" ]]; then

@@ -65,7 +65,7 @@ target_compile() {
 target_archive() {
 	echo "archiving:"
 	$CROSS_AR -r $ARTIFACT_LOCAL $OBJ/*.o
-	$CROSS_CXX $LDFLAGS -o $ARTIFACT_LOCAL_SHARED $OBJ/*.out
+	$CROSS_CXX $LDFLAGS -o $ARTIFACT_LOCAL_SHARED $OBJ/*.o
 }
 	
 target_clean_target() {
