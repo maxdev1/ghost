@@ -65,13 +65,15 @@ target_compile() {
 target_archive() {
 	echo "archiving:"
 	$CROSS_AR -r $ARTIFACT_LOCAL $OBJ/*.o
-	$CROSS_CC $LDFLAGS -o $ARTIFACT_LOCAL_SHARED $OBJ/*.o
+	$CROSS_CXX $LDFLAGS -o $ARTIFACT_LOCAL_SHARED $OBJ/*.out
 }
 	
 target_clean_target() {
 	
 	echo "removing $ARTIFACT_TARGET"
 	rm $ARTIFACT_TARGET 2&> /dev/null
+	echo "removing $ARTIFACT_TARGET_SHARED"
+	rm $ARTIFACT_TARGET_SHARED 2&> /dev/null
 }
 
 target_install_headers() {
@@ -90,9 +92,6 @@ target_install() {
 	echo "installing artifacts"
 	cp $ARTIFACT_LOCAL $ARTIFACT_TARGET
 	cp $ARTIFACT_LOCAL_SHARED $ARTIFACT_TARGET_SHARED
-	
-	# c'mon
-	chmod -R 777 $SYSROOT
 }
 
 # execute targets
