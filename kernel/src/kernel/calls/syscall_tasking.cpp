@@ -176,3 +176,8 @@ void syscallTaskGetTls(g_task* task, g_syscall_task_get_tls* data)
 {
 	data->userThreadObject = (void*) task->tlsCopy.userThreadObject;
 }
+
+void syscallProcessGetInfo(g_task* task, g_syscall_process_get_info* data)
+{
+	data->processInfo = task->process->userProcessInfo;
+}

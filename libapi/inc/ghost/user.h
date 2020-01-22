@@ -894,6 +894,14 @@ void g_cli_args_release(char* buffer);
  */
 void* g_task_get_tls();
 
+/**
+ * Returns a pointer to the process information structure. This structure for example
+ * contains a list of all loaded objects.
+ * 
+ * @return a pointer to a g_process_info
+ */
+g_process_info* g_process_get_info();
+
 __END_C
 
 #endif

@@ -106,6 +106,31 @@ typedef uint8_t g_thread_status;
  */
 #define G_PIPE_DEFAULT_CAPACITY		0x400
 
+/**
+ * Process information section header
+ */
+typedef struct _g_object_info {
+	const char* name;
+
+	void (*init)(void);
+	void (*fini)(void);
+	void (**preinitArray)(void);
+	uint32_t preinitArraySize;
+	void (**initArray)(void);
+	uint32_t initArraySize;
+	void (**finiArray)(void);
+	uint32_t finiArraySize;
+}__attribute__((packed)) g_object_info;
+
+/**
+ * The object information structure is used within the process information section
+ * to provide details about all loaded objects in a process.
+ */
+typedef struct {
+	g_object_info* objectInfos;
+	uint32_t objectInfosSize;
+}__attribute__((packed)) g_process_info;
+
 __END_C
 
 #endif

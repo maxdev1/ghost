@@ -222,4 +222,12 @@ typedef struct {
 	g_raise_signal_status status;
 }__attribute__((packed)) g_syscall_raise_signal;
 
+/**
+ * @field processInfo
+ * 		pointer to the process info
+ */
+typedef struct {
+	g_process_info* processInfo;
+}__attribute__((packed)) g_syscall_process_get_info;
+
 #endif
