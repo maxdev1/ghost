@@ -1,28 +1,49 @@
 #include <ghost.h>
 #include <errno.h>
+#include <assert.h>
+#include <stdio.h>
+
 #include "coconut.h"
-#include "stdio.h"
 
 __thread int bar = 54;
 __thread int bee = 31;
 
-void coconutThrow()
+class LibGlobCtorTest {
+public:
+	int x = 5;
+	LibGlobCtorTest() {
+		assert(x == 5);
+		x = 12;
+	}
+};
+
+LibGlobCtorTest libctortest;
+
+int libcctor = 12;
+__attribute__ ((constructor)) void libGlobCCtor(void)
 {
-	klog("library: errno from libc.so");
-	klog("errno %x = %i", &errno, errno);
+	assert(libcctor == 12);
+	libcctor = 43;
+}
+
+void coconutThrow(int x)
+{
+	assert(libcctor == 43);
+
+	assert(errno == 123);
 	errno = 321;
-	klog("-> %i == 321", errno);
+	assert(errno == 321);
 
-	klog("library: bar from local");
-	klog("bar %x = %i", &bar, bar);
+	assert(bar = 54);
 	bar = 25;
-	klog("-> %i == 25", bar);
+	assert(bar = 25);
 
-	klog("library: bee from local");
-	klog("bee %x = %i", &bee, bee);
+	assert(bee == 31);
 	bee = 13;
-	klog("-> %i == 13", bee);
+	assert(bee == 13);
 
-	klog("throwing exception...");
-	throw 20;
+	assert(libctortest.x == 12);
+
+	g_log("throw");
+	throw x * 2;
 }
