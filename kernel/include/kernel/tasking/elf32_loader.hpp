@@ -72,6 +72,7 @@ struct g_elf_object {
 
 	/* Only relevant for an executable object */
 	g_hashmap<const char*, g_elf_symbol_info>* symbols;
+	g_hashmap<const char*, g_elf_symbol_info>* globDatSymbols;
 	g_hashmap<const char*, g_elf_object*>* loadedObjects;
 	uint16_t nextObjectId;
 	uint32_t tlsMasterTotalSize;
@@ -161,6 +162,12 @@ g_virtual_address elf32LoadDependencies(g_task* caller, g_elf_object* parentObje
  * Loads a load segment to memory, must be called while within the target process address space.
  */
 g_spawn_status elf32LoadLoadSegment(g_task* caller, g_fd fd, elf32_phdr* phdr, g_virtual_address baseAddress, g_elf_object* object);
+
+/**
+ * For executables, copy relocations must be processed to find GLOB_DAT symbols
+ * before other relocations.
+ */
+void elf32PrepareGlobDatSymbols(g_task* caller, g_fd file, g_elf_object* object);
 
 /**
  * Applies relocations on the given object.
