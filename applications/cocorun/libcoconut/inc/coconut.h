@@ -1,6 +1,6 @@
 #ifndef __COCONUT__
 #define __COCONUT__
 
-void coconutThrow();
+void coconutThrow(int x);
 
 #endif

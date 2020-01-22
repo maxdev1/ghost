@@ -21,41 +21,51 @@
 #include <ghost.h>
 #include <stdio.h>
 #include <errno.h>
-#include "../libcoconut/inc/coconut.h"
+#include <assert.h>
 
-__thread int foo = 5;
+#include "../libcoconut/inc/coconut.h"
 
 class GlobCtorTest {
 public:
 	int x = 5;
 	GlobCtorTest() {
-		klog("global constructor called");
+		assert(x == 5);
 		x = 12;
 	}
 };
 
-GlobCtorTest test;
+GlobCtorTest ctortest;
 
-/**
- *
- */
+int cctor = 0;
+__attribute__ ((constructor)) void globCCtor(void)
+{
+	cctor = 1;
+}
+
+__thread int foo = 5;
+
 int main(int argc, char** argv)
 {
-	klog("executable: foo from local");
-	klog("foo %x = %i == 5?", &foo, foo);
+	g_log("Starting global ctor tests...");
+
+	assert(foo == 5);
 	foo = 6;
-	klog("-> %i == 6?", foo);
+	assert(foo == 6);
 
-	klog("executable: errno from libc.so");
-	klog("errno %x = %i == undef", &errno, errno);
+	assert(errno == 0);
 	errno = 123;
-	klog("-> %i == 123?", errno);
+	assert(errno == 123);
 
-	klog("global ctor called: %i", test.x == 12);
+	assert(ctortest.x == 12);
 
 	try {
-		coconutThrow();
+		coconutThrow(25);
 	} catch(int x) {
-		klog("exceptions work: %i", x);
+		g_log("catch");
+		assert(x == 50);
 	}
+
+	assert(errno == 321);
+
+	g_log("All assertions finished successfully!");
 }
