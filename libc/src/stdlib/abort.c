@@ -26,8 +26,7 @@
  */
 void abort() {
 
-	// TODO signal
+	#warning TODO send a SIGABRT
+	g_log("program aborted");
 	g_exit(-1);
-	for (;;)
-		;
 }
