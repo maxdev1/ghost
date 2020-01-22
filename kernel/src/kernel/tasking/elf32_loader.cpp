@@ -428,7 +428,9 @@ void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 				
 				auto entry = hashmapGetEntry<const char*, g_elf_symbol_info>(executableObject->symbols, symbolName);
 				if(entry == 0) {
-					logInfo("%!     missing symbol '%s' (%h, type %i)", "elf", symbolName, cP, type);
+					if(ELF32_ST_BIND(symbol->st_info) != STB_WEAK) {
+						logInfo("%!     missing symbol '%s' (%h, bind: %i)", "elf", symbolName, cP, ELF32_ST_BIND(symbol->st_info));
+					}
 					cS = 0;
 				}
 				else {
