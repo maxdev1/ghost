@@ -62,7 +62,7 @@ void loggerPrintFormatted(const char *message_const, va_list valist)
 			int32_t val = va_arg(valist, int32_t);
 			loggerPrintNumber(val, 10);
 
-		} else if(*message == 'h')
+		} else if(*message == 'h' || *message == 'x')
 		{ // positive hex number
 			uint32_t val = va_arg(valist, uint32_t);
 			loggerPrintPlain("0x");
