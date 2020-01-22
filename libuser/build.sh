@@ -91,9 +91,6 @@ target_install() {
 	echo "installing artifacts"
 	cp $ARTIFACT_LOCAL $ARTIFACT_TARGET
 	cp $ARTIFACT_LOCAL_SHARED $ARTIFACT_TARGET_SHARED
-	
-	# c'mon
-	sudo chmod -R 777 $SYSROOT
 }
 
 

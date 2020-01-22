@@ -26,6 +26,7 @@ libuser/libghostuser.so
 
 applications/**/*.bin
 applications/**/obj/*.o
+applications/**/*.a
 applications/**/*.so
 applications/**/obj-*
 
