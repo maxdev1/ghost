@@ -22,7 +22,6 @@ LibGlobCtorTest libctortest;
 int libcctor = 12;
 __attribute__ ((constructor)) void libGlobCCtor(void)
 {
-	assert(libcctor == 12);
 	libcctor = 43;
 }
 

@@ -175,12 +175,13 @@ g_spawn_status elf32LoadObject(g_task* caller, g_elf_object* parentObject, const
 	object->parent = parentObject;
 	object->baseAddress = baseAddress;
 	object->executable = (parentObject == 0);
+	object->localSymbols = hashmapCreateString<g_elf_symbol_info>(16);
 	if(object->executable)
 	{
 		object->loadedObjects = hashmapCreateString<g_elf_object*>(16);
-		object->symbols = hashmapCreateString<g_elf_symbol_info>(16);
-		object->globDatSymbols = hashmapCreateString<g_elf_symbol_info>(16);
+		object->globalSymbols = hashmapCreateString<g_elf_symbol_info>(16);
 		object->nextObjectId = 0;
+		object->relocateOrderFirst = 0;
 	}
 	*outObject = object;
 
@@ -192,6 +193,10 @@ g_spawn_status elf32LoadObject(g_task* caller, g_elf_object* parentObject, const
 	}
 	object->id = executableObject->nextObjectId++;
 	hashmapPut<const char*, g_elf_object*>(executableObject->loadedObjects, name, object);
+
+	/* Put in relocate order list */
+	object->relocateOrderNext = executableObject->relocateOrderFirst;
+	executableObject->relocateOrderFirst = object;
 	
 	logDebug("%! loading object '%s' (%i) to %h", "elf", name, object->id, baseAddress);
 
@@ -250,10 +255,6 @@ g_spawn_status elf32LoadObject(g_task* caller, g_elf_object* parentObject, const
 	/* Do analyzation and linking */
 	if(status == G_SPAWN_STATUS_SUCCESSFUL) {
 		elf32InspectObject(object);
-		if(object->executable)
-		{
-			elf32PrepareGlobDatSymbols(caller, file, object);
-		}
 		*outNextBase = elf32LoadDependencies(caller, object, rangeAllocator);
 		elf32ApplyRelocations(caller, file, object);
 	}
@@ -353,7 +354,7 @@ void elf32InspectObject(g_elf_object* object) {
 			it++;
 		}
 
-		/* Put symbols into executables dynamic symbol table */
+		/* Put symbols into executables dynamic symbol table. This happens in load order. */
 		if(object->dynamicSymbolTable) {
 			g_elf_object* executableObject = object;
 			while(executableObject->parent)
@@ -366,13 +367,18 @@ void elf32InspectObject(g_elf_object* object) {
 			while(pos < object->dynamicSymbolTableSize)
 			{
 				const char* symbol = (const char*) (object->dynamicStringTable + it->st_name);
-				if(it->st_shndx && hashmapGetEntry<const char*, g_elf_symbol_info>(executableObject->symbols, symbol) == 0)
+				if(it->st_shndx)
 				{
 					g_elf_symbol_info symbolInfo;
 					symbolInfo.object = object;
 					symbolInfo.absolute = object->baseAddress + it->st_value;
 					symbolInfo.value = it->st_value;
-					hashmapPut<const char*, g_elf_symbol_info>(executableObject->symbols, symbol, symbolInfo);
+					hashmapPut<const char*, g_elf_symbol_info>(object->localSymbols, symbol, symbolInfo);
+
+					if(hashmapGetEntry<const char*, g_elf_symbol_info>(executableObject->globalSymbols, symbol) == 0)
+					{
+						hashmapPut<const char*, g_elf_symbol_info>(executableObject->globalSymbols, symbol, symbolInfo);
+					}
 				}
 
 				it++;
@@ -473,42 +479,6 @@ g_spawn_status elf32LoadLoadSegment(g_task* caller, g_fd file, elf32_phdr* phdr,
 	return G_SPAWN_STATUS_SUCCESSFUL;
 }
 
-void elf32PrepareGlobDatSymbols(g_task* caller, g_fd file, g_elf_object* object)
-{
-	for(uint32_t p = 0; p < object->header.e_shnum * object->header.e_shentsize; p += object->header.e_shentsize) {
-		
-		elf32_shdr sectionHeader;
-		if(!elf32ReadToMemory(caller, file, object->header.e_shoff + p, (uint8_t*) &sectionHeader, object->header.e_shentsize)) {
-			logInfo("%! failed to read section header from file", "elf");
-			break;
-		}
-
-		if(sectionHeader.sh_type != SHT_REL) {
-			continue;
-		}
-
-		elf32_rel* entry = (elf32_rel*) (object->baseAddress + sectionHeader.sh_addr);
-		while(entry < (elf32_rel*) (object->baseAddress + sectionHeader.sh_addr + sectionHeader.sh_size)) {
-			uint32_t symbolIndex = ELF32_R_SYM(entry->r_info);
-			uint8_t type = ELF32_R_TYPE(entry->r_info);
-
-			if(type == R_386_COPY)
-			{
-				elf32_sym* symbol = &object->dynamicSymbolTable[symbolIndex];
-				const char* symbolName = &object->dynamicStringTable[symbol->st_name];
-				g_elf_symbol_info symbolInfo;
-				symbolInfo.absolute = entry->r_offset;
-				symbolInfo.value = entry->r_offset;
-				symbolInfo.object = object;
-				hashmapPut(object->globDatSymbols, symbolName, symbolInfo);
-			}
-
-			entry++;
-		}
-	}
-
-}
-
 void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 {
 	logDebug("%!   applying relocations for '%s'", "elf", object->name);
@@ -542,22 +512,44 @@ void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 			g_elf_symbol_info symbolInfo;
 
 			if (type == R_386_32 || type == R_386_PC32 || type == R_386_GLOB_DAT || type == R_386_JMP_SLOT || type == R_386_GOTOFF ||
-				type == R_386_COPY || type == R_386_TLS_TPOFF || type == R_386_TLS_DTPMOD32 || type == R_386_TLS_DTPOFF32)
+				type == R_386_TLS_TPOFF || type == R_386_TLS_DTPMOD32 || type == R_386_TLS_DTPOFF32 || type == R_386_COPY)
 			{
 				elf32_sym* symbol = &object->dynamicSymbolTable[symbolIndex];
 				symbolName = &object->dynamicStringTable[symbol->st_name];
 				symbolSize = symbol->st_size;
-				
-				auto entry = hashmapGetEntry<const char*, g_elf_symbol_info>(executableObject->symbols, symbolName);
-				if(entry == 0) {
+
+				/* Symbol lookup */
+				bool symbolFound = false;
+				if(type == R_386_COPY)
+				{
+					g_elf_object* relocateOrderNext = executableObject->relocateOrderFirst;
+					while(relocateOrderNext) {
+						auto entry = hashmapGetEntry<const char*, g_elf_symbol_info>(relocateOrderNext->localSymbols, symbolName);
+						if(entry)
+						{
+							symbolInfo = entry->value;
+							symbolFound = true;
+							break;
+						}
+						relocateOrderNext = relocateOrderNext->relocateOrderNext;
+					}
+				} else
+				{
+					auto entry = hashmapGetEntry<const char*, g_elf_symbol_info>(executableObject->globalSymbols, symbolName);
+					if(entry) {
+						symbolFound = true;
+						symbolInfo = entry->value;
+					}
+				}
+
+				if(symbolFound) {
+					cS = symbolInfo.absolute;
+				}
+				else {
 					if(ELF32_ST_BIND(symbol->st_info) != STB_WEAK) {
 						logInfo("%!     missing symbol '%s' (%h, bind: %i)", "elf", symbolName, cP, ELF32_ST_BIND(symbol->st_info));
 					}
 					cS = 0;
-				}
-				else {
-					symbolInfo = entry->value;
-					cS = symbolInfo.absolute;
 				}
 			}
 
@@ -576,20 +568,13 @@ void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 				if(cS)
 				{
 					memoryCopy((void*) cP, (void*) cS, symbolSize);
+					// logInfo("Copy %i from %x to %x (%s)", symbolSize, cS, cP, symbolName);
 				}
 
 			} else if(type == R_386_GLOB_DAT)
 			{
-				/* Use symbol from glob-dat symbol table if exists */
-				if(symbolName)
-				{
-					auto globDatSymbol = hashmapGetEntry(executableObject->globDatSymbols, symbolName);
-					if(globDatSymbol)
-					{
-						cS = globDatSymbol->value.value;
-					}
-				}
 				*((uint32_t*) cP) = cS;
+				// logInfo("Set glob dat %x to %x (%s)", cP, cS, symbolName);
 				
 			} else if(type == R_386_JMP_SLOT)
 			{
