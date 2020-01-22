@@ -26,7 +26,7 @@
 
 #define MAXIMUM_LOAD_PAGES_AT_ONCE 0x10
 
-#define ELF_LOADER_LOG_INFO 1
+#define ELF_LOADER_LOG_INFO 0
 #if ELF_LOADER_LOG_INFO
 #undef logDebug
 #undef logDebugn
@@ -41,10 +41,11 @@ g_spawn_status elf32LoadExecutable(g_task* caller, g_fd fd, g_security_level sec
 	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(targetProcess->pageDirectory);
 
 	g_elf_object* executableObject;
-	g_virtual_address executableEnd;
+	g_virtual_address executableImageEnd;
 	g_spawn_validation_details validationDetails;
-	g_spawn_status spawnStatus = elf32LoadObject(caller, 0, "main", fd, 0, targetProcess->virtualRangePool, &executableEnd, &executableObject, &validationDetails);
+	g_spawn_status spawnStatus = elf32LoadObject(caller, 0, "main", fd, 0, targetProcess->virtualRangePool, &executableImageEnd, &executableObject, &validationDetails);
 	elf32TlsCreateMasterImage(caller, fd, targetProcess, executableObject);
+	executableImageEnd = elf32CreateUserProcessInfo(targetProcess, executableObject, executableImageEnd);
 
 	taskingTemporarySwitchBack(returnDirectory);
 
@@ -58,7 +59,7 @@ g_spawn_status elf32LoadExecutable(g_task* caller, g_fd fd, g_security_level sec
 
 	/* Update process */	
 	targetProcess->image.start = executableObject->startAddress;
-	targetProcess->image.end = executableEnd;
+	targetProcess->image.end = executableImageEnd;
 	logDebug("%! process loaded to %h - %h", "elf", targetProcess->image.start, targetProcess->image.end);
 
 	/* Create main thread */
@@ -72,6 +73,70 @@ g_spawn_status elf32LoadExecutable(g_task* caller, g_fd fd, g_security_level sec
 
 	*outTask = thread;
 	return G_SPAWN_STATUS_SUCCESSFUL;
+}
+
+g_virtual_address elf32CreateUserProcessInfo(g_process* process, g_elf_object* executableObject, g_virtual_address executableImageEnd)
+{
+	/* Calculate required space */
+	int objectCount = 0;
+	uint32_t stringTableSize = 0;
+
+	auto it = hashmapIteratorStart(executableObject->loadedObjects);
+	while(hashmapIteratorHasNext(&it))
+	{
+		auto object = hashmapIteratorNext(&it)->value;
+		stringTableSize += stringLength(object->name) + 1;
+		objectCount++;
+	}
+	hashmapIteratorEnd(&it);
+	uint32_t totalRequired = sizeof(g_process_info) + sizeof(g_object_info) * objectCount + stringTableSize;
+
+	/* Preserve memory after executable */
+	uint32_t areaStart = executableImageEnd;
+	uint32_t pages = G_PAGE_ALIGN_UP(totalRequired) / G_PAGE_SIZE;
+	for(uint32_t i = 0; i < pages; i++)
+	{
+		g_physical_address page = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+		pageReferenceTrackerIncrement(page);
+		pagingMapPage(areaStart + i * G_PAGE_SIZE, page, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+	}
+
+	/* Fill with data */
+	g_process_info* info = (g_process_info*) areaStart;
+	g_object_info* objectInfo = (g_object_info*) (areaStart + sizeof(g_process_info));
+	char* stringTable = (char*) ((g_virtual_address) objectInfo + (sizeof(g_object_info) * objectCount));
+
+	memorySetBytes((void*) info, 0, sizeof(g_process_info));
+	info->objectInfosSize = objectCount;
+	info->objectInfos = objectInfo;
+
+	it = hashmapIteratorStart(executableObject->loadedObjects);
+	while(hashmapIteratorHasNext(&it))
+	{
+		g_elf_object* object = hashmapIteratorNext(&it)->value;
+
+		memorySetBytes((void*) objectInfo, 0, sizeof(g_object_info));
+
+		objectInfo->name = stringTable;
+		stringCopy(stringTable, object->name);
+		stringTable += stringLength(object->name) + 1;
+
+		objectInfo->preinitArray = object->preinitArray;
+		objectInfo->preinitArraySize = object->preinitArraySize;
+		objectInfo->init = object->init;
+		objectInfo->initArray = object->initArray;
+		objectInfo->initArraySize = object->initArraySize;
+		objectInfo->fini = object->fini;
+		objectInfo->finiArray = object->finiArray;
+		objectInfo->finiArraySize = object->finiArraySize;
+
+		objectInfo++;
+	}
+	hashmapIteratorEnd(&it);
+
+	process->userProcessInfo = info;
+
+	return executableImageEnd + G_PAGE_ALIGN_UP(totalRequired);
 }
 
 g_spawn_status elf32LoadLibrary(g_task* caller, g_elf_object* parentObject, const char* name, g_virtual_address baseAddress,
@@ -248,6 +313,24 @@ void elf32InspectObject(g_elf_object* object) {
 				case DT_FINI:
 					object->fini = (void(*)()) (object->baseAddress + it->d_un.d_ptr);
 					break;
+				case DT_PREINIT_ARRAY:
+					object->preinitArray = (void(**)()) (object->baseAddress + it->d_un.d_ptr);
+					break;
+				case DT_PREINIT_ARRAYSZ:
+					object->preinitArraySize = it->d_un.d_val / sizeof(uintptr_t);
+					break;
+				case DT_INIT_ARRAY:
+					object->initArray = (void(**)()) (object->baseAddress + it->d_un.d_ptr);
+					break;
+				case DT_INIT_ARRAYSZ:
+					object->initArraySize = it->d_un.d_val / sizeof(uintptr_t);
+					break;
+				case DT_FINI_ARRAY:
+					object->finiArray = (void(**)()) (object->baseAddress + it->d_un.d_ptr);
+					break;
+				case DT_FINI_ARRAYSZ:
+					object->finiArraySize = it->d_un.d_val / sizeof(uintptr_t);
+					break;
 			}
 			it++;
 		}
@@ -285,7 +368,6 @@ void elf32InspectObject(g_elf_object* object) {
 					symbolInfo.absolute = object->baseAddress + it->st_value;
 					symbolInfo.value = it->st_value;
 					hashmapPut<const char*, g_elf_symbol_info>(executableObject->symbols, symbol, symbolInfo);
-					// logDebug("%#     found symbol: %s, %h", symbol, object->baseAddress + it->st_value);
 				}
 
 				it++;

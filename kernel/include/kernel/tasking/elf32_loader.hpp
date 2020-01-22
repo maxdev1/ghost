@@ -79,7 +79,7 @@ struct g_elf_object {
 
 	/* In-address-space memory pointers */
 	elf32_dyn* dynamicSection;
-	char* dynamicStringTable;
+	const char* dynamicStringTable;
 	elf32_word dynamicStringTableSize;
 	elf32_sym* dynamicSymbolTable;
 	elf32_word dynamicSymbolTableSize;
@@ -87,6 +87,12 @@ struct g_elf_object {
 
 	void (*init)();
 	void (*fini)();
+	void (**preinitArray)(void);
+	void (**initArray)(void);
+	void (**finiArray)(void);
+	uint16_t preinitArraySize;
+	uint16_t initArraySize;
+	uint16_t finiArraySize;
 };
 
 /**
@@ -122,6 +128,17 @@ g_spawn_status elf32LoadExecutable(g_task* caller, g_fd file, g_security_level s
 g_spawn_status elf32LoadLibrary(g_task* caller, g_elf_object* parentObject, const char* name,
 	g_virtual_address baseAddress, g_address_range_pool* rangeAllocator,
 	g_virtual_address* outNextBase, g_elf_object** outObject);
+
+/**
+ * Creates an area in the user memory that contains information about the process which can
+ * be accessed from the executable code.
+ * 
+ * @param process
+ * 		process
+ * @param executableObject
+ * 		executable elf object
+ */
+g_virtual_address elf32CreateUserProcessInfo(g_process* process, g_elf_object* executableObject, g_virtual_address executableImageEnd);
 
 /**
  * Loads an object to the current address space.
