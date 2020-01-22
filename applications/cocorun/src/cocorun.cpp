@@ -39,6 +39,7 @@ GlobCtorTest ctortest;
 int cctor = 0;
 __attribute__ ((constructor)) void globCCtor(void)
 {
+	assert(cctor == 0);
 	cctor = 1;
 }
 
@@ -46,7 +47,10 @@ __thread int foo = 5;
 
 int main(int argc, char** argv)
 {
-	g_log("Starting global ctor tests...");
+	g_log("Starting initialization tests...");
+
+	assert(cctor == 1);
+	assert(ctortest.x == 12);
 
 	assert(foo == 5);
 	foo = 6;
@@ -55,8 +59,6 @@ int main(int argc, char** argv)
 	assert(errno == 0);
 	errno = 123;
 	assert(errno == 123);
-
-	assert(ctortest.x == 12);
 
 	try {
 		coconutThrow(25);

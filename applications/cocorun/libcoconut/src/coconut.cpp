@@ -29,6 +29,7 @@ __attribute__ ((constructor)) void libGlobCCtor(void)
 void coconutThrow(int x)
 {
 	assert(libcctor == 43);
+	assert(libctortest.x == 12);
 
 	assert(errno == 123);
 	errno = 321;
@@ -41,8 +42,6 @@ void coconutThrow(int x)
 	assert(bee == 31);
 	bee = 13;
 	assert(bee == 13);
-
-	assert(libctortest.x == 12);
 
 	g_log("throw");
 	throw x * 2;
