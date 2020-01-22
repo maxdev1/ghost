@@ -26,7 +26,7 @@
 
 #define MAXIMUM_LOAD_PAGES_AT_ONCE 0x10
 
-#define ELF_LOADER_LOG_INFO 0
+#define ELF_LOADER_LOG_INFO 1
 #if ELF_LOADER_LOG_INFO
 #undef logDebug
 #undef logDebugn
@@ -177,8 +177,9 @@ g_spawn_status elf32LoadObject(g_task* caller, g_elf_object* parentObject, const
 	object->executable = (parentObject == 0);
 	if(object->executable)
 	{
-		object->loadedObjects = hashmapCreateString<g_elf_object*>(128);
-		object->symbols = hashmapCreateString<g_elf_symbol_info>(128);
+		object->loadedObjects = hashmapCreateString<g_elf_object*>(16);
+		object->symbols = hashmapCreateString<g_elf_symbol_info>(16);
+		object->globDatSymbols = hashmapCreateString<g_elf_symbol_info>(16);
 		object->nextObjectId = 0;
 	}
 	*outObject = object;
@@ -249,6 +250,10 @@ g_spawn_status elf32LoadObject(g_task* caller, g_elf_object* parentObject, const
 	/* Do analyzation and linking */
 	if(status == G_SPAWN_STATUS_SUCCESSFUL) {
 		elf32InspectObject(object);
+		if(object->executable)
+		{
+			elf32PrepareGlobDatSymbols(caller, file, object);
+		}
 		*outNextBase = elf32LoadDependencies(caller, object, rangeAllocator);
 		elf32ApplyRelocations(caller, file, object);
 	}
@@ -468,6 +473,42 @@ g_spawn_status elf32LoadLoadSegment(g_task* caller, g_fd file, elf32_phdr* phdr,
 	return G_SPAWN_STATUS_SUCCESSFUL;
 }
 
+void elf32PrepareGlobDatSymbols(g_task* caller, g_fd file, g_elf_object* object)
+{
+	for(uint32_t p = 0; p < object->header.e_shnum * object->header.e_shentsize; p += object->header.e_shentsize) {
+		
+		elf32_shdr sectionHeader;
+		if(!elf32ReadToMemory(caller, file, object->header.e_shoff + p, (uint8_t*) &sectionHeader, object->header.e_shentsize)) {
+			logInfo("%! failed to read section header from file", "elf");
+			break;
+		}
+
+		if(sectionHeader.sh_type != SHT_REL) {
+			continue;
+		}
+
+		elf32_rel* entry = (elf32_rel*) (object->baseAddress + sectionHeader.sh_addr);
+		while(entry < (elf32_rel*) (object->baseAddress + sectionHeader.sh_addr + sectionHeader.sh_size)) {
+			uint32_t symbolIndex = ELF32_R_SYM(entry->r_info);
+			uint8_t type = ELF32_R_TYPE(entry->r_info);
+
+			if(type == R_386_COPY)
+			{
+				elf32_sym* symbol = &object->dynamicSymbolTable[symbolIndex];
+				const char* symbolName = &object->dynamicStringTable[symbol->st_name];
+				g_elf_symbol_info symbolInfo;
+				symbolInfo.absolute = entry->r_offset;
+				symbolInfo.value = entry->r_offset;
+				symbolInfo.object = object;
+				hashmapPut(object->globDatSymbols, symbolName, symbolInfo);
+			}
+
+			entry++;
+		}
+	}
+
+}
+
 void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 {
 	logDebug("%!   applying relocations for '%s'", "elf", object->name);
@@ -484,7 +525,6 @@ void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 			break;
 		}
 
-		// TODO only resolve relocations in PLT if LD_BIND_NOW is set
 		if(sectionHeader.sh_type != SHT_REL) {
 			continue;
 		}
@@ -498,7 +538,7 @@ void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 			g_virtual_address cP = object->baseAddress + entry->r_offset;
 
 			elf32_word symbolSize;
-			const char* symbolName;
+			const char* symbolName = 0;
 			g_elf_symbol_info symbolInfo;
 
 			if (type == R_386_32 || type == R_386_PC32 || type == R_386_GLOB_DAT || type == R_386_JMP_SLOT || type == R_386_GOTOFF ||
@@ -538,7 +578,20 @@ void elf32ApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 					memoryCopy((void*) cP, (void*) cS, symbolSize);
 				}
 
-			} else if(type == R_386_JMP_SLOT || type == R_386_GLOB_DAT)
+			} else if(type == R_386_GLOB_DAT)
+			{
+				/* Use symbol from glob-dat symbol table if exists */
+				if(symbolName)
+				{
+					auto globDatSymbol = hashmapGetEntry(executableObject->globDatSymbols, symbolName);
+					if(globDatSymbol)
+					{
+						cS = globDatSymbol->value.value;
+					}
+				}
+				*((uint32_t*) cP) = cS;
+				
+			} else if(type == R_386_JMP_SLOT)
 			{
 				*((uint32_t*) cP) = cS;
 
