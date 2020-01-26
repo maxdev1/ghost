@@ -6,7 +6,7 @@ fi
 
 # Define globals
 GCC_ARCHIVE=https://ftp.gnu.org/gnu/gcc/gcc-8.2.0/gcc-8.2.0.tar.gz
-GCC_PATCH=patches/toolchain/gcc-8.2.0-ghost-1.1.patch
+GCC_PATCH=patches/toolchain/gcc-8.2.0-ghost-1.2.patch
 GCC_UNPACKED=gcc-8.2.0
 
 BINUTILS_ARCHIVE=https://ftp.gnu.org/gnu/binutils/binutils-2.31.1.tar.gz
@@ -257,6 +257,10 @@ if [ $STEP_BUILD_GCC == 1 ]; then
 	make install-target-libgcc			>>ghost-build.log 2>&1
 	failOnError
 	popd
+
+	echo "    Copying artifacts to system/lib"
+	cp "$TOOLCHAIN_BASE/i686-ghost/lib/libgcc_s.so.1" "$SYSROOT/system/lib/libgcc_s.so.1"
+	failOnError
 
 else
 	echo "Skipping build of GCC"

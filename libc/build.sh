@@ -25,7 +25,7 @@ with ARTIFACT_TARGET_SHARED	"$SYSROOT_SYSTEM_LIB/$ARTIFACT_NAME_SHARED"
 
 with CFLAGS					"-std=c11 -fpic -I$INC -I$INC_API -I$INC_KERNEL -I$SRC/musl -Wno-narrowing"
 with CCFLAGS				"-std=c11 -fpic -I$INC -I$INC_API -I$INC_KERNEL"
-with LDFLAGS				"-shared"
+with LDFLAGS				"-shared -shared-libgcc"
 
 with CRT_SRC				"crt"
 with CRT_OBJ				"crtobj"

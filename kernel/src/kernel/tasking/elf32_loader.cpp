@@ -733,7 +733,7 @@ g_fd elf32OpenLibrary(g_task* caller, const char* name)
 
 	g_fs_open_status findStatus = filesystemFind(0, absolutePath, &file, &foundAllButLast, &lastFoundParent, &filenameStart);
 	if(findStatus != G_FS_OPEN_SUCCESSFUL) {
-		logInfo("%! unable to resolve dependency %s", "elf", name);
+		logInfo("%! unable to resolve dependency %s (status %i)", "elf", absolutePath, findStatus);
 		heapFree(absolutePath);
 		return -1;
 	}
