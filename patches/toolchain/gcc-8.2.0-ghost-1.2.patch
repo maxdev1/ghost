@@ -1,0 +1,124 @@
+diff -Nur gcc-8.2.0/config.sub gcc-8.2.0-ghost/config.sub
+--- gcc-8.2.0/config.sub	2020-01-27 12:06:07.690110700 +0100
++++ gcc-8.2.0-ghost/config.sub	2020-01-27 12:06:39.578344900 +0100
+@@ -1393,7 +1393,7 @@
+ 	-gnu* | -bsd* | -mach* | -minix* | -genix* | -ultrix* | -irix* \
+ 	      | -*vms* | -sco* | -esix* | -isc* | -aix* | -cnk* | -sunos | -sunos[34]*\
+ 	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
+-	      | -sym* | -kopensolaris* | -plan9* \
++	      | -sym* | -kopensolaris* | -plan9* | -ghost* \
+ 	      | -amigaos* | -amigados* | -msdos* | -newsos* | -unicos* | -aof* \
+ 	      | -aos* | -aros* | -cloudabi* | -sortix* \
+ 	      | -nindy* | -vxsim* | -vxworks* | -ebmon* | -hms* | -mvs* \
+diff -Nur gcc-8.2.0/fixincludes/mkfixinc.sh gcc-8.2.0-ghost/fixincludes/mkfixinc.sh
+--- gcc-8.2.0/fixincludes/mkfixinc.sh	2020-01-27 12:05:02.259529400 +0100
++++ gcc-8.2.0-ghost/fixincludes/mkfixinc.sh	2020-01-27 12:06:39.580351300 +0100
+@@ -14,6 +14,7 @@
+     i?86-*-cygwin* | \
+     i?86-*-mingw32* | \
+     x86_64-*-mingw32* | \
++    i?86-ghost* | \
+     powerpc-*-eabisim* | \
+     powerpc-*-eabi*    | \
+     powerpc-*-rtems*   | \
+diff -Nur gcc-8.2.0/gcc/config/ghost.h gcc-8.2.0-ghost/gcc/config/ghost.h
+--- gcc-8.2.0/gcc/config/ghost.h	1970-01-01 01:00:00.000000000 +0100
++++ gcc-8.2.0-ghost/gcc/config/ghost.h	2020-01-27 12:06:39.582857700 +0100
+@@ -0,0 +1,36 @@
++// built-in defines
++#undef TARGET_OS_CPP_BUILTINS
++#define TARGET_OS_CPP_BUILTINS()		\
++do {									\
++	builtin_define_std ("_GHOST_");		\
++	builtin_define_std ("unix");		\
++	builtin_assert ("system=ghost");	\
++	builtin_assert ("system=unix");		\
++} while(0);
++
++// for Ghost-specific changes on GCC
++#undef	TARGET_GHOST
++#define	TARGET_GHOST 1
++
++// don't automatically add extern "C" { } around header files
++#undef	NO_IMPLICIT_EXTERN_C
++#define	NO_IMPLICIT_EXTERN_C 1
++
++// required for dynamic linking
++#undef LINK_SPEC
++#define LINK_SPEC "%{shared:-shared} %{static:-static} %{!shared: %{!static: %{rdynamic:-export-dynamic}}}"
++
++// define the default library specifications
++#undef	LIB_SPEC
++#define	LIB_SPEC "--start-group -lghostapi -lm -lc --end-group"
++
++// start and end files
++#undef	STARTFILE_SPEC
++#define	STARTFILE_SPEC "crt0.o%s crti.o%s crtbegin.o%s"
++
++#undef  ENDFILE_SPEC
++#define ENDFILE_SPEC "crtend.o%s crtn.o%s"
++
++// modify location of the start files
++#undef	STANDARD_STARTFILE_PREFIX
++#define	STANDARD_STARTFILE_PREFIX "/system/lib/"
+diff -Nur gcc-8.2.0/gcc/config.gcc gcc-8.2.0-ghost/gcc/config.gcc
+--- gcc-8.2.0/gcc/config.gcc	2020-01-27 12:05:21.249956800 +0100
++++ gcc-8.2.0-ghost/gcc/config.gcc	2020-01-27 12:07:23.357987100 +0100
+@@ -744,6 +744,15 @@
+   esac
+   use_gcc_stdint=wrap
+   ;;
++*-*-ghost*)
++  extra_parts="crtbegin.o crtend.o"
++  gas=yes
++  gnu_ld=yes
++  default_use_cxa_atexit=yes
++  use_gcc_stdint=none
++  native_system_header_dir=/system/include
++  tmake_file="t-slibgcc"
++  ;;
+ *-*-fuchsia*)
+   native_system_header_dir=/include
+   ;;
+@@ -1305,6 +1314,10 @@
+ 	tm_file="dbxelf.h elfos.h newlib-stdint.h ${tm_file}"
+ 	tmake_file="${tmake_file} ft32/t-ft32"
+ 	;;
++i[34567]86-*-ghost*)
++	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h i386/i386elf.h ghost.h glibc-stdint.h"
++	tmake_file="t-slibgcc"
++	;;
+ moxie-*-elf)
+ 	gas=yes
+ 	gnu_ld=yes
+diff -Nur gcc-8.2.0/libgcc/config.host gcc-8.2.0-ghost/libgcc/config.host
+--- gcc-8.2.0/libgcc/config.host	2020-01-27 12:05:03.551102300 +0100
++++ gcc-8.2.0-ghost/libgcc/config.host	2020-01-27 12:06:39.590378400 +0100
+@@ -529,6 +529,10 @@
+ 	tmake_file="ft32/t-ft32 t-softfp-sfdf t-softfp-excl t-softfp"
+ 	extra_parts="$extra_parts crti.o crti-hw.o crtn.o"
+ 	;;
++i[34567]86-*-ghost*)
++	extra_parts="$extra_parts crtbegin.o crtend.o"
++	tmake_file="$tmake_file i386/t-crtstuff t-crtstuff-pic t-libgcc-pic t-slibgcc t-slibgcc-gld t-slibgcc-elf-ver"
++	;;
+ h8300-*-elf*)
+ 	tmake_file="$tmake_file h8300/t-h8300 t-fpbit"
+ 	tm_file="$tm_file h8300/h8300-lib.h"
+diff -Nur gcc-8.2.0/libstdc++-v3/crossconfig.m4 gcc-8.2.0-ghost/libstdc++-v3/crossconfig.m4
+--- gcc-8.2.0/libstdc++-v3/crossconfig.m4	2020-01-27 12:05:18.023608900 +0100
++++ gcc-8.2.0-ghost/libstdc++-v3/crossconfig.m4	2020-01-27 12:06:39.592884400 +0100
+@@ -62,6 +62,13 @@
+     AM_ICONV
+     ;;
+ 
++  *-ghost*)
++    GLIBCXX_CHECK_COMPILER_FEATURES
++    GLIBCXX_CHECK_LINKER_FEATURES
++    GLIBCXX_CHECK_MATH_SUPPORT
++    GLIBCXX_CHECK_STDLIB_SUPPORT
++    ;;
++
+   *-aix*)
+     GLIBCXX_CHECK_LINKER_FEATURES
+     GLIBCXX_CHECK_MATH_SUPPORT

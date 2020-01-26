@@ -20,7 +20,7 @@ with ARTIFACT_LOCAL_SHARED	"$ARTIFACT_NAME_SHARED"
 with ARTIFACT_TARGET_SHARED	"$SYSROOT_SYSTEM_LIB/$ARTIFACT_NAME_SHARED"
 
 with CFLAGS					"-std=c++11 -fpic -I$INC -I$SRC"
-with LDFLAGS				"-shared"
+with LDFLAGS				"-shared -shared-libgcc"
 
 
 echo "target: $TARGET"
