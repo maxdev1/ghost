@@ -24,7 +24,6 @@
 #include "kernel/tasking/wait.hpp"
 #include "kernel/system/interrupts/requests.hpp"
 #include "kernel/memory/memory.hpp"
-#include "kernel/tasking/elf32_loader.hpp"
 
 #include "shared/logger/logger.hpp"
 
@@ -156,14 +155,12 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 	g_fs_open_status open = filesystemOpen(data->path, G_FILE_FLAG_MODE_READ, task, &fd);
 	if(open == G_FS_OPEN_SUCCESSFUL)
 	{
-		g_task* targetTask;
-		data->spawnStatus = elf32LoadExecutable(task, fd, G_SECURITY_LEVEL_APPLICATION, &targetTask, &data->validationDetails);
+		g_process* targetProcess;
+		data->spawnStatus = taskingSpawn(task, fd, G_SECURITY_LEVEL_APPLICATION, &targetProcess, &data->validationDetails);
 		if(data->spawnStatus == G_SPAWN_STATUS_SUCCESSFUL)
 		{
-			data->pid = targetTask->process->id;
-
-#warning TODO finish implementation
-			logInfo("%! task %i spawned task %i, pass arguments etc...", "syscall", task->id, targetTask->id);
+			data->pid = targetProcess->id;
+			#warning TODO finish implementation (pass arguments etc.)
 		}
 	} else
 	{
