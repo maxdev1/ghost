@@ -24,8 +24,9 @@
 #include "kernel/tasking/tasking_memory.hpp"
 #include "kernel/tasking/scheduler.hpp"
 #include "kernel/tasking/wait.hpp"
-#include "kernel/filesystem/filesystem_process.hpp"
+#include "kernel/tasking/elf/elf_loader.hpp"
 
+#include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/gdt.hpp"
@@ -709,4 +710,10 @@ void taskingInterruptTask(g_task* task, g_virtual_address entry, g_virtual_addre
 
 	taskingTemporarySwitchBack(returnDirectory);
 	mutexRelease(&task->process->lock);
+}
+
+g_spawn_status taskingSpawn(g_task* spawner, g_fd file, g_security_level securityLevel,
+	g_process** outProcess, g_spawn_validation_details* outValidationDetails)
+{
+	return elfLoadExecutable(spawner, file, securityLevel, outProcess, outValidationDetails);
 }

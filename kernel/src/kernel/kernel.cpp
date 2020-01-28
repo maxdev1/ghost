@@ -35,8 +35,6 @@
 #include "shared/video/pretty_boot.hpp"
 #include "shared/system/serial_port.hpp"
 
-#include "kernel/tasking/elf32_loader.hpp"
-
 static g_mutex bootstrapCoreLock;
 static g_mutex applicationCoreLock;
 
@@ -123,10 +121,10 @@ void kernelInitializationThread()
 	g_fs_open_status open = filesystemOpen("/applications/tester.bin", G_FILE_FLAG_MODE_READ, currentTask, &fd);
 	if(open == G_FS_OPEN_SUCCESSFUL)
 	{
-		g_task* testerTask;
-		g_spawn_status spawn = elf32LoadExecutable(currentTask, fd, G_SECURITY_LEVEL_APPLICATION, &testerTask);
+		g_process* outProcess;
+		g_spawn_status spawn = taskingSpawn(currentTask, fd, G_SECURITY_LEVEL_APPLICATION, &outProcess);
 		if(spawn == G_SPAWN_STATUS_SUCCESSFUL)
-			logInfo("%! test suite spawned successfully to task %i", "kernel", testerTask->id);
+			logInfo("%! test suite spawned successfully to task %i", "kernel", outProcess->id);
 		else
 			logInfo("%! failed to spawn tester binary with status %i", "kernel", spawn);
 	} else

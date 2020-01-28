@@ -416,4 +416,22 @@ g_raise_signal_status taskingRaiseSignal(g_task* task, int signal);
  */
 void taskingInterruptTask(g_task* task, g_virtual_address entry, g_virtual_address returnAddress, int argumentCount, ...);
 
+/**
+ * Spawns an executable. This calls the correct binary loader in the background and creates a new
+ * process, loading the executable object and necessary libraries and executing it.
+ * 
+ * @param spawner
+ * 		task calling the execution
+ * @param file
+ * 		executable file descriptor
+ * @param securityLevel
+ * 		security level of the created process
+ * @param outProcess
+ * 		out parameter for created process
+ * @param outValidationDetails
+ * 		out parameter for executable validation details
+ */
+g_spawn_status taskingSpawn(g_task* spawner, g_fd file, g_security_level securityLevel,
+	g_process** outProcess, g_spawn_validation_details* outValidationDetails = 0);
+
 #endif
