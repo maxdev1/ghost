@@ -30,9 +30,13 @@ int main(int argc, char** argv)
 
 	test_result_t result;
 	result += runStdioTest();
-	result += runMessageTest();
+	// result += runMessageTest();
 
 	klog("Test suite finished: %i successful, %i failed", result.successful, result.failed);
+
+	klog("Starting runtime tests");
+	g_spawn("/applications/runtimetest.bin", "", "", G_SECURITY_LEVEL_APPLICATION);
+	g_spawn("/applications/runtimetest-static.bin", "", "", G_SECURITY_LEVEL_APPLICATION);
 
 	g_sleep(3000);
 	klog("Test-suite is restarting itself...");

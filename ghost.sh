@@ -73,7 +73,7 @@ remove() {
 #
 failOnError() {
 	if [[ $? != 0 ]]; then
-		echo "Build failed"
+		printf "\e[31;1mtarget failed\e[0m\n\n"	
 		exit 1
 	fi	
 }
@@ -96,9 +96,23 @@ headline() {
 }
 
 target_headline() {
-	printf "TARGET: \e[0;7m$1\e[0m\n\n"	
+	printf "\e[0;7mTARGET:\e[0m $1\n"
 }
 
+target_successful() {
+	printf "\e[0;1mtarget successful\e[0m\n\n"	
+}
+
+#
+# Utils
+#
+pushd () {
+    command pushd "$@" > /dev/null
+}
+
+popd () {
+    command popd "$@" > /dev/null
+}
 
 # Global variables
 with CROSS_HOST			"i686-ghost"

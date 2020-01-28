@@ -174,4 +174,5 @@ else
 	exit 1
 fi
 
+target_successful
 exit 0
