@@ -42,6 +42,5 @@ void coconutThrow(int x)
 	bee = 13;
 	assert(bee == 13);
 
-	g_log("throw");
 	throw x * 2;
 }
