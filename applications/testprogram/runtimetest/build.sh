@@ -1,5 +1,5 @@
 #!/bin/bash
-ROOT="../.."
+ROOT="../../.."
 if [ -f "$ROOT/variables.sh" ]; then
 	. "$ROOT/variables.sh"
 fi
@@ -9,11 +9,11 @@ fi
 # Define build setup
 SRC=src
 OBJ=obj
-ARTIFACT_NAME=cocorun.bin
-ARTIFACT_NAME_STATIC=cocorun-static.bin
+ARTIFACT_NAME=runtimetest.bin
+ARTIFACT_NAME_STATIC=runtimetest-static.bin
 CFLAGS="-std=c++11 -I$SRC"
-LDFLAGS="-lcoconut -shared-libgcc"
+LDFLAGS="-lruntimetest -shared-libgcc"
 MAKE_STATIC=1
 
 # Include application build tasks
-. "../applications.sh"
+. "../../applications.sh"

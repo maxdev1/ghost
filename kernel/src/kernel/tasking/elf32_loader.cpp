@@ -26,7 +26,7 @@
 
 #define MAXIMUM_LOAD_PAGES_AT_ONCE 0x10
 
-#define ELF_LOADER_LOG_INFO 1
+#define ELF_LOADER_LOG_INFO 0
 #if ELF_LOADER_LOG_INFO
 #undef logDebug
 #undef logDebugn

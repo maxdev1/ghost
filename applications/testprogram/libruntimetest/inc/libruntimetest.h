@@ -18,63 +18,9 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <ghost.h>
-#include <stdio.h>
-#include <errno.h>
-#include <assert.h>
+#ifndef __LIBRUNTIMETEST__
+#define __LIBRUNTIMETEST__
 
-#include "../libcoconut/inc/coconut.h"
+void libRuntimeTest(int x);
 
-class GlobCtorTest {
-public:
-	int x = 5;
-	GlobCtorTest() {
-		assert(x == 5);
-		x = 12;
-	}
-};
-
-GlobCtorTest ctortest;
-
-int cctor = 0;
-__attribute__ ((constructor)) void globCCtor(void)
-{
-	assert(cctor == 0);
-	cctor = 1;
-}
-
-__thread int foo = 5;
-
-void testlocalthrow() {
-	throw 89;
-}
-
-int main(int argc, char** argv)
-{
-	assert(cctor == 1);
-	assert(ctortest.x == 12);
-
-	assert(foo == 5);
-	foo = 6;
-	assert(foo == 6);
-
-	assert(errno == 0);
-	errno = 123;
-	assert(errno == 123);
-
-	try {
-		testlocalthrow();
-	} catch(int y) {
-		assert(y == 89);
-	}
-
-	try {
-		coconutThrow(25);
-	} catch(int x) {
-		assert(x == 50);
-	}
-
-	assert(errno == 321);
-
-	g_log("All assertions finished successfully!");
-}
+#endif

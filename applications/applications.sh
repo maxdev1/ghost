@@ -3,7 +3,7 @@ ROOT="../.."
 if [ -f "$ROOT/variables.sh" ]; then
 	. "$ROOT/variables.sh"
 fi
-. "$ROOT/ghost.sh"
+. "$ROOT/ghost.sh" 2&> /dev/null
 
 
 TARGET=$1
@@ -14,7 +14,7 @@ ARTIFACT_LOCAL_STATIC=$OBJ/$ARTIFACT_NAME_STATIC
 ARTIFACT_TARGET=$SYSROOT_APPLICATIONS/$ARTIFACT_NAME
 ARTIFACT_TARGET_STATIC=$SYSROOT_APPLICATIONS/$ARTIFACT_NAME_STATIC
 
-echo "target: $TARGET"
+target_headline $TARGET
 requireTool changes
 
 
@@ -108,4 +108,5 @@ else
 	exit 1
 fi
 
+target_successful
 exit 0

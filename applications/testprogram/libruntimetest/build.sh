@@ -12,10 +12,10 @@ with SRC					"src"
 with OBJ					"obj"
 with INC					"inc"
 
-with ARTIFACT_NAME			"libcoconut.a"
+with ARTIFACT_NAME			"libruntimetest.a"
 with ARTIFACT_LOCAL			"$ARTIFACT_NAME"
 with ARTIFACT_TARGET		"$SYSROOT_SYSTEM_LIB/$ARTIFACT_NAME"
-with ARTIFACT_NAME_SHARED	"libcoconut.so"
+with ARTIFACT_NAME_SHARED	"libruntimetest.so"
 with ARTIFACT_LOCAL_SHARED	"$ARTIFACT_NAME_SHARED"
 with ARTIFACT_TARGET_SHARED	"$SYSROOT_SYSTEM_LIB/$ARTIFACT_NAME_SHARED"
 
@@ -23,7 +23,7 @@ with CFLAGS					"-std=c++11 -fpic -I$INC -I$SRC"
 with LDFLAGS				"-shared -shared-libgcc"
 
 
-echo "target: $TARGET"
+target_headline $TARGET
 requireTool changes
 
 
@@ -108,4 +108,5 @@ else
 	exit 1
 fi
 
+target_successful
 exit 0
