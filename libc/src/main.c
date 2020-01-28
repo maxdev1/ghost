@@ -32,6 +32,18 @@ void __g_init_libc_call_init();
 void __g_fini_libc_call_fini();
 
 /**
+ * @see __g_init_libc_call_init
+ */
+extern void (*__preinit_array_start[])() __attribute__((weak));
+extern void (*__preinit_array_end[])() __attribute__((weak));
+extern void _init() __attribute__((weak));
+extern void _fini() __attribute__((weak));
+extern void (*__init_array_start[])() __attribute__((weak));
+extern void (*__init_array_end[])() __attribute__((weak));
+extern void (*__fini_array_start[])() __attribute__((weak));
+extern void (*__fini_array_end[])() __attribute__((weak));
+
+/**
  * Application entry routine, called by the CRTs.
  */
 int __g_main()
@@ -88,57 +100,89 @@ void __g_fini_libc()
 }
 
 /**
- * Asks the kernel for the process info and calls all necessary init functions
- * of all objects.
+ * Calls all preinit and init functions (global constructors).
+ * 
+ * For dynamically linked executables, the kernel provides the array of necessary
+ * functions in the process info structure. For statically linked executables, the
+ * data is already present in the __init_array_start and related symbols.
  */
 void __g_init_libc_call_init()
 {
-	g_process_info* processInfo = g_process_get_info();
-	for(int i = 0; i < processInfo->objectInfosSize; i++)
+	if(__preinit_array_start && __preinit_array_end)
 	{
-		g_object_info* objectInfo = &processInfo->objectInfos[i];
-		if(objectInfo->preinitArray)
+		for(size_t i = 0; i < __preinit_array_end - __preinit_array_start; i++)
 		{
-			for(uint32_t i = 0; i < objectInfo->preinitArraySize; i++)
+			(*__preinit_array_start[i])();
+		}
+
+		_init();
+
+		for(size_t i = 0; i < __init_array_end - __init_array_start; i++)
+		{
+			(*__init_array_start[i])();
+		}
+
+	} else
+	{
+		g_process_info* processInfo = g_process_get_info();
+		for(int i = 0; i < processInfo->objectInfosSize; i++)
+		{
+			g_object_info* objectInfo = &processInfo->objectInfos[i];
+			if(objectInfo->preinitArray)
 			{
-				klog("%s.preinit[%i]:%x()", objectInfo->name, i, objectInfo->preinitArray[i]);
-				objectInfo->preinitArray[i]();
+				for(uint32_t i = 0; i < objectInfo->preinitArraySize; i++)
+				{
+					objectInfo->preinitArray[i]();
+				}
 			}
-		}
 
-		if(objectInfo->init)
-		{
-			klog("%s.init:%x()", objectInfo->name, objectInfo->init);
-			objectInfo->init();
-		}
-
-		if(objectInfo->initArray)
-		{
-			for(uint32_t i = 0; i < objectInfo->initArraySize; i++)
+			if(objectInfo->init)
 			{
-				klog("%s.init[%i]:%x()", objectInfo->name, i, objectInfo->initArray[i]);
-				objectInfo->initArray[i]();
+				objectInfo->init();
+			}
+
+			if(objectInfo->initArray)
+			{
+				for(uint32_t i = 0; i < objectInfo->initArraySize; i++)
+				{
+					objectInfo->initArray[i]();
+				}
 			}
 		}
 	}
 }
 
 /**
- * Asks the kernel for process info and calls all necessary fini functions
- * of all objects.
+ * Same as for the init.
  */
 void __g_fini_libc_call_fini()
 {
-	g_process_info* processInfo = g_process_get_info();
-	for(int i = 0; i < processInfo->objectInfosSize; i++)
+	if(__fini_array_start && __fini_array_end)
 	{
-		g_object_info* objectInfo = &processInfo->objectInfos[i];
-		if(objectInfo->finiArray)
+		for(size_t i = 0; i < __fini_array_end - __fini_array_start; i++)
 		{
-			for(uint32_t i = 0; i < objectInfo->finiArraySize; i++)
+			(*__fini_array_start[i])();
+		}
+
+		_fini();
+
+	} else
+	{
+		g_process_info* processInfo = g_process_get_info();
+		for(int i = 0; i < processInfo->objectInfosSize; i++)
+		{
+			g_object_info* objectInfo = &processInfo->objectInfos[i];
+			if(objectInfo->fini)
 			{
-				klog("%s.fini[%i]:%x()", objectInfo->name, i, objectInfo->finiArray[i]);
-				objectInfo->finiArray[i]();
+				objectInfo->fini();
+			}
+
+			if(objectInfo->finiArray)
+			{
+				for(uint32_t i = 0; i < objectInfo->finiArraySize; i++)
+				{
+					objectInfo->finiArray[i]();
+				}
 			}
 		}
 	}

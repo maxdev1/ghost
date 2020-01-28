@@ -39,20 +39,18 @@ GlobCtorTest ctortest;
 int cctor = 0;
 __attribute__ ((constructor)) void globCCtor(void)
 {
+	assert(cctor == 0);
 	cctor = 1;
 }
 
 __thread int foo = 5;
 
 void testlocalthrow() {
-	g_log("local throw");
 	throw 89;
 }
 
 int main(int argc, char** argv)
 {
-	g_log("Starting initialization tests...");
-
 	assert(cctor == 1);
 	assert(ctortest.x == 12);
 
@@ -67,14 +65,12 @@ int main(int argc, char** argv)
 	try {
 		testlocalthrow();
 	} catch(int y) {
-		g_log("local catch");
 		assert(y == 89);
 	}
 
 	try {
 		coconutThrow(25);
 	} catch(int x) {
-		g_log("catch");
 		assert(x == 50);
 	}
 
