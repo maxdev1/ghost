@@ -104,3 +104,11 @@ void syscallGetWorkingDirectory(g_task* task, g_syscall_fs_get_working_directory
 		data->result = G_GET_WORKING_DIRECTORY_SUCCESSFUL;
 	}
 }
+
+
+void syscallSetWorkingDirectory(g_task* task, g_syscall_fs_set_working_directory* data)
+{
+	logInfo("syscall not implemented: setWorkingDirectory");
+	for(;;)
+		;
+}

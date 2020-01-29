@@ -23,9 +23,9 @@
 /**
  *
  */
-uint8_t g_task_register_id(const char* newIdentifier) {
-	g_syscall_task_id_register data;
-	data.identifier = (char*) newIdentifier;
-	g_syscall(G_SYSCALL_REGISTER_TASK_IDENTIFIER, (uint32_t) &data);
-	return data.successful;
+g_set_working_directory_status g_set_working_directory(const char* path) {
+	g_syscall_fs_set_working_directory data;
+	data.path = (char*) path;
+	g_syscall(G_SYSCALL_SET_WORKING_DIRECTORY, (uint32_t) &data);
+	return data.result;
 }

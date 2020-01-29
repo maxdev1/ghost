@@ -18,24 +18,18 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_SYSCALL_MEMORY__
-#define __KERNEL_SYSCALL_MEMORY__
+#ifndef __KERNEL_SYSCALL_MESSAGING__
+#define __KERNEL_SYSCALL_MESSAGING__
 
 #include "ghost/calls/calls.h"
 #include "kernel/tasking/tasking.hpp"
 
-void syscallSbrk(g_task* task, g_syscall_sbrk* data);
+void syscallRegisterTaskIdentifier(g_task* task, g_syscall_task_id_register* data);
 
-void syscallLowerMemoryAllocate(g_task* task, g_syscall_lower_malloc* data);
+void syscallGetTaskForIdentifier(g_task* task, g_syscall_task_id_get* data);
 
-void syscallLowerMemoryFree(g_task* task, g_syscall_lower_malloc* data);
+void syscallMessageSend(g_task* task, g_syscall_send_message* data);
 
-void syscallAllocateMemory(g_task* task, g_syscall_alloc_mem* data);
-
-void syscallUnmap(g_task* task, g_syscall_unmap* data);
-
-void syscallShareMemory(g_task* task, g_syscall_share_mem* data);
-
-void syscallMapMmioArea(g_task* task, g_syscall_map_mmio* data);
+void syscallMessageReceive(g_task* task, g_syscall_receive_message* data);
 
 #endif

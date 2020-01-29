@@ -306,6 +306,18 @@ g_get_working_directory_status g_get_working_directory(char* buffer);
 g_get_working_directory_status g_get_working_directory_l(char* buffer, size_t maxlen);
 
 /**
+ * Sets the working directory for the current process.
+ * 
+ * @param path
+ * 		buffer of at least <maxlen> or {G_PATH_MAX} bytes size
+ *
+ * @return whether the action was successful
+ *
+ * @security-level APPLICATION
+ */
+g_set_working_directory_status g_set_working_directory(const char* path)
+
+/**
  * Retrieves the directory of the executable when available, otherwise an empty
  * string is written to the buffer.
  *

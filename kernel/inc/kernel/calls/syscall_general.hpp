@@ -40,4 +40,8 @@ void syscallGetExecutablePath(g_task* task, g_syscall_fs_get_executable_path* da
 
 void syscallGetWorkingDirectory(g_task* task, g_syscall_fs_get_working_directory* data);
 
+void syscallSetWorkingDirectory(g_task* task, g_syscall_fs_set_working_directory* data);
+
+void syscallKernQuery(g_task* task, g_syscall_fs_set_working_directory* data);
+
 #endif
