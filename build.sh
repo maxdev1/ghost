@@ -43,7 +43,6 @@ echo "If a part of this build fails, run the respective build script within"
 echo "the programs folder to see a more detailed log."
 echo ""
 
-
 # First build necessary ports (if not done yet)
 print_name ports
 if [ -f $SYSROOT/system/lib/libcairo.a ]; then
@@ -57,7 +56,6 @@ else
 	$SH port.sh cairo/1.12.18
 	popd
 fi
-
 
 # Prepare libghostuser
 print_name libuser
@@ -73,12 +71,12 @@ fi
 # Prepare libapi & libc
 pushd libapi
 print_name libapi
-#build_clean
+build_clean
 print_status
 popd
 pushd libc
 print_name libc
-#build_clean
+build_clean
 print_status
 popd
 
@@ -102,7 +100,6 @@ done
 echo "($success/$total programs built)"
 popd
 
-
 # Finally build kernel
 print_name kernel
 pushd kernel
@@ -110,4 +107,3 @@ build_clean
 print_status
 popd
 echo ""
-
