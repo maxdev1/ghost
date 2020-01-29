@@ -5,15 +5,6 @@ if [ -f "$ROOT/variables.sh" ]; then
 fi
 . "$ROOT/ghost.sh"
 
-# Colors
-red=$'\e[1;31m'
-grn=$'\e[1;32m'
-yel=$'\e[1;33m'
-blu=$'\e[1;34m'
-mag=$'\e[1;35m'
-cyn=$'\e[1;36m'
-wht=$'\e[1;37m'
-end=$'\e[0m'
 
 # Define some helpers
 pushd() {
@@ -30,23 +21,33 @@ build_clean() {
 
 print_status() {
 	if [ $? -eq 0 ]; then
-		printf "${grn}success${end}\n"
+		printf "success\n"
 	else
-		printf "${red}failed${end}\n"
+		printf "\e[1;31mfailed\e[0m\n"
 	fi
 }
 
+print_skipped() {
+	printf "skipped\n"
+}
 
-# Install pkg-config wrapper
-pushd tools/pkg-config
-$SH build.sh all
-popd
+print_name() {
+	printf "\e[0;7m$1\e[0m "
+}
+
+# Print header
+echo ""
+printf "\e[4mGhost complete build\e[0m\n"
+echo "This script will attempt building all necessary user-space software."
+echo "If a part of this build fails, run the respective build script within"
+echo "the programs folder to see a more detailed log."
+echo ""
 
 
 # First build necessary ports (if not done yet)
-printf "${wht}ports${end} "
+print_name ports
 if [ -f $SYSROOT/system/lib/libcairo.a ]; then
-	printf "${blu}skipped${end}\n"
+	print_skipped
 else
 	pushd patches/ports
 	$SH port.sh zlib/1.2.8
@@ -55,14 +56,13 @@ else
 	$SH port.sh freetype/2.5.3
 	$SH port.sh cairo/1.12.18
 	popd
-	echo ""
 fi
 
 
-# Prepare C++ library
-printf "${wht}libuser${end} "
+# Prepare libghostuser
+print_name libuser
 if [ -f $SYSROOT/system/lib/libghostuser.a ]; then
-	printf "${blu}skipped${end}\n"
+	print_skipped
 else
 	pushd libuser
 	build_clean
@@ -70,40 +70,41 @@ else
 	popd
 fi
 
-# Build libc & libapi
+# Prepare libapi & libc
 pushd libapi
-printf "${wht}libapi${end} "
-build_clean
+print_name libapi
+#build_clean
 print_status
 popd
-
 pushd libc
-printf "${wht}libc${end} "
-build_clean
+print_name libc
+#build_clean
 print_status
 popd
-echo ""
 
 # Make all applications
 pushd applications
-echo "applications/"
+print_name applications
 success=0
 total=0
 for dir in */; do
-	printf "  ${wht}${dir%/}${end} "
 	pushd $dir
-		build_clean
-	print_status
-		((total=total+1))
+	build_clean
+	if [ $? -eq 0 ]; then
+		printf "${dir%/} "
+		((success=success+1))
+	else
+		printf "\e[1;31m${dir%/}\e[0m "
+	fi
+	((total=total+1))
 	popd
 done
 echo "($success/$total programs built)"
 popd
-echo ""
 
 
 # Finally build kernel
-printf "${wht}kernel${end} "
+print_name kernel
 pushd kernel
 build_clean
 print_status
