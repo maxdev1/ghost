@@ -93,7 +93,7 @@ For building manually, the essential order is:
 * `./applications/*/build.sh`
 * `./kernel/build.sh`
 
-The generated ISO image can then be found in `kernel/bin/image.iso`.
+The ISO image is generated to the main folder as `ghost.iso`.
 
 
 Library dependency

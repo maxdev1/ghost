@@ -1,24 +1,29 @@
 = Ghost System Documentation
 Max Schlüssel <lokoxe@gmail.com>
-v1.1
+v1.2
 :last-update-label!:
 
 About
 -----
-Welcome to the documentation of the Ghost OS!
+Welcome to the documentation of Ghost OS!
 
 This project is a research operating system for the Intel x86 platform with
 almost all components written from scratch. The kernel follows a microkernel
-design. This documentation section contains both conceptual and technical
-documentation for various parts of the system.
+design. This documentation contains both conceptual and technical details
+for various parts of the system.
 
 NOTE: This file is supposed to be compiled with AsciiDoctor
 (http://asciidoctor.org/), see the script `generate.sh`.
 
+
+Contents
+~~~~~~~~
 The contents of this documentation are split in sections for each system
 component. On the top of each page there's a link back to this home page.
 
-* *<<building#,Building>>* - toolchain & system building instructions
+* *Tooling section*
+	** *<<building#,Building>>* - toolchain & system building instructions
+	** *<<structure#,Project structure>>* - explains the contents of this repository
 * *<<loader#,Loader>>* - initial boot code that loads the kernel to higher memory
 * *Kernel section* - documentation about the kernel itself
 	** <<tasking#,Tasking>> contains everything about processes and threading

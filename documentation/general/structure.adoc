@@ -1,0 +1,26 @@
+= Project structure
+:toc: left
+include::../common/homelink.adoc[]
+
+Folders
+-------
+The project folder structure splits the main artifacts of the project in parts. The following tree
+tries to explain most of the important folders and their meaning.
+
+* `/kernel`
+	** `/src` Main source directory of the kernel
+	*** `/kernel` Sources of the kernel
+	*** `/loader` Sources of the kernel loader
+	*** `/shared` Sources that are shared between kernel and loader
+	** `/inc` Contains kernel & system headers. The `ghost` folder from here is copied into the system include directory when building *libapi*.
+	** `/iso` Is the source directory when building the ISO image with GRUB
+	** `/extra` Contains linker scripts
+* `/libapi` System call library
+* `/libc` Standard C library
+* `/libuser` Higher-level userspace library
+* `/applications` Contains userspace applications
+* `/patches`
+	** `<<port#,/ports>>` Small build tool and patches for various libraries that are portable
+	** `/toolchain` Patches for binutils/GCC
+* `/tools` Tools used in the build process
+* `/documentation` Contains this documentation

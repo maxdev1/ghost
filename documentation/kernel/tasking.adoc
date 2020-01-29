@@ -1,4 +1,4 @@
-# Tasking management
+# Task management
 :toc: left
 :toclevels: 4
 :last-update-label!:
