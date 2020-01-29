@@ -178,3 +178,40 @@ void syscallProcessGetInfo(g_task* task, g_syscall_process_get_info* data)
 {
 	data->processInfo = task->process->userProcessInfo;
 }
+
+void syscallKill(g_task* task, g_syscall_kill* data)
+{
+	logInfo("syscall not implemented: syscallKill");
+	for(;;)
+		;
+}
+
+void syscallGetParentProcessId(g_task* task, g_syscall_get_parent_pid* data)
+{
+	logInfo("syscall not implemented: syscallGetParentProcessId");
+	for(;;)
+		;
+}
+
+void syscallExitThread(g_task* task, void* nil)
+{
+	logInfo("syscall not implemented: syscallExitThread");
+	for(;;)
+		;
+}
+
+void syscallCreateThread(g_task* task, g_syscall_create_thread* data)
+{
+	logInfo("syscall not implemented: syscallCreateThread");
+	for(;;)
+		;
+}
+
+void syscallGetThreadEntry(g_task* task, g_syscall_get_thread_entry* data)
+{
+	logInfo("syscall not implemented: syscallGetThreadEntry");
+	for(;;)
+		;
+}
+
+

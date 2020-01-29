@@ -30,3 +30,44 @@ void syscallSbrk(g_task* task, g_syscall_sbrk* data)
 	data->successful = taskingMemoryExtendHeap(task, data->amount, &data->address);
 }
 
+void syscallLowerMemoryAllocate(g_task* task, g_syscall_lower_malloc* data)
+{
+	logInfo("syscall not implemented: syscallLowerMemoryAllocate");
+	for(;;)
+		;
+}
+
+void syscallLowerMemoryFree(g_task* task, g_syscall_lower_malloc* data)
+{
+	logInfo("syscall not implemented: syscallLowerMemoryFree");
+	for(;;)
+		;
+}
+
+void syscallAllocateMemory(g_task* task, g_syscall_alloc_mem* data)
+{
+	logInfo("syscall not implemented: syscallAllocateMemory");
+	for(;;)
+		;
+}
+
+void syscallUnmap(g_task* task, g_syscall_unmap* data)
+{
+	logInfo("syscall not implemented: syscallUnmap");
+	for(;;)
+		;
+}
+
+void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
+{
+	logInfo("syscall not implemented: syscallShareMemory");
+	for(;;)
+		;
+}
+
+void syscallMapMmioArea(g_task* task, g_syscall_map_mmio* data)
+{
+	logInfo("syscall not implemented: syscallMapMmioArea");
+	for(;;)
+		;
+}

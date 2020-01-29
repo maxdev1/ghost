@@ -108,7 +108,14 @@ void syscallGetWorkingDirectory(g_task* task, g_syscall_fs_get_working_directory
 
 void syscallSetWorkingDirectory(g_task* task, g_syscall_fs_set_working_directory* data)
 {
-	logInfo("syscall not implemented: setWorkingDirectory");
+	logInfo("syscall not implemented: syscallSetWorkingDirectory");
+	for(;;)
+		;
+}
+
+void syscallKernQuery(g_task* task, g_syscall_fs_set_working_directory* data)
+{
+	logInfo("syscall not implemented: syscallKernQuery");
 	for(;;)
 		;
 }
