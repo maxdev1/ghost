@@ -26,7 +26,7 @@
 
 void stringConcat(const char* a, const char* b, char* out);
 
-void stringCopy(char* target, const char* source);
+int stringCopy(char* target, const char* source);
 
 int stringLength(const char* str);
 

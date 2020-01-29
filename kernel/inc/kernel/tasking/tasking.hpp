@@ -257,7 +257,7 @@ struct g_process
 	{
 		const char* arguments;
 		const char* executablePath;
-		const char* workingDirectory;
+		char* workingDirectory;
 	} environment;
 
 	g_process_info* userProcessInfo;

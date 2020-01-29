@@ -571,3 +571,47 @@ g_fs_seek_status filesystemSeek(g_task* task, g_fd fd, g_fs_seek_mode mode, int6
 	*outResult = descriptor->offset;
 	return G_FS_SEEK_SUCCESSFUL;
 }
+
+int filesystemGetAbsolutePathLength(g_fs_node* node)
+{
+	if(node->type == G_FS_NODE_TYPE_ROOT)
+	{
+		return 1;
+	}
+
+	int length = 0;
+	if(node->parent) {
+		length = filesystemGetAbsolutePathLength(node->parent);
+	}
+
+	int calced;
+	if(length == 1) {
+		calced = stringLength(node->name);
+	} else {
+		calced = stringLength(node->name) + 1;
+	}
+	return length + calced;
+}
+
+int filesystemGetAbsolutePath(g_fs_node* node, char* buffer)
+{
+	if(node->type == G_FS_NODE_TYPE_ROOT)
+	{
+		stringCopy(buffer, "/");
+		return 1;
+	}
+
+	int length = 0;
+	if(node->parent) {
+		length = filesystemGetAbsolutePath(node->parent, buffer);
+	}
+
+	int copied;
+	if(length == 1) {
+		copied = stringCopy(&buffer[length], node->name);
+	} else {
+		buffer[length] = '/';
+		copied = stringCopy(&buffer[length + 1], node->name) + 1;
+	}
+	return length + copied;
+}
