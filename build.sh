@@ -44,7 +44,7 @@ popd
 
 
 # First build necessary ports (if not done yet)
-echo "${wht}ports${end} "
+printf "${wht}ports${end} "
 if [ -f $SYSROOT/system/lib/libcairo.a ]; then
 	printf "${blu}skipped${end}\n"
 else
