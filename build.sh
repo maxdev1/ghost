@@ -5,6 +5,15 @@ if [ -f "$ROOT/variables.sh" ]; then
 fi
 . "$ROOT/ghost.sh"
 
+# Colors
+red=$'\e[1;31m'
+grn=$'\e[1;32m'
+yel=$'\e[1;33m'
+blu=$'\e[1;34m'
+mag=$'\e[1;35m'
+cyn=$'\e[1;36m'
+wht=$'\e[1;37m'
+end=$'\e[0m'
 
 # Define some helpers
 pushd() {
@@ -15,6 +24,18 @@ popd() {
     command popd "$@" > /dev/null
 }
 
+build_clean() {
+	$SH build.sh clean > /dev/null 2>&1 && $SH build.sh all > /dev/null 2>&1
+}
+
+print_status() {
+	if [ $? -eq 0 ]; then
+		printf "${grn}success${end}\n"
+	else
+		printf "${red}failed${end}\n"
+	fi
+}
+
 
 # Install pkg-config wrapper
 pushd tools/pkg-config
@@ -23,10 +44,10 @@ popd
 
 
 # First build necessary ports (if not done yet)
+echo "${wht}ports${end} "
 if [ -f $SYSROOT/system/lib/libcairo.a ]; then
-	echo "Skipping build of ports"
+	printf "${blu}skipped${end}\n"
 else
-	echo "Building ports"
 	pushd patches/ports
 	$SH port.sh zlib/1.2.8
 	$SH port.sh pixman/0.32.6
@@ -39,30 +60,53 @@ fi
 
 
 # Prepare C++ library
-echo "Building libuser"
-pushd libuser
-$SH build.sh clean
-$SH build.sh all
+printf "${wht}libuser${end} "
+if [ -f $SYSROOT/system/lib/libghostuser.a ]; then
+	printf "${blu}skipped${end}\n"
+else
+	pushd libuser
+	build_clean
+	print_status
+	popd
+fi
+
+# Build libc & libapi
+pushd libapi
+printf "${wht}libapi${end} "
+build_clean
+print_status
 popd
 
+pushd libc
+printf "${wht}libc${end} "
+build_clean
+print_status
+popd
+echo ""
 
 # Make all applications
 pushd applications
+echo "applications/"
+success=0
+total=0
 for dir in */; do
-	echo "Building $dir"
+	printf "  ${wht}${dir%/}${end} "
 	pushd $dir
-		$SH build.sh clean
-		$SH build.sh all
+		build_clean
+	print_status
+		((total=total+1))
 	popd
-	echo ""
 done
+echo "($success/$total programs built)"
 popd
+echo ""
 
 
 # Finally build kernel
-echo "Building kernel"
+printf "${wht}kernel${end} "
 pushd kernel
-$SH build.sh clean
-$SH build.sh all
+build_clean
+print_status
 popd
 echo ""
+

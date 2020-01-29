@@ -39,3 +39,5 @@ kernel/serial.log
 kernel/iso/boot/kernel
 kernel/iso/boot/loader
 kernel/iso/boot/ramdisk
+
+ghost.iso

@@ -9,46 +9,62 @@ fi
 TARGET=$1
 with TARGET "all"
 
-
+#
+# Source directories
+#
 INC=inc
-INCLUDE=include
 BIN=bin
 SRC_LOADER=src/loader
 SRC_KERNEL=src/kernel
 SRC_SHARED=src/shared
-INC_LIBGCC=/ghost/lib/gcc/i686-ghost/4.9.1/include
 
+#
+# Compiler flags
+#
+LDFLAGS="-nostdlib -nostartfiles"
+CFLAGS="-std=c++11 -D_GHOST_KERNEL_=1 -D_ARCH_X86_=1 -Wall -Wno-unused-but-set-variable -ffreestanding -fno-exceptions -fno-rtti"
+
+#
+# Object output folders
+#
 OBJ_SHARED=$BIN/obj-shared
 OBJ_LOADER=$BIN/obj-loader
 OBJ_KERNEL=$BIN/obj-kernel
 
+#
+# ISO file generation
+#
 ISO_SRC=iso
-ISO_TGT=$BIN/image.iso
+ISO_TGT=../ghost.iso
+GRUB_MKRESCUE=grub-mkrescue
 
+#
+# Generated artifacts & linker scripts
+#
 ARTIFACT_LOADER=$ISO_SRC/boot/loader
 ARTIFACT_KERNEL=$ISO_SRC/boot/kernel
-
 LINKSCRIPT_LOADER=extra/link-loader.ld
 LINKSCRIPT_KERNEL=extra/link-kernel.ld
 
+#
+# Ramdisk build
+#
 RAMDISK=$ISO_SRC/boot/ramdisk
+RAMDISK_WRITER=ramdisk-writer
 
+#
+# Application processor startup object
+#
 AP_STARTUP_SRC=src/ap/ap_startup.asm
 AP_STARTUP_OBJ=$BIN/ap_startup.o
 AP_STARTUP_TGT=$SYSROOT/system/lib/apstartup.o
 
-LDFLAGS="-nostdlib -nostartfiles"
-CFLAGS="-std=c++11 -D_GHOST_KERNEL_=1 -D_ARCH_X86_=1 -Wall -Wno-unused-but-set-variable -ffreestanding -fno-exceptions -fno-rtti"
-
-QEMU=qemu-system-i386
-RAMDISK_WRITER=ramdisk-writer
-GRUB_MKRESCUE=grub-mkrescue
 
 # Header
 target_headline $TARGET
 
 #
-# Cleans binary contents, 
+# Cleans output folders and files
 #
 target_clean() {
 	
@@ -65,7 +81,7 @@ target_clean() {
 }
 
 #
-# Assembles the application processor startup object.
+# Assemble the application processor startup object
 #
 target_compile_ap_startup() {
 	headline "building AP startup object"
@@ -76,7 +92,9 @@ target_compile_ap_startup() {
 	list $AP_STARTUP_OBJ
 }
 
-
+#
+# Compile all sources that have changed in the given directory
+#
 target_compile() {
 	
 	srcdir=$1
@@ -123,7 +141,9 @@ target_compile() {
 	done
 }
 
-
+#
+# Link an artifact
+#
 target_link() {
 	
 	artifact=$1
@@ -135,12 +155,18 @@ target_link() {
 	failOnError
 }
 
+#
+# Generate the ramdisk file
+#
 target_ramdisk() {
 	headline "building ramdisk"
 	$RAMDISK_WRITER "$SYSROOT" "$RAMDISK"
 	failOnError
 }
 
+#
+# Build an ISO file using GRUB's mkrescue tool
+#
 target_make_iso() {
 	headline "making iso"
 	rm $ISO_TGT
@@ -148,6 +174,9 @@ target_make_iso() {
 	failOnError
 }
 
+#
+# Run in QEMU
+#
 target_qemu() {
 	if [ -e serial.log ]; then
 		rm -f serial.log
@@ -162,21 +191,30 @@ target_qemu() {
 	fi
 }
 
+#
+# Run in QEMU and call debugger
+#
 target_qemu_debug_gdb() {
 	qemu-system-i386 -cdrom $ISO_TGT -s -S -m 1024 -serial tcp::1234,server
 }
 
+#
+# Performs everything necessary to build the OS image
+#
 target_all() {
 	target_compile_ap_startup
-	target_compile $SRC_SHARED $OBJ_SHARED "-I$INCLUDE -I$INC -I$INC_LIBGCC -I$SRC_SHARED"
-	target_compile $SRC_LOADER $OBJ_LOADER "-I$INCLUDE -I$INC -I$INC_LIBGCC -I$SRC_SHARED -I$SRC_LOADER"
-	target_compile $SRC_KERNEL $OBJ_KERNEL "-I$INCLUDE -I$INC -I$INC_LIBGCC -I$SRC_SHARED -I$SRC_KERNEL"
+	target_compile $SRC_SHARED $OBJ_SHARED "-I$INC"
+	target_compile $SRC_LOADER $OBJ_LOADER "-I$INC"
+	target_compile $SRC_KERNEL $OBJ_KERNEL "-I$INC"
 	target_link $ARTIFACT_LOADER $LINKSCRIPT_LOADER "$OBJ_LOADER/* $OBJ_SHARED/*"
 	target_link $ARTIFACT_KERNEL $LINKSCRIPT_KERNEL "$OBJ_KERNEL/* $OBJ_SHARED/*"
 	target_ramdisk
 	target_make_iso
 }
 
+#
+# Only rebuilds the ramdisk and ISO file
+#
 target_repack() {
 	target_ramdisk
 	target_make_iso

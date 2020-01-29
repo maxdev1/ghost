@@ -1,1 +1,0 @@
-cmake -DCMAKE_TOOLCHAIN_FILE=../i686-ghost-toolchain.cmake -G "Unix Makefiles"
