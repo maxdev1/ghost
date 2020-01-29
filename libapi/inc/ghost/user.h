@@ -315,7 +315,7 @@ g_get_working_directory_status g_get_working_directory_l(char* buffer, size_t ma
  *
  * @security-level APPLICATION
  */
-g_set_working_directory_status g_set_working_directory(const char* path)
+g_set_working_directory_status g_set_working_directory(const char* path);
 
 /**
  * Retrieves the directory of the executable when available, otherwise an empty

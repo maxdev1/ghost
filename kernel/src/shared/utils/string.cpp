@@ -30,11 +30,12 @@ void stringConcat(const char* a, const char* b, char* out)
 	out[len_a + len_b] = 0;
 }
 
-void stringCopy(char* target, const char* source)
+int stringCopy(char* target, const char* source)
 {
 	int len = stringLength(source);
 	memoryCopy(target, source, len);
 	target[len] = 0;
+	return len;
 }
 
 int stringLength(const char* str)

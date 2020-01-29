@@ -200,4 +200,18 @@ void filesystemWaitToRead(g_task* task, g_fs_node* file);
  */
 g_fs_pipe_status filesystemCreatePipe(g_bool blocking, g_fs_node** outPipeNode);
 
+/**
+ * Writes the absolute path of node into the given buffer (which must be of G_PATH_MAX bytes size).
+ * 
+ * @return the number of bytes written
+ */
+int filesystemGetAbsolutePath(g_fs_node* node, char* buffer);
+
+/**
+ * Calculates the absolute path length of node.
+ * 
+ * @return the path length
+ */
+int filesystemGetAbsolutePathLength(g_fs_node* node);
+
 #endif
