@@ -130,7 +130,7 @@ typedef struct {
 	char* identifier;
 
 	uint8_t successful;
-}__attribute__((packed)) g_task_id_register;
+}__attribute__((packed)) g_syscall_task_id_register;
 
 /**
  * @field identifier
