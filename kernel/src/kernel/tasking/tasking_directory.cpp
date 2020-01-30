@@ -18,24 +18,41 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __UTILS_HASHMAP_STRING__
-#define __UTILS_HASHMAP_STRING__
+#include "kernel/tasking/tasking_directory.hpp"
+#include "kernel/utils/hashmap_string.hpp"
+#include "shared/logger/logger.hpp"
 
-#include "kernel/utils/hashmap.hpp"
 
-const char* hashmapKeyCopyString(const char* key);
-int hashmapKeyHashString(const char* key);
-void hashmapKeyFreeString(const char* key);
-bool hashmapKeyEqualsString(const char* k1, const char* k2);
+static g_hashmap<const char*, g_task_directory_entry>* taskDirectory = 0;
 
-template<typename V>
-g_hashmap<const char*, V>* hashmapCreateString(int bucketCount) {
-	g_hashmap<const char*, V>* map = hashmapInternalCreate<const char*, V>(bucketCount);
-	map->keyCopy = hashmapKeyCopyString;
-	map->keyHash = hashmapKeyHashString;
-	map->keyFree = hashmapKeyFreeString;
-	map->keyEquals = hashmapKeyEqualsString;
-	return map;
+
+void taskingDirectoryInitialize()
+{
+    taskDirectory = hashmapCreateString<g_task_directory_entry>(64);
 }
 
-#endif
+bool taskingDirectoryRegister(const char* name, g_tid tid, g_security_level priority)
+{
+    auto entry = hashmapGetEntry(taskDirectory, name);
+    if(entry && entry->value.priority > priority)
+    {
+        logInfo("%! tried to override task %s with weaker security level", "taskdir", name);
+        return false;
+    }
+
+    g_task_directory_entry dirEntry;
+    dirEntry.task = tid;
+    dirEntry.priority = priority;
+    hashmapPut(taskDirectory, name, dirEntry);
+    return true;
+}
+
+g_tid taskingDirectoryGet(const char* name)
+{
+    auto entry = hashmapGetEntry(taskDirectory, name);
+    if(entry)
+    {
+        return entry->value.task;
+    }
+    return G_TID_NONE;
+}

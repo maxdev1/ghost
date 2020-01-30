@@ -34,6 +34,9 @@ __BEGIN_C
 typedef int32_t g_tid;
 typedef g_tid g_pid;
 
+#define G_TID_NONE		((g_tid) -1)
+#define G_PID_NONE		((g_pid) -1)
+
 /**
  * Task execution security levels
  */

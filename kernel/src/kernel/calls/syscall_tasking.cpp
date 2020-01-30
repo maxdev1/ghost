@@ -62,7 +62,7 @@ void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
 		data->pid = theTask->process->id;
 	} else
 	{
-		data->pid = -1;
+		data->pid = G_PID_NONE;
 	}
 }
 
@@ -94,7 +94,7 @@ void syscallRegisterSignalHandler(g_task* task, g_syscall_register_signal_handle
 
 	} else
 	{
-		data->previousHandlerAddress = -1;
+		data->previousHandlerAddress = 0;
 		data->status = G_REGISTER_SIGNAL_HANDLER_STATUS_INVALID_SIGNAL;
 		logDebug("%! failed to register signal handler %h for invalid signal %i", "syscall", data->handler, data->signal);
 	}
