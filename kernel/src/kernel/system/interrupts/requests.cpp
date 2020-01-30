@@ -34,34 +34,42 @@
 #include "shared/system/mutex.hpp"
 #include "shared/system/io_port.hpp"
 
-g_irq_handler* handlers[256] =
-{ 0 };
+g_irq_handler* handlers[256] = { 0 };
 
 void requestsHandle(g_task* task)
 {
-	const uint32_t irq = task->state->intr - 0x20;
+	const uint32_t intr = task->state->intr;
 
-	if(irq == 0) // Timer interrupt
-	{
-		taskingGetLocal()->time += APIC_MILLISECONDS_PER_TICK;
-		schedulerNewTimeSlot();
-		taskingSchedule();
-
-	} else if(irq == 0x61) // Yield from kernel thread
+	/* Special handling for when a kernel thread yields using <taskingKernelThreadYield> */
+	if(intr == 0x81)
 	{
 		taskingSchedule();
 
-	} else if(irq == 0x60) // System calls
+	/* System calls */
+	} else if(intr == 0x80)
 	{
 		syscallHandle(task);
 
-	} else if(irq < 256 && handlers[irq]) // User-space handlers
-	{
-		requestsCallUserspaceHandler(task, irq);
-
 	} else
 	{
-		logInfo("%! unhandled irq %i in task %i", "requests", irq, task->id);
+		const uint32_t irq = intr - 0x20;
+
+		/* Timer interrupt request triggers the scheduler */
+		if(irq == 0)
+		{
+			taskingGetLocal()->time += APIC_MILLISECONDS_PER_TICK;
+			schedulerNewTimeSlot();
+			taskingSchedule();
+
+		/* User-space interrupt handling */
+		} else if(irq < 256 && handlers[irq])
+		{
+			requestsCallUserspaceHandler(task, irq);
+
+		} else
+		{
+			logInfo("%! unhandled irq %i in task %i", "requests", irq, task->id);
+		}
 	}
 }
 
