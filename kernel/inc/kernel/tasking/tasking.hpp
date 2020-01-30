@@ -273,23 +273,23 @@ struct g_process
 };
 
 /**
- * Returns the processor-local tasking structure.
+ * @return the processor-local tasking structure
  */
 g_tasking_local* taskingGetLocal();
 
 /**
- * Returns the task that is on this processor currently running or was
- * last running when within a system call handler.
+ * @return the task that is on this processor currently running or was
+ * last running when called from within a system call handler
  */
 g_task* taskingGetCurrentTask();
 
 /**
- * Returns the next assignable task id.
+ * @return the next assignable task id
  */
 g_tid taskingGetNextId();
 
 /**
- * Basic initialization of the task management.
+ * Initializes basic task management and necessary structures.
  */
 void taskingInitializeBsp();
 
@@ -317,7 +317,16 @@ void taskingAssign(g_tasking_local* local, g_task* task);
 g_process* taskingCreateProcess();
 
 /**
- * Creates a task.
+ * Creates a task that starts execution on the given entry. The task is added to the
+ * task list of the specified process. The task is scheduled only after using <taskingAssign>.
+ * 
+ * @param entry
+ * 		execution entry of the thread
+ * @param process
+ * 		parent process
+ * @param level
+ * 		security level to apply for the thread
+ * @return the task or null
  */
 g_task* taskingCreateThread(g_virtual_address entry, g_process* process, g_security_level level);
 

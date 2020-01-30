@@ -26,11 +26,6 @@
 __BEGIN_C
 
 /**
- *
- */
-void __g_exit_thread();
-
-/**
  * The address of this function is inserted as the return address for signal & irq handlers.
  * It does nothing but calling the <g_restore_interrupted_state> function.
  */

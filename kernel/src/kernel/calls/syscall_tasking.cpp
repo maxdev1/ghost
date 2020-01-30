@@ -41,13 +41,6 @@ void syscallYield(g_task* task)
 void syscallExit(g_task* task, g_syscall_exit* data)
 {
 	task->status = G_THREAD_STATUS_DEAD;
-	#warning TODO kill process if main task dies
-	taskingSchedule();
-}
-
-void syscallExitThread(g_task* task, void* nil)
-{
-	task->status = G_THREAD_STATUS_DEAD;
 	taskingSchedule();
 }
 
