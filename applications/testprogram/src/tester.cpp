@@ -19,26 +19,58 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "tester.hpp"
+#include <ghost.h>
+#include <assert.h>
 #include <libgen.h>
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
 
+
 int main(int argc, char** argv)
 {
 	klog("Starting test suite...");
 
+	/* Run basic tests */
 	test_result_t result;
 	result += runStdioTest();
 	// result += runMessageTest();
 
+	result += runThreadTests();
+
 	klog("Test suite finished: %i successful, %i failed", result.successful, result.failed);
 
+	/* Perform runtime tests */
 	klog("Starting runtime tests");
 	g_spawn("/applications/runtimetest.bin", "", "", G_SECURITY_LEVEL_APPLICATION);
 	g_spawn("/applications/runtimetest-static.bin", "", "", G_SECURITY_LEVEL_APPLICATION);
 
+	/* Restart test suite */
 	g_sleep(3000);
 	klog("Test-suite is restarting itself...");
 	g_spawn("/applications/tester.bin", "-respawned", "/", G_SECURITY_LEVEL_APPLICATION);
+}
+
+/**
+ * Performs a few threading-related tests.
+ */
+int testLocalSetAfterJoin = 0;
+
+void testThreadRoutine()
+{
+	for(int i = 0; i < 5; i++) {
+		g_sleep(100);
+	}
+	testLocalSetAfterJoin = 25;
+}
+
+test_result_t runThreadTests()
+{
+	g_tid tid = g_create_thread((void*) testThreadRoutine);
+
+	assert(testLocalSetAfterJoin == 0);
+	g_join(tid);
+	assert(testLocalSetAfterJoin == 25);
+
+	TEST_SUCCESSFUL;
 }

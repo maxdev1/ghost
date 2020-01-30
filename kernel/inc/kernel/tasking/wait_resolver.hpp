@@ -42,8 +42,15 @@ struct g_wait_resolver_for_file_data
 	g_fs_virt_id nodeId;
 };
 
+struct g_wait_resolver_join_data
+{
+	g_tid joinedTaskId;
+};
+
 bool waitResolverSleep(g_task* task);
 
 bool waitResolverAtomicLock(g_task* task);
+
+bool waitResolverJoin(g_task* task);
 
 #endif

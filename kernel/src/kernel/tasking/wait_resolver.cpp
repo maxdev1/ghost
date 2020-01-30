@@ -60,3 +60,17 @@ bool waitResolverAtomicLock(g_task* task)
 	return keep_wait;
 }
 
+bool waitResolverJoin(g_task* task)
+{
+	g_wait_resolver_join_data* waitData = (g_wait_resolver_join_data*) task->waitData;
+
+	g_task* otherTask = taskingGetById(waitData->joinedTaskId);
+
+	/* Other task doesn't exist anymore or is dead, then stop waiting */
+	if(otherTask == 0 || otherTask->status == G_THREAD_STATUS_DEAD || otherTask->status == G_THREAD_STATUS_UNUSED)
+	{
+		return true;
+	}
+
+	return false;
+}

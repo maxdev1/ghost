@@ -56,3 +56,5 @@ public:
 test_result_t runMessageTest();
 
 test_result_t runStdioTest();
+
+test_result_t runThreadTests();

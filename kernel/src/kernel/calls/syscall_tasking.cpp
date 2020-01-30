@@ -41,6 +41,13 @@ void syscallYield(g_task* task)
 void syscallExit(g_task* task, g_syscall_exit* data)
 {
 	task->status = G_THREAD_STATUS_DEAD;
+	#warning TODO kill process if main task dies
+	taskingSchedule();
+}
+
+void syscallExitThread(g_task* task, void* nil)
+{
+	task->status = G_THREAD_STATUS_DEAD;
 	taskingSchedule();
 }
 
@@ -66,18 +73,17 @@ void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
 	}
 }
 
-void syscallFork(g_task* task, g_syscall_get_pid_for_tid* data)
+void syscallFork(g_task* task, g_syscall_fork* data)
 {
 	logInfo("syscall not implemented: fork");
 	for(;;)
 		;
 }
 
-void syscallJoin(g_task* task, g_syscall_get_pid_for_tid* data)
+void syscallJoin(g_task* task, g_syscall_join* data)
 {
-	logInfo("syscall not implemented: join");
-	for(;;)
-		;
+	waitJoinTask(task, data->taskId);
+	taskingSchedule();
 }
 
 void syscallRegisterSignalHandler(g_task* task, g_syscall_register_signal_handler* data)
@@ -193,25 +199,30 @@ void syscallGetParentProcessId(g_task* task, g_syscall_get_parent_pid* data)
 		;
 }
 
-void syscallExitThread(g_task* task, void* nil)
-{
-	logInfo("syscall not implemented: syscallExitThread");
-	for(;;)
-		;
-}
-
 void syscallCreateThread(g_task* task, g_syscall_create_thread* data)
 {
-	logInfo("syscall not implemented: syscallCreateThread");
-	for(;;)
-		;
+	mutexAcquire(&task->process->lock);
+
+	g_task* thread = taskingCreateThread((g_virtual_address) data->initialEntry, task->process, task->process->main->securityLevel);
+	if(thread)
+	{
+		thread->userEntry.function = data->userEntry;
+		thread->userEntry.data = data->userData;
+		data->threadId = thread->id;
+		data->status = G_CREATE_THREAD_STATUS_SUCCESSFUL;
+	} else
+	{
+		data->status = G_CREATE_THREAD_STATUS_FAILED;
+	}
+	taskingAssign(taskingGetLocal(), thread);
+
+	mutexRelease(&task->process->lock);
 }
 
 void syscallGetThreadEntry(g_task* task, g_syscall_get_thread_entry* data)
 {
-	logInfo("syscall not implemented: syscallGetThreadEntry");
-	for(;;)
-		;
+	data->userData = task->userEntry.data;
+	data->userEntry = task->userEntry.function;
 }
 
 
