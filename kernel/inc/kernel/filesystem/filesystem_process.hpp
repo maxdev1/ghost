@@ -65,8 +65,8 @@ void filesystemProcessRemove(g_pid pid);
 /**
  * Creates a file descriptor opening a node.
  */
-g_fs_open_status filesystemProcessCreateDescriptor(g_pid pid, g_fs_virt_id nodeId, g_file_flag_mode flags, g_file_descriptor** outDescriptor, g_fd optionalFd =
-		-1);
+g_fs_open_status filesystemProcessCreateDescriptor(g_pid pid, g_fs_virt_id nodeId, g_file_flag_mode flags,
+		g_file_descriptor** outDescriptor, g_fd optionalFd = G_FD_NONE);
 
 /**
  * Finds a file descriptor.

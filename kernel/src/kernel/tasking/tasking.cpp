@@ -22,6 +22,7 @@
 
 #include "kernel/tasking/tasking.hpp"
 #include "kernel/tasking/tasking_memory.hpp"
+#include "kernel/tasking/tasking_directory.hpp"
 #include "kernel/tasking/scheduler.hpp"
 #include "kernel/tasking/wait.hpp"
 #include "kernel/tasking/elf/elf_loader.hpp"
@@ -71,6 +72,7 @@ void taskingInitializeBsp()
 	taskGlobalMap = hashmapCreateNumeric<g_tid, g_task*>(128);
 
 	taskingInitializeLocal();
+	taskingDirectoryInitialize();
 }
 
 void taskingInitializeAp()

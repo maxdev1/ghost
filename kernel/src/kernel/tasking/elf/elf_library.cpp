@@ -41,7 +41,7 @@ g_spawn_status elfLibraryLoad(g_task* caller, g_elf_object* parentObject, const 
 
 	/* Open and load library */
 	g_fd fd = elfLibraryOpen(caller, name);
-	if(fd == -1)
+	if(fd == G_FD_NONE)
 	{
 		return G_SPAWN_STATUS_DEPENDENCY_ERROR;
 	}
@@ -95,7 +95,7 @@ g_fd elfLibraryOpen(g_task* caller, const char* name)
 	if(findStatus != G_FS_OPEN_SUCCESSFUL) {
 		logInfo("%! unable to resolve dependency %s (status %i)", "elf", absolutePath, findStatus);
 		heapFree(absolutePath);
-		return -1;
+		return G_FD_NONE;
 	}
 
 	g_fd fd;
@@ -103,7 +103,7 @@ g_fd elfLibraryOpen(g_task* caller, const char* name)
 	if(openStatus != G_FS_OPEN_SUCCESSFUL) {
 		logInfo("%! unable to open dependency %s", "elf", absolutePath);
 		heapFree(absolutePath);
-		return -1;
+		return G_FD_NONE;
 	}
 
 	heapFree(absolutePath);

@@ -32,7 +32,7 @@ void syscallFsOpen(g_task* task, g_syscall_fs_open* data)
 		data->fd = fd;
 	} else
 	{
-		data->fd = -1;
+		data->fd = G_FD_NONE;
 	}
 }
 
@@ -46,7 +46,7 @@ void syscallFsRead(g_task* task, g_syscall_fs_read* data)
 	data->status = filesystemRead(task, data->fd, data->buffer, data->length, &data->result);
 	if(data->status != G_FS_READ_SUCCESSFUL)
 	{
-		data->result = -1;
+		data->result = G_FD_NONE;
 	}
 }
 
@@ -55,7 +55,7 @@ void syscallFsWrite(g_task* task, g_syscall_fs_write* data)
 	data->status = filesystemWrite(task, data->fd, data->buffer, data->length, &data->result);
 	if(data->status != G_FS_WRITE_SUCCESSFUL)
 	{
-		data->result = -1;
+		data->result = G_FD_NONE;
 	}
 }
 
@@ -70,14 +70,14 @@ void syscallFsCloneFd(g_task* task, g_syscall_fs_clonefd* data)
 	if(!descriptor)
 	{
 		data->status = G_FS_CLONEFD_INVALID_SOURCE_FD;
-		data->result = -1;
+		data->result = G_FD_NONE;
 		return;
 	}
 
 	g_file_descriptor* clone = filesystemProcessCloneDescriptor(descriptor, data->target_pid, data->target_fd);
 	if(!clone)
 	{
-		data->result = -1;
+		data->result = G_FD_NONE;
 		data->status = G_FS_CLONEFD_ERROR;
 		return;
 	}
@@ -93,7 +93,7 @@ void syscallFsTell(g_task* task, g_syscall_fs_tell* data)
 	if(!descriptor)
 	{
 		data->status = G_FS_TELL_INVALID_FD;
-		data->result = -1;
+		data->result = G_FD_NONE;
 		return;
 	}
 
@@ -119,8 +119,8 @@ void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 	if(data->status != G_FS_PIPE_SUCCESSFUL)
 	{
 		logInfo("%! failed to create pipe for task %i with status %i", "filesystem", task->id, data->status);
-		data->read_fd = -1;
-		data->write_fd = -1;
+		data->read_fd = G_FD_NONE;
+		data->write_fd = G_FD_NONE;
 		return;
 	}
 

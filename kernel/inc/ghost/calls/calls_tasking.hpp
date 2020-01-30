@@ -137,7 +137,7 @@ typedef struct {
  * 		the identifier
  *
  * @field resultTaskId
- * 		the task id, or -1 if not successful
+ * 		the task id, or G_TID_NONE if not successful
  */
 typedef struct {
 	char* identifier;

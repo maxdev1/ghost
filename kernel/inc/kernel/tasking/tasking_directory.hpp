@@ -18,24 +18,32 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __UTILS_HASHMAP_STRING__
-#define __UTILS_HASHMAP_STRING__
+#ifndef __KERNEL_TASKING_DIRECTORY__
+#define __KERNEL_TASKING_DIRECTORY__
 
-#include "kernel/utils/hashmap.hpp"
+#include "kernel/tasking/tasking.hpp"
 
-const char* hashmapKeyCopyString(const char* key);
-int hashmapKeyHashString(const char* key);
-void hashmapKeyFreeString(const char* key);
-bool hashmapKeyEqualsString(const char* k1, const char* k2);
+struct g_task_directory_entry
+{
+    g_tid task;
+    g_security_level priority;
+};
 
-template<typename V>
-g_hashmap<const char*, V>* hashmapCreateString(int bucketCount) {
-	g_hashmap<const char*, V>* map = hashmapInternalCreate<const char*, V>(bucketCount);
-	map->keyCopy = hashmapKeyCopyString;
-	map->keyHash = hashmapKeyHashString;
-	map->keyFree = hashmapKeyFreeString;
-	map->keyEquals = hashmapKeyEqualsString;
-	return map;
-}
+/**
+ * Initializes the task directory.
+ */
+void taskingDirectoryInitialize();
+
+/**
+ * Registers the given task in the directory. The priority decides if registering is valid,
+ * a task with a stronger security level always overrides weaker, and weaker can't override
+ * stronger entries.
+ */
+bool taskingDirectoryRegister(const char* name, g_tid tid, g_security_level priority);
+
+/**
+ * @return task for the name or G_TID_NONE
+ */
+g_tid taskingDirectoryGet(const char* name);
 
 #endif

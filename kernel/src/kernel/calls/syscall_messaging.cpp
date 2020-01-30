@@ -20,19 +20,16 @@
 
 #include "kernel/calls/syscall_messaging.hpp"
 #include "shared/logger/logger.hpp"
+#include "kernel/tasking/tasking_directory.hpp"
 
 void syscallRegisterTaskIdentifier(g_task* task, g_syscall_task_id_register* data)
 {
-	logInfo("syscall not implemented: syscallRegisterTaskIdentifier");
-	for(;;)
-		;
+	data->successful = taskingDirectoryRegister(data->identifier, task->id, task->securityLevel);
 }
 
 void syscallGetTaskForIdentifier(g_task* task, g_syscall_task_id_get* data)
 {
-	logInfo("syscall not implemented: syscallGetTaskForIdentifier");
-	for(;;)
-		;
+	data->resultTaskId = taskingDirectoryGet(data->identifier);
 }
 
 void syscallMessageSend(g_task* task, g_syscall_send_message* data)

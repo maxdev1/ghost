@@ -58,6 +58,10 @@ int testLocalSetAfterJoin = 0;
 
 void testThreadRoutine()
 {
+	/* Register in task directory */
+	g_task_register_id("test-routine");
+
+	/* Wait a little before finishing */
 	for(int i = 0; i < 5; i++) {
 		g_sleep(100);
 	}
@@ -68,6 +72,12 @@ test_result_t runThreadTests()
 {
 	g_tid tid = g_create_thread((void*) testThreadRoutine);
 
+	/* Check if task directory registration has worked */
+	g_sleep(100);
+	g_tid registeredTid = g_task_get_id("test-routine");
+	assert(tid == registeredTid);
+
+	/* Test joining */
 	assert(testLocalSetAfterJoin == 0);
 	g_join(tid);
 	assert(testLocalSetAfterJoin == 25);

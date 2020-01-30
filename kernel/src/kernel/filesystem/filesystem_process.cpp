@@ -51,7 +51,7 @@ g_fs_open_status filesystemProcessCreateDescriptor(g_pid pid, g_fs_virt_id nodeI
 
 	g_file_descriptor* descriptor = (g_file_descriptor*) heapAllocate(sizeof(g_file_descriptor));
 
-	if(optionalFd == -1) {
+	if(optionalFd == G_FD_NONE) {
 		mutexAcquire(&info->nextDescriptorLock);
 		descriptor->id = info->nextDescriptor++;
 		mutexRelease(&info->nextDescriptorLock);
@@ -114,7 +114,7 @@ void filesystemProcessRemoveDescriptor(g_pid pid, g_fd fd)
 
 g_file_descriptor* filesystemProcessCloneDescriptor(g_file_descriptor* sourceFd, g_pid targetPid, g_fd targetFd) {
 
-	if(targetFd != -1)
+	if(targetFd != G_FD_NONE)
 		filesystemProcessRemoveDescriptor(targetPid, targetFd);
 	
 	g_file_descriptor* createdFd;
