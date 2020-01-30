@@ -34,9 +34,9 @@ void syscallGetTaskId(g_task* task, g_syscall_get_tid* data);
 
 void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data);
 
-void syscallFork(g_task* task, g_syscall_get_pid_for_tid* data);
+void syscallFork(g_task* task, g_syscall_fork* data);
 
-void syscallJoin(g_task* task, g_syscall_get_pid_for_tid* data);
+void syscallJoin(g_task* task, g_syscall_join* data);
 
 void syscallSleep(g_task* task, g_syscall_sleep* data);
 

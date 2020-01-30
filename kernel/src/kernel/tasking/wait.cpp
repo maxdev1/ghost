@@ -80,3 +80,16 @@ void waitForFile(g_task* task, g_fs_node* file, bool (*waitResolverFromDelegate)
 
 	mutexRelease(&task->process->lock);
 }
+
+void waitJoinTask(g_task* task, g_tid otherTask)
+{
+	mutexAcquire(&task->process->lock);
+
+	g_wait_resolver_join_data* waitData = (g_wait_resolver_join_data*) heapAllocate(sizeof(g_wait_resolver_join_data));
+	waitData->joinedTaskId = otherTask;
+	task->waitData = waitData;
+	task->waitResolver = waitResolverJoin;
+	task->status = G_THREAD_STATUS_WAITING;
+
+	mutexRelease(&task->process->lock);
+}

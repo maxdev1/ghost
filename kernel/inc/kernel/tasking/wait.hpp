@@ -48,4 +48,9 @@ void waitAtomicLock(g_task* task);
  */
 void waitForFile(g_task* task, g_fs_node* file, bool (*waitResolverFromDelegate)(g_task*));
 
+/**
+ * Puts the given task into a waiting state, waiting until the other task has finished work.
+ */
+void waitJoinTask(g_task* task, g_tid otherTask);
+
 #endif

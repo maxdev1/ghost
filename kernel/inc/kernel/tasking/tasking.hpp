@@ -144,6 +144,15 @@ struct g_task
 	 * structure and later restored from it.
 	 */
 	g_task_interruption_info* interruptionInfo;
+
+	/**
+	 * If the thread is user-created, we must store info on where the thread should enter.
+	 */
+	struct
+	{
+		void* function;
+		void* data;
+	} userEntry;
 };
 
 /**
