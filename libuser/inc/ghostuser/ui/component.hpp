@@ -23,7 +23,7 @@
 
 #include <cstdint>
 #include <ghost.h>
-#include <ghost/utils/local.hpp>
+#include <ghostuser/utils/local.hpp>
 #include <ghostuser/graphics/metrics/rectangle.hpp>
 #include <ghostuser/ui/interface_specification.hpp>
 #include <ghostuser/ui/bounds_event_component.hpp>

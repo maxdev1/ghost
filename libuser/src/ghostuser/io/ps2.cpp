@@ -21,7 +21,7 @@
 #include <ghostuser/io/ps2.hpp>
 #include <ghost.h>
 #include <stdio.h>
-#include <ghost/utils/local.hpp>
+#include <ghostuser/utils/local.hpp>
 
 g_ps2_shared_area* g_ps2_area = 0;
 bool g_ps2_is_registered = false;

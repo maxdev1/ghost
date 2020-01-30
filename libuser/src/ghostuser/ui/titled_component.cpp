@@ -19,12 +19,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <ghost.h>
-#include <ghost/utils/local.hpp>
+#include <ghostuser/utils/local.hpp>
 #include <ghostuser/ui/interface_specification.hpp>
 #include <ghostuser/ui/titled_component.hpp>
 #include <ghostuser/ui/ui.hpp>
 #include <ghostuser/utils/value_placer.hpp>
-#include <ghost/utils/local.hpp>
+#include <ghostuser/utils/local.hpp>
 #include <stdio.h>
 
 /**

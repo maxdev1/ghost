@@ -20,7 +20,7 @@
 
 #include <iostream>
 #include <ghostuser/io/terminal.hpp>
-#include <ghost/utils/local.hpp>
+#include <ghostuser/utils/local.hpp>
 #include <gosh.hpp>
 #include <stdio.h>
 #include <parser.hpp>
