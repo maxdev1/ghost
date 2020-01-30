@@ -379,6 +379,9 @@ void taskingKernelThreadYield()
 		return;
 	}
 
+	/* Special handling only when a kernel thread is yielding.
+	We call the interrupt 0x81 which will be handled in the interrupt
+	request handling sequence <requestsHandle>. */
 	asm volatile ("int $0x81"
 			:
 			: "a"(0), "b"(0)

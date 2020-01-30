@@ -38,8 +38,15 @@ typedef struct
  */
 void requestsHandle(g_task* task);
 
+/**
+ * Registers a user-space interrupt request handler.
+ */
 void requestsRegisterHandler(uint8_t irq, g_tid handlerTask, g_virtual_address handlerAddress, g_virtual_address returnAddress);
 
+/**
+ * Calls the user-space handler for an IRQ if there is one registered
+ * on the given task.
+ */
 void requestsCallUserspaceHandler(g_task* task, uint8_t irq);
 
 #endif
