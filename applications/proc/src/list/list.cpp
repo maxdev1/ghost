@@ -21,7 +21,7 @@
 #include "list.hpp"
 
 #include <stdio.h>
-#include <ghost/utils/local.hpp>
+#include <ghostuser/utils/local.hpp>
 #include <ghost/kernquery.h>
 
 /**
