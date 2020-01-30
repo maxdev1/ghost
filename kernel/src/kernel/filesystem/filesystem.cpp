@@ -47,7 +47,6 @@ void filesystemInitialize()
 
 	filesystemNodes = hashmapCreateNumeric<g_fs_virt_id, g_fs_node*>(1024);
 
-	pipeInitialize();
 	filesystemProcessInitialize();
 	filesystemCreateRoot();
 }

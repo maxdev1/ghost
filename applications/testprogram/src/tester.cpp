@@ -34,8 +34,7 @@ int main(int argc, char** argv)
 	/* Run basic tests */
 	test_result_t result;
 	result += runStdioTest();
-	// result += runMessageTest();
-
+	result += runMessageTest();
 	result += runThreadTests();
 
 	klog("Test suite finished: %i successful, %i failed", result.successful, result.failed);

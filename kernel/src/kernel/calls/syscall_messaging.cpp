@@ -21,6 +21,8 @@
 #include "kernel/calls/syscall_messaging.hpp"
 #include "shared/logger/logger.hpp"
 #include "kernel/tasking/tasking_directory.hpp"
+#include "kernel/ipc/message.hpp"
+#include "kernel/tasking/wait.hpp"
 
 void syscallRegisterTaskIdentifier(g_task* task, g_syscall_task_id_register* data)
 {
@@ -34,14 +36,22 @@ void syscallGetTaskForIdentifier(g_task* task, g_syscall_task_id_get* data)
 
 void syscallMessageSend(g_task* task, g_syscall_send_message* data)
 {
-	logInfo("syscall not implemented: syscallMessageSend");
-	for(;;)
-		;
+	data->status = messageSend(task->id, data->receiver, data->buffer, data->length, data->transaction);
+
+	if(data->mode == G_MESSAGE_SEND_MODE_BLOCKING && data->status == G_MESSAGE_SEND_STATUS_QUEUE_FULL)
+	{
+		waitForMessageSend(task);
+		taskingSchedule();
+	}
 }
 
 void syscallMessageReceive(g_task* task, g_syscall_receive_message* data)
 {
-	logInfo("syscall not implemented: syscallMessageReceive");
-	for(;;)
-		;
+	data->status = messageReceive(task->id, data->buffer, data->maximum, data->transaction);
+
+	if(data->mode == G_MESSAGE_RECEIVE_MODE_BLOCKING && data->status == G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY)
+	{
+		waitForMessageReceive(task);
+		taskingSchedule();
+	}
 }

@@ -26,73 +26,66 @@
 #include <string.h>
 #include <stdio.h>
 
-static g_tid message_receiver_tid;
+static g_tid messageReceiverThreadId = 0;
+static bool receiverFailed = false;
 
 /**
  *
  */
-test_result_t message_test_receiver()
+void messageReceiverThread()
 {
-	message_receiver_tid = g_get_tid();
+	messageReceiverThreadId = g_get_tid();
 
 	size_t buflen = 128;
 	g_message_header* buf = (g_message_header*) new uint8_t[buflen];
 
-	while(true)
+	char* exp = new char[128];
+	for(int j = 0; j < 5; j++)
 	{
 		for(int i = 0; i < 1000; i++)
 		{
-			auto stat = g_receive_message(buf, buflen);
+			sprintf(exp, "Hello messaging %i %i", j, i);
 
+			auto stat = g_receive_message(buf, buflen);
 			if(stat != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 			{
-				klog("failed receiving with status %i", stat);
-				break;
+				receiverFailed = true;
+				return;
+			}
+			if(strcmp((char*) G_MESSAGE_CONTENT(buf), exp) != 0)
+			{
+				receiverFailed = true;
+				return;
 			}
 		}
-
-		g_message_header* message = (g_message_header*) buf;
-		klog("content: %i times * %i = %i, '%s'", 1000, message->length, 1000 * message->length, G_MESSAGE_CONTENT(message));
 	}
-
-	TEST_SUCCESSFUL;
 }
 
-/**
- *
- */
-test_result_t message_test_sender()
+test_result_t messageSenderThread()
 {
+	g_sleep(200);
+	ASSERT(messageReceiverThreadId != 0);
 
-	g_sleep(1000);
-
-	klog("starting to send messages");
-	for(;;)
+	char* buf = new char[128];
+	for(int j = 0; j < 5; j++)
 	{
-		const char* data = "Hello messaging";
-		size_t datalen = strlen(data);
-
-		int c = 4000;
-		auto start = g_millis();
-		for(int i = 0; i < c; i++)
+		for(int i = 0; i < 1000; i++)
 		{
-			g_send_message(message_receiver_tid, (void*) data, datalen);
+			sprintf(buf, "Hello messaging %i %i", j, i);
+			auto stat = g_send_message(messageReceiverThreadId, (void*) buf, strlen(buf) + 1);
+			ASSERT(stat == G_MESSAGE_SEND_STATUS_SUCCESSFUL);
 		}
-		klog("%i took %i ms", c, g_millis() - start);
-		g_sleep(1000);
-	}
+		g_sleep(200);
 
+		ASSERT(receiverFailed == false);
+	}
 	TEST_SUCCESSFUL;
 }
 
-/**
- *
- */
 test_result_t runMessageTest()
 {
-	test_result_t result;
-	g_create_thread((void*) message_test_receiver);
-	result += message_test_sender();
-	return result;
+	g_tid rectid = g_create_thread((void*) messageReceiverThread);
+	messageSenderThread();
+	g_join(rectid);
+	TEST_SUCCESSFUL;
 }
-

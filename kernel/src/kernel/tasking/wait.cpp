@@ -26,6 +26,9 @@
 
 bool waitTryWake(g_task* task)
 {
+	g_physical_address back = taskingTemporarySwitchToSpace(task->process->pageDirectory);
+
+	bool wake = false;
 	if(task->waitResolver && task->waitResolver(task))
 	{
 		task->waitResolver = 0;
@@ -36,9 +39,11 @@ bool waitTryWake(g_task* task)
 		}
 
 		task->status = G_THREAD_STATUS_RUNNING;
-		return true;
+		wake = true;
 	}
-	return false;
+
+	taskingTemporarySwitchBack(back);
+	return wake;
 }
 
 void waitSleep(g_task* task, uint64_t milliseconds)
@@ -89,6 +94,28 @@ void waitJoinTask(g_task* task, g_tid otherTask)
 	waitData->joinedTaskId = otherTask;
 	task->waitData = waitData;
 	task->waitResolver = waitResolverJoin;
+	task->status = G_THREAD_STATUS_WAITING;
+
+	mutexRelease(&task->process->lock);
+}
+
+void waitForMessageSend(g_task* task)
+{
+	mutexAcquire(&task->process->lock);
+
+	task->waitData = 0;
+	task->waitResolver = waitResolverSendMessage;
+	task->status = G_THREAD_STATUS_WAITING;
+
+	mutexRelease(&task->process->lock);
+}
+
+void waitForMessageReceive(g_task* task)
+{
+	mutexAcquire(&task->process->lock);
+
+	task->waitData = 0;
+	task->waitResolver = waitResolverReceiveMessage;
 	task->status = G_THREAD_STATUS_WAITING;
 
 	mutexRelease(&task->process->lock);

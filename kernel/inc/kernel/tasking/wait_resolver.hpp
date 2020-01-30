@@ -53,4 +53,8 @@ bool waitResolverAtomicLock(g_task* task);
 
 bool waitResolverJoin(g_task* task);
 
+bool waitResolverSendMessage(g_task* task);
+
+bool waitResolverReceiveMessage(g_task* task);
+
 #endif
