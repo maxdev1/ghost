@@ -21,9 +21,10 @@
 #include "ghost/calls/calls.h"
 
 #include "kernel/tasking/wait_resolver.hpp"
-
 #include "kernel/memory/heap.hpp"
 #include "shared/logger/logger.hpp"
+#include "kernel/ipc/message.hpp"
+
 
 bool waitResolverSleep(g_task* task)
 {
@@ -74,3 +75,34 @@ bool waitResolverJoin(g_task* task)
 
 	return false;
 }
+
+bool waitResolverSendMessage(g_task* task)
+{
+	g_syscall_send_message* data = (g_syscall_send_message*) task->syscall.data;
+
+	data->status = messageSend(task->id, data->receiver, data->buffer, data->length, data->transaction);
+	if(data->status == G_MESSAGE_SEND_STATUS_QUEUE_FULL)
+	{
+		return false;
+	}
+	return true;
+}
+
+bool waitResolverReceiveMessage(g_task* task)
+{
+	g_syscall_receive_message* data = (g_syscall_receive_message*) task->syscall.data;
+
+	if(data->break_condition && *data->break_condition)
+	{
+		data->status = G_MESSAGE_RECEIVE_STATUS_INTERRUPTED;
+		return true;
+	}
+
+	data->status = messageReceive(task->id, data->buffer, data->maximum, data->transaction);
+	if(data->status == G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY)
+	{
+		return false;
+	}
+	return true;
+}
+

@@ -27,6 +27,7 @@
 #include "kernel/tasking/wait.hpp"
 #include "kernel/tasking/elf/elf_loader.hpp"
 
+#include "kernel/ipc/message.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/memory/memory.hpp"
@@ -459,6 +460,9 @@ void taskingRemoveThread(g_task* task)
 
 	// Switch to task space
 	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(task->process->pageDirectory);
+
+	// Clean up miscellaneous memory
+	messageTaskRemoved(task->id);
 
 	// Free stack pages
 	if(task->interruptStack.start)

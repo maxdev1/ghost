@@ -18,57 +18,38 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_WAIT__
-#define __KERNEL_WAIT__
+#ifndef __KERNEL_IPC_MESSAGE__
+#define __KERNEL_IPC_MESSAGE__
 
-#include "ghost/types.h"
-#include "kernel/tasking/tasking.hpp"
-#include "kernel/filesystem/filesystem.hpp"
+#include "ghost.h"
+#include "shared/system/mutex.hpp"
 
-/**
- * Checks if this task can be woken up by calling its wait resolver. This call is done
- * from within the address space of the given task by temporarily switching there.
- * 
- * If it has finished waiting, the wait data is freed and the task set to
- * running state.
- */
-bool waitTryWake(g_task* task);
+struct g_message_queue
+{
+    g_mutex lock;
+    g_message_header* head;
+    g_message_header* tail;
+    uint32_t size;
+};
 
 /**
- * Puts the task to wait and lets it sleep for the given number of milliseconds.
- * If executed from the current task, you must yield.
+ * Initializes basic structures required for messaging.
  */
-void waitSleep(g_task* task, uint64_t milliseconds);
+void messageInitialize();
 
 /**
- * Lets the task wait until it can set an atom.
+ * Sends a message.
  */
-void waitAtomicLock(g_task* task);
+g_message_send_status messageSend(g_tid sender, g_tid receiver, void* content, uint32_t length, g_message_transaction tx);
 
 /**
- * Called by the file system if a task needs to wait until it can read from/write to a file.
+ * Receives a message.
  */
-void waitForFile(g_task* task, g_fs_node* file, bool (*waitResolverFromDelegate)(g_task*));
+g_message_receive_status messageReceive(g_tid receiver, g_message_header* out, uint32_t max, g_message_transaction tx);
 
 /**
- * Puts the given task into a waiting state, waiting until the other task has finished work.
- * 
- * @note uses the <syscall.data> on the task directly
+ * When a task is removed, this function is called to cleanup any occupied memory.
  */
-void waitJoinTask(g_task* task, g_tid otherTask);
-
-/**
- * Makes the task wait and attempts sending the requested message again.
- * 
- * @note uses the <syscall.data> on the task directly
- */
-void waitForMessageSend(g_task* task);
-
-/**
- * Makes the task wait and attempts receiving a message again.
- * 
- * @note uses the <syscall.data> on the task directly
- */
-void waitForMessageReceive(g_task* task);
+void messageTaskRemoved(g_tid task);
 
 #endif

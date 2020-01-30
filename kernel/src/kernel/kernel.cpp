@@ -29,6 +29,8 @@
 #include "kernel/logger/kernel_logger.hpp"
 #include "kernel/calls/syscall.hpp"
 #include "kernel/filesystem/filesystem.hpp"
+#include "kernel/ipc/pipes.hpp"
+#include "kernel/ipc/message.hpp"
 
 #include "shared/runtime/constructors.hpp"
 #include "shared/video/console_video.hpp"
@@ -77,6 +79,8 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 
 	systemInitializeBsp(initialPdPhys);
 	filesystemInitialize();
+	pipeInitialize();
+	messageInitialize();
 
 	taskingInitializeBsp();
 	syscallRegisterAll();
