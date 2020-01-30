@@ -150,7 +150,6 @@ void syscallRegisterAll()
 	syscallRegister(G_SYSCALL_KERNQUERY, (g_syscall_handler) syscallKernQuery, false);
 	syscallRegister(G_SYSCALL_GET_EXECUTABLE_PATH, (g_syscall_handler) syscallGetExecutablePath, false);
 	syscallRegister(G_SYSCALL_GET_PARENT_PROCESS_ID, (g_syscall_handler) syscallGetParentProcessId, false);
-	syscallRegister(G_SYSCALL_EXIT_THREAD, (g_syscall_handler) syscallExitThread, false);
 	syscallRegister(G_SYSCALL_TASK_GET_TLS, (g_syscall_handler) syscallTaskGetTls, false);
 	syscallRegister(G_SYSCALL_PROCESS_GET_INFO, (g_syscall_handler) syscallProcessGetInfo, false);
 

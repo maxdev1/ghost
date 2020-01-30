@@ -58,8 +58,6 @@ void syscallKill(g_task* task, g_syscall_kill* data);
 
 void syscallGetParentProcessId(g_task* task, g_syscall_get_parent_pid* data);
 
-void syscallExitThread(g_task* task, void* nil);
-
 void syscallCreateThread(g_task* task, g_syscall_create_thread* data);
 
 void syscallGetThreadEntry(g_task* task, g_syscall_get_thread_entry* data);
