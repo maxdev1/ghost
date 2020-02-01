@@ -100,7 +100,24 @@ void syscallAllocateMemory(g_task* task, g_syscall_alloc_mem* data)
 void syscallUnmap(g_task* task, g_syscall_unmap* data)
 {
 	g_address_range* range = addressRangePoolFind(task->process->virtualRangePool, data->virtualBase);
-	#warning TODO
+	if(!range) return;
+
+	for(uint32_t i = 0; i < range->pages; i++)
+	{
+		g_virtual_address virt = range->base + i * G_PAGE_SIZE;
+		g_physical_address page = pagingVirtualToPhysical(virt);
+		if(!page) continue;
+
+		if(range->flags & G_PROC_VIRTUAL_RANGE_FLAG_PHYSICAL_OWNER)
+		{
+			bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, page);
+		}
+
+		pagingUnmapPage(virt);
+		pageReferenceTrackerDecrement(page);
+	}
+
+	addressRangePoolFree(task->process->virtualRangePool, range->base);
 }
 
 void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
