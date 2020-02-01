@@ -182,5 +182,5 @@ void syscallMapMmioArea(g_task* task, g_syscall_map_mmio* data)
 		pagingMapPage(virtualRangeBase + i * G_PAGE_SIZE, data->physicalAddress + i * G_PAGE_SIZE, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
 	}
 
-	data->virtualAddress = virtualRangeBase;
+	data->virtualAddress = (void*) virtualRangeBase;
 }
