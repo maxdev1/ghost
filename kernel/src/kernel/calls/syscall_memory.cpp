@@ -108,13 +108,10 @@ void syscallUnmap(g_task* task, g_syscall_unmap* data)
 		g_physical_address page = pagingVirtualToPhysical(virt);
 		if(!page) continue;
 
-		if(range->flags & G_PROC_VIRTUAL_RANGE_FLAG_PHYSICAL_OWNER)
-		{
+		if(pageReferenceTrackerDecrement(page) == 0)
 			bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, page);
-		}
 
 		pagingUnmapPage(virt);
-		pageReferenceTrackerDecrement(page);
 	}
 
 	addressRangePoolFree(task->process->virtualRangePool, range->base);
