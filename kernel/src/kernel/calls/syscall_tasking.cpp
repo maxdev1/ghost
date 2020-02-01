@@ -66,13 +66,6 @@ void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
 	}
 }
 
-void syscallFork(g_task* task, g_syscall_fork* data)
-{
-	logInfo("syscall not implemented: fork");
-	for(;;)
-		;
-}
-
 void syscallJoin(g_task* task, g_syscall_join* data)
 {
 	waitJoinTask(task, data->taskId);
@@ -180,16 +173,12 @@ void syscallProcessGetInfo(g_task* task, g_syscall_process_get_info* data)
 
 void syscallKill(g_task* task, g_syscall_kill* data)
 {
-	logInfo("syscall not implemented: syscallKill");
-	for(;;)
-		;
-}
-
-void syscallGetParentProcessId(g_task* task, g_syscall_get_parent_pid* data)
-{
-	logInfo("syscall not implemented: syscallGetParentProcessId");
-	for(;;)
-		;
+	g_task* target = taskingGetById(data->pid);
+	if(target)
+	{
+		target->process->main->status = G_THREAD_STATUS_DEAD;
+		taskingSchedule();
+	}
 }
 
 void syscallCreateThread(g_task* task, g_syscall_create_thread* data)
@@ -216,6 +205,20 @@ void syscallGetThreadEntry(g_task* task, g_syscall_get_thread_entry* data)
 {
 	data->userData = task->userEntry.data;
 	data->userEntry = task->userEntry.function;
+}
+
+void syscallFork(g_task* task, g_syscall_fork* data)
+{
+	logInfo("syscall not implemented: fork");
+	for(;;)
+		;
+}
+
+void syscallGetParentProcessId(g_task* task, g_syscall_get_parent_pid* data)
+{
+	logInfo("syscall not implemented: syscallGetParentProcessId");
+	for(;;)
+		;
 }
 
 
