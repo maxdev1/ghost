@@ -23,6 +23,7 @@
 
 #include "ghost/stdint.h"
 #include "ghost/kernel.h"
+#include "ghost/types.h"
 
 /**
  * @field size
