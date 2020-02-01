@@ -49,7 +49,9 @@ void pageReferenceTrackerInitialize();
 void pageReferenceTrackerIncrement(g_physical_address address);
 
 /**
- * Decrements the number of references on a physical page
+ * Decrements the number of references on a physical page.
+ * 
+ * @return the remaining number of references
  */
 int16_t pageReferenceTrackerDecrement(g_physical_address address);
 

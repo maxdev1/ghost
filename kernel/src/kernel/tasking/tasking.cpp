@@ -336,7 +336,7 @@ void taskingPrepareThreadLocalStorage(g_task* thread)
 	// allocate virtual range with required size
 	uint32_t requiredSize = process->tlsMaster.size;
 	uint32_t requiredPages = G_PAGE_ALIGN_UP(requiredSize) / G_PAGE_SIZE;
-	g_virtual_address tlsCopyStart = addressRangePoolAllocate(process->virtualRangePool, requiredPages, G_PROC_VIRTUAL_RANGE_FLAG_PHYSICAL_OWNER);
+	g_virtual_address tlsCopyStart = addressRangePoolAllocate(process->virtualRangePool, requiredPages);
 	g_virtual_address tlsCopyEnd = tlsCopyStart + requiredPages * G_PAGE_SIZE;
 
 	// temporarily switch to target process directory, copy TLS contents

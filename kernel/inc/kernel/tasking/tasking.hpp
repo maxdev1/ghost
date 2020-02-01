@@ -220,10 +220,12 @@ public:
 };
 
 /**
- * Constants used as flags on virtual ranges of processes
+ * Flags used when allocating virtual ranges.
  */
-#define G_PROC_VIRTUAL_RANGE_FLAG_NONE						0
-#define G_PROC_VIRTUAL_RANGE_FLAG_PHYSICAL_OWNER			1
+#define G_PROC_VIRTUAL_RANGE_FLAG_NONE		0
+/* Weak flag signals that the physical memory mapped behind the
+virtual range is not managed by the kernel (for example MMIO). */
+#define G_PROC_VIRTUAL_RANGE_FLAG_WEAK		1
 
 /**
  * A process groups multiple tasks.
