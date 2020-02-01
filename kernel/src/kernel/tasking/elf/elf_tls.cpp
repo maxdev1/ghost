@@ -68,7 +68,7 @@ void elf32TlsCreateMasterImage(g_task* caller, g_fd file, g_process* process, g_
 	/* Allocate memory */
 	uint32_t sizeInPages = G_PAGE_ALIGN_UP(executableObject->tlsMasterTotalSize);
 	uint32_t requiredPages = sizeInPages / G_PAGE_SIZE;
-	g_virtual_address tlsStart = addressRangePoolAllocate(process->virtualRangePool, requiredPages, G_PROC_VIRTUAL_RANGE_FLAG_PHYSICAL_OWNER);
+	g_virtual_address tlsStart = addressRangePoolAllocate(process->virtualRangePool, requiredPages);
 	for(uint32_t i = 0; i < requiredPages; i++)
 	{
 		g_physical_address page = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
