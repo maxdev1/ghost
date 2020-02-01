@@ -257,3 +257,21 @@ void addressRangePoolReleaseRanges(g_address_range_pool* pool)
 	pool->first = 0;
 }
 
+g_address_range* addressRangePoolFind(g_address_range_pool* pool, g_address base)
+{
+	mutexAcquire(&pool->lock);
+
+	g_address_range* range = pool->first;
+	while(range)
+	{
+		if(range->base == base)
+		{
+			break;
+		}
+		range = range->next;
+	}
+
+	mutexRelease(&pool->lock);
+
+	return range;
+}
