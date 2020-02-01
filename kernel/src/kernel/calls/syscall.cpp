@@ -156,10 +156,10 @@ void syscallRegisterAll()
 	syscallRegister(G_SYSCALL_CALL_VM86, (g_syscall_handler) syscallCallVm86, false);
 	syscallRegister(G_SYSCALL_LOWER_MEMORY_ALLOCATE, (g_syscall_handler) syscallLowerMemoryAllocate, false);
 	syscallRegister(G_SYSCALL_LOWER_MEMORY_FREE, (g_syscall_handler) syscallLowerMemoryFree, false);
-	syscallRegister(G_SYSCALL_ALLOCATE_MEMORY, (g_syscall_handler) syscallAllocateMemory, false);
-	syscallRegister(G_SYSCALL_UNMAP, (g_syscall_handler) syscallUnmap, false);
-	syscallRegister(G_SYSCALL_SHARE_MEMORY, (g_syscall_handler) syscallShareMemory, false);
-	syscallRegister(G_SYSCALL_MAP_MMIO_AREA, (g_syscall_handler) syscallMapMmioArea, false);
+	syscallRegister(G_SYSCALL_ALLOCATE_MEMORY, (g_syscall_handler) syscallAllocateMemory, true);
+	syscallRegister(G_SYSCALL_UNMAP, (g_syscall_handler) syscallUnmap, true);
+	syscallRegister(G_SYSCALL_SHARE_MEMORY, (g_syscall_handler) syscallShareMemory, true);
+	syscallRegister(G_SYSCALL_MAP_MMIO_AREA, (g_syscall_handler) syscallMapMmioArea, true);
 	syscallRegister(G_SYSCALL_SBRK, (g_syscall_handler) syscallSbrk, false);
 
 	syscallRegister(G_SYSCALL_SPAWN, (g_syscall_handler) syscallSpawn, true);

@@ -28,7 +28,7 @@ void syscallSbrk(g_task* task, g_syscall_sbrk* data);
 
 void syscallLowerMemoryAllocate(g_task* task, g_syscall_lower_malloc* data);
 
-void syscallLowerMemoryFree(g_task* task, g_syscall_lower_malloc* data);
+void syscallLowerMemoryFree(g_task* task, g_syscall_lower_free* data);
 
 void syscallAllocateMemory(g_task* task, g_syscall_alloc_mem* data);
 

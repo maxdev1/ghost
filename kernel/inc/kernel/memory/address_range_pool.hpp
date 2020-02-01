@@ -55,6 +55,8 @@ int32_t addressRangePoolFree(g_address_range_pool* pool, g_address base);
 
 g_address_range* addressRangePoolGetRanges(g_address_range_pool* pool);
 
+g_address_range* addressRangePoolFind(g_address_range_pool* pool, g_address base);
+
 void addressRangePoolDump(g_address_range_pool* pool, bool onlyFree = false);
 
 #endif
