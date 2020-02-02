@@ -19,8 +19,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <vbe_driver.hpp>
-#include <ghostuser/graphics/VBE.hpp>
-#include <ghostuser/utils/Logger.hpp>
+#include <ghostuser/graphics/vbe.hpp>
+#include <ghostuser/utils/logger.hpp>
 #include <ghost.h>
 #include <stdint.h>
 #include <string.h>
@@ -101,6 +101,7 @@ bool setVideoMode(uint32_t wantedWidth, uint32_t wantedHeight, uint32_t wantedBp
 	VbeInfoBlock* vbeInfoBlock = (VbeInfoBlock*) g_lower_malloc(
 	VBE_INFO_BLOCK_SIZE);
 
+	g_logger::log("loading VBE info block");
 	bool couldLoadVbeInfo = loadVbeInfo(vbeInfoBlock);
 	if (!couldLoadVbeInfo) {
 		g_logger::log("could not load VBE info block");
@@ -237,6 +238,7 @@ int main() {
 
 		// handle command
 		if (vbeheader->command == G_VBE_COMMAND_SET_MODE) {
+			klog("vbe driver received: setmode");
 			g_vbe_set_mode_request* request = (g_vbe_set_mode_request*) G_MESSAGE_CONTENT(buf);
 
 			// create response

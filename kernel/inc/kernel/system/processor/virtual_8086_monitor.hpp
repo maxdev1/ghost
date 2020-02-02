@@ -18,32 +18,22 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __CARET_MOVE_STRATEGY__
-#define __CARET_MOVE_STRATEGY__
+#ifndef __KERNEL_PROCESSOR_VM86__
+#define __KERNEL_PROCESSOR_VM86__
 
-#include <components/text/caret_direction.hpp>
-#include <ghostuser/io/keyboard.hpp>
+#include "kernel/system/processor/processor_state.hpp"
+#include "kernel/tasking/tasking.hpp"
 
-class text_component_t;
+#define G_EFLAG_IF			(1 << 9)
+#define G_EFLAG_VM			(1 << 17)
+#define G_VALID_FLAGS		0xDFF
 
-/**
- *
- */
-class caret_move_strategy_t {
-public:
-	virtual ~caret_move_strategy_t() {
-	}
+typedef uint8_t g_virtual_monitor_handling_result;
 
-	/**
-	 *
-	 */
-	virtual void moveCaret(text_component_t* component, caret_direction_t direction, g_key_info& keyInfo) = 0;
+#define VIRTUAL_MONITOR_HANDLING_RESULT_SUCCESSFUL			((g_virtual_monitor_handling_result) 0)
+#define VIRTUAL_MONITOR_HANDLING_RESULT_UNHANDLED_OPCODE	((g_virtual_monitor_handling_result) 1)
+#define VIRTUAL_MONITOR_HANDLING_RESULT_FINISHED			((g_virtual_monitor_handling_result) 2)
 
-	/**
-	 *
-	 */
-	virtual int calculateSkip(std::string text, int position, caret_direction_t direction) = 0;
-
-};
+g_virtual_monitor_handling_result vm86MonitorHandleGpf(g_task* task);
 
 #endif

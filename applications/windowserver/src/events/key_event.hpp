@@ -22,7 +22,7 @@
 #define __KEY_EVENT__
 
 #include <events/event.hpp>
-#include <ghostuser/io/Keyboard.hpp>
+#include <ghostuser/io/keyboard.hpp>
 #include <stdint.h>
 
 /**

@@ -26,7 +26,7 @@
 #include <ghostuser/graphics/text/text_alignment.hpp>
 #include <ghostuser/ui/properties.hpp>
 #include <ghostuser/ui/interface_specification.hpp>
-#include <ghostuser/utils/Logger.hpp>
+#include <ghostuser/utils/logger.hpp>
 #include <math.h>
 
 /**

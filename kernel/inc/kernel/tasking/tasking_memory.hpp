@@ -47,4 +47,9 @@ void taskingMemoryCreateStacks(g_task* task);
  */
 g_physical_address taskingMemoryCreatePageDirectory();
 
+/**
+ * Creates an interrupt stack for the given task.
+ */
+void taskingMemoryCreateInterruptStack(g_task* task);
+
 #endif

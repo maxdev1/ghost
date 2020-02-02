@@ -22,6 +22,7 @@
 #include "shared/logger/logger.hpp"
 #include "kernel/memory/paging.hpp"
 #include "kernel/tasking/tasking.hpp"
+#include "kernel/system/processor/virtual_8086_monitor.hpp"
 
 uint32_t exceptionsGetCR2()
 {
@@ -30,19 +31,93 @@ uint32_t exceptionsGetCR2()
 	return addr;
 }
 
-void exceptionsHandle(g_task* currentTask)
+bool exceptionsHandleDivideError(g_task* task)
 {
-	logInfo("%*%! task %i caused exception %i (error %i) at EIP: %h ESP: %h", 0x0C, "exception", currentTask->id, currentTask->state->intr,
-			currentTask->state->error, currentTask->state->eip, currentTask->state->esp);
+	// Let process run, but skip the faulty instruction
+	task->state->eip++;
+	logInfo("%! thread %i had a divide error", "exception", task->id);
+	return true;
+}
 
-	if(currentTask->state->intr == 0xE)
-	{
-		g_virtual_address accessedVirtual = G_PAGE_ALIGN_DOWN(exceptionsGetCR2());
-		logInfo("%# Tried to access %h, EIP: %h", accessedVirtual, taskingGetCurrentTask()->state->eip);
+bool exceptionsHandlePageFault(g_task* task)
+{
+	g_virtual_address accessedVirtual = G_PAGE_ALIGN_DOWN(exceptionsGetCR2());
+	g_physical_address accessedPhysical = pagingVirtualToPhysical(accessedVirtual);
+
+	logInfo("%! task %i (core %i) raised SIGSEGV (phys %h, virt %h) in thread %i", "pagefault", processorGetCurrentId(), task->id, accessedVirtual, accessedPhysical);
+	taskingRaiseSignal(task, SIGSEGV);
+	taskingSchedule();
+	return true;
+}
+
+bool exceptionsHandleGeneralProtectionFault(g_task* task)
+{
+	if (task->type == G_THREAD_TYPE_VM86) {
+
+		g_virtual_monitor_handling_result result = vm86MonitorHandleGpf(task);
+
+		if (result == VIRTUAL_MONITOR_HANDLING_RESULT_SUCCESSFUL) {
+			return true;
+
+		} else if (result == VIRTUAL_MONITOR_HANDLING_RESULT_FINISHED) {
+			task->status = G_THREAD_STATUS_DEAD;
+			taskingSchedule();
+			return true;
+
+		} else if (result == VIRTUAL_MONITOR_HANDLING_RESULT_UNHANDLED_OPCODE) {
+			logInfo("%! %i unable to handle gpf for vm86 task", "exception", processorGetCurrentId());
+			task->status = G_THREAD_STATUS_DEAD;
+			taskingSchedule();
+			return true;
+		}
 	}
-	for(;;)
+
+	logInfo("%! #%i process %i killed due to general protection fault", "exception", processorGetCurrentId(), task->id);
+	task->status = G_THREAD_STATUS_DEAD;
+	taskingSchedule();
+	return true;
+}
+
+bool exceptionsKillTask(g_task* task)
+{
+	logInfo("%! task %i killed due to exception %i (error %i) at EIP %h", "exception", task->id, task->state->intr,
+		task->state->error, task->state->eip);
+	task->status = G_THREAD_STATUS_DEAD;
+	taskingSchedule();
+	return true;
+}
+
+void exceptionsHandle(g_task* task)
+{
+	bool resolved = false;
+
+	switch (task->state->intr) {
+	case 0x00: { // Divide error
+		resolved = exceptionsHandleDivideError(task);
+		break;
+	}
+	case 0x0E: { // Page fault
+		resolved = exceptionsHandlePageFault(task);
+		break;
+	}
+	case 0x0D: { // General protection fault
+		resolved = exceptionsHandleGeneralProtectionFault(task);
+		break;
+	}
+	case 0x06: { // Invalid operation code
+		resolved = exceptionsKillTask(task);
+		break;
+	}
+	}
+
+	if(!resolved)
 	{
-		asm("hlt");
+		logInfo("%*%! task %i caused unresolved exception %i (error %i) at EIP: %h ESP: %h", 0x0C, "exception", task->id, task->state->intr,
+				task->state->error, task->state->eip, task->state->esp);
+		for(;;)
+		{
+			asm("hlt");
+		}
 	}
 }
 

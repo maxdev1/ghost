@@ -72,11 +72,13 @@ int main(int argc, char** argv) {
  */
 void windowserver_t::launch() {
 	g_task_register_id("windowserver");
+	g_sleep(3000);
 
 	// disable video log
 	g_set_video_log(false);
 
 	// initialize the video output
+	klog("calling VBE driver");
 	video_output = new vbe_video_output_t();
 	if (!video_output->initialize()) {
 		std::cerr << "failed to initialize video mode" << std::endl;

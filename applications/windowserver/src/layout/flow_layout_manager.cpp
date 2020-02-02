@@ -21,7 +21,7 @@
 #include <components/component.hpp>
 #include <vector>
 
-#include <ghostuser/utils/Logger.hpp>
+#include <ghostuser/utils/logger.hpp>
 #include <layout/flow_layout_manager.hpp>
 
 #include <typeinfo>

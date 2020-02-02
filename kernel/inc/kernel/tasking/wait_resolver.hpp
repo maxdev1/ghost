@@ -47,6 +47,12 @@ struct g_wait_resolver_join_data
 	g_tid joinedTaskId;
 };
 
+struct g_wait_vm86_data
+{
+	g_tid vm86TaskId;
+	g_vm86_registers* registerStore;
+};
+
 bool waitResolverSleep(g_task* task);
 
 bool waitResolverAtomicLock(g_task* task);
@@ -56,5 +62,7 @@ bool waitResolverJoin(g_task* task);
 bool waitResolverSendMessage(g_task* task);
 
 bool waitResolverReceiveMessage(g_task* task);
+
+bool waitResolverVm86(g_task* task);
 
 #endif

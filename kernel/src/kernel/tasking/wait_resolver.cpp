@@ -106,3 +106,23 @@ bool waitResolverReceiveMessage(g_task* task)
 	return true;
 }
 
+bool waitResolverVm86(g_task* task)
+{
+	g_wait_vm86_data* waitData = (g_wait_vm86_data*) task->waitData;
+	g_syscall_call_vm86* data = (g_syscall_call_vm86*) task->syscall.data;
+
+	g_task* vm86Task = taskingGetById(waitData->vm86TaskId);
+	if(vm86Task == 0 || vm86Task->status == G_THREAD_STATUS_DEAD || vm86Task->status == G_THREAD_STATUS_UNUSED)
+	{
+		/* VM86 task has finished, copy out registers */
+		*data->out = *waitData->registerStore;
+
+		heapFree(waitData->registerStore);
+
+		data->status = G_VM86_CALL_STATUS_SUCCESSFUL;
+		return true;
+	}
+
+	/* VM86 task still working */
+	return false;
+}
