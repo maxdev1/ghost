@@ -137,9 +137,6 @@ void taskingApplySecurityLevel(volatile g_processor_state* state, g_security_lev
 
 void taskingResetTaskState(g_task* task)
 {
-	g_virtual_address esp = task->stack.end - sizeof(g_processor_state);
-	task->state = (g_processor_state*) esp;
-
 	memorySetBytes((void*) task->state, 0, sizeof(g_processor_state));
 	task->state->eflags = 0x200;
 	task->state->esp = (g_virtual_address) task->state;
@@ -212,6 +209,8 @@ g_task* taskingCreateThreadVm86(g_process* process, uint32_t intr, g_vm86_regist
 	taskingMemoryCreateInterruptStack(task);
 
 	g_processor_state_vm86* state = (g_processor_state_vm86*) (task->interruptStack.end - sizeof(g_processor_state_vm86));
+	task->state = (g_processor_state*) state;
+
 	memorySetBytes(state, 0, sizeof(g_processor_state_vm86));
 	state->defaultFrame.eax = in.ax;
 	state->defaultFrame.ebx = in.bx;

@@ -126,6 +126,9 @@ void taskingMemoryCreateStacks(g_task* task)
 	}
 	task->stack.start = stackVirt;
 	task->stack.end = stackVirt + G_PAGE_SIZE;
+	
+	g_virtual_address esp = task->stack.end - sizeof(g_processor_state);
+	task->state = (g_processor_state*) esp;
 }
 
 g_physical_address taskingMemoryCreatePageDirectory()
