@@ -227,8 +227,6 @@ g_task* taskingCreateThreadVm86(g_process* process, uint32_t intr, g_vm86_regist
 	state->defaultFrame.eip = G_FP_OFF(ivt->entry[intr]);
 	state->defaultFrame.cs = G_FP_SEG(ivt->entry[intr]);
 	state->defaultFrame.eflags = 0x20202;
-	#warning Uhm ? 0x1000?
-	state->defaultFrame.esp = 0x1000;
 	g_virtual_address userStackVirt = (uint32_t) lowerHeapAllocate(0x2000);
 	state->defaultFrame.ss = ((G_PAGE_ALIGN_DOWN(userStackVirt) + 0x1000) >> 4);
 
