@@ -78,7 +78,6 @@ void windowserver_t::launch() {
 	g_set_video_log(false);
 
 	// initialize the video output
-	klog("calling VBE driver");
 	video_output = new vbe_video_output_t();
 	if (!video_output->initialize()) {
 		std::cerr << "failed to initialize video mode" << std::endl;
