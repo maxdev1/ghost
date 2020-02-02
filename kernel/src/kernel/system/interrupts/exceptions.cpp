@@ -44,8 +44,19 @@ bool exceptionsHandlePageFault(g_task* task)
 	g_virtual_address accessedVirtual = G_PAGE_ALIGN_DOWN(exceptionsGetCR2());
 	g_physical_address accessedPhysical = pagingVirtualToPhysical(accessedVirtual);
 
-	logInfo("%! task %i (core %i) raised SIGSEGV (phys %h, virt %h) in thread %i", "pagefault", processorGetCurrentId(), task->id, accessedVirtual, accessedPhysical);
-	taskingRaiseSignal(task, SIGSEGV);
+	logInfo("%! task %i (core %i) raised SIGSEGV (virt %h, phys %h)", "pagefault", task->id, processorGetCurrentId(), accessedVirtual, accessedPhysical);
+
+	if(task->type == G_THREAD_TYPE_VITAL)
+	{
+		return false;
+	}
+	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
+	{
+		task->status = G_THREAD_STATUS_DEAD;
+	} else
+	{
+		taskingRaiseSignal(task, SIGSEGV);
+	}
 	taskingSchedule();
 	return true;
 }

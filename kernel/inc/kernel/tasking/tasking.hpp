@@ -68,6 +68,7 @@ struct g_task_information_vm86
 	uint8_t cpuIf;
 	g_vm86_registers* out;
 	uint32_t interruptRecursionLevel;
+	g_virtual_address userStack;
 };
 
 /**
