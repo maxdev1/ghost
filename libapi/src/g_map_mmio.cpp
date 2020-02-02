@@ -25,7 +25,7 @@
  */
 void* g_map_mmio(void* physicalAddress, uint32_t size) {
 	g_syscall_map_mmio data;
-	data.physicalAddress = physicalAddress;
+	data.physicalAddress = (g_physical_address) physicalAddress;
 	data.size = size;
 	g_syscall(G_SYSCALL_MAP_MMIO_AREA, (uint32_t) &data);
 	return data.virtualAddress;

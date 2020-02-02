@@ -130,7 +130,7 @@ g_message_receive_status messageReceive(g_tid receiver, g_message_header* out, u
     g_message_header* message = queue->head;
     while(message)
     {
-        if(message->transaction == tx)
+        if(tx == G_MESSAGE_TRANSACTION_NONE || message->transaction == tx)
         {
             uint32_t len = sizeof(g_message_header) + message->length;
             if(len > max)
