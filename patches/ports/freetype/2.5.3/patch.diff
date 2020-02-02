@@ -1,7 +1,7 @@
-diff -rupN freetype-2.5.3/builds/unix/config.sub freetype-2.5.3-ghost/builds/unix/config.sub
---- freetype-2.5.3/builds/unix/config.sub	2014-03-06 23:13:51.060164300 +0100
-+++ freetype-2.5.3-ghost/builds/unix/config.sub	2014-09-03 15:02:31.014256000 +0200
-@@ -1356,7 +1356,7 @@ case $os in
+diff -Nur freetype-2.5.3/builds/unix/config.sub freetype-2.5.3-ghost/builds/unix/config.sub
+--- freetype-2.5.3/builds/unix/config.sub	2020-02-18 14:29:51.369052300 +0100
++++ freetype-2.5.3-ghost/builds/unix/config.sub	2020-02-18 14:29:08.777752800 +0100
+@@ -1356,7 +1356,7 @@
  	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
  	      | -sym* | -kopensolaris* | -plan9* \
  	      | -amigaos* | -amigados* | -msdos* | -newsos* | -unicos* | -aof* \
@@ -10,3 +10,37 @@ diff -rupN freetype-2.5.3/builds/unix/config.sub freetype-2.5.3-ghost/builds/uni
  	      | -nindy* | -vxsim* | -vxworks* | -ebmon* | -hms* | -mvs* \
  	      | -clix* | -riscos* | -uniplus* | -iris* | -rtu* | -xenix* \
  	      | -hiux* | -386bsd* | -knetbsd* | -mirbsd* | -netbsd* \
+diff -Nur freetype-2.5.3/builds/unix/configure freetype-2.5.3-ghost/builds/unix/configure
+--- freetype-2.5.3/builds/unix/configure	2020-02-18 14:29:51.316860400 +0100
++++ freetype-2.5.3-ghost/builds/unix/configure	2020-02-18 14:42:26.617566400 +0100
+@@ -4835,6 +4835,10 @@
+   fi
+   ;;
+ 
++ghost*)
++  lt_cv_deplibs_check_method=pass_all
++  ;;
++
+ haiku*)
+   lt_cv_deplibs_check_method=pass_all
+   ;;
+@@ -10296,6 +10300,19 @@
+   hardcode_into_libs=yes
+   ;;
+ 
++ghost*)
++  version_type=linux # correct to gnu/linux during the next big refactor
++  need_lib_prefix=no
++  need_version=no
++  dynamic_linker="ghost ld"
++  library_names_spec='$libname$release$shared_ext$versuffix $libname$release$shared_ext$major $libname$shared_ext'
++  soname_spec='$libname$release$shared_ext$major'
++  shlibpath_var=LIBRARY_PATH
++  shlibpath_overrides_runpath=no
++  sys_lib_dlsearch_path_spec='/system/lib'
++  hardcode_into_libs=yes
++  ;;
++
+ hpux9* | hpux10* | hpux11*)
+   # Give a soname corresponding to the major version so that dld.sl refuses to
+   # link against other versions.
