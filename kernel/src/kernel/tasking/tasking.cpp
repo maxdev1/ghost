@@ -31,11 +31,13 @@
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/memory/memory.hpp"
+#include "kernel/memory/lower_heap.hpp"
 #include "kernel/memory/gdt.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/kernel.hpp"
 #include "shared/logger/logger.hpp"
 #include "kernel/utils/hashmap.hpp"
+#include "kernel/system/interrupts/ivt.hpp"
 
 static g_tasking_local* taskingLocal;
 static g_mutex taskingIdLock;
@@ -144,6 +146,23 @@ void taskingResetTaskState(g_task* task)
 	taskingApplySecurityLevel(task->state, task->securityLevel);
 }
 
+
+void taskingAddToProcessTaskList(g_process* process, g_task* task)
+{
+	mutexAcquire(&process->lock);
+	g_task_entry* entry = (g_task_entry*) heapAllocate(sizeof(g_task_entry));
+	entry->task = task;
+	entry->next = process->tasks;
+	process->tasks = entry;
+	if(process->main == 0)
+	{
+		process->main = task;
+		process->id = task->id;
+		filesystemProcessCreate((g_pid) task->id);
+	}
+	mutexRelease(&process->lock);
+}
+
 g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_security_level level)
 {
 	g_task* task = (g_task*) heapAllocateClear(sizeof(g_task));
@@ -159,35 +178,69 @@ g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_securit
 	task->status = G_THREAD_STATUS_RUNNING;
 	task->type = G_THREAD_TYPE_DEFAULT;
 
-	// Switch to task directory
+	// Create task space
 	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(task->process->pageDirectory);
 
 	taskingMemoryCreateStacks(task);
 	taskingResetTaskState(task);
 	task->state->eip = eip;
 
-	taskingTemporarySwitchBack(returnDirectory);
-
-	// Add to process
-	mutexAcquire(&process->lock);
-
-	g_task_entry* entry = (g_task_entry*) heapAllocate(sizeof(g_task_entry));
-	entry->task = task;
-	entry->next = process->tasks;
-	process->tasks = entry;
-	if(process->main == 0)
-	{
-		process->main = task;
-		process->id = task->id;
-		filesystemProcessCreate((g_pid) task->id);
-	}
 	if(task->securityLevel != G_SECURITY_LEVEL_KERNEL)
 	{
 		taskingPrepareThreadLocalStorage(task);
 	}
 
-	mutexRelease(&process->lock);
+	taskingTemporarySwitchBack(returnDirectory);
 
+	// Put in process task list & global map
+	taskingAddToProcessTaskList(process, task);
+	hashmapPut(taskGlobalMap, task->id, task);
+	return task;
+}
+
+g_task* taskingCreateThreadVm86(g_process* process, uint32_t intr, g_vm86_registers in, g_vm86_registers* out)
+{
+	g_task* task = (g_task*) heapAllocateClear(sizeof(g_task));
+	task->id = taskingGetNextId();
+	task->process = process;
+	task->securityLevel = G_SECURITY_LEVEL_KERNEL;
+	task->status = G_THREAD_STATUS_RUNNING;
+	task->type = G_THREAD_TYPE_VM86;
+
+	// Create task space
+	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(task->process->pageDirectory);
+	taskingMemoryCreateInterruptStack(task);
+
+	g_processor_state_vm86* state = (g_processor_state_vm86*) (task->interruptStack.end - sizeof(g_processor_state_vm86));
+	memorySetBytes(state, 0, sizeof(g_processor_state_vm86));
+	state->defaultFrame.eax = in.ax;
+	state->defaultFrame.ebx = in.bx;
+	state->defaultFrame.ecx = in.cx;
+	state->defaultFrame.edx = in.dx;
+	state->defaultFrame.ebp = 0;
+	state->defaultFrame.esi = in.si;
+	state->defaultFrame.edi = in.di;
+
+	state->defaultFrame.eip = G_FP_OFF(ivt->entry[intr]);
+	state->defaultFrame.cs = G_FP_SEG(ivt->entry[intr]);
+	state->defaultFrame.eflags = 0x20202;
+	#warning Uhm ? 0x1000?
+	state->defaultFrame.esp = 0x1000;
+	g_virtual_address userStackVirt = (uint32_t) lowerHeapAllocate(0x2000);
+	state->defaultFrame.ss = ((G_PAGE_ALIGN_DOWN(userStackVirt) + 0x1000) >> 4);
+
+	state->gs = 0x00;
+	state->fs = 0x00;
+	state->es = in.es;
+	state->ds = in.ds;
+
+	task->vm86Data = (g_task_information_vm86*) heapAllocateClear(sizeof(g_task_information_vm86));
+	task->vm86Data->out = out;
+
+	taskingTemporarySwitchBack(returnDirectory);
+
+	// Put in process task list & global map
+	taskingAddToProcessTaskList(process, task);
 	hashmapPut(taskGlobalMap, task->id, task);
 	return task;
 }
@@ -339,8 +392,7 @@ void taskingPrepareThreadLocalStorage(g_task* thread)
 	g_virtual_address tlsCopyStart = addressRangePoolAllocate(process->virtualRangePool, requiredPages);
 	g_virtual_address tlsCopyEnd = tlsCopyStart + requiredPages * G_PAGE_SIZE;
 
-	// temporarily switch to target process directory, copy TLS contents
-	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(process->pageDirectory);
+	// copy tls contents
 	for(g_virtual_address page = tlsCopyStart; page < tlsCopyEnd; page += G_PAGE_SIZE)
 	{
 		g_physical_address phys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
@@ -356,9 +408,6 @@ void taskingPrepareThreadLocalStorage(g_task* thread)
 	g_virtual_address userThreadObject = tlsCopyStart + process->tlsMaster.userThreadOffset;
 	g_user_thread* userThread = (g_user_thread*) userThreadObject;
 	userThread->self = userThread;
-
-	// switch back
-	taskingTemporarySwitchBack(returnDirectory);
 
 	// set threads TLS location
 	thread->tlsCopy.userThreadObject = userThreadObject;
@@ -463,6 +512,8 @@ void taskingRemoveThread(g_task* task)
 
 	// Clean up miscellaneous memory
 	messageTaskRemoved(task->id);
+
+	if(task->vm86Data) heapFree(task->vm86Data);
 
 	// Free stack pages
 	if(task->interruptStack.start)

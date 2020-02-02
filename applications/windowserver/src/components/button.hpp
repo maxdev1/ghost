@@ -26,7 +26,7 @@
 #include <components/button_state.hpp>
 #include <components/label.hpp>
 #include <components/titled_component.hpp>
-#include <ghostuser/graphics/text/Font.hpp>
+#include <ghostuser/graphics/text/font.hpp>
 #include <ghostuser/graphics/metrics/insets.hpp>
 #include <string>
 

@@ -120,3 +120,17 @@ void waitForMessageReceive(g_task* task)
 
 	mutexRelease(&task->process->lock);
 }
+
+void waitForVm86(g_task* task, g_task* vm86Task, g_vm86_registers* registerStore)
+{
+	mutexAcquire(&task->process->lock);
+
+	g_wait_vm86_data* waitData = (g_wait_vm86_data*) heapAllocate(sizeof(g_wait_vm86_data));
+	waitData->registerStore = registerStore;
+	waitData->vm86TaskId = vm86Task->id;
+	task->waitData = waitData;
+	task->waitResolver = waitResolverVm86;
+	task->status = G_THREAD_STATUS_WAITING;
+
+	mutexRelease(&task->process->lock);
+}

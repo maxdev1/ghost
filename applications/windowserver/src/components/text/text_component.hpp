@@ -24,7 +24,7 @@
 #include <components/component.hpp>
 #include <components/text/caret_direction.hpp>
 #include <components/text/move/caret_move_strategy.hpp>
-#include <ghostuser/graphics/metrics/Range.hpp>
+#include <ghostuser/graphics/metrics/range.hpp>
 
 /**
  *

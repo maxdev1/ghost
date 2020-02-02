@@ -89,6 +89,17 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 	return success;
 }
 
+void taskingMemoryCreateInterruptStack(g_task* task)
+{
+	// Interrupt stack
+	g_physical_address intPhys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+	g_virtual_address intVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
+	pagingMapPage(intVirt, intPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+	pageReferenceTrackerIncrement(intPhys);
+	task->interruptStack.start = intVirt;
+	task->interruptStack.end = intVirt + G_PAGE_SIZE;
+}
+
 void taskingMemoryCreateStacks(g_task* task)
 {
 	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
@@ -97,13 +108,7 @@ void taskingMemoryCreateStacks(g_task* task)
 		task->interruptStack.end = 0;
 	} else
 	{
-		// Interrupt stack
-		g_physical_address intPhys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-		g_virtual_address intVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
-		pagingMapPage(intVirt, intPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
-		pageReferenceTrackerIncrement(intPhys);
-		task->interruptStack.start = intVirt;
-		task->interruptStack.end = intVirt + G_PAGE_SIZE;
+		taskingMemoryCreateInterruptStack(task);
 	}
 
 	// Main stack

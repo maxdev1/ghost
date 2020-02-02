@@ -71,4 +71,12 @@ void waitForMessageSend(g_task* task);
  */
 void waitForMessageReceive(g_task* task);
 
+/**
+ * Makes the task wait for the VM86 task and then copies the data from the <registerStore>
+ * into the source tasks syscall data.
+ * 
+ * @note uses the <syscall.data> on the task directly
+ */
+void waitForVm86(g_task* task, g_task* vm86task, g_vm86_registers* registerStore);
+
 #endif

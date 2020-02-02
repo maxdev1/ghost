@@ -61,6 +61,16 @@ public:
 };
 
 /**
+ * Data used by virtual 8086 processes
+ */
+struct g_task_information_vm86
+{
+	uint8_t cpuIf;
+	g_vm86_registers* out;
+	uint32_t interruptRecursionLevel;
+};
+
+/**
  * A task is a single thread executing either in user or kernel level.
  *
  * When the task is a kernel-level task, the kernelStack information will be empty.
@@ -153,6 +163,11 @@ struct g_task
 		void* function;
 		void* data;
 	} userEntry;
+
+	/**
+	 * Only filled for VM86 tasks.
+	 */
+	g_task_information_vm86* vm86Data;
 };
 
 /**
@@ -333,6 +348,11 @@ g_process* taskingCreateProcess();
 g_task* taskingCreateThread(g_virtual_address entry, g_process* process, g_security_level level);
 
 /**
+ * Creates a special kind of task that performs a virtual 8086 call.
+ */
+g_task* taskingCreateThreadVm86(g_process* process, uint32_t intr, g_vm86_registers in, g_vm86_registers* out);
+
+/**
  * Applies a security level on the register state of a task.
  */
 void taskingApplySecurityLevel(volatile g_processor_state* state, g_security_level securityLevel);
@@ -453,5 +473,10 @@ void taskingInterruptTask(g_task* task, g_virtual_address entry, g_virtual_addre
  */
 g_spawn_status taskingSpawn(g_task* spawner, g_fd file, g_security_level securityLevel,
 	g_process** outProcess, g_spawn_validation_details* outValidationDetails = 0);
+
+/**
+ * Adds the task to the process task list.
+ */
+void taskingAddToProcessTaskList(g_process* process, g_task* task);
 
 #endif
