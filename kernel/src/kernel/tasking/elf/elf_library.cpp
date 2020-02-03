@@ -22,7 +22,6 @@
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/memory/memory.hpp"
-#include "shared/logger/logger.hpp"
 
 
 g_spawn_status elfLibraryLoad(g_task* caller, g_elf_object* parentObject, const char* name, g_virtual_address baseAddress,

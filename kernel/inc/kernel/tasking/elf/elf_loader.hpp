@@ -28,6 +28,7 @@
 #include "kernel/utils/hashmap.hpp"
 #include "kernel/utils/hashmap_string.hpp"
 #include "shared/utils/string.hpp"
+#include "shared/logger/logger.hpp"
 
 /**
  * ELF loader has detailed logging that can be enabled by hand
