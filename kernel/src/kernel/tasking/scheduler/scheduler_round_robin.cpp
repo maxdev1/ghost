@@ -68,6 +68,8 @@ void schedulerSchedule(g_tasking_local* local)
 	// Find task in list
 	bool switchToPreferred = local->scheduling.preferredNextTask != 0;
 	g_task* searchTask = switchToPreferred ? local->scheduling.preferredNextTask : local->scheduling.current;
+	local->scheduling.preferredNextTask = 0;
+
 	g_schedule_entry* entry = local->scheduling.list;
 	while(entry)
 	{
