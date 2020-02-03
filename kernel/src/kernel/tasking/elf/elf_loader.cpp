@@ -22,7 +22,6 @@
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/memory/memory.hpp"
-#include "shared/logger/logger.hpp"
 
 
 g_spawn_status elfLoadExecutable(g_task* caller, g_fd fd, g_security_level securityLevel, g_process** outProcess, g_spawn_validation_details* outDetails)
