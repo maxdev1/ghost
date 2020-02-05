@@ -75,6 +75,7 @@ void syscallRunThreaded(g_syscall_handler handler, g_task* caller, void* syscall
 		caller->syscall.processingTask = thread;
 	}
 
+	thread->state = (g_processor_state*) (thread->stack.end - sizeof(g_processor_state));
 	taskingResetTaskState(thread);
 	thread->status = G_THREAD_STATUS_RUNNING;
 	thread->state->eip = (g_virtual_address) syscallThreadEntry;
