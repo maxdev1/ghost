@@ -34,6 +34,8 @@ void syscallFsWrite(g_task* task, g_syscall_fs_write* data);
 
 void syscallFsClose(g_task* task, g_syscall_fs_close* data);
 
+void syscallFsLength(g_task* task, g_syscall_fs_length* data);
+
 void syscallFsTell(g_task* task, g_syscall_fs_tell* data);
 
 void syscallFsStat(g_task* task, g_syscall_fs_stat* data);

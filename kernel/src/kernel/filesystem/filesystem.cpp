@@ -375,6 +375,23 @@ g_fs_read_status filesystemRead(g_fs_node* node, uint8_t* buffer, uint64_t offse
 	return delegate->read(node, buffer, offset, length, outRead);
 }
 
+g_fs_length_status filesystemGetLength(g_task* task, g_fd fd, uint64_t* outLength)
+{
+	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(task->process->id, fd);
+	if(!descriptor)
+	{
+		return G_FS_LENGTH_INVALID_FD;
+	}
+
+	g_fs_node* node = filesystemGetNode(descriptor->nodeId);
+	if(!node)
+	{
+		return G_FS_LENGTH_INVALID_FD;
+	}
+
+	return filesystemGetLength(node, outLength);
+}
+
 g_fs_length_status filesystemGetLength(g_fs_node* node, uint64_t* outLength)
 {
 	g_fs_delegate* delegate = filesystemFindDelegate(node);

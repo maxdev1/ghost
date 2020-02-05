@@ -172,6 +172,7 @@ g_fs_seek_status filesystemSeek(g_task* task, g_fd fd, g_fs_seek_mode mode, int6
  * Retrieves the length of a file.
  */
 g_fs_length_status filesystemGetLength(g_fs_node* file, uint64_t* outLength);
+g_fs_length_status filesystemGetLength(g_task* task, g_fd fd, uint64_t* outLength);
 
 /**
  * Creates a file.

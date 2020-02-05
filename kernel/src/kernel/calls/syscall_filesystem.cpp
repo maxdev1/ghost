@@ -64,6 +64,13 @@ void syscallFsClose(g_task* task, g_syscall_fs_close* data)
 	data->status = filesystemClose(task->process->id, data->fd, true);
 }
 
+void syscallFsLength(g_task* task, g_syscall_fs_length* data)
+{
+	uint64_t length;
+	data->status = filesystemGetLength(task, data->fd, &length);
+	data->length = length;
+}
+
 void syscallFsCloneFd(g_task* task, g_syscall_fs_clonefd* data)
 {
 	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(data->source_pid, data->source_fd);
