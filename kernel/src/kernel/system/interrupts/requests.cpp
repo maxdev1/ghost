@@ -80,17 +80,19 @@ void requestsCallUserspaceHandler(g_task* task, uint8_t irq)
 
 	if(!handlingTask)
 	{
-		logInfo("%! handling task doesn't exist: %i", "irq", task->id);
+		logInfo("%! no handler task for irq #%i", "irq", irq);
 		return;
 	}
 
 	if(handlingTask->interruptionInfo)
 	{
-		logInfo("%! handling task %i is blocked during handling", "irq", handlingTask->id);
+		logInfo("%! handling task %i interrupted while getting irq #%i", "irq", handlingTask->id, irq);
 		return;
 	}
 
 	taskingInterruptTask(handlingTask, handler->handlerAddress, handler->returnAddress, 1, irq);
+	taskingPleaseSchedule(handlingTask);
+	taskingSchedule();
 }
 
 void requestsRegisterHandler(uint8_t irq, g_tid handlerTask, g_virtual_address handlerAddress, g_virtual_address returnAddress)
