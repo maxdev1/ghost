@@ -58,7 +58,7 @@ bool waitResolverAtomicLock(g_task* task)
 		data->was_set = true;
 	}
 
-	return keep_wait;
+	return !keep_wait;
 }
 
 bool waitResolverJoin(g_task* task)
