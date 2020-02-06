@@ -23,6 +23,7 @@
 #include "kernel/memory/paging.hpp"
 #include "kernel/tasking/tasking.hpp"
 #include "kernel/system/processor/virtual_8086_monitor.hpp"
+#include "kernel/tasking/elf/elf_loader.hpp"
 
 #define DEBUG_PRINT_STACK_TRACE 0
 
@@ -86,6 +87,23 @@ void exceptionsDumpTask(g_task* task) {
 	logInfo("%#   intr: %h    error: %h", state->intr, state->error);
 	logInfo("%#   task stack: %h - %h", task->stack.start, task->stack.end);
 	logInfo("%#   intr stack: %h - %h", task->interruptStack.start, task->interruptStack.end);
+
+	g_elf_object* object = task->process->object->relocateOrderFirst;
+	while(object)
+	{
+		if(state->eip >= object->baseAddress && state->eip < object->endAddress)
+		{
+			if(object == task->process->object)
+			{
+				logInfo("%# caused in executable object");
+			} else
+			{
+				logInfo("%# caused in object '%s' at offset %x", object->name, state->eip - object->baseAddress);
+			}
+			break;
+		}
+		object = object->relocateOrderNext;
+	}
 
 	#if DEBUG_PRINT_STACK_TRACE
 	g_address* ebp = reinterpret_cast<g_address*>(state->ebp);
