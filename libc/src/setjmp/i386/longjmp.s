@@ -18,11 +18,18 @@
 #*                                                                           *
 #* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+.global __longjmp
+.global _longjmp
 .global longjmp
+.type __longjmp,@function
+.type _longjmp,@function
+.type longjmp,@function
 
 #
 # void longjmp(jmp_buf env, int val)
 #
+__longjmp:
+_longjmp:
 longjmp:
 	mov 4(%esp), %edx
 	mov 8(%esp), %eax
