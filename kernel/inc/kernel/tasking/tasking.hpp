@@ -34,6 +34,7 @@
 struct g_process;
 struct g_task;
 struct g_tasking_local;
+struct g_elf_object;
 
 typedef bool (*g_wait_resolver)(g_task*);
 
@@ -272,6 +273,7 @@ struct g_process
 		g_virtual_address start;
 		g_virtual_address end;
 	} image;
+	g_elf_object* object;
 
 	struct
 	{

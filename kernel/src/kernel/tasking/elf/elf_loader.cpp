@@ -47,7 +47,8 @@ g_spawn_status elfLoadExecutable(g_task* caller, g_fd fd, g_security_level secur
 		return spawnStatus;
 	}
 
-	/* Update process */	
+	/* Update process */
+	targetProcess->object = executableObject;
 	targetProcess->image.start = executableObject->startAddress;
 	targetProcess->image.end = executableImageEnd;
 	logDebug("%! process loaded to %h - %h", "elf", targetProcess->image.start, targetProcess->image.end);
