@@ -24,6 +24,35 @@
 #include "kernel/tasking/tasking.hpp"
 #include "kernel/system/processor/virtual_8086_monitor.hpp"
 
+#define DEBUG_PRINT_STACK_TRACE 0
+
+/**
+ * Names of the exceptions
+ */
+static const char* EXCEPTION_NAMES[] = {
+		"divide error", // 0x00
+		"debug exception", // 0x01
+		"non-maskable interrupt exception", // 0x02
+		"breakpoint exception", // 0x03
+		"detected overflow", // 0x04
+		"out of bounds", // 0x05
+		"invalid operation code", // 0x06
+		"no co-processor", // 0x07
+		"double fault", // 0x08
+		"co-processor segment overrun", // 0x09
+		"Bad TSS exception", // 0x0A
+		"segment not present", // 0x0B
+		"stack fault", // 0x0C
+		"general protection fault", // 0x0D
+		"page fault", // 0x0E
+		"unknown interrupt", // 0x0F
+		"co-processor fault", // 0x10
+		"alignment check exception", // 0x11
+		"machine check exception", // 0x12
+		"reserved exception", "reserved exception", "reserved exception", "reserved exception", "reserved exception", "reserved exception",
+		"reserved exception", "reserved exception", "reserved exception", "reserved exception", "reserved exception", "reserved exception", "reserved exception" // reserved exceptions
+		};
+
 uint32_t exceptionsGetCR2()
 {
 	uint32_t addr;
@@ -39,12 +68,48 @@ bool exceptionsHandleDivideError(g_task* task)
 	return true;
 }
 
+/**
+ * Dumps the current CPU state to the log file
+ */
+void exceptionsDumpTask(g_task* task) {
+	auto state = task->state;
+	g_process* process = task->process;
+	logInfo("%! %s in task %i (process %i)", "exception", EXCEPTION_NAMES[state->intr], task->id, process->main->id);
+
+	if (state->intr == 0x0E) { // Page fault
+		logInfo("%#    accessed address: %h", exceptionsGetCR2());
+	}
+	logInfo("%#    eip: %h   eflags: %h", state->eip, state->eflags);
+	logInfo("%#    eax: %h      ebx: %h", state->eax, state->ebx);
+	logInfo("%#    ecx: %h      edx: %h", state->ecx, state->edx);
+	logInfo("%#    esp: %h      ebp: %h", state->esp, state->ebp);
+	logInfo("%#   intr: %h    error: %h", state->intr, state->error);
+	logInfo("%#   task stack: %h - %h", task->stack.start, task->stack.end);
+	logInfo("%#   intr stack: %h - %h", task->interruptStack.start, task->interruptStack.end);
+
+	#if DEBUG_PRINT_STACK_TRACE
+	g_address* ebp = reinterpret_cast<g_address*>(state->ebp);
+	logInfo("%# stack trace:");
+	for(int frame = 0; frame < 8; ++frame) {
+		g_address eip = ebp[1];
+		if(eip == 0) {
+			break;
+		}
+		ebp = reinterpret_cast<g_address*>(ebp[0]);
+		logInfo("%#  %h", eip);
+	}
+	#endif
+}
+
 bool exceptionsHandlePageFault(g_task* task)
 {
-	g_virtual_address accessedVirtual = G_PAGE_ALIGN_DOWN(exceptionsGetCR2());
-	g_physical_address accessedPhysical = pagingVirtualToPhysical(accessedVirtual);
+	g_virtual_address accessed = exceptionsGetCR2();
+	g_virtual_address virtPage = G_PAGE_ALIGN_DOWN(accessed);
+	g_physical_address physPage = pagingVirtualToPhysical(virtPage);
 
-	logInfo("%! task %i (core %i) raised SIGSEGV @%x (virt %h, phys %h)", "pagefault", task->id, processorGetCurrentId(), task->state->eip, accessedVirtual, accessedPhysical);
+	logInfo("%! task %i (core %i) EIP: %x (accessed %h, mapped page %h)", "pagefault", task->id, processorGetCurrentId(), task->state->eip, accessed, physPage);
+
+	exceptionsDumpTask(task);
 
 	if(task->type == G_THREAD_TYPE_VITAL)
 	{
