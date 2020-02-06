@@ -164,9 +164,10 @@ g_physical_address pagingVirtualToPhysical(g_virtual_address addr)
 {
 	uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(addr);
 	uint32_t pi = G_PAGE_IN_TABLE_INDEX(addr);
+	g_page_directory directory = (g_page_directory) G_CONST_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
+	g_page_table table = ((g_page_table) G_CONST_RECURSIVE_PAGE_DIRECTORY_AREA) + (0x400 * ti);
 
-	g_page_table table = G_CONST_RECURSIVE_PAGE_TABLE(ti);
-	if(!table)
+	if(directory[ti] == 0)
 		return 0;
 
 	return table[pi] & ~G_PAGE_ALIGN_MASK;
