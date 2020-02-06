@@ -27,21 +27,32 @@
 
 void syscallAtomicLock(g_task* task, g_syscall_atomic_lock* data)
 {
-	if(*data->atom_1 && (!data->atom_2 || *data->atom_2))
-	{
-		if(data->is_try)
-		{
+	// try to immediately resolve it
+	if (data->is_try) {
+		if (*data->atom_1 && (!data->atom_2 || *data->atom_2)) {
 			data->was_set = false;
-		} else
-		{
-			waitAtomicLock(task);
-			taskingSchedule();
+
+		} else {
+			*data->atom_1 = true;
+			if (data->atom_2) {
+				*data->atom_2 = true;
+			}
+			data->was_set = true;
 		}
-	} else
-	{
+		return;
+	}
+
+	// check if the thread must sleep
+	if (*data->atom_1 && (!data->atom_2 || *data->atom_2)) {
+		waitAtomicLock(task);
+		taskingSchedule();
+		return;
+	}
+
+	// set result values
+	if (data->set_on_finish) {
 		*data->atom_1 = true;
-		if(data->atom_2)
-		{
+		if (data->atom_2) {
 			*data->atom_2 = true;
 		}
 		data->was_set = true;
