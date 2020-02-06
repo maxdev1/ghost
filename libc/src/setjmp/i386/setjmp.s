@@ -18,11 +18,18 @@
 #*                                                                           *
 #* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+.global __setjmp
+.global _setjmp
 .global setjmp
+.type __setjmp,@function
+.type _setjmp,@function
+.type setjmp,@function
 
 #
 # int setjmp(jmp_buf env)
 #
+__setjmp:
+_setjmp:
 setjmp:
 	mov	4(%esp), %eax
 	mov %ebx, (%eax)
