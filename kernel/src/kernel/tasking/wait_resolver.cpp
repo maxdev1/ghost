@@ -37,22 +37,18 @@ bool waitResolverAtomicLock(g_task* task)
 	g_wait_resolver_atomic_lock_data* waitData = (g_wait_resolver_atomic_lock_data*) task->waitData;
 	g_syscall_atomic_lock* data = (g_syscall_atomic_lock*) task->syscall.data;
 
-	// check timeout first
-	if(data->has_timeout && (taskingGetLocal()->time - waitData->startTime > data->timeout))
-	{
-		// timeout exceeded
+	// check timeout
+	if (data->has_timeout && (taskingGetLocal()->time - waitData->startTime > data->timeout)) {
 		data->timed_out = true;
-		return false;
+		return true;
 	}
 
 	// once waiting is finished, set the atom if required
 	bool keep_wait = *data->atom_1 && (!data->atom_2 || *data->atom_2);
 
-	if(!keep_wait && data->set_on_finish)
-	{
+	if (!keep_wait && data->set_on_finish) {
 		*data->atom_1 = true;
-		if(data->atom_2)
-		{
+		if (data->atom_2) {
 			*data->atom_2 = true;
 		}
 		data->was_set = true;
