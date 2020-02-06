@@ -86,7 +86,7 @@ void requestsCallUserspaceHandler(g_task* task, uint8_t irq)
 
 	if(handlingTask->interruptionInfo)
 	{
-		logInfo("%! can't handle irq in currently interrupted task %i", "irq", task->id);
+		logInfo("%! handling task %i is blocked during handling", "irq", handlingTask->id);
 		return;
 	}
 
