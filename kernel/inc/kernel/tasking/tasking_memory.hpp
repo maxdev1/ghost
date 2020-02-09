@@ -23,6 +23,9 @@
 
 #include "kernel/tasking/tasking.hpp"
 
+#define G_TASKING_MEMORY_KERNEL_STACK_PAGES 2
+#define G_TASKING_MEMORY_USER_STACK_PAGES   10
+
 /**
  * Extends the heap of the task by an amount.
  */

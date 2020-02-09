@@ -24,6 +24,7 @@
 #include "kernel/tasking/tasking.hpp"
 #include "kernel/system/processor/virtual_8086_monitor.hpp"
 #include "kernel/tasking/elf/elf_loader.hpp"
+#include "kernel/memory/page_reference_tracker.hpp"
 
 #define DEBUG_PRINT_STACK_TRACE 0
 
@@ -119,11 +120,48 @@ void exceptionsDumpTask(g_task* task) {
 	#endif
 }
 
+bool exceptionsHandleStackOverflow(g_task* task, g_virtual_address accessedVirtPage)
+{
+	/* Within stack range? */
+	if(accessedVirtPage < task->stack.start || accessedVirtPage > task->stack.end)
+	{
+		return false;
+	}
+
+	/* Stack guard page */
+	if(accessedVirtPage < task->stack.start + G_PAGE_SIZE)
+	{
+		logInfo("%! task %i page-faulted due to overflowing into stack guard page", "pagefault", task->id);
+		return false;
+
+	}
+	
+	/* Extend the stack */
+	uint32_t tableFlags, pageFlags;
+	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
+	{
+		tableFlags = DEFAULT_KERNEL_TABLE_FLAGS;
+		pageFlags = DEFAULT_KERNEL_PAGE_FLAGS;
+	} else
+	{
+		tableFlags = DEFAULT_USER_TABLE_FLAGS;
+		pageFlags = DEFAULT_USER_PAGE_FLAGS;
+	}
+
+	g_physical_address extendedStackPage = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+	pageReferenceTrackerIncrement(extendedStackPage);
+	pagingMapPage(accessedVirtPage, extendedStackPage, tableFlags, pageFlags);
+	return true;
+}
+
 bool exceptionsHandlePageFault(g_task* task)
 {
 	g_virtual_address accessed = exceptionsGetCR2();
 	g_virtual_address virtPage = G_PAGE_ALIGN_DOWN(accessed);
 	g_physical_address physPage = pagingVirtualToPhysical(virtPage);
+
+	if(exceptionsHandleStackOverflow(task, virtPage))
+		return true;
 
 	logInfo("%! task %i (core %i) EIP: %x (accessed %h, mapped page %h)", "pagefault", task->id, processorGetCurrentId(), task->state->eip, accessed, physPage);
 
