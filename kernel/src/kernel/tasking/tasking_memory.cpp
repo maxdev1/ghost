@@ -102,6 +102,7 @@ void taskingMemoryCreateInterruptStack(g_task* task)
 
 void taskingMemoryCreateStacks(g_task* task)
 {
+	/* Ring 3 tasks need an additional interrupt stack */
 	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
 	{
 		task->interruptStack.start = 0;
@@ -111,31 +112,42 @@ void taskingMemoryCreateStacks(g_task* task)
 		taskingMemoryCreateInterruptStack(task);
 	}
 
-	// Main stack
-	g_physical_address stackPhys = (g_physical_address) bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-	pageReferenceTrackerIncrement(stackPhys);
+	/* Define paging flags and range size */
+	uint32_t tableFlags, pageFlags;
+	int pages;
 	g_virtual_address stackVirt;
 	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
 	{
-		stackVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
-		pagingMapPage(stackVirt, stackPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+		tableFlags = DEFAULT_KERNEL_TABLE_FLAGS;
+		pageFlags = DEFAULT_KERNEL_PAGE_FLAGS;
+		pages = G_TASKING_MEMORY_KERNEL_STACK_PAGES;
+		stackVirt = addressRangePoolAllocate(memoryVirtualRangePool, pages);
 	} else
 	{
-		stackVirt = addressRangePoolAllocate(task->process->virtualRangePool, 1);
-		pagingMapPage(stackVirt, stackPhys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+		tableFlags = DEFAULT_USER_TABLE_FLAGS;
+		pageFlags = DEFAULT_USER_PAGE_FLAGS;
+		pages = G_TASKING_MEMORY_USER_STACK_PAGES;
+		stackVirt = addressRangePoolAllocate(task->process->virtualRangePool, pages);
 	}
+
+	/* Here we reserve a virtual address range for the stack and allocate a physical page
+	only as the last page of our range. When the process faults, the stack is filled up. */
+	g_physical_address pagePhys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+	pageReferenceTrackerIncrement(pagePhys);
+
 	task->stack.start = stackVirt;
-	task->stack.end = stackVirt + G_PAGE_SIZE;
-	
-	g_virtual_address esp = task->stack.end - sizeof(g_processor_state);
-	task->state = (g_processor_state*) esp;
+	task->stack.end = stackVirt + pages * G_PAGE_SIZE;
+	pagingMapPage(task->stack.end - G_PAGE_SIZE, pagePhys, tableFlags, pageFlags);
+
+	/* Set stack pointer */
+	task->state = (g_processor_state*) (task->stack.end - sizeof(g_processor_state));
 }
 
 g_physical_address taskingMemoryCreatePageDirectory()
 {
 	g_page_directory directoryCurrent = (g_page_directory) G_CONST_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
 
-	g_physical_address directoryPhys = (g_physical_address) bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+	g_physical_address directoryPhys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
 	g_virtual_address directoryTempVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
 	g_page_directory directoryTemp = (g_page_directory) directoryTempVirt;
 	pagingMapPage(directoryTempVirt, directoryPhys);
