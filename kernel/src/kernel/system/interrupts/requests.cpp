@@ -86,7 +86,7 @@ void requestsCallUserspaceHandler(g_task* task, uint8_t irq)
 
 	if(handlingTask->interruptionInfo)
 	{
-		logInfo("%! handling task %i interrupted while getting irq #%i", "irq", handlingTask->id, irq);
+		logDebug("%! handling task %i interrupted while getting irq #%i", "irq", handlingTask->id, irq);
 		return;
 	}
 

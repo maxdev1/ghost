@@ -96,16 +96,22 @@ void schedulerSchedule(g_tasking_local* local)
 
 	bool switched = false;
 	uint32_t max = local->scheduling.taskCount;
-	while(max-- > 0)
+	while(max-- > 0 && entry)
 	{
-		// Check if task was already processed this round
+		/* If this task has already done some work this round, we skip it */
 		if(entry->schedulerRound >= local->scheduling.round)
 		{
+			entry = entry->next;
+			if(!entry)
+			{
+				entry = local->scheduling.list;
+			}
 			continue;
 		}
+
 		entry->schedulerRound = local->scheduling.round;
 
-		// Running task can be scheduled
+		/* Task is running, so we can schedule it */
 		g_task* task = entry->task;
 		if(task->status == G_THREAD_STATUS_RUNNING)
 		{
@@ -114,15 +120,21 @@ void schedulerSchedule(g_tasking_local* local)
 			break;
 		}
 
-		// Waiting task must be checked
-		if(task->status == G_THREAD_STATUS_WAITING && waitTryWake(task))
+		/* If the task is waiting, we must see why */
+		if(task->status == G_THREAD_STATUS_WAITING)
 		{
-			local->scheduling.current = task;
-			switched = true;
-			break;
+			/* Now we check if the task can be woken up again. */
+			bool wakeUp = waitTryWake(task);
+
+			if(wakeUp)
+			{
+				local->scheduling.current = task;
+				switched = true;
+				break;
+			}
 		}
 
-		// Select next in list
+		/* Go to the next entry */
 		entry = entry->next;
 		if(!entry)
 		{

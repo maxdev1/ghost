@@ -249,6 +249,9 @@ void windowserver_t::loadCursor() {
 	cursor_t::focusedComponent = screen;
 }
 
+class open_executable_action_handler_t;
+void open_executable_spawn(open_executable_action_handler_t* data);
+
 /**
  *
  */
@@ -260,9 +263,14 @@ public:
 			exe(exe), args(args) {
 	}
 	void handle(action_component_t* source) {
-		g_spawn(exe.c_str(), args.c_str(), "/", G_SECURITY_LEVEL_APPLICATION);
+		g_create_thread_d((void*) &open_executable_spawn, this);
 	}
 };
+
+void open_executable_spawn(open_executable_action_handler_t* data)
+{
+	g_spawn(data->exe.c_str(), data->args.c_str(), "/", G_SECURITY_LEVEL_APPLICATION);
+}
 
 /**
  *

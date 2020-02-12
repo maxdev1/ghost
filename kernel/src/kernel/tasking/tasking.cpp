@@ -682,7 +682,7 @@ g_physical_address taskingTemporarySwitchToSpace(g_physical_address pageDirector
 	if(local->scheduling.current)
 	{
 		if(local->scheduling.current->overridePageDirectory != 0)
-			kernelPanic("%! tried temporary directory switching twice", "tasking");
+			kernelPanic("%! %i tried temporary directory switching twice", "tasking", local->scheduling.current->id);
 
 		local->scheduling.current->overridePageDirectory = pageDirectory;
 	}
@@ -744,8 +744,11 @@ void taskingInterruptTask(g_task* task, g_virtual_address entry, g_virtual_addre
 		return;
 	}
 
+	/* Here we must also not use the temporary-switching, as the tasks directory may not be
+	overridden. It must be executed while holding a mutex anyway so nothing runs meanwhile. */
 	mutexAcquire(&task->process->lock);
-	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(task->process->pageDirectory);
+	g_physical_address back = pagingGetCurrentSpace();
+	pagingSwitchToSpace(task->process->pageDirectory);
 
 	// Prepare interruption
 	task->interruptionInfo = (g_task_interruption_info*) heapAllocate(sizeof(g_task_interruption_info));
@@ -781,7 +784,7 @@ void taskingInterruptTask(g_task* task, g_virtual_address entry, g_virtual_addre
 	// Set new ESP
 	task->state->esp = (uint32_t) esp;
 
-	taskingTemporarySwitchBack(returnDirectory);
+	pagingSwitchToSpace(back);
 	mutexRelease(&task->process->lock);
 }
 
