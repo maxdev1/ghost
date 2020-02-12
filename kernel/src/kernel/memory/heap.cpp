@@ -72,7 +72,7 @@ bool heapExpand()
 	chunkAllocatorExpand(&heapAllocator, G_CONST_KERNEL_HEAP_EXPAND_STEP);
 	heapEnd += G_CONST_KERNEL_HEAP_EXPAND_STEP;
 
-	logDebug("%! expanded to end %h (%ikb in use)", "kernheap", heapEnd, heapAmountInUse / 1024);
+	logInfo("%! expanded to end %h (%ikb in use)", "kernheap", heapEnd, heapAmountInUse / 1024);
 
 	return true;
 }

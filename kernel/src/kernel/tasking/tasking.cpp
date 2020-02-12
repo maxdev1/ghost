@@ -334,6 +334,37 @@ void taskingSchedule()
 	{
 		schedulerSchedule(local);
 	}
+
+	/* Debug printing */
+	static uint32_t localTimes[16] = {0};
+	if(local->time > localTimes[processorGetCurrentId()] + 5000)
+	{
+		localTimes[processorGetCurrentId()] = local->time;
+
+		logInfo("%! %i list:", "tasksdebug", processorGetCurrentId());
+		auto n = local->scheduling.list;
+		while(n)
+		{
+			const char* status;
+			switch(n->task->status)
+			{
+				case G_THREAD_STATUS_DEAD:
+					status = "dead";
+					break;
+				case G_THREAD_STATUS_RUNNING:
+					status = "running";
+					break;
+				case G_THREAD_STATUS_UNUSED:
+					status = "unused";
+					break;
+				case G_THREAD_STATUS_WAITING:
+					status = "waiting";
+					break;
+			}
+			logInfo("%# %i: task %i, status: %s, rounds: %i", processorGetCurrentId(), n->task->id, status, n->task->timesScheduled);
+			n = n->next;
+		}
+	}
 }
 
 void taskingPleaseSchedule(g_task* task)
