@@ -20,7 +20,7 @@
 
 #include <headless_screen.hpp>
 #include <string.h>
-#include <ghostuser/utils/Utils.hpp>
+#include <ghostuser/utils/utils.hpp>
 #include <ghost.h>
 
 static uint8_t* output_video_direct = (uint8_t*) VIDEO_MEMORY;

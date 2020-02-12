@@ -93,7 +93,7 @@ int proc_list(int argc, char** argv) {
 		g_kernquery_task_get_data* entry = &infos[pos];
 
 		// print processes and vm86
-		if (entry->type == G_THREAD_TYPE_MAIN || entry->type == G_THREAD_TYPE_VM86) {
+		if (entry->type == G_THREAD_TYPE_DEFAULT || entry->type == G_THREAD_TYPE_VM86) {
 
 			// print foot line
 			println("%5i %5i %6i %-20s %-38s", entry->id, entry->parent, entry->memory_used / 1024, entry->identifier, entry->source_path);

@@ -197,7 +197,7 @@ void windowserver_t::mainLoop(g_rectangle screenBounds) {
 			g_sleep((1000 / 60) - render_time);
 		}
 
-		g_atomic_lock_to(&render_atom, 100);
+		g_atomic_lock_to(&render_atom, 1000);
 
 		// print output
 #if BENCHMARKING
