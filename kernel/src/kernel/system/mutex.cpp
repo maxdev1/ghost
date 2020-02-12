@@ -89,8 +89,9 @@ bool mutexTryAcquire(g_mutex* mutex, bool smp)
 		mutex->owner = processorGetCurrentId();
 		mutex->depth = 1;
 		if(smp) {
+			if(taskingGetLocal()->locksHeld == 0)
+				taskingGetLocal()->locksReenableInt = enableInt;
 			taskingGetLocal()->locksHeld++;
-			taskingGetLocal()->locksReenableInt = enableInt;
 		}
 		success = true;
 

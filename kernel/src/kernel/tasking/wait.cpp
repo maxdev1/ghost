@@ -26,7 +26,10 @@
 
 bool waitTryWake(g_task* task)
 {
-	g_physical_address back = taskingTemporarySwitchToSpace(task->process->pageDirectory);
+	/* Here we can not use our temporary-switch mechanism, because the task might have been
+	interrupted while working in a different space and we may not override it again here. */
+	g_physical_address back = pagingGetCurrentSpace();
+	pagingSwitchToSpace(task->process->pageDirectory);
 
 	bool wake = false;
 	if(task->waitResolver && task->waitResolver(task))
@@ -42,7 +45,7 @@ bool waitTryWake(g_task* task)
 		wake = true;
 	}
 
-	taskingTemporarySwitchBack(back);
+	pagingSwitchToSpace(back);
 	return wake;
 }
 
