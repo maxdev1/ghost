@@ -5,7 +5,6 @@ if [ -f "$ROOT/variables.sh" ]; then
 fi
 . "$ROOT/ghost.sh"
 
-
 #
 # Ghost port installation script
 #
@@ -136,7 +135,11 @@ port_install | sed 's/^/    /'
 cd $BACK
 
 # clean up
-rm -rf $BUILD_ROOT/$PACKAGE
+if [ "$DONT_CLEAN_BUILD" = "1" ]; then
+	echo "not cleaning up build directory"
+else
+	rm -rf $BUILD_ROOT/$PACKAGE
+fi
 
 # finish successfully
 exit 0

@@ -8,7 +8,7 @@ port_unpack() {
 }
 
 port_install() {
-	CHOST=$HOST CC=$HOST-gcc ./configure --static --prefix=$PREFIX
+	CHOST=$HOST CC=$HOST-gcc ./configure --prefix=$PREFIX
 	make
 	make DESTDIR=$SYSROOT install
 }
