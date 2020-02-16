@@ -38,7 +38,7 @@ void ramdiskLoadFromModule(g_multiboot_module* module)
 
 	g_virtual_address newLocation = addressRangePoolAllocate(memoryVirtualRangePool, pages);
 	if(newLocation == 0)
-		kernelPanic("%! not enough virtual space for ramdisk remapping", "kern");
+		kernelPanic("%! not enough virtual space for ramdisk remapping (%x required)", "kern", module->moduleEnd - module->moduleStart);
 
 	for(int i = 0; i < pages; i++)
 	{
