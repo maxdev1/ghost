@@ -35,6 +35,7 @@ print_name() {
 	printf "\e[0;7m$1\e[0m "
 }
 
+
 # Print header
 echo ""
 printf "\e[4mGhost complete build\e[0m\n"
@@ -43,9 +44,34 @@ echo "If a part of this build fails, run the respective build script within"
 echo "the programs folder to see a more detailed log."
 echo ""
 
+# Read flags
+BUILD_LIBC=1
+BUILD_LIBAPI=1
+BUILD_PORTS=0
+BUILD_LIBUSER=0
+
+for var in "$@"
+do
+	if [[ "$var" = "--nostdlib" ]]; then
+		BUILD_LIBC=0
+		BUILD_LIBAPI=0
+	elif [[ "$var" = "--ports" ]]; then
+		BUILD_PORTS=1
+	elif [[ "$var" = "--libuser" ]]; then
+		BUILD_LIBUSER=1
+	elif [[ "$var" = "--help" || "$var" = "-h" || "$var" = "?" ]]; then
+		echo "Usage: $0"
+		echo "  --nostdlib    skips building of libc & libapi"
+		echo "  --libuser     enables rebuilding libghostuser, even if not necessary"
+		echo "  --ports       enables building all ports, even if not necessary"
+		echo ""
+		exit 0
+	fi
+done
+
 # First build necessary ports (if not done yet)
 print_name ports
-if [ -f $SYSROOT/system/lib/libcairo.a ]; then
+if [[ $BUILD_PORTS = 0 && -f $SYSROOT/system/lib/libcairo.a ]]; then
 	print_skipped
 else
 	pushd patches/ports
@@ -59,7 +85,7 @@ fi
 
 # Prepare libghostuser
 print_name libuser
-if [ -f $SYSROOT/system/lib/libghostuser.a ]; then
+if [[ $BUILD_LIBUSER = 0 && -f $SYSROOT/system/lib/libghostuser.so ]]; then
 	print_skipped
 else
 	pushd libuser
@@ -71,13 +97,21 @@ fi
 # Prepare libapi & libc
 pushd libapi
 print_name libapi
-build_clean
-print_status
+if [ $BUILD_LIBAPI = 1 ]; then
+	build_clean
+	print_status
+else
+	print_skipped
+fi
 popd
 pushd libc
 print_name libc
-build_clean
-print_status
+if [ $BUILD_LIBC = 1 ]; then
+	build_clean
+	print_status
+else
+	print_skipped
+fi
 popd
 
 # Make all applications

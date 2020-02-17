@@ -116,12 +116,11 @@ void kernelRunApplicationCore()
 		asm("hlt");
 }
 
-void kernelInitializationThread()
-{
-	const char* launcherPath = "/applications/launch.bin";
+void kernelTestSpawnDriver(const char* path) {
+	
 	g_task* currentTask = taskingGetCurrentTask();
 	g_fd fd;
-	g_fs_open_status open = filesystemOpen(launcherPath, G_FILE_FLAG_MODE_READ, currentTask, &fd);
+	g_fs_open_status open = filesystemOpen(path, G_FILE_FLAG_MODE_READ, currentTask, &fd);
 	if(open == G_FS_OPEN_SUCCESSFUL)
 	{
 		g_process* outProcess;
@@ -129,9 +128,17 @@ void kernelInitializationThread()
 		if(spawn == G_SPAWN_STATUS_SUCCESSFUL)
 			logInfo("%! initializing system services in task %i", "kernel", currentTask->id);
 		else
-			logInfo("%! failed to spawn %s with status %i", "kernel", launcherPath, spawn);
+			logInfo("%! failed to spawn %s with status %i", "kernel", path, spawn);
 	} else
-		logInfo("%! failed to find %s with status %i", "kernel", launcherPath, open);
+		logInfo("%! failed to find %s with status %i", "kernel", path, open);
+
+}
+
+void kernelInitializationThread()
+{
+	kernelTestSpawnDriver("/applications/ps2driver.bin");
+	kernelTestSpawnDriver("/applications/vbedriver.bin");
+	kernelTestSpawnDriver("/applications/windowserver.bin");
 
 	taskingKernelThreadExit();
 }

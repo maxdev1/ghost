@@ -1,6 +1,6 @@
-diff -Naur libpng-1.6.34/config.sub libpng-1.6.34-ghost/config.sub
---- libpng-1.6.34/config.sub	2019-02-28 16:36:47.875994900 +0100
-+++ libpng-1.6.34-ghost/config.sub	2019-02-28 16:37:00.012796200 +0100
+diff -Nur libpng-1.6.18/config.sub libpng-1.6.18-ghost/config.sub
+--- libpng-1.6.18/config.sub	2020-02-18 11:01:44.726708800 +0100
++++ libpng-1.6.18-ghost/config.sub	2020-02-18 11:02:12.021710000 +0100
 @@ -1373,7 +1373,7 @@
  	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
  	      | -sym* | -kopensolaris* | -plan9* \
@@ -10,3 +10,37 @@ diff -Naur libpng-1.6.34/config.sub libpng-1.6.34-ghost/config.sub
  	      | -nindy* | -vxsim* | -vxworks* | -ebmon* | -hms* | -mvs* \
  	      | -clix* | -riscos* | -uniplus* | -iris* | -rtu* | -xenix* \
  	      | -hiux* | -386bsd* | -knetbsd* | -mirbsd* | -netbsd* \
+diff -Nur libpng-1.6.18/configure libpng-1.6.18-ghost/configure
+--- libpng-1.6.18/configure	2020-02-18 11:01:44.657521700 +0100
++++ libpng-1.6.18-ghost/configure	2020-02-18 11:14:25.062992200 +0100
+@@ -5580,6 +5580,10 @@
+   fi
+   ;;
+ 
++ghost*)
++  lt_cv_deplibs_check_method=pass_all
++  ;;
++
+ haiku*)
+   lt_cv_deplibs_check_method=pass_all
+   ;;
+@@ -11630,6 +11634,19 @@
+   dynamic_linker=no
+   ;;
+ 
++ghost*)
++  version_type=linux # correct to gnu/linux during the next big refactor
++  need_lib_prefix=no
++  need_version=no
++  dynamic_linker="ghostld"
++  library_names_spec='$libname$release$shared_ext$versuffix $libname$release$shared_ext$major $libname$shared_ext'
++  soname_spec='$libname$release$shared_ext$major'
++  shlibpath_var=LIBRARY_PATH
++  shlibpath_overrides_runpath=no
++  sys_lib_dlsearch_path_spec='/system/lib'
++  hardcode_into_libs=yes
++  ;;
++
+ solaris*)
+   version_type=linux # correct to gnu/linux during the next big refactor
+   need_lib_prefix=no
