@@ -10,37 +10,3 @@ diff -Nur cairo-1.12.18/build/config.sub cairo-1.12.18-ghost/build/config.sub
  	      | -nindy* | -vxsim* | -vxworks* | -ebmon* | -hms* | -mvs* \
  	      | -clix* | -riscos* | -uniplus* | -iris* | -rtu* | -xenix* \
  	      | -hiux* | -386bsd* | -knetbsd* | -mirbsd* | -netbsd* \
-diff -Nur cairo-1.12.18/configure cairo-1.12.18-ghost/configure
---- cairo-1.12.18/configure	2020-02-18 14:43:57.213900900 +0100
-+++ cairo-1.12.18-ghost/configure	2020-02-18 14:44:52.035605300 +0100
-@@ -6408,6 +6408,10 @@
-   lt_cv_deplibs_check_method=pass_all
-   ;;
- 
-+ghost*)
-+  lt_cv_deplibs_check_method=pass_all
-+  ;;
-+
- haiku*)
-   lt_cv_deplibs_check_method=pass_all
-   ;;
-@@ -11581,6 +11585,19 @@
-   hardcode_into_libs=yes
-   ;;
- 
-+ghost*)
-+  version_type=linux # correct to gnu/linux during the next big refactor
-+  need_lib_prefix=no
-+  need_version=no
-+  dynamic_linker="ghost ld"
-+  library_names_spec='${libname}${release}${shared_ext}$versuffix ${libname}${release}${shared_ext}${major} ${libname}${shared_ext}'
-+  soname_spec='${libname}${release}${shared_ext}$major'
-+  shlibpath_var=LIBRARY_PATH
-+  shlibpath_overrides_runpath=yes
-+  sys_lib_dlsearch_path_spec='/system/lib'
-+  hardcode_into_libs=yes
-+  ;;
-+
- haiku*)
-   version_type=linux # correct to gnu/linux during the next big refactor
-   need_lib_prefix=no
