@@ -249,19 +249,7 @@ if [ $STEP_BUILD_GCC == 1 ]; then
 	make install-gcc					>>ghost-build.log 2>&1
 	failOnError
 
-	echo "    Building target libgcc"
-	make all-target-libgcc -j8			>>ghost-build.log 2>&1
-	failOnError
-
-	echo "    Installing target libgcc"
-	make install-target-libgcc			>>ghost-build.log 2>&1
-	failOnError
 	popd
-
-	echo "    Copying artifacts to system/lib"
-	cp "$TOOLCHAIN_BASE/i686-ghost/lib/libgcc_s.so.1" "$SYSROOT/system/lib/libgcc_s.so.1"
-	failOnError
-
 else
 	echo "Skipping build of GCC"
 fi
@@ -283,9 +271,21 @@ failOnError
 popd
 
 
-# Build libstdc++-v3
-echo "Building GCC"
+# Build libgcc & libstdc++-v3
+echo "Building target GCC libraries"
 pushd temp/build-gcc
+
+echo "    Building target libgcc"
+make all-target-libgcc -j8			>>ghost-build.log 2>&1
+failOnError
+
+echo "    Installing target libgcc"
+make install-target-libgcc			>>ghost-build.log 2>&1
+failOnError
+
+echo "    Copying artifacts to system/lib"
+cp "$TOOLCHAIN_BASE/i686-ghost/lib/libgcc_s.so.1" "$SYSROOT/system/lib/libgcc_s.so.1"
+failOnError
 
 echo "    Building libstdc++-v3"
 make all-target-libstdc++-v3	>>ghost-build.log 2>&1
@@ -294,6 +294,7 @@ failOnError
 echo "    Installing libstdc++-v3"
 make install-target-libstdc++-v3	>>ghost-build.log 2>&1
 failOnError
+
 popd
 
 
