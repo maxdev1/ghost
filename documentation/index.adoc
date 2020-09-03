@@ -3,6 +3,8 @@ Max Schlüssel <lokoxe@gmail.com>
 v1.2
 :last-update-label!:
 
+<- link:https://ghostkernel.org/[Back to homepage]
+
 About
 -----
 Welcome to the documentation of Ghost OS!
