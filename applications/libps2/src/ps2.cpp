@@ -51,7 +51,7 @@ ps2_status_t ps2Initialize(void(*mouseCallback)(int16_t, int16_t, uint8_t), void
 void ps2IrqHandler(uint8_t irq) {
 
 	uint8_t status;
-	while (((status = ioInportByte(G_PS2_STATUS_PORT)) & 1) != 0) {
+	while (((status = ioInportByte(G_PS2_STATUS_PORT)) & 0x01) != 0) {
 		uint8_t value = ioInportByte(G_PS2_DATA_PORT);
 
 		if((status & 0x20) == 0) {
