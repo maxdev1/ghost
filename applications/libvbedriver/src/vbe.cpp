@@ -24,7 +24,7 @@
 /**
  *
  */
-bool g_vbe::setMode(uint16_t width, uint16_t height, uint8_t bpp, g_vbe_mode_info& out) {
+bool vbeSetMode(uint16_t width, uint16_t height, uint8_t bpp, g_vbe_mode_info& out) {
 
 	// identify vbe driver
 	g_tid driver_tid = g_task_get_id(G_VBE_DRIVER_IDENTIFIER);

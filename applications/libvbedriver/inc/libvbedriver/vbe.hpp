@@ -77,9 +77,6 @@ struct g_vbe_set_mode_response {
 /**
  *
  */
-class g_vbe {
-public:
-	static bool setMode(uint16_t width, uint16_t height, uint8_t bpp, g_vbe_mode_info& out);
-};
+bool vbeSetMode(uint16_t width, uint16_t height, uint8_t bpp, g_vbe_mode_info& out);
 
 #endif
