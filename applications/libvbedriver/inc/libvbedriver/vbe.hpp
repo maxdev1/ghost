@@ -75,7 +75,8 @@ struct g_vbe_set_mode_response {
 }__attribute__((packed));
 
 /**
- *
+ * Sends a request to the VBE driver and attempts to set the best matching available
+ * video mode using the VESA graphics interface.
  */
 bool vbeSetMode(uint16_t width, uint16_t height, uint8_t bpp, g_vbe_mode_info& out);
 
