@@ -128,12 +128,27 @@ typedef struct _g_object_info {
 
 /**
  * The object information structure is used within the process information section
- * to provide details about all loaded objects in a process.
+ * to provide details about the process.
  */
 typedef struct {
+	/**
+	 * Information about all loaded ELF objects.
+	 */
 	g_object_info* objectInfos;
 	uint32_t objectInfosSize;
+
+	/**
+	 * Only relevant for driver-privileged processes. The kernelSystemCallEntry is the function
+	 * to call when executing a system-call while in an interrupt handler.
+	 */
+	void(*kernelSystemCallEntry)(uint32_t,void*);
 }__attribute__((packed)) g_process_info;
+
+/**
+ * Holds a pointer to the current process information structure. Is initialized by the
+ * g_process_get_info system call routine.
+ */
+extern g_process_info* g_current_process_info;
 
 __END_C
 

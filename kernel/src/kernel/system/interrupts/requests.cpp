@@ -84,18 +84,21 @@ void requestsCallUserspaceHandler(g_task* task, uint8_t irq)
 		return;
 	}
 
-	if(handlingTask->interruptionInfo)
+	if(handlingTask->interruptedState)
 	{
 		logDebug("%! handling task %i interrupted while getting irq #%i", "irq", handlingTask->id, irq);
 		return;
 	}
 
-	taskingInterruptTask(handlingTask, handler->handlerAddress, handler->returnAddress, 1, irq);
-	taskingPleaseSchedule(handlingTask);
-	taskingSchedule();
+	g_physical_address previousDirectory = taskingTemporarySwitchToSpace(handlingTask->process->pageDirectory);
+
+	void(*userspaceHandlerEntry)(g_virtual_address,uint8_t) = (void(*)(g_virtual_address,uint8_t)) handler->entryAddress;
+	userspaceHandlerEntry(handler->handlerAddress, irq);
+
+	taskingTemporarySwitchBack(previousDirectory);
 }
 
-void requestsRegisterHandler(uint8_t irq, g_tid handlerTask, g_virtual_address handlerAddress, g_virtual_address returnAddress)
+void requestsRegisterHandler(uint8_t irq, g_tid handlerTask, g_virtual_address handlerAddress, g_virtual_address entryAddress, g_virtual_address returnAddress)
 {
 	if(handlers[irq])
 	{
@@ -106,6 +109,7 @@ void requestsRegisterHandler(uint8_t irq, g_tid handlerTask, g_virtual_address h
 	g_irq_handler* handler = (g_irq_handler*) heapAllocate(sizeof(g_irq_handler));
 	handler->task = handlerTask;
 	handler->returnAddress = returnAddress;
+	handler->entryAddress = entryAddress;
 	handler->handlerAddress = handlerAddress;
 	handlers[irq] = handler;
 }

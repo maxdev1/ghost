@@ -172,8 +172,10 @@ typedef struct {
 /**
  * @field irq
  * 		irq to register for
- * @field handler
- * 		address of the handler function
+ * @field handlerAddress
+ * 		address of the users handler function
+ * @Field entryAddress
+ * 		address of the function to enter when the IRQ occurs
  * @field callback
  * 		address of the function to be returned to when
  * 		the handler function returns
@@ -183,6 +185,7 @@ typedef struct {
 typedef struct {
 	uint8_t irq;
 	g_virtual_address handlerAddress;
+	g_virtual_address entryAddress;
 	g_virtual_address returnAddress;
 	g_register_irq_handler_status status;
 }__attribute__((packed)) g_syscall_register_irq_handler;
