@@ -37,7 +37,7 @@ g_spawn_status elfLoadExecutable(g_task* caller, g_fd fd, g_security_level secur
 	if(spawnStatus == G_SPAWN_STATUS_SUCCESSFUL)
 	{
 		elf32TlsCreateMasterImage(caller, fd, targetProcess, executableObject);
-		executableImageEnd = elfUserProcessCreateInfo(targetProcess, executableObject, executableImageEnd);
+		executableImageEnd = elfUserProcessCreateInfo(targetProcess, executableObject, executableImageEnd, securityLevel);
 	}
 	taskingTemporarySwitchBack(returnDirectory);
 
@@ -68,7 +68,7 @@ g_spawn_status elfLoadExecutable(g_task* caller, g_fd fd, g_security_level secur
 	return G_SPAWN_STATUS_SUCCESSFUL;
 }
 
-g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* executableObject, g_virtual_address executableImageEnd)
+g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* executableObject, g_virtual_address executableImageEnd, g_security_level securityLevel)
 {
 	/* Calculate required space */
 	int objectCount = 0;
@@ -126,6 +126,13 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* exe
 		objectInfo++;
 	}
 	hashmapIteratorEnd(&it);
+
+	// Additionally add information which is relevant for drivers
+	if(securityLevel <= G_SECURITY_LEVEL_DRIVER) {
+		info->kernelSystemCallEntry = syscallHandleDuringInterrupt;
+	} else {
+		info->kernelSystemCallEntry = 0;
+	}
 
 	process->userProcessInfo = info;
 

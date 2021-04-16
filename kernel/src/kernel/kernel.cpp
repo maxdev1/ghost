@@ -116,7 +116,7 @@ void kernelRunApplicationCore()
 		asm("hlt");
 }
 
-void kernelTestSpawnDriver(const char* path) {
+void kernelTestSpawnDriver(const char* path, const char* args) {
 	
 	g_task* currentTask = taskingGetCurrentTask();
 	g_fd fd;
@@ -125,8 +125,9 @@ void kernelTestSpawnDriver(const char* path) {
 	{
 		g_process* outProcess;
 		g_spawn_status spawn = taskingSpawn(currentTask, fd, G_SECURITY_LEVEL_DRIVER, &outProcess);
+		outProcess->environment.arguments = args;
 		if(spawn == G_SPAWN_STATUS_SUCCESSFUL)
-			logInfo("%! initializing system services in task %i", "kernel", currentTask->id);
+			logInfo("%! loaded binary: %s (task: %i)", "kernel", path, outProcess->main->id);
 		else
 			logInfo("%! failed to spawn %s with status %i", "kernel", path, spawn);
 	} else
@@ -136,9 +137,9 @@ void kernelTestSpawnDriver(const char* path) {
 
 void kernelInitializationThread()
 {
-	kernelTestSpawnDriver("/applications/ps2driver.bin");
-	kernelTestSpawnDriver("/applications/vbedriver.bin");
-	kernelTestSpawnDriver("/applications/windowserver.bin");
+	kernelTestSpawnDriver("/applications/vbedriver.bin", "");
+	kernelTestSpawnDriver("/applications/tester.bin", "");
+	logInfo("%! loaded basic binaries", "kernel");
 
 	taskingKernelThreadExit();
 }

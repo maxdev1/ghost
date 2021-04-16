@@ -177,7 +177,7 @@ void elfObjectApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 				}
 				else {
 					if(ELF32_ST_BIND(symbol->st_info) != STB_WEAK) {
-						logInfo("%!     missing symbol '%s' (%h, bind: %i)", "elf", symbolName, cP, ELF32_ST_BIND(symbol->st_info));
+						logDebug("%!     missing symbol '%s' (%h, bind: %i)", "elf", symbolName, cP, ELF32_ST_BIND(symbol->st_info));
 					}
 					cS = 0;
 				}

@@ -31,7 +31,7 @@
 #include "kernel/calls/syscall_vm86.hpp"
 #include "kernel/calls/syscall_messaging.hpp"
 
-static g_syscall_registration* syscallRegistrations = 0;
+g_syscall_registration* syscallRegistrations = 0;
 
 void syscallHandle(g_task* task)
 {
@@ -51,14 +51,35 @@ void syscallHandle(g_task* task)
 		return;
 	}
 
-	// Store call information
 	task->syscall.handler = reg->handler;
 	task->syscall.data = syscallData;
 
-	if(reg->threaded)
+	if(reg->threaded) {
 		syscallRunThreaded(reg->handler, task, syscallData);
-	else
+	} else {
 		reg->handler(task, syscallData);
+	}
+}
+
+void syscallHandleDuringInterrupt(uint32_t callId, void* syscallData)
+{
+	g_task* task = taskingGetLocal()->scheduling.current;
+
+	g_syscall_registration* reg = &syscallRegistrations[callId];
+	if(reg->handler == 0)
+	{
+		logInfo("%! task %i tried to use unknown syscall %i", "syscall", task->id, callId);
+		return;
+	}
+
+	task->syscall.handler = reg->handler;
+	task->syscall.data = syscallData;
+
+	if(reg->threaded) {
+		logInfo("%! task %i tried to use threaded syscall during interrupt handling", "syscall", task->id);
+	} else {
+		reg->handler(task, syscallData);
+	}
 }
 
 void syscallRunThreaded(g_syscall_handler handler, g_task* caller, void* syscallData)

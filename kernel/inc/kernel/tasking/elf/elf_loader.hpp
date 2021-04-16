@@ -147,7 +147,7 @@ g_spawn_status elfLoadExecutable(g_task* caller, g_fd file, g_security_level sec
  * @return address of the created structure
  */
 g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* executableObject,
-	g_virtual_address executableImageEnd);
+	g_virtual_address executableImageEnd, g_security_level securityLevel);
 
 /**
  * Loads a PT_LOAD segment to memory, must be called while within the target process address space.

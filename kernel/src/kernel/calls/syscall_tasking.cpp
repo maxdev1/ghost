@@ -99,7 +99,7 @@ void syscallRegisterIrqHandler(g_task* task, g_syscall_register_irq_handler* dat
 	{
 		if(data->irq >= 0 && data->irq < 256)
 		{
-			requestsRegisterHandler(data->irq, task->id, data->handlerAddress, data->returnAddress);
+			requestsRegisterHandler(data->irq, task->id, data->handlerAddress, data->entryAddress, data->returnAddress);
 
 			data->status = G_REGISTER_IRQ_HANDLER_STATUS_SUCCESSFUL;
 			logInfo("%! task %i: irq handler %h registered for irq %i", "irq", task->id, data->handlerAddress, data->irq);
@@ -119,18 +119,18 @@ void syscallRestoreInterruptedState(g_task* task)
 {
 	mutexAcquire(&task->process->lock);
 
-	if(task->interruptionInfo)
+	if(task->interruptedState)
 	{
-		task->waitData = task->interruptionInfo->previousWaitData;
-		task->waitResolver = task->interruptionInfo->previousWaitResolver;
-		task->status = task->interruptionInfo->previousStatus;
+		task->waitData = task->interruptedState->previousWaitData;
+		task->waitResolver = task->interruptedState->previousWaitResolver;
+		task->status = task->interruptedState->previousStatus;
 
 		// restore processor state
-		task->state = task->interruptionInfo->statePtr;
-		memoryCopy((void*) task->state, &task->interruptionInfo->state, sizeof(g_processor_state));
+		task->state = task->interruptedState->statePtr;
+		memoryCopy((void*) task->state, &task->interruptedState->state, sizeof(g_processor_state));
 
-		heapFree(task->interruptionInfo);
-		task->interruptionInfo = 0;
+		heapFree(task->interruptedState);
+		task->interruptedState = 0;
 	}
 
 	mutexRelease(&task->process->lock);

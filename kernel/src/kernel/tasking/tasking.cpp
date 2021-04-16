@@ -717,7 +717,7 @@ g_raise_signal_status taskingRaiseSignal(g_task* task, int signal)
 			return G_RAISE_SIGNAL_STATUS_INVALID_TARGET;
 		}
 
-		if(handlingTask->interruptionInfo)
+		if(handlingTask->interruptedState)
 		{
 			logInfo("%! can't raise signal in currently interrupted task %i", "signal", task->id);
 			return G_RAISE_SIGNAL_STATUS_INVALID_STATE;
@@ -751,17 +751,17 @@ void taskingInterruptTask(g_task* task, g_virtual_address entry, g_virtual_addre
 	pagingSwitchToSpace(task->process->pageDirectory);
 
 	// Prepare interruption
-	task->interruptionInfo = (g_task_interruption_info*) heapAllocate(sizeof(g_task_interruption_info));
-	task->interruptionInfo->previousWaitData = task->waitData;
-	task->interruptionInfo->previousWaitResolver = task->waitResolver;
-	task->interruptionInfo->previousStatus = task->status;
+	task->interruptedState = (g_task_interrupted_state*) heapAllocate(sizeof(g_task_interrupted_state));
+	task->interruptedState->previousWaitData = task->waitData;
+	task->interruptedState->previousWaitResolver = task->waitResolver;
+	task->interruptedState->previousStatus = task->status;
 	task->waitData = 0;
 	task->waitResolver = 0;
 	task->status = G_THREAD_STATUS_RUNNING;
 
 	// Save processor state
-	memoryCopy(&task->interruptionInfo->state, task->state, sizeof(g_processor_state));
-	task->interruptionInfo->statePtr = (g_processor_state*) task->state;
+	memoryCopy(&task->interruptedState->state, task->state, sizeof(g_processor_state));
+	task->interruptedState->statePtr = (g_processor_state*) task->state;
 
 	// Set the new entry
 	task->state->eip = entry;

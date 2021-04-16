@@ -18,20 +18,16 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost/user.h"
+#ifndef __GHOST_LIBAPI_IO__
+#define __GHOST_LIBAPI_IO__
 
-/**
- *
- */
-void g_syscall(uint32_t call, uint32_t data) {
+#include <stdint.h>
 
-	if(g_is_handling_irq()) {
-		g_current_process_info->kernelSystemCallEntry(call, (void*) data);
+uint8_t ioInportByte(uint16_t port);
+void ioOutportByte(uint16_t port, uint8_t data);
+uint16_t ioInportShort(uint16_t port);
+void ioOutportShort(uint16_t port, uint16_t data);
+uint32_t ioInportInt(uint16_t port);
+void ioOutportInt(uint16_t port, uint32_t data);
 
-	} else {
-		asm volatile ("int $0x80"
-			:
-			: "a"(call), "b"(data)
-			: "cc", "memory");
-	}
-}
+#endif

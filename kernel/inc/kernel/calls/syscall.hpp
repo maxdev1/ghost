@@ -38,6 +38,11 @@ struct g_syscall_registration
 };
 
 /**
+ * Table of system call registrations with a size of G_SYSCALL_MAX.
+ */
+extern g_syscall_registration* syscallRegistrations;
+
+/**
  * Handles a system call for the given task. Reads EAX and EBX from the caller task
  * to find the issued system call and data.
  *
@@ -46,6 +51,12 @@ struct g_syscall_registration
  * to waiting state.
  */
 void syscallHandle(g_task* task);
+
+/**
+ * Is directly called by drivers to execute a syscall during interrupt handling.
+ * No threaded syscalls can be executed this way.
+ */
+void syscallHandleDuringInterrupt(uint32_t callId, void* syscallData);
 
 /**
  * Executes a system call within a thread. This creates or reuses the system call task on the

@@ -18,20 +18,52 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost/user.h"
+#include "ghost/io.h"
 
 /**
- *
+ * Reads a byte from the given CPU port
  */
-void g_syscall(uint32_t call, uint32_t data) {
+uint8_t ioInportByte(uint16_t port) {
+	uint8_t value;
+	asm volatile("inb %1, %0" : "=a" (value) : "dN" (port));
+	return value;
+}
 
-	if(g_is_handling_irq()) {
-		g_current_process_info->kernelSystemCallEntry(call, (void*) data);
+/**
+ * Writes the given data to the given CPU port
+ */
+void ioOutportByte(uint16_t port, uint8_t value) {
+	asm volatile("outb %1, %0" : : "dN" (port), "a" (value));
+}
 
-	} else {
-		asm volatile ("int $0x80"
-			:
-			: "a"(call), "b"(data)
-			: "cc", "memory");
-	}
+/**
+ * Reads a short from the given CPU port
+ */
+uint16_t ioInportShort(uint16_t port) {
+	uint16_t value;
+	asm volatile("inw %1, %0" : "=a" (value) : "dN" (port));
+	return value;
+}
+
+/**
+ * Writes the given data to the given CPU port
+ */
+void ioOutportShort(uint16_t port, uint16_t value) {
+	asm volatile("outw %1, %0" : : "dN" (port), "a" (value));
+}
+
+/**
+ * Reads a dword from the given CPU port
+ */
+uint32_t ioInportInt(uint16_t port) {
+	uint32_t value;
+	asm volatile("inl %1, %0" : "=a" (value) : "dN" (port));
+	return value;
+}
+
+/**
+ * Writes the given data to the given CPU port
+ */
+void ioOutportInt(uint16_t port, uint32_t value) {
+	asm volatile("outl %1, %0" : : "dN" (port), "a" (value));
 }

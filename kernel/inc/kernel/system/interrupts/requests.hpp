@@ -30,6 +30,7 @@ typedef struct
 {
 	g_tid task;
 	g_virtual_address handlerAddress;
+	g_virtual_address entryAddress;
 	g_virtual_address returnAddress;
 } g_irq_handler;
 
@@ -41,7 +42,7 @@ void requestsHandle(g_task* task);
 /**
  * Registers a user-space interrupt request handler.
  */
-void requestsRegisterHandler(uint8_t irq, g_tid handlerTask, g_virtual_address handlerAddress, g_virtual_address returnAddress);
+void requestsRegisterHandler(uint8_t irq, g_tid handlerTask, g_virtual_address handlerAddress, g_virtual_address entryAddress, g_virtual_address returnAddress);
 
 /**
  * Calls the user-space handler for an IRQ if there is one registered

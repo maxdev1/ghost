@@ -41,16 +41,16 @@ typedef bool (*g_wait_resolver)(g_task*);
 /**
  *
  */
-typedef uint8_t g_task_interruption_info_type;
+typedef uint8_t g_task_interrupted_state_type;
 
-#define G_TASK_INTERRUPT_INFO_TYPE_NONE		((g_task_interruption_info_type) 0)
-#define G_TASK_INTERRUPT_INFO_TYPE_IRQ		((g_task_interruption_info_type) 1)
-#define G_TASK_INTERRUPT_INFO_TYPE_SIGNAL	((g_task_interruption_info_type) 2)
+#define G_TASK_INTERRUPT_INFO_TYPE_NONE		((g_task_interrupted_state_type) 0)
+#define G_TASK_INTERRUPT_INFO_TYPE_IRQ		((g_task_interrupted_state_type) 1)
+#define G_TASK_INTERRUPT_INFO_TYPE_SIGNAL	((g_task_interrupted_state_type) 2)
 
 /**
  *
  */
-class g_task_interruption_info
+class g_task_interrupted_state
 {
 public:
 	g_processor_state state;
@@ -155,7 +155,7 @@ struct g_task
 	 * If the task gets interrupted by a signal or an IRQ, the current state is stored in this
 	 * structure and later restored from it.
 	 */
-	g_task_interruption_info* interruptionInfo;
+	g_task_interrupted_state* interruptedState;
 
 	/**
 	 * If the thread is user-created, we must store info on where the thread should enter.
@@ -216,13 +216,12 @@ struct g_tasking_local
 	 */
 	int locksHeld;
 	int locksReenableInt;
-	bool inInterruptHandler;
+	g_bool inInterruptHandler;
 
 	/**
 	 * Approximation of milliseconds that this processor has run.
 	 */
 	uint32_t time;
-
 };
 
 /**

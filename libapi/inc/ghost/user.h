@@ -843,6 +843,11 @@ g_fs_create_node_status g_fs_create_node(uint32_t parent, char* name, g_fs_node_
 g_register_irq_handler_status g_register_irq_handler(uint8_t irq, void (*handler)(uint8_t));
 
 /**
+ * Returns whether we are currently in an IRQ handler or not.
+ */
+g_bool g_is_handling_irq();
+
+/**
  * Restores the interruption state (for example after signal/irq handling) of the current thread.
  */
 void g_restore_interrupted_state();
