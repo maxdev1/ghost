@@ -25,61 +25,146 @@
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
+#include <libvbedriver/vbe.hpp>
+#include <libps2/ps2.hpp>
 
+struct g_rectangle {
+public:
+	int x;
+	int y;
+	int width;
+	int height;
+};
+
+typedef uint32_t g_color_argb;
+
+g_vbe_mode_info video_mode_information;
+
+/**
+ *
+ */
+void blit(g_rectangle invalid, g_rectangle sourceSize, g_color_argb* source) {
+
+	uint16_t bpp = video_mode_information.bpp;
+	uint8_t* position = ((uint8_t*) video_mode_information.lfb) + (invalid.y * video_mode_information.bpsl);
+
+	uint32_t right = invalid.x + invalid.width;
+	uint32_t bottom = invalid.y + invalid.height;
+
+	if (bpp == 32) {
+		for (int y = invalid.y; y < bottom; y++) {
+			uint32_t* position4 = (uint32_t*) position;
+			for (int x = invalid.x; x < right; x++) {
+				position4[x] = source[y * sourceSize.width + x];
+			}
+			position += video_mode_information.bpsl;
+		}
+
+	} else if (bpp == 24) {
+		for (int y = invalid.y; y < bottom; y++) {
+			for (int x = invalid.x; x < right; x++) {
+				g_color_argb color = source[y * sourceSize.width + x];
+				position[x * 3] = color & 0xFF;
+				position[x * 3 + 1] = (color >> 8) & 0xFF;
+				position[x * 3 + 2] = (color >> 16) & 0xFF;
+			}
+			position += video_mode_information.bpsl;
+		}
+	}
+}
+
+g_rectangle lastMousePos;
+g_rectangle mousePos;
+int32_t cursorX = 100;
+int32_t cursorY = 100;
+
+uint8_t drawing = 0;
+int mousepacks = 0;
+
+void mouseCallback(int16_t x, int16_t y, uint8_t flags) {
+
+	mousepacks++;
+	cursorX += x;
+	cursorY += y;
+
+	if(cursorX > video_mode_information.resX - 10) {
+		cursorX = video_mode_information.resX - 10;
+	}
+	if(cursorX < 0) {
+		cursorX = 0;
+	}
+	if(cursorY > video_mode_information.resY - 10) {
+		cursorY = video_mode_information.resY - 10;
+	}
+	if(cursorY < 0) {
+		cursorY = 0;
+	}
+
+}
+
+void keyboardCallback(uint8_t c) {
+	klog("Key: %i", c);
+}
 
 int main(int argc, char** argv)
 {
-	klog("Starting test suite...");
+	klog("calling video driver to set mode...");
+	g_vbe::setMode(1024, 768, 32, video_mode_information);
+	klog("video mode set: %ix%i@%i, lfb: %x", video_mode_information.resX, video_mode_information.resY, video_mode_information.bpp, video_mode_information.lfb);
 
-	/* Run basic tests */
-	test_result_t result;
-	result += runStdioTest();
-	result += runMessageTest();
-	result += runThreadTests();
-
-	klog("Test suite finished: %i successful, %i failed", result.successful, result.failed);
-
-	/* Perform runtime tests */
-	klog("Starting runtime tests");
-	g_spawn("/applications/runtimetest.bin", "", "", G_SECURITY_LEVEL_APPLICATION);
-	g_spawn("/applications/runtimetest-static.bin", "", "", G_SECURITY_LEVEL_APPLICATION);
-
-	/* Restart test suite */
-	g_sleep(3000);
-	klog("Test-suite is restarting itself...");
-	g_spawn("/applications/tester.bin", "-respawned", "/", G_SECURITY_LEVEL_APPLICATION);
-}
-
-/**
- * Performs a few threading-related tests.
- */
-int testLocalSetAfterJoin = 0;
-
-void testThreadRoutine()
-{
-	/* Register in task directory */
-	g_task_register_id("test-routine");
-
-	/* Wait a little before finishing */
-	for(int i = 0; i < 5; i++) {
-		g_sleep(100);
+	while(video_mode_information.bpp == 0) {
+		g_sleep(1000);
+		klog("failed to initialize video... retrying");
+		g_vbe::setMode(1024, 768, 32, video_mode_information);
 	}
-	testLocalSetAfterJoin = 25;
-}
 
-test_result_t runThreadTests()
-{
-	g_tid tid = g_create_thread((void*) testThreadRoutine);
 
-	/* Check if task directory registration has worked */
-	g_sleep(100);
-	g_tid registeredTid = g_task_get_id("test-routine");
-	assert(tid == registeredTid);
+	g_color_argb* source = (g_color_argb*) malloc(1024 * 768 * 4);
+	klog("video buffer created: %x", source);
 
-	/* Test joining */
-	assert(testLocalSetAfterJoin == 0);
-	g_join(tid);
-	assert(testLocalSetAfterJoin == 25);
 
-	TEST_SUCCESSFUL;
+	ps2Initialize(&mouseCallback, &keyboardCallback);
+
+	for(uint16_t y = 0; y < video_mode_information.resY; y++) {
+		for(uint16_t x = 0; x < video_mode_information.resX; x++) {
+			source[y * video_mode_information.resX + x] = 0xFFFFFFFF;
+		}
+	}
+
+	g_rectangle sourceSize;
+	sourceSize.x = 0;
+	sourceSize.y = 0;
+	sourceSize.width = video_mode_information.resX;
+	sourceSize.height = video_mode_information.resY;
+	blit(sourceSize, sourceSize, source);
+
+	uint8_t blitlock = 0;
+	for(;;) {
+		g_atomic_lock(&blitlock);
+		mousePos.x = cursorX;
+		mousePos.y = cursorY;
+		mousePos.width = 10;
+		mousePos.height = 10;
+
+		for(uint16_t y = lastMousePos.y; y < lastMousePos.y + 10; y++) {
+			for(uint16_t x = lastMousePos.x; x < lastMousePos.x + 10; x++) {
+				if(y < sourceSize.height && x < sourceSize.width) {
+					source[y * video_mode_information.resX + x] = 0xFFFFFFFF;
+				}
+			}
+		}
+		for(uint16_t y = mousePos.y; y < mousePos.y + 10; y++) {
+			for(uint16_t x = mousePos.x; x < mousePos.x + 10; x++) {
+				if(y < sourceSize.height && x < sourceSize.width) {
+					source[y * video_mode_information.resX + x] = 0;
+				}
+			}
+		}
+
+		blit(lastMousePos, sourceSize, source);
+		blit(mousePos, sourceSize, source);
+		blitlock = 0;
+
+		lastMousePos = mousePos;
+	}
 }
