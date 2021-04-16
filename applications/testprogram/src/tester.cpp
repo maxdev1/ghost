@@ -114,20 +114,16 @@ void keyboardCallback(uint8_t c) {
 int main(int argc, char** argv)
 {
 	klog("calling video driver to set mode...");
-	g_vbe::setMode(1024, 768, 32, video_mode_information);
-	klog("video mode set: %ix%i@%i, lfb: %x", video_mode_information.resX, video_mode_information.resY, video_mode_information.bpp, video_mode_information.lfb);
+	vbeSetMode(1024, 768, 32, video_mode_information);
 
 	while(video_mode_information.bpp == 0) {
-		g_sleep(1000);
-		klog("failed to initialize video... retrying");
-		g_vbe::setMode(1024, 768, 32, video_mode_information);
+		klog("failed to initialize video... retrying in 3 seconds");
+		g_sleep(3000);
+		vbeSetMode(1024, 768, 32, video_mode_information);
 	}
-
+	klog("video mode set: %ix%i@%i, lfb: %x", video_mode_information.resX, video_mode_information.resY, video_mode_information.bpp, video_mode_information.lfb);
 
 	g_color_argb* source = (g_color_argb*) malloc(1024 * 768 * 4);
-	klog("video buffer created: %x", source);
-
-
 	ps2Initialize(&mouseCallback, &keyboardCallback);
 
 	for(uint16_t y = 0; y < video_mode_information.resY; y++) {
