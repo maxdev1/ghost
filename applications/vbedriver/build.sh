@@ -11,7 +11,7 @@ SRC=src
 OBJ=obj
 ARTIFACT_NAME=vbedriver.bin
 CFLAGS="-std=c++11 -I$SRC"
-LDFLAGS="-lghostuser -lcairo -lfreetype -lpixman-1 -lpng -lz"
+LDFLAGS="-lvbedriver"
 
 # Include application build tasks
 . "../applications.sh"
