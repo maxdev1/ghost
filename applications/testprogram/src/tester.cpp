@@ -81,6 +81,7 @@ int32_t cursorY = 100;
 uint8_t drawing = 0;
 int mousepacks = 0;
 
+uint8_t waitingForData = 1;
 char lastChar = 0;
 
 void mouseCallback(int16_t x, int16_t y, uint8_t flags) {
@@ -101,11 +102,13 @@ void mouseCallback(int16_t x, int16_t y, uint8_t flags) {
 	if(cursorY < 0) {
 		cursorY = 0;
 	}
+	waitingForData = 0;
 
 }
 
 void keyboardCallback(uint8_t c) {
 	lastChar = c;
+	waitingForData = 0;
 }
 
 int main(int argc, char** argv)
@@ -187,5 +190,8 @@ int main(int argc, char** argv)
 		blitlock = 0;
 
 		lastMousePos = mousePos;
+
+		g_atomic_block(&waitingForData);
+		waitingForData = 1;
 	}
 }
