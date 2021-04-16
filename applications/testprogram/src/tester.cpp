@@ -81,6 +81,8 @@ int32_t cursorY = 100;
 uint8_t drawing = 0;
 int mousepacks = 0;
 
+char lastChar = 0;
+
 void mouseCallback(int16_t x, int16_t y, uint8_t flags) {
 
 	mousepacks++;
@@ -103,7 +105,7 @@ void mouseCallback(int16_t x, int16_t y, uint8_t flags) {
 }
 
 void keyboardCallback(uint8_t c) {
-	klog("Key: %i", c);
+	lastChar = c;
 }
 
 int main(int argc, char** argv)
@@ -163,6 +165,25 @@ int main(int argc, char** argv)
 
 		blit(lastMousePos, sourceSize, source);
 		blit(mousePos, sourceSize, source);
+
+		
+		for(uint16_t y = 50; y < 100; y++) {
+			for(uint16_t x = 50; x < 50 + 255 * 2; x++) {
+				source[y * video_mode_information.resX + x] = 0xFFFFFFFF;
+			}
+		}
+		for(uint16_t y = 50; y < 100; y++) {
+			for(uint16_t x = 50; x < 50 + lastChar * 2; x++) {
+				source[y * video_mode_information.resX + x] = 0;
+			}
+		}
+		g_rectangle barSize;
+		barSize.x = 50;
+		barSize.y = 50;
+		barSize.width = 255 * 2;
+		barSize.height = 50;
+		blit(barSize, sourceSize, source);
+
 		blitlock = 0;
 
 		lastMousePos = mousePos;

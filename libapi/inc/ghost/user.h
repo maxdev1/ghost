@@ -578,7 +578,7 @@ g_message_receive_status g_receive_message_tmb(void* buf, size_t max, g_message_
 uint8_t g_task_register_id(const char* identifier);
 
 /**
- * Returns the id of the task that is register for the given identifier.
+ * Returns the id of the task that is registered for the given identifier.
  *
  * @param identifier
  * 		the identifier
