@@ -25,10 +25,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
-#include <libvbedriver/vbe.hpp>
-#include <libps2/ps2.hpp>
+#include <libvbedriver/vbedriver.hpp>
+#include <libps2driver/ps2driver.hpp>
 
-struct g_rectangle {
+struct g_rectangle
+{
 public:
 	int x;
 	int y;
@@ -43,26 +44,33 @@ g_vbe_mode_info video_mode_information;
 /**
  *
  */
-void blit(g_rectangle invalid, g_rectangle sourceSize, g_color_argb* source) {
+void blit(g_rectangle invalid, g_rectangle sourceSize, g_color_argb *source)
+{
 
 	uint16_t bpp = video_mode_information.bpp;
-	uint8_t* position = ((uint8_t*) video_mode_information.lfb) + (invalid.y * video_mode_information.bpsl);
+	uint8_t *position = ((uint8_t *)video_mode_information.lfb) + (invalid.y * video_mode_information.bpsl);
 
 	uint32_t right = invalid.x + invalid.width;
 	uint32_t bottom = invalid.y + invalid.height;
 
-	if (bpp == 32) {
-		for (int y = invalid.y; y < bottom; y++) {
-			uint32_t* position4 = (uint32_t*) position;
-			for (int x = invalid.x; x < right; x++) {
+	if (bpp == 32)
+	{
+		for (int y = invalid.y; y < bottom; y++)
+		{
+			uint32_t *position4 = (uint32_t *)position;
+			for (int x = invalid.x; x < right; x++)
+			{
 				position4[x] = source[y * sourceSize.width + x];
 			}
 			position += video_mode_information.bpsl;
 		}
-
-	} else if (bpp == 24) {
-		for (int y = invalid.y; y < bottom; y++) {
-			for (int x = invalid.x; x < right; x++) {
+	}
+	else if (bpp == 24)
+	{
+		for (int y = invalid.y; y < bottom; y++)
+		{
+			for (int x = invalid.x; x < right; x++)
+			{
 				g_color_argb color = source[y * sourceSize.width + x];
 				position[x * 3] = color & 0xFF;
 				position[x * 3 + 1] = (color >> 8) & 0xFF;
@@ -84,50 +92,90 @@ int mousepacks = 0;
 uint8_t waitingForData = 1;
 char lastChar = 0;
 
-void mouseCallback(int16_t x, int16_t y, uint8_t flags) {
+static g_fd keyboardRead = 0;
+static g_fd mouseRead = 0;
 
-	mousepacks++;
-	cursorX += x;
-	cursorY += y;
-
-	if(cursorX > video_mode_information.resX - 10) {
-		cursorX = video_mode_information.resX - 10;
-	}
-	if(cursorX < 0) {
-		cursorX = 0;
-	}
-	if(cursorY > video_mode_information.resY - 10) {
-		cursorY = video_mode_information.resY - 10;
-	}
-	if(cursorY < 0) {
-		cursorY = 0;
-	}
-	waitingForData = 0;
-
-}
-
-void keyboardCallback(uint8_t c) {
-	lastChar = c;
-	waitingForData = 0;
-}
-
-int main(int argc, char** argv)
+void keyboardReceiverThread()
 {
-	klog("calling video driver to set mode...");
-	vbeSetMode(1024, 768, 32, video_mode_information);
 
-	while(video_mode_information.bpp == 0) {
+	uint8_t val;
+	for (;;)
+	{
+		if (g_read(keyboardRead, &val, 1) == 1)
+		{
+			lastChar = val;
+			waitingForData = 0;
+		}
+	}
+}
+
+void mouseReceiverThread()
+{
+
+	g_ps2_mouse_packet packet;
+
+	for (;;)
+	{
+		if (g_read(mouseRead, &packet, sizeof(g_ps2_mouse_packet)) == sizeof(g_ps2_mouse_packet))
+		{
+			mousepacks++;
+			cursorX += packet.x;
+			cursorY += packet.y;
+
+			if (cursorX > video_mode_information.resX - 10)
+			{
+				cursorX = video_mode_information.resX - 10;
+			}
+			if (cursorX < 0)
+			{
+				cursorX = 0;
+			}
+			if (cursorY > video_mode_information.resY - 10)
+			{
+				cursorY = video_mode_information.resY - 10;
+			}
+			if (cursorY < 0)
+			{
+				cursorY = 0;
+			}
+			waitingForData = 0;
+		}
+	}
+}
+
+int main(int argc, char **argv)
+{
+	// Get PS2 input from PS2 driver
+	klog("registering at PS2 driver...");
+	if (!ps2DriverInitialize(&keyboardRead, &mouseRead))
+	{
+		klog("failed to register at PS2 driver");
+		return -1;
+	}
+	klog("init ps2 threads... %i, %i", keyboardRead, mouseRead);
+	g_create_thread((void *)keyboardReceiverThread);
+	g_create_thread((void *)mouseReceiverThread);
+	klog("done");
+
+	// Init VBE
+	klog("calling video driver to set mode...");
+	vbeDriverSetMode(1024, 768, 32, video_mode_information);
+
+	while (video_mode_information.bpp == 0)
+	{
 		klog("failed to initialize video... retrying in 3 seconds");
 		g_sleep(3000);
-		vbeSetMode(1024, 768, 32, video_mode_information);
+		vbeDriverSetMode(1024, 768, 32, video_mode_information);
 	}
 	klog("video mode set: %ix%i@%i, lfb: %x", video_mode_information.resX, video_mode_information.resY, video_mode_information.bpp, video_mode_information.lfb);
 
-	g_color_argb* source = (g_color_argb*) malloc(1024 * 768 * 4);
-	ps2Initialize(&mouseCallback, &keyboardCallback);
+	g_color_argb *source = (g_color_argb *)malloc(1024 * 768 * 4);
 
-	for(uint16_t y = 0; y < video_mode_information.resY; y++) {
-		for(uint16_t x = 0; x < video_mode_information.resX; x++) {
+
+	for (uint16_t y = 0; y < video_mode_information.resY; y++)
+	{
+		for (uint16_t x = 0; x < video_mode_information.resX; x++)
+		{
 			source[y * video_mode_information.resX + x] = 0xFFFFFFFF;
 		}
 	}
@@ -140,23 +188,30 @@ int main(int argc, char** argv)
 	blit(sourceSize, sourceSize, source);
 
 	uint8_t blitlock = 0;
-	for(;;) {
+	for (;;)
+	{
 		g_atomic_lock(&blitlock);
 		mousePos.x = cursorX;
 		mousePos.y = cursorY;
 		mousePos.width = 10;
 		mousePos.height = 10;
 
-		for(uint16_t y = lastMousePos.y; y < lastMousePos.y + 10; y++) {
-			for(uint16_t x = lastMousePos.x; x < lastMousePos.x + 10; x++) {
-				if(y < sourceSize.height && x < sourceSize.width) {
+		for (uint16_t y = lastMousePos.y; y < lastMousePos.y + 10; y++)
+		{
+			for (uint16_t x = lastMousePos.x; x < lastMousePos.x + 10; x++)
+			{
+				if (y < sourceSize.height && x < sourceSize.width)
+				{
 					source[y * video_mode_information.resX + x] = 0xFFFFFFFF;
 				}
 			}
 		}
-		for(uint16_t y = mousePos.y; y < mousePos.y + 10; y++) {
-			for(uint16_t x = mousePos.x; x < mousePos.x + 10; x++) {
-				if(y < sourceSize.height && x < sourceSize.width) {
+		for (uint16_t y = mousePos.y; y < mousePos.y + 10; y++)
+		{
+			for (uint16_t x = mousePos.x; x < mousePos.x + 10; x++)
+			{
+				if (y < sourceSize.height && x < sourceSize.width)
+				{
 					source[y * video_mode_information.resX + x] = 0;
 				}
 			}
@@ -165,14 +220,17 @@ int main(int argc, char** argv)
 		blit(lastMousePos, sourceSize, source);
 		blit(mousePos, sourceSize, source);
 
-		
-		for(uint16_t y = 50; y < 100; y++) {
-			for(uint16_t x = 50; x < 50 + 255 * 2; x++) {
+		for (uint16_t y = 50; y < 100; y++)
+		{
+			for (uint16_t x = 50; x < 50 + 255 * 2; x++)
+			{
 				source[y * video_mode_information.resX + x] = 0xFFFFFFFF;
 			}
 		}
-		for(uint16_t y = 50; y < 100; y++) {
-			for(uint16_t x = 50; x < 50 + lastChar * 2; x++) {
+		for (uint16_t y = 50; y < 100; y++)
+		{
+			for (uint16_t x = 50; x < 50 + lastChar * 2; x++)
+			{
 				source[y * video_mode_information.resX + x] = 0;
 			}
 		}
