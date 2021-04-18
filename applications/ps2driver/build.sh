@@ -9,9 +9,9 @@ fi
 # Define build setup
 SRC=src
 OBJ=obj
-ARTIFACT_NAME=tester.bin
+ARTIFACT_NAME=ps2driver.bin
 CFLAGS="-std=c++11 -I$SRC"
-LDFLAGS="-lvbedriver -lps2driver"
+LDFLAGS="-lps2"
 
 # Include application build tasks
 . "../applications.sh"

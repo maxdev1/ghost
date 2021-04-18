@@ -18,66 +18,61 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef GHOSTLIBRARY_GRAPHICS_VBE
-#define GHOSTLIBRARY_GRAPHICS_VBE
+#ifndef __LIBPS2DRIVER_PS2DRIVER__
+#define __LIBPS2DRIVER_PS2DRIVER__
 
 #include <stdint.h>
 
-#define G_VBE_DRIVER_IDENTIFIER			"vbedriver"
+#define G_PS2_DRIVER_IDENTIFIER		"ps2driver"
 
 /**
  *
  */
-struct g_vbe_mode_info {
-	uint16_t resX;
-	uint16_t resY;
-	uint16_t bpp;
-	uint16_t bpsl;
-	uint32_t lfb;
+typedef int g_ps2_command;
+#define G_PS2_COMMAND_INITIALIZE	((g_ps2_command) 0)
+
+/**
+ *
+ */
+struct g_ps2_request_header {
+	g_ps2_command command;
 }__attribute__((packed));
 
 /**
  *
  */
-typedef int g_vbe_command;
-#define G_VBE_COMMAND_SET_MODE	((g_vbe_command) 0)
+typedef int g_ps2_initialize_status;
+#define G_PS2_INITIALIZE_SUCCESS		((g_ps2_initialize_status) 0)
+#define G_PS2_INITIALIZE_FAILED 		((g_ps2_initialize_status) 1)
 
 /**
  *
  */
-struct g_vbe_request_header {
-	g_vbe_command command;
+struct g_ps2_initialize_request {
+	g_ps2_request_header header;
 }__attribute__((packed));
 
 /**
  *
  */
-typedef int g_vbe_set_mode_status;
-#define G_VBE_SET_MODE_STATUS_SUCCESS		((g_vbe_set_mode_status) 0)
-#define G_VBE_SET_MODE_STATUS_FAILED		((g_vbe_set_mode_status) 1)
-
-/**
- *
- */
-struct g_vbe_set_mode_request {
-	g_vbe_request_header header;
-	uint16_t width;
-	uint16_t height;
-	uint8_t bpp;
+struct g_ps2_initialize_response {
+    g_ps2_initialize_status status;
+	g_fd keyboardRead;
+	g_fd mouseRead;
 }__attribute__((packed));
 
 /**
  *
  */
-struct g_vbe_set_mode_response {
-	g_vbe_set_mode_status status;
-	g_vbe_mode_info mode_info;
+struct g_ps2_mouse_packet {
+	int16_t x;
+    int16_t y;
+    uint8_t flags;
 }__attribute__((packed));
 
 /**
- * Sends a request to the VBE driver and attempts to set the best matching available
- * video mode using the VESA graphics interface.
+ * Sends a request to the PS2 driver to allow this process to read data.
  */
-bool vbeSetMode(uint16_t width, uint16_t height, uint8_t bpp, g_vbe_mode_info& out);
+bool ps2DriverInitialize(g_fd* keyboardReadOut, g_fd* mouseReadOut);
 
 #endif

@@ -18,10 +18,10 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef VBE_DRIVER
-#define VBE_DRIVER
+#ifndef __VBEDRIVER__
+#define __VBEDRIVER__
 
-#include <libvbedriver/vbe.hpp>
+#include <libvbedriver/vbedriver.hpp>
 
 #include <cstdint>
 #include <ghost.h>

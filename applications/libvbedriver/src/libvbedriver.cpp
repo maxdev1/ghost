@@ -19,9 +19,9 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <ghost.h>
-#include <libvbedriver/vbe.hpp>
+#include <libvbedriver/vbedriver.hpp>
 
-bool vbeSetMode(uint16_t width, uint16_t height, uint8_t bpp, g_vbe_mode_info& out) {
+bool vbeDriverSetMode(uint16_t width, uint16_t height, uint8_t bpp, g_vbe_mode_info& out) {
 
 	// identify vbe driver
 	g_tid driver_tid = g_task_get_id(G_VBE_DRIVER_IDENTIFIER);

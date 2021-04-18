@@ -18,7 +18,7 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "vbe_driver.hpp"
+#include "vbedriver.hpp"
 
 #include <ghost.h>
 #include <stdint.h>
@@ -40,7 +40,7 @@ int main()
 
 void vbeReceiveMessages()
 {
-	size_t buflen = sizeof(g_message_header) + sizeof(g_vbe_set_mode_request);
+	size_t buflen = sizeof(g_message_header) + sizeof(g_vbe_set_mode_request) /*TODO*/;
 	uint8_t buf[buflen];
 
 	for (;;)
