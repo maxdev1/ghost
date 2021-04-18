@@ -43,7 +43,7 @@ void interruptsInitializeBsp()
 	lapicInitialize();
 	ioapicInitializeAll();
 
-	ioapicCreateIsaRedirectionEntry(1, 1, 0); // keyboard
+	ioapicCreateIsaRedirectionEntry(1, 1, 0);	// keyboard
 	ioapicCreateIsaRedirectionEntry(12, 12, 0); // mouse
 }
 
@@ -77,8 +77,8 @@ void interruptsDisable()
 
 bool interruptsAreEnabled()
 {
-    uint32_t eflags = processorReadEflags();
-    return eflags & (1 << 9);
+	uint32_t eflags = processorReadEflags();
+	return eflags & (1 << 9);
 }
 
 /**
@@ -87,22 +87,26 @@ bool interruptsAreEnabled()
 extern "C" g_virtual_address _interruptHandler(g_virtual_address esp)
 {
 	g_tasking_local* local = taskingGetLocal();
-	local->inInterruptHandler = true;
+	local->currentlyHandlingInterrupt = true;
 
 	if(taskingStore(esp))
 	{
-		if(local->scheduling.current->state->intr < 0x20)
+		g_task* task = taskingGetCurrentTask();
+		if(task->state->intr < 0x20)
 		{
-			exceptionsHandle(local->scheduling.current);
-		} else {
-			requestsHandle(local->scheduling.current);
+			exceptionsHandle(task);
+		}
+		else
+		{
+			requestsHandle(task);
 		}
 	}
 
-	local->inInterruptHandler = false;
-	esp = taskingRestore(esp);
+	taskingApplySwitch();
+
 	lapicSendEndOfInterrupt();
-	return esp;
+	local->currentlyHandlingInterrupt = false;
+	return (g_virtual_address) taskingGetCurrentTask()->state;
 }
 
 void interruptsInstallRoutines()
