@@ -43,9 +43,9 @@ typedef bool (*g_wait_resolver)(g_task*);
  */
 typedef uint8_t g_task_interrupted_state_type;
 
-#define G_TASK_INTERRUPT_INFO_TYPE_NONE		((g_task_interrupted_state_type) 0)
-#define G_TASK_INTERRUPT_INFO_TYPE_IRQ		((g_task_interrupted_state_type) 1)
-#define G_TASK_INTERRUPT_INFO_TYPE_SIGNAL	((g_task_interrupted_state_type) 2)
+#define G_TASK_INTERRUPT_INFO_TYPE_NONE ((g_task_interrupted_state_type)0)
+#define G_TASK_INTERRUPT_INFO_TYPE_IRQ ((g_task_interrupted_state_type)1)
+#define G_TASK_INTERRUPT_INFO_TYPE_SIGNAL ((g_task_interrupted_state_type)2)
 
 /**
  *
@@ -216,7 +216,7 @@ struct g_tasking_local
 	 */
 	int locksHeld;
 	int locksReenableInt;
-	g_bool inInterruptHandler;
+	g_bool currentlyHandlingInterrupt;
 
 	/**
 	 * Approximation of milliseconds that this processor has run.
@@ -238,14 +238,14 @@ public:
 /**
  * Flags used when allocating virtual ranges.
  */
-#define G_PROC_VIRTUAL_RANGE_FLAG_NONE		0
-/* Weak flag signals that the physical memory mapped behind the
-virtual range is not managed by the kernel (for example MMIO). */
-#define G_PROC_VIRTUAL_RANGE_FLAG_WEAK		1
+#define G_PROC_VIRTUAL_RANGE_FLAG_NONE 0
+ /* Weak flag signals that the physical memory mapped behind the
+ virtual range is not managed by the kernel (for example MMIO). */
+#define G_PROC_VIRTUAL_RANGE_FLAG_WEAK 1
 
-/**
- * A process groups multiple tasks.
- */
+ /**
+  * A process groups multiple tasks.
+  */
 struct g_process
 {
 	g_pid id;
@@ -303,6 +303,11 @@ g_tasking_local* taskingGetLocal();
 g_task* taskingGetCurrentTask();
 
 /**
+ * Sets the currently executed task.
+ */
+void taskingSetCurrentTask(g_task* task);
+
+/**
  * @return the next assignable task id
  */
 g_tid taskingGetNextId();
@@ -338,7 +343,7 @@ g_process* taskingCreateProcess();
 /**
  * Creates a task that starts execution on the given entry. The task is added to the
  * task list of the specified process. The task is scheduled only after using <taskingAssign>.
- * 
+ *
  * @param entry
  * 		execution entry of the thread
  * @param process
@@ -399,16 +404,16 @@ void taskingPleaseSchedule(g_task* task);
 /**
  * Stores the registers from the given state pointer (pointing to the top of the
  * kernel stack) to the state structure of the current task.
- * 
+ *
  * If there is no current task (because we just initialized the system) then it
  * switches to the first task.
  */
 bool taskingStore(g_virtual_address esp);
 
 /**
- * Restores the state from the current task.
+ * Applies the context switch to the task which is the current one for this local.
  */
-g_virtual_address taskingRestore(g_virtual_address esp);
+void taskingApplySwitch();
 
 /**
  * Yields control in a kernel task. This can only be called while no mutexes
@@ -461,7 +466,7 @@ void taskingInterruptTask(g_task* task, g_virtual_address entry, g_virtual_addre
 /**
  * Spawns an executable. This calls the correct binary loader in the background and creates a new
  * process, loading the executable object and necessary libraries and executing it.
- * 
+ *
  * @param spawner
  * 		task calling the execution
  * @param file

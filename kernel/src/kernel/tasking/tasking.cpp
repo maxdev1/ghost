@@ -56,6 +56,11 @@ g_task* taskingGetCurrentTask()
 	return taskingGetLocal()->scheduling.current;
 }
 
+void taskingSetCurrentTask(g_task* task)
+{
+	taskingGetLocal()->scheduling.current = task;
+}
+
 g_tid taskingGetNextId()
 {
 	mutexAcquire(&taskingIdLock);
@@ -123,7 +128,8 @@ void taskingApplySecurityLevel(volatile g_processor_state* state, g_security_lev
 		state->es = G_GDT_DESCRIPTOR_KERNEL_DATA | G_SEGMENT_SELECTOR_RING0;
 		state->fs = G_GDT_DESCRIPTOR_KERNEL_DATA | G_SEGMENT_SELECTOR_RING0;
 		state->gs = G_GDT_DESCRIPTOR_KERNEL_DATA | G_SEGMENT_SELECTOR_RING0;
-	} else
+	}
+	else
 	{
 		state->cs = G_GDT_DESCRIPTOR_USER_CODE | G_SEGMENT_SELECTOR_RING3;
 		state->ss = G_GDT_DESCRIPTOR_USER_DATA | G_SEGMENT_SELECTOR_RING3;
@@ -147,7 +153,6 @@ void taskingResetTaskState(g_task* task)
 	taskingApplySecurityLevel(task->state, task->securityLevel);
 }
 
-
 void taskingAddToProcessTaskList(g_process* process, g_task* task)
 {
 	mutexAcquire(&process->lock);
@@ -170,7 +175,8 @@ g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_securit
 	if(process->main == 0)
 	{
 		task->id = process->id;
-	} else
+	}
+	else
 	{
 		task->id = taskingGetNextId();
 	}
@@ -296,17 +302,20 @@ bool taskingStore(g_virtual_address esp)
 	return true;
 }
 
-g_virtual_address taskingRestore(g_virtual_address esp)
+void taskingApplySwitch()
 {
 	g_task* task = taskingGetCurrentTask();
 	if(!task)
+	{
 		kernelPanic("%! tried to restore without a current task", "tasking");
+	}
 
 	// Switch to process address space
 	if(task->overridePageDirectory)
 	{
 		pagingSwitchToSpace(task->overridePageDirectory);
-	} else
+	}
+	else
 	{
 		pagingSwitchToSpace(task->process->pageDirectory);
 	}
@@ -317,16 +326,15 @@ g_virtual_address taskingRestore(g_virtual_address esp)
 
 	// Set TSS ESP0 for ring 3 tasks to return onto
 	gdtSetTssEsp0(task->interruptStack.end);
-
-	return (g_virtual_address) task->state;
 }
 
 void taskingSchedule()
 {
 	g_tasking_local* local = taskingGetLocal();
-
-	if(!local->inInterruptHandler)
+	if(!local->currentlyHandlingInterrupt)
+	{
 		kernelPanic("%! scheduling may only be triggered during interrupt handling", "tasking");
+	}
 
 	// If there are kernel locks held by the currently running task, we may not
 	// switch tasks - otherwise we will deadlock.
@@ -422,24 +430,24 @@ void taskingPrepareThreadLocalStorage(g_task* thread)
 void taskingKernelThreadYield()
 {
 	g_tasking_local* local = taskingGetLocal();
-	if(local->inInterruptHandler)
+	if(local->currentlyHandlingInterrupt)
 	{
-		logInfo("%! warning: kernel tried to yield while within interrupt handler");
-		return;
+		kernelPanic("%! kernel tried to yield while within interrupt handler", "tasking");
 	}
+
 	if(local->locksHeld > 0)
 	{
-		logInfo("%! warning: kernel thread %i tried to yield while holding %i kernel locks", "tasking", local->scheduling.current->id, local->locksHeld);
+		kernelPanic("%! kernel thread %i tried to yield while holding %i kernel locks", "tasking", local->scheduling.current->id, local->locksHeld);
 		return;
 	}
 
 	/* Special handling only when a kernel thread is yielding.
 	We call the interrupt 0x81 which will be handled in the interrupt
 	request handling sequence <requestsHandle>. */
-	asm volatile ("int $0x81"
-			:
-			: "a"(0), "b"(0)
-			: "cc", "memory");
+	asm volatile("int $0x81"
+		:
+	: "a"(0), "b"(0)
+		: "cc", "memory");
 }
 
 void taskingKernelThreadExit()
@@ -480,7 +488,8 @@ void taskingCleanupThread()
 
 				entry->next = deadList;
 				deadList = entry;
-			} else
+			}
+			else
 			{
 				previous = entry;
 			}
@@ -545,12 +554,12 @@ void taskingRemoveThread(g_task* task)
 	if(task->type == G_THREAD_TYPE_VM86)
 	{
 		lowerHeapFree((void*) task->vm86Data->userStack);
-
-	} else if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
+	}
+	else if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
 	{
 		addressRangePoolFree(memoryVirtualRangePool, task->stack.start);
-
-	} else
+	}
+	else
 	{
 		addressRangePoolFree(task->process->virtualRangePool, task->stack.start);
 	}
@@ -585,7 +594,8 @@ void taskingRemoveThread(g_task* task)
 			if(previous)
 			{
 				previous->next = entry->next;
-			} else
+			}
+			else
 			{
 				task->process->tasks = entry->next;
 			}
@@ -602,15 +612,16 @@ void taskingRemoveThread(g_task* task)
 	if(task->process->tasks == 0)
 	{
 		taskingRemoveProcess(task->process);
-
-	} else if(task->process->main == task)
+	}
+	else if(task->process->main == task)
 	{
 		taskingKillProcess(task->process->id);
 	}
 
 	/* Finalize freeing */
 	hashmapRemove(taskGlobalMap, task->id);
-	if(task->vm86Data) heapFree(task->vm86Data);
+	if(task->vm86Data)
+		heapFree(task->vm86Data);
 	heapFree(task);
 }
 
@@ -724,8 +735,8 @@ g_raise_signal_status taskingRaiseSignal(g_task* task, int signal)
 		}
 
 		taskingInterruptTask(task, handler->handlerAddress, handler->returnAddress, 1, signal);
-
-	} else if(signal == SIGSEGV)
+	}
+	else if(signal == SIGSEGV)
 	{
 		logInfo("%! thread %i killed by SIGSEGV", "signal", task->id);
 		task->status = G_THREAD_STATUS_DEAD;

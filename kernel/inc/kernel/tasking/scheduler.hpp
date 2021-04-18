@@ -48,4 +48,9 @@ void schedulerSchedule(g_tasking_local* local);
  */
 void schedulerPleaseSchedule(g_task* task);
 
+/**
+ * Log information about all current tasks.
+ */
+void schedulerDump();
+
 #endif

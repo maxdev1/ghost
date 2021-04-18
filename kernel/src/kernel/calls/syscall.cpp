@@ -54,16 +54,19 @@ void syscallHandle(g_task* task)
 	task->syscall.handler = reg->handler;
 	task->syscall.data = syscallData;
 
-	if(reg->threaded) {
+	if(reg->threaded)
+	{
 		syscallRunThreaded(reg->handler, task, syscallData);
-	} else {
+	}
+	else
+	{
 		reg->handler(task, syscallData);
 	}
 }
 
 void syscallHandleDuringInterrupt(uint32_t callId, void* syscallData)
 {
-	g_task* task = taskingGetLocal()->scheduling.current;
+	g_task* task = taskingGetCurrentTask();
 
 	g_syscall_registration* reg = &syscallRegistrations[callId];
 	if(reg->handler == 0)
@@ -72,14 +75,16 @@ void syscallHandleDuringInterrupt(uint32_t callId, void* syscallData)
 		return;
 	}
 
+	g_syscall_handler originalHandler = task->syscall.handler;
+	void* originalData = task->syscall.data;
+
 	task->syscall.handler = reg->handler;
 	task->syscall.data = syscallData;
 
-	if(reg->threaded) {
-		logInfo("%! task %i tried to use threaded syscall during interrupt handling", "syscall", task->id);
-	} else {
-		reg->handler(task, syscallData);
-	}
+	reg->handler(task, syscallData);
+
+	task->syscall.handler = originalHandler;
+	task->syscall.data = originalData;
 }
 
 void syscallRunThreaded(g_syscall_handler handler, g_task* caller, void* syscallData)
@@ -115,7 +120,7 @@ void syscallRunThreaded(g_syscall_handler handler, g_task* caller, void* syscall
 void syscallThreadEntry()
 {
 	g_tasking_local* local = taskingGetLocal();
-	g_task* sourceTask = local->scheduling.current->syscall.sourceTask;
+	g_task* sourceTask = taskingGetCurrentTask()->syscall.sourceTask;
 
 	// Call handler
 	sourceTask->syscall.handler(sourceTask, sourceTask->syscall.data);
@@ -123,7 +128,7 @@ void syscallThreadEntry()
 	// Switch back to source task
 	mutexAcquire(&local->lock);
 	sourceTask->status = G_THREAD_STATUS_RUNNING;
-	local->scheduling.current->status = G_THREAD_STATUS_UNUSED;
+	taskingGetCurrentTask()->status = G_THREAD_STATUS_UNUSED;
 	mutexRelease(&local->lock);
 
 	taskingPleaseSchedule(sourceTask);
@@ -187,7 +192,7 @@ void syscallRegisterAll()
 	syscallRegister(G_SYSCALL_SPAWN, (g_syscall_handler) syscallSpawn, true);
 	syscallRegister(G_SYSCALL_CREATE_THREAD, (g_syscall_handler) syscallCreateThread, false);
 	syscallRegister(G_SYSCALL_GET_THREAD_ENTRY, (g_syscall_handler) syscallGetThreadEntry, false);
-	
+
 	syscallRegister(G_SYSCALL_REGISTER_TASK_IDENTIFIER, (g_syscall_handler) syscallRegisterTaskIdentifier, false);
 	syscallRegister(G_SYSCALL_GET_TASK_FOR_IDENTIFIER, (g_syscall_handler) syscallGetTaskForIdentifier, false);
 	syscallRegister(G_SYSCALL_MESSAGE_SEND, (g_syscall_handler) syscallMessageSend, false);
@@ -207,4 +212,3 @@ void syscallRegisterAll()
 	syscallRegister(G_SYSCALL_FS_FSTAT, (g_syscall_handler) syscallFsFstat, true);
 	syscallRegister(G_SYSCALL_FS_PIPE, (g_syscall_handler) syscallFsPipe, true);
 }
-

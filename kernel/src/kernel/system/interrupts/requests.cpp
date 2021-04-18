@@ -21,6 +21,7 @@
 #include "ghost/memory.h"
 
 #include "kernel/system/interrupts/requests.hpp"
+#include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/tasking/tasking.hpp"
 #include "kernel/tasking/scheduler.hpp"
@@ -40,62 +41,66 @@ void requestsHandle(g_task* task)
 {
 	const uint32_t intr = task->state->intr;
 
-	/* Special handling for when a kernel thread yields using <taskingKernelThreadYield> */
 	if(intr == 0x81)
 	{
+		// Special handling for when a kernel thread yields using <taskingKernelThreadYield>
 		taskingSchedule();
-
-	/* System calls */
-	} else if(intr == 0x80)
+	}
+	else if(intr == 0x80)
 	{
 		syscallHandle(task);
-
-	} else
+	}
+	else
 	{
 		const uint32_t irq = intr - 0x20;
 
-		/* Timer interrupt request triggers the scheduler */
-		if(irq == 0)
+		if(irq == 0) // Timer triggers scheduling
 		{
 			taskingGetLocal()->time += APIC_MILLISECONDS_PER_TICK;
 			schedulerNewTimeSlot();
 			taskingSchedule();
-
-		/* User-space interrupt handling */
-		} else if(irq < 256 && handlers[irq])
+		}
+		else if(irq < 256 && handlers[irq]) // User-space irq handling
 		{
-			requestsCallUserspaceHandler(task, irq);
-
-		} else
+			requestsCallUserspaceHandler(irq);
+		}
+		else
 		{
-			logInfo("%! unhandled irq %i in task %i", "requests", irq, task->id);
+			logInfo("%! unhandled irq %i", "requests", irq);
 		}
 	}
 }
 
-void requestsCallUserspaceHandler(g_task* task, uint8_t irq)
+void requestsCallUserspaceHandler(uint8_t irq)
 {
 	g_irq_handler* handler = handlers[irq];
-	g_task* handlingTask = taskingGetById(handler->task);
+	g_task* handlerTask = taskingGetById(handler->task);
 
-	if(!handlingTask)
+	if(!handlerTask)
 	{
 		logInfo("%! no handler task for irq #%i", "irq", irq);
 		return;
 	}
 
-	if(handlingTask->interruptedState)
+	if(handlerTask->interruptedState)
 	{
-		logDebug("%! handling task %i interrupted while getting irq #%i", "irq", handlingTask->id, irq);
+		logDebug("%! handling task %i interrupted while getting irq #%i", "irq", handlerTask->id, irq);
 		return;
 	}
 
-	g_physical_address previousDirectory = taskingTemporarySwitchToSpace(handlingTask->process->pageDirectory);
+	if(irq == 1) {
+		schedulerDump();
+	}
 
-	void(*userspaceHandlerEntry)(g_virtual_address,uint8_t) = (void(*)(g_virtual_address,uint8_t)) handler->entryAddress;
+	g_task* previousTask = taskingGetCurrentTask();
+	taskingSetCurrentTask(handlerTask);
+	taskingApplySwitch();
+
+	void (*userspaceHandlerEntry)(g_virtual_address, uint8_t) = (void (*)(g_virtual_address, uint8_t))handler->entryAddress;
 	userspaceHandlerEntry(handler->handlerAddress, irq);
 
-	taskingTemporarySwitchBack(previousDirectory);
+	taskingSetCurrentTask(previousTask);
+	taskingApplySwitch();
 }
 
 void requestsRegisterHandler(uint8_t irq, g_tid handlerTask, g_virtual_address handlerAddress, g_virtual_address entryAddress, g_virtual_address returnAddress)

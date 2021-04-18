@@ -198,7 +198,7 @@ g_fs_open_status filesystemFindChild(g_fs_node* parent, const char* name, g_fs_n
 }
 
 g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node** outChild, bool* outFoundAllButLast, g_fs_node** outLastFoundParent,
-		const char** outFileNameStart)
+	const char** outFileNameStart)
 {
 	if(parent == 0)
 	{
@@ -295,7 +295,8 @@ g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task
 				return G_FS_OPEN_ERROR;
 			}
 		}
-	} else if(status == G_FS_OPEN_NOT_FOUND)
+	}
+	else if(status == G_FS_OPEN_NOT_FOUND)
 	{
 		if(flags & G_FILE_FLAG_MODE_CREATE)
 		{
@@ -303,16 +304,19 @@ g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task
 			{
 				logInfo("%! failed to create file '%s' in parent %i because folders do not exist", "fs", path, relative->id);
 				return G_FS_OPEN_ERROR;
-			} else if(filesystemCreateFile(lastFoundParent, filenameStart, &file) != G_FS_OPEN_SUCCESSFUL)
+			}
+			else if(filesystemCreateFile(lastFoundParent, filenameStart, &file) != G_FS_OPEN_SUCCESSFUL)
 			{
 				logInfo("%! failed to create file '%s' in parent %i", "fs", path, relative->id);
 				return G_FS_OPEN_ERROR;
 			}
-		} else
+		}
+		else
 		{
 			return G_FS_OPEN_NOT_FOUND;
 		}
-	} else
+	}
+	else
 	{
 		return status;
 	}
@@ -427,6 +431,7 @@ g_fs_write_status filesystemWrite(g_task* task, g_fd fd, uint8_t* buffer, uint64
 
 	int64_t wrote;
 	g_fs_write_status status;
+
 	while((status = filesystemWrite(node, buffer, startOffset, length, &wrote)) == G_FS_WRITE_BUSY && node->blocking)
 	{
 		filesystemWaitToWrite(task, node);
@@ -566,10 +571,12 @@ g_fs_seek_status filesystemSeek(g_task* task, g_fd fd, g_fs_seek_mode mode, int6
 	if(mode == G_FS_SEEK_CUR)
 	{
 		descriptor->offset += amount;
-	} else if(mode == G_FS_SEEK_SET)
+	}
+	else if(mode == G_FS_SEEK_SET)
 	{
 		descriptor->offset = amount;
-	} else if(mode == G_FS_SEEK_END)
+	}
+	else if(mode == G_FS_SEEK_END)
 	{
 		descriptor->offset = length - amount;
 	}
@@ -603,7 +610,8 @@ int filesystemGetAbsolutePathLength(g_fs_node* node)
 	int calced;
 	if(length == 1) {
 		calced = stringLength(node->name);
-	} else {
+	}
+	else {
 		calced = stringLength(node->name) + 1;
 	}
 	return length + calced;
@@ -625,7 +633,8 @@ int filesystemGetAbsolutePath(g_fs_node* node, char* buffer)
 	int copied;
 	if(length == 1) {
 		copied = stringCopy(&buffer[length], node->name);
-	} else {
+	}
+	else {
 		buffer[length] = '/';
 		copied = stringCopy(&buffer[length + 1], node->name) + 1;
 	}

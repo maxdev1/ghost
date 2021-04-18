@@ -40,7 +40,7 @@
 static g_mutex bootstrapCoreLock;
 static g_mutex applicationCoreLock;
 
-extern "C" void kernelMain(g_setup_information* setupInformation)
+extern "C" void kernelMain(g_setup_information * setupInformation)
 {
 	runtimeAbiCallGlobalConstructors();
 
@@ -117,7 +117,7 @@ void kernelRunApplicationCore()
 }
 
 void kernelTestSpawnDriver(const char* path, const char* args) {
-	
+
 	g_task* currentTask = taskingGetCurrentTask();
 	g_fd fd;
 	g_fs_open_status open = filesystemOpen(path, G_FILE_FLAG_MODE_READ, currentTask, &fd);
@@ -130,13 +130,16 @@ void kernelTestSpawnDriver(const char* path, const char* args) {
 			logInfo("%! loaded binary: %s (task: %i)", "kernel", path, outProcess->main->id);
 		else
 			logInfo("%! failed to spawn %s with status %i", "kernel", path, spawn);
-	} else
+	}
+	else {
 		logInfo("%! failed to find %s with status %i", "kernel", path, open);
+	}
 
 }
 
 void kernelInitializationThread()
 {
+	kernelTestSpawnDriver("/applications/ps2driver.bin", "");
 	kernelTestSpawnDriver("/applications/vbedriver.bin", "");
 	kernelTestSpawnDriver("/applications/tester.bin", "");
 	logInfo("%! loaded basic binaries", "kernel");
@@ -144,7 +147,7 @@ void kernelInitializationThread()
 	taskingKernelThreadExit();
 }
 
-void kernelPanic(const char *msg, ...)
+void kernelPanic(const char* msg, ...)
 {
 	interruptsDisable();
 	logInfo("%*%! unrecoverable error on processor %i", 0x0C, "kernerr", processorGetCurrentId());

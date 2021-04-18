@@ -23,9 +23,9 @@
 
 #include "kernel/tasking/tasking.hpp"
 
-/**
- * Type of an interrupt handler
- */
+ /**
+  * Type of an interrupt handler
+  */
 typedef struct
 {
 	g_tid task;
@@ -48,6 +48,6 @@ void requestsRegisterHandler(uint8_t irq, g_tid handlerTask, g_virtual_address h
  * Calls the user-space handler for an IRQ if there is one registered
  * on the given task.
  */
-void requestsCallUserspaceHandler(g_task* task, uint8_t irq);
+void requestsCallUserspaceHandler(uint8_t irq);
 
 #endif

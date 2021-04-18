@@ -47,11 +47,11 @@ void schedulerPleaseSchedule(g_task* task)
  * This scheduler implementation keeps a round counter on the
  * local tasking structure and each schedule entry. A new round
  * starts when a new timeslot starts.
- * 
+ *
  * When looking for a new task to schedule, each task in the list
  * is checked once. Only tasks that have not been scheduled in this
  * round are taken into account.
- * 
+ *
  * If all tasks are waiting/were already scheduled, the idle task is run.
  */
 void schedulerSchedule(g_tasking_local* local)
@@ -145,11 +145,43 @@ void schedulerSchedule(g_tasking_local* local)
 	if(switched)
 	{
 		local->scheduling.current->timesScheduled++;
-	} else
+	}
+	else
 	{
 		// Nothing to schedule, idle
 		local->scheduling.current = local->scheduling.idleTask;
 	}
+
+	mutexRelease(&local->lock);
+}
+
+void schedulerDump()
+{
+	g_tasking_local* local = taskingGetLocal();
+	mutexAcquire(&local->lock);
+
+	logInfo("%! task list:", "scheduler");
+	g_schedule_entry* entry = local->scheduling.list;
+	while(entry)
+	{
+		const char* taskState;
+		if(entry->task->status == G_THREAD_STATUS_RUNNING) {
+			taskState = "running";
+		}
+		else if(entry->task->status == G_THREAD_STATUS_UNUSED) {
+			taskState = "unused";
+		}
+		else if(entry->task->status == G_THREAD_STATUS_DEAD) {
+			taskState = "dead";
+		}
+		else if(entry->task->status == G_THREAD_STATUS_WAITING) {
+			taskState = "waiting";
+		}
+
+		logInfo("%# process: %i, task: %i, status: %s, timesScheduled: %i", entry->task->process->id, entry->task->id, taskState, entry->task->timesScheduled);
+		entry = entry->next;
+	}
+
 
 	mutexRelease(&local->lock);
 }

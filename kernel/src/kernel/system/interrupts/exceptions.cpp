@@ -28,9 +28,9 @@
 
 #define DEBUG_PRINT_STACK_TRACE 0
 
-/**
- * Names of the exceptions
- */
+ /**
+  * Names of the exceptions
+  */
 static const char* EXCEPTION_NAMES[] = {
 		"divide error", // 0x00
 		"debug exception", // 0x01
@@ -53,7 +53,7 @@ static const char* EXCEPTION_NAMES[] = {
 		"machine check exception", // 0x12
 		"reserved exception", "reserved exception", "reserved exception", "reserved exception", "reserved exception", "reserved exception",
 		"reserved exception", "reserved exception", "reserved exception", "reserved exception", "reserved exception", "reserved exception", "reserved exception" // reserved exceptions
-		};
+};
 
 uint32_t exceptionsGetCR2()
 {
@@ -78,7 +78,7 @@ void exceptionsDumpTask(g_task* task) {
 	g_process* process = task->process;
 	logInfo("%! %s in task %i (process %i)", "exception", EXCEPTION_NAMES[state->intr], task->id, process->main->id);
 
-	if (state->intr == 0x0E) { // Page fault
+	if(state->intr == 0x0E) { // Page fault
 		logInfo("%#    accessed address: %h", exceptionsGetCR2());
 	}
 	logInfo("%#    eip: %h   eflags: %h", state->eip, state->eflags);
@@ -97,7 +97,8 @@ void exceptionsDumpTask(g_task* task) {
 			if(object == task->process->object)
 			{
 				logInfo("%# caused in executable object");
-			} else
+			}
+			else
 			{
 				logInfo("%# caused in object '%s' at offset %x", object->name, state->eip - object->baseAddress);
 			}
@@ -106,7 +107,7 @@ void exceptionsDumpTask(g_task* task) {
 		object = object->relocateOrderNext;
 	}
 
-	#if DEBUG_PRINT_STACK_TRACE
+#if DEBUG_PRINT_STACK_TRACE
 	g_address* ebp = reinterpret_cast<g_address*>(state->ebp);
 	logInfo("%# stack trace:");
 	for(int frame = 0; frame < 8; ++frame) {
@@ -117,7 +118,7 @@ void exceptionsDumpTask(g_task* task) {
 		ebp = reinterpret_cast<g_address*>(ebp[0]);
 		logInfo("%#  %h", eip);
 	}
-	#endif
+#endif
 }
 
 bool exceptionsHandleStackOverflow(g_task* task, g_virtual_address accessedVirtPage)
@@ -135,14 +136,15 @@ bool exceptionsHandleStackOverflow(g_task* task, g_virtual_address accessedVirtP
 		return false;
 
 	}
-	
+
 	/* Extend the stack */
 	uint32_t tableFlags, pageFlags;
 	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
 	{
 		tableFlags = DEFAULT_KERNEL_TABLE_FLAGS;
 		pageFlags = DEFAULT_KERNEL_PAGE_FLAGS;
-	} else
+	}
+	else
 	{
 		tableFlags = DEFAULT_USER_TABLE_FLAGS;
 		pageFlags = DEFAULT_USER_PAGE_FLAGS;
@@ -174,7 +176,8 @@ bool exceptionsHandlePageFault(g_task* task)
 	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
 	{
 		task->status = G_THREAD_STATUS_DEAD;
-	} else
+	}
+	else
 	{
 		taskingRaiseSignal(task, SIGSEGV);
 	}
@@ -184,19 +187,21 @@ bool exceptionsHandlePageFault(g_task* task)
 
 bool exceptionsHandleGeneralProtectionFault(g_task* task)
 {
-	if (task->type == G_THREAD_TYPE_VM86) {
+	if(task->type == G_THREAD_TYPE_VM86) {
 
 		g_virtual_monitor_handling_result result = vm86MonitorHandleGpf(task);
 
-		if (result == VIRTUAL_MONITOR_HANDLING_RESULT_SUCCESSFUL) {
+		if(result == VIRTUAL_MONITOR_HANDLING_RESULT_SUCCESSFUL) {
 			return true;
 
-		} else if (result == VIRTUAL_MONITOR_HANDLING_RESULT_FINISHED) {
+		}
+		else if(result == VIRTUAL_MONITOR_HANDLING_RESULT_FINISHED) {
 			task->status = G_THREAD_STATUS_DEAD;
 			taskingSchedule();
 			return true;
 
-		} else if (result == VIRTUAL_MONITOR_HANDLING_RESULT_UNHANDLED_OPCODE) {
+		}
+		else if(result == VIRTUAL_MONITOR_HANDLING_RESULT_UNHANDLED_OPCODE) {
 			logInfo("%! %i unable to handle gpf for vm86 task", "exception", processorGetCurrentId());
 			task->status = G_THREAD_STATUS_DEAD;
 			taskingSchedule();
@@ -204,7 +209,7 @@ bool exceptionsHandleGeneralProtectionFault(g_task* task)
 		}
 	}
 
-	logInfo("%! #%i process %i killed due to general protection fault", "exception", processorGetCurrentId(), task->id);
+	logInfo("%! #%i process %i killed due to general protection fault at EIP %h", "exception", processorGetCurrentId(), task->id, task->state->eip);
 	task->status = G_THREAD_STATUS_DEAD;
 	taskingSchedule();
 	return true;
@@ -223,7 +228,7 @@ void exceptionsHandle(g_task* task)
 {
 	bool resolved = false;
 
-	switch (task->state->intr) {
+	switch(task->state->intr) {
 	case 0x00: { // Divide error
 		resolved = exceptionsHandleDivideError(task);
 		break;
@@ -245,7 +250,7 @@ void exceptionsHandle(g_task* task)
 	if(!resolved)
 	{
 		logInfo("%*%! task %i caused unresolved exception %i (error %i) at EIP: %h ESP: %h", 0x0C, "exception", task->id, task->state->intr,
-				task->state->error, task->state->eip, task->state->esp);
+			task->state->error, task->state->eip, task->state->esp);
 		for(;;)
 		{
 			asm("hlt");
