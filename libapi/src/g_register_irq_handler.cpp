@@ -21,16 +21,12 @@
 #include "ghost/user.h"
 #include "__internal.h"
 
-static g_bool handlingIrq = false;
-
 /**
  * Bootstrap routine that is called everytime an IRQ is handled by a userspace handler.
  * The kernel passes the address of the handler to call and the IRQ number as parameters.
  */
 void __g_enter_irq_handler(void (*handler)(uint8_t), uint8_t irq) {
-	handlingIrq = true;
 	handler(irq);
-	handlingIrq = false;
 }
 
 /**
@@ -46,6 +42,3 @@ g_register_irq_handler_status g_register_irq_handler(uint8_t irq, void (*handler
 	return data.status;
 }
 
-g_bool g_is_handling_irq() {
-	return handlingIrq;
-}
