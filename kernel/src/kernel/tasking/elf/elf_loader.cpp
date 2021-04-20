@@ -127,13 +127,6 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* exe
 	}
 	hashmapIteratorEnd(&it);
 
-	// Additionally add information which is relevant for drivers
-	if(securityLevel <= G_SECURITY_LEVEL_DRIVER) {
-		info->kernelSystemCallEntry = syscallHandleDuringInterrupt;
-	} else {
-		info->kernelSystemCallEntry = 0;
-	}
-
 	process->userProcessInfo = info;
 
 	return executableImageEnd + G_PAGE_ALIGN_UP(totalRequired);

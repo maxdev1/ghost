@@ -136,12 +136,6 @@ typedef struct {
 	 */
 	g_object_info* objectInfos;
 	uint32_t objectInfosSize;
-
-	/**
-	 * Only relevant for driver-privileged processes. The kernelSystemCallEntry is the function
-	 * to call when executing a system-call while in an interrupt handler.
-	 */
-	void(*kernelSystemCallEntry)(uint32_t,void*);
 }__attribute__((packed)) g_process_info;
 
 /**

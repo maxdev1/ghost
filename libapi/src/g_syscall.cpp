@@ -33,15 +33,8 @@ uint32_t processorReadCS()
  */
 void g_syscall(uint32_t call, uint32_t data) {
 
-	if(processorReadCS() == 0x08)
-	{
-		g_current_process_info->kernelSystemCallEntry(call, (void*) data);
-	}
-	else
-	{
-		asm volatile ("int $0x80"
-			:
-			: "a"(call), "b"(data)
-			: "cc", "memory");
-	}
+	asm volatile ("int $0x80"
+		:
+		: "a"(call), "b"(data)
+		: "cc", "memory");
 }
