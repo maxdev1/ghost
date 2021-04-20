@@ -88,19 +88,8 @@ void requestsCallUserspaceHandler(uint8_t irq)
 		return;
 	}
 
-	if(irq == 1) {
-		schedulerDump();
-	}
-
-	g_task* previousTask = taskingGetCurrentTask();
-	taskingSetCurrentTask(handlerTask);
-	taskingApplySwitch();
-
-	void (*userspaceHandlerEntry)(g_virtual_address, uint8_t) = (void (*)(g_virtual_address, uint8_t))handler->entryAddress;
-	userspaceHandlerEntry(handler->handlerAddress, irq);
-
-	taskingSetCurrentTask(previousTask);
-	taskingApplySwitch();
+    taskingInterruptTask(handlerTask, handler->handlerAddress, handler->returnAddress, 1, irq);
+    taskingSetCurrentTask(handlerTask);
 }
 
 void requestsRegisterHandler(uint8_t irq, g_tid handlerTask, g_virtual_address handlerAddress, g_virtual_address entryAddress, g_virtual_address returnAddress)
