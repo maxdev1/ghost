@@ -88,7 +88,10 @@ void requestsCallUserspaceHandler(uint8_t irq)
 		return;
 	}
 
-    taskingInterruptTask(handlerTask, handler->handlerAddress, handler->returnAddress, 1, irq);
+	/**
+	 * TODO: It might be necessary to pin driver threads to CPU #0. Think this through.
+	 */
+    taskingInterruptTask(handlerTask, handler->entryAddress, handler->returnAddress, 2, irq, handler->handlerAddress);
     taskingSetCurrentTask(handlerTask);
 }
 

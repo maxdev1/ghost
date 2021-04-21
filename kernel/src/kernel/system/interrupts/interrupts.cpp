@@ -101,7 +101,7 @@ extern "C" g_virtual_address _interruptHandler(g_virtual_address esp)
 			requestsHandle(task);
 		}
 	}
-
+	taskingGetCurrentTask()->active = true;
 	taskingApplySwitch();
 
 	lapicSendEndOfInterrupt();

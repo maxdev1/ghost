@@ -86,6 +86,11 @@ struct g_task
 	g_thread_type type;
 
 	/**
+	 * Indicates whether this task is currently running on the processor that its assigned to.
+	 */
+	g_bool active;
+
+	/**
 	 * Pointer to the processor-local tasking structure that this task is currently scheduled on.
 	 */
 	g_tasking_local* assignment;
@@ -207,7 +212,6 @@ struct g_tasking_local
 
 		uint32_t round;
 		g_task* idleTask;
-		g_task* preferredNextTask;
 	} scheduling;
 
 	/**
@@ -391,27 +395,22 @@ void taskingResetTaskState(g_task* task);
 
 /**
  * Schedules and sets the next task as the current. This may only be called
- * during interrupt handling! If you want to schedule a task as the next one,
- * use taskingPleaseSchedule below.
+ * during interrupt handling!
  */
 void taskingSchedule();
-
-/**
- * Sets the given task as the next one the scheduler should try to use.
- */
-void taskingPleaseSchedule(g_task* task);
 
 /**
  * Stores the registers from the given state pointer (pointing to the top of the
  * kernel stack) to the state structure of the current task.
  *
  * If there is no current task (because we just initialized the system) then it
- * switches to the first task.
+ * switches to the first task and returns false.
  */
 bool taskingStore(g_virtual_address esp);
 
 /**
- * Applies the context switch to the task which is the current one for this local.
+ * Applies the context switch to the task which is the current one for this core. This sets
+ * the correct page directory and TLS variables.
  */
 void taskingApplySwitch();
 
@@ -457,11 +456,17 @@ void taskingTemporarySwitchBack(g_physical_address pageDirectory);
 g_raise_signal_status taskingRaiseSignal(g_task* task, int signal);
 
 /**
- * Interrupts a task and continues its execution at entry. The given variadic arguments are passed to the
- * entry function. The returnAddress must point to a function that can be executed in the tasks space
- * and is called once the entry function exits.
+ * Interrupts a task and continues its execution at the given entry address. The variadic arguments
+ * are passed as parameters to the entry function. The returnAddress must point to a function that
+ * can be executed in the tasks space and is called once the entry function exits. This should usually
+ * be the <__g_restore_interrupted_state_callback> which performs the state restore routine.
  */
 void taskingInterruptTask(g_task* task, g_virtual_address entry, g_virtual_address returnAddress, int argumentCount, ...);
+
+/**
+ * Restores the interrupted state of the task created by <taskingInterruptTask>.
+ */
+void taskingRestoreInterruptedState(g_task* task);
 
 /**
  * Spawns an executable. This calls the correct binary loader in the background and creates a new
