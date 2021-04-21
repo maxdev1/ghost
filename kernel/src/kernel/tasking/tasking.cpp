@@ -100,7 +100,6 @@ void taskingInitializeLocal()
 	local->scheduling.taskCount = 0;
 	local->scheduling.round = 0;
 	local->scheduling.idleTask = 0;
-	local->scheduling.preferredNextTask = 0;
 
 	mutexInitialize(&local->lock);
 
@@ -184,6 +183,7 @@ g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_securit
 	task->securityLevel = level;
 	task->status = G_THREAD_STATUS_RUNNING;
 	task->type = G_THREAD_TYPE_DEFAULT;
+	task->active = false;
 
 	// Create task space
 	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(task->process->pageDirectory);
@@ -288,17 +288,14 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 bool taskingStore(g_virtual_address esp)
 {
 	g_task* task = taskingGetCurrentTask();
-
-	// Very first interrupt that happened on this processor
 	if(!task)
 	{
 		taskingSchedule();
 		return false;
 	}
 
-	// Store where registers were pushed to
+	task->active = false;
 	task->state = (g_processor_state*) esp;
-
 	return true;
 }
 
@@ -328,6 +325,15 @@ void taskingApplySwitch()
 	gdtSetTssEsp0(task->interruptStack.end);
 }
 
+void taskingCheckWaiting()
+{
+	g_tasking_local* local = taskingGetLocal();
+	mutexAcquire(&local->lock);
+
+	
+	mutexRelease(&local->lock);
+}
+
 void taskingSchedule()
 {
 	g_tasking_local* local = taskingGetLocal();
@@ -336,17 +342,14 @@ void taskingSchedule()
 		kernelPanic("%! scheduling may only be triggered during interrupt handling", "tasking");
 	}
 
+
+
 	// If there are kernel locks held by the currently running task, we may not
 	// switch tasks - otherwise we will deadlock.
 	if(local->locksHeld == 0)
 	{
 		schedulerSchedule(local);
 	}
-}
-
-void taskingPleaseSchedule(g_task* task)
-{
-	schedulerPleaseSchedule(task);
 }
 
 g_process* taskingCreateProcess()
@@ -755,6 +758,18 @@ void taskingInterruptTask(g_task* task, g_virtual_address entry, g_virtual_addre
 		return;
 	}
 
+	if(task->interruptedState)
+	{
+		logInfo("%! tried to interrupt task %i which is already interrupted", "tasking", task->id);
+		return;
+	}
+
+	// Another processor might currently run this task
+	while(task->active)
+	{
+		logInfo("%! waiting for task to be released", "tasking");
+	}
+
 	/* Here we must also not use the temporary-switching, as the tasks directory may not be
 	overridden. It must be executed while holding a mutex anyway so nothing runs meanwhile. */
 	mutexAcquire(&task->process->lock);
@@ -796,6 +811,26 @@ void taskingInterruptTask(g_task* task, g_virtual_address entry, g_virtual_addre
 	task->state->esp = (uint32_t) esp;
 
 	pagingSwitchToSpace(back);
+	mutexRelease(&task->process->lock);
+}
+
+void taskingRestoreInterruptedState(g_task* task)
+{
+	mutexAcquire(&task->process->lock);
+
+	if(task->interruptedState)
+	{
+		task->waitData = task->interruptedState->previousWaitData;
+		task->waitResolver = task->interruptedState->previousWaitResolver;
+		task->status = task->interruptedState->previousStatus;
+
+		task->state = task->interruptedState->statePtr;
+		memoryCopy((void*) task->state, &task->interruptedState->state, sizeof(g_processor_state));
+
+		heapFree(task->interruptedState);
+		task->interruptedState = 0;
+	}
+
 	mutexRelease(&task->process->lock);
 }
 

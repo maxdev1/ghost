@@ -117,23 +117,7 @@ void syscallRegisterIrqHandler(g_task* task, g_syscall_register_irq_handler* dat
 
 void syscallRestoreInterruptedState(g_task* task)
 {
-	mutexAcquire(&task->process->lock);
-
-	if(task->interruptedState)
-	{
-		task->waitData = task->interruptedState->previousWaitData;
-		task->waitResolver = task->interruptedState->previousWaitResolver;
-		task->status = task->interruptedState->previousStatus;
-
-		// restore processor state
-		task->state = task->interruptedState->statePtr;
-		memoryCopy((void*) task->state, &task->interruptedState->state, sizeof(g_processor_state));
-
-		heapFree(task->interruptedState);
-		task->interruptedState = 0;
-	}
-
-	mutexRelease(&task->process->lock);
+	taskingRestoreInterruptedState(task);
 }
 
 void syscallRaiseSignal(g_task* task, g_syscall_raise_signal* data)
