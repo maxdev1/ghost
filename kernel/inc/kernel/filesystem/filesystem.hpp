@@ -34,18 +34,18 @@ struct g_fs_delegate;
  */
 struct g_fs_node
 {
-	g_fs_virt_id id;
-	g_fs_phys_id physicalId;
-	g_fs_node_type type;
+    g_fs_virt_id id;
+    g_fs_phys_id physicalId;
+    g_fs_node_type type;
 
-	char* name;
-	g_fs_node* parent;
-	g_fs_node_entry* children;
+    char* name;
+    g_fs_node* parent;
+    g_fs_node_entry* children;
 
-	g_fs_delegate* delegate;
+    g_fs_delegate* delegate;
 
-	bool blocking;
-	bool upToDate;
+    bool blocking;
+    bool upToDate;
 };
 
 /**
@@ -53,8 +53,8 @@ struct g_fs_node
  */
 struct g_fs_node_entry
 {
-	g_fs_node* node;
-	g_fs_node_entry* next;
+    g_fs_node* node;
+    g_fs_node_entry* next;
 };
 
 /**
@@ -62,22 +62,22 @@ struct g_fs_node_entry
  */
 struct g_fs_delegate
 {
-	g_mutex lock;
+    g_mutex lock;
 
-	g_fs_open_status (*open)(g_fs_node* node);
-	g_fs_open_status (*discover)(g_fs_node* parent, const char* name, g_fs_node** outNode);
-	g_fs_read_status (*read)(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
-	g_fs_write_status (*write)(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote);
-	g_fs_length_status (*getLength)(g_fs_node* node, uint64_t* outLength);
-	g_fs_open_status (*create)(g_fs_node* parent, const char* name, g_fs_node** outFile);
-	g_fs_open_status (*truncate)(g_fs_node* file);
-	g_fs_close_status (*close)(g_fs_node* node);
+    g_fs_open_status (*open)(g_fs_node* node);
+    g_fs_open_status (*discover)(g_fs_node* parent, const char* name, g_fs_node** outNode);
+    g_fs_read_status (*read)(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
+    g_fs_write_status (*write)(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote);
+    g_fs_length_status (*getLength)(g_fs_node* node, uint64_t* outLength);
+    g_fs_open_status (*create)(g_fs_node* parent, const char* name, g_fs_node** outFile);
+    g_fs_open_status (*truncate)(g_fs_node* file);
+    g_fs_close_status (*close)(g_fs_node* node);
 
-	/**
-	 * When resolvers used when a task needs to wait for a file.
-	 */
-	bool (*waitResolverRead)(g_task* task);
-	bool (*waitResolverWrite)(g_task* task);
+    /**
+     * When resolvers used when a task needs to wait for a file.
+     */
+    bool (*waitResolverRead)(g_fs_virt_id nodeId);
+    bool (*waitResolverWrite)(g_fs_virt_id nodeId);
 };
 
 /**
@@ -111,7 +111,7 @@ g_fs_open_status filesystemFindChild(g_fs_node* parent, const char* name, g_fs_n
  * to search for a child.
  */
 g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node** outChild, bool* outFoundAllButLast = 0, g_fs_node** outLastFoundNode = 0,
-		const char** outFileNameStart = 0);
+                                const char** outFileNameStart = 0);
 
 /**
  * Retrieves a node by its virtual id.
@@ -203,14 +203,14 @@ g_fs_pipe_status filesystemCreatePipe(g_bool blocking, g_fs_node** outPipeNode);
 
 /**
  * Writes the absolute path of node into the given buffer (which must be of G_PATH_MAX bytes size).
- * 
+ *
  * @return the number of bytes written
  */
 int filesystemGetAbsolutePath(g_fs_node* node, char* buffer);
 
 /**
  * Calculates the absolute path length of node.
- * 
+ *
  * @return the path length
  */
 int filesystemGetAbsolutePathLength(g_fs_node* node);

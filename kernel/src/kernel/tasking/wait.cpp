@@ -19,121 +19,52 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/tasking/wait.hpp"
-#include "kernel/tasking/wait_resolver.hpp"
 
 #include "kernel/memory/heap.hpp"
 #include "shared/logger/logger.hpp"
 
-bool waitTryWake(g_task* task)
-{
-	/* Here we can not use our temporary-switch mechanism, because the task might have been
-	interrupted while working in a different space and we may not override it again here. */
-	g_physical_address back = pagingGetCurrentSpace();
-	pagingSwitchToSpace(task->process->pageDirectory);
-
-	bool wake = false;
-	if(task->waitResolver && task->waitResolver(task))
-	{
-		task->waitResolver = 0;
-		if(task->waitData)
-		{
-			heapFree((void*) task->waitData);
-			task->waitData = 0;
-		}
-
-		task->status = G_THREAD_STATUS_RUNNING;
-		wake = true;
-	}
-
-	pagingSwitchToSpace(back);
-	return wake;
-}
-
 void waitSleep(g_task* task, uint64_t milliseconds)
 {
-	mutexAcquire(&task->process->lock);
-
-	g_wait_resolver_sleep_data* waitData = (g_wait_resolver_sleep_data*) heapAllocate(sizeof(g_wait_resolver_sleep_data));
-	waitData->wakeTime = taskingGetLocal()->time + milliseconds;
-	task->waitData = waitData;
-	task->waitResolver = waitResolverSleep;
-	task->status = G_THREAD_STATUS_WAITING;
-
-	mutexRelease(&task->process->lock);
+    uint64_t wakeTime = taskingGetLocal()->time + milliseconds;
+    task->status = G_THREAD_STATUS_WAITING;
+    for(;;)
+    {
+        if(taskingGetLocal()->time > wakeTime)
+        {
+            break;
+        }
+        taskingYield();
+    }
+    task->status = G_THREAD_STATUS_RUNNING;
 }
 
-void waitAtomicLock(g_task* task)
+void waitForFile(g_task* task, g_fs_node* file,
+                 bool (*waitResolverFromDelegate)(g_fs_virt_id))
 {
-	mutexAcquire(&task->process->lock);
-
-	g_wait_resolver_atomic_lock_data* waitData = (g_wait_resolver_atomic_lock_data*) heapAllocate(sizeof(g_wait_resolver_atomic_lock_data));
-	waitData->startTime = taskingGetLocal()->time;
-	task->waitData = waitData;
-	task->waitResolver = waitResolverAtomicLock;
-	task->status = G_THREAD_STATUS_WAITING;
-
-	mutexRelease(&task->process->lock);
+    task->status = G_THREAD_STATUS_WAITING;
+    for(;;)
+    {
+        if(waitResolverFromDelegate(file->id))
+        {
+            break;
+        }
+        taskingYield();
+    }
+    task->status = G_THREAD_STATUS_RUNNING;
 }
 
-void waitForFile(g_task* task, g_fs_node* file, bool (*waitResolverFromDelegate)(g_task*))
+void waitJoinTask(g_task* task, g_tid otherTaskId)
 {
-	mutexAcquire(&task->process->lock);
-
-	g_wait_resolver_for_file_data* waitData = (g_wait_resolver_for_file_data*) heapAllocate(sizeof(g_wait_resolver_for_file_data));
-	waitData->waitResolverFromDelegate = waitResolverFromDelegate;
-	waitData->nodeId = file->id;
-	task->waitData = waitData;
-	task->waitResolver = waitResolverFromDelegate;
-	task->status = G_THREAD_STATUS_WAITING;
-
-	mutexRelease(&task->process->lock);
-}
-
-void waitJoinTask(g_task* task, g_tid otherTask)
-{
-	mutexAcquire(&task->process->lock);
-
-	g_wait_resolver_join_data* waitData = (g_wait_resolver_join_data*) heapAllocate(sizeof(g_wait_resolver_join_data));
-	waitData->joinedTaskId = otherTask;
-	task->waitData = waitData;
-	task->waitResolver = waitResolverJoin;
-	task->status = G_THREAD_STATUS_WAITING;
-
-	mutexRelease(&task->process->lock);
-}
-
-void waitForMessageSend(g_task* task)
-{
-	mutexAcquire(&task->process->lock);
-
-	task->waitData = 0;
-	task->waitResolver = waitResolverSendMessage;
-	task->status = G_THREAD_STATUS_WAITING;
-
-	mutexRelease(&task->process->lock);
-}
-
-void waitForMessageReceive(g_task* task)
-{
-	mutexAcquire(&task->process->lock);
-
-	task->waitData = 0;
-	task->waitResolver = waitResolverReceiveMessage;
-	task->status = G_THREAD_STATUS_WAITING;
-
-	mutexRelease(&task->process->lock);
-}
-
-void waitForVm86(g_task* task, g_task* vm86Task, g_vm86_registers* registerStore)
-{
-	mutexAcquire(&task->process->lock);
-
-	g_wait_vm86_data* waitData = (g_wait_vm86_data*) heapAllocate(sizeof(g_wait_vm86_data));
-	waitData->registerStore = registerStore;
-	waitData->vm86TaskId = vm86Task->id;
-	task->waitData = waitData;
-	task->waitResolver = waitResolverVm86;
-	task->status = G_THREAD_STATUS_WAITING;
-
-	mutexRelease(&task->process->lock);
+    task->status = G_THREAD_STATUS_WAITING;
+    for(;;)
+    {
+        g_task* otherTask = taskingGetById(otherTaskId);
+        if(otherTask == 0 || otherTask->status == G_THREAD_STATUS_DEAD ||
+           otherTask->status == G_THREAD_STATUS_UNUSED)
+        {
+            break;
+        }
+        taskingYield();
+    }
+    task->status = G_THREAD_STATUS_RUNNING;
 }

@@ -21,44 +21,40 @@
 #ifndef __KERNEL_TASKING__
 #define __KERNEL_TASKING__
 
+#include "ghost/kernel.h"
 #include "ghost/signal.h"
 #include "ghost/system.h"
-#include "ghost/kernel.h"
 
+#include "kernel/calls/syscall.hpp"
+#include "kernel/memory/address_range_pool.hpp"
+#include "kernel/memory/paging.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "shared/system/mutex.hpp"
-#include "kernel/memory/paging.hpp"
-#include "kernel/memory/address_range_pool.hpp"
-#include "kernel/calls/syscall.hpp"
 
 struct g_process;
 struct g_task;
 struct g_tasking_local;
 struct g_elf_object;
 
-typedef bool (*g_wait_resolver)(g_task*);
-
 /**
  *
  */
 typedef uint8_t g_task_interrupted_state_type;
 
-#define G_TASK_INTERRUPT_INFO_TYPE_NONE ((g_task_interrupted_state_type)0)
-#define G_TASK_INTERRUPT_INFO_TYPE_IRQ ((g_task_interrupted_state_type)1)
-#define G_TASK_INTERRUPT_INFO_TYPE_SIGNAL ((g_task_interrupted_state_type)2)
+#define G_TASK_INTERRUPT_INFO_TYPE_NONE ((g_task_interrupted_state_type) 0)
+#define G_TASK_INTERRUPT_INFO_TYPE_IRQ ((g_task_interrupted_state_type) 1)
+#define G_TASK_INTERRUPT_INFO_TYPE_SIGNAL ((g_task_interrupted_state_type) 2)
 
 /**
  *
  */
 class g_task_interrupted_state
 {
-public:
-	g_processor_state state;
-	g_processor_state* statePtr;
+  public:
+    g_processor_state state;
+    g_processor_state* statePtr;
 
-	g_thread_status previousStatus;
-	void* previousWaitData;
-	g_wait_resolver previousWaitResolver;
+    g_thread_status previousStatus;
 };
 
 /**
@@ -66,10 +62,10 @@ public:
  */
 struct g_task_information_vm86
 {
-	uint8_t cpuIf;
-	g_vm86_registers* out;
-	uint32_t interruptRecursionLevel;
-	g_virtual_address userStack;
+    uint8_t cpuIf;
+    g_vm86_registers* out;
+    uint32_t interruptRecursionLevel;
+    g_virtual_address userStack;
 };
 
 /**
@@ -79,102 +75,78 @@ struct g_task_information_vm86
  */
 struct g_task
 {
-	g_process* process;
-	g_tid id;
-	g_security_level securityLevel;
-	g_thread_status status;
-	g_thread_type type;
+    g_process* process;
+    g_tid id;
+    g_security_level securityLevel;
+    g_thread_status status;
+    g_thread_type type;
 
-	/**
-	 * Indicates whether this task is currently running on the processor that its assigned to.
-	 */
-	g_bool active;
+    /**
+     * Indicates whether this task is currently running on the processor that its assigned to.
+     */
+    g_bool active;
 
-	/**
-	 * Pointer to the processor-local tasking structure that this task is currently scheduled on.
-	 */
-	g_tasking_local* assignment;
+    /**
+     * Pointer to the processor-local tasking structure that this task is currently scheduled on.
+     */
+    g_tasking_local* assignment;
 
-	/**
-	 * Number of times this task was ever scheduled.
-	 */
-	int timesScheduled;
+    /**
+     * Number of times this task was ever scheduled.
+     */
+    int timesScheduled;
 
-	/**
-	 * Sometimes a task needs to do work in the address space of a different process.
-	 * If the override page directory is set, it switches here instead of the current
-	 * process directory.
-	 */
-	g_physical_address overridePageDirectory;
+    /**
+     * Sometimes a task needs to do work in the address space of a different process.
+     * If the override page directory is set, it switches here instead of the current
+     * process directory.
+     */
+    g_physical_address overridePageDirectory;
 
-	struct
-	{
-		g_virtual_address userThreadObject;
-		g_virtual_address start;
-		g_virtual_address end;
-	} tlsCopy;
+    struct
+    {
+        g_virtual_address userThreadObject;
+        g_virtual_address start;
+        g_virtual_address end;
+    } tlsCopy;
 
-	/**
-	 * Pointer to the top of the stack of where the registers of this task were pushed
-	 * during interruption. This may only be accessed when we are within the process
-	 * address space.
-	 */
-	volatile g_processor_state* state;
+    /**
+     * Pointer to the top of the stack of where the registers of this task were pushed
+     * during interruption. This may only be accessed when we are within the process
+     * address space.
+     */
+    volatile g_processor_state* state;
+    struct
+    {
+        g_virtual_address start;
+        g_virtual_address end;
+    } interruptStack;
 
-	struct
-	{
-		g_virtual_address start;
-		g_virtual_address end;
-	} interruptStack;
+    struct
+    {
+        g_virtual_address start;
+        g_virtual_address end;
+    } stack;
 
-	struct
-	{
-		g_virtual_address start;
-		g_virtual_address end;
-	} stack;
+    /**
+     * If the task gets interrupted by a signal or an IRQ, the current state is stored in this
+     * structure and later restored from it.
+     */
+    g_task_interrupted_state* interruptedState;
 
-	/**
-	 * For all syscalls (threaded and non-threaded) the handler and data field are filled.
-	 *
-	 * When the task issues a long-running syscall, a kernel task is created to execute it.
-	 * In the executing task, the processingTask field is filled with the task that processes the
-	 * syscall. In the processing task, the sourceTask is the task that issued the syscall.
-	 */
-	struct
-	{
-		g_syscall_handler handler;
-		void* data;
+    /**
+     * If the thread is user-created, we must store info on where the thread should enter.
+     */
+    struct
+    {
+        void* function;
+        void* data;
+    } userEntry;
 
-		g_task* processingTask;
-		g_task* sourceTask;
-	} syscall;
-
-	/**
-	 * Wait resolver is used when a syscall must wait for something, but a kernel task
-	 * would be too much overhead. The wait data is used by the resolver.
-	 */
-	g_wait_resolver waitResolver;
-	void* waitData;
-
-	/**
-	 * If the task gets interrupted by a signal or an IRQ, the current state is stored in this
-	 * structure and later restored from it.
-	 */
-	g_task_interrupted_state* interruptedState;
-
-	/**
-	 * If the thread is user-created, we must store info on where the thread should enter.
-	 */
-	struct
-	{
-		void* function;
-		void* data;
-	} userEntry;
-
-	/**
-	 * Only filled for VM86 tasks.
-	 */
-	g_task_information_vm86* vm86Data;
+    /**
+     * Only filled for VM86 tasks.
+     */
+    g_task_information_vm86* vm86Data;
 };
 
 /**
@@ -182,15 +154,15 @@ struct g_task
  */
 struct g_task_entry
 {
-	g_task* task;
-	g_task_entry* next;
+    g_task* task;
+    g_task_entry* next;
 };
 
 struct g_schedule_entry
 {
-	g_task* task;
-	uint32_t schedulerRound;
-	g_schedule_entry* next;
+    g_task* task;
+    uint32_t schedulerRound;
+    g_schedule_entry* next;
 };
 
 /**
@@ -199,33 +171,32 @@ struct g_schedule_entry
  */
 struct g_tasking_local
 {
-	g_mutex lock;
+    g_mutex lock;
 
-	/**
-	 * Tasking information.
-	 */
-	struct
-	{
-		g_schedule_entry* list;
-		g_task* current;
-		int taskCount;
+    /**
+     * Tasking information.
+     */
+    struct
+    {
+        g_schedule_entry* list;
+        g_task* current;
+        int taskCount;
 
-		uint32_t round;
-		g_task* idleTask;
-	} scheduling;
+        uint32_t round;
+        g_task* idleTask;
+    } scheduling;
 
-	/**
-	 * The number of locks that are currently held on this processor.
-	 * While locksHeld > 0 interrupts are disabled.
-	 */
-	int locksHeld;
-	int locksReenableInt;
-	g_bool currentlyHandlingInterrupt;
+    /**
+     * The number of locks that are currently held on this processor.
+     * While locksHeld > 0 interrupts are disabled.
+     */
+    int locksHeld;
+    int locksReenableInt;
 
-	/**
-	 * Approximation of milliseconds that this processor has run.
-	 */
-	uint32_t time;
+    /**
+     * Approximation of milliseconds that this processor has run.
+     */
+    uint32_t time;
 };
 
 /**
@@ -233,66 +204,66 @@ struct g_tasking_local
  */
 struct g_signal_handler
 {
-public:
-	g_virtual_address handlerAddress = 0;
-	g_virtual_address returnAddress = 0;
-	g_tid task = 0;
+  public:
+    g_virtual_address handlerAddress = 0;
+    g_virtual_address returnAddress = 0;
+    g_tid task = 0;
 };
 
 /**
  * Flags used when allocating virtual ranges.
  */
 #define G_PROC_VIRTUAL_RANGE_FLAG_NONE 0
- /* Weak flag signals that the physical memory mapped behind the
- virtual range is not managed by the kernel (for example MMIO). */
+/* Weak flag signals that the physical memory mapped behind the
+virtual range is not managed by the kernel (for example MMIO). */
 #define G_PROC_VIRTUAL_RANGE_FLAG_WEAK 1
 
- /**
-  * A process groups multiple tasks.
-  */
+/**
+ * A process groups multiple tasks.
+ */
 struct g_process
 {
-	g_pid id;
-	g_mutex lock;
+    g_pid id;
+    g_mutex lock;
 
-	g_task* main;
-	g_task_entry* tasks;
+    g_task* main;
+    g_task_entry* tasks;
 
-	g_physical_address pageDirectory;
-	g_address_range_pool* virtualRangePool;
+    g_physical_address pageDirectory;
+    g_address_range_pool* virtualRangePool;
 
-	g_signal_handler signalHandlers[SIG_COUNT];
+    g_signal_handler signalHandlers[SIG_COUNT];
 
-	struct
-	{
-		g_virtual_address location;
-		uint32_t size;
+    struct
+    {
+        g_virtual_address location;
+        uint32_t size;
 
-		uint32_t userThreadOffset;
-	} tlsMaster;
+        uint32_t userThreadOffset;
+    } tlsMaster;
 
-	struct
-	{
-		g_virtual_address start;
-		g_virtual_address end;
-	} image;
-	g_elf_object* object;
+    struct
+    {
+        g_virtual_address start;
+        g_virtual_address end;
+    } image;
+    g_elf_object* object;
 
-	struct
-	{
-		g_virtual_address brk;
-		g_virtual_address start;
-		int pages;
-	} heap;
+    struct
+    {
+        g_virtual_address brk;
+        g_virtual_address start;
+        int pages;
+    } heap;
 
-	struct
-	{
-		const char* arguments;
-		const char* executablePath;
-		char* workingDirectory;
-	} environment;
+    struct
+    {
+        const char* arguments;
+        const char* executablePath;
+        char* workingDirectory;
+    } environment;
 
-	g_process_info* userProcessInfo;
+    g_process_info* userProcessInfo;
 };
 
 /**
@@ -415,10 +386,10 @@ bool taskingStore(g_virtual_address esp);
 void taskingApplySwitch();
 
 /**
- * Yields control in a kernel task. This can only be called while no mutexes
+ * Yields control to the next task. This can only be called while no mutexes
  * are currently acquired by this thread, otherwise the kernel could get deadlocked.
  */
-void taskingKernelThreadYield();
+void taskingYield();
 
 /**
  * Exits a kernel task. Sets the status of the caller task to dead and yields.
@@ -484,7 +455,7 @@ void taskingRestoreInterruptedState(g_task* task);
  * 		out parameter for executable validation details
  */
 g_spawn_status taskingSpawn(g_task* spawner, g_fd file, g_security_level securityLevel,
-	g_process** outProcess, g_spawn_validation_details* outValidationDetails = 0);
+                            g_process** outProcess, g_spawn_validation_details* outValidationDetails = 0);
 
 /**
  * Adds the task to the process task list.

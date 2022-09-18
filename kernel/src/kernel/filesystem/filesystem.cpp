@@ -360,7 +360,6 @@ g_fs_read_status filesystemRead(g_task* task, g_fd fd, uint8_t* buffer, uint64_t
 	while((status = filesystemRead(node, buffer, descriptor->offset, length, &read)) == G_FS_READ_BUSY && node->blocking)
 	{
 		filesystemWaitToRead(task, node);
-		taskingKernelThreadYield();
 	}
 	if(read > 0)
 	{
@@ -435,7 +434,6 @@ g_fs_write_status filesystemWrite(g_task* task, g_fd fd, uint8_t* buffer, uint64
 	while((status = filesystemWrite(node, buffer, startOffset, length, &wrote)) == G_FS_WRITE_BUSY && node->blocking)
 	{
 		filesystemWaitToWrite(task, node);
-		taskingKernelThreadYield();
 	}
 	if(wrote > 0)
 	{

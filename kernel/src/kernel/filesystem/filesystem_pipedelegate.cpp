@@ -19,84 +19,75 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/filesystem/filesystem_pipedelegate.hpp"
-#include "kernel/tasking/wait_resolver.hpp"
-#include "kernel/memory/memory.hpp"
 #include "kernel/ipc/pipes.hpp"
 #include "kernel/kernel.hpp"
+#include "kernel/memory/memory.hpp"
 
 #include "shared/system/mutex.hpp"
 #include "shared/utils/string.hpp"
 
 g_fs_open_status filesystemPipeDelegateOpen(g_fs_node* node)
 {
-	pipeAddReference(node->physicalId);
-	return G_FS_OPEN_SUCCESSFUL;
+    pipeAddReference(node->physicalId);
+    return G_FS_OPEN_SUCCESSFUL;
 }
 
 g_fs_close_status filesystemPipeDelegateClose(g_fs_node* node)
 {
-	pipeRemoveReference(node->physicalId);
-	return G_FS_CLOSE_SUCCESSFUL;
+    pipeRemoveReference(node->physicalId);
+    return G_FS_CLOSE_SUCCESSFUL;
 }
 
 g_fs_read_status filesystemPipeDelegateRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead)
 {
-	return pipeRead(node->physicalId, buffer, offset, length, outRead);
+    return pipeRead(node->physicalId, buffer, offset, length, outRead);
 }
 
 g_fs_write_status filesystemPipeDelegateWrite(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote)
 {
-	return pipeWrite(node->physicalId, buffer, offset, length, outWrote);
+    return pipeWrite(node->physicalId, buffer, offset, length, outWrote);
 }
 
 g_fs_length_status filesystemPipeDelegateGetLength(g_fs_node* node, uint64_t* outLength)
 {
-	return pipeGetLength(node->physicalId, outLength);
+    return pipeGetLength(node->physicalId, outLength);
 }
 
 g_fs_open_status filesystemPipeDelegateTruncate(g_fs_node* file)
 {
-	return pipeTruncate(file->physicalId);
+    return pipeTruncate(file->physicalId);
 }
 
-bool filesystemPipeDelegateWaitResolverRead(g_task* task)
+bool filesystemPipeDelegateWaitResolverRead(g_fs_virt_id nodeId)
 {
-	g_wait_resolver_for_file_data* waitData = (g_wait_resolver_for_file_data*) task->waitData;
+    g_fs_node* node = filesystemGetNode(nodeId);
+    if(!node)
+    {
+        return true;
+    }
 
-	g_fs_node* node = filesystemGetNode(waitData->nodeId);
-	if(!node)
-	{
-		logInfo("%! task %i was waiting to read from file %i which doesn't exist", "pipes", task->id, waitData->nodeId);
-		return true;
-	}
+    g_pipeline* pipe = pipeGetById(node->physicalId);
+    if(!pipe)
+    {
+        return true;
+    }
 
-	g_pipeline* pipe = pipeGetById(node->physicalId);
-	if(!pipe)
-	{
-		logInfo("%! task %i was waiting to read from pipe %i which doesn't exist", "pipes", task->id, node->physicalId);
-		return true;
-	}
-
-	return pipe->size > 0;
+    return pipe->size > 0;
 }
 
-bool filesystemPipeDelegateWaitResolverWrite(g_task* task)
+bool filesystemPipeDelegateWaitResolverWrite(g_fs_virt_id nodeId)
 {
-	g_wait_resolver_for_file_data* waitData = (g_wait_resolver_for_file_data*) task->waitData;
+    g_fs_node* node = filesystemGetNode(nodeId);
+    if(!node)
+    {
+        return true;
+    }
 
-	g_fs_node* node = filesystemGetNode(waitData->nodeId);
-	if(!node)
-	{
-		logInfo("%! task %i was waiting to write to file %i which doesn't exist", "pipes", task->id, waitData->nodeId);
-		return true;
-	}
+    g_pipeline* pipe = pipeGetById(node->physicalId);
+    if(!pipe)
+    {
+        return true;
+    }
 
-	g_pipeline* pipe = pipeGetById(node->physicalId);
-	if(!pipe)
-	{
-		logInfo("%! task %i was waiting to write to pipe %i which doesn't exist", "pipes", task->id, node->physicalId);
-		return true;
-	}
-
-	return pipe->size < pipe->capacity;
+    return pipe->size < pipe->capacity;
 }
