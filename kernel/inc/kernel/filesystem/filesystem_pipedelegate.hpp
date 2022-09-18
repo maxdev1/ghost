@@ -22,9 +22,9 @@
 #define __KERNEL_FILESYSTEM_PIPE_DELEGATE__
 
 #include "ghost/fs.h"
-#include "shared/system/mutex.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/tasking/tasking.hpp"
+#include "shared/system/mutex.hpp"
 
 g_fs_open_status filesystemPipeDelegateOpen(g_fs_node* node);
 
@@ -38,8 +38,8 @@ g_fs_length_status filesystemPipeDelegateGetLength(g_fs_node* node, uint64_t* ou
 
 g_fs_open_status filesystemPipeDelegateTruncate(g_fs_node* file);
 
-bool filesystemPipeDelegateWaitResolverRead(g_task* task);
+bool filesystemPipeDelegateWaitResolverRead(g_fs_virt_id nodeId);
 
-bool filesystemPipeDelegateWaitResolverWrite(g_task* task);
+bool filesystemPipeDelegateWaitResolverWrite(g_fs_virt_id nodeId);
 
 #endif

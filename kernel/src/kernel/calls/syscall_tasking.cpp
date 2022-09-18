@@ -21,188 +21,193 @@
 #include "ghost/signal.h"
 
 #include "kernel/calls/syscall_tasking.hpp"
-#include "kernel/tasking/wait.hpp"
-#include "kernel/system/interrupts/requests.hpp"
 #include "kernel/memory/memory.hpp"
+#include "kernel/system/interrupts/requests.hpp"
+#include "kernel/tasking/wait.hpp"
 
 #include "shared/logger/logger.hpp"
 
 void syscallSleep(g_task* task, g_syscall_sleep* data)
 {
-	waitSleep(task, data->milliseconds);
-	taskingSchedule();
+    waitSleep(task, data->milliseconds);
 }
 
 void syscallYield(g_task* task)
 {
-	taskingSchedule();
+    taskingYield();
 }
 
 void syscallExit(g_task* task, g_syscall_exit* data)
 {
-	task->status = G_THREAD_STATUS_DEAD;
-	taskingSchedule();
+    task->status = G_THREAD_STATUS_DEAD;
+    taskingYield();
 }
 
 void syscallGetProcessId(g_task* task, g_syscall_get_pid* data)
 {
-	data->id = taskingGetCurrentTask()->process->id;
+    data->id = taskingGetCurrentTask()->process->id;
 }
 
 void syscallGetTaskId(g_task* task, g_syscall_get_tid* data)
 {
-	data->id = taskingGetCurrentTask()->id;
+    data->id = taskingGetCurrentTask()->id;
 }
 
 void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
 {
-	g_task* theTask = taskingGetById(data->tid);
-	if(theTask)
-	{
-		data->pid = theTask->process->id;
-	} else
-	{
-		data->pid = G_PID_NONE;
-	}
+    g_task* theTask = taskingGetById(data->tid);
+    if(theTask)
+    {
+        data->pid = theTask->process->id;
+    }
+    else
+    {
+        data->pid = G_PID_NONE;
+    }
 }
 
 void syscallJoin(g_task* task, g_syscall_join* data)
 {
-	waitJoinTask(task, data->taskId);
-	taskingSchedule();
+    waitJoinTask(task, data->taskId);
 }
 
 void syscallRegisterSignalHandler(g_task* task, g_syscall_register_signal_handler* data)
 {
-	if(data->signal >= 0 && data->signal < SIG_COUNT)
-	{
-		g_signal_handler* handler = &(task->process->signalHandlers[data->signal]);
-		data->previousHandlerAddress = handler->handlerAddress;
-		handler->handlerAddress = data->handlerAddress;
-		handler->returnAddress = data->returnAddress;
-		handler->task = task->id;
+    if(data->signal >= 0 && data->signal < SIG_COUNT)
+    {
+        g_signal_handler* handler =
+            &(task->process->signalHandlers[data->signal]);
+        data->previousHandlerAddress = handler->handlerAddress;
+        handler->handlerAddress = data->handlerAddress;
+        handler->returnAddress = data->returnAddress;
+        handler->task = task->id;
 
-		data->status = G_REGISTER_SIGNAL_HANDLER_STATUS_SUCCESSFUL;
-		logDebug("%! signal handler %h registered for signal %i", "syscall", data->handler, data->signal);
-
-	} else
-	{
-		data->previousHandlerAddress = 0;
-		data->status = G_REGISTER_SIGNAL_HANDLER_STATUS_INVALID_SIGNAL;
-		logDebug("%! failed to register signal handler %h for invalid signal %i", "syscall", data->handler, data->signal);
-	}
+        data->status = G_REGISTER_SIGNAL_HANDLER_STATUS_SUCCESSFUL;
+        logDebug("%! signal handler %h registered for signal %i", "syscall", data->handler, data->signal);
+    }
+    else
+    {
+        data->previousHandlerAddress = 0;
+        data->status = G_REGISTER_SIGNAL_HANDLER_STATUS_INVALID_SIGNAL;
+        logDebug("%! failed to register signal handler %h for invalid signal %i", "syscall", data->handler, data->signal);
+    }
 }
 
-void syscallRegisterIrqHandler(g_task* task, g_syscall_register_irq_handler* data)
+void syscallRegisterIrqHandler(g_task* task,
+                               g_syscall_register_irq_handler* data)
 {
-	if(task->securityLevel == G_SECURITY_LEVEL_DRIVER)
-	{
-		if(data->irq >= 0 && data->irq < 256)
-		{
-			requestsRegisterHandler(data->irq, task->id, data->handlerAddress, data->entryAddress, data->returnAddress);
+    if(task->securityLevel <= G_SECURITY_LEVEL_DRIVER)
+    {
+        if(data->irq >= 0 && data->irq < 256)
+        {
+            requestsRegisterHandler(data->irq, task->id, data->handlerAddress, data->entryAddress, data->returnAddress);
 
-			data->status = G_REGISTER_IRQ_HANDLER_STATUS_SUCCESSFUL;
-			logInfo("%! task %i: irq handler %h registered for irq %i", "irq", task->id, data->handlerAddress, data->irq);
-		} else
-		{
-			data->status = G_REGISTER_IRQ_HANDLER_STATUS_INVALID_IRQ;
-			logInfo("%! task %i: failed to register irq handler %h for invalid irq %i", "irq", task->id, data->handlerAddress, data->irq);
-		}
-	} else
-	{
-		data->status = G_REGISTER_IRQ_HANDLER_STATUS_NOT_PERMITTED;
-		logInfo("%! task %i: not permitted to register irq handler %h for irq %i", "irq", task->id, data->handlerAddress, data->irq);
-	}
+            data->status = G_REGISTER_IRQ_HANDLER_STATUS_SUCCESSFUL;
+            logInfo("%! task %i: irq handler %h registered for irq %i", "irq", task->id, data->handlerAddress, data->irq);
+        }
+        else
+        {
+            data->status = G_REGISTER_IRQ_HANDLER_STATUS_INVALID_IRQ;
+            logInfo("%! task %i: failed to register irq handler %h for invalid "
+                    "irq %i",
+                    "irq", task->id, data->handlerAddress, data->irq);
+        }
+    }
+    else
+    {
+        data->status = G_REGISTER_IRQ_HANDLER_STATUS_NOT_PERMITTED;
+        logInfo("%! task %i: not permitted to register irq handler %h for irq %i", "irq", task->id, data->handlerAddress, data->irq);
+    }
 }
 
 void syscallRestoreInterruptedState(g_task* task)
 {
-	taskingRestoreInterruptedState(task);
+    taskingRestoreInterruptedState(task);
 }
 
 void syscallRaiseSignal(g_task* task, g_syscall_raise_signal* data)
 {
-	data->status = taskingRaiseSignal(task, data->signal);
+    data->status = taskingRaiseSignal(task, data->signal);
 }
 
 void syscallSpawn(g_task* task, g_syscall_spawn* data)
 {
-	g_fd fd;
-	g_fs_open_status open = filesystemOpen(data->path, G_FILE_FLAG_MODE_READ, task, &fd);
-	if(open == G_FS_OPEN_SUCCESSFUL)
-	{
-		g_process* targetProcess;
-		data->spawnStatus = taskingSpawn(task, fd, G_SECURITY_LEVEL_APPLICATION, &targetProcess, &data->validationDetails);
-		if(data->spawnStatus == G_SPAWN_STATUS_SUCCESSFUL)
-		{
-			data->pid = targetProcess->id;
-			#warning TODO finish implementation (pass arguments etc.)
-		}
-	} else
-	{
-		data->spawnStatus = G_SPAWN_STATUS_IO_ERROR;
-		logInfo("%! failed to find binary '%s'", "kernel", data->path);
-	}
+    g_fd fd;
+    g_fs_open_status open = filesystemOpen(data->path, G_FILE_FLAG_MODE_READ, task, &fd);
+    if(open == G_FS_OPEN_SUCCESSFUL)
+    {
+        g_process* targetProcess;
+        data->spawnStatus = taskingSpawn(task, fd, G_SECURITY_LEVEL_APPLICATION, &targetProcess, &data->validationDetails);
+        if(data->spawnStatus == G_SPAWN_STATUS_SUCCESSFUL)
+        {
+            data->pid = targetProcess->id;
+#warning TODO finish implementation (pass arguments etc.)
+        }
+    }
+    else
+    {
+        data->spawnStatus = G_SPAWN_STATUS_IO_ERROR;
+        logInfo("%! failed to find binary '%s'", "kernel", data->path);
+    }
 }
 
 void syscallTaskGetTls(g_task* task, g_syscall_task_get_tls* data)
 {
-	data->userThreadObject = (void*) task->tlsCopy.userThreadObject;
+    data->userThreadObject = (void*) task->tlsCopy.userThreadObject;
 }
 
 void syscallProcessGetInfo(g_task* task, g_syscall_process_get_info* data)
 {
-	data->processInfo = task->process->userProcessInfo;
+    data->processInfo = task->process->userProcessInfo;
 }
 
 void syscallKill(g_task* task, g_syscall_kill* data)
 {
-	g_task* target = taskingGetById(data->pid);
-	if(target)
-	{
-		target->process->main->status = G_THREAD_STATUS_DEAD;
-		taskingSchedule();
-	}
+    g_task* target = taskingGetById(data->pid);
+    if(target)
+    {
+        target->process->main->status = G_THREAD_STATUS_DEAD;
+        taskingYield();
+    }
 }
 
 void syscallCreateThread(g_task* task, g_syscall_create_thread* data)
 {
-	mutexAcquire(&task->process->lock);
+    mutexAcquire(&task->process->lock);
 
-	g_task* thread = taskingCreateThread((g_virtual_address) data->initialEntry, task->process, task->process->main->securityLevel);
-	if(thread)
-	{
-		thread->userEntry.function = data->userEntry;
-		thread->userEntry.data = data->userData;
-		data->threadId = thread->id;
-		data->status = G_CREATE_THREAD_STATUS_SUCCESSFUL;
-	} else
-	{
-		data->status = G_CREATE_THREAD_STATUS_FAILED;
-	}
-	taskingAssign(taskingGetLocal(), thread);
+    g_task* thread = taskingCreateThread((g_virtual_address) data->initialEntry, task->process, task->process->main->securityLevel);
+    if(thread)
+    {
+        thread->userEntry.function = data->userEntry;
+        thread->userEntry.data = data->userData;
+        data->threadId = thread->id;
+        data->status = G_CREATE_THREAD_STATUS_SUCCESSFUL;
+    }
+    else
+    {
+        data->status = G_CREATE_THREAD_STATUS_FAILED;
+    }
+    taskingAssign(taskingGetLocal(), thread);
 
-	mutexRelease(&task->process->lock);
+    mutexRelease(&task->process->lock);
 }
 
 void syscallGetThreadEntry(g_task* task, g_syscall_get_thread_entry* data)
 {
-	data->userData = task->userEntry.data;
-	data->userEntry = task->userEntry.function;
+    data->userData = task->userEntry.data;
+    data->userEntry = task->userEntry.function;
 }
 
 void syscallFork(g_task* task, g_syscall_fork* data)
 {
-	logInfo("syscall not implemented: fork");
-	for(;;)
-		;
+    logInfo("syscall not implemented: fork");
+    for(;;)
+        ;
 }
 
 void syscallGetParentProcessId(g_task* task, g_syscall_get_parent_pid* data)
 {
-	logInfo("syscall not implemented: syscallGetParentProcessId");
-	for(;;)
-		;
+    logInfo("syscall not implemented: syscallGetParentProcessId");
+    for(;;)
+        ;
 }
-
-

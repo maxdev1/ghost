@@ -21,167 +21,193 @@
 #include "libps2/ps2.hpp"
 #include "ps2_intern.hpp"
 
-#include <stdio.h>
 #include <ghost/io.h>
 #include <ghost/user.h>
+#include <stdio.h>
 
 uint8_t mouse_packet_number = 0;
 uint8_t mouse_packet_buffer[4];
 
 uint32_t packets_count = 0;
 
-void(*registeredMouseCallback)(int16_t, int16_t, uint8_t);
-void(*registeredKeyboardCallback)(uint8_t);
+void (*registeredMouseCallback)(int16_t, int16_t, uint8_t);
+void (*registeredKeyboardCallback)(uint8_t);
 
-ps2_status_t ps2Initialize(void(*mouseCallback)(int16_t, int16_t, uint8_t), void(*keyboardCallback)(uint8_t)) {
-	
+ps2_status_t ps2Initialize(void (*mouseCallback)(int16_t, int16_t, uint8_t),
+                           void (*keyboardCallback)(uint8_t))
+{
+
     registeredMouseCallback = mouseCallback;
-	registeredKeyboardCallback = keyboardCallback;
+    registeredKeyboardCallback = keyboardCallback;
 
-	ps2_status_t status = ps2InitializeMouse();
-	if(status != G_PS2_STATUS_SUCCESS) {
-		return status;
-	}
+    ps2_status_t status = ps2InitializeMouse();
+    if(status != G_PS2_STATUS_SUCCESS)
+    {
+        return status;
+    }
 
-	g_register_irq_handler(1, ps2IrqHandler);
-	g_register_irq_handler(12, ps2IrqHandler);
-	return G_PS2_STATUS_SUCCESS;
+    g_register_irq_handler(1, ps2IrqHandler);
+    g_register_irq_handler(12, ps2IrqHandler);
+    return G_PS2_STATUS_SUCCESS;
 }
 
-void ps2IrqHandler(uint8_t irq) {
+void ps2IrqHandler(uint8_t irq)
+{
+    uint8_t status;
+    while(((status = ioInportByte(G_PS2_STATUS_PORT)) & 0x01) != 0)
+    {
+        uint8_t value = ioInportByte(G_PS2_DATA_PORT);
 
-	uint8_t status;
-	while (((status = ioInportByte(G_PS2_STATUS_PORT)) & 0x01) != 0) {
-		uint8_t value = ioInportByte(G_PS2_DATA_PORT);
+        if((status & 0x20) == 0)
+        {
+            if(registeredKeyboardCallback)
+            {
+                registeredKeyboardCallback(value);
+            }
+        }
+        else
+        {
+            ps2HandleMouseData(value);
+        }
 
-		if((status & 0x20) == 0) {
-			if(registeredKeyboardCallback) {
-				registeredKeyboardCallback(value);
-			}
-		} else {
-			ps2HandleMouseData(value);
-		}
-
-		++packets_count;
-	}
+        ++packets_count;
+    }
 }
 
-ps2_status_t ps2InitializeMouse() {
+ps2_status_t ps2InitializeMouse()
+{
 
-	// empty input buffer
-	while (ioInportByte(G_PS2_STATUS_PORT) & 0x01) {
-		ioInportByte(G_PS2_DATA_PORT);
-	}
+    // empty input buffer
+    while(ioInportByte(G_PS2_STATUS_PORT) & 0x01)
+    {
+        ioInportByte(G_PS2_DATA_PORT);
+    }
 
-	// activate mouse device
-	ps2WaitForBuffer(PS2_OUT);
-	ioOutportByte(G_PS2_STATUS_PORT, 0xA8);
-	ps2WaitForBuffer(PS2_IN);
-	ioInportByte(G_PS2_DATA_PORT);
+    // activate mouse device
+    ps2WaitForBuffer(PS2_OUT);
+    ioOutportByte(G_PS2_STATUS_PORT, 0xA8);
+    ps2WaitForBuffer(PS2_IN);
+    ioInportByte(G_PS2_DATA_PORT);
 
-	// get commando-byte, set bit 1 (enables IRQ12), send back
-	ps2WaitForBuffer(PS2_OUT);
-	ioOutportByte(G_PS2_STATUS_PORT, 0x20);
+    // get commando-byte, set bit 1 (enables IRQ12), send back
+    ps2WaitForBuffer(PS2_OUT);
+    ioOutportByte(G_PS2_STATUS_PORT, 0x20);
 
-	ps2WaitForBuffer(PS2_IN);
-	uint8_t status = (ioInportByte(G_PS2_DATA_PORT) | 0x02) & (~0x10);
+    ps2WaitForBuffer(PS2_IN);
+    uint8_t status = (ioInportByte(G_PS2_DATA_PORT) | 0x02) & (~0x10);
 
-	ps2WaitForBuffer(PS2_OUT);
-	ioOutportByte(G_PS2_STATUS_PORT, 0x60);
-	ps2WaitForBuffer(PS2_OUT);
-	ioOutportByte(G_PS2_DATA_PORT, status);
+    ps2WaitForBuffer(PS2_OUT);
+    ioOutportByte(G_PS2_STATUS_PORT, 0x60);
+    ps2WaitForBuffer(PS2_OUT);
+    ioOutportByte(G_PS2_DATA_PORT, status);
 
-	// send set-default-settings command to mouse
-	if(ps2WriteToMouse(0xF6)) {
-		klog("error: mouse did not acknowledge setting defaults command");
-		return G_PS2_STATUS_FAILED_INITIALIZE;
-	}
+    // send set-default-settings command to mouse
+    if(ps2WriteToMouse(0xF6))
+    {
+        klog("error: mouse did not acknowledge setting defaults command");
+        return G_PS2_STATUS_FAILED_INITIALIZE;
+    }
 
-	// enable the mouse
-	if(ps2WriteToMouse(0xF4)) {
-		klog("mouse did not acknowledge enable-mouse command");
-		return G_PS2_STATUS_FAILED_INITIALIZE;
-	}
+    // enable the mouse
+    if(ps2WriteToMouse(0xF4))
+    {
+        klog("mouse did not acknowledge enable-mouse command");
+        return G_PS2_STATUS_FAILED_INITIALIZE;
+    }
 
-	return G_PS2_STATUS_SUCCESS;
+    return G_PS2_STATUS_SUCCESS;
 }
 
-void ps2HandleMouseData(uint8_t value) {
+void ps2HandleMouseData(uint8_t value)
+{
 
-	switch (mouse_packet_number) {
-	case 0:
-		mouse_packet_buffer[0] = value;
+    switch(mouse_packet_number)
+    {
+    case 0:
+        mouse_packet_buffer[0] = value;
 
-		if ((value & 0x08) == 0) {
-			mouse_packet_number = 0; // otherwise restart the cycle
-		} else {
-			mouse_packet_number = 1;
-		}
-		break;
+        if((value & 0x08) == 0)
+        {
+            mouse_packet_number = 0; // otherwise restart the cycle
+        }
+        else
+        {
+            mouse_packet_number = 1;
+        }
+        break;
 
-	case 1:
-		mouse_packet_buffer[1] = value;
-		mouse_packet_number = 2;
-		break;
+    case 1:
+        mouse_packet_buffer[1] = value;
+        mouse_packet_number = 2;
+        break;
 
-	case 2:
-		mouse_packet_buffer[2] = value;
+    case 2:
+        mouse_packet_buffer[2] = value;
 
-		int8_t flags = mouse_packet_buffer[0];
-		uint8_t valX = mouse_packet_buffer[1];
-		uint8_t valY = mouse_packet_buffer[2];
+        int8_t flags = mouse_packet_buffer[0];
+        uint8_t valX = mouse_packet_buffer[1];
+        uint8_t valY = mouse_packet_buffer[2];
 
-		if ((flags & (1 << 6)) || (flags & (1 << 7))) {
-			// ignore overflowing values
+        if((flags & (1 << 6)) || (flags & (1 << 7)))
+        {
+            // ignore overflowing values
+        }
+        else
+        {
+            int16_t offX = valX - ((flags << 4) & 0x100);
+            int16_t offY = valY - ((flags << 3) & 0x100);
 
-		} else {
-			int16_t offX = valX - ((flags << 4) & 0x100);
-			int16_t offY = valY - ((flags << 3) & 0x100);
+            if(registeredMouseCallback)
+            {
+                registeredMouseCallback(offX, -offY, flags);
+            }
+        }
 
-			if(registeredMouseCallback) {
-				registeredMouseCallback(offX, -offY, flags);
-			}
-		}
-
-		mouse_packet_number = 0;
-		break;
-	}
+        mouse_packet_number = 0;
+        break;
+    }
 }
 
-void ps2WaitForBuffer(ps2_buffer_t buffer) {
+void ps2WaitForBuffer(ps2_buffer_t buffer)
+{
 
-	uint8_t requiredBit;
-	uint8_t requiredValue;
+    uint8_t requiredBit;
+    uint8_t requiredValue;
 
-	if (buffer == PS2_OUT) {
-		requiredBit = 0x02;
-		requiredValue = 0;
+    if(buffer == PS2_OUT)
+    {
+        requiredBit = 0x02;
+        requiredValue = 0;
+    }
+    else if(buffer == PS2_IN)
+    {
+        requiredBit = 0x01;
+        requiredValue = 1;
+    }
 
-	} else if (buffer == PS2_IN) {
-		requiredBit = 0x01;
-		requiredValue = 1;
-	}
-
-	int timeout = 100000;
-	while (timeout--) {
-		if ((ioInportByte(G_PS2_STATUS_PORT) & requiredBit) == requiredValue) {
-			return;
-		}
-	}
+    int timeout = 100000;
+    while(timeout--)
+    {
+        if((ioInportByte(G_PS2_STATUS_PORT) & requiredBit) == requiredValue)
+        {
+            return;
+        }
+    }
 }
 
-int ps2WriteToMouse(uint8_t value) {
+int ps2WriteToMouse(uint8_t value)
+{
 
-	ps2WaitForBuffer(PS2_OUT);
-	ioOutportByte(G_PS2_STATUS_PORT, 0xD4);
+    ps2WaitForBuffer(PS2_OUT);
+    ioOutportByte(G_PS2_STATUS_PORT, 0xD4);
 
-	ps2WaitForBuffer(PS2_OUT);
-	ioOutportByte(G_PS2_DATA_PORT, value);
-	
-	ps2WaitForBuffer(PS2_IN);
-	if (ioInportByte(G_PS2_DATA_PORT) != 0xFA) {
-		return 1;
-	}
-	return 0;
+    ps2WaitForBuffer(PS2_OUT);
+    ioOutportByte(G_PS2_DATA_PORT, value);
+
+    ps2WaitForBuffer(PS2_IN);
+    if(ioInportByte(G_PS2_DATA_PORT) != 0xFA)
+    {
+        return 1;
+    }
+    return 0;
 }
-

@@ -21,6 +21,8 @@
 #ifndef __KERNEL_SYSCALLS__
 #define __KERNEL_SYSCALLS__
 
+#include "ghost/stdint.h"
+
 struct g_task;
 
 /**
@@ -33,8 +35,7 @@ typedef void (*g_syscall_handler)(g_task*, void*);
  */
 struct g_syscall_registration
 {
-	g_syscall_handler handler;
-	bool threaded;
+    g_syscall_handler handler;
 };
 
 /**
@@ -51,12 +52,7 @@ extern g_syscall_registration* syscallRegistrations;
  * to waiting state.
  */
 void syscallHandle(g_task* task);
-
-/**
- * Is directly called by drivers to execute a syscall during interrupt handling.
- * No threaded syscalls can be executed this way.
- */
-void syscallHandleDuringInterrupt(uint32_t callId, void* syscallData);
+void syscall(uint32_t callId, void* data);
 
 /**
  * Executes a system call within a thread. This creates or reuses the system call task on the
@@ -81,4 +77,3 @@ void syscallRegister(int call, g_syscall_handler handler, bool threaded);
 void syscallRegisterAll();
 
 #endif
-
