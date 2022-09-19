@@ -147,7 +147,7 @@ void mouseReceiverThread()
 int main(int argc, char** argv)
 {
     // Init VBE
-    klog("calling video driver to set mode...");
+    klog("calling video driver to set mode");
     vbeDriverSetMode(1024, 768, 32, video_mode_information);
 
     while(video_mode_information.bpp == 0)
@@ -161,16 +161,14 @@ int main(int argc, char** argv)
          video_mode_information.lfb);
 
     // Get PS2 input from PS2 driver
-    klog("registering at PS2 driver...");
+    klog("calling PS2 driver to initialize");
     if(!ps2DriverInitialize(&keyboardRead, &mouseRead))
     {
         klog("failed to register at PS2 driver");
         return -1;
     }
-    klog("init ps2 threads... %i, %i", keyboardRead, mouseRead);
     g_create_thread((void*) keyboardReceiverThread);
     g_create_thread((void*) mouseReceiverThread);
-    klog("done");
 
     g_color_argb* source = (g_color_argb*) malloc(1024 * 768 * 4);
 
@@ -188,7 +186,6 @@ int main(int argc, char** argv)
     sourceSize.width = video_mode_information.resX;
     sourceSize.height = video_mode_information.resY;
     blit(sourceSize, sourceSize, source);
-    klog("initial blit done");
 
     int xxx = 0;
 

@@ -39,8 +39,7 @@ void syscallYield(g_task* task)
 
 void syscallExit(g_task* task, g_syscall_exit* data)
 {
-    task->status = G_THREAD_STATUS_DEAD;
-    taskingYield();
+    taskingExit();
 }
 
 void syscallGetProcessId(g_task* task, g_syscall_get_pid* data)

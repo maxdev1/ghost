@@ -40,7 +40,7 @@ int main()
 		return -1;
 	}
 
-	klog("Initialize ps2 driver");
+	klog("initialize ps2 driver");
 	ps2DriverInitialize();
 	ps2DriverReceiveMessages();
 	return 0;
@@ -88,6 +88,7 @@ void ps2DriverReceiveMessages()
 		auto status = g_receive_message(buf, buflen);
 		if (status != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 		{
+			klog("error receiving message, retrying");
 			continue;
 		}
 
