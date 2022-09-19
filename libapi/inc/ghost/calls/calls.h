@@ -22,13 +22,13 @@
 #define GHOST_API_CALLS_CALLS
 
 #include "ghost/common.h"
-#include "ghost/calls/calls_memory.hpp"
-#include "ghost/calls/calls_misc.hpp"
-#include "ghost/calls/calls_messaging.hpp"
-#include "ghost/calls/calls_spawning.hpp"
-#include "ghost/calls/calls_tasking.hpp"
-#include "ghost/calls/calls_vm86.hpp"
-#include "ghost/calls/calls_filesystem.hpp"
+#include "ghost/calls/calls_memory.h"
+#include "ghost/calls/calls_misc.h"
+#include "ghost/calls/calls_messaging.h"
+#include "ghost/calls/calls_spawning.h"
+#include "ghost/calls/calls_tasking.h"
+#include "ghost/calls/calls_vm86.h"
+#include "ghost/calls/calls_filesystem.h"
 
 __BEGIN_C
 

@@ -95,6 +95,7 @@ struct g_task
      * Number of times this task was ever scheduled.
      */
     int timesScheduled;
+    int timesYielded;
 
     /**
      * Sometimes a task needs to do work in the address space of a different process.
@@ -392,9 +393,9 @@ void taskingApplySwitch();
 void taskingYield();
 
 /**
- * Exits a kernel task. Sets the status of the caller task to dead and yields.
+ * Exits the current task. Sets the status to dead and yields.
  */
-void taskingKernelThreadExit();
+void taskingExit();
 
 /**
  * Kernel thread, cleaning up dead tasks.

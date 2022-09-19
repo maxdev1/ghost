@@ -54,8 +54,7 @@ void syscallAtomicLock(g_task* task, g_syscall_atomic_lock* data)
 
         for(;;)
         {
-            // check timeout
-            if(taskingGetLocal()->time - startTime > data->timeout)
+            if(data->timeout > 0 && taskingGetLocal()->time - startTime > data->timeout)
             {
                 data->has_timeout = true;
                 break;
@@ -63,11 +62,11 @@ void syscallAtomicLock(g_task* task, g_syscall_atomic_lock* data)
 
             // once waiting is finished, set the atom if required
             bool keep_wait = *data->atom_1 && (!data->atom_2 || *data->atom_2);
-
             if(!keep_wait)
             {
                 break;
             }
+
             taskingYield();
         }
         task->status = G_THREAD_STATUS_RUNNING;

@@ -66,7 +66,7 @@ void requestsHandle(g_task* task)
         }
         else
         {
-            logInfo("%! unhandled irq %i", "requests", irq);
+            logDebug("%! unhandled irq %i", "requests", irq);
         }
     }
 }

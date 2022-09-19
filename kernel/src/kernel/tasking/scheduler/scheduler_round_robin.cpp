@@ -38,17 +38,20 @@ void schedulerPrepareEntry(g_schedule_entry* entry)
     entry->schedulerRound = 0;
 }
 
-/**
- * This scheduler implementation keeps a round counter on the
- * local tasking structure and each schedule entry. A new round
- * starts when a new timeslot starts.
- *
- * When looking for a new task to schedule, each task in the list
- * is checked once. Only tasks that have not been scheduled in this
- * round are taken into account.
- *
- * If all tasks are waiting/were already scheduled, the idle task is run.
- */
+g_schedule_entry* schedulerGetCurrentEntry(g_tasking_local* local)
+{
+    g_schedule_entry* entry = local->scheduling.list;
+    while(entry)
+    {
+        if(entry->task == local->scheduling.current)
+        {
+            break;
+        }
+        entry = entry->next;
+    }
+    return entry;
+}
+
 void schedulerSchedule(g_tasking_local* local)
 {
     mutexAcquire(&local->lock);
@@ -60,66 +63,51 @@ void schedulerSchedule(g_tasking_local* local)
         return;
     }
 
-    // Find task in list
-    g_task* searchTask = local->scheduling.current;
-
-    g_schedule_entry* entry = local->scheduling.list;
-    while(entry)
+    g_schedule_entry* start = schedulerGetCurrentEntry(local);
+    if(!start)
     {
-        if(entry->task == searchTask)
-        {
-            break;
-        }
-        entry = entry->next;
-    }
-    if(!entry)
-    {
-        entry = local->scheduling.list;
+        start = local->scheduling.list;
     }
 
-    bool running = false;
-    uint32_t max = local->scheduling.taskCount * 2;
-    while(max-- > 0 && entry)
+    bool busy = false;
+    g_schedule_entry* entry = start;
+    for(;;)
     {
-        /* If this task has already done some work this round, we skip it */
-        if(entry->schedulerRound >= local->scheduling.round)
+        if(entry->schedulerRound < local->scheduling.round)
         {
-            entry = entry->next;
-            if(!entry)
+            entry->schedulerRound = local->scheduling.round;
+
+            g_task* task = entry->task;
+            if(task->status == G_THREAD_STATUS_RUNNING || task->status == G_THREAD_STATUS_WAITING)
             {
-                entry = local->scheduling.list;
+                local->scheduling.current = task;
+
+                busy = true;
+                break;
             }
-            continue;
         }
 
-        entry->schedulerRound = local->scheduling.round;
-
-        /* Task is running, so we can schedule it */
-        g_task* task = entry->task;
-        if(task->status == G_THREAD_STATUS_RUNNING || task->status == G_THREAD_STATUS_WAITING)
-        {
-            local->scheduling.current = task;
-            running = true;
-            break;
-        }
-
-        /* Go to the next entry */
         entry = entry->next;
         if(!entry)
         {
             entry = local->scheduling.list;
         }
+        if(entry == start)
+            break;
     }
 
-    if(running)
+    if(busy)
     {
         local->scheduling.current->timesScheduled++;
     }
     else
     {
-        // Nothing to schedule, idle
         local->scheduling.current = local->scheduling.idleTask;
     }
+
+    static int times = 0;
+    if(times++ % 10000 == 0)
+        schedulerDump();
 
     mutexRelease(&local->lock);
 }
@@ -129,7 +117,7 @@ void schedulerDump()
     g_tasking_local* local = taskingGetLocal();
     mutexAcquire(&local->lock);
 
-    logInfo("%! task list:", "scheduler");
+    logInfo("%! dump (task count: %i)", "sched", local->scheduling.taskCount);
     g_schedule_entry* entry = local->scheduling.list;
     while(entry)
     {
@@ -151,7 +139,9 @@ void schedulerDump()
             taskState = "waiting";
         }
 
-        logInfo("%# process: %i, task: %i, status: %s, timesScheduled: %i", entry->task->process->id, entry->task->id, taskState, entry->task->timesScheduled);
+        logInfo("%# process: %i, task: %i, status: %s, tSch: %i, tYld: %i, time: %i, round: %i",
+                entry->task->process->id, entry->task->id, taskState, entry->task->timesScheduled, entry->task->timesYielded,
+                entry->task->timesScheduled - entry->task->timesYielded, entry->schedulerRound);
         entry = entry->next;
     }
 

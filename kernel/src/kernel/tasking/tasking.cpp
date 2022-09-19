@@ -104,13 +104,13 @@ void taskingInitializeLocal()
     g_process* idle = taskingCreateProcess();
     local->scheduling.idleTask = taskingCreateThread((g_virtual_address) taskingIdleThread, idle, G_SECURITY_LEVEL_KERNEL);
     local->scheduling.idleTask->type = G_THREAD_TYPE_VITAL;
-    logDebug("%! core: %i idle task: %i", "tasking", processorGetCurrentId(), idle->main->id);
+    logInfo("%! core: %i idle task: %i", "tasking", processorGetCurrentId(), idle->main->id);
 
     g_process* cleanup = taskingCreateProcess();
     g_task* cleanupTask = taskingCreateThread((g_virtual_address) taskingCleanupThread, cleanup, G_SECURITY_LEVEL_KERNEL);
     cleanupTask->type = G_THREAD_TYPE_VITAL;
     taskingAssign(taskingGetLocal(), cleanupTask);
-    logDebug("%! core: %i cleanup task: %i", "tasking", processorGetCurrentId(), cleanup->main->id);
+    logInfo("%! core: %i cleanup task: %i", "tasking", processorGetCurrentId(), cleanup->main->id);
 
     schedulerInitializeLocal();
 }
@@ -305,6 +305,8 @@ void taskingApplySwitch()
         kernelPanic("%! tried to restore without a current task", "tasking");
     }
 
+    task->active = true;
+
     // Switch to process address space
     if(task->overridePageDirectory)
     {
@@ -430,7 +432,9 @@ void taskingYield()
         return;
     }
 
-    volatile g_processor_state* kernelState = taskingGetCurrentTask()->state;
+    g_task* task = taskingGetCurrentTask();
+    volatile g_processor_state* kernelState = task->state;
+    task->timesYielded++;
 
     /* We call the interrupt 0x81 which will be handled in the interrupt
     request handling sequence <requestsHandle>. */
@@ -442,7 +446,7 @@ void taskingYield()
     taskingGetCurrentTask()->state = kernelState;
 }
 
-void taskingKernelThreadExit()
+void taskingExit()
 {
     taskingGetCurrentTask()->status = G_THREAD_STATUS_DEAD;
     taskingYield();
@@ -459,7 +463,7 @@ void taskingIdleThread()
 void taskingCleanupThread()
 {
     g_tasking_local* local = taskingGetLocal();
-    g_task* task = local->scheduling.current;
+    g_task* task = taskingGetCurrentTask();
     for(;;)
     {
         // Find and remove dead tasks from local scheduling list

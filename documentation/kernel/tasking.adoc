@@ -50,7 +50,7 @@ To minimize any blocking, locks should therefore be used around critical parts
 but acquired as late and released as soon as possible.
 
 ==== Exiting a thread
-A kernel thread must be exited using `taskingKernelThreadExit`, otherwise the
+A kernel thread must be exited using `taskingExit`, otherwise the
 task will run into nirvana and cause a failure.
 
 
