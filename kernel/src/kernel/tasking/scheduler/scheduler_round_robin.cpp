@@ -114,11 +114,6 @@ void schedulerSchedule(g_tasking_local* local)
     if(running)
     {
         local->scheduling.current->timesScheduled++;
-
-        if(local->scheduling.current->timesScheduled % 10000 == 0)
-        {
-            schedulerDump();
-        }
     }
     else
     {
