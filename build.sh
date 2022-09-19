@@ -83,17 +83,6 @@ else
 	popd
 fi
 
-# Prepare libghostuser
-print_name libuser
-if [[ $BUILD_LIBUSER = 0 && -f $SYSROOT/system/lib/libghostuser.so ]]; then
-	print_skipped
-else
-	pushd libuser
-	build_clean
-	print_status
-	popd
-fi
-
 # Prepare libapi & libc
 pushd libapi
 print_name libapi
