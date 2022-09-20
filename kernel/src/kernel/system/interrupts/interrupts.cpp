@@ -86,8 +86,6 @@ bool interruptsAreEnabled()
  */
 extern "C" g_virtual_address _interruptHandler(g_virtual_address esp)
 {
-    g_tasking_local* local = taskingGetLocal();
-
     if(taskingStore(esp))
     {
         g_task* task = taskingGetCurrentTask();
@@ -104,6 +102,7 @@ extern "C" g_virtual_address _interruptHandler(g_virtual_address esp)
     taskingApplySwitch();
 
     lapicSendEndOfInterrupt();
+
     return (g_virtual_address) taskingGetCurrentTask()->state;
 }
 

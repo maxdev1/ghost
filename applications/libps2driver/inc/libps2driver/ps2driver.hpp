@@ -22,6 +22,7 @@
 #define __LIBPS2DRIVER_PS2DRIVER__
 
 #include <stdint.h>
+#include <ghost.h>
 
 #define G_PS2_DRIVER_IDENTIFIER		"ps2driver"
 

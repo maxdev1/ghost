@@ -39,7 +39,6 @@ component_t* cursor_t::focusedComponent = 0;
 
 void cursor_t::set(std::string name)
 {
-
     if(cursorConfigurations.count(name) > 0)
     {
         currentConfiguration = &cursorConfigurations[name];
@@ -50,7 +49,7 @@ void cursor_t::set(std::string name)
     }
     else
     {
-        klog("could neither load '%s' cursor nor 'default' cursor", name);
+        klog("could neither load '%s' cursor nor 'default' cursor", name.c_str());
     }
 
     screen_t* screen = windowserver_t::instance()->screen;
@@ -125,20 +124,17 @@ bool cursor_t::load(std::string cursorPath)
 
 void cursor_t::paint(g_graphics* global)
 {
-
     auto cr = global->getContext();
     cairo_reset_clip(cr);
 
     if(currentConfiguration)
     {
-        // draw cursor image
         cairo_set_source_surface(cr, currentConfiguration->surface, position.x - currentConfiguration->hitpoint.x,
                                  position.y - currentConfiguration->hitpoint.y);
         cairo_paint(cr);
     }
-    else
+    else if(cursorConfigurations.size() > 0)
     {
-        // draw fallback cursor
         cairo_set_source_rgb(cr, 0, 0, 0);
         cairo_rectangle(cr, position.x, position.y, FALLBACK_CURSOR_SIZE, FALLBACK_CURSOR_SIZE);
         cairo_fill(cr);
@@ -151,7 +147,9 @@ g_rectangle cursor_t::getArea()
     // get area for current cursor
     if(currentConfiguration)
     {
-        return g_rectangle(position.x - currentConfiguration->hitpoint.x, position.y - currentConfiguration->hitpoint.y, currentConfiguration->size.width,
+        return g_rectangle(position.x - currentConfiguration->hitpoint.x,
+                           position.y - currentConfiguration->hitpoint.y,
+                           currentConfiguration->size.width,
                            currentConfiguration->size.height);
     }
 

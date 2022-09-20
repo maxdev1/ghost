@@ -33,88 +33,89 @@ g_fd mouseWrite;
 
 int main()
 {
-	uint32_t tid = g_get_tid();
-	if (!g_task_register_id(G_PS2_DRIVER_IDENTIFIER))
-	{
-		klog("ps2driver: could not register with task identifier '%s'", (char *)G_PS2_DRIVER_IDENTIFIER);
-		return -1;
-	}
+    uint32_t tid = g_get_tid();
+    if(!g_task_register_id(G_PS2_DRIVER_IDENTIFIER))
+    {
+        klog("ps2driver: could not register with task identifier '%s'", (char*) G_PS2_DRIVER_IDENTIFIER);
+        return -1;
+    }
 
-	klog("initialize ps2 driver");
-	ps2DriverInitialize();
-	ps2DriverReceiveMessages();
-	return 0;
+    klog("initialize ps2 driver");
+    ps2DriverInitialize();
+    ps2DriverReceiveMessages();
+    return 0;
 }
 
 void ps2DriverInitialize()
 {
-	if (g_pipe(&keyboardWrite, &keyboardRead) != G_FS_PIPE_SUCCESSFUL)
-	{
-		klog("ps2driver: failed to open pipe for keyboard data");
-		return;
-	}
+    if(g_pipe(&keyboardWrite, &keyboardRead) != G_FS_PIPE_SUCCESSFUL)
+    {
+        klog("ps2driver: failed to open pipe for keyboard data");
+        return;
+    }
 
-	if (g_pipe(&mouseWrite, &mouseRead) != G_FS_PIPE_SUCCESSFUL)
-	{
-		klog("ps2driver: failed to open pipe for mouse data");
-		return;
-	}
+    if(g_pipe(&mouseWrite, &mouseRead) != G_FS_PIPE_SUCCESSFUL)
+    {
+        klog("ps2driver: failed to open pipe for mouse data");
+        return;
+    }
 
-	klog("ps2 descriptors, mouse: %i/%i, keyboard: %i/%i", mouseRead, mouseWrite, keyboardRead, keyboardWrite);
-	ps2Initialize(ps2MouseCallback, ps2KeyboardCallback);
+    klog("ps2 descriptors, mouse: %i/%i, keyboard: %i/%i", mouseRead, mouseWrite, keyboardRead, keyboardWrite);
+    ps2Initialize(ps2MouseCallback, ps2KeyboardCallback);
+    klog("ps2 after initialize");
 }
 
 void ps2MouseCallback(int16_t x, int16_t y, uint8_t flags)
 {
-	g_ps2_mouse_packet packet;
-	packet.x = x;
-	packet.y = y;
-	packet.flags = flags;
-	g_write(mouseWrite, &packet, sizeof(g_ps2_mouse_packet));
+    g_ps2_mouse_packet packet;
+    packet.x = x;
+    packet.y = y;
+    packet.flags = flags;
+    g_write(mouseWrite, &packet, sizeof(g_ps2_mouse_packet));
 }
 
 void ps2KeyboardCallback(uint8_t c)
 {
-	g_write(keyboardWrite, &c, 1);
+    g_write(keyboardWrite, &c, 1);
 }
 
 void ps2DriverReceiveMessages()
 {
-	size_t buflen = sizeof(g_message_header) + sizeof(g_ps2_initialize_request) /*TODO*/;
-	uint8_t buf[buflen];
+    size_t buflen = sizeof(g_message_header) + sizeof(g_ps2_initialize_request) /*TODO*/;
+    uint8_t buf[buflen];
 
-	for (;;)
-	{
-		auto status = g_receive_message(buf, buflen);
-		if (status != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
-		{
-			klog("error receiving message, retrying");
-			continue;
-		}
+    for(;;)
+    {
+        auto status = g_receive_message(buf, buflen);
+        if(status != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+        {
+            klog("error receiving message, retrying");
+            continue;
+        }
 
-		g_message_header *header = (g_message_header *)buf;
-		g_ps2_request_header *request = (g_ps2_request_header *)G_MESSAGE_CONTENT(buf);
+        g_message_header* header = (g_message_header*) buf;
+        g_ps2_request_header* request = (g_ps2_request_header*) G_MESSAGE_CONTENT(buf);
 
-		if (request->command == G_PS2_COMMAND_INITIALIZE)
-		{
-			ps2HandleCommandInitialize((g_ps2_initialize_request *)request, header->sender, header->transaction);
-		}
-		else
-		{
-			klog("vbedriver: received unknown command %i from task %i", request->command, header->sender);
-		}
-	}
+        if(request->command == G_PS2_COMMAND_INITIALIZE)
+        {
+            ps2HandleCommandInitialize((g_ps2_initialize_request*) request, header->sender, header->transaction);
+        }
+        else
+        {
+            klog("vbedriver: received unknown command %i from task %i", request->command, header->sender);
+        }
+    }
 }
 
-void ps2HandleCommandInitialize(g_ps2_initialize_request *request, g_tid requestingTaskId, g_message_transaction requestTransaction)
+void ps2HandleCommandInitialize(g_ps2_initialize_request* request, g_tid requestingTaskId, g_message_transaction requestTransaction)
 {
-	g_pid targetPid = g_get_pid_for_tid(requestingTaskId);
-	g_pid sourcePid = g_get_pid();
+    g_pid targetPid = g_get_pid_for_tid(requestingTaskId);
+    g_pid sourcePid = g_get_pid();
 
-	g_ps2_initialize_response response;
-	response.status = G_PS2_STATUS_SUCCESS;
-	response.keyboardRead = g_clone_fd(keyboardRead, sourcePid, targetPid);
-	response.mouseRead = g_clone_fd(mouseRead, sourcePid, targetPid);
+    g_ps2_initialize_response response;
+    response.status = G_PS2_STATUS_SUCCESS;
+    response.keyboardRead = g_clone_fd(keyboardRead, sourcePid, targetPid);
+    response.mouseRead = g_clone_fd(mouseRead, sourcePid, targetPid);
 
-	g_send_message_t(requestingTaskId, &response, sizeof(g_ps2_initialize_response), requestTransaction);
+    g_send_message_t(requestingTaskId, &response, sizeof(g_ps2_initialize_response), requestTransaction);
 }

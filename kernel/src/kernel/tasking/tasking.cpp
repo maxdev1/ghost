@@ -30,6 +30,7 @@
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/system/interrupts/ivt.hpp"
 #include "kernel/system/processor/processor.hpp"
+#include "kernel/system/system.hpp"
 #include "kernel/tasking/elf/elf_loader.hpp"
 #include "kernel/tasking/scheduler.hpp"
 #include "kernel/tasking/tasking_directory.hpp"
@@ -38,7 +39,7 @@
 #include "kernel/utils/hashmap.hpp"
 #include "shared/logger/logger.hpp"
 
-static g_tasking_local* taskingLocal;
+static g_tasking_local* taskingLocal = 0;
 static g_mutex taskingIdLock;
 static g_tid taskingIdNext = 0;
 
@@ -51,6 +52,8 @@ g_tasking_local* taskingGetLocal()
 
 g_task* taskingGetCurrentTask()
 {
+    if(!systemIsReady())
+        return nullptr;
     return taskingGetLocal()->scheduling.current;
 }
 
@@ -72,11 +75,49 @@ g_task* taskingGetById(g_tid id)
     return hashmapGet(taskGlobalMap, id, (g_task*) 0);
 }
 
+void taskingYield()
+{
+    g_tasking_local* local = taskingGetLocal();
+
+    g_task* task = taskingGetCurrentTask();
+    volatile g_processor_state* kernelState = task->state;
+    task->timesYielded++;
+
+    /* We call the interrupt 0x81 which will be handled in the interrupt
+    request handling sequence <requestsHandle>. */
+    asm volatile("int $0x81"
+                 :
+                 : "a"(0), "b"(0)
+                 : "cc", "memory");
+
+    taskingGetCurrentTask()->state = kernelState;
+}
+
+void taskingExit()
+{
+    taskingGetCurrentTask()->status = G_THREAD_STATUS_DEAD;
+    taskingYield();
+}
+
 void taskingInitializeBsp()
 {
     mutexInitialize(&taskingIdLock);
-    taskingLocal = (g_tasking_local*) heapAllocate(sizeof(g_tasking_local) * processorGetNumberOfProcessors());
+
+    auto numProcs = processorGetNumberOfProcessors();
+    taskingLocal = (g_tasking_local*) heapAllocate(sizeof(g_tasking_local) * numProcs);
     taskGlobalMap = hashmapCreateNumeric<g_tid, g_task*>(128);
+
+    if(numProcs > 1)
+    {
+        logInfo("%! disabling video log to boot on %i processors", "tasking", numProcs);
+        /**
+         * TODO: The logger causes issues an multi-processor systems since
+         * it doesn't use a mutex but only disables interrupts. This is fine
+         * on single-core systems but causes issues here. Should be fixed
+         * by using the mutex there properly.
+         */
+        loggerEnableVideo(false);
+    }
 
     taskingInitializeLocal();
     taskingDirectoryInitialize();
@@ -90,12 +131,10 @@ void taskingInitializeAp()
 void taskingInitializeLocal()
 {
     g_tasking_local* local = taskingGetLocal();
-    local->locksHeld = 0;
     local->time = 0;
 
     local->scheduling.current = 0;
     local->scheduling.list = 0;
-    local->scheduling.taskCount = 0;
     local->scheduling.round = 0;
     local->scheduling.idleTask = 0;
 
@@ -274,8 +313,6 @@ void taskingAssign(g_tasking_local* local, g_task* task)
         newEntry->next = local->scheduling.list;
         schedulerPrepareEntry(newEntry);
         local->scheduling.list = newEntry;
-
-        local->scheduling.taskCount++;
     }
 
     task->assignment = local;
@@ -325,24 +362,9 @@ void taskingApplySwitch()
     gdtSetTssEsp0(task->interruptStack.end);
 }
 
-void taskingCheckWaiting()
-{
-    g_tasking_local* local = taskingGetLocal();
-    mutexAcquire(&local->lock);
-
-    mutexRelease(&local->lock);
-}
-
 void taskingSchedule()
 {
-    g_tasking_local* local = taskingGetLocal();
-
-    // If there are kernel locks held by the currently running task, we may not
-    // switch tasks - otherwise we will deadlock.
-    if(local->locksHeld == 0)
-    {
-        schedulerSchedule(local);
-    }
+    schedulerSchedule(taskingGetLocal());
 }
 
 g_process* taskingCreateProcess()
@@ -421,35 +443,6 @@ void taskingPrepareThreadLocalStorage(g_task* thread)
     thread->tlsCopy.end = tlsCopyEnd;
 
     logDebug("%! created tls copy in process %i, thread %i at %h", "threadmgr", process->main->id, thread->id, thread->tlsCopy.start);
-}
-
-void taskingYield()
-{
-    g_tasking_local* local = taskingGetLocal();
-    if(local->locksHeld > 0)
-    {
-        kernelPanic("%! kernel thread %i tried to yield while holding %i kernel locks", "tasking", local->scheduling.current->id, local->locksHeld);
-        return;
-    }
-
-    g_task* task = taskingGetCurrentTask();
-    volatile g_processor_state* kernelState = task->state;
-    task->timesYielded++;
-
-    /* We call the interrupt 0x81 which will be handled in the interrupt
-    request handling sequence <requestsHandle>. */
-    asm volatile("int $0x81"
-                 :
-                 : "a"(0), "b"(0)
-                 : "cc", "memory");
-
-    taskingGetCurrentTask()->state = kernelState;
-}
-
-void taskingExit()
-{
-    taskingGetCurrentTask()->status = G_THREAD_STATUS_DEAD;
-    taskingYield();
 }
 
 void taskingIdleThread()

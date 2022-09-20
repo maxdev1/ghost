@@ -28,19 +28,18 @@ void schedulerInitializeLocal()
     taskingGetLocal()->scheduling.round = 1;
 }
 
-void schedulerNewTimeSlot()
-{
-    taskingGetLocal()->scheduling.round++;
-}
-
 void schedulerPrepareEntry(g_schedule_entry* entry)
 {
     entry->schedulerRound = 0;
 }
 
-g_schedule_entry* schedulerGetCurrentEntry(g_tasking_local* local)
+g_schedule_entry* schedulerGetNextTask(g_tasking_local* local)
 {
     g_schedule_entry* entry = local->scheduling.list;
+    if(local->scheduling.current == local->scheduling.idleTask)
+    {
+        return entry;
+    }
     while(entry)
     {
         if(entry->task == local->scheduling.current)
@@ -48,6 +47,14 @@ g_schedule_entry* schedulerGetCurrentEntry(g_tasking_local* local)
             break;
         }
         entry = entry->next;
+    }
+    if(entry)
+    {
+        entry = entry->next;
+    }
+    if(!entry)
+    {
+        entry = local->scheduling.list;
     }
     return entry;
 }
@@ -63,14 +70,8 @@ void schedulerSchedule(g_tasking_local* local)
         return;
     }
 
-    g_schedule_entry* start = schedulerGetCurrentEntry(local);
-    if(!start)
-    {
-        start = local->scheduling.list;
-    }
-
-    bool busy = false;
-    g_schedule_entry* entry = start;
+    g_schedule_entry* next = schedulerGetNextTask(local);
+    g_schedule_entry* entry = next;
     for(;;)
     {
         if(entry->schedulerRound < local->scheduling.round)
@@ -81,8 +82,7 @@ void schedulerSchedule(g_tasking_local* local)
             if(task->status == G_THREAD_STATUS_RUNNING || task->status == G_THREAD_STATUS_WAITING)
             {
                 local->scheduling.current = task;
-
-                busy = true;
+                local->scheduling.current->timesScheduled++;
                 break;
             }
         }
@@ -92,24 +92,24 @@ void schedulerSchedule(g_tasking_local* local)
         {
             entry = local->scheduling.list;
         }
-        if(entry == start)
+
+        if(entry == next)
+        {
+            local->scheduling.current = local->scheduling.idleTask;
+            local->scheduling.idleTask->timesScheduled++;
+            local->scheduling.round++;
             break;
+        }
     }
-
-    if(busy)
-    {
-        local->scheduling.current->timesScheduled++;
-    }
-    else
-    {
-        local->scheduling.current = local->scheduling.idleTask;
-    }
-
-    static int times = 0;
-    if(times++ % 10000 == 0)
-        schedulerDump();
-
     mutexRelease(&local->lock);
+
+#if G_DEBUG_THREAD_DUMPING
+    static int i = 0;
+    if(i++ % 10000 == 0)
+    {
+        schedulerDump();
+    }
+#endif
 }
 
 void schedulerDump()
@@ -117,7 +117,7 @@ void schedulerDump()
     g_tasking_local* local = taskingGetLocal();
     mutexAcquire(&local->lock);
 
-    logInfo("%! dump (task count: %i)", "sched", local->scheduling.taskCount);
+    logInfo("%! dump @%i", "sched", processorGetCurrentId());
     g_schedule_entry* entry = local->scheduling.list;
     while(entry)
     {
@@ -139,11 +139,16 @@ void schedulerDump()
             taskState = "waiting";
         }
 
-        logInfo("%# process: %i, task: %i, status: %s, tSch: %i, tYld: %i, time: %i, round: %i",
+        logInfo("%# p: %i, t: %i, %s, tSch: %i, tYld: %i, time: %i, round: %i",
                 entry->task->process->id, entry->task->id, taskState, entry->task->timesScheduled, entry->task->timesYielded,
                 entry->task->timesScheduled - entry->task->timesYielded, entry->schedulerRound);
         entry = entry->next;
     }
+
+    g_task* idle = local->scheduling.idleTask;
+    logInfo("%# p: %i, t: %i, tSch: %i, tYld: %i, time: %i, round: %i",
+            idle->process->id, idle->id, idle->timesScheduled, idle->timesYielded,
+            idle->timesScheduled - idle->timesYielded, entry->schedulerRound);
 
     mutexRelease(&local->lock);
 }

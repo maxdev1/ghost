@@ -45,10 +45,12 @@ class windowserver_t
      */
     void launch();
 
-    /**
-     *
-     */
+    static void initializeInput();
+    static void fpsCounter();
+
     void mainLoop(g_rectangle screenBounds);
+    void loadCursor();
+    void triggerRender();
 
     /**
      * Blits the component state.
@@ -78,16 +80,6 @@ class windowserver_t
      * TODO remove
      */
     void createTestComponents();
-
-    /**
-     *
-     */
-    void loadCursor();
-
-    /**
-     *
-     */
-    void triggerRender();
 };
 
 #endif

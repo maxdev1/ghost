@@ -29,11 +29,6 @@
 void schedulerInitializeLocal();
 
 /**
- * Called when a new time slot has started.
- */
-void schedulerNewTimeSlot();
-
-/**
  * Prepares a new task entry for scheduling.
  */
 void schedulerPrepareEntry(g_schedule_entry* entry);

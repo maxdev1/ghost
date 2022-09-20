@@ -19,10 +19,9 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "shared/system/mutex.hpp"
-
-#include "kernel/tasking/tasking.hpp"
+#include "kernel/kernel.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
-
+#include "kernel/tasking/tasking.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/video/console_video.hpp"
 
@@ -31,115 +30,90 @@ volatile int mutexInitializerLock = 0;
 
 void mutexErrorUninitialized(g_mutex* mutex)
 {
-	loggerPrintlnUnlocked("%! %i: tried to use uninitialized mutex %h", "mutex", processorGetCurrentId(), mutex);
-	for(;;);
+    kernelPanic("%! %i: tried to use uninitialized mutex %h", "mutex", processorGetCurrentId(), mutex);
 }
 
 void mutexInitialize(g_mutex* mutex)
 {
-	while(!__sync_bool_compare_and_swap(&mutexInitializerLock, 0, 1))
-		asm("pause");
+    while(!__sync_bool_compare_and_swap(&mutexInitializerLock, 0, 1))
+        asm("pause");
 
-	if(mutex->initialized != G_MUTEX_INITIALIZED) {
-		mutex->initialized = G_MUTEX_INITIALIZED;
-		mutex->lock = 0;
-		mutex->depth = 0;
-		mutex->owner = -1;
-	}
+    if(mutex->initialized == G_MUTEX_INITIALIZED)
+        kernelPanic("%! attempted to initialize mutex %x twice", "mutex", mutex);
 
-	mutexInitializerLock = 0;
+    mutex->initialized = G_MUTEX_INITIALIZED;
+    mutex->lock = 0;
+    mutex->depth = 0;
+    mutex->owner = -1;
+
+    mutexInitializerLock = 0;
 }
 
 void mutexAcquire(g_mutex* mutex)
 {
-	mutexAcquire(mutex, true);
-}
+    if(mutex->initialized != G_MUTEX_INITIALIZED)
+        mutexErrorUninitialized(mutex);
 
-void mutexAcquire(g_mutex* mutex, bool smp)
-{
-	if(mutex->initialized != G_MUTEX_INITIALIZED)
-		mutexErrorUninitialized(mutex);
-
-	while(!mutexTryAcquire(mutex, smp))
-		asm("pause");
+    while(!mutexTryAcquire(mutex))
+    {
+        if(interruptsAreEnabled())
+            taskingYield();
+        else
+            asm("pause");
+    }
 }
 
 bool mutexTryAcquire(g_mutex* mutex)
 {
-	return mutexTryAcquire(mutex, true);
-}
+    if(mutex->initialized != G_MUTEX_INITIALIZED)
+        mutexErrorUninitialized(mutex);
 
-bool mutexTryAcquire(g_mutex* mutex, bool smp)
-{
-	if(mutex->initialized != G_MUTEX_INITIALIZED)
-		mutexErrorUninitialized(mutex);
+    while(!__sync_bool_compare_and_swap(&mutex->lock, 0, 1))
+        asm("pause");
 
-	// Disable interrupts
-	bool enableInt = interruptsAreEnabled();
-	interruptsDisable();
+    int intr = interruptsAreEnabled();
+    if(intr)
+        interruptsDisable();
 
-	// Lock editing
-	while(!__sync_bool_compare_and_swap(&mutex->lock, 0, 1))
-		asm("pause");
+    bool set = false;
 
-	// Update mutex
-	bool success = false;
-	if(mutex->depth == 0)
-	{
-		mutex->owner = processorGetCurrentId();
-		mutex->depth = 1;
-		if(smp) {
-			if(taskingGetLocal()->locksHeld == 0)
-				taskingGetLocal()->locksReenableInt = enableInt;
-			taskingGetLocal()->locksHeld++;
-		}
-		success = true;
+    g_task* task = taskingGetCurrentTask();
+    uint32_t owner = task ? task->id : -processorGetCurrentId();
+    if(mutex->depth == 0 || mutex->owner == owner)
+    {
+        mutex->owner = owner;
+        mutex->depth++;
+        set = true;
+    }
 
-	} else if(mutex->owner == processorGetCurrentId())
-	{
-		mutex->depth++;
-		success = true;
-	}
+    mutex->lock = 0;
 
-	// Allow editing again
-	mutex->lock = 0;
+    if(intr)
+        interruptsEnable();
 
-	return success;
+    return set;
 }
 
 void mutexRelease(g_mutex* mutex)
 {
-	mutexRelease(mutex, true);
+    if(mutex->initialized != G_MUTEX_INITIALIZED)
+        mutexErrorUninitialized(mutex);
+
+    while(!__sync_bool_compare_and_swap(&mutex->lock, 0, 1))
+        asm("pause");
+
+    int intr = interruptsAreEnabled();
+    if(intr)
+        interruptsDisable();
+
+    if(mutex->depth > 0 && --mutex->depth == 0)
+    {
+        mutex->depth = 0;
+        mutex->owner = -1;
+    }
+
+    mutex->lock = 0;
+
+    if(intr)
+        interruptsEnable();
 }
-
-void mutexRelease(g_mutex* mutex, bool smp)
-{
-	if(mutex->initialized != G_MUTEX_INITIALIZED)
-		mutexErrorUninitialized(mutex);
-
-	bool enableInt = false;
-
-	// Lock editing
-	while(!__sync_bool_compare_and_swap(&mutex->lock, 0, 1))
-		asm("pause");
-
-	// Update mutex
-	if(mutex->depth > 0 && --mutex->depth == 0)
-	{
-		mutex->depth = 0;
-		mutex->owner = -1;
-
-		if(smp) {
-			taskingGetLocal()->locksHeld--;
-			if(taskingGetLocal()->locksHeld == 0)
-				enableInt = taskingGetLocal()->locksReenableInt;
-		}
-	}
-
-	// Allow editing again
-	mutex->lock = 0;
-
-	// Enable interrupts
-	if(enableInt) interruptsEnable();
-}
-

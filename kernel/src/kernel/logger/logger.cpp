@@ -18,67 +18,57 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include "shared/logger/logger.hpp"
+#include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/smp.hpp"
 #include "shared/system/mutex.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/system/mutex.hpp"
-
 #include "shared/utils/string.hpp"
 #include "shared/video/console_video.hpp"
 
-static g_mutex printLock;
-
-void loggerInitialize()
-{
-	mutexInitialize(&printLock);
-}
-
 void loggerPrintLocked(const char* message, ...)
 {
-	mutexAcquire(&printLock);
+    int intr = interruptsAreEnabled();
+    if(intr)
+        interruptsDisable();
 
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
+    va_list valist;
+    va_start(valist, message);
+    loggerPrintFormatted(message, valist);
+    va_end(valist);
 
-	mutexRelease(&printLock);
+    if(intr)
+        interruptsEnable();
 }
 
 void loggerPrintlnLocked(const char* message, ...)
 {
-	mutexAcquire(&printLock);
+    int intr = interruptsAreEnabled();
+    if(intr)
+        interruptsDisable();
 
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
-	loggerPrintCharacter('\n');
+    va_list valist;
+    va_start(valist, message);
+    loggerPrintFormatted(message, valist);
+    va_end(valist);
+    loggerPrintCharacter('\n');
 
-	mutexRelease(&printLock);
+    if(intr)
+        interruptsEnable();
 }
 
 void loggerPrintUnlocked(const char* message, ...)
 {
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
+    va_list valist;
+    va_start(valist, message);
+    loggerPrintFormatted(message, valist);
+    va_end(valist);
 }
 
 void loggerPrintlnUnlocked(const char* message, ...)
 {
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
-	loggerPrintCharacter('\n');
-}
-
-void loggerManualLock() {
-	mutexAcquire(&printLock);
-}
-
-void loggerManualUnlock() {
-	mutexRelease(&printLock);
+    va_list valist;
+    va_start(valist, message);
+    loggerPrintFormatted(message, valist);
+    va_end(valist);
+    loggerPrintCharacter('\n');
 }
