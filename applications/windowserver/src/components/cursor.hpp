@@ -36,6 +36,7 @@
 
 struct cursor_configuration
 {
+    std::string name;
     cairo_surface_t* surface;
     g_point hitpoint;
     g_dimension size;
@@ -57,6 +58,7 @@ class cursor_t
 
     static g_rectangle getArea();
 
+    static std::string get();
     static void set(std::string name);
 
     static bool load(std::string cursorPath);

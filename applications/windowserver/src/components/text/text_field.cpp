@@ -371,6 +371,7 @@ bool text_field_t::handle(event_t& e)
             visualStatus = text_field_visual_status_t::HOVERED;
             markFor(COMPONENT_REQUIREMENT_PAINT);
             cursor_t::set("text");
+            klog("Mouse enter");
         }
         else if(me->type == G_MOUSE_EVENT_LEAVE)
         {

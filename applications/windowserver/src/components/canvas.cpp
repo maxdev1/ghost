@@ -87,9 +87,6 @@ void canvas_t::checkBuffer()
     }
 }
 
-/**
- *
- */
 void canvas_t::createNewBuffer(uint16_t requiredPages)
 {
 
@@ -131,9 +128,6 @@ void canvas_t::createNewBuffer(uint16_t requiredPages)
     requestClientToAcknowledgeNewBuffer();
 }
 
-/**
- *
- */
 void canvas_t::requestClientToAcknowledgeNewBuffer()
 {
 
@@ -154,9 +148,6 @@ void canvas_t::requestClientToAcknowledgeNewBuffer()
     }
 }
 
-/**
- *
- */
 void canvas_t::clientHasAcknowledgedCurrentBuffer()
 {
 
@@ -182,9 +173,6 @@ void canvas_t::clientHasAcknowledgedCurrentBuffer()
     }
 }
 
-/**
- *
- */
 void canvas_t::paint()
 {
 
@@ -218,11 +206,7 @@ void canvas_t::paint()
     }
 }
 
-/**
- *
- */
 void canvas_t::blit()
 {
-
     markFor(COMPONENT_REQUIREMENT_PAINT);
 }

@@ -30,9 +30,6 @@ class background_t : public component_t
     cairo_surface_t* surface = 0;
 
   public:
-    /**
-     * Instantiates a background that spans over the given bounds.
-     */
     background_t(g_rectangle bounds);
 
     virtual ~background_t()

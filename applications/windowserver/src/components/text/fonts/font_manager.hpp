@@ -35,14 +35,7 @@ class g_font_manager
     g_font_manager();
     ~g_font_manager();
 
-    /**
-     * Initializes a freetype library instance
-     */
     void initializeEngine();
-
-    /**
-     * Destroys the freetype library instance
-     */
     void destroyEngine();
 
   public:
@@ -52,16 +45,11 @@ class g_font_manager
     static g_font_manager* getInstance();
 
     /**
-     * Creates a font with the "name", reading the font data "source".
-     * The data within "source" is copied to the {Font} objects buffer.
+     * Registers the font.
      *
      * @param name			name to which the font shall be registered
-     * @param source		font data
-     * @param sourceLength	length of the font data
-     * @param style			font style
-     * @param hint			whether to hint the font
      */
-    bool createFont(std::string name, uint8_t* source, uint32_t sourceLength, g_font_style style = g_font_style::NORMAL, bool hint = true);
+    bool registerFont(std::string name, g_font* font);
 
     /**
      * Looks for an existing font with the "name".

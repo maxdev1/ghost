@@ -193,10 +193,10 @@ void open_executable_spawn(open_executable_action_handler_t* data)
     g_spawn(data->exe.c_str(), data->args.c_str(), "/", G_SECURITY_LEVEL_APPLICATION);
 }
 
+static int nextExeButtonPos = 70;
 void addExecutableButton(window_t* window, std::string name, std::string exe, std::string args)
 {
 
-    static int nextExeButtonPos = 70;
     button_t* openCalculatorButton = new button_t();
     openCalculatorButton->setBounds(g_rectangle(10, nextExeButtonPos, 270, 30));
     openCalculatorButton->getLabel().setTitle(name);
@@ -217,60 +217,62 @@ void windowserver_t::createTestComponents()
     infoLabel->setBounds(g_rectangle(10, 10, 300, 20));
     infoLabel->setTitle("This is a demo launchpad for executing");
     infoLabel->setColor(RGB(0, 0, 0));
-    //  testWindow->addChild(infoLabel);
+    testWindow->addChild(infoLabel);
 
     label_t* infoLabel2 = new label_t();
     infoLabel2->setBounds(g_rectangle(10, 30, 300, 20));
     infoLabel2->setTitle("the available GUI applications.");
     infoLabel2->setColor(RGB(0, 0, 0));
-    // testWindow->addChild(infoLabel2);
+    testWindow->addChild(infoLabel2);
 
-    //// addExecutableButton(testWindow, "Calculator", "/applications/calculator.bin", "");
-    // addExecutableButton(testWindow, "Terminal", "/applications/terminal2.bin", "");
-    // addExecutableButton(testWindow, "Drawing demo", "/applications/tetris.bin", "");
+    addExecutableButton(testWindow, "Calculator", "/applications/calculator.bin", "");
+    addExecutableButton(testWindow, "Terminal", "/applications/terminal2.bin", "");
+    addExecutableButton(testWindow, "Drawing demo", "/applications/tetris.bin", "");
+
+    text_field_t* testField = new text_field_t();
+    testField->setBounds(g_rectangle(10, nextExeButtonPos, 270, 30));
+    testWindow->addChild(testField);
 
     screen->addChild(testWindow);
     testWindow->setVisible(true);
 
-    /*
-        window_t* secondWindow = new window_t;
-        secondWindow->setTitle("Scroller");
-        secondWindow->setBounds(g_rectangle(200, 200, 500, 500));
-        secondWindow->setLayoutManager(new grid_layout_manager_t(1, 1));
+    window_t* secondWindow = new window_t;
+    secondWindow->setTitle("Scroller");
+    secondWindow->setBounds(g_rectangle(200, 200, 500, 500));
+    secondWindow->setLayoutManager(new grid_layout_manager_t(1, 1));
 
-        scrollpane_t* scroller = new scrollpane_t;
-        scroller->setBounds(g_rectangle(0, 0, 300, 200));
-        secondWindow->addChild(scroller);
+    scrollpane_t* scroller = new scrollpane_t;
+    scroller->setBounds(g_rectangle(0, 0, 300, 200));
+    secondWindow->addChild(scroller);
 
-        panel_t* contentPanel = new panel_t();
-        contentPanel->setBounds(g_rectangle(0, 0, 400, 400));
-        contentPanel->setBackground(RGB(200, 200, 200));
-        contentPanel->setLayoutManager(new grid_layout_manager_t(1, 5));
-        scroller->setViewPort(contentPanel);
+    panel_t* contentPanel = new panel_t();
+    contentPanel->setBounds(g_rectangle(0, 0, 400, 400));
+    contentPanel->setBackground(RGB(200, 200, 200));
+    contentPanel->setLayoutManager(new grid_layout_manager_t(1, 5));
+    scroller->setViewPort(contentPanel);
 
-        button_t* button1 = new button_t();
-        button1->getLabel().setTitle("Button 1");
-        contentPanel->addChild(button1);
+    /*   button_t* button1 = new button_t();
+       button1->getLabel().setTitle("Button 1");
+       contentPanel->addChild(button1);
 
-        label_t* label1 = new label_t();
-        label1->setTitle("This is a panel with some scrollable content. The content is layouted using a grid layout.");
-        contentPanel->addChild(label1);
+       label_t* label1 = new label_t();
+       label1->setTitle("This is a panel with some scrollable content. The content is layouted using a grid layout.");
+       contentPanel->addChild(label1);
 
-        label_t* label2 = new label_t();
-        label2->setTitle("The height of the content panel is used to specify the scrollable area.");
-        contentPanel->addChild(label2);
+       label_t* label2 = new label_t();
+       label2->setTitle("The height of the content panel is used to specify the scrollable area.");
+       contentPanel->addChild(label2);
 
-        button_t* button2 = new button_t();
-        button2->getLabel().setTitle("Button 2");
-        contentPanel->addChild(button2);
+       button_t* button2 = new button_t();
+       button2->getLabel().setTitle("Button 2");
+       contentPanel->addChild(button2);
 
-        label_t* label3 = new label_t();
-        label3->setTitle("Yey! Works great :)");
-        contentPanel->addChild(label3);
+       label_t* label3 = new label_t();
+       label3->setTitle("Yey! Works great :)");
+       contentPanel->addChild(label3);*/
 
-        screen->addChild(secondWindow);
-        secondWindow->setVisible(true);
-        */
+    screen->addChild(secondWindow);
+    secondWindow->setVisible(true);
 }
 
 component_t* windowserver_t::dispatchUpwards(component_t* component, event_t& event)

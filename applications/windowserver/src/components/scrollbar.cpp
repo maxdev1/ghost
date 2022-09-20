@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "components/scrollbar.hpp"
+#include "components/cursor.hpp"
 #include "events/mouse_event.hpp"
 
 #include <stdio.h>
@@ -32,7 +33,6 @@ void scrollbar_t::paint()
 
     g_rectangle knob = calculateKnob();
 
-    // knob
     cairo_rectangle(cr, knob.x, knob.y, knob.width, knob.height);
     cairo_set_source_rgba(cr, 0, 0, 0, 0.5);
     cairo_fill(cr);
@@ -46,11 +46,11 @@ bool scrollbar_t::handle(event_t& e)
     {
         if(me->type == G_MOUSE_EVENT_ENTER)
         {
+            cursor_t::set("default");
             markFor(COMPONENT_REQUIREMENT_PAINT);
         }
         else if(me->type == G_MOUSE_EVENT_PRESS)
         {
-
             g_rectangle knob = calculateKnob();
             if(knob.contains(me->position))
             {

@@ -114,7 +114,7 @@ void window_t::paint()
     cairo_line_to(cr, bounds.width - shadowSize, bounds.height - shadowSize);
     cairo_line_to(cr, shadowSize, bounds.height - shadowSize);
     cairo_close_path(cr);
-    cairo_set_source_rgba(cr, 0.95, 0.95, 0.95, focused ? 1 : 0.8);
+    cairo_set_source_rgba(cr, 0.95, 0.95, 0.95, focused ? 1 : 0.95);
     cairo_fill(cr);
 
     // draw cross
@@ -183,6 +183,7 @@ bool window_t::handle(event_t& event)
 
         if(mouseEvent->type == G_MOUSE_EVENT_MOVE)
         {
+            std::string lastCursor = cursor_t::get();
             if(resizable)
             {
                 g_point pos = mouseEvent->position;
@@ -233,7 +234,11 @@ bool window_t::handle(event_t& event)
             {
                 crossHovered = false;
             }
-            markFor(COMPONENT_REQUIREMENT_PAINT);
+
+            if(cursor_t::get() != lastCursor)
+            {
+                markFor(COMPONENT_REQUIREMENT_PAINT);
+            }
         }
         else if(mouseEvent->type == G_MOUSE_EVENT_DRAG)
         {

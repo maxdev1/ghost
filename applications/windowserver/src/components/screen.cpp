@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "components/screen.hpp"
+#include "components/cursor.hpp"
 
 void screen_t::markDirty(g_rectangle rect)
 {
@@ -57,4 +58,19 @@ void screen_t::markDirty(g_rectangle rect)
     {
         invalid.height = getBounds().height - invalid.y;
     }
+}
+
+bool screen_t::handle(event_t& e)
+{
+    bool childHandled = component_t::handle(e);
+    if(!childHandled)
+    {
+        mouse_event_t* me = dynamic_cast<mouse_event_t*>(&e);
+        if(me)
+        {
+            cursor_t::set("default");
+        }
+    }
+
+    return true;
 }

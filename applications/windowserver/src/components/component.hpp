@@ -151,11 +151,6 @@ class component_t : public bounds_event_component_t
         return children;
     }
 
-    bool isVisible() const
-    {
-        return visible;
-    }
-
     bool canHandleEvents() const;
 
     void setVisible(bool visible);

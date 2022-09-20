@@ -103,7 +103,6 @@ void button_t::paint()
 
 bool button_t::handle(event_t& e)
 {
-
     mouse_event_t* me = dynamic_cast<mouse_event_t*>(&e);
     if(me)
     {
