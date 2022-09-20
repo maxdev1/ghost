@@ -361,7 +361,6 @@ bool text_field_t::handleMouseEvent(mouse_event_t& me)
         visualStatus = text_field_visual_status_t::HOVERED;
         markFor(COMPONENT_REQUIREMENT_PAINT);
         cursor_t::set("text");
-        klog("Mouse enter");
     }
     else if(me.type == G_MOUSE_EVENT_LEAVE)
     {
@@ -408,7 +407,6 @@ bool text_field_t::handleMouseEvent(mouse_event_t& me)
 
 int text_field_t::viewToPosition(g_point p)
 {
-
     int pos = 0;
 
     for(int i = 0; i < viewModel->positions.size(); i++)
@@ -455,32 +453,10 @@ g_range text_field_t::getSelectedRange()
 
 bool text_field_t::getNumericProperty(int property, uint32_t* out)
 {
-
-    /*
-    TODO
-
-        if(property == G_UI_PROPERTY_SECURE)
-        {
-            *out = secure;
-            return true;
-        }
-    */
-
     return false;
 }
 
 bool text_field_t::setNumericProperty(int property, uint32_t value)
 {
-
-    /*
-    TODO
-
-        if(property == G_UI_PROPERTY_SECURE)
-        {
-            secure = value;
-            return true;
-        }
-    */
-
     return component_t::setNumericProperty(property, value);
 }
