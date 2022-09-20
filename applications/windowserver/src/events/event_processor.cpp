@@ -32,9 +32,6 @@
 #include "input/input_receiver.hpp"
 #include "windowserver.hpp"
 
-// TODO remove
-#include <typeinfo>
-
 event_processor_t::event_processor_t()
 {
     multiclickTimespan = DEFAULT_MULTICLICK_TIMESPAN;

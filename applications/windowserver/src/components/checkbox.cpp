@@ -64,45 +64,38 @@ void checkbox_t::paint()
      */
 }
 
-bool checkbox_t::handle(event_t& e)
+bool checkbox_t::handleMouseEvent(mouse_event_t& me)
 {
-
-    mouse_event_t* me = dynamic_cast<mouse_event_t*>(&e);
-    if(me)
+    if(me.type == G_MOUSE_EVENT_ENTER)
     {
-        if(me->type == G_MOUSE_EVENT_ENTER)
-        {
-            hovered = true;
-            markFor(COMPONENT_REQUIREMENT_PAINT);
-        }
-        else if(me->type == G_MOUSE_EVENT_LEAVE)
-        {
-            hovered = false;
-            markFor(COMPONENT_REQUIREMENT_PAINT);
-        }
-        else if(me->type == G_MOUSE_EVENT_PRESS)
-        {
-            pressed = true;
-            markFor(COMPONENT_REQUIREMENT_PAINT);
-        }
-        else if(me->type == G_MOUSE_EVENT_RELEASE || me->type == G_MOUSE_EVENT_DRAG_RELEASE)
-        {
-            pressed = false;
-
-            g_rectangle minbounds = getBounds();
-            minbounds.x = 0;
-            minbounds.y = 0;
-            if(me->type == G_MOUSE_EVENT_RELEASE && minbounds.contains(me->position))
-            {
-                checked = !checked;
-            }
-
-            markFor(COMPONENT_REQUIREMENT_PAINT);
-        }
-        return true;
+        hovered = true;
+        markFor(COMPONENT_REQUIREMENT_PAINT);
     }
+    else if(me.type == G_MOUSE_EVENT_LEAVE)
+    {
+        hovered = false;
+        markFor(COMPONENT_REQUIREMENT_PAINT);
+    }
+    else if(me.type == G_MOUSE_EVENT_PRESS)
+    {
+        pressed = true;
+        markFor(COMPONENT_REQUIREMENT_PAINT);
+    }
+    else if(me.type == G_MOUSE_EVENT_RELEASE || me.type == G_MOUSE_EVENT_DRAG_RELEASE)
+    {
+        pressed = false;
 
-    return false;
+        g_rectangle minbounds = getBounds();
+        minbounds.x = 0;
+        minbounds.y = 0;
+        if(me.type == G_MOUSE_EVENT_RELEASE && minbounds.contains(me.position))
+        {
+            checked = !checked;
+        }
+
+        markFor(COMPONENT_REQUIREMENT_PAINT);
+    }
+    return true;
 }
 
 void checkbox_t::handleBoundChange(g_rectangle oldBounds)

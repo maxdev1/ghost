@@ -101,7 +101,8 @@ class window_t : public component_t, public titled_component_t
 
     virtual void handleBoundChange(g_rectangle oldBounds);
 
-    virtual bool handle(event_t& e);
+    virtual bool handleFocusEvent(focus_event_t& e);
+    virtual bool handleMouseEvent(mouse_event_t& e);
 
     virtual bool getNumericProperty(int property, uint32_t* out);
 

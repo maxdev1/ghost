@@ -20,38 +20,33 @@
 
 #include "components/text/fonts/text_layouter.hpp"
 
+#define BOUNDS_EMPTY 0xFFFFFF
 static g_text_layouter* instance = 0;
 
 g_text_layouter* g_text_layouter::getInstance()
 {
-    if(instance == 0)
-    {
+    if(!instance)
         instance = new g_text_layouter();
-    }
     return instance;
 }
 
 void rightAlign(g_layouted_text* text, int line, int lineWidth, g_rectangle& bounds)
 {
-    int difference = bounds.width - bounds.x - lineWidth;
+    int diff = bounds.width - bounds.x - lineWidth;
     for(g_positioned_glyph& g : text->positions)
     {
         if(g.line == line)
-        {
-            g.position.x += difference;
-        }
+            g.position.x += diff;
     }
 }
 
 void centerAlign(g_layouted_text* text, int line, int lineWidth, g_rectangle& bounds)
 {
-    int difference = (bounds.width - bounds.x) / 2 - lineWidth / 2;
+    int diff = (bounds.width - bounds.x) / 2 - lineWidth / 2;
     for(g_positioned_glyph& g : text->positions)
     {
         if(g.line == line)
-        {
-            g.position.x += difference;
-        }
+            g.position.x += diff;
     }
 }
 
@@ -60,14 +55,12 @@ g_layouted_text* g_text_layouter::initializeBuffer()
     return new g_layouted_text();
 }
 
-void g_text_layouter::layout(cairo_t* cr, const char* text, g_font* font, int size, g_rectangle bounds, g_text_alignment alignment, g_layouted_text* layout,
-                             bool breakOnOverflow)
+void g_text_layouter::layout(cairo_t* cr, const char* text, g_font* font, int size,
+                             g_rectangle bounds, g_text_alignment alignment,
+                             g_layouted_text* layout, bool breakOnOverflow)
 {
-
-    if(font == 0)
-    {
+    if(!font)
         return;
-    }
 
     size_t text_len = strlen(text);
 
@@ -192,7 +185,6 @@ void g_text_layouter::layout(cairo_t* cr, const char* text, g_font* font, int si
     }
 
     // Set text bounds
-#define BOUNDS_EMPTY 0xFFFFFF
     int tbTop = BOUNDS_EMPTY;
     int tbLeft = BOUNDS_EMPTY;
     int tbRight = 0;
@@ -234,12 +226,8 @@ void g_text_layouter::layout(cairo_t* cr, const char* text, g_font* font, int si
 void g_text_layouter::destroyLayout(g_layouted_text* layout)
 {
     if(layout->glyph_buffer)
-    {
         free(layout->glyph_buffer);
-    }
     if(layout->cluster_buffer)
-    {
         free(layout->cluster_buffer);
-    }
     delete layout;
 }

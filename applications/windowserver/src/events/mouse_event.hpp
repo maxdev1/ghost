@@ -23,6 +23,7 @@
 
 #include "events/event.hpp"
 #include "events/locatable.hpp"
+#include <libwindow/ui.hpp>
 
 class mouse_event_t : public event_t, public locatable_t
 {
@@ -31,9 +32,13 @@ class mouse_event_t : public event_t, public locatable_t
     {
     }
 
+    virtual ~mouse_event_t() {}
+
     g_mouse_event_type type;
     g_mouse_button buttons;
     int clickCount;
+
+    virtual bool visit(component_t* component);
 };
 
 #endif

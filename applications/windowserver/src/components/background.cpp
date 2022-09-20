@@ -55,8 +55,3 @@ void background_t::paint()
         cairo_fill(cr);
     }
 }
-
-bool background_t::handle(event_t& e)
-{
-    return false;
-}

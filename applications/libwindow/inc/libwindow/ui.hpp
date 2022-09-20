@@ -74,7 +74,7 @@ typedef struct
     uint16_t blit_y;
     uint16_t blit_width;
     uint16_t blit_height;
-    g_bool ready;
+    uint8_t ready;
 } __attribute__((packed)) g_ui_canvas_shared_memory_header;
 
 /**

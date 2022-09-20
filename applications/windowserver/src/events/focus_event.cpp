@@ -18,18 +18,10 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __WINDOWSERVER_EVENTS_LOCATABLE__
-#define __WINDOWSERVER_EVENTS_LOCATABLE__
+#include "events/focus_event.hpp"
+#include "components/component.hpp"
 
-#include <libwindow/metrics/point.hpp>
-
-class component_t;
-
-class locatable_t
+bool focus_event_t::visit(component_t* component)
 {
-  public:
-    g_point position;
-    g_point screenPosition;
-};
-
-#endif
+    return component->handleFocusEvent(*this);
+}

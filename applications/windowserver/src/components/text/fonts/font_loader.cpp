@@ -43,11 +43,9 @@ g_font* g_font_loader::getSystemFont(std::string name)
 g_font* g_font_loader::get(std::string name)
 {
     g_font* font = getSystemFont(name);
-
-    if(font == 0)
-        font = getDefault();
-
-    return font;
+    if(font)
+        return font;
+    return getDefault();
 }
 
 g_font* g_font_loader::getDefault()

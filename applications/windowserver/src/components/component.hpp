@@ -24,6 +24,9 @@
 #include "components/bounds_event_component.hpp"
 #include "components/event_listener_info.hpp"
 #include "events/event.hpp"
+#include "events/focus_event.hpp"
+#include "events/key_event.hpp"
+#include "events/mouse_event.hpp"
 #include "layout/layout_manager.hpp"
 #include "video/graphics.hpp"
 
@@ -257,12 +260,9 @@ class component_t : public bounds_event_component_t
      */
     virtual g_point getLocationOnScreen();
 
-    /**
-     * Handles the given event
-     *
-     * @return true if it was handled, otherwise false
-     */
-    virtual bool handle(event_t& event);
+    virtual bool handleMouseEvent(mouse_event_t& event);
+    virtual bool handleKeyEvent(key_event_t& event);
+    virtual bool handleFocusEvent(focus_event_t& event);
 
     virtual void handleBoundChange(g_rectangle oldBounds)
     {

@@ -29,6 +29,10 @@ class key_event_t : public event_t
 {
   public:
     g_key_info info;
+
+    virtual ~key_event_t() {}
+
+    virtual bool visit(component_t* component);
 };
 
 #endif

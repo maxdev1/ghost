@@ -39,7 +39,7 @@ class plain_console_panel_t : public component_t
 
     virtual void update();
     virtual void paint();
-    virtual bool handle(event_t& e);
+    virtual bool handleFocusEvent(focus_event_t& e);
 
     void append(char c);
 };

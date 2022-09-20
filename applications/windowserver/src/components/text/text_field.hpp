@@ -57,6 +57,8 @@ class text_field_t : public text_component_t, public titled_component_t
 
     g_layouted_text* viewModel;
 
+    bool shiftDown = false;
+
     void loadDefaultFont();
     void applyScroll();
 
@@ -74,10 +76,9 @@ class text_field_t : public text_component_t, public titled_component_t
      */
     virtual void paint();
 
-    /**
-     *
-     */
-    virtual bool handle(event_t& e);
+    virtual bool handleKeyEvent(key_event_t& e);
+    virtual bool handleMouseEvent(mouse_event_t& e);
+    virtual bool handleFocusEvent(focus_event_t& e);
 
     /**
      *
