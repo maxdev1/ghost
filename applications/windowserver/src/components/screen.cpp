@@ -60,16 +60,11 @@ void screen_t::markDirty(g_rectangle rect)
     }
 }
 
-bool screen_t::handle(event_t& e)
+bool screen_t::handleMouseEvent(mouse_event_t& e)
 {
-    bool childHandled = component_t::handle(e);
-    if(!childHandled)
+    if(!component_t::handleMouseEvent(e))
     {
-        mouse_event_t* me = dynamic_cast<mouse_event_t*>(&e);
-        if(me)
-        {
-            cursor_t::set("default");
-        }
+        cursor_t::set("default");
     }
 
     return true;

@@ -52,7 +52,6 @@ void text_field_t::setText(std::string newText)
 
 void text_field_t::update()
 {
-
     // Perform layouting
     g_rectangle bounds = getBounds();
 
@@ -118,7 +117,6 @@ void text_field_t::paint()
         pos = 0;
         for(g_positioned_glyph& g : viewModel->positions)
         {
-
             g_color_argb color = textColor;
             if(first != second && pos >= first && pos < second)
             {
@@ -299,124 +297,113 @@ void text_field_t::insert(std::string ins)
     markFor(COMPONENT_REQUIREMENT_UPDATE);
 }
 
-bool text_field_t::handle(event_t& e)
+bool text_field_t::handleKeyEvent(key_event_t& ke)
 {
-
-    static bool shiftDown = false;
-
-    key_event_t* ke = dynamic_cast<key_event_t*>(&e);
-    if(ke)
+    if(ke.info.key == "KEY_SHIFT_L")
     {
-        if(ke->info.key == "KEY_SHIFT_L")
-        {
-            shiftDown = ke->info.pressed;
-        }
-
-        if(ke->info.pressed)
-        {
-
-            if(ke->info.key == "KEY_BACKSPACE")
-            {
-                backspace(ke->info);
-            }
-            else if(ke->info.key == "KEY_ARROW_LEFT")
-            {
-                caretMoveStrategy->moveCaret(this, caret_direction_t::LEFT, ke->info);
-            }
-            else if(ke->info.key == "KEY_ARROW_RIGHT")
-            {
-                caretMoveStrategy->moveCaret(this, caret_direction_t::RIGHT, ke->info);
-            }
-            else if(ke->info.key == "KEY_A" && ke->info.ctrl)
-            {
-                marker = 0;
-                cursor = text.length();
-                markFor(COMPONENT_REQUIREMENT_PAINT);
-            }
-            else
-            {
-                char c = g_keyboard::charForKey(ke->info);
-
-                if(c != -1)
-                {
-                    std::stringstream s;
-                    s << c;
-                    insert(s.str());
-                }
-            }
-        }
-        return true;
+        shiftDown = ke.info.pressed;
     }
 
-    focus_event_t* fe = dynamic_cast<focus_event_t*>(&e);
-    if(fe)
+    if(ke.info.pressed)
     {
-        if(fe->type == FOCUS_EVENT_GAINED)
+
+        if(ke.info.key == "KEY_BACKSPACE")
         {
-            focused = true;
+            backspace(ke.info);
+        }
+        else if(ke.info.key == "KEY_ARROW_LEFT")
+        {
+            caretMoveStrategy->moveCaret(this, caret_direction_t::LEFT, ke.info);
+        }
+        else if(ke.info.key == "KEY_ARROW_RIGHT")
+        {
+            caretMoveStrategy->moveCaret(this, caret_direction_t::RIGHT, ke.info);
+        }
+        else if(ke.info.key == "KEY_A" && ke.info.ctrl)
+        {
+            marker = 0;
+            cursor = text.length();
+            markFor(COMPONENT_REQUIREMENT_PAINT);
         }
         else
         {
-            focused = false;
-        }
-        markFor(COMPONENT_REQUIREMENT_PAINT);
-        return true;
-    }
+            char c = g_keyboard::charForKey(ke.info);
 
-    mouse_event_t* me = dynamic_cast<mouse_event_t*>(&e);
-    if(me)
+            if(c != -1)
+            {
+                std::stringstream s;
+                s << c;
+                insert(s.str());
+            }
+        }
+    }
+    return true;
+}
+
+bool text_field_t::handleFocusEvent(focus_event_t& fe)
+{
+    if(fe.type == FOCUS_EVENT_GAINED)
     {
-        if(me->type == G_MOUSE_EVENT_ENTER)
-        {
-            visualStatus = text_field_visual_status_t::HOVERED;
-            markFor(COMPONENT_REQUIREMENT_PAINT);
-            cursor_t::set("text");
-            klog("Mouse enter");
-        }
-        else if(me->type == G_MOUSE_EVENT_LEAVE)
-        {
-            visualStatus = text_field_visual_status_t::NORMAL;
-            markFor(COMPONENT_REQUIREMENT_PAINT);
-            cursor_t::set("default");
-        }
-        else if(me->type == G_MOUSE_EVENT_PRESS)
-        {
+        focused = true;
+    }
+    else
+    {
+        focused = false;
+    }
+    markFor(COMPONENT_REQUIREMENT_PAINT);
+    return true;
+}
 
-            g_point p = me->position;
-            int clickCursor = viewToPosition(p);
+bool text_field_t::handleMouseEvent(mouse_event_t& me)
+{
+    if(me.type == G_MOUSE_EVENT_ENTER)
+    {
+        visualStatus = text_field_visual_status_t::HOVERED;
+        markFor(COMPONENT_REQUIREMENT_PAINT);
+        cursor_t::set("text");
+        klog("Mouse enter");
+    }
+    else if(me.type == G_MOUSE_EVENT_LEAVE)
+    {
+        visualStatus = text_field_visual_status_t::NORMAL;
+        markFor(COMPONENT_REQUIREMENT_PAINT);
+        cursor_t::set("default");
+    }
+    else if(me.type == G_MOUSE_EVENT_PRESS)
+    {
 
-            if(me->clickCount > 2)
+        g_point p = me.position;
+        int clickCursor = viewToPosition(p);
+
+        if(me.clickCount > 2)
+        {
+            marker = 0;
+            cursor = text.length();
+        }
+        else if(me.clickCount == 2)
+        {
+            marker = caretMoveStrategy->calculateSkip(text, clickCursor, caret_direction_t::LEFT);
+            cursor = caretMoveStrategy->calculateSkip(text, clickCursor, caret_direction_t::RIGHT);
+        }
+        else
+        {
+            cursor = clickCursor;
+            if(!shiftDown)
             {
-                marker = 0;
-                cursor = text.length();
+                marker = cursor;
             }
-            else if(me->clickCount == 2)
-            {
-                marker = caretMoveStrategy->calculateSkip(text, clickCursor, caret_direction_t::LEFT);
-                cursor = caretMoveStrategy->calculateSkip(text, clickCursor, caret_direction_t::RIGHT);
-            }
-            else
-            {
-                cursor = clickCursor;
-                if(!shiftDown)
-                {
-                    marker = cursor;
-                }
-            }
-
-            markFor(COMPONENT_REQUIREMENT_PAINT);
-        }
-        else if(me->type == G_MOUSE_EVENT_DRAG)
-        {
-            g_point p = me->position;
-            cursor = viewToPosition(p);
-            markFor(COMPONENT_REQUIREMENT_PAINT);
         }
 
-        return true;
+        markFor(COMPONENT_REQUIREMENT_PAINT);
+    }
+    else if(me.type == G_MOUSE_EVENT_DRAG)
+    {
+        g_point p = me.position;
+        cursor = viewToPosition(p);
+        markFor(COMPONENT_REQUIREMENT_PAINT);
     }
 
-    return false;
+    return true;
 }
 
 int text_field_t::viewToPosition(g_point p)
@@ -469,15 +456,15 @@ g_range text_field_t::getSelectedRange()
 bool text_field_t::getNumericProperty(int property, uint32_t* out)
 {
 
-/* 
-TODO
+    /*
+    TODO
 
-    if(property == G_UI_PROPERTY_SECURE)
-    {
-        *out = secure;
-        return true;
-    }
-*/
+        if(property == G_UI_PROPERTY_SECURE)
+        {
+            *out = secure;
+            return true;
+        }
+    */
 
     return false;
 }
@@ -485,15 +472,15 @@ TODO
 bool text_field_t::setNumericProperty(int property, uint32_t value)
 {
 
-/*
-TODO
+    /*
+    TODO
 
-    if(property == G_UI_PROPERTY_SECURE)
-    {
-        secure = value;
-        return true;
-    }
-*/
+        if(property == G_UI_PROPERTY_SECURE)
+        {
+            secure = value;
+            return true;
+        }
+    */
 
     return component_t::setNumericProperty(property, value);
 }

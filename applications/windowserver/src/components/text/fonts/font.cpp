@@ -61,10 +61,8 @@ bool g_font::readAllBytes(FILE* file, uint32_t offset, uint8_t* buffer, uint32_t
     while(remain)
     {
         size_t read = fread(&buffer[len - remain], 1, remain, file);
-        if(read == 0)
-        {
+        if(read <= 0)
             return false;
-        }
         remain -= read;
     }
 

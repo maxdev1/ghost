@@ -43,7 +43,7 @@ class checkbox_t : public component_t
 
     virtual void layout();
     virtual void paint();
-    virtual bool handle(event_t& e);
+    virtual bool handleMouseEvent(mouse_event_t& e);
     virtual void handleBoundChange(g_rectangle oldBounds);
 
     label_t& getLabel()

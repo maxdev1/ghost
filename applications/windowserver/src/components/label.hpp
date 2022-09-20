@@ -45,7 +45,6 @@ class label_t : public component_t, public titled_component_t
 
     virtual void paint();
     virtual void update();
-    virtual bool handle(event_t& e);
 
     virtual void setFont(g_font* font);
 

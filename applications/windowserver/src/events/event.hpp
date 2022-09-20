@@ -21,12 +21,14 @@
 #ifndef __WINDOWSERVER_EVENTS_EVENT__
 #define __WINDOWSERVER_EVENTS_EVENT__
 
+class component_t;
+
 class event_t
 {
   public:
-    virtual ~event_t()
-    {
-    }
+    virtual ~event_t() {}
+
+    virtual bool visit(component_t* component) = 0;
 };
 
 #endif

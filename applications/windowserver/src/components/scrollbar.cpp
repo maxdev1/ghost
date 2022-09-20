@@ -26,7 +26,6 @@
 
 void scrollbar_t::paint()
 {
-
     g_rectangle bounds = getBounds();
     auto cr = graphics.getContext();
     clearSurface();
@@ -38,85 +37,78 @@ void scrollbar_t::paint()
     cairo_fill(cr);
 }
 
-bool scrollbar_t::handle(event_t& e)
+bool scrollbar_t::handleMouseEvent(mouse_event_t& me)
 {
-
-    mouse_event_t* me = dynamic_cast<mouse_event_t*>(&e);
-    if(me)
+    if(me.type == G_MOUSE_EVENT_ENTER)
     {
-        if(me->type == G_MOUSE_EVENT_ENTER)
+        cursor_t::set("default");
+        markFor(COMPONENT_REQUIREMENT_PAINT);
+    }
+    else if(me.type == G_MOUSE_EVENT_PRESS)
+    {
+        g_rectangle knob = calculateKnob();
+        if(knob.contains(me.position))
         {
-            cursor_t::set("default");
-            markFor(COMPONENT_REQUIREMENT_PAINT);
-        }
-        else if(me->type == G_MOUSE_EVENT_PRESS)
-        {
-            g_rectangle knob = calculateKnob();
-            if(knob.contains(me->position))
-            {
-                if(orientation == scrollbar_orientation_t::VERTICAL)
-                {
-                    dragPressPosition = me->position.y;
-                    dragViewPosition = knob.y;
-                }
-                else if(orientation == scrollbar_orientation_t::HORIZONTAL)
-                {
-                    dragPressPosition = me->position.x;
-                    dragViewPosition = knob.x;
-                }
-            }
-            markFor(COMPONENT_REQUIREMENT_PAINT);
-        }
-        else if(me->type == G_MOUSE_EVENT_DRAG)
-        {
-
-            int mousePosition;
             if(orientation == scrollbar_orientation_t::VERTICAL)
             {
-                mousePosition = me->position.y;
+                dragPressPosition = me.position.y;
+                dragViewPosition = knob.y;
             }
             else if(orientation == scrollbar_orientation_t::HORIZONTAL)
             {
-                mousePosition = me->position.x;
+                dragPressPosition = me.position.x;
+                dragViewPosition = knob.x;
             }
-
-            int viewPosition = dragViewPosition + (mousePosition - dragPressPosition);
-            int viewMax = getViewMax();
-            if(viewPosition < 0)
-            {
-                viewPosition = 0;
-            }
-            else if(viewPosition > viewMax)
-            {
-                viewPosition = viewMax;
-            }
-
-            if(viewMax == 0)
-            {
-                viewMax = 1;
-            }
-            int modelMax = modelTotalArea - modelVisibleArea;
-            modelPosition = (viewPosition * modelMax) / viewMax;
-            if(modelPosition < 0)
-            {
-                modelPosition = 0;
-            }
-            else if(modelPosition > modelMax)
-            {
-                modelPosition = modelMax;
-            }
-
-            if(scrollHandler)
-            {
-                scrollHandler->handleScroll(this);
-            }
-
-            markFor(COMPONENT_REQUIREMENT_PAINT);
         }
-        return true;
+        markFor(COMPONENT_REQUIREMENT_PAINT);
     }
+    else if(me.type == G_MOUSE_EVENT_DRAG)
+    {
 
-    return false;
+        int mousePosition;
+        if(orientation == scrollbar_orientation_t::VERTICAL)
+        {
+            mousePosition = me.position.y;
+        }
+        else if(orientation == scrollbar_orientation_t::HORIZONTAL)
+        {
+            mousePosition = me.position.x;
+        }
+
+        int viewPosition = dragViewPosition + (mousePosition - dragPressPosition);
+        int viewMax = getViewMax();
+        if(viewPosition < 0)
+        {
+            viewPosition = 0;
+        }
+        else if(viewPosition > viewMax)
+        {
+            viewPosition = viewMax;
+        }
+
+        if(viewMax == 0)
+        {
+            viewMax = 1;
+        }
+        int modelMax = modelTotalArea - modelVisibleArea;
+        modelPosition = (viewPosition * modelMax) / viewMax;
+        if(modelPosition < 0)
+        {
+            modelPosition = 0;
+        }
+        else if(modelPosition > modelMax)
+        {
+            modelPosition = modelMax;
+        }
+
+        if(scrollHandler)
+        {
+            scrollHandler->handleScroll(this);
+        }
+
+        markFor(COMPONENT_REQUIREMENT_PAINT);
+    }
+    return true;
 }
 
 void scrollbar_t::setModelArea(int visible, int total)

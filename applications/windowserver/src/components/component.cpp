@@ -223,44 +223,79 @@ g_point component_t::getLocationOnScreen()
     return location;
 }
 
-bool component_t::handle(event_t& event)
+bool component_t::handleMouseEvent(mouse_event_t& event)
 {
-    locatable_t* locatable = dynamic_cast<locatable_t*>(&event);
+    bool childHandled = false;
 
     g_atomic_lock(&children_lock);
     for(auto it = children.rbegin(); it != children.rend(); ++it)
     {
         auto child = (*it).component;
+        if(!child->visible)
+            continue;
 
-        if(child->visible)
+        if(child->bounds.contains(event.position))
         {
-            if(locatable)
-            {
-                if(child->bounds.contains(locatable->position))
-                {
-                    locatable->position.x -= child->bounds.x;
-                    locatable->position.y -= child->bounds.y;
+            event.position.x -= child->bounds.x;
+            event.position.y -= child->bounds.y;
 
-                    if(child->handle(event))
-                    {
-                        children_lock = 0;
-                        return true;
-                    }
-
-                    locatable->position.x += child->bounds.x;
-                    locatable->position.y += child->bounds.y;
-                }
-            }
-            else if(child->handle(event))
+            if(child->handleMouseEvent(event))
             {
-                children_lock = 0;
-                return true;
+                childHandled = true;
+                break;
             }
+
+            event.position.x += child->bounds.x;
+            event.position.y += child->bounds.y;
         }
     }
-
     children_lock = 0;
-    return false;
+
+    return childHandled;
+}
+
+bool component_t::handleKeyEvent(key_event_t& event)
+{
+    bool childHandled = false;
+
+    g_atomic_lock(&children_lock);
+    for(auto it = children.rbegin(); it != children.rend(); ++it)
+    {
+        auto child = (*it).component;
+        if(!child->visible)
+            continue;
+
+        if(child->handleKeyEvent(event))
+        {
+            childHandled = true;
+            break;
+        }
+    }
+    children_lock = 0;
+
+    return childHandled;
+}
+
+bool component_t::handleFocusEvent(focus_event_t& event)
+{
+    bool childHandled = false;
+
+    g_atomic_lock(&children_lock);
+    for(auto it = children.rbegin(); it != children.rend(); ++it)
+    {
+        auto child = (*it).component;
+        if(!child->visible)
+            continue;
+
+        if(child->handleFocusEvent(event))
+        {
+            childHandled = true;
+            break;
+        }
+    }
+    children_lock = 0;
+
+    return childHandled;
 }
 
 void component_t::setPreferredSize(const g_dimension& size)

@@ -38,8 +38,6 @@ class background_t : public component_t
 
     virtual void paint();
 
-    virtual bool handle(event_t& e);
-
     virtual void load(const char* path);
 };
 

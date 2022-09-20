@@ -77,26 +77,18 @@ void plain_console_panel_t::paint()
     }*/
 }
 
-bool plain_console_panel_t::handle(event_t& e)
+bool plain_console_panel_t::handleFocusEvent(focus_event_t& fe)
 {
-
-    focus_event_t* fe = dynamic_cast<focus_event_t*>(&e);
-    if(fe)
+    if(fe.type == FOCUS_EVENT_GAINED)
     {
-        if(fe->type == FOCUS_EVENT_GAINED)
-        {
-            focused = true;
-        }
-        else if(fe->type == FOCUS_EVENT_LOST)
-        {
-            focused = false;
-        }
-        markFor(COMPONENT_REQUIREMENT_PAINT);
-
-        return true;
+        focused = true;
     }
-
-    return false;
+    else if(fe.type == FOCUS_EVENT_LOST)
+    {
+        focused = false;
+    }
+    markFor(COMPONENT_REQUIREMENT_PAINT);
+    return true;
 }
 
 void plain_console_panel_t::append(char c)

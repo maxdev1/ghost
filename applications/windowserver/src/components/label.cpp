@@ -101,12 +101,6 @@ void label_t::paint()
     cairo_show_text(cr, text.c_str());
 }
 
-bool label_t::handle(event_t& e)
-{
-
-    return false;
-}
-
 void label_t::setTitle(std::string newText)
 {
     text = newText;

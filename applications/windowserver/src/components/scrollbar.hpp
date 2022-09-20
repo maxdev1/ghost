@@ -67,7 +67,8 @@ class scrollbar_t : public component_t
     }
 
     virtual void paint();
-    virtual bool handle(event_t& event);
+
+    virtual bool handleMouseEvent(mouse_event_t& e);
 
     virtual void setScrollHandler(scroll_handler_t* handler)
     {
@@ -89,7 +90,6 @@ class scrollbar_t : public component_t
     }
 
     void setModelPosition(int position);
-
     int getModelPosition() const
     {
         return modelPosition;

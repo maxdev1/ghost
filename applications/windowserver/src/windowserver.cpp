@@ -321,7 +321,7 @@ bool windowserver_t::dispatch(component_t* component, event_t& event)
             locatable->position.y -= locationOnScreen.y;
         }
 
-        handled = component->handle(event);
+        handled = event.visit(component);
     }
 
     dispatch_lock = 0;

@@ -59,7 +59,7 @@ g_font* g_font_manager::getFont(std::string name)
 {
     if(fontRegistry.count(name) > 0)
         return fontRegistry[name];
-    return 0;
+    return nullptr;
 }
 
 bool g_font_manager::registerFont(std::string name, g_font* font)

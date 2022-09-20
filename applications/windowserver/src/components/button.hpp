@@ -47,7 +47,8 @@ class button_t : public component_t, public titled_component_t, public action_co
 
     virtual void layout();
     virtual void paint();
-    virtual bool handle(event_t& e);
+    virtual bool handleMouseEvent(mouse_event_t& e);
+    virtual bool handleFocusEvent(focus_event_t& e);
     virtual void handleBoundChange(g_rectangle oldBounds);
 
     virtual void setTitle(std::string title);

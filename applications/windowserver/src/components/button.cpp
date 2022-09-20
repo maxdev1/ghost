@@ -101,65 +101,59 @@ void button_t::paint()
     cairo_stroke(cr);
 }
 
-bool button_t::handle(event_t& e)
+bool button_t::handleMouseEvent(mouse_event_t& me)
 {
-    mouse_event_t* me = dynamic_cast<mouse_event_t*>(&e);
-    if(me)
-    {
-        if(enabled)
-        {
-            if(me->type == G_MOUSE_EVENT_ENTER)
-            {
-                state.hovered = true;
-                markFor(COMPONENT_REQUIREMENT_PAINT);
-            }
-            else if(me->type == G_MOUSE_EVENT_LEAVE)
-            {
-                state.hovered = false;
-                markFor(COMPONENT_REQUIREMENT_PAINT);
-            }
-            else if(me->type == G_MOUSE_EVENT_PRESS)
-            {
-                state.pressed = true;
-                markFor(COMPONENT_REQUIREMENT_PAINT);
-            }
-            else if(me->type == G_MOUSE_EVENT_RELEASE || me->type == G_MOUSE_EVENT_DRAG_RELEASE)
-            {
-                state.pressed = false;
-                markFor(COMPONENT_REQUIREMENT_PAINT);
+    if(!enabled)
+        return false;
 
-                if(me->type == G_MOUSE_EVENT_RELEASE)
-                {
-                    if(me->position.x >= 0 && me->position.y >= 0 && me->position.x < getBounds().width && me->position.y < getBounds().height)
-                    {
-                        fireAction();
-                    }
-                }
-            }
-        }
-        return true;
+    if(me.type == G_MOUSE_EVENT_ENTER)
+    {
+        state.hovered = true;
+        markFor(COMPONENT_REQUIREMENT_PAINT);
     }
-
-    focus_event_t* fe = dynamic_cast<focus_event_t*>(&e);
-    if(fe)
+    else if(me.type == G_MOUSE_EVENT_LEAVE)
     {
-        if(enabled)
+        state.hovered = false;
+        markFor(COMPONENT_REQUIREMENT_PAINT);
+    }
+    else if(me.type == G_MOUSE_EVENT_PRESS)
+    {
+        state.pressed = true;
+        markFor(COMPONENT_REQUIREMENT_PAINT);
+    }
+    else if(me.type == G_MOUSE_EVENT_RELEASE || me.type == G_MOUSE_EVENT_DRAG_RELEASE)
+    {
+        state.pressed = false;
+        markFor(COMPONENT_REQUIREMENT_PAINT);
+
+        if(me.type == G_MOUSE_EVENT_RELEASE)
         {
-            if(fe->type == FOCUS_EVENT_GAINED)
+            if(me.position.x >= 0 && me.position.y >= 0 && me.position.x < getBounds().width && me.position.y < getBounds().height)
             {
-                state.focused = true;
-                markFor(COMPONENT_REQUIREMENT_PAINT);
-                return true;
-            }
-            else if(fe->type == FOCUS_EVENT_LOST)
-            {
-                state.focused = false;
-                markFor(COMPONENT_REQUIREMENT_PAINT);
-                return true;
+                fireAction();
             }
         }
     }
+    return false;
+}
 
+bool button_t::handleFocusEvent(focus_event_t& fe)
+{
+    if(enabled)
+    {
+        if(fe.type == FOCUS_EVENT_GAINED)
+        {
+            state.focused = true;
+            markFor(COMPONENT_REQUIREMENT_PAINT);
+            return true;
+        }
+        else if(fe.type == FOCUS_EVENT_LOST)
+        {
+            state.focused = false;
+            markFor(COMPONENT_REQUIREMENT_PAINT);
+            return true;
+        }
+    }
     return false;
 }
 
