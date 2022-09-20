@@ -24,29 +24,19 @@
 
 g_graphics::g_graphics(uint16_t width, uint16_t height) : width(width), height(height)
 {
-
     resize(width, height);
 }
 
 void g_graphics::resize(int newWidth, int newHeight)
 {
-
-    if(newWidth < 0 || newHeight < 0)
-    {
+    if(newWidth <= 0 || newHeight <= 0)
         return;
-    }
 
-    // release old buffers
     if(surface)
-    {
         cairo_surface_destroy(surface);
-    }
     if(context)
-    {
         cairo_destroy(context);
-    }
 
-    // set new values
     width = newWidth;
     height = newHeight;
     surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
@@ -55,7 +45,6 @@ void g_graphics::resize(int newWidth, int newHeight)
 
 void g_graphics::blitTo(g_graphics* graphics, g_rectangle absoluteClip, g_point position)
 {
-
     auto cr = graphics->context;
     cairo_save(cr);
     cairo_set_source_surface(cr, this->surface, position.x, position.y);

@@ -18,41 +18,15 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __WINDOWSERVER_EVENTS_EVENTPROCESSOR__
-#define __WINDOWSERVER_EVENTS_EVENTPROCESSOR__
+#ifndef __WINDOWSERVER_TEST__
+#define __WINDOWSERVER_TEST__
 
-#include "input/keyboard/keyboard.hpp"
-#include "input/mouse/mouse.hpp"
-#include <deque>
+#include "windowserver.hpp"
 
-#define DEFAULT_MULTICLICK_TIMESPAN 250
-
-/**
- * The event queue is used to store any incoming events for
- * later processing.
- */
-class event_processor_t
+class test_t
 {
   public:
-    uint32_t multiclickTimespan;
-
-    event_processor_t();
-
-    std::deque<g_key_info> key_info_buffer;
-    uint8_t key_info_buffer_lock = 0;
-    void bufferKeyEvent(g_key_info keyInfo);
-
-    std::deque<void*> command_message_buffer;
-    uint8_t command_message_buffer_lock = 0;
-    // void bufferCommandMessage(void* commandMessage);
-
-    void process();
-    // void process_command(g_tid sender_tid, g_ui_message_header* request_header, command_message_response_t& response_out);
-
-    void translateKeyEvent(g_key_info& info);
-    void processKeyState();
-
-    void processMouseState();
+    static void createTestComponents();
 };
 
 #endif

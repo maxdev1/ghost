@@ -21,18 +21,12 @@
 #include "windowserver.hpp"
 #include "components/background.hpp"
 #include "components/button.hpp"
-#include "components/checkbox.hpp"
 #include "components/cursor.hpp"
-#include "components/plain_console_panel.hpp"
-#include "components/scrollbar.hpp"
-#include "components/scrollpane.hpp"
-#include "components/text/text_field.hpp"
 #include "components/window.hpp"
 #include "events/event.hpp"
 #include "events/locatable.hpp"
 #include "input/input_receiver.hpp"
-#include "layout/flow_layout_manager.hpp"
-#include "layout/grid_layout_manager.hpp"
+#include "test.hpp"
 #include "video/vbe_video_output.hpp"
 
 #include <algorithm>
@@ -53,6 +47,11 @@ int main(int argc, char** argv)
     return 0;
 }
 
+windowserver_t* windowserver_t::instance()
+{
+    return server;
+}
+
 void windowserver_t::initializeInput()
 {
     input_receiver_t::initialize();
@@ -69,10 +68,35 @@ void windowserver_t::initializeInput()
 
 void windowserver_t::launch()
 {
+    event_processor = new event_processor_t();
+
     g_task_register_id("windowserver");
+    initializeGraphics();
+    g_create_thread((void*) &windowserver_t::initializeInput);
+
+    g_dimension resolution = video_output->getResolution();
+    g_rectangle screenBounds(0, 0, resolution.width, resolution.height);
+    createVitalComponents(screenBounds);
+    test_t::createTestComponents();
+    renderLoop(screenBounds);
+}
+
+void windowserver_t::createVitalComponents(g_rectangle screenBounds)
+{
+    screen = new screen_t();
+    screen->setBounds(screenBounds);
+
+    background = new background_t(screenBounds);
+    screen->addChild(background);
+    cursor_t::focusedComponent = screen;
+
+    // background.load("/system/graphics/wallpaper.png");
+}
+
+void windowserver_t::initializeGraphics()
+{
     g_set_video_log(false);
 
-    // initialize the video output
     video_output = new g_vbe_video_output();
     if(!video_output->initialize())
     {
@@ -80,42 +104,9 @@ void windowserver_t::launch()
         klog("failed to initialize video mode");
         return;
     }
-
-    // set up event handling
-    event_processor = new event_processor_t();
-    g_create_thread((void*) &windowserver_t::initializeInput);
-
-    g_dimension resolution = video_output->getResolution();
-    g_rectangle screenBounds(0, 0, resolution.width, resolution.height);
-
-    screen = new screen_t();
-    screen->setBounds(screenBounds);
-
-    background_t background(screenBounds);
-    screen->addChild(&background);
-    cursor_t::focusedComponent = screen;
-
-    // background.load("/system/graphics/wallpaper.png");
-
-    createTestComponents();
-
-    mainLoop(screenBounds);
 }
 
-void windowserver_t::fpsCounter()
-{
-    int seconds = 0;
-
-    for(;;)
-    {
-        g_sleep(1000);
-        seconds++;
-        klog("fps: %i", framesTotal);
-        framesTotal = 0;
-    }
-}
-
-void windowserver_t::mainLoop(g_rectangle screenBounds)
+void windowserver_t::renderLoop(g_rectangle screenBounds)
 {
     g_create_thread((void*) &windowserver_t::fpsCounter);
 
@@ -127,7 +118,6 @@ void windowserver_t::mainLoop(g_rectangle screenBounds)
     render_atom = true;
     while(true)
     {
-        event_processor->processMouseState();
         event_processor->process();
 
         screen->resolveRequirement(COMPONENT_REQUIREMENT_UPDATE);
@@ -142,6 +132,11 @@ void windowserver_t::mainLoop(g_rectangle screenBounds)
         framesTotal++;
         g_atomic_lock_to(&render_atom, 1000);
     }
+}
+
+void windowserver_t::triggerRender()
+{
+    render_atom = false;
 }
 
 void windowserver_t::blit(g_graphics* graphics)
@@ -169,110 +164,6 @@ void windowserver_t::loadCursor()
     cursor_t::load("/system/graphics/cursor/resize-nesw.cursor");
     cursor_t::load("/system/graphics/cursor/resize-nwes.cursor");
     cursor_t::set("default");
-}
-
-class open_executable_action_handler_t;
-void open_executable_spawn(open_executable_action_handler_t* data);
-
-class open_executable_action_handler_t : public internal_action_handler_t
-{
-  public:
-    std::string exe;
-    std::string args;
-    open_executable_action_handler_t(std::string exe, std::string args) : exe(exe), args(args)
-    {
-    }
-    void handle(action_component_t* source)
-    {
-        g_create_thread_d((void*) &open_executable_spawn, this);
-    }
-};
-
-void open_executable_spawn(open_executable_action_handler_t* data)
-{
-    g_spawn(data->exe.c_str(), data->args.c_str(), "/", G_SECURITY_LEVEL_APPLICATION);
-}
-
-static int nextExeButtonPos = 70;
-void addExecutableButton(window_t* window, std::string name, std::string exe, std::string args)
-{
-
-    button_t* openCalculatorButton = new button_t();
-    openCalculatorButton->setBounds(g_rectangle(10, nextExeButtonPos, 270, 30));
-    openCalculatorButton->getLabel().setTitle(name);
-    openCalculatorButton->setInternalActionHandler(new open_executable_action_handler_t(exe, args));
-    window->addChild(openCalculatorButton);
-    nextExeButtonPos += 35;
-}
-
-void windowserver_t::createTestComponents()
-{
-
-    window_t* testWindow = new window_t;
-    testWindow->setTitle("Welcome to Ghost!");
-    testWindow->setBounds(g_rectangle(10, 10, 320, 230));
-    // testWindow->setNumericProperty(G_UI_PROPERTY_RESIZABLE, false);
-
-    label_t* infoLabel = new label_t();
-    infoLabel->setBounds(g_rectangle(10, 10, 300, 20));
-    infoLabel->setTitle("This is a demo launchpad for executing");
-    infoLabel->setColor(RGB(0, 0, 0));
-    testWindow->addChild(infoLabel);
-
-    label_t* infoLabel2 = new label_t();
-    infoLabel2->setBounds(g_rectangle(10, 30, 300, 20));
-    infoLabel2->setTitle("the available GUI applications.");
-    infoLabel2->setColor(RGB(0, 0, 0));
-    testWindow->addChild(infoLabel2);
-
-    addExecutableButton(testWindow, "Calculator", "/applications/calculator.bin", "");
-    addExecutableButton(testWindow, "Terminal", "/applications/terminal2.bin", "");
-    addExecutableButton(testWindow, "Drawing demo", "/applications/tetris.bin", "");
-
-    text_field_t* testField = new text_field_t();
-    testField->setBounds(g_rectangle(10, nextExeButtonPos, 270, 30));
-    testWindow->addChild(testField);
-
-    screen->addChild(testWindow);
-    testWindow->setVisible(true);
-
-    window_t* secondWindow = new window_t;
-    secondWindow->setTitle("Scroller");
-    secondWindow->setBounds(g_rectangle(200, 200, 500, 500));
-    secondWindow->setLayoutManager(new grid_layout_manager_t(1, 1));
-
-    scrollpane_t* scroller = new scrollpane_t;
-    scroller->setBounds(g_rectangle(0, 0, 300, 200));
-    secondWindow->addChild(scroller);
-
-    panel_t* contentPanel = new panel_t();
-    contentPanel->setBounds(g_rectangle(0, 0, 400, 400));
-    contentPanel->setBackground(RGB(200, 200, 200));
-    contentPanel->setLayoutManager(new grid_layout_manager_t(1, 5));
-    scroller->setViewPort(contentPanel);
-
-    /*   button_t* button1 = new button_t();
-       button1->getLabel().setTitle("Button 1");
-       contentPanel->addChild(button1);
-
-       label_t* label1 = new label_t();
-       label1->setTitle("This is a panel with some scrollable content. The content is layouted using a grid layout.");
-       contentPanel->addChild(label1);
-
-       label_t* label2 = new label_t();
-       label2->setTitle("The height of the content panel is used to specify the scrollable area.");
-       contentPanel->addChild(label2);
-
-       button_t* button2 = new button_t();
-       button2->getLabel().setTitle("Button 2");
-       contentPanel->addChild(button2);
-
-       label_t* label3 = new label_t();
-       label3->setTitle("Yey! Works great :)");
-       contentPanel->addChild(label3);*/
-
-    screen->addChild(secondWindow);
-    secondWindow->setVisible(true);
 }
 
 component_t* windowserver_t::dispatchUpwards(component_t* component, event_t& event)
@@ -328,12 +219,15 @@ bool windowserver_t::dispatch(component_t* component, event_t& event)
     return handled;
 }
 
-windowserver_t* windowserver_t::instance()
+void windowserver_t::fpsCounter()
 {
-    return server;
-}
+    int seconds = 0;
 
-void windowserver_t::triggerRender()
-{
-    render_atom = false;
+    for(;;)
+    {
+        g_sleep(1000);
+        seconds++;
+        klog("fps: %i", framesTotal);
+        framesTotal = 0;
+    }
 }
