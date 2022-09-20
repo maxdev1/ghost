@@ -29,9 +29,7 @@ background_t::background_t(g_rectangle bounds)
 void background_t::load(const char* path)
 {
     if(surface)
-    {
         cairo_surface_destroy(surface);
-    }
 
     surface = cairo_image_surface_create_from_png(path);
 }
@@ -60,5 +58,5 @@ void background_t::paint()
 
 bool background_t::handle(event_t& e)
 {
-    return true;
+    return false;
 }

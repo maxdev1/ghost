@@ -40,17 +40,13 @@ class g_font
   private:
     uint8_t* data;
     std::string name;
-    g_font_style style;
-    bool hint;
+    g_font_style style = g_font_style::NORMAL;
+    bool hint = true;
 
     FT_Face face;
-    cairo_font_face_t* cairo_face;
+    cairo_font_face_t* cairo_face = nullptr;
 
-    bool okay;
-
-    int activeSize;
-
-    static bool tryReadBytes(FILE* file, uint32_t offset, uint8_t* buffer, uint32_t len);
+    static bool readAllBytes(FILE* file, uint32_t offset, uint8_t* buffer, uint32_t len);
 
   public:
     /**
@@ -60,20 +56,17 @@ class g_font
      * @param name			font lookup name
      * @param source		font data
      * @param sourceLength	font data length
-     * @param style			font style
-     * @param hint	whether to render with hinting (antialias) or not
      */
-    g_font(std::string name, uint8_t* source, uint32_t sourceLength, g_font_style style, bool hint = true);
+    g_font(std::string name, uint8_t* source, uint32_t sourceLength);
 
     /**
-     * Loads a font from the file "in". If there is already a font with
-     * the "name", that font is returned.
+     * Loads the font from the given path.
      *
-     * @param in	the font file
-     * @param name	the name to register the font to
+     * @param path the file path
+     * @param name the font name
      * @return either the font, or 0
      */
-    static g_font* fromFile(FILE* in, std::string name);
+    static g_font* load(std::string path, std::string name);
 
     /**
      * Destroys the font, deleting all associated Glyph
@@ -84,7 +77,7 @@ class g_font
     /**
      * @return whether the font was successfully initialized.
      */
-    bool isOkay();
+    bool isValid();
 
     /**
      * @return the name of the font

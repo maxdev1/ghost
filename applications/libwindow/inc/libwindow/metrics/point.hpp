@@ -48,6 +48,13 @@ class g_point
         return *this;
     }
 
+    g_point& operator+=(const g_point& rhs)
+    {
+        x += rhs.x;
+        y += rhs.y;
+        return *this;
+    }
+
     bool operator==(const g_point& p) const
     {
         return x == p.x && y == p.y;

@@ -59,9 +59,15 @@ void cursor_t::set(std::string name)
     }
 }
 
+std::string cursor_t::get()
+{
+    if(currentConfiguration)
+        return currentConfiguration->name;
+    return "default";
+}
+
 bool cursor_t::load(std::string cursorPath)
 {
-
     // Open config file
     std::string configpath = cursorPath + "/cursor.cfg";
     std::ifstream in(configpath);
@@ -117,6 +123,7 @@ bool cursor_t::load(std::string cursorPath)
 
     pack.hitpoint = g_point(hitpointX, hitpointY);
     pack.size = g_dimension(cairo_image_surface_get_width(pack.surface), cairo_image_surface_get_height(pack.surface));
+    pack.name = name;
     cursorConfigurations[name] = pack;
 
     return true;

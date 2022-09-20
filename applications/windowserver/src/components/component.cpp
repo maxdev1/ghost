@@ -35,35 +35,21 @@
 component_t::~component_t()
 {
     if(layoutManager)
-    {
         delete layoutManager;
-    }
 }
 
 void component_t::setBounds(const g_rectangle& newBounds)
 {
-
-    // Remember old bounds
     g_rectangle oldBounds = bounds;
-
-    // Mark area of old bounds as dirty
     markDirty();
 
-    // Write new bounds value
     bounds = newBounds;
     if(bounds.width < minimumSize.width)
-    {
         bounds.width = minimumSize.width;
-    }
     if(bounds.height < minimumSize.height)
-    {
         bounds.height = minimumSize.height;
-    }
-
-    // Mark area of new bounds as dirty
     markDirty();
 
-    // If either width or height have changed, resize buffer
     if(oldBounds.width != bounds.width || oldBounds.height != bounds.height)
     {
         graphics.resize(bounds.width, bounds.height);
@@ -74,23 +60,15 @@ void component_t::setBounds(const g_rectangle& newBounds)
         handleBoundChange(oldBounds);
     }
 
-    // Fire change event
     fireBoundsChange(bounds);
 }
 
 bool component_t::canHandleEvents() const
 {
-
     if(!visible)
-    {
         return false;
-    }
-
     if(parent)
-    {
         return parent->canHandleEvents();
-    }
-
     return true;
 }
 
@@ -103,7 +81,6 @@ void component_t::setVisible(bool visible)
 
 void component_t::markDirty(g_rectangle rect)
 {
-
     if(parent)
     {
         rect.x += bounds.x;
@@ -112,75 +89,59 @@ void component_t::markDirty(g_rectangle rect)
     }
 }
 
-void component_t::blit(g_graphics* out, g_rectangle absClip, g_point position)
+void component_t::blit(g_graphics* out, g_rectangle clip, g_point position)
 {
+    if(!this->visible)
+        return;
 
-    if(this->visible)
+    if(graphics.getContext())
+        graphics.blitTo(out, clip, position);
+
+    g_rectangle abs = getBounds();
+    abs.x = position.x;
+    abs.y = position.y;
+
+    int newTop = clip.getTop() > abs.getTop() ? clip.getTop() : abs.getTop();
+    int newBottom = clip.getBottom() < abs.getBottom() ? clip.getBottom() : abs.getBottom();
+    int newLeft = clip.getLeft() > abs.getLeft() ? clip.getLeft() : abs.getLeft();
+    int newRight = clip.getRight() < abs.getRight() ? clip.getRight() : abs.getRight();
+    g_rectangle thisClip = g_rectangle(newLeft, newTop, newRight - newLeft, newBottom - newTop);
+
+    g_atomic_lock(&children_lock);
+    for(auto& c : children)
     {
-        if(graphics.getContext() != 0)
-        {
-            graphics.blitTo(out, absClip, position);
-        }
-
-        g_rectangle ownAbsBounds = getBounds();
-        ownAbsBounds.x = position.x;
-        ownAbsBounds.y = position.y;
-        int newTop = absClip.getTop() > ownAbsBounds.getTop() ? absClip.getTop() : ownAbsBounds.getTop();
-        int newBottom = absClip.getBottom() < ownAbsBounds.getBottom() ? absClip.getBottom() : ownAbsBounds.getBottom();
-        int newLeft = absClip.getLeft() > ownAbsBounds.getLeft() ? absClip.getLeft() : ownAbsBounds.getLeft();
-        int newRight = absClip.getRight() < ownAbsBounds.getRight() ? absClip.getRight() : ownAbsBounds.getRight();
-
-        g_rectangle thisClip = g_rectangle(newLeft, newTop, newRight - newLeft, newBottom - newTop);
-        g_atomic_lock(&children_lock);
-
-        for(auto& c : children)
-        {
-            if(c.component->visible)
-            {
-                c.component->blit(out, thisClip, g_point(position.x + c.component->bounds.x, position.y + c.component->bounds.y));
-            }
-        }
-
-        children_lock = 0;
+        if(c.component->visible)
+            c.component->blit(out, thisClip, g_point(position.x + c.component->bounds.x, position.y + c.component->bounds.y));
     }
+    children_lock = 0;
 }
 
 void component_t::addChild(component_t* comp, component_child_reference_type_t type)
 {
-
-    // Remove component from its previous parent
     if(comp->parent)
-    {
         comp->parent->removeChild(comp);
-    }
 
-    g_atomic_lock(&children_lock);
+    comp->parent = this;
 
-    // Create a reference
     component_child_reference_t reference;
     reference.component = comp;
     reference.type = type;
-    children.push_back(reference);
 
-    // Order components by Z index
+    g_atomic_lock(&children_lock);
+    children.push_back(reference);
     std::sort(children.begin(), children.end(), [](component_child_reference_t& c1, component_child_reference_t& c2)
               { return c1.component->z_index < c2.component->z_index; });
 
-    // Assign new parent
-    comp->parent = this;
-
-    // Require layouting of self
-    markFor(COMPONENT_REQUIREMENT_LAYOUT);
-
     children_lock = 0;
+
+    markFor(COMPONENT_REQUIREMENT_LAYOUT);
 }
 
 void component_t::removeChild(component_t* comp)
 {
+    comp->parent = 0;
 
     g_atomic_lock(&children_lock);
-
-    // Find and remove entry
     for(auto itr = children.begin(); itr != children.end();)
     {
         if((*itr).component == comp)
@@ -192,70 +153,54 @@ void component_t::removeChild(component_t* comp)
             ++itr;
         }
     }
-
-    // Unassign parent
-    comp->parent = 0;
-
     children_lock = 0;
 
-    // Require layouting of self
     markFor(COMPONENT_REQUIREMENT_LAYOUT);
 }
 
 component_t* component_t::getComponentAt(g_point p)
 {
+    component_t* target = this;
 
     g_atomic_lock(&children_lock);
     for(auto it = children.rbegin(); it != children.rend(); ++it)
     {
         auto child = (*it).component;
-
-        if(child->isVisible() && child->bounds.contains(p))
+        if(child->visible && child->bounds.contains(p))
         {
             children_lock = 0;
-            return child->getComponentAt(g_point(p.x - child->bounds.x, p.y - child->bounds.y));
+            target = child->getComponentAt(g_point(p.x - child->bounds.x, p.y - child->bounds.y));
+            break;
         }
     }
-
     children_lock = 0;
-    return this;
+
+    return target;
 }
 
 window_t* component_t::getWindow()
 {
-
     if(isWindow())
-    {
         return (window_t*) this;
-    }
 
     if(parent)
-    {
         return parent->getWindow();
-    }
 
     return 0;
 }
 
 void component_t::bringChildToFront(component_t* comp)
 {
-
     g_atomic_lock(&children_lock);
     for(uint32_t index = 0; index < children.size(); index++)
     {
-
-        // Find component in children
         if(children[index].component == comp)
         {
-
-            // Move reference to bottom
             auto ref = children[index];
             children.erase(children.begin() + index);
             children.push_back(ref);
 
-            // Mark as dirty
             markDirty(comp->bounds);
-
             break;
         }
     }
@@ -264,30 +209,22 @@ void component_t::bringChildToFront(component_t* comp)
 
 void component_t::bringToFront()
 {
-
     if(parent)
-    {
         parent->bringChildToFront(this);
-    }
 }
 
 g_point component_t::getLocationOnScreen()
 {
-    g_point locationOnScreen(bounds.x, bounds.y);
+    g_point location(bounds.x, bounds.y);
 
     if(parent)
-    {
-        g_point parentLocationOnScreen = parent->getLocationOnScreen();
-        locationOnScreen.x += parentLocationOnScreen.x;
-        locationOnScreen.y += parentLocationOnScreen.y;
-    }
+        location += parent->getLocationOnScreen();
 
-    return locationOnScreen;
+    return location;
 }
 
 bool component_t::handle(event_t& event)
 {
-
     locatable_t* locatable = dynamic_cast<locatable_t*>(&event);
 
     g_atomic_lock(&children_lock);
@@ -319,46 +256,6 @@ bool component_t::handle(event_t& event)
                 children_lock = 0;
                 return true;
             }
-        }
-    }
-
-    // post key event to client
-    key_event_t* key_event = dynamic_cast<key_event_t*>(&event);
-    if(key_event)
-    {
-        event_listener_info_t info;
-        if(getListener(G_UI_COMPONENT_EVENT_TYPE_KEY, info))
-        {
-            /*
-            TODO
-
-            g_ui_component_key_event posted_key_event;
-            posted_key_event.header.type = G_UI_COMPONENT_EVENT_TYPE_KEY;
-            posted_key_event.header.component_id = info.component_id;
-            posted_key_event.key_info = key_event->info;
-            g_send_message(info.target_thread, &posted_key_event, sizeof(g_ui_component_key_event));
-            */
-        }
-    }
-
-    // post mouse event to client
-    mouse_event_t* mouse_event = dynamic_cast<mouse_event_t*>(&event);
-    if(mouse_event)
-    {
-        event_listener_info_t info;
-        if(getListener(G_UI_COMPONENT_EVENT_TYPE_MOUSE, info))
-        {
-            /*
-            TODO
-
-            g_ui_component_mouse_event posted_event;
-            posted_event.header.type = G_UI_COMPONENT_EVENT_TYPE_MOUSE;
-            posted_event.header.component_id = info.component_id;
-            posted_event.position = mouse_event->position;
-            posted_event.type = mouse_event->type;
-            posted_event.buttons = mouse_event->buttons;
-            g_send_message(info.target_thread, &posted_event, sizeof(g_ui_component_mouse_event));
-            */
         }
     }
 
@@ -409,9 +306,7 @@ void component_t::paint()
 void component_t::markParentFor(component_requirement_t req)
 {
     if(parent)
-    {
         parent->markFor(req);
-    }
 }
 
 void component_t::markFor(component_requirement_t req)
@@ -419,9 +314,7 @@ void component_t::markFor(component_requirement_t req)
     requirements |= req;
 
     if(parent)
-    {
         parent->markChildsFor(req);
-    }
 }
 
 void component_t::markChildsFor(component_requirement_t req)
@@ -429,23 +322,18 @@ void component_t::markChildsFor(component_requirement_t req)
     childRequirements |= req;
 
     if(parent)
-    {
         parent->markChildsFor(req);
-    }
 }
 
 void component_t::resolveRequirement(component_requirement_t req)
 {
-
     if(childRequirements & req)
     {
         g_atomic_lock(&children_lock);
         for(auto& child : children)
         {
             if(child.component->visible)
-            {
                 child.component->resolveRequirement(req);
-            }
         }
         childRequirements &= ~COMPONENT_REQUIREMENT_NONE;
         children_lock = 0;
@@ -453,7 +341,6 @@ void component_t::resolveRequirement(component_requirement_t req)
 
     if(requirements & req)
     {
-
         if(req == COMPONENT_REQUIREMENT_LAYOUT)
         {
             layout();
@@ -465,21 +352,6 @@ void component_t::resolveRequirement(component_requirement_t req)
         else if(req == COMPONENT_REQUIREMENT_PAINT)
         {
             paint();
-
-            /*
-             * TODO: This might be useful for paint-blitting
-             *
-             g_rectangle bounds = getBounds();
-             g_rectangle clip(0, 0, bounds.width, bounds.height);
-
-             for (Component* child : children) {
-             g_rectangle cb = child->getBounds();
-             Point loc(cb.x, cb.y);
-
-             child->getGraphics()->blitTo(graphics.getBuffer(), bounds, clip, loc);
-             }
-             */
-
             markDirty();
         }
 
@@ -552,31 +424,11 @@ bool component_t::isChildOf(component_t* c)
 
 bool component_t::getNumericProperty(int property, uint32_t* out)
 {
-
     return false;
 }
 
 bool component_t::setNumericProperty(int property, uint32_t value)
 {
-
-    /*
-    TODO
-
-        if(property == G_UI_PROPERTY_LAYOUT_MANAGER)
-        {
-            if(value == G_UI_LAYOUT_MANAGER_FLOW)
-            {
-                setLayoutManager(new flow_layout_manager_t());
-                return true;
-            }
-            else if(value == G_UI_LAYOUT_MANAGER_GRID)
-            {
-                setLayoutManager(new grid_layout_manager_t(1, 1));
-                return true;
-            }
-        }
-        */
-
     return false;
 }
 

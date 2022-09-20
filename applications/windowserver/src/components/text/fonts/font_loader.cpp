@@ -19,22 +19,25 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "components/text/fonts/font_loader.hpp"
+#include "components/text/fonts/font_manager.hpp"
 
-g_font* g_font_loader::getFontAtPath(std::string path, std::string name)
+g_font* g_font_loader::getFont(std::string path, std::string name)
 {
-    FILE* file = fopen(path.c_str(), "r");
-    if(file != NULL)
-    {
-        g_font* font = g_font::fromFile(file, name);
-        fclose(file);
-        return font;
-    }
-    return 0;
+    g_font* existing = g_font_manager::getInstance()->getFont(name);
+    if(existing)
+        return existing;
+
+    g_font* newFont = g_font::load(path, name);
+    if(g_font_manager::getInstance()->registerFont(name, newFont))
+        return newFont;
+
+    delete newFont;
+    return nullptr;
 }
 
 g_font* g_font_loader::getSystemFont(std::string name)
 {
-    return getFontAtPath("/system/graphics/fonts/" + name + ".ttf", name);
+    return getFont("/system/graphics/fonts/" + name + ".ttf", name);
 }
 
 g_font* g_font_loader::get(std::string name)
@@ -42,14 +45,12 @@ g_font* g_font_loader::get(std::string name)
     g_font* font = getSystemFont(name);
 
     if(font == 0)
-    {
         font = getDefault();
-    }
 
     return font;
 }
 
 g_font* g_font_loader::getDefault()
 {
-    return getFontAtPath("/system/graphics/fonts/default.ttf", "default");
+    return getFont("/system/graphics/fonts/default.ttf", "default");
 }

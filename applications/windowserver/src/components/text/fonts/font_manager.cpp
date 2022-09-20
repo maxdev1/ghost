@@ -45,46 +45,31 @@ void g_font_manager::initializeEngine()
 {
     FT_Error error = FT_Init_FreeType(&library);
     if(error)
-    {
         klog("freetype2 failed at FT_Init_FreeType with error code %i", error);
-    }
 }
 
 void g_font_manager::destroyEngine()
 {
     FT_Error error = FT_Done_Library(library);
     if(error)
-    {
         klog("freetype2 failed at FT_Done_Library with error code %i", error);
-    }
 }
 
 g_font* g_font_manager::getFont(std::string name)
 {
     if(fontRegistry.count(name) > 0)
-    {
         return fontRegistry[name];
-    }
     return 0;
 }
 
-bool g_font_manager::createFont(std::string name, uint8_t* source, uint32_t sourceLength, g_font_style style, bool hint)
+bool g_font_manager::registerFont(std::string name, g_font* font)
 {
-
     if(fontRegistry.count(name) > 0)
     {
         klog("tried to create font '%s' that already exists", name);
         return false;
     }
 
-    // Create font object
-    g_font* font = new g_font(name, source, sourceLength, style, hint);
-    if(!font->isOkay())
-    {
-        delete font;
-    }
-
-    // Register font
     fontRegistry[name] = font;
     return true;
 }

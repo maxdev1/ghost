@@ -27,7 +27,7 @@
 class g_font_loader
 {
   private:
-    static g_font* getFontAtPath(std::string path, std::string name);
+    static g_font* getFont(std::string path, std::string name);
     static g_font* getSystemFont(std::string name);
 
   public:

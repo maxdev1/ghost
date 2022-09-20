@@ -24,16 +24,16 @@
 
 void action_component_t::fireAction()
 {
-
-    // if there is an internal handler, use it
     if(internalHandler)
     {
         internalHandler->handle(this);
         return;
     }
 
-    // otherwise send message to registered thread
-    // TODO
+    /**
+     * TODO:
+     * Otherwise send message to client.
+     */
 }
 
 void action_component_t::setInternalActionHandler(internal_action_handler_t* handler)

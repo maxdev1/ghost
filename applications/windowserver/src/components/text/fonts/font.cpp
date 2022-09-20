@@ -22,53 +22,39 @@
 #include "components/text/fonts/font_manager.hpp"
 #include <string.h>
 
-g_font::g_font(std::string name, uint8_t* source, uint32_t sourceLength, g_font_style style, bool hint) : name(name), data(0), face(0), okay(false), style(style), activeSize(0), hint(hint)
+g_font::g_font(std::string name, uint8_t* source, uint32_t sourceLength) : name(name)
 {
-
     data = new uint8_t[sourceLength];
-    memcpy(data, source, sourceLength);
-
-    // Check data
-    if(data == 0)
+    if(!data)
     {
         klog("failed to allocate memory buffer for font '%s'", name);
         return;
     }
+    memcpy(data, source, sourceLength);
 
-    // Load font
     FT_Error error = FT_New_Memory_Face(g_font_manager::getInstance()->getLibraryHandle(), data, sourceLength, 0, &face);
     if(error)
     {
         klog("freetype2 failed at FT_New_Memory_Face with error code %i", error);
-
         delete data;
         return;
     }
 
-    // create cairo face
     cairo_face = cairo_ft_font_face_create_for_ft_face(face, 0);
-
-    okay = true;
 }
 
 g_font::~g_font()
 {
-    if(okay)
+    if(cairo_face)
     {
-
-        // destroy cairo face
         cairo_font_face_destroy(cairo_face);
-
-        // destroy font
         FT_Done_Face(face);
-
         delete data;
     }
 }
 
-bool g_font::tryReadBytes(FILE* file, uint32_t offset, uint8_t* buffer, uint32_t len)
+bool g_font::readAllBytes(FILE* file, uint32_t offset, uint8_t* buffer, uint32_t len)
 {
-
     uint32_t remain = len;
     fseek(file, offset, SEEK_SET);
 
@@ -85,39 +71,38 @@ bool g_font::tryReadBytes(FILE* file, uint32_t offset, uint8_t* buffer, uint32_t
     return true;
 }
 
-g_font* g_font::fromFile(FILE* in, std::string name)
+g_font* g_font::load(std::string path, std::string name)
 {
+    FILE* file = fopen(path.c_str(), "r");
+    if(!file)
+        return nullptr;
 
-    g_font* existing = g_font_manager::getInstance()->getFont(name);
-    if(existing)
-    {
-        return existing;
-    }
-
-    int64_t length = g_length(fileno(in));
+    int64_t length = g_length(fileno(file));
     if(length == -1)
     {
-        return 0;
+        fclose(file);
+        return nullptr;
     }
 
-    uint8_t* fileContent = new uint8_t[length];
-    if(!tryReadBytes(in, 0, fileContent, length))
+    uint8_t* content = new uint8_t[length];
+    if(!readAllBytes(file, 0, content, length))
     {
-        delete fileContent;
-        return 0;
+        fclose(file);
+        delete content;
+        return nullptr;
     }
+    fclose(file);
 
-    bool created = g_font_manager::getInstance()->createFont(name, fileContent, length);
-    if(!created)
+    g_font* font = new g_font(name, content, length);
+    if(!font->isValid())
     {
-        delete fileContent;
-        return 0;
+        delete font;
+        return nullptr;
     }
-
-    return g_font_manager::getInstance()->getFont(name);
+    return font;
 }
 
-bool g_font::isOkay()
+bool g_font::isValid()
 {
-    return okay;
+    return cairo_face != nullptr;
 }
