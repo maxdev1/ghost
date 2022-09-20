@@ -53,9 +53,7 @@ void component_t::setBounds(const g_rectangle& newBounds)
     if(oldBounds.width != bounds.width || oldBounds.height != bounds.height)
     {
         graphics.resize(bounds.width, bounds.height);
-        markFor(COMPONENT_REQUIREMENT_LAYOUT);
-        markFor(COMPONENT_REQUIREMENT_UPDATE);
-        markFor(COMPONENT_REQUIREMENT_PAINT);
+        markFor(COMPONENT_REQUIREMENT_ALL);
 
         handleBoundChange(oldBounds);
     }
@@ -370,7 +368,7 @@ void component_t::resolveRequirement(component_requirement_t req)
             if(child.component->visible)
                 child.component->resolveRequirement(req);
         }
-        childRequirements &= ~COMPONENT_REQUIREMENT_NONE;
+        childRequirements &= ~req;
         children_lock = 0;
     }
 
@@ -432,7 +430,6 @@ bool component_t::getListener(g_ui_component_event_type eventType, event_listene
 
 void component_t::clearSurface()
 {
-    // clear surface
     auto cr = graphics.getContext();
     cairo_save(cr);
     cairo_set_source_rgba(cr, 0, 0, 0, 0);

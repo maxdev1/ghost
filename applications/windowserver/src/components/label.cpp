@@ -29,7 +29,6 @@
 
 label_t::label_t() : component_t(true)
 {
-
     setFont(g_font_loader::getDefault());
     alignment = g_text_alignment::LEFT;
     color = RGB(0, 0, 0);
@@ -37,14 +36,12 @@ label_t::label_t() : component_t(true)
 
 void label_t::setFont(g_font* newFont)
 {
-
     font = newFont;
     fontSize = 14;
 }
 
 void label_t::update()
 {
-
     g_rectangle thisBounds(0, 0, getBounds().width, getBounds().height);
 
     // Check if the component was ever layouted, otherwise set to a high value
@@ -71,7 +68,6 @@ void label_t::update()
 
 void label_t::paint()
 {
-
     clearSurface();
 
     auto cr = graphics.getContext();

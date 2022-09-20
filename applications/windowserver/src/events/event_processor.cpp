@@ -55,13 +55,8 @@ void event_processor_t::bufferCommandMessage(void* commandMessage)
 
 void event_processor_t::process()
 {
-    g_atomic_lock(&key_info_buffer_lock);
-    while(key_info_buffer.size() > 0)
-    {
-        translateKeyEvent(key_info_buffer.back());
-        key_info_buffer.pop_back();
-    }
-    key_info_buffer_lock = 0;
+    processMouseState();
+    processKeyState();
 
     /*
         // process command messages
@@ -95,6 +90,209 @@ void event_processor_t::process()
         }
         command_message_buffer_lock.unlock();
         */
+}
+
+void event_processor_t::processKeyState()
+{
+    g_atomic_lock(&key_info_buffer_lock);
+    while(key_info_buffer.size() > 0)
+    {
+        translateKeyEvent(key_info_buffer.back());
+        key_info_buffer.pop_back();
+    }
+    key_info_buffer_lock = 0;
+}
+
+void event_processor_t::translateKeyEvent(g_key_info& info)
+{
+    if(cursor_t::focusedComponent)
+    {
+        // process
+        key_event_t k;
+        k.info = info;
+        windowserver_t::instance()->dispatch(cursor_t::focusedComponent, k);
+    }
+}
+
+void event_processor_t::processMouseState()
+{
+    g_point previousPosition = cursor_t::position;
+    g_mouse_button previousPressedButtons = cursor_t::pressedButtons;
+
+    g_dimension resolution = windowserver_t::instance()->video_output->getResolution();
+    windowserver_t* instance = windowserver_t::instance();
+    screen_t* screen = instance->screen;
+
+    if(cursor_t::position != cursor_t::nextPosition)
+    {
+        screen->markDirty(cursor_t::getArea());
+        cursor_t::position = cursor_t::nextPosition;
+        screen->markDirty(cursor_t::getArea());
+    }
+
+    // set pressed buttons
+    cursor_t::pressedButtons = cursor_t::nextPressedButtons;
+
+    mouse_event_t baseEvent;
+    baseEvent.screenPosition = cursor_t::position;
+    baseEvent.position = baseEvent.screenPosition;
+    baseEvent.buttons = cursor_t::pressedButtons;
+
+    // Press
+    if((!(previousPressedButtons & G_MOUSE_BUTTON_1) && (cursor_t::pressedButtons & G_MOUSE_BUTTON_1)) ||
+       (!(previousPressedButtons & G_MOUSE_BUTTON_2) && (cursor_t::pressedButtons & G_MOUSE_BUTTON_2)) ||
+       (!(previousPressedButtons & G_MOUSE_BUTTON_3) && (cursor_t::pressedButtons & G_MOUSE_BUTTON_3)))
+    {
+
+        // Prepare event
+        mouse_event_t pressEvent = baseEvent;
+        pressEvent.type = G_MOUSE_EVENT_PRESS;
+
+        // Multiclicks
+        static uint64_t lastClick = 0;
+        static int clickCount = 0;
+        uint64_t currentClick = g_millis();
+        uint64_t diff = currentClick - lastClick;
+        if(diff < multiclickTimespan)
+        {
+            ++clickCount;
+        }
+        else
+        {
+            clickCount = 1;
+        }
+        lastClick = currentClick;
+        pressEvent.clickCount = clickCount;
+
+        // Send event
+        instance->dispatch(screen, pressEvent);
+
+        component_t* hitComponent = screen->getComponentAt(cursor_t::position);
+        if(hitComponent != 0)
+        {
+
+            // Prepare drag
+            if(hitComponent != screen)
+            {
+                cursor_t::draggedComponent = hitComponent;
+            }
+
+            // Switch focus
+            if(hitComponent != cursor_t::focusedComponent)
+            {
+                // Old loses focus
+                if(cursor_t::focusedComponent != 0)
+                {
+                    focus_event_t focusLostEvent;
+                    focusLostEvent.type = FOCUS_EVENT_LOST;
+                    focusLostEvent.newFocusedComponent = hitComponent;
+                    instance->dispatchUpwards(cursor_t::focusedComponent, focusLostEvent);
+
+                    // Post event to client
+                    event_listener_info_t listenerInfo;
+                    if(cursor_t::focusedComponent->getListener(G_UI_COMPONENT_EVENT_TYPE_FOCUS, listenerInfo))
+                    {
+                        /*
+                        TODO
+
+                        g_ui_component_focus_event focus_event;
+                        focus_event.header.type = G_UI_COMPONENT_EVENT_TYPE_FOCUS;
+                        focus_event.header.component_id = listenerInfo.component_id;
+                        focus_event.now_focused = false;
+                        g_send_message(listenerInfo.target_thread, &focus_event, sizeof(g_ui_component_focus_event));
+                        */
+                    }
+                }
+
+                // Bring hit components window to front
+                window_t* parentWindow = hitComponent->getWindow();
+                if(parentWindow != 0)
+                {
+                    parentWindow->bringToFront();
+                }
+
+                // New gains focus
+                focus_event_t focusGainedEvent;
+                focusGainedEvent.type = FOCUS_EVENT_GAINED;
+                focusGainedEvent.newFocusedComponent = hitComponent;
+                cursor_t::focusedComponent = instance->dispatchUpwards(hitComponent, focusGainedEvent);
+
+                // Post event to client
+                event_listener_info_t listenerInfo;
+                if(cursor_t::focusedComponent && cursor_t::focusedComponent->getListener(G_UI_COMPONENT_EVENT_TYPE_FOCUS, listenerInfo))
+                {
+                    /*
+                    TODO
+
+                    g_ui_component_focus_event focus_event;
+                    focus_event.header.type = G_UI_COMPONENT_EVENT_TYPE_FOCUS;
+                    focus_event.header.component_id = listenerInfo.component_id;
+                    focus_event.now_focused = true;
+                    g_send_message(listenerInfo.target_thread, &focus_event, sizeof(g_ui_component_focus_event));
+                    */
+                }
+            }
+        }
+
+        // Release
+    }
+    else if(((previousPressedButtons & G_MOUSE_BUTTON_1) && !(cursor_t::pressedButtons & G_MOUSE_BUTTON_1)) || ((previousPressedButtons & G_MOUSE_BUTTON_2) && !(cursor_t::pressedButtons & G_MOUSE_BUTTON_2)) || ((previousPressedButtons & G_MOUSE_BUTTON_3) && !(cursor_t::pressedButtons & G_MOUSE_BUTTON_3)))
+    {
+
+        if(cursor_t::draggedComponent)
+        {
+            mouse_event_t releaseDraggedEvent = baseEvent;
+            releaseDraggedEvent.type = G_MOUSE_EVENT_DRAG_RELEASE;
+            instance->dispatchUpwards(cursor_t::draggedComponent, releaseDraggedEvent);
+            cursor_t::draggedComponent = 0;
+        }
+
+        mouse_event_t releaseEvent = baseEvent;
+        releaseEvent.type = G_MOUSE_EVENT_RELEASE;
+        instance->dispatch(screen, releaseEvent);
+
+        // Move or drag
+    }
+    else if(cursor_t::position != previousPosition)
+    {
+        // Post enter or leave events
+        component_t* hovered = screen->getComponentAt(cursor_t::position);
+        if((hovered != cursor_t::hoveredComponent) &&
+           (cursor_t::draggedComponent == 0 || cursor_t::draggedComponent != cursor_t::hoveredComponent))
+        {
+
+            // Leave
+            if(cursor_t::hoveredComponent)
+            {
+                mouse_event_t leaveEvent = baseEvent;
+                leaveEvent.type = G_MOUSE_EVENT_LEAVE;
+                instance->dispatchUpwards(cursor_t::hoveredComponent, leaveEvent);
+                cursor_t::hoveredComponent = 0;
+            }
+
+            if(hovered)
+            {
+                // Enter
+                mouse_event_t enterEvent = baseEvent;
+                enterEvent.type = G_MOUSE_EVENT_ENTER;
+                cursor_t::hoveredComponent = hovered;
+                instance->dispatchUpwards(cursor_t::hoveredComponent, enterEvent);
+            }
+        }
+
+        if(cursor_t::draggedComponent != 0)
+        { // Dragging
+            mouse_event_t dragEvent = baseEvent;
+            dragEvent.type = G_MOUSE_EVENT_DRAG;
+            instance->dispatchUpwards(cursor_t::draggedComponent, dragEvent);
+        }
+        else
+        { // Moving
+            mouse_event_t moveEvent = baseEvent;
+            moveEvent.type = G_MOUSE_EVENT_MOVE;
+            instance->dispatch(screen, moveEvent);
+        }
+    }
 }
 
 /*
@@ -437,196 +635,3 @@ void event_processor_t::process_command(g_tid sender_tid, g_ui_message_header* r
         response_out.length = sizeof(g_ui_get_screen_dimension_response);
 }
     }*/
-
-void event_processor_t::translateKeyEvent(g_key_info& info)
-{
-
-    if(cursor_t::focusedComponent)
-    {
-        // process
-        key_event_t k;
-        k.info = info;
-        windowserver_t::instance()->dispatch(cursor_t::focusedComponent, k);
-    }
-}
-
-void event_processor_t::processMouseState()
-{
-    g_point previousPosition = cursor_t::position;
-    g_mouse_button previousPressedButtons = cursor_t::pressedButtons;
-
-    g_dimension resolution = windowserver_t::instance()->video_output->getResolution();
-    windowserver_t* instance = windowserver_t::instance();
-    screen_t* screen = instance->screen;
-
-    if(cursor_t::position != cursor_t::nextPosition)
-    {
-        screen->markDirty(cursor_t::getArea());
-        cursor_t::position = cursor_t::nextPosition;
-        screen->markDirty(cursor_t::getArea());
-    }
-
-    // set pressed buttons
-    cursor_t::pressedButtons = cursor_t::nextPressedButtons;
-
-    mouse_event_t baseEvent;
-    baseEvent.screenPosition = cursor_t::position;
-    baseEvent.position = baseEvent.screenPosition;
-    baseEvent.buttons = cursor_t::pressedButtons;
-
-    // Press
-    if((!(previousPressedButtons & G_MOUSE_BUTTON_1) && (cursor_t::pressedButtons & G_MOUSE_BUTTON_1)) ||
-       (!(previousPressedButtons & G_MOUSE_BUTTON_2) && (cursor_t::pressedButtons & G_MOUSE_BUTTON_2)) ||
-       (!(previousPressedButtons & G_MOUSE_BUTTON_3) && (cursor_t::pressedButtons & G_MOUSE_BUTTON_3)))
-    {
-
-        // Prepare event
-        mouse_event_t pressEvent = baseEvent;
-        pressEvent.type = G_MOUSE_EVENT_PRESS;
-
-        // Multiclicks
-        static uint64_t lastClick = 0;
-        static int clickCount = 0;
-        uint64_t currentClick = g_millis();
-        uint64_t diff = currentClick - lastClick;
-        if(diff < multiclickTimespan)
-        {
-            ++clickCount;
-        }
-        else
-        {
-            clickCount = 1;
-        }
-        lastClick = currentClick;
-        pressEvent.clickCount = clickCount;
-
-        // Send event
-        instance->dispatch(screen, pressEvent);
-
-        component_t* hitComponent = screen->getComponentAt(cursor_t::position);
-        if(hitComponent != 0)
-        {
-
-            // Prepare drag
-            if(hitComponent != screen)
-            {
-                cursor_t::draggedComponent = hitComponent;
-            }
-
-            // Switch focus
-            if(hitComponent != cursor_t::focusedComponent)
-            {
-                // Old loses focus
-                if(cursor_t::focusedComponent != 0)
-                {
-                    focus_event_t focusLostEvent;
-                    focusLostEvent.type = FOCUS_EVENT_LOST;
-                    focusLostEvent.newFocusedComponent = hitComponent;
-                    instance->dispatchUpwards(cursor_t::focusedComponent, focusLostEvent);
-
-                    // Post event to client
-                    event_listener_info_t listenerInfo;
-                    if(cursor_t::focusedComponent->getListener(G_UI_COMPONENT_EVENT_TYPE_FOCUS, listenerInfo))
-                    {
-                        /*
-                        TODO
-
-                        g_ui_component_focus_event focus_event;
-                        focus_event.header.type = G_UI_COMPONENT_EVENT_TYPE_FOCUS;
-                        focus_event.header.component_id = listenerInfo.component_id;
-                        focus_event.now_focused = false;
-                        g_send_message(listenerInfo.target_thread, &focus_event, sizeof(g_ui_component_focus_event));
-                        */
-                    }
-                }
-
-                // Bring hit components window to front
-                window_t* parentWindow = hitComponent->getWindow();
-                if(parentWindow != 0)
-                {
-                    parentWindow->bringToFront();
-                }
-
-                // New gains focus
-                focus_event_t focusGainedEvent;
-                focusGainedEvent.type = FOCUS_EVENT_GAINED;
-                focusGainedEvent.newFocusedComponent = hitComponent;
-                cursor_t::focusedComponent = instance->dispatchUpwards(hitComponent, focusGainedEvent);
-
-                // Post event to client
-                event_listener_info_t listenerInfo;
-                if(cursor_t::focusedComponent && cursor_t::focusedComponent->getListener(G_UI_COMPONENT_EVENT_TYPE_FOCUS, listenerInfo))
-                {
-                    /*
-                    TODO
-
-                    g_ui_component_focus_event focus_event;
-                    focus_event.header.type = G_UI_COMPONENT_EVENT_TYPE_FOCUS;
-                    focus_event.header.component_id = listenerInfo.component_id;
-                    focus_event.now_focused = true;
-                    g_send_message(listenerInfo.target_thread, &focus_event, sizeof(g_ui_component_focus_event));
-                    */
-                }
-            }
-        }
-
-        // Release
-    }
-    else if(((previousPressedButtons & G_MOUSE_BUTTON_1) && !(cursor_t::pressedButtons & G_MOUSE_BUTTON_1)) || ((previousPressedButtons & G_MOUSE_BUTTON_2) && !(cursor_t::pressedButtons & G_MOUSE_BUTTON_2)) || ((previousPressedButtons & G_MOUSE_BUTTON_3) && !(cursor_t::pressedButtons & G_MOUSE_BUTTON_3)))
-    {
-
-        if(cursor_t::draggedComponent)
-        {
-            mouse_event_t releaseDraggedEvent = baseEvent;
-            releaseDraggedEvent.type = G_MOUSE_EVENT_DRAG_RELEASE;
-            instance->dispatchUpwards(cursor_t::draggedComponent, releaseDraggedEvent);
-            cursor_t::draggedComponent = 0;
-        }
-
-        mouse_event_t releaseEvent = baseEvent;
-        releaseEvent.type = G_MOUSE_EVENT_RELEASE;
-        instance->dispatch(screen, releaseEvent);
-
-        // Move or drag
-    }
-    else if(cursor_t::position != previousPosition)
-    {
-        // Post enter or leave events
-        component_t* hovered = screen->getComponentAt(cursor_t::position);
-        if((hovered != cursor_t::hoveredComponent) &&
-           (cursor_t::draggedComponent == 0 || cursor_t::draggedComponent != cursor_t::hoveredComponent))
-        {
-
-            // Leave
-            if(cursor_t::hoveredComponent)
-            {
-                mouse_event_t leaveEvent = baseEvent;
-                leaveEvent.type = G_MOUSE_EVENT_LEAVE;
-                instance->dispatchUpwards(cursor_t::hoveredComponent, leaveEvent);
-                cursor_t::hoveredComponent = 0;
-            }
-
-            if(hovered)
-            {
-                // Enter
-                mouse_event_t enterEvent = baseEvent;
-                enterEvent.type = G_MOUSE_EVENT_ENTER;
-                cursor_t::hoveredComponent = hovered;
-                instance->dispatchUpwards(cursor_t::hoveredComponent, enterEvent);
-            }
-        }
-
-        if(cursor_t::draggedComponent != 0)
-        { // Dragging
-            mouse_event_t dragEvent = baseEvent;
-            dragEvent.type = G_MOUSE_EVENT_DRAG;
-            instance->dispatchUpwards(cursor_t::draggedComponent, dragEvent);
-        }
-        else
-        { // Moving
-            mouse_event_t moveEvent = baseEvent;
-            moveEvent.type = G_MOUSE_EVENT_MOVE;
-            instance->dispatch(screen, moveEvent);
-        }
-    }
-}

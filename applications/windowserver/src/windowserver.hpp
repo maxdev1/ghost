@@ -21,6 +21,7 @@
 #ifndef __WINDOWSERVER__
 #define __WINDOWSERVER__
 
+#include "components/background.hpp"
 #include "components/component.hpp"
 #include "components/label.hpp"
 #include "components/screen.hpp"
@@ -36,6 +37,7 @@ class windowserver_t
     g_video_output* video_output;
     event_processor_t* event_processor;
     screen_t* screen;
+    background_t* background;
     uint8_t render_atom = 0;
 
     /**
@@ -45,12 +47,14 @@ class windowserver_t
      */
     void launch();
 
+    void initializeGraphics();
+    void createVitalComponents(g_rectangle screenBounds);
+    void loadCursor();
+
+    void renderLoop(g_rectangle screenBounds);
+    void triggerRender();
     static void initializeInput();
     static void fpsCounter();
-
-    void mainLoop(g_rectangle screenBounds);
-    void loadCursor();
-    void triggerRender();
 
     /**
      * Blits the component state.
@@ -75,11 +79,6 @@ class windowserver_t
      * @return the instance
      */
     static windowserver_t* instance();
-
-    /**
-     * TODO remove
-     */
-    void createTestComponents();
 };
 
 #endif

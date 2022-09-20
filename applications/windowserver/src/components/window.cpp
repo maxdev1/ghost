@@ -176,7 +176,6 @@ bool window_t::handleMouseEvent(mouse_event_t& me)
 
     if(me.type == G_MOUSE_EVENT_MOVE)
     {
-        std::string lastCursor = cursor_t::get();
         if(resizable)
         {
             g_point pos = me.position;
@@ -218,24 +217,22 @@ bool window_t::handleMouseEvent(mouse_event_t& me)
             }
         }
 
-        // Cross
         if(crossBounds.contains(me.position))
         {
             crossHovered = true;
+            markFor(COMPONENT_REQUIREMENT_PAINT);
         }
         else
         {
+            if(crossHovered)
+            {
+                markFor(COMPONENT_REQUIREMENT_PAINT);
+            }
             crossHovered = false;
-        }
-
-        if(cursor_t::get() != lastCursor)
-        {
-            markFor(COMPONENT_REQUIREMENT_PAINT);
         }
     }
     else if(me.type == G_MOUSE_EVENT_DRAG)
     {
-        // Press on the cross
         if(crossPressed)
         {
             crossHovered = crossBounds.contains(me.position);
@@ -243,7 +240,6 @@ bool window_t::handleMouseEvent(mouse_event_t& me)
         }
         else
         {
-
             // Window dragging/resizing
             g_point newLocation = me.screenPosition - pressPoint;
 
@@ -428,32 +424,11 @@ void window_t::close()
 
 bool window_t::getNumericProperty(int property, uint32_t* out)
 {
-
-    /*
-    TODO
-
-    if(property == G_UI_PROPERTY_RESIZABLE)
-    {
-        *out = resizable;
-        return true;
-    }
-    */
-
     return false;
 }
 
 bool window_t::setNumericProperty(int property, uint32_t value)
 {
-    /*
-    TODO
-
-    if(property == G_UI_PROPERTY_RESIZABLE)
-    {
-        resizable = value;
-        return true;
-    }
-    */
-
     return component_t::setNumericProperty(property, value);
 }
 
