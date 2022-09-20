@@ -115,9 +115,9 @@ class component_t : public bounds_event_component_t
      * Creates the component; initially marks it as dirty
      * and sets no parent
      */
-    component_t(bool transparentBackground = false) : id(-1), graphics(transparentBackground), visible(true), requirements(COMPONENT_REQUIREMENT_ALL), childRequirements(COMPONENT_REQUIREMENT_ALL), parent(
-                                                                                                                                                                                                         0),
-                                                      layoutManager(0), bounds_event_component_t(this)
+    component_t(bool transparentBackground = false) : id(-1), graphics(transparentBackground), visible(true),
+                                                      requirements(COMPONENT_REQUIREMENT_ALL), childRequirements(COMPONENT_REQUIREMENT_ALL),
+                                                      parent(0), layoutManager(0), bounds_event_component_t(this)
     {
     }
 

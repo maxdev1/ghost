@@ -555,7 +555,7 @@ void event_processor_t::processMouseState()
 
                 // Post event to client
                 event_listener_info_t listenerInfo;
-                if(cursor_t::focusedComponent->getListener(G_UI_COMPONENT_EVENT_TYPE_FOCUS, listenerInfo))
+                if(cursor_t::focusedComponent && cursor_t::focusedComponent->getListener(G_UI_COMPONENT_EVENT_TYPE_FOCUS, listenerInfo))
                 {
                     /*
                     TODO
@@ -591,10 +591,10 @@ void event_processor_t::processMouseState()
     }
     else if(cursor_t::position != previousPosition)
     {
-
         // Post enter or leave events
         component_t* hovered = screen->getComponentAt(cursor_t::position);
-        if((hovered != cursor_t::hoveredComponent) && (cursor_t::draggedComponent != 0 && cursor_t::draggedComponent != cursor_t::hoveredComponent))
+        if((hovered != cursor_t::hoveredComponent) &&
+           (cursor_t::draggedComponent == 0 || cursor_t::draggedComponent != cursor_t::hoveredComponent))
         {
 
             // Leave
