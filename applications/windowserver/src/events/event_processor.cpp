@@ -464,14 +464,8 @@ void event_processor_t::processMouseState()
 
     if(cursor_t::position != cursor_t::nextPosition)
     {
-        // invalidate old location
         screen->markDirty(cursor_t::getArea());
-
-        // set new cursor position
-        cursor_t::position.x = cursor_t::nextPosition.x;
-        cursor_t::position.y = cursor_t::nextPosition.y;
-
-        // Invalidate new location
+        cursor_t::position = cursor_t::nextPosition;
         screen->markDirty(cursor_t::getArea());
     }
 

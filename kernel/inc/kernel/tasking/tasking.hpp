@@ -181,18 +181,10 @@ struct g_tasking_local
     {
         g_schedule_entry* list;
         g_task* current;
-        int taskCount;
 
         uint32_t round;
         g_task* idleTask;
     } scheduling;
-
-    /**
-     * The number of locks that are currently held on this processor.
-     * While locksHeld > 0 interrupts are disabled.
-     */
-    int locksHeld;
-    int locksReenableInt;
 
     /**
      * Approximation of milliseconds that this processor has run.

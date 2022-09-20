@@ -185,13 +185,14 @@ void ps2WaitForBuffer(ps2_buffer_t buffer)
         requiredValue = 1;
     }
 
-    int timeout = 100000;
+    int timeout = 100;
     while(timeout--)
     {
         if((ioInportByte(G_PS2_STATUS_PORT) & requiredBit) == requiredValue)
         {
             return;
         }
+        g_yield();
     }
 }
 

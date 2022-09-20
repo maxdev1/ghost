@@ -80,7 +80,6 @@ void roundedRectangle(cairo_t* cr, double x, double y, double width, double heig
 
 void window_t::paint()
 {
-
     g_rectangle bounds = getBounds();
     cairo_t* cr = graphics.getContext();
     clearSurface();

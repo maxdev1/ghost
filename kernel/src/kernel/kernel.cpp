@@ -50,15 +50,16 @@ extern "C" void kernelMain(g_setup_information* setupInformation)
         consoleVideoClear();
 
     kernelInitialize(setupInformation);
+
     g_address initialPdPhys = setupInformation->initialPageDirectoryPhysical;
     memoryUnmapSetupMemory();
     kernelRunBootstrapCore(initialPdPhys);
-    kernelHalt();
+
+    __builtin_unreachable();
 }
 
 void kernelInitialize(g_setup_information* setupInformation)
 {
-    loggerInitialize();
     kernelLoggerInitialize(setupInformation);
     memoryInitialize(setupInformation);
 
@@ -75,7 +76,9 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 {
     logDebug("%! has entered kernel", "bsp");
     mutexInitialize(&bootstrapCoreLock);
-    mutexAcquire(&bootstrapCoreLock, false);
+    mutexInitialize(&applicationCoreLock);
+
+    mutexAcquire(&bootstrapCoreLock);
 
     systemInitializeBsp(initialPdPhys);
     filesystemInitialize();
@@ -89,8 +92,10 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
     taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) kernelInitializationThread, initializationProcess, G_SECURITY_LEVEL_KERNEL));
 
     logInfo("%! booting on %i cores", "kernel", processorGetNumberOfProcessors());
-    mutexRelease(&bootstrapCoreLock, false);
+    mutexRelease(&bootstrapCoreLock);
+
     systemWaitForApplicationCores();
+    systemMarkReady();
     interruptsEnable();
     for(;;)
         asm("hlt");
@@ -99,17 +104,15 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 void kernelRunApplicationCore()
 {
     logDebug("%! has entered kernel, waiting for bsp", "ap");
-    mutexAcquire(&bootstrapCoreLock, false);
-    mutexRelease(&bootstrapCoreLock, false);
+    mutexAcquire(&bootstrapCoreLock);
+    mutexRelease(&bootstrapCoreLock);
 
-    mutexInitialize(&applicationCoreLock);
-    mutexAcquire(&applicationCoreLock, false);
-
+    mutexAcquire(&applicationCoreLock);
     logDebug("%! initializing %i", "ap", processorGetCurrentId());
     systemInitializeAp();
     taskingInitializeAp();
+    mutexRelease(&applicationCoreLock);
 
-    mutexRelease(&applicationCoreLock, false);
     systemWaitForApplicationCores();
     interruptsEnable();
     for(;;)
@@ -140,7 +143,7 @@ void kernelSpawnService(const char* path, const char* args, g_security_level sec
 
 void kernelInitializationThread()
 {
-    logInfo("%! loading system services", "kernel");
+    logInfo("%! loading system services", "init");
     kernelSpawnService("/applications/ps2driver.bin", "", G_SECURITY_LEVEL_DRIVER);
     kernelSpawnService("/applications/vbedriver.bin", "", G_SECURITY_LEVEL_DRIVER);
     kernelSpawnService("/applications/windowserver.bin", "", G_SECURITY_LEVEL_APPLICATION);
@@ -153,13 +156,11 @@ void kernelPanic(const char* msg, ...)
     interruptsDisable();
     logInfo("%*%! unrecoverable error on processor %i", 0x0C, "kernerr", processorGetCurrentId());
 
-    loggerManualLock();
     va_list valist;
     va_start(valist, msg);
     loggerPrintFormatted(msg, valist);
     va_end(valist);
     loggerPrintCharacter('\n');
-    loggerManualUnlock();
 
     for(;;)
         asm("hlt");

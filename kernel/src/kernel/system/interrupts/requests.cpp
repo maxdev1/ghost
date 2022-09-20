@@ -57,7 +57,6 @@ void requestsHandle(g_task* task)
         if(irq == 0) // Timer triggers scheduling
         {
             taskingGetLocal()->time += APIC_MILLISECONDS_PER_TICK;
-            schedulerNewTimeSlot();
             taskingSchedule();
         }
         else if(irq < 256 && handlers[irq]) // User-space irq handling
@@ -88,11 +87,14 @@ void requestsCallUserspaceHandler(uint8_t irq)
         return;
     }
 
+    g_task* last = taskingGetCurrentTask();
     taskingSetCurrentTask(handlerTask);
     taskingApplySwitch();
 
     void (*userSpaceHandler)() = (void (*)()) handler->handlerAddress;
     userSpaceHandler();
+
+    taskingSetCurrentTask(last);
 }
 
 void requestsRegisterHandler(uint8_t irq, g_tid handlerTask, g_virtual_address handlerAddress, g_virtual_address entryAddress, g_virtual_address returnAddress)

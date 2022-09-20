@@ -25,10 +25,11 @@
 
 struct g_mutex
 {
-	volatile int initialized = 0;
-	volatile int lock = 0;
-	int depth = 0;
-	uint32_t owner = -1;
+    volatile int initialized = 0;
+    volatile int lock = 0;
+
+    int depth = 0;
+    uint32_t owner = -1;
 };
 
 /**
@@ -48,18 +49,10 @@ bool mutexTryAcquire(g_mutex* mutex);
 void mutexRelease(g_mutex* mutex);
 
 /**
- * Acquires the mutex.
- *
- * The smp parameter decides if the lock count for this processor should be increased.
- */
-void mutexAcquire(g_mutex* mutex, bool smp);
-bool mutexTryAcquire(g_mutex* mutex, bool smp);
-
-/**
  * Releases the mutex.
  *
  * The smp parameter decides if the lock count for this processor should be decreased.
  */
-void mutexRelease(g_mutex* mutex, bool smp);
+void mutexRelease(g_mutex* mutex);
 
 #endif

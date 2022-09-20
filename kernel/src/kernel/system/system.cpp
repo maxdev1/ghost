@@ -19,48 +19,59 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/system.hpp"
-#include "kernel/system/interrupts/interrupts.hpp"
-#include "kernel/system/acpi/acpi.hpp"
-#include "kernel/system/smp.hpp"
-#include "kernel/memory/gdt.hpp"
 #include "kernel/kernel.hpp"
+#include "kernel/memory/gdt.hpp"
+#include "kernel/system/acpi/acpi.hpp"
+#include "kernel/system/interrupts/interrupts.hpp"
+#include "kernel/system/smp.hpp"
 
 static int applicationCoresWaiting;
 static bool bspInitialized = false;
+static bool systemReady = false;
 
 void systemInitializeBsp(g_physical_address initialPdPhys)
 {
-	processorInitializeBsp();
+    processorInitializeBsp();
 
-	acpiInitialize();
-	interruptsInitializeBsp();
-	smpInitialize(initialPdPhys);
+    acpiInitialize();
+    interruptsInitializeBsp();
+    smpInitialize(initialPdPhys);
 
-	gdtPrepare();
-	gdtInitialize();
+    gdtPrepare();
+    gdtInitialize();
 
-	applicationCoresWaiting = processorGetNumberOfProcessors() - 1;
-	bspInitialized = true;
+    applicationCoresWaiting = processorGetNumberOfProcessors() - 1;
+    bspInitialized = true;
 }
 
 void systemInitializeAp()
 {
-	processorInitializeAp();
-	interruptsInitializeAp();
+    processorInitializeAp();
+    interruptsInitializeAp();
 
-	gdtInitialize();
+    gdtInitialize();
 
-	systemMarkApplicationCoreReady();
+    systemMarkApplicationCoreReady();
 }
 
 void systemWaitForApplicationCores()
 {
-	logDebug("%! waiting for %i application processors", processorGetCurrentId() == 0 ? "bsp" : "ap", applicationCoresWaiting);
-	while(applicationCoresWaiting > 0)
-		asm("pause");
+    logDebug("%! waiting for %i application processors", processorGetCurrentId() == 0 ? "bsp" : "ap", applicationCoresWaiting);
+    while(applicationCoresWaiting > 0)
+        asm("pause");
 }
 
 void systemMarkApplicationCoreReady()
 {
-	--applicationCoresWaiting;
+    --applicationCoresWaiting;
+}
+
+void systemMarkReady()
+{
+    systemReady = true;
+}
+
+bool systemIsReady()
+{
+    return systemReady;
 }

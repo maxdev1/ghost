@@ -32,4 +32,11 @@ void systemWaitForApplicationCores();
 
 void systemMarkApplicationCoreReady();
 
+void systemMarkReady();
+
+/**
+ * @return true when the system bootstrap is finished on all processors.
+ */
+bool systemIsReady();
+
 #endif

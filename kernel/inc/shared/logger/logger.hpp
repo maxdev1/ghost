@@ -26,8 +26,6 @@
 
 #include "shared/logger/logger_macros.hpp"
 
-void loggerInitialize();
-
 void loggerPrintLocked(const char *message, ...);
 
 void loggerPrintlnLocked(const char *message, ...);
@@ -35,10 +33,6 @@ void loggerPrintlnLocked(const char *message, ...);
 void loggerPrintUnlocked(const char *message, ...);
 
 void loggerPrintlnUnlocked(const char *message, ...);
-
-void loggerManualLock();
-
-void loggerManualUnlock();
 
 void loggerEnableSerial(bool enable);
 

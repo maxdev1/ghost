@@ -44,12 +44,27 @@
 
 static windowserver_t* server;
 static uint8_t dispatch_lock = 0;
+static int framesTotal = 0;
 
 int main(int argc, char** argv)
 {
     server = new windowserver_t();
     server->launch();
     return 0;
+}
+
+void windowserver_t::initializeInput()
+{
+    input_receiver_t::initialize();
+
+    std::string keyLayout = "de-DE";
+    if(!g_keyboard::loadLayout(keyLayout))
+    {
+        klog(("failed to load keyboard layout '" + keyLayout + "', no keyboard input available").c_str());
+    }
+
+    server->loadCursor();
+    server->triggerRender();
 }
 
 void windowserver_t::launch()
@@ -68,19 +83,8 @@ void windowserver_t::launch()
 
     // set up event handling
     event_processor = new event_processor_t();
-    input_receiver_t::initialize();
+    g_create_thread((void*) &windowserver_t::initializeInput);
 
-    std::string keyLayout = "de-DE";
-    klog("loading keyboard layout '%s'", keyLayout);
-    if(!g_keyboard::loadLayout(keyLayout))
-    {
-        klog(("failed to load keyboard layout '" + keyLayout + "', no keyboard input available").c_str());
-    }
-
-    klog("loading cursors");
-    loadCursor();
-
-    // perform main loop
     g_dimension resolution = video_output->getResolution();
     g_rectangle screenBounds(0, 0, resolution.width, resolution.height);
 
@@ -89,17 +93,16 @@ void windowserver_t::launch()
 
     background_t background(screenBounds);
     screen->addChild(&background);
+    cursor_t::focusedComponent = screen;
 
-    // test components
+    // background.load("/system/graphics/wallpaper.png");
+
     createTestComponents();
 
-    // execute the main loop
     mainLoop(screenBounds);
 }
 
-int framecount = 0;
-
-void fpsCounter()
+void windowserver_t::fpsCounter()
 {
     int seconds = 0;
 
@@ -107,27 +110,24 @@ void fpsCounter()
     {
         g_sleep(1000);
         seconds++;
-        klog("fps: %i", framecount);
-        framecount = 0;
+        klog("fps: %i", framesTotal);
+        framesTotal = 0;
     }
 }
 
 void windowserver_t::mainLoop(g_rectangle screenBounds)
 {
+    g_create_thread((void*) &windowserver_t::fpsCounter);
+
     g_graphics global;
     global.resize(screenBounds.width, screenBounds.height);
 
     cursor_t::nextPosition = g_point(screenBounds.width / 2, screenBounds.height / 2);
 
-    // intially set rendering atom
     render_atom = true;
-
-    g_create_thread((void*) &fpsCounter);
-
     while(true)
     {
         event_processor->processMouseState();
-
         event_processor->process();
 
         screen->resolveRequirement(COMPONENT_REQUIREMENT_UPDATE);
@@ -139,7 +139,7 @@ void windowserver_t::mainLoop(g_rectangle screenBounds)
 
         blit(&global);
 
-        framecount++;
+        framesTotal++;
         g_atomic_lock_to(&render_atom, 1000);
     }
 }
@@ -169,7 +169,6 @@ void windowserver_t::loadCursor()
     cursor_t::load("/system/graphics/cursor/resize-nesw.cursor");
     cursor_t::load("/system/graphics/cursor/resize-nwes.cursor");
     cursor_t::set("default");
-    cursor_t::focusedComponent = screen;
 }
 
 class open_executable_action_handler_t;
@@ -218,52 +217,60 @@ void windowserver_t::createTestComponents()
     infoLabel->setBounds(g_rectangle(10, 10, 300, 20));
     infoLabel->setTitle("This is a demo launchpad for executing");
     infoLabel->setColor(RGB(0, 0, 0));
-    testWindow->addChild(infoLabel);
+    //  testWindow->addChild(infoLabel);
 
     label_t* infoLabel2 = new label_t();
     infoLabel2->setBounds(g_rectangle(10, 30, 300, 20));
     infoLabel2->setTitle("the available GUI applications.");
     infoLabel2->setColor(RGB(0, 0, 0));
-    testWindow->addChild(infoLabel2);
+    // testWindow->addChild(infoLabel2);
 
-    addExecutableButton(testWindow, "Calculator", "/applications/calculator.bin", "");
-    addExecutableButton(testWindow, "Terminal", "/applications/terminal2.bin", "");
-    addExecutableButton(testWindow, "Drawing demo", "/applications/tetris.bin", "");
-
-    /*
-     scrollpane_t* scroller = new scrollpane_t;
-     scroller->setBounds(g_rectangle(0, 0, 300, 200));
-     testWindow->addChild(scroller);
-
-     panel_t* contentPanel = new panel_t();
-     contentPanel->setBounds(g_rectangle(0, 0, 400, 400));
-     contentPanel->setBackground(RGB(200, 200, 200));
-     contentPanel->setLayoutManager(new grid_layout_manager_t(1, 5));
-     scroller->setViewPort(contentPanel);
-
-     button_t* button1 = new button_t();
-     button1->getLabel().setTitle("Button 1");
-     contentPanel->addChild(button1);
-
-     label_t* label1 = new label_t();
-     label1->setTitle("This is a panel with some scrollable content. The content is layouted using a grid layout.");
-     contentPanel->addChild(label1);
-
-     label_t* label2 = new label_t();
-     label2->setTitle("The height of the content panel is used to specify the scrollable area.");
-     contentPanel->addChild(label2);
-
-     button_t* button2 = new button_t();
-     button2->getLabel().setTitle("Button 2");
-     contentPanel->addChild(button2);
-
-     label_t* label3 = new label_t();
-     label3->setTitle("Yey! Works great :)");
-     contentPanel->addChild(label3);
-     */
+    //// addExecutableButton(testWindow, "Calculator", "/applications/calculator.bin", "");
+    // addExecutableButton(testWindow, "Terminal", "/applications/terminal2.bin", "");
+    // addExecutableButton(testWindow, "Drawing demo", "/applications/tetris.bin", "");
 
     screen->addChild(testWindow);
     testWindow->setVisible(true);
+
+    /*
+        window_t* secondWindow = new window_t;
+        secondWindow->setTitle("Scroller");
+        secondWindow->setBounds(g_rectangle(200, 200, 500, 500));
+        secondWindow->setLayoutManager(new grid_layout_manager_t(1, 1));
+
+        scrollpane_t* scroller = new scrollpane_t;
+        scroller->setBounds(g_rectangle(0, 0, 300, 200));
+        secondWindow->addChild(scroller);
+
+        panel_t* contentPanel = new panel_t();
+        contentPanel->setBounds(g_rectangle(0, 0, 400, 400));
+        contentPanel->setBackground(RGB(200, 200, 200));
+        contentPanel->setLayoutManager(new grid_layout_manager_t(1, 5));
+        scroller->setViewPort(contentPanel);
+
+        button_t* button1 = new button_t();
+        button1->getLabel().setTitle("Button 1");
+        contentPanel->addChild(button1);
+
+        label_t* label1 = new label_t();
+        label1->setTitle("This is a panel with some scrollable content. The content is layouted using a grid layout.");
+        contentPanel->addChild(label1);
+
+        label_t* label2 = new label_t();
+        label2->setTitle("The height of the content panel is used to specify the scrollable area.");
+        contentPanel->addChild(label2);
+
+        button_t* button2 = new button_t();
+        button2->getLabel().setTitle("Button 2");
+        contentPanel->addChild(button2);
+
+        label_t* label3 = new label_t();
+        label3->setTitle("Yey! Works great :)");
+        contentPanel->addChild(label3);
+
+        screen->addChild(secondWindow);
+        secondWindow->setVisible(true);
+        */
 }
 
 component_t* windowserver_t::dispatchUpwards(component_t* component, event_t& event)
