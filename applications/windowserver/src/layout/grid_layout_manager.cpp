@@ -24,27 +24,21 @@
 #include <typeinfo>
 #include <vector>
 
-/**
- *
- */
 grid_layout_manager_t::grid_layout_manager_t(int columns, int rows) : columns(columns), rows(rows), padding(g_insets(0, 0, 0, 0)), horizontalCellSpace(0), verticalCellSpace(0)
 {
 }
 
-/**
- *
- */
 void grid_layout_manager_t::layout()
 {
-
     if(component == 0)
-    {
         return;
-    }
-
-    std::vector<component_child_reference_t>& children = component->getChildren();
 
     g_rectangle usedBounds = component->getBounds();
+    if(lastBounds.width == usedBounds.width && lastBounds.height == usedBounds.height)
+        return;
+    lastBounds.width = usedBounds.width;
+    lastBounds.height = usedBounds.height;
+
     usedBounds.x = padding.left;
     usedBounds.y = padding.top;
     usedBounds.width -= padding.left + padding.right;
@@ -56,11 +50,13 @@ void grid_layout_manager_t::layout()
 
     int widthPerComponent = (columns > 0) ? (usedBounds.width / columns) : usedBounds.width;
 
+    g_atomic_lock(component->getChildrenLock());
+    auto children = component->getChildren();
     for(auto& ref : children)
     {
-        component_t* c = ref.component;
+        component_t* child = ref.component;
 
-        int usedHeight = (rows > 0) ? (usedBounds.height / rows) : c->getPreferredSize().height;
+        int usedHeight = (rows > 0) ? (usedBounds.height / rows) : child->getPreferredSize().height;
 
         if(x + widthPerComponent > usedBounds.width)
         {
@@ -69,7 +65,7 @@ void grid_layout_manager_t::layout()
             rowHeight = 0;
         }
 
-        c->setBounds(g_rectangle(x, y, widthPerComponent, usedHeight));
+        child->setBounds(g_rectangle(x, y, widthPerComponent, usedHeight));
         x += widthPerComponent;
 
         if(usedHeight > rowHeight)
@@ -77,4 +73,5 @@ void grid_layout_manager_t::layout()
             rowHeight = usedHeight;
         }
     }
+    *component->getChildrenLock() = 0;
 }

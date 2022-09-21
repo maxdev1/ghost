@@ -18,40 +18,16 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __WINDOWSERVER_COMPONENTS_SCREEN__
-#define __WINDOWSERVER_COMPONENTS_SCREEN__
+#include "components/desktop/desktop_item.hpp"
 
-#include "components/component.hpp"
+#include <cairo/cairo.h>
 
-#include <libwindow/metrics/rectangle.hpp>
-
-class screen_t : public component_t
+desktop_item_t::desktop_item_t()
 {
-  private:
-    /**
-     * Area that is invalid and needs to be copied to the video output.
-     */
-    g_rectangle invalid;
+}
 
-  public:
-    virtual ~screen_t()
-    {
-    }
-
-    /**
-     * Overrides the default invalidation method. On the component, this method
-     * just dispatches to the parent, but here we must remember the invalidation.
-     */
-    virtual void markDirty(g_rectangle rect);
-
-    virtual bool handleMouseEvent(mouse_event_t& e);
-
-    g_rectangle grabInvalid()
-    {
-        g_rectangle ret = invalid;
-        invalid = g_rectangle();
-        return ret;
-    }
-};
-
-#endif
+void desktop_item_t::paint()
+{
+    cairo_t* cr = graphics.getContext();
+    auto bounds = getBounds();
+}

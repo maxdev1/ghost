@@ -27,9 +27,18 @@ g_graphics::g_graphics(uint16_t width, uint16_t height) : width(width), height(h
     resize(width, height);
 }
 
-void g_graphics::resize(int newWidth, int newHeight)
+void g_graphics::resize(int newWidth, int newHeight, bool averaged)
 {
     if(newWidth <= 0 || newHeight <= 0)
+        return;
+
+    if(averaged)
+    {
+        newWidth = newWidth + ((newWidth + 10) % 10);
+        newHeight = newHeight + ((newHeight + 10) % 10);
+    }
+
+    if(newWidth == width && newHeight == height)
         return;
 
     if(surface)

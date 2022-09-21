@@ -21,10 +21,10 @@
 #ifndef __WINDOWSERVER__
 #define __WINDOWSERVER__
 
-#include "components/background.hpp"
 #include "components/component.hpp"
+#include "components/desktop/background.hpp"
+#include "components/desktop/screen.hpp"
 #include "components/label.hpp"
-#include "components/screen.hpp"
 #include "events/event_processor.hpp"
 #include "video/video_output.hpp"
 

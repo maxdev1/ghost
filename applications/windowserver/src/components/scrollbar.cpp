@@ -32,7 +32,8 @@ void scrollbar_t::paint()
 
     g_rectangle knob = calculateKnob();
 
-    cairo_rectangle(cr, knob.x, knob.y, knob.width, knob.height);
+    int knobPadding = 3;
+    cairo_rectangle(cr, knob.x + knobPadding, knob.y + knobPadding, knob.width - 2 * knobPadding, knob.height - 2 * knobPadding);
     cairo_set_source_rgba(cr, 0, 0, 0, 0.5);
     cairo_fill(cr);
 }
@@ -75,30 +76,29 @@ bool scrollbar_t::handleMouseEvent(mouse_event_t& me)
             mousePosition = me.position.x;
         }
 
+        int knobSpace = getKnobSpace();
+        if(knobSpace <= 0)
+            knobSpace = 1;
+
         int viewPosition = dragViewPosition + (mousePosition - dragPressPosition);
-        int viewMax = getViewMax();
         if(viewPosition < 0)
         {
             viewPosition = 0;
         }
-        else if(viewPosition > viewMax)
+        else if(viewPosition > knobSpace)
         {
-            viewPosition = viewMax;
+            viewPosition = knobSpace;
         }
 
-        if(viewMax == 0)
-        {
-            viewMax = 1;
-        }
-        int modelMax = modelTotalArea - modelVisibleArea;
-        modelPosition = (viewPosition * modelMax) / viewMax;
+        int hiddenLength = contentLength - viewportLength;
+        modelPosition = (viewPosition * hiddenLength) / knobSpace;
         if(modelPosition < 0)
         {
             modelPosition = 0;
         }
-        else if(modelPosition > modelMax)
+        else if(modelPosition > hiddenLength)
         {
-            modelPosition = modelMax;
+            modelPosition = hiddenLength;
         }
 
         if(scrollHandler)
@@ -111,10 +111,10 @@ bool scrollbar_t::handleMouseEvent(mouse_event_t& me)
     return true;
 }
 
-void scrollbar_t::setModelArea(int visible, int total)
+void scrollbar_t::setViewLengths(int viewportLength, int contentLength)
 {
-    modelVisibleArea = visible;
-    modelTotalArea = total;
+    this->viewportLength = viewportLength;
+    this->contentLength = contentLength;
 
     markFor(COMPONENT_REQUIREMENT_PAINT);
 }
@@ -128,51 +128,44 @@ void scrollbar_t::setModelPosition(int pos)
 
 g_rectangle scrollbar_t::calculateKnob()
 {
-
     g_rectangle bounds = getBounds();
+    int knobLength = getKnobLength();
 
-    // calculate knob size
-    int knobSize = getKnobSize();
+    int knobSpace = getKnobSpace();
 
-    // calculate area that knob can scroll on
-    int viewMax = getViewMax();
-    int modelMax = modelTotalArea - modelVisibleArea;
-    if(modelMax == 0)
-    {
-        modelMax = 1;
-    }
-    int viewPosition = (viewMax * modelPosition) / modelMax;
+    int hiddenLength = contentLength - viewportLength;
+    if(hiddenLength <= 0)
+        hiddenLength = 1;
 
-    // create rectangle for knob
+    int viewPosition = (knobSpace * modelPosition) / hiddenLength;
+
     if(orientation == scrollbar_orientation_t::VERTICAL)
     {
-        return g_rectangle(0, viewPosition, bounds.width, knobSize);
+        return g_rectangle(0, viewPosition, bounds.width, knobLength);
     }
     else if(orientation == scrollbar_orientation_t::HORIZONTAL)
     {
-        return g_rectangle(viewPosition, 0, knobSize, bounds.height);
+        return g_rectangle(viewPosition, 0, knobLength, bounds.height);
     }
 
-    // dummy
     return g_rectangle(0, 0, 1, 1);
 }
 
-int scrollbar_t::getViewMax()
+int scrollbar_t::getKnobSpace()
 {
-
     if(orientation == scrollbar_orientation_t::VERTICAL)
     {
-        return getBounds().height - getKnobSize();
+        return getBounds().height - getKnobLength();
     }
     else if(orientation == scrollbar_orientation_t::HORIZONTAL)
     {
-        return getBounds().width - getKnobSize();
+        return getBounds().width - getKnobLength();
     }
 
     return 0;
 }
 
-int scrollbar_t::getKnobSize()
+int scrollbar_t::getKnobLength()
 {
 
     int bounds;
@@ -185,7 +178,8 @@ int scrollbar_t::getKnobSize()
         bounds = getBounds().width;
     }
 
-    int size = (bounds * modelVisibleArea) / modelTotalArea;
+    int total = contentLength <= 0 ? 1 : contentLength;
+    int size = (bounds * viewportLength) / contentLength;
     if(size < 20)
     {
         size = 20;

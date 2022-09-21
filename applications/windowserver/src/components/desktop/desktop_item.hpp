@@ -18,40 +18,22 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "components/background.hpp"
+#ifndef __WINDOWSERVER_COMPONENTS_DESKTOPITEM__
+#define __WINDOWSERVER_COMPONENTS_DESKTOPITEM__
 
-background_t::background_t(g_rectangle bounds)
+#include "components/component.hpp"
+#include <libwindow/metrics/rectangle.hpp>
+
+class desktop_item_t : public component_t
 {
-    setBounds(bounds);
-    setZIndex(0);
-}
+  public:
+    desktop_item_t();
 
-void background_t::load(const char* path)
-{
-    if(surface)
-        cairo_surface_destroy(surface);
-
-    surface = cairo_image_surface_create_from_png(path);
-}
-
-void background_t::paint()
-{
-    cairo_t* cr = graphics.getContext();
-    auto bounds = getBounds();
-
-    cairo_set_source_rgb(cr, 0, 0.2, 0.2);
-    cairo_rectangle(cr, bounds.x, bounds.y, bounds.width, bounds.height);
-    cairo_fill(cr);
-
-    if(surface)
+    virtual ~desktop_item_t()
     {
-        int imgwidth = cairo_image_surface_get_width(surface);
-        int imgheight = cairo_image_surface_get_height(surface);
-
-        int bgx = bounds.x + (bounds.width / 2 - imgwidth / 2);
-        int bgy = bounds.y + (bounds.height / 2 - imgheight / 2);
-        cairo_set_source_surface(cr, surface, bgx, bgy);
-        cairo_rectangle(cr, bgx, bgy, bounds.width, bounds.height);
-        cairo_fill(cr);
     }
-}
+
+    virtual void paint();
+};
+
+#endif

@@ -67,7 +67,7 @@ bool exceptionsHandleDivideError(g_task* task)
 {
     // Let process run, but skip the faulty instruction
     task->state->eip++;
-    logInfo("%! thread %i had a divide error", "exception", task->id);
+    logDebug("%! thread %i had a divide error", "exception", task->id);
     return true;
 }
 

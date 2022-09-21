@@ -19,7 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "test.hpp"
-#include "components/background.hpp"
+#include "components/desktop/background.hpp"
 #include "components/button.hpp"
 #include "components/checkbox.hpp"
 #include "components/cursor.hpp"
@@ -128,10 +128,10 @@ void test_t::createTestComponents()
     secondWindow->addChild(scroller);
 
     panel_t* contentPanel = new panel_t();
-    contentPanel->setBounds(g_rectangle(0, 0, 400, 400));
+    contentPanel->setPreferredSize(g_dimension(400, 400));
     contentPanel->setBackground(RGB(200, 200, 200));
     contentPanel->setLayoutManager(new grid_layout_manager_t(1, 5));
-    scroller->setViewPort(contentPanel);
+    scroller->setContent(contentPanel);
 
     button_t* button1 = new button_t();
     button1->getLabel().setTitle("Button 1");

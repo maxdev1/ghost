@@ -67,6 +67,10 @@ class window_t : public component_t, public titled_component_t
     bool crossHovered;
     bool focused;
 
+    g_point pressPoint;
+    g_rectangle pressBounds;
+    window_resize_mode_t resizeMode;
+
     int shadowSize;
     g_rectangle crossBounds;
 

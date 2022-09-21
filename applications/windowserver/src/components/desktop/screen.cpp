@@ -18,8 +18,9 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "components/screen.hpp"
+#include "components/desktop/screen.hpp"
 #include "components/cursor.hpp"
+#include "windowserver.hpp"
 
 void screen_t::markDirty(g_rectangle rect)
 {
@@ -62,10 +63,34 @@ void screen_t::markDirty(g_rectangle rect)
 
 bool screen_t::handleMouseEvent(mouse_event_t& e)
 {
-    if(!component_t::handleMouseEvent(e))
+    if(e.type == G_MOUSE_EVENT_DRAG)
     {
-        cursor_t::set("default");
+        if(pressing)
+        {
+            g_rectangle selection(pressPoint.x, pressPoint.y, e.position.x - pressPoint.x, e.position.y - pressPoint.y);
+            windowserver_t::instance()->background->showSelection(selection);
+        }
+        return true;
+    }
+    else if(e.type == G_MOUSE_EVENT_DRAG_RELEASE)
+    {
+        if(pressing)
+        {
+            pressing = false;
+            windowserver_t::instance()->background->hideSelection();
+            return true;
+        }
     }
 
+    if(component_t::handleMouseEvent(e))
+        return true;
+
+    if(e.type == G_MOUSE_EVENT_PRESS)
+    {
+        pressing = true;
+        pressPoint = e.position;
+    }
+
+    cursor_t::set("default");
     return true;
 }

@@ -47,8 +47,8 @@ class scrollbar_t : public component_t
     scrollbar_orientation_t orientation;
 
     int modelPosition;
-    int modelVisibleArea;
-    int modelTotalArea;
+    int viewportLength;
+    int contentLength;
 
     button_state_t decButtonState;
     button_state_t incButtonState;
@@ -61,7 +61,7 @@ class scrollbar_t : public component_t
 
   public:
     scrollbar_t(scrollbar_orientation_t orientation) : orientation(orientation), modelPosition(0),
-                                                       modelVisibleArea(0), modelTotalArea(0), knobDrag(false),
+                                                       viewportLength(0), contentLength(0), knobDrag(false),
                                                        dragPressPosition(0), dragViewPosition(0), scrollHandler(0)
     {
     }
@@ -79,14 +79,14 @@ class scrollbar_t : public component_t
         return scrollHandler;
     }
 
-    void setModelArea(int visibleArea, int totalArea);
-    int getModelVisibleArea() const
+    void setViewLengths(int visibleArea, int totalArea);
+    int getviewportLength() const
     {
-        return modelVisibleArea;
+        return viewportLength;
     }
-    int getModelTotalArea() const
+    int getcontentLength() const
     {
-        return modelTotalArea;
+        return contentLength;
     }
 
     void setModelPosition(int position);
@@ -95,8 +95,8 @@ class scrollbar_t : public component_t
         return modelPosition;
     }
 
-    int getViewMax();
-    int getKnobSize();
+    int getKnobSpace();
+    int getKnobLength();
 
     g_rectangle calculateKnob();
 };

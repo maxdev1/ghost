@@ -22,11 +22,20 @@
 #include "events/mouse_event.hpp"
 #include <stdio.h>
 
-void scrollpane_t::setViewPort(component_t* component)
-{
-    viewPort = component;
-    addChild(component);
+#define SCROLLBAR_SIZE 15
 
+scrollpane_t::scrollpane_t()
+{
+}
+
+void scrollpane_t::setContent(component_t* component)
+{
+    if(this->content)
+        removeChild(this->content);
+
+    this->content = component;
+    addChild(this->content);
+    
     addChild(&horizontalScrollbar, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
     horizontalScrollbar.setScrollHandler(this);
 
@@ -38,52 +47,64 @@ void scrollpane_t::layout()
 {
     auto bounds = getBounds();
 
-    verticalScrollbar.setModelArea(bounds.height, viewPort->getBounds().height);
-    verticalScrollbar.setBounds(g_rectangle(bounds.width - 15, 0, 15, bounds.height - 15));
+    int viewportHeight = bounds.height;
+    int viewportWidth = bounds.width;
+    auto contentBounds = content->getPreferredSize();
 
-    horizontalScrollbar.setModelArea(bounds.width, viewPort->getBounds().width);
-    horizontalScrollbar.setBounds(g_rectangle(0, bounds.height - 15, bounds.width - 15, 15));
-}
+    bool showVbar = false;
+    bool showHbar = false;
 
-void scrollpane_t::setPosition(g_point& newPosition)
-{
-
-    if(viewPort != nullptr)
+    if(contentBounds.height > viewportHeight)
     {
-        scrollPosition = newPosition;
-
-        g_rectangle viewPortSize = viewPort->getBounds();
-        g_rectangle bounds = getBounds();
-
-        // limit if too small
-        if(scrollPosition.x > 0)
-        {
-            scrollPosition.x = 0;
-        }
-        else if(viewPortSize.width < bounds.width)
-        {
-            scrollPosition.x = 0;
-        }
-        else if(scrollPosition.x + viewPortSize.width < bounds.width)
-        {
-            scrollPosition.x = bounds.width - viewPortSize.width;
-        }
-
-        if(scrollPosition.y > 0)
-        {
-            scrollPosition.y = 0;
-        }
-        else if(viewPortSize.height < bounds.height)
-        {
-            scrollPosition.y = 0;
-        }
-        else if(scrollPosition.y + viewPortSize.height < bounds.height)
-        {
-            scrollPosition.y = bounds.height - viewPortSize.height;
-        }
-
-        viewPort->setBounds(g_rectangle(scrollPosition.x, scrollPosition.y, viewPortSize.width, viewPortSize.height));
+        showVbar = true;
     }
+    if(contentBounds.width > (showVbar ? viewportWidth - SCROLLBAR_SIZE : viewportWidth))
+    {
+        showHbar = true;
+    }
+    if(contentBounds.height > (showHbar ? viewportHeight - SCROLLBAR_SIZE : viewportHeight))
+    {
+        showVbar = true;
+    }
+    if(contentBounds.width > (showVbar ? viewportWidth - SCROLLBAR_SIZE : viewportWidth))
+    {
+        showHbar = true;
+    }
+
+    if(showHbar)
+    {
+        viewportHeight -= SCROLLBAR_SIZE;
+    }
+    if(showVbar)
+    {
+        viewportWidth -= SCROLLBAR_SIZE;
+    }
+
+    if(contentBounds.height > viewportHeight)
+    {
+        verticalScrollbar.setViewLengths(viewportHeight, contentBounds.height);
+        verticalScrollbar.setBounds(g_rectangle(viewportWidth, 0, SCROLLBAR_SIZE, viewportHeight));
+        verticalScrollbar.setVisible(true);
+    }
+    else
+    {
+        verticalScrollbar.setVisible(false);
+    }
+
+    if(contentBounds.width > viewportWidth)
+    {
+        horizontalScrollbar.setViewLengths(viewportWidth, contentBounds.width);
+        horizontalScrollbar.setBounds(g_rectangle(0, viewportHeight, viewportWidth, SCROLLBAR_SIZE));
+        horizontalScrollbar.setVisible(true);
+    }
+    else
+    {
+        horizontalScrollbar.setVisible(false);
+    }
+
+    updateContent();
+
+    markFor(COMPONENT_REQUIREMENT_PAINT);
 }
 
 void scrollpane_t::handleScroll(scrollbar_t* bar)
@@ -91,14 +112,51 @@ void scrollpane_t::handleScroll(scrollbar_t* bar)
 
     if(bar == &verticalScrollbar)
     {
-        g_point pos = scrollPosition;
-        pos.y = -verticalScrollbar.getModelPosition();
-        setPosition(pos);
+        scrollPosition.y = -verticalScrollbar.getModelPosition();
+        updateContent();
     }
     else if(bar == &horizontalScrollbar)
     {
-        g_point pos = scrollPosition;
-        pos.x = -horizontalScrollbar.getModelPosition();
-        setPosition(pos);
+        scrollPosition.x = -horizontalScrollbar.getModelPosition();
+        updateContent();
     }
+}
+
+void scrollpane_t::updateContent()
+{
+    if(!content)
+        return;
+
+    g_dimension contentSize = content->getPreferredSize();
+    g_rectangle viewportBounds = getBounds();
+    viewportBounds.width -= SCROLLBAR_SIZE;
+    viewportBounds.height -= SCROLLBAR_SIZE;
+
+    if(scrollPosition.x > 0)
+    {
+        scrollPosition.x = 0;
+    }
+    else if(contentSize.width < viewportBounds.width)
+    {
+        scrollPosition.x = 0;
+    }
+    else if(scrollPosition.x + contentSize.width < viewportBounds.width)
+    {
+        scrollPosition.x = viewportBounds.width - contentSize.width;
+    }
+
+    if(scrollPosition.y > 0)
+    {
+        scrollPosition.y = 0;
+    }
+    else if(contentSize.height < viewportBounds.height)
+    {
+        scrollPosition.y = 0;
+    }
+    else if(scrollPosition.y + contentSize.height < viewportBounds.height)
+    {
+        scrollPosition.y = viewportBounds.height - contentSize.height;
+    }
+
+    content->setBounds(g_rectangle(scrollPosition.x, scrollPosition.y, contentSize.width, contentSize.height));
 }
