@@ -22,7 +22,8 @@
 #define __WINDOWSERVER_LAYOUT_GRIDLAYOUTMANAGER__
 
 #include "layout/layout_manager.hpp"
-#include "libwindow/metrics/insets.hpp"
+#include <libwindow/metrics/insets.hpp>
+#include <libwindow/metrics/dimension.hpp>
 
 class grid_layout_manager_t : public layout_manager_t
 {
@@ -32,6 +33,8 @@ class grid_layout_manager_t : public layout_manager_t
     g_insets padding;
     int horizontalCellSpace;
     int verticalCellSpace;
+
+    g_dimension lastBounds;
 
   public:
     grid_layout_manager_t(int columns, int rows);

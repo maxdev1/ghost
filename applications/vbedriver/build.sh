@@ -5,11 +5,9 @@ if [ -f "$ROOT/variables.sh" ]; then
 fi
 . "$ROOT/ghost.sh"
 
-
-# Define build setup
-SRC=src
-OBJ=obj
-ARTIFACT_NAME=vbedriver.bin
+# Build configuration
+SRC="src"
+ARTIFACT_NAME="vbedriver.bin"
 CFLAGS="-std=c++11 -I$SRC"
 LDFLAGS="-lvbedriver"
 

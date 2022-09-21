@@ -18,41 +18,29 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __WINDOWSERVER_COMPONENTS_SCROLLPANE__
-#define __WINDOWSERVER_COMPONENTS_SCROLLPANE__
+#ifndef __WINDOWSERVER_COMPONENTS_BACKGROUND__
+#define __WINDOWSERVER_COMPONENTS_BACKGROUND__
 
 #include "components/component.hpp"
-#include "components/panel.hpp"
-#include "components/scrollbar.hpp"
+#include <libwindow/metrics/rectangle.hpp>
 
-class scrollpane_t : public component_t, public scroll_handler_t
+class background_t : public component_t
 {
   private:
-    component_t* content = nullptr;
-    g_point scrollPosition = g_point(0, 0);
-    scrollbar_t verticalScrollbar = scrollbar_t(scrollbar_orientation_t::VERTICAL);
-    scrollbar_t horizontalScrollbar = scrollbar_t(scrollbar_orientation_t::HORIZONTAL);
+    cairo_surface_t* surface = 0;
+    g_rectangle selection;
 
   public:
-    scrollpane_t();
-
-    virtual g_point getPosition() const
+    virtual ~background_t()
     {
-        return scrollPosition;
     }
 
-    virtual void layout();
+    virtual void paint();
 
-    virtual void updateContent();
+    virtual void load(const char* path);
 
-    virtual void setContent(component_t* content);
-
-    virtual component_t* getContent() const
-    {
-        return content;
-    }
-
-    virtual void handleScroll(scrollbar_t* bar);
+    void showSelection(g_rectangle& selection);
+    void hideSelection();
 };
 
 #endif

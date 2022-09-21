@@ -17,6 +17,20 @@ with() {
 }
 
 #
+# Requires the specified parameter, quits with an error otherwise
+#
+#   requireVar "ARTIFACT_NAME"
+#
+requireVar() {
+	name=$1
+	if [ -z "${!name}" ]
+	then
+		>&2 echo "error: missing required parameter '$1'"
+		exit 1
+	fi
+}
+
+#
 # Requires the specified tool, quits with an error otherwise
 #
 #   requireTool "g++"

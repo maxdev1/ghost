@@ -53,7 +53,7 @@ void component_t::setBounds(const g_rectangle& newBounds)
     if(oldBounds.width != bounds.width || oldBounds.height != bounds.height)
     {
         graphics.resize(bounds.width, bounds.height);
-        markFor(COMPONENT_REQUIREMENT_ALL);
+        markFor(COMPONENT_REQUIREMENT_LAYOUT);
 
         handleBoundChange(oldBounds);
     }
@@ -74,7 +74,15 @@ void component_t::setVisible(bool visible)
 {
     this->visible = visible;
     markDirty();
-    markFor(COMPONENT_REQUIREMENT_ALL);
+
+    if(visible)
+    {
+        markFor(COMPONENT_REQUIREMENT_ALL);
+    }
+    else
+    {
+        markParentFor(COMPONENT_REQUIREMENT_LAYOUT);
+    }
 }
 
 void component_t::markDirty(g_rectangle rect)
@@ -129,7 +137,6 @@ void component_t::addChild(component_t* comp, component_child_reference_type_t t
     children.push_back(reference);
     std::sort(children.begin(), children.end(), [](component_child_reference_t& c1, component_child_reference_t& c2)
               { return c1.component->z_index < c2.component->z_index; });
-
     children_lock = 0;
 
     markFor(COMPONENT_REQUIREMENT_LAYOUT);
@@ -358,9 +365,13 @@ void component_t::markChildsFor(component_requirement_t req)
         parent->markChildsFor(req);
 }
 
+/**
+ * Resolves a single requirement in the component tree. Layouting is done top-down,
+ * while updating and painting is done bottom-up.
+ */
 void component_t::resolveRequirement(component_requirement_t req)
 {
-    if(childRequirements & req)
+    if((childRequirements & req) && req != COMPONENT_REQUIREMENT_LAYOUT)
     {
         g_atomic_lock(&children_lock);
         for(auto& child : children)
@@ -374,13 +385,13 @@ void component_t::resolveRequirement(component_requirement_t req)
 
     if(requirements & req)
     {
-        if(req == COMPONENT_REQUIREMENT_LAYOUT)
-        {
-            layout();
-        }
-        else if(req == COMPONENT_REQUIREMENT_UPDATE)
+        if(req == COMPONENT_REQUIREMENT_UPDATE)
         {
             update();
+        }
+        else if(req == COMPONENT_REQUIREMENT_LAYOUT)
+        {
+            layout();
         }
         else if(req == COMPONENT_REQUIREMENT_PAINT)
         {
@@ -389,6 +400,18 @@ void component_t::resolveRequirement(component_requirement_t req)
         }
 
         requirements &= ~req;
+    }
+
+    if((childRequirements & req) && req == COMPONENT_REQUIREMENT_LAYOUT)
+    {
+        g_atomic_lock(&children_lock);
+        for(auto& child : children)
+        {
+            if(child.component->visible)
+                child.component->resolveRequirement(req);
+        }
+        childRequirements &= ~req;
+        children_lock = 0;
     }
 }
 

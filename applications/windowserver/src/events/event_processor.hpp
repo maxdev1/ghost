@@ -25,7 +25,7 @@
 #include "input/mouse/mouse.hpp"
 #include <deque>
 
-#define DEFAULT_MULTICLICK_TIMESPAN 250
+#define DEFAULT_MULTICLICK_TIMESPAN 150
 
 /**
  * The event queue is used to store any incoming events for

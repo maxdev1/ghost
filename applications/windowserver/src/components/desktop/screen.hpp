@@ -18,27 +18,43 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __WINDOWSERVER_COMPONENTS_BACKGROUND__
-#define __WINDOWSERVER_COMPONENTS_BACKGROUND__
+#ifndef __WINDOWSERVER_COMPONENTS_SCREEN__
+#define __WINDOWSERVER_COMPONENTS_SCREEN__
 
 #include "components/component.hpp"
+
 #include <libwindow/metrics/rectangle.hpp>
 
-class background_t : public component_t
+class screen_t : public component_t
 {
   private:
-    cairo_surface_t* surface = 0;
+    /**
+     * Area that is invalid and needs to be copied to the video output.
+     */
+    g_rectangle invalid;
+
+    bool pressing;
+    g_point pressPoint;
 
   public:
-    background_t(g_rectangle bounds);
-
-    virtual ~background_t()
+    virtual ~screen_t()
     {
     }
 
-    virtual void paint();
+    /**
+     * Overrides the default invalidation method. On the component, this method
+     * just dispatches to the parent, but here we must remember the invalidation.
+     */
+    virtual void markDirty(g_rectangle rect);
 
-    virtual void load(const char* path);
+    virtual bool handleMouseEvent(mouse_event_t& e);
+
+    g_rectangle grabInvalid()
+    {
+        g_rectangle ret = invalid;
+        invalid = g_rectangle();
+        return ret;
+    }
 };
 
 #endif

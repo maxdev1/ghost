@@ -51,7 +51,7 @@ void window_t::layout()
 {
     g_rectangle bounds = getBounds();
     label.setBounds(g_rectangle(18, 12, bounds.width - 30, 25));
-    panel.setBounds(g_rectangle(12, 40, bounds.width - 24, bounds.height - 52));
+    panel.setBounds(g_rectangle(11, 40, bounds.width - 22, bounds.height - 51));
     crossBounds = g_rectangle(bounds.width - 35, 17, 15, 15);
 }
 
@@ -163,75 +163,9 @@ bool window_t::handleFocusEvent(focus_event_t& fe)
 
 bool window_t::handleMouseEvent(mouse_event_t& me)
 {
-    // Let components handle input
-    if(component_t::handleMouseEvent(me))
-        return true;
-
-    // Handle mouse events
-    static g_point pressPoint;
-    static g_rectangle pressBounds;
-    static window_resize_mode_t resizeMode;
-
     g_rectangle currentBounds = getBounds();
 
-    if(me.type == G_MOUSE_EVENT_MOVE)
-    {
-        if(resizable)
-        {
-            g_point pos = me.position;
-            if((pos.x < shadowSize + cornerSize / 2) && (pos.x > shadowSize - cornerSize / 2) && (pos.y < cornerSize) && (pos.y > shadowSize - cornerSize / 2))
-            { // Top left corner
-                cursor_t::set("resize-nwes");
-            }
-            else if((pos.x > currentBounds.width - shadowSize - cornerSize / 2) && (pos.x < currentBounds.width - shadowSize + cornerSize / 2) && (pos.y < cornerSize) && (pos.y > shadowSize - cornerSize / 2))
-            { // Top right corner
-                cursor_t::set("resize-nesw");
-            }
-            else if((pos.x < shadowSize + cornerSize / 2) && (pos.x > shadowSize - cornerSize / 2) && (pos.y > currentBounds.height - shadowSize - cornerSize / 2) && (pos.y < currentBounds.height - shadowSize + cornerSize / 2))
-            { // Bottom left corner
-                cursor_t::set("resize-nesw");
-            }
-            else if((pos.x > currentBounds.width - shadowSize - cornerSize / 2) && (pos.x < currentBounds.width - shadowSize + cornerSize / 2) && (pos.y > currentBounds.height - shadowSize - cornerSize / 2) && (pos.y < currentBounds.height - shadowSize + cornerSize / 2))
-            { // Bottom right corner
-                cursor_t::set("resize-nwes");
-            }
-            else if(pos.y < shadowSize + borderWidth / 2 && pos.y > shadowSize - borderWidth / 2)
-            { // Top edge
-                cursor_t::set("resize-ns");
-            }
-            else if(pos.x < shadowSize + borderWidth / 2 && pos.x > shadowSize - borderWidth / 2)
-            { // Left edge
-                cursor_t::set("resize-ew");
-            }
-            else if((pos.y > currentBounds.height - shadowSize - borderWidth / 2) && (pos.y < currentBounds.height - shadowSize + borderWidth / 2))
-            { // Bottom edge
-                cursor_t::set("resize-ns");
-            }
-            else if((pos.x > currentBounds.width - shadowSize - borderWidth / 2) && (pos.x < currentBounds.width - shadowSize + borderWidth / 2))
-            { // Right edge
-                cursor_t::set("resize-ew");
-            }
-            else
-            {
-                cursor_t::set("default");
-            }
-        }
-
-        if(crossBounds.contains(me.position))
-        {
-            crossHovered = true;
-            markFor(COMPONENT_REQUIREMENT_PAINT);
-        }
-        else
-        {
-            if(crossHovered)
-            {
-                markFor(COMPONENT_REQUIREMENT_PAINT);
-            }
-            crossHovered = false;
-        }
-    }
-    else if(me.type == G_MOUSE_EVENT_DRAG)
+    if(me.type == G_MOUSE_EVENT_DRAG)
     {
         if(crossPressed)
         {
@@ -322,6 +256,70 @@ bool window_t::handleMouseEvent(mouse_event_t& me)
             }
             this->setBounds(appliedBounds);
         }
+        return true;
+    }
+
+    // Let child components handle other input first
+    if(component_t::handleMouseEvent(me))
+        return true;
+
+    // Handle mouse events
+    if(me.type == G_MOUSE_EVENT_MOVE)
+    {
+        if(resizable)
+        {
+            g_point pos = me.position;
+            if((pos.x < shadowSize + cornerSize / 2) && (pos.x > shadowSize - cornerSize / 2) && (pos.y < cornerSize) && (pos.y > shadowSize - cornerSize / 2))
+            { // Top left corner
+                cursor_t::set("resize-nwes");
+            }
+            else if((pos.x > currentBounds.width - shadowSize - cornerSize / 2) && (pos.x < currentBounds.width - shadowSize + cornerSize / 2) && (pos.y < cornerSize) && (pos.y > shadowSize - cornerSize / 2))
+            { // Top right corner
+                cursor_t::set("resize-nesw");
+            }
+            else if((pos.x < shadowSize + cornerSize / 2) && (pos.x > shadowSize - cornerSize / 2) && (pos.y > currentBounds.height - shadowSize - cornerSize / 2) && (pos.y < currentBounds.height - shadowSize + cornerSize / 2))
+            { // Bottom left corner
+                cursor_t::set("resize-nesw");
+            }
+            else if((pos.x > currentBounds.width - shadowSize - cornerSize / 2) && (pos.x < currentBounds.width - shadowSize + cornerSize / 2) && (pos.y > currentBounds.height - shadowSize - cornerSize / 2) && (pos.y < currentBounds.height - shadowSize + cornerSize / 2))
+            { // Bottom right corner
+                cursor_t::set("resize-nwes");
+            }
+            else if(pos.y < shadowSize + borderWidth / 2 && pos.y > shadowSize - borderWidth / 2)
+            { // Top edge
+                cursor_t::set("resize-ns");
+            }
+            else if(pos.x < shadowSize + borderWidth / 2 && pos.x > shadowSize - borderWidth / 2)
+            { // Left edge
+                cursor_t::set("resize-ew");
+            }
+            else if((pos.y > currentBounds.height - shadowSize - borderWidth / 2) && (pos.y < currentBounds.height - shadowSize + borderWidth / 2))
+            { // Bottom edge
+                cursor_t::set("resize-ns");
+            }
+            else if((pos.x > currentBounds.width - shadowSize - borderWidth / 2) && (pos.x < currentBounds.width - shadowSize + borderWidth / 2))
+            { // Right edge
+                cursor_t::set("resize-ew");
+            }
+            else
+            {
+                cursor_t::set("default");
+            }
+        }
+
+        if(crossBounds.contains(me.position))
+        {
+            crossHovered = true;
+            markFor(COMPONENT_REQUIREMENT_PAINT);
+        }
+        else
+        {
+            if(crossHovered)
+            {
+                markFor(COMPONENT_REQUIREMENT_PAINT);
+            }
+            crossHovered = false;
+        }
     }
     else if(me.type == G_MOUSE_EVENT_PRESS)
     {
@@ -331,10 +329,10 @@ bool window_t::handleMouseEvent(mouse_event_t& me)
         {
             crossPressed = true;
             markFor(COMPONENT_REQUIREMENT_PAINT);
+            return true;
         }
         else
         {
-
             // Window drag and resize
             pressPoint = me.position;
             pressBounds = currentBounds;
@@ -401,6 +399,7 @@ bool window_t::handleMouseEvent(mouse_event_t& me)
             this->close();
         }
     }
+
     return true;
 }
 

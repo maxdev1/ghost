@@ -154,6 +154,11 @@ class component_t : public bounds_event_component_t
         return children;
     }
 
+    uint8_t* getChildrenLock()
+    {
+        return &children_lock;
+    }
+
     bool canHandleEvents() const;
 
     void setVisible(bool visible);
@@ -312,17 +317,17 @@ class component_t : public bounds_event_component_t
     void resolveRequirement(component_requirement_t req);
 
     /**
+     * This method is called by the window manager if the update requirement flag is set.
+     * The component may here change the contents of it's model.
+     */
+    virtual void update();
+
+    /**
      * This method is called by the window manager if the layout requirement flag is set.
      * The component may here change the bounds of each child component and also change its
      * own preferred size.
      */
     virtual void layout();
-
-    /**
-     * This method is called by the window manager if the update requirement flag is set.
-     * The component may here change the contents of it's model.
-     */
-    virtual void update();
 
     /**
      * This method is called by the window manager if the paint requirement flag is set.
