@@ -21,7 +21,7 @@
 #include "events/key_event.hpp"
 #include "components/component.hpp"
 
-bool key_event_t::visit(component_t* component)
+component_t* key_event_t::visit(component_t* component)
 {
     return component->handleKeyEvent(*this);
 }

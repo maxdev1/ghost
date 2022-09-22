@@ -21,7 +21,7 @@
 #include "events/mouse_event.hpp"
 #include "components/component.hpp"
 
-bool mouse_event_t::visit(component_t* component)
+component_t* mouse_event_t::visit(component_t* component)
 {
     return component->handleMouseEvent(*this);
 }

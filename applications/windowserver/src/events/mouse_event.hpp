@@ -38,7 +38,7 @@ class mouse_event_t : public event_t, public locatable_t
     g_mouse_button buttons;
     int clickCount;
 
-    virtual bool visit(component_t* component);
+    virtual component_t* visit(component_t* component);
 };
 
 #endif

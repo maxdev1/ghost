@@ -77,8 +77,6 @@ g_task* taskingGetById(g_tid id)
 
 void taskingYield()
 {
-    g_tasking_local* local = taskingGetLocal();
-
     g_task* task = taskingGetCurrentTask();
     volatile g_processor_state* kernelState = task->state;
     task->timesYielded++;

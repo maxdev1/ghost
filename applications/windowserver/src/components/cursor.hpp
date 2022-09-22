@@ -50,6 +50,7 @@ class cursor_t
     static g_mouse_button pressedButtons;
     static g_mouse_button nextPressedButtons;
 
+    static component_t* pressedComponent;
     static component_t* draggedComponent;
     static component_t* hoveredComponent;
     static component_t* focusedComponent;

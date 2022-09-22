@@ -21,7 +21,7 @@
 #include "events/focus_event.hpp"
 #include "components/component.hpp"
 
-bool focus_event_t::visit(component_t* component)
+component_t* focus_event_t::visit(component_t* component)
 {
     return component->handleFocusEvent(*this);
 }

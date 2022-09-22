@@ -26,7 +26,7 @@
 #include "kernel/tasking/tasking.hpp"
 #include "shared/logger/logger.hpp"
 
-#define DEBUG_PRINT_STACK_TRACE 0
+#define DEBUG_PRINT_STACK_TRACE 1
 
 /**
  * Names of the exceptions

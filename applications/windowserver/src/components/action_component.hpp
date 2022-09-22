@@ -52,28 +52,15 @@ class action_component_t
     internal_action_handler_t* internalHandler;
 
   public:
-    /**
-     *
-     */
     action_component_t(component_t* self) : self(self), internalHandler(nullptr)
     {
     }
 
-    /**
-     *
-     */
     virtual ~action_component_t()
     {
     }
 
-    /**
-     *
-     */
     virtual void fireAction();
-
-    /**
-     *
-     */
     virtual void setInternalActionHandler(internal_action_handler_t* handler);
 };
 

@@ -19,10 +19,10 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "test.hpp"
-#include "components/desktop/background.hpp"
 #include "components/button.hpp"
 #include "components/checkbox.hpp"
 #include "components/cursor.hpp"
+#include "components/desktop/background.hpp"
 #include "components/plain_console_panel.hpp"
 #include "components/scrollbar.hpp"
 #include "components/scrollpane.hpp"
@@ -73,40 +73,94 @@ class create_test_window_handler_t : public internal_action_handler_t
 
 void createTestWindow()
 {
-    window_t* testWindow = new window_t;
-    testWindow->setTitle("Welcome to Ghost!");
-    testWindow->setBounds(g_rectangle(10, 10, 320, 430));
-    // testWindow->setNumericProperty(G_UI_PROPERTY_RESIZABLE, false);
+    window_t* window = new window_t;
+    window->setTitle("Components");
+    window->setBounds(g_rectangle(10, 10, 320, 430));
+    window->setLayoutManager(new grid_layout_manager_t(1, 1));
 
-    label_t* infoLabel = new label_t();
-    infoLabel->setBounds(g_rectangle(10, 10, 300, 20));
-    infoLabel->setTitle("This is a demo launchpad for executing");
-    infoLabel->setColor(RGB(0, 0, 0));
-    testWindow->addChild(infoLabel);
+    scrollpane_t* scroller = new scrollpane_t;
+    scroller->setBounds(g_rectangle(0, 0, 300, 200));
+    scroller->setFixedWidth(true);
+    window->addChild(scroller);
 
-    label_t* infoLabel2 = new label_t();
-    infoLabel2->setBounds(g_rectangle(10, 30, 300, 20));
-    infoLabel2->setTitle("the available GUI applications.");
-    infoLabel2->setColor(RGB(0, 0, 0));
-    testWindow->addChild(infoLabel2);
+    panel_t* content = new panel_t();
+    auto contentGrid = new grid_layout_manager_t(1);
+    contentGrid->setRowSpace(20);
+    contentGrid->setPadding(g_insets(10, 10, 10, 10));
+    content->setLayoutManager(contentGrid);
+    scroller->setContent(content);
 
-    addExecutableButton(testWindow, "Calculator", "/applications/calculator.bin", "");
-    addExecutableButton(testWindow, "Terminal", "/applications/terminal2.bin", "");
-    addExecutableButton(testWindow, "Drawing demo", "/applications/tetris.bin", "");
+    {
+        panel_t* panel = new panel_t();
+        panel->setLayoutManager(new grid_layout_manager_t(1, 0, 10, 10));
 
-    text_field_t* testField = new text_field_t();
-    testField->setBounds(g_rectangle(10, nextButtonPos, 270, 30));
-    testWindow->addChild(testField);
-    nextButtonPos += 35;
+        label_t* info = new label_t();
+        info->setTitle("Buttons:");
+        panel->addChild(info);
 
-    button_t* createAnotherButton = new button_t();
-    createAnotherButton->setBounds(g_rectangle(10, nextButtonPos, 270, 30));
-    createAnotherButton->getLabel().setTitle("Create another window");
-    createAnotherButton->setInternalActionHandler(new create_test_window_handler_t());
-    testWindow->addChild(createAnotherButton);
+        button_t* button1 = new button_t();
+        button1->setMinimumSize(g_dimension(0, 80));
+        button1->setTitle("Button, enabled");
+        panel->addChild(button1);
 
-    windowserver_t::instance()->screen->addChild(testWindow);
-    testWindow->setVisible(true);
+        button_t* button2 = new button_t();
+        button2->setMinimumSize(g_dimension(0, 80));
+        button2->setTitle("Button, disabled");
+        button2->setEnabled(false);
+        panel->addChild(button2);
+
+        button_t* button3 = new button_t();
+        button3->setTitle("Button with height from text");
+        panel->addChild(button3);
+
+        content->addChild(panel);
+    }
+
+    {
+        panel_t* panel = new panel_t();
+        panel->setLayoutManager(new grid_layout_manager_t(1, 0, 10, 10));
+
+        label_t* info = new label_t();
+        info->setTitle("Text fields:");
+        panel->addChild(info);
+
+        text_field_t* text = new text_field_t();
+        text->setPreferredSize(g_dimension(0, 30));
+        panel->addChild(text);
+
+        text_field_t* pass = new text_field_t();
+        pass->setSecure(true);
+        pass->setPreferredSize(g_dimension(0, 30));
+        panel->addChild(pass);
+
+        content->addChild(panel);
+    }
+
+    windowserver_t::instance()->screen->addChild(window);
+    window->setVisible(true);
+}
+
+void createTestWindow2()
+{
+    window_t* window = new window_t;
+    window->setTitle("Grid layout");
+    window->setBounds(g_rectangle(400, 10, 300, 300));
+
+    auto grid = new grid_layout_manager_t(3, 3, 10, 10);
+    grid->setPadding(g_insets(10, 10, 10, 10));
+    window->setLayoutManager(grid);
+
+    for(int i = 0; i < 9; i++)
+    {
+        button_t* button1 = new button_t();
+        std::stringstream s;
+        s << "Button " << i;
+        button1->setTitle(s.str().c_str());
+        window->addChild(button1);
+    }
+
+    windowserver_t::instance()->screen->addChild(window);
+    window->setVisible(true);
 }
 
 void create_test_window_handler_t::handle(action_component_t* source)
@@ -117,42 +171,5 @@ void create_test_window_handler_t::handle(action_component_t* source)
 void test_t::createTestComponents()
 {
     createTestWindow();
-
-    window_t* secondWindow = new window_t;
-    secondWindow->setTitle("Scroller");
-    secondWindow->setBounds(g_rectangle(200, 200, 500, 500));
-    secondWindow->setLayoutManager(new grid_layout_manager_t(1, 1));
-
-    scrollpane_t* scroller = new scrollpane_t;
-    scroller->setBounds(g_rectangle(0, 0, 300, 200));
-    secondWindow->addChild(scroller);
-
-    panel_t* contentPanel = new panel_t();
-    contentPanel->setPreferredSize(g_dimension(400, 400));
-    contentPanel->setBackground(RGB(200, 200, 200));
-    contentPanel->setLayoutManager(new grid_layout_manager_t(1, 5));
-    scroller->setContent(contentPanel);
-
-    button_t* button1 = new button_t();
-    button1->getLabel().setTitle("Button 1");
-    contentPanel->addChild(button1);
-
-    label_t* label1 = new label_t();
-    label1->setTitle("This is a panel with some scrollable content. The content is layouted using a grid layout.");
-    contentPanel->addChild(label1);
-
-    label_t* label2 = new label_t();
-    label2->setTitle("The height of the content panel is used to specify the scrollable area.");
-    contentPanel->addChild(label2);
-
-    button_t* button2 = new button_t();
-    button2->getLabel().setTitle("Button 2");
-    contentPanel->addChild(button2);
-
-    label_t* label3 = new label_t();
-    label3->setTitle("Yey! Works great :)");
-    contentPanel->addChild(label3);
-
-    windowserver_t::instance()->screen->addChild(secondWindow);
-    secondWindow->setVisible(true);
+    createTestWindow2();
 }

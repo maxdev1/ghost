@@ -30,9 +30,9 @@
 #include <libproperties/parser.hpp>
 #include <sstream>
 
-text_field_t::text_field_t() : cursor(0), marker(0), scrollX(0), secure(false), focused(false), visualStatus(text_field_visual_status_t::NORMAL), fontSize(14), textColor(
-                                                                                                                                                                    RGB(0, 0, 0)),
-                               insets(g_insets(5, 5, 5, 5))
+text_field_t::text_field_t() : cursor(0), marker(0), scrollX(0), secure(false), focused(false),
+                               visualStatus(text_field_visual_status_t::NORMAL), fontSize(14),
+                               textColor(RGB(0, 0, 0)), insets(g_insets(5, 5, 5, 5))
 {
     caretMoveStrategy = default_caret_move_strategy_t::getInstance();
 
@@ -47,6 +47,12 @@ text_field_t::~text_field_t()
 void text_field_t::setText(std::string newText)
 {
     text = newText;
+    markFor(COMPONENT_REQUIREMENT_UPDATE);
+}
+
+void text_field_t::setSecure(bool newSecure)
+{
+    secure = newSecure;
     markFor(COMPONENT_REQUIREMENT_UPDATE);
 }
 
@@ -65,8 +71,10 @@ void text_field_t::update()
         }
     }
 
-    g_text_layouter::getInstance()->layout(graphics.getContext(), visible_text.c_str(), font, fontSize, g_rectangle(0, 0, bounds.width, bounds.height),
-                                           g_text_alignment::LEFT, viewModel, false);
+    if(graphics.getContext())
+        g_text_layouter::getInstance()->layout(graphics.getContext(), visible_text.c_str(), font, fontSize,
+                                               g_rectangle(0, 0, bounds.width, bounds.height), g_text_alignment::LEFT, viewModel, false);
+
     markFor(COMPONENT_REQUIREMENT_PAINT);
 }
 
@@ -297,7 +305,7 @@ void text_field_t::insert(std::string ins)
     markFor(COMPONENT_REQUIREMENT_UPDATE);
 }
 
-bool text_field_t::handleKeyEvent(key_event_t& ke)
+component_t* text_field_t::handleKeyEvent(key_event_t& ke)
 {
     if(ke.info.key == "KEY_SHIFT_L")
     {
@@ -337,10 +345,10 @@ bool text_field_t::handleKeyEvent(key_event_t& ke)
             }
         }
     }
-    return true;
+    return this;
 }
 
-bool text_field_t::handleFocusEvent(focus_event_t& fe)
+component_t* text_field_t::handleFocusEvent(focus_event_t& fe)
 {
     if(fe.type == FOCUS_EVENT_GAINED)
     {
@@ -351,10 +359,10 @@ bool text_field_t::handleFocusEvent(focus_event_t& fe)
         focused = false;
     }
     markFor(COMPONENT_REQUIREMENT_PAINT);
-    return true;
+    return this;
 }
 
-bool text_field_t::handleMouseEvent(mouse_event_t& me)
+component_t* text_field_t::handleMouseEvent(mouse_event_t& me)
 {
     if(me.type == G_MOUSE_EVENT_ENTER)
     {
@@ -402,7 +410,7 @@ bool text_field_t::handleMouseEvent(mouse_event_t& me)
         markFor(COMPONENT_REQUIREMENT_PAINT);
     }
 
-    return true;
+    return this;
 }
 
 int text_field_t::viewToPosition(g_point p)

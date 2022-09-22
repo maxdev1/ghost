@@ -45,14 +45,20 @@ class button_t : public component_t, public titled_component_t, public action_co
     {
     }
 
+    virtual void update();
     virtual void layout();
     virtual void paint();
-    virtual bool handleMouseEvent(mouse_event_t& e);
-    virtual bool handleFocusEvent(focus_event_t& e);
-    virtual void handleBoundChange(g_rectangle oldBounds);
+    virtual component_t* handleMouseEvent(mouse_event_t& e);
+    virtual component_t* handleFocusEvent(focus_event_t& e);
 
     virtual void setTitle(std::string title);
     virtual std::string getTitle();
+
+    virtual void setEnabled(bool enabled);
+    virtual bool isEnabled() const
+    {
+        return enabled;
+    }
 
     label_t& getLabel()
     {

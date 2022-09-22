@@ -22,6 +22,8 @@
 #include <malloc.h>
 #include <string.h>
 
+#include <stdio.h>
+
 g_graphics::g_graphics(uint16_t width, uint16_t height) : width(width), height(height)
 {
     resize(width, height);
@@ -34,11 +36,12 @@ void g_graphics::resize(int newWidth, int newHeight, bool averaged)
 
     if(averaged)
     {
-        newWidth = newWidth + ((newWidth + 10) % 10);
-        newHeight = newHeight + ((newHeight + 10) % 10);
+        newWidth = newWidth + (averageFactor - newWidth % averageFactor);
+        newHeight = newHeight + (averageFactor - newHeight % averageFactor);
     }
 
-    if(newWidth == width && newHeight == height)
+    // TODO: Like this, buffers never downscale. Check if we want this:
+    if(newWidth <= width && newHeight <= height)
         return;
 
     if(surface)

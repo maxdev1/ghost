@@ -21,9 +21,10 @@
 #include "components/checkbox.hpp"
 #include "events/mouse_event.hpp"
 
-checkbox_t::checkbox_t() : component_t(true), checked(false), boxSize(DEFAULT_BOX_SIZE), boxTextGap(DEFAULT_BOX_TEXT_GAP), hovered(false), pressed(false)
+checkbox_t::checkbox_t() : checked(false), boxSize(DEFAULT_BOX_SIZE), boxTextGap(DEFAULT_BOX_TEXT_GAP), hovered(false), pressed(false)
 {
     addChild(&label, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
+    needsGraphics = false;
 }
 
 void checkbox_t::layout()
@@ -64,7 +65,7 @@ void checkbox_t::paint()
      */
 }
 
-bool checkbox_t::handleMouseEvent(mouse_event_t& me)
+component_t* checkbox_t::handleMouseEvent(mouse_event_t& me)
 {
     if(me.type == G_MOUSE_EVENT_ENTER)
     {
@@ -95,7 +96,7 @@ bool checkbox_t::handleMouseEvent(mouse_event_t& me)
 
         markFor(COMPONENT_REQUIREMENT_PAINT);
     }
-    return true;
+    return this;
 }
 
 void checkbox_t::handleBoundChange(g_rectangle oldBounds)

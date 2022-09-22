@@ -77,7 +77,7 @@ void plain_console_panel_t::paint()
     }*/
 }
 
-bool plain_console_panel_t::handleFocusEvent(focus_event_t& fe)
+component_t* plain_console_panel_t::handleFocusEvent(focus_event_t& fe)
 {
     if(fe.type == FOCUS_EVENT_GAINED)
     {
@@ -88,7 +88,7 @@ bool plain_console_panel_t::handleFocusEvent(focus_event_t& fe)
         focused = false;
     }
     markFor(COMPONENT_REQUIREMENT_PAINT);
-    return true;
+    return this;
 }
 
 void plain_console_panel_t::append(char c)

@@ -144,8 +144,12 @@ void kernelSpawnService(const char* path, const char* args, g_security_level sec
 void kernelInitializationThread()
 {
     logInfo("%! loading system services", "init");
+
+    G_PRETTY_BOOT_STATUS_P(40);
     kernelSpawnService("/applications/ps2driver.bin", "", G_SECURITY_LEVEL_DRIVER);
+    G_PRETTY_BOOT_STATUS_P(60);
     kernelSpawnService("/applications/vbedriver.bin", "", G_SECURITY_LEVEL_DRIVER);
+    G_PRETTY_BOOT_STATUS_P(80);
     kernelSpawnService("/applications/windowserver.bin", "", G_SECURITY_LEVEL_APPLICATION);
 
     taskingExit();

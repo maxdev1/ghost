@@ -40,6 +40,8 @@ window_t::window_t() : backgroundColor(RGB(240, 240, 240)), borderWidth(DEFAULT_
 
     shadowSize = 10;
 
+    graphics.setAverageFactor(250);
+
     component_t::addChild(&label, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
     component_t::addChild(&panel, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
     setMinimumSize(g_dimension(100, 40));
@@ -108,7 +110,7 @@ void window_t::paint()
     // draw background
     double degrees = M_PI / 180.0;
     cairo_new_sub_path(cr);
-    double radius = 5;
+    double radius = 3;
     cairo_arc(cr, shadowSize + radius, shadowSize + radius, radius, 180 * degrees, 270 * degrees);
     cairo_arc(cr, bounds.width - radius - shadowSize, shadowSize + radius, radius, -90 * degrees, 0 * degrees);
     cairo_line_to(cr, bounds.width - shadowSize, bounds.height - shadowSize);
@@ -141,14 +143,8 @@ void window_t::paint()
     cairo_stroke(cr);
 }
 
-void window_t::handleBoundChange(g_rectangle oldBounds)
+component_t* window_t::handleFocusEvent(focus_event_t& fe)
 {
-    markFor(COMPONENT_REQUIREMENT_PAINT);
-}
-
-bool window_t::handleFocusEvent(focus_event_t& fe)
-{
-
     if(fe.newFocusedComponent)
     {
         this->focused = (this == fe.newFocusedComponent) || fe.newFocusedComponent->isChildOf(this);
@@ -158,10 +154,10 @@ bool window_t::handleFocusEvent(focus_event_t& fe)
         this->focused = false;
     }
     markFor(COMPONENT_REQUIREMENT_PAINT);
-    return true;
+    return this;
 }
 
-bool window_t::handleMouseEvent(mouse_event_t& me)
+component_t* window_t::handleMouseEvent(mouse_event_t& me)
 {
     g_rectangle currentBounds = getBounds();
 
@@ -256,12 +252,13 @@ bool window_t::handleMouseEvent(mouse_event_t& me)
             }
             this->setBounds(appliedBounds);
         }
-        return true;
+        return this;
     }
 
     // Let child components handle other input first
-    if(component_t::handleMouseEvent(me))
-        return true;
+    component_t* handledByChild = component_t::handleMouseEvent(me);
+    if(handledByChild)
+        return handledByChild;
 
     // Handle mouse events
     if(me.type == G_MOUSE_EVENT_MOVE)
@@ -329,7 +326,7 @@ bool window_t::handleMouseEvent(mouse_event_t& me)
         {
             crossPressed = true;
             markFor(COMPONENT_REQUIREMENT_PAINT);
-            return true;
+            return this;
         }
         else
         {
@@ -385,22 +382,21 @@ bool window_t::handleMouseEvent(mouse_event_t& me)
             }
         }
     }
-    else if(me.type == G_MOUSE_EVENT_LEAVE)
-    {
-        cursor_t::set("default");
-    }
     else if(me.type == G_MOUSE_EVENT_DRAG_RELEASE)
     {
         crossPressed = false;
         markFor(COMPONENT_REQUIREMENT_PAINT);
-
+    }
+    else if(me.type == G_MOUSE_EVENT_RELEASE)
+    {
         if(crossBounds.contains(me.position))
         {
             this->close();
+            return this;
         }
     }
 
-    return true;
+    return this;
 }
 
 void window_t::close()

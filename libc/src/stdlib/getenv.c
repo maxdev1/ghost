@@ -18,15 +18,14 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <ghost.h>
-#include "stdlib.h"
 #include "stdio.h"
+#include "stdlib.h"
+#include <ghost.h>
 
 /**
  *
  */
-char* getenv(const char* key) {
-
-	klog("warning: getenv(\"%s\") not implemented", key);
-	return "";
+char* getenv(const char* key)
+{
+    return "";
 }

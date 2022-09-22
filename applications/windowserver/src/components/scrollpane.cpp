@@ -26,6 +26,7 @@
 
 scrollpane_t::scrollpane_t()
 {
+    needsGraphics = false;
 }
 
 void scrollpane_t::setContent(component_t* component)
@@ -35,76 +36,12 @@ void scrollpane_t::setContent(component_t* component)
 
     this->content = component;
     addChild(this->content);
-    
+
     addChild(&horizontalScrollbar, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
     horizontalScrollbar.setScrollHandler(this);
 
     addChild(&verticalScrollbar, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
     verticalScrollbar.setScrollHandler(this);
-}
-
-void scrollpane_t::layout()
-{
-    auto bounds = getBounds();
-
-    int viewportHeight = bounds.height;
-    int viewportWidth = bounds.width;
-    auto contentBounds = content->getPreferredSize();
-
-    bool showVbar = false;
-    bool showHbar = false;
-
-    if(contentBounds.height > viewportHeight)
-    {
-        showVbar = true;
-    }
-    if(contentBounds.width > (showVbar ? viewportWidth - SCROLLBAR_SIZE : viewportWidth))
-    {
-        showHbar = true;
-    }
-    if(contentBounds.height > (showHbar ? viewportHeight - SCROLLBAR_SIZE : viewportHeight))
-    {
-        showVbar = true;
-    }
-    if(contentBounds.width > (showVbar ? viewportWidth - SCROLLBAR_SIZE : viewportWidth))
-    {
-        showHbar = true;
-    }
-
-    if(showHbar)
-    {
-        viewportHeight -= SCROLLBAR_SIZE;
-    }
-    if(showVbar)
-    {
-        viewportWidth -= SCROLLBAR_SIZE;
-    }
-
-    if(contentBounds.height > viewportHeight)
-    {
-        verticalScrollbar.setViewLengths(viewportHeight, contentBounds.height);
-        verticalScrollbar.setBounds(g_rectangle(viewportWidth, 0, SCROLLBAR_SIZE, viewportHeight));
-        verticalScrollbar.setVisible(true);
-    }
-    else
-    {
-        verticalScrollbar.setVisible(false);
-    }
-
-    if(contentBounds.width > viewportWidth)
-    {
-        horizontalScrollbar.setViewLengths(viewportWidth, contentBounds.width);
-        horizontalScrollbar.setBounds(g_rectangle(0, viewportHeight, viewportWidth, SCROLLBAR_SIZE));
-        horizontalScrollbar.setVisible(true);
-    }
-    else
-    {
-        horizontalScrollbar.setVisible(false);
-    }
-
-    updateContent();
-
-    markFor(COMPONENT_REQUIREMENT_PAINT);
 }
 
 void scrollpane_t::handleScroll(scrollbar_t* bar)
@@ -122,41 +59,125 @@ void scrollpane_t::handleScroll(scrollbar_t* bar)
     }
 }
 
+g_dimension scrollpane_t::calculateViewport(g_dimension contentSize)
+{
+    showVbar = false;
+    showHbar = false;
+
+    g_dimension viewportSize = getBounds().getSize();
+
+    if(contentSize.height > viewportSize.height)
+    {
+        showVbar = true;
+    }
+    if(contentSize.width > (showVbar ? viewportSize.width - SCROLLBAR_SIZE : viewportSize.width))
+    {
+        showHbar = true;
+    }
+    if(contentSize.height > (showHbar ? viewportSize.height - SCROLLBAR_SIZE : viewportSize.height))
+    {
+        showVbar = true;
+    }
+    if(contentSize.width > (showVbar ? viewportSize.width - SCROLLBAR_SIZE : viewportSize.width))
+    {
+        showHbar = true;
+    }
+
+    if(showHbar)
+    {
+        viewportSize.height -= SCROLLBAR_SIZE;
+    }
+    if(showVbar)
+    {
+        viewportSize.width -= SCROLLBAR_SIZE;
+    }
+    return viewportSize;
+}
+
+void scrollpane_t::layout()
+{
+    auto contentSize = content->getPreferredSize();
+    if(fixedWidth)
+    {
+        contentSize.width = getBounds().width - SCROLLBAR_SIZE;
+    }
+    if(fixedHeight)
+    {
+        contentSize.height = getBounds().height - SCROLLBAR_SIZE;
+    }
+    auto viewportSize = calculateViewport(contentSize);
+
+    auto bounds = getBounds();
+    if(showVbar)
+    {
+        verticalScrollbar.setViewLengths(viewportSize.height, contentSize.height);
+        verticalScrollbar.setBounds(g_rectangle(bounds.width - SCROLLBAR_SIZE, 0, SCROLLBAR_SIZE, viewportSize.height));
+        verticalScrollbar.setVisible(true);
+    }
+    else
+    {
+        verticalScrollbar.setVisible(false);
+    }
+
+    if(showHbar)
+    {
+        horizontalScrollbar.setViewLengths(viewportSize.width, contentSize.width);
+        horizontalScrollbar.setBounds(g_rectangle(0, bounds.height - SCROLLBAR_SIZE, viewportSize.width, SCROLLBAR_SIZE));
+        horizontalScrollbar.setVisible(true);
+    }
+    else
+    {
+        horizontalScrollbar.setVisible(false);
+    }
+
+    updateContent();
+
+    markFor(COMPONENT_REQUIREMENT_PAINT);
+}
+
 void scrollpane_t::updateContent()
 {
     if(!content)
         return;
 
-    g_dimension contentSize = content->getPreferredSize();
-    g_rectangle viewportBounds = getBounds();
-    viewportBounds.width -= SCROLLBAR_SIZE;
-    viewportBounds.height -= SCROLLBAR_SIZE;
+    auto contentSize = content->getPreferredSize();
+    if(fixedWidth)
+    {
+        contentSize.width = getBounds().width;
+    }
+    if(fixedHeight)
+    {
+        contentSize.height = getBounds().height;
+    }
+    auto viewportSize = calculateViewport(contentSize);
 
     if(scrollPosition.x > 0)
     {
         scrollPosition.x = 0;
     }
-    else if(contentSize.width < viewportBounds.width)
+    else if(contentSize.width < viewportSize.width)
     {
         scrollPosition.x = 0;
     }
-    else if(scrollPosition.x + contentSize.width < viewportBounds.width)
+    else if(scrollPosition.x + contentSize.width < viewportSize.width)
     {
-        scrollPosition.x = viewportBounds.width - contentSize.width;
+        scrollPosition.x = viewportSize.width - contentSize.width;
     }
 
     if(scrollPosition.y > 0)
     {
         scrollPosition.y = 0;
     }
-    else if(contentSize.height < viewportBounds.height)
+    else if(contentSize.height < viewportSize.height)
     {
         scrollPosition.y = 0;
     }
-    else if(scrollPosition.y + contentSize.height < viewportBounds.height)
+    else if(scrollPosition.y + contentSize.height < viewportSize.height)
     {
-        scrollPosition.y = viewportBounds.height - contentSize.height;
+        scrollPosition.y = viewportSize.height - contentSize.height;
     }
 
-    content->setBounds(g_rectangle(scrollPosition.x, scrollPosition.y, contentSize.width, contentSize.height));
+    content->setBounds(g_rectangle(scrollPosition.x, scrollPosition.y,
+                                   fixedWidth ? viewportSize.width : contentSize.width,
+                                   fixedHeight ? viewportSize.height : contentSize.height));
 }

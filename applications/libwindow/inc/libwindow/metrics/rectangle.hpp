@@ -22,6 +22,7 @@
 #define __LIBWINDOW_METRICS_RECTANGLE__
 
 #include "dimension.hpp"
+#include "insets.hpp"
 #include "point.hpp"
 #include <cstdint>
 
@@ -62,6 +63,15 @@ struct g_rectangle
     bool operator!=(const g_rectangle& rhs) const
     {
         return !(*this == rhs);
+    }
+
+    g_rectangle& operator-=(const g_insets& rhs)
+    {
+        x = x + rhs.left;
+        y = y + rhs.top;
+        width = width - rhs.left - rhs.right;
+        height = height - rhs.top - rhs.bottom;
+        return *this;
     }
 
     bool contains(g_point p) const

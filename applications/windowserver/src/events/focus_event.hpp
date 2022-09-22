@@ -43,7 +43,7 @@ class focus_event_t : public event_t
 
     virtual ~focus_event_t() {}
 
-    virtual bool visit(component_t* component);
+    virtual component_t* visit(component_t* component);
 };
 
 #endif

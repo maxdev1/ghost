@@ -27,7 +27,7 @@
 #include <ghost.h>
 #include <sstream>
 
-label_t::label_t() : component_t(true)
+label_t::label_t()
 {
     setFont(g_font_loader::getDefault());
     alignment = g_text_alignment::LEFT;
@@ -62,6 +62,7 @@ void label_t::update()
     if(getPreferredSize() != newPreferred)
     {
         setPreferredSize(newPreferred);
+        markParentFor(COMPONENT_REQUIREMENT_UPDATE);
     }
     markFor(COMPONENT_REQUIREMENT_PAINT);
 }

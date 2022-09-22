@@ -38,7 +38,7 @@ void scrollbar_t::paint()
     cairo_fill(cr);
 }
 
-bool scrollbar_t::handleMouseEvent(mouse_event_t& me)
+component_t* scrollbar_t::handleMouseEvent(mouse_event_t& me)
 {
     if(me.type == G_MOUSE_EVENT_ENTER)
     {
@@ -108,7 +108,7 @@ bool scrollbar_t::handleMouseEvent(mouse_event_t& me)
 
         markFor(COMPONENT_REQUIREMENT_PAINT);
     }
-    return true;
+    return this;
 }
 
 void scrollbar_t::setViewLengths(int viewportLength, int contentLength)
