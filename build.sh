@@ -10,6 +10,7 @@ BUILD_LIBC=1
 BUILD_LIBAPI=1
 BUILD_PORTS=0
 KERNEL_REPACK_ONLY=0
+KERNEL_BUILD_WITH_APPS=0
 APPS=()
 
 # Define some helpers
@@ -51,12 +52,13 @@ build_ports() {
 	if [[ $BUILD_PORTS = 0 && -f $SYSROOT/system/lib/libcairo.a ]]; then
 		print_skipped
 	else
+		printf "\n"
 		pushd patches/ports
-		$SH port.sh zlib/1.2.8
-		$SH port.sh pixman/0.32.6
-		$SH port.sh libpng/1.6.18
-		$SH port.sh freetype/2.5.3
-		$SH port.sh cairo/1.12.18
+		$SH port.sh zlib/1.2.8 | awk '$0="   "$0'
+		$SH port.sh pixman/0.32.6 | awk '$0="   "$0'
+		$SH port.sh libpng/1.6.18 | awk '$0="   "$0'
+		$SH port.sh freetype/2.5.3 | awk '$0="   "$0'
+		$SH port.sh cairo/1.12.18 | awk '$0="   "$0'
 		popd
 	fi
 }
@@ -88,17 +90,16 @@ build_libc() {
 build_app() {
 	pushd $1
 	name="${1%/}"
-	printf "$name"
+	printf "  $name"
 	name_back=$(backspace_len ${#name})
 
 	build_target $2 $3
 	if [ $? -eq 0 ]; then
 		((apps_success = apps_success + 1))
-		printf $name_back
-		printf "$name "
+		printf " \u2714\n"
 	else
 		printf $name_back
-		printf "\e[1;31m$name\e[0m log: "
+		printf "\e[1;31m$name\e[0m \u274c log: "
 		printf "\n\n"
 		tail -n 100 build.log | awk '$0="   "$0'
 		printf "\n"
@@ -113,6 +114,7 @@ build_apps() {
 	apps_success=0
 	apps_total=0
 
+	printf "\n"
 	NUM_APPS=${#APPS[@]}
 	if [ $NUM_APPS -gt "0" ]; then
 		for var in ${APPS[@]}; do
@@ -127,7 +129,7 @@ build_apps() {
 			build_app $dir clean all
 		done
 	fi
-	echo "($apps_success/$apps_total successful)"
+	echo "  ($apps_success/$apps_total successful)"
 	popd
 }
 
@@ -136,6 +138,8 @@ build_kernel() {
 	pushd kernel
 	if [ $BUILD_LIBC = 1 ]; then
 		build_target clean && build_target all
+	elif [ $KERNEL_BUILD_WITH_APPS = 1 ]; then
+		build_target all
 	else
 		build_target repack
 	fi
@@ -148,6 +152,7 @@ print_help() {
 	echo "Usage: $0"
 	echo "  --apps                  build all apps clean and repack the image"
 	echo "  --apps windowserver     build only specific apps and repack the image"
+	echo "  --kernel                build kernel and not repack only"
 	echo "  --ports                 enables building all ports, even if not necessary"
 	echo ""
 }
@@ -168,6 +173,8 @@ for var in "$@"; do
 		COLLECT_APPS=1
 	elif [[ "$var" = "--ports" ]]; then
 		BUILD_PORTS=1
+	elif [[ "$var" = "--kernel" ]]; then
+		KERNEL_BUILD_WITH_APPS=1
 	elif [[ "$var" = "--help" || "$var" = "-h" || "$var" = "?" ]]; then
 		print_help
 		exit 0

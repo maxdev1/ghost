@@ -143,7 +143,6 @@ void event_processor_t::processMouseState()
        (!(previousPressedButtons & G_MOUSE_BUTTON_2) && (cursor_t::pressedButtons & G_MOUSE_BUTTON_2)) ||
        (!(previousPressedButtons & G_MOUSE_BUTTON_3) && (cursor_t::pressedButtons & G_MOUSE_BUTTON_3)))
     {
-
         // Prepare event
         mouse_event_t pressEvent = baseEvent;
         pressEvent.type = G_MOUSE_EVENT_PRESS;
@@ -165,27 +164,22 @@ void event_processor_t::processMouseState()
         pressEvent.clickCount = clickCount;
 
         // Send event
-        instance->dispatch(screen, pressEvent);
+        cursor_t::pressedComponent = instance->dispatch(screen, pressEvent);
 
-        component_t* hitComponent = screen->getComponentAt(cursor_t::position);
-        if(hitComponent != 0)
+        if(cursor_t::pressedComponent)
         {
-
             // Prepare drag
-            if(hitComponent != screen)
-            {
-                cursor_t::draggedComponent = hitComponent;
-            }
+            cursor_t::draggedComponent = cursor_t::pressedComponent;
 
             // Switch focus
-            if(hitComponent != cursor_t::focusedComponent)
+            if(cursor_t::pressedComponent != cursor_t::focusedComponent)
             {
                 // Old loses focus
-                if(cursor_t::focusedComponent != 0)
+                if(cursor_t::focusedComponent)
                 {
                     focus_event_t focusLostEvent;
                     focusLostEvent.type = FOCUS_EVENT_LOST;
-                    focusLostEvent.newFocusedComponent = hitComponent;
+                    focusLostEvent.newFocusedComponent = cursor_t::pressedComponent;
                     instance->dispatchUpwards(cursor_t::focusedComponent, focusLostEvent);
 
                     // Post event to client
@@ -205,7 +199,7 @@ void event_processor_t::processMouseState()
                 }
 
                 // Bring hit components window to front
-                window_t* parentWindow = hitComponent->getWindow();
+                window_t* parentWindow = cursor_t::pressedComponent->getWindow();
                 if(parentWindow != 0)
                 {
                     parentWindow->bringToFront();
@@ -214,8 +208,8 @@ void event_processor_t::processMouseState()
                 // New gains focus
                 focus_event_t focusGainedEvent;
                 focusGainedEvent.type = FOCUS_EVENT_GAINED;
-                focusGainedEvent.newFocusedComponent = hitComponent;
-                cursor_t::focusedComponent = instance->dispatchUpwards(hitComponent, focusGainedEvent);
+                focusGainedEvent.newFocusedComponent = cursor_t::pressedComponent;
+                cursor_t::focusedComponent = instance->dispatchUpwards(cursor_t::pressedComponent, focusGainedEvent);
 
                 // Post event to client
                 event_listener_info_t listenerInfo;
@@ -236,7 +230,10 @@ void event_processor_t::processMouseState()
 
         // Release
     }
-    else if(((previousPressedButtons & G_MOUSE_BUTTON_1) && !(cursor_t::pressedButtons & G_MOUSE_BUTTON_1)) || ((previousPressedButtons & G_MOUSE_BUTTON_2) && !(cursor_t::pressedButtons & G_MOUSE_BUTTON_2)) || ((previousPressedButtons & G_MOUSE_BUTTON_3) && !(cursor_t::pressedButtons & G_MOUSE_BUTTON_3)))
+    else if(
+        ((previousPressedButtons & G_MOUSE_BUTTON_1) && !(cursor_t::pressedButtons & G_MOUSE_BUTTON_1)) ||
+        ((previousPressedButtons & G_MOUSE_BUTTON_2) && !(cursor_t::pressedButtons & G_MOUSE_BUTTON_2)) ||
+        ((previousPressedButtons & G_MOUSE_BUTTON_3) && !(cursor_t::pressedButtons & G_MOUSE_BUTTON_3)))
     {
 
         if(cursor_t::draggedComponent)
@@ -244,12 +241,18 @@ void event_processor_t::processMouseState()
             mouse_event_t releaseDraggedEvent = baseEvent;
             releaseDraggedEvent.type = G_MOUSE_EVENT_DRAG_RELEASE;
             instance->dispatchUpwards(cursor_t::draggedComponent, releaseDraggedEvent);
+
             cursor_t::draggedComponent = 0;
         }
 
-        mouse_event_t releaseEvent = baseEvent;
-        releaseEvent.type = G_MOUSE_EVENT_RELEASE;
-        instance->dispatch(screen, releaseEvent);
+        if(cursor_t::pressedComponent)
+        {
+            mouse_event_t releaseEvent = baseEvent;
+            releaseEvent.type = G_MOUSE_EVENT_RELEASE;
+            instance->dispatchUpwards(cursor_t::pressedComponent, releaseEvent);
+
+            cursor_t::pressedComponent = 0;
+        }
 
         // Move or drag
     }

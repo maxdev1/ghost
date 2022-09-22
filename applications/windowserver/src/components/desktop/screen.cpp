@@ -37,7 +37,7 @@ void screen_t::markDirty(g_rectangle rect)
         int bottom = rect.getBottom() > invalid.getBottom() ? rect.getBottom() : invalid.getBottom();
         int right = rect.getRight() > invalid.getRight() ? rect.getRight() : invalid.getRight();
 
-        invalid = g_rectangle(left, top, right - left, bottom - top);
+        invalid = g_rectangle(left, top, right - left + 1, bottom - top + 1);
     }
 
     // Fix invalid area
@@ -61,7 +61,7 @@ void screen_t::markDirty(g_rectangle rect)
     }
 }
 
-bool screen_t::handleMouseEvent(mouse_event_t& e)
+component_t* screen_t::handleMouseEvent(mouse_event_t& e)
 {
     if(e.type == G_MOUSE_EVENT_DRAG)
     {
@@ -70,7 +70,7 @@ bool screen_t::handleMouseEvent(mouse_event_t& e)
             g_rectangle selection(pressPoint.x, pressPoint.y, e.position.x - pressPoint.x, e.position.y - pressPoint.y);
             windowserver_t::instance()->background->showSelection(selection);
         }
-        return true;
+        return this;
     }
     else if(e.type == G_MOUSE_EVENT_DRAG_RELEASE)
     {
@@ -78,12 +78,13 @@ bool screen_t::handleMouseEvent(mouse_event_t& e)
         {
             pressing = false;
             windowserver_t::instance()->background->hideSelection();
-            return true;
+            return this;
         }
     }
 
-    if(component_t::handleMouseEvent(e))
-        return true;
+    component_t* handledByChild = component_t::handleMouseEvent(e);
+    if(handledByChild)
+        return handledByChild;
 
     if(e.type == G_MOUSE_EVENT_PRESS)
     {
@@ -92,5 +93,5 @@ bool screen_t::handleMouseEvent(mouse_event_t& e)
     }
 
     cursor_t::set("default");
-    return true;
+    return this;
 }

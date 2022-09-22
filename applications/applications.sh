@@ -85,7 +85,7 @@ for var in $TARGET; do
 		target_link
 		target_install
 
-	elif [[ $var == "clean" ]]; then
+	elif [[ "$var" == "clean" ]]; then
 		target_clean
 
 	elif [[ "$var" = "--help" || "$var" = "-h" || "$var" = "?" ]]; then

@@ -32,7 +32,7 @@ class key_event_t : public event_t
 
     virtual ~key_event_t() {}
 
-    virtual bool visit(component_t* component);
+    virtual component_t* visit(component_t* component);
 };
 
 #endif

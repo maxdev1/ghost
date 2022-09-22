@@ -34,7 +34,7 @@ class g_graphics
     int height;
     cairo_t* context = 0;
     cairo_surface_t* surface = 0;
-    bool averaged = true;
+    int averageFactor = 10;
 
   public:
     /**
@@ -48,6 +48,11 @@ class g_graphics
     g_graphics(uint16_t width = 0, uint16_t height = 0);
 
     void resize(int width, int height, bool averaged = true);
+
+    void setAverageFactor(int factor)
+    {
+        this->averageFactor = factor;
+    }
 
     cairo_t* getContext()
     {

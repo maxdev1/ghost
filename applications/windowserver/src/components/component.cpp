@@ -52,8 +52,9 @@ void component_t::setBounds(const g_rectangle& newBounds)
 
     if(oldBounds.width != bounds.width || oldBounds.height != bounds.height)
     {
-        graphics.resize(bounds.width, bounds.height);
-        markFor(COMPONENT_REQUIREMENT_LAYOUT);
+        if(needsGraphics)
+            graphics.resize(bounds.width, bounds.height);
+        markFor(COMPONENT_REQUIREMENT_ALL);
 
         handleBoundChange(oldBounds);
     }
@@ -139,7 +140,7 @@ void component_t::addChild(component_t* comp, component_child_reference_type_t t
               { return c1.component->z_index < c2.component->z_index; });
     children_lock = 0;
 
-    markFor(COMPONENT_REQUIREMENT_LAYOUT);
+    markFor(COMPONENT_REQUIREMENT_ALL);
 }
 
 void component_t::removeChild(component_t* comp)
@@ -228,9 +229,9 @@ g_point component_t::getLocationOnScreen()
     return location;
 }
 
-bool component_t::handleMouseEvent(mouse_event_t& event)
+component_t* component_t::handleMouseEvent(mouse_event_t& event)
 {
-    bool childHandled = false;
+    component_t* handledByChild = nullptr;
 
     g_atomic_lock(&children_lock);
     for(auto it = children.rbegin(); it != children.rend(); ++it)
@@ -244,9 +245,9 @@ bool component_t::handleMouseEvent(mouse_event_t& event)
             event.position.x -= child->bounds.x;
             event.position.y -= child->bounds.y;
 
-            if(child->handleMouseEvent(event))
+            handledByChild = child->handleMouseEvent(event);
+            if(handledByChild)
             {
-                childHandled = true;
                 break;
             }
 
@@ -256,12 +257,12 @@ bool component_t::handleMouseEvent(mouse_event_t& event)
     }
     children_lock = 0;
 
-    return childHandled;
+    return handledByChild;
 }
 
-bool component_t::handleKeyEvent(key_event_t& event)
+component_t* component_t::handleKeyEvent(key_event_t& event)
 {
-    bool childHandled = false;
+    component_t* handledByChild = nullptr;
 
     g_atomic_lock(&children_lock);
     for(auto it = children.rbegin(); it != children.rend(); ++it)
@@ -270,20 +271,20 @@ bool component_t::handleKeyEvent(key_event_t& event)
         if(!child->visible)
             continue;
 
-        if(child->handleKeyEvent(event))
+        handledByChild = child->handleKeyEvent(event);
+        if(handledByChild)
         {
-            childHandled = true;
             break;
         }
     }
     children_lock = 0;
 
-    return childHandled;
+    return handledByChild;
 }
 
-bool component_t::handleFocusEvent(focus_event_t& event)
+component_t* component_t::handleFocusEvent(focus_event_t& event)
 {
-    bool childHandled = false;
+    component_t* handledByChild = nullptr;
 
     g_atomic_lock(&children_lock);
     for(auto it = children.rbegin(); it != children.rend(); ++it)
@@ -292,15 +293,15 @@ bool component_t::handleFocusEvent(focus_event_t& event)
         if(!child->visible)
             continue;
 
-        if(child->handleFocusEvent(event))
+        handledByChild = child->handleFocusEvent(event);
+        if(handledByChild)
         {
-            childHandled = true;
             break;
         }
     }
     children_lock = 0;
 
-    return childHandled;
+    return handledByChild;
 }
 
 void component_t::setPreferredSize(const g_dimension& size)
@@ -325,18 +326,18 @@ void component_t::setLayoutManager(layout_manager_t* newMgr)
     markFor(COMPONENT_REQUIREMENT_LAYOUT);
 }
 
+void component_t::update()
+{
+    markFor(COMPONENT_REQUIREMENT_LAYOUT);
+}
+
 void component_t::layout()
 {
     if(layoutManager)
     {
         layoutManager->layout();
+        markFor(COMPONENT_REQUIREMENT_PAINT);
     }
-    markFor(COMPONENT_REQUIREMENT_UPDATE);
-}
-
-void component_t::update()
-{
-    markFor(COMPONENT_REQUIREMENT_PAINT);
 }
 
 void component_t::paint()
@@ -461,18 +462,17 @@ void component_t::clearSurface()
     cairo_restore(cr);
 }
 
-bool component_t::isChildOf(component_t* c)
+bool component_t::isChildOf(component_t* component)
 {
-
     component_t* next = parent;
-    do
+    while(next)
     {
-        if(next == c)
+        if(next == component)
         {
             return true;
         }
         next = next->getParent();
-    } while(next);
+    }
 
     return false;
 }

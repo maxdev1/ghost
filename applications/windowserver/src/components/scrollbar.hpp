@@ -68,7 +68,7 @@ class scrollbar_t : public component_t
 
     virtual void paint();
 
-    virtual bool handleMouseEvent(mouse_event_t& e);
+    virtual component_t* handleMouseEvent(mouse_event_t& e);
 
     virtual void setScrollHandler(scroll_handler_t* handler)
     {

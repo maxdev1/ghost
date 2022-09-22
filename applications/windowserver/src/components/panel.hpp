@@ -29,16 +29,12 @@ class panel_t : public component_t
     g_color_argb background;
 
   public:
-    panel_t() : background(ARGB(230, 240, 240, 240))
+    panel_t() : background(ARGB(0, 0, 0, 0))
     {
+        needsGraphics = false;
     }
 
     virtual void paint();
-
-    virtual bool handle()
-    {
-        return false;
-    }
 
     void setBackground(g_color_argb color);
     g_color_argb getBackground();

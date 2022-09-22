@@ -28,20 +28,39 @@
 #include <libproperties/parser.hpp>
 #include <math.h>
 
-button_t::button_t() : insets(g_insets(0, 0, 0, 0)), action_component_t(this)
+button_t::button_t() : insets(g_insets(5, 10, 5, 10)), action_component_t(this)
 {
     enabled = true;
     addChild(&label, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
     label.setAlignment(g_text_alignment::CENTER);
 }
+/**
+ * Layouts the button.
+ */
+void button_t::update()
+{
+    g_dimension preferred = label.getPreferredSize();
+    preferred.width += insets.left + insets.right;
+    preferred.height += insets.top + insets.bottom;
+
+    auto min = getMinimumSize();
+    if(preferred.height < min.height)
+        preferred.height = min.height;
+    if(preferred.width < min.width)
+        preferred.width = min.width;
+
+    setPreferredSize(preferred);
+
+    markParentFor(COMPONENT_REQUIREMENT_UPDATE);
+}
 
 void button_t::layout()
 {
-    g_dimension labelPreferred = label.getPreferredSize();
-
-    labelPreferred.width += insets.left + insets.right;
-    labelPreferred.height += insets.top + insets.bottom;
-    setPreferredSize(labelPreferred);
+    auto bounds = getBounds();
+    bounds.x = 0;
+    bounds.y = 0;
+    bounds -= insets;
+    label.setBounds(bounds);
 }
 
 void button_t::paint()
@@ -101,10 +120,10 @@ void button_t::paint()
     cairo_stroke(cr);
 }
 
-bool button_t::handleMouseEvent(mouse_event_t& me)
+component_t* button_t::handleMouseEvent(mouse_event_t& me)
 {
     if(!enabled)
-        return false;
+        return nullptr;
 
     if(me.type == G_MOUSE_EVENT_ENTER)
     {
@@ -134,10 +153,10 @@ bool button_t::handleMouseEvent(mouse_event_t& me)
             }
         }
     }
-    return false;
+    return this;
 }
 
-bool button_t::handleFocusEvent(focus_event_t& fe)
+component_t* button_t::handleFocusEvent(focus_event_t& fe)
 {
     if(enabled)
     {
@@ -145,24 +164,16 @@ bool button_t::handleFocusEvent(focus_event_t& fe)
         {
             state.focused = true;
             markFor(COMPONENT_REQUIREMENT_PAINT);
-            return true;
+            return this;
         }
         else if(fe.type == FOCUS_EVENT_LOST)
         {
             state.focused = false;
             markFor(COMPONENT_REQUIREMENT_PAINT);
-            return true;
+            return this;
         }
     }
-    return false;
-}
-
-void button_t::handleBoundChange(g_rectangle oldBounds)
-{
-    g_rectangle labelBounds = getBounds();
-    labelBounds.x = insets.left;
-    labelBounds.y = insets.right;
-    this->label.setBounds(labelBounds);
+    return nullptr;
 }
 
 void button_t::setTitle(std::string title)
@@ -173,6 +184,12 @@ void button_t::setTitle(std::string title)
 std::string button_t::getTitle()
 {
     return this->label.getTitle();
+}
+
+void button_t::setEnabled(bool enabled)
+{
+    this->enabled = enabled;
+    markFor(COMPONENT_REQUIREMENT_PAINT);
 }
 
 bool button_t::getNumericProperty(int property, uint32_t* out)

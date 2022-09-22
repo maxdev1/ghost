@@ -108,6 +108,11 @@ class component_t : public bounds_event_component_t
 
     bool visible;
 
+    /**
+     * Should be set to false if this component does not paint anything on itself.
+     */
+    bool needsGraphics = true;
+
   public:
     g_ui_component_id id;
 
@@ -115,9 +120,9 @@ class component_t : public bounds_event_component_t
      * Creates the component; initially marks it as dirty
      * and sets no parent
      */
-    component_t(bool transparentBackground = false) : id(-1), graphics(transparentBackground), visible(true),
-                                                      requirements(COMPONENT_REQUIREMENT_ALL), childRequirements(COMPONENT_REQUIREMENT_ALL),
-                                                      parent(0), layoutManager(0), bounds_event_component_t(this)
+    component_t() : id(-1), graphics(), visible(true),
+                    requirements(COMPONENT_REQUIREMENT_ALL), childRequirements(COMPONENT_REQUIREMENT_ALL),
+                    parent(0), layoutManager(0), bounds_event_component_t(this)
     {
     }
 
@@ -265,9 +270,9 @@ class component_t : public bounds_event_component_t
      */
     virtual g_point getLocationOnScreen();
 
-    virtual bool handleMouseEvent(mouse_event_t& event);
-    virtual bool handleKeyEvent(key_event_t& event);
-    virtual bool handleFocusEvent(focus_event_t& event);
+    virtual component_t* handleMouseEvent(mouse_event_t& event);
+    virtual component_t* handleKeyEvent(key_event_t& event);
+    virtual component_t* handleFocusEvent(focus_event_t& event);
 
     virtual void handleBoundChange(g_rectangle oldBounds)
     {
@@ -315,6 +320,10 @@ class component_t : public bounds_event_component_t
      * Resolves the given requirement
      */
     void resolveRequirement(component_requirement_t req);
+    bool hasChildRequirements() const
+    {
+        return childRequirements != COMPONENT_REQUIREMENT_NONE;
+    }
 
     /**
      * This method is called by the window manager if the update requirement flag is set.

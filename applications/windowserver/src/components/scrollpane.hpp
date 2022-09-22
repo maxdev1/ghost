@@ -33,6 +33,12 @@ class scrollpane_t : public component_t, public scroll_handler_t
     scrollbar_t verticalScrollbar = scrollbar_t(scrollbar_orientation_t::VERTICAL);
     scrollbar_t horizontalScrollbar = scrollbar_t(scrollbar_orientation_t::HORIZONTAL);
 
+    bool fixedWidth = false;
+    bool fixedHeight = false;
+
+    bool showHbar = false;
+    bool showVbar = false;
+
   public:
     scrollpane_t();
 
@@ -53,6 +59,17 @@ class scrollpane_t : public component_t, public scroll_handler_t
     }
 
     virtual void handleScroll(scrollbar_t* bar);
+
+    g_dimension calculateViewport(g_dimension contentPrefSize);
+
+    void setFixedWidth(bool fix)
+    {
+        this->fixedWidth = fix;
+    }
+    void setFixedHeight(bool fix)
+    {
+        this->fixedHeight = fix;
+    }
 };
 
 #endif

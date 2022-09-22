@@ -76,21 +76,20 @@ class text_field_t : public text_component_t, public titled_component_t
      */
     virtual void paint();
 
-    virtual bool handleKeyEvent(key_event_t& e);
-    virtual bool handleMouseEvent(mouse_event_t& e);
-    virtual bool handleFocusEvent(focus_event_t& e);
+    virtual component_t* handleKeyEvent(key_event_t& e);
+    virtual component_t* handleMouseEvent(mouse_event_t& e);
+    virtual component_t* handleFocusEvent(focus_event_t& e);
 
-    /**
-     *
-     */
     virtual void setText(std::string text);
-
-    /**
-     *
-     */
     virtual std::string getText()
     {
         return text;
+    }
+
+    virtual void setSecure(bool secure);
+    virtual bool isSecure()
+    {
+        return secure;
     }
 
     /**

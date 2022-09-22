@@ -64,9 +64,9 @@ class windowserver_t
     /**
      * Dispatches the given event to the component.
      *
-     * @return whether the event was handled
+     * @return the component that has handled the event or NULL
      */
-    bool dispatch(component_t* component, event_t& event);
+    component_t* dispatch(component_t* component, event_t& event);
 
     /**
      * Dispatches the given event upwards the component tree.

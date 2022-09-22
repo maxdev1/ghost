@@ -6,7 +6,7 @@ fi
 . "$ROOT/ghost.sh"
 
 
-TARGET=$1
+TARGET=$@
 with TARGET "all"
 
 #
@@ -222,32 +222,34 @@ target_repack() {
 
 
 # execute targets
-if [[ $TARGET == "all" ]]; then
-	target_all
+for var in $TARGET; do
+	if [[ "$var" == "all" ]]; then
+		target_all
 
-elif [[ $TARGET == "repack" ]]; then
-	target_repack
+	elif [[ "$var" == "repack" ]]; then
+		target_repack
 
-elif [[ $TARGET == "repack-run" ]]; then
-	target_repack
-	target_qemu
-	
-elif [[ $TARGET == "ramdisk" ]]; then
-	target_ramdisk
-	
-elif [[ $TARGET == "qemu" ]]; then
-	target_qemu
-	
-elif [[ $TARGET == "qemu-debug-gdb" ]]; then
-	target_qemu_debug_gdb
-	
-elif [[ $TARGET == "clean" ]]; then
-	target_clean
-	
-else
-	echo "unknown target: '$TARGET'"
-	exit 1
-fi
+	elif [[ "$var" == "repack-run" ]]; then
+		target_repack
+		target_qemu
+		
+	elif [[ "$var" == "ramdisk" ]]; then
+		target_ramdisk
+		
+	elif [[ "$var" == "qemu" ]]; then
+		target_qemu
+		
+	elif [[ "$var" == "qemu-debug-gdb" ]]; then
+		target_qemu_debug_gdb
+		
+	elif [[ "$var" == "clean" ]]; then
+		target_clean
+		
+	else
+		echo "unknown target: '$var'"
+		exit 1
+	fi
+done
 
 exit 0
  

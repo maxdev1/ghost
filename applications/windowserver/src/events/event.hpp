@@ -28,7 +28,10 @@ class event_t
   public:
     virtual ~event_t() {}
 
-    virtual bool visit(component_t* component) = 0;
+    /**
+     * Lets the event apply on the component.
+     */
+    virtual component_t* visit(component_t* component) = 0;
 };
 
 #endif

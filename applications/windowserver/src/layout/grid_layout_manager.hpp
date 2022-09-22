@@ -22,8 +22,8 @@
 #define __WINDOWSERVER_LAYOUT_GRIDLAYOUTMANAGER__
 
 #include "layout/layout_manager.hpp"
-#include <libwindow/metrics/insets.hpp>
 #include <libwindow/metrics/dimension.hpp>
+#include <libwindow/metrics/insets.hpp>
 
 class grid_layout_manager_t : public layout_manager_t
 {
@@ -31,13 +31,15 @@ class grid_layout_manager_t : public layout_manager_t
     int columns;
     int rows;
     g_insets padding;
-    int horizontalCellSpace;
-    int verticalCellSpace;
-
-    g_dimension lastBounds;
+    int rowSpace;
+    int colSpace;
 
   public:
-    grid_layout_manager_t(int columns, int rows);
+    grid_layout_manager_t(int columns = 1, int rows = 0, int rowSpace = 0, int columnSpace = 0)
+        : columns(columns), rows(rows), padding(g_insets(0, 0, 0, 0)),
+          rowSpace(rowSpace), colSpace(columnSpace)
+    {
+    }
 
     void setPadding(g_insets _padding)
     {
@@ -49,24 +51,24 @@ class grid_layout_manager_t : public layout_manager_t
         return padding;
     }
 
-    void setHorizontalCellSpace(int _space)
+    void setRowSpace(int _space)
     {
-        horizontalCellSpace = _space;
+        rowSpace = _space;
     }
 
-    int getHorizontalCellSpace() const
+    int getRowSpace() const
     {
-        return horizontalCellSpace;
+        return rowSpace;
     }
 
-    void setVerticalCellSpace(int _space)
+    void setColSpace(int _space)
     {
-        verticalCellSpace = _space;
+        colSpace = _space;
     }
 
-    int getVerticalCellSpace() const
+    int getColSpace() const
     {
-        return verticalCellSpace;
+        return colSpace;
     }
 
     virtual void layout();

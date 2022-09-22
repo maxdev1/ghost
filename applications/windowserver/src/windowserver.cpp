@@ -131,7 +131,7 @@ void windowserver_t::renderLoop(g_rectangle screenBounds)
         blit(&global);
 
         framesTotal++;
-        g_atomic_lock_to(&render_atom, 1000);
+        g_atomic_lock_to(&render_atom, 100);
     }
 }
 
@@ -175,7 +175,7 @@ component_t* windowserver_t::dispatchUpwards(component_t* component, event_t& ev
 
     // check upwards until someone accepts the event
     component_t* acceptor = component;
-    while(!dispatch(acceptor, event))
+    while(dispatch(acceptor, event) == nullptr)
     {
         acceptor = acceptor->getParent();
         if(acceptor == 0)
@@ -192,11 +192,9 @@ component_t* windowserver_t::dispatchUpwards(component_t* component, event_t& ev
     return acceptor;
 }
 
-bool windowserver_t::dispatch(component_t* component, event_t& event)
+component_t* windowserver_t::dispatch(component_t* component, event_t& event)
 {
-    g_atomic_lock(&dispatch_lock);
-
-    bool handled = false;
+    component_t* handledBy = nullptr;
 
     if(component->canHandleEvents())
     {
@@ -208,11 +206,12 @@ bool windowserver_t::dispatch(component_t* component, event_t& event)
             locatable->position.y -= locationOnScreen.y;
         }
 
-        handled = event.visit(component);
+        g_atomic_lock(&dispatch_lock);
+        handledBy = event.visit(component);
+        dispatch_lock = 0;
     }
 
-    dispatch_lock = 0;
-    return handled;
+    return handledBy;
 }
 
 void windowserver_t::fpsCounter()

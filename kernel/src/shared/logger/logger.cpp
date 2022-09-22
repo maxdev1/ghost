@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "shared/logger/logger.hpp"
+#include "build_config.hpp"
 #include "shared/debug/debug_interface.hpp"
 #include "shared/system/bios_data_area.hpp"
 #include "shared/system/serial_port.hpp"
@@ -28,7 +29,7 @@
 static const uint32_t LOGGER_HEADER_WIDTH = 10;
 
 static bool logSerial = false;
-static bool logVideo = true;
+static bool logVideo = G_VIDEO_LOG_BOOT;
 
 void loggerEnableSerial(bool serial)
 {

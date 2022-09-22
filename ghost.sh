@@ -49,7 +49,7 @@ requireTool() {
 #   list "example.txt"
 #
 list() {
-	echo " - '$1'"	
+	echo " - $1"	
 }
 
 #
