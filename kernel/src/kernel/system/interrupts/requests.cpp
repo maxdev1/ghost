@@ -87,6 +87,7 @@ void requestsCallUserspaceHandler(uint8_t irq)
         return;
     }
 
+#warning "TODO: Disable interrupts here, otherwise the task might get interrupted and stays in an unexpected state"
     g_task* last = taskingGetCurrentTask();
     taskingSetCurrentTask(handlerTask);
     taskingApplySwitch();
@@ -95,6 +96,7 @@ void requestsCallUserspaceHandler(uint8_t irq)
     userSpaceHandler();
 
     taskingSetCurrentTask(last);
+#warning "TODO: Enable interrupts again"
 }
 
 void requestsRegisterHandler(uint8_t irq, g_tid handlerTask, g_virtual_address handlerAddress, g_virtual_address entryAddress, g_virtual_address returnAddress)
