@@ -48,11 +48,4 @@ bool mutexTryAcquire(g_mutex* mutex);
  */
 void mutexRelease(g_mutex* mutex);
 
-/**
- * Releases the mutex.
- *
- * The smp parameter decides if the lock count for this processor should be decreased.
- */
-void mutexRelease(g_mutex* mutex);
-
 #endif

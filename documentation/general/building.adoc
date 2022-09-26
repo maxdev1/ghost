@@ -8,46 +8,40 @@ This document contains an explanation on how to build entire operating system fr
 
 The project consists of two repositories:
 
-* *ghost*, main repository containing the source code for the system
-* *ghost-sysroot*, a blueprint for the system root directory
+* link:https://github.com/maxdev1/ghost[*ghost*], main repository containing the source code
+* link:https://github.com/maxdev1/ghost-sysroot[*ghost-sysroot*], a blueprint for the system root directory
 
-The system root directory (sysroot) is a concept used in cross compiling. It contains
-the initial filesystem that is used to boot the OS. All cross-compiled libraries and
-applications are installed to this folder, and when cross-compiling a program or
-library, the compiler uses this directory as the location to search for headers,
-libraries and more. This avoids using the host systems header files.
+The system root directory (sysroot) is a concept used in cross compiling. It reflects
+the initial filesystem that is present when booting the OS.
+
+When cross-compiling libraries and applications on your host system, the headers and
+libraries from within this directory are used. This is required to seperate the host
+from our target.
 
 
-Checking out
-------------
+Cloning
+-------
+. Clone ghost-sysroot to `/ghost/sysroot`
+. Clone main repository anywhere (for example `/ghost/source`)
 
-. Clone the ghost-sysroot to `/ghost/sysroot` (If you want to use a different folder, see the "Tips" section below).
-. Clone the main repository somewhere to your filesystem (for example `/ghost/source`)
+If you want to use a different folder, see the "Tips" section below.
 
 
 Installing prerequisites
 ------------------------
-There are some pre-requisites that you need to install on your host system. On Linux you
-should be able to easily install them with `apt`;
+There are some pre-requisites that you need to install on your host system. Install the following dependencies:
 
-* `apt update`
-* `apt install libmpfr-dev libgmp-dev libmpc-dev`
-* `apt install autoconf2.64 pkg-config xorriso grub-pc-bin`
-* `apt install make texinfo flex bison gcc g++ nasm`
-* `apt install asciidoc asciidoctor`
+* `apt-get update`
+* `apt-get install libmpfr-dev libgmp-dev libmpc-dev`
+* `apt-get install autoconf2.64 pkg-config xorriso grub-pc-bin`
+* `apt-get install make texinfo flex bison gcc g++ nasm`
+* `apt-get install asciidoc asciidoctor`
 
 You may need to `export AUTOCONF=autoconf2.64` depending on your installation.
 
-On Cygwin
-~~~~~~~~~
-The recommended way of building on Windows is using the Windows Subsystem for Linux.
-Install the required packages that are described above via the Cygwin setup, except:
-
-* autoconf2.64 must be built from source
-* xorriso must be built from source, install libiconv-devel in Cygwin setup beforehand.
-	(It wants to be built & configured in the source directory)
-* grub2 must be built from source. Use grub-1.99 and do `export TARGET_CFLAGS="-Wno-error"`
-	`export CFLAGS="-Wno-error"` before configure
+On Windows
+~~~~~~~~~~
+The recommended way of building on Windows is using WSL (link:https://learn.microsoft.com/en-us/windows/wsl/install[Windows Subsystem for Linux]).
 
 On Mac OS
 ~~~~~~~~~
@@ -62,22 +56,14 @@ export LD=gcc-5
 -----
 
 
-Building the toolchain
-----------------------
+Toolchain setup
+---------------
 Run the toolchain setup script `toolchain.sh`. It will attempt to do everything that is
-necessary to create the toolchain.
-
-If the process fails on one step, open the respective build folder (for example `temp/build-gcc`)
-and check for a `ghost-build.log` file.
-
-Once the toolchain was built, you might want to add it to your PATH.
-
-NOTE: When the `toolchain.sh` script fails at some point but downloading/patching archives was
-	successful, you can skip those steps with `--skip-archives`.
+necessary to create the toolchain. Once the toolchain was built, add it to your PATH.
 
 
-Building the system
--------------------
+Building
+--------
 There is a `build.sh` in the main folder that installs required libraries, builds all
 applications and then builds and packs the kernel.
 
@@ -89,7 +75,6 @@ For building manually, the essential order is:
 
 * `./libapi/build.sh`
 * `./libc/build.sh`
-* `./libuser/build.sh`
 * `./applications/*/build.sh`
 * `./kernel/build.sh`
 
