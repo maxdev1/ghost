@@ -205,6 +205,8 @@ typedef struct {
  */
 typedef struct {
 	int signal;
+
+#warning "TODO: remove unneeded values"
 	g_virtual_address handlerAddress;
 	g_virtual_address returnAddress;
 	g_virtual_address previousHandlerAddress;

@@ -82,13 +82,13 @@ void syscallRegisterSignalHandler(g_task* task, g_syscall_register_signal_handle
         handler->task = task->id;
 
         data->status = G_REGISTER_SIGNAL_HANDLER_STATUS_SUCCESSFUL;
-        logDebug("%! signal handler %h registered for signal %i", "syscall", data->handler, data->signal);
+        logDebug("%! signal handler %h registered for signal %i", "syscall", data->handlerAddress, data->signal);
     }
     else
     {
         data->previousHandlerAddress = 0;
         data->status = G_REGISTER_SIGNAL_HANDLER_STATUS_INVALID_SIGNAL;
-        logDebug("%! failed to register signal handler %h for invalid signal %i", "syscall", data->handler, data->signal);
+        logDebug("%! failed to register signal handler %h for invalid signal %i", "syscall", data->handlerAddress, data->signal);
     }
 }
 

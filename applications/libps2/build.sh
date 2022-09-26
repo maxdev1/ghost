@@ -8,8 +8,6 @@ fi
 # Define build setup
 ARTIFACT_NAME="libps2.a"
 ARTIFACT_NAME_SHARED="libps2.so"
-CFLAGS="-std=c++11"
-LDFLAGS="-shared"
 
 # Include application build tasks
 . "../libraries.sh"
