@@ -79,7 +79,8 @@ bool mutexTryAcquire(g_mutex* mutex)
     SPINLOCK_ACQUIRE(mutex->lock);
 
     g_task* task = taskingGetCurrentTask();
-    uint32_t owner = task ? task->id : 0;
+    #warning "TODO: This isn't optimal."
+    uint32_t owner = task ? task->id : 0xFFFF + processorGetCurrentId();
     if(mutex->depth == 0 || mutex->owner == owner)
     {
         mutex->owner = owner;
