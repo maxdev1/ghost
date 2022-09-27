@@ -113,9 +113,9 @@ uint16_t processorGetNumberOfProcessors()
 
 uint32_t processorGetCurrentId()
 {
-	#warning "TODO: Fix multiprocessor handling"
 	// Using lapicReadId for some reason makes everything VERY slow.
-	// return 0;
+	#warning "TODO: Fix multiprocessor handling"
+	return 0;
 
 	if(!apicIdToProcessorMapping)
 		return 0;
