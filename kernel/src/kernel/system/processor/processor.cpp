@@ -114,13 +114,8 @@ uint16_t processorGetNumberOfProcessors()
 uint32_t processorGetCurrentId()
 {
 	#warning "TODO: Fix multiprocessor handling"
-	// For some reason, calling lapicReadId causes weird behaviour and
-	// makes the system not boot anymore due to some deadlocking issue.
-	// The following loop causes the same behaviour:
-	//
-	// volatile int x = 0;
-	// while(x++ < 10000) {}
-	return 0;
+	// Using lapicReadId for some reason makes everything VERY slow.
+	// return 0;
 
 	if(!apicIdToProcessorMapping)
 		return 0;
