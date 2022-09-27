@@ -133,6 +133,7 @@ void taskingInitializeLocal()
 {
     g_tasking_local* local = taskingGetLocal();
     local->time = 0;
+    local->lockCount = 0;
 
     local->scheduling.current = 0;
     local->scheduling.list = 0;
@@ -364,7 +365,13 @@ void taskingApplySwitch()
 
 void taskingSchedule()
 {
-    schedulerSchedule(taskingGetLocal());
+    auto local = taskingGetLocal();
+
+    if(local->lockCount > 0) {
+        return;
+    }
+
+    schedulerSchedule(local);
 }
 
 g_process* taskingCreateProcess()
