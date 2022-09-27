@@ -22,6 +22,7 @@
 #define __SYSTEM_SMP_MUTEX__
 
 #include "ghost/stdint.h"
+#include "shared/logger/logger.hpp"
 
 struct g_mutex
 {
@@ -35,7 +36,8 @@ struct g_mutex
 /**
  * Initializes the mutex.
  */
-void mutexInitialize(g_mutex* mutex);
+#define mutexInitialize(mutex) _mutexInitialize(mutex); // logInfo("%! initalize %x @%s", "mutex", mutex, __func__);
+void _mutexInitialize(g_mutex* mutex);
 
 /**
  * Acquires the mutex. Increases the lock count for this processor.

@@ -68,6 +68,7 @@ void systemMarkApplicationCoreReady()
 
 void systemMarkReady()
 {
+    logInfo("%! ready", "system");
     systemReady = true;
 }
 

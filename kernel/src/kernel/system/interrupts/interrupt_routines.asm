@@ -119,20 +119,18 @@ interruptRoutine:
 	iret
 
 
-; Handle routine macro for interrupts with error code
+; Handle routine macro for interrupts without error code
 %macro handleRoutine 2
 global %1
 %1:
-	cli
 	push %2
 	jmp interruptRoutine
 %endmacro
 
-; Handle routine macro for interrupts without error code
+; Handle routine macro for interrupts with error code
 %macro handleRoutine 3
 global %1
 %1:
-	cli
 	push %2
 	push %3
 	jmp interruptRoutine
