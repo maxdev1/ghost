@@ -24,19 +24,23 @@
 #include "kernel/tasking/tasking.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/video/console_video.hpp"
+#include "kernel/system/system.hpp"
 
 volatile int mutexInitializerLock = 0;
 #define G_MUTEX_INITIALIZED 0xFEED
+
+#define SPINLOCK_ACQUIRE(lock)      while(!__sync_bool_compare_and_swap(&lock, 0, 1)) asm("pause");
+#define SPINLOCK_RELEASE(lock)      lock = 0;
+#define MUTEX_GUARD                 if(mutex->initialized != G_MUTEX_INITIALIZED) mutexErrorUninitialized(mutex);
 
 void mutexErrorUninitialized(g_mutex* mutex)
 {
     kernelPanic("%! %i: tried to use uninitialized mutex %h", "mutex", processorGetCurrentId(), mutex);
 }
 
-void mutexInitialize(g_mutex* mutex)
+void _mutexInitialize(g_mutex* mutex)
 {
-    while(!__sync_bool_compare_and_swap(&mutexInitializerLock, 0, 1))
-        asm("pause");
+    SPINLOCK_ACQUIRE(mutexInitializerLock);
 
     if(mutex->initialized == G_MUTEX_INITIALIZED)
         kernelPanic("%! attempted to initialize mutex %x twice", "mutex", mutex);
@@ -46,13 +50,12 @@ void mutexInitialize(g_mutex* mutex)
     mutex->depth = 0;
     mutex->owner = -1;
 
-    mutexInitializerLock = 0;
+    SPINLOCK_RELEASE(mutexInitializerLock);
 }
 
 void mutexAcquire(g_mutex* mutex)
 {
-    if(mutex->initialized != G_MUTEX_INITIALIZED)
-        mutexErrorUninitialized(mutex);
+    MUTEX_GUARD;
 
     while(!mutexTryAcquire(mutex))
     {
@@ -65,20 +68,18 @@ void mutexAcquire(g_mutex* mutex)
 
 bool mutexTryAcquire(g_mutex* mutex)
 {
-    if(mutex->initialized != G_MUTEX_INITIALIZED)
-        mutexErrorUninitialized(mutex);
+    MUTEX_GUARD;
 
-    while(!__sync_bool_compare_and_swap(&mutex->lock, 0, 1))
-        asm("pause");
+    bool set = false;
 
     int intr = interruptsAreEnabled();
     if(intr)
         interruptsDisable();
 
-    bool set = false;
+    SPINLOCK_ACQUIRE(mutex->lock);
 
     g_task* task = taskingGetCurrentTask();
-    uint32_t owner = task ? task->id : -processorGetCurrentId();
+    uint32_t owner = task ? task->id : 0;
     if(mutex->depth == 0 || mutex->owner == owner)
     {
         mutex->owner = owner;
@@ -86,7 +87,7 @@ bool mutexTryAcquire(g_mutex* mutex)
         set = true;
     }
 
-    mutex->lock = 0;
+    SPINLOCK_RELEASE(mutex->lock);
 
     if(intr)
         interruptsEnable();
@@ -96,15 +97,13 @@ bool mutexTryAcquire(g_mutex* mutex)
 
 void mutexRelease(g_mutex* mutex)
 {
-    if(mutex->initialized != G_MUTEX_INITIALIZED)
-        mutexErrorUninitialized(mutex);
-
-    while(!__sync_bool_compare_and_swap(&mutex->lock, 0, 1))
-        asm("pause");
+    MUTEX_GUARD;
 
     int intr = interruptsAreEnabled();
     if(intr)
         interruptsDisable();
+
+    SPINLOCK_ACQUIRE(mutex->lock);
 
     if(mutex->depth > 0 && --mutex->depth == 0)
     {
@@ -112,7 +111,7 @@ void mutexRelease(g_mutex* mutex)
         mutex->owner = -1;
     }
 
-    mutex->lock = 0;
+    SPINLOCK_RELEASE(mutex->lock);
 
     if(intr)
         interruptsEnable();

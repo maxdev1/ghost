@@ -45,7 +45,7 @@ void loggerPrintlnLocked(const char* message, ...)
     int intr = interruptsAreEnabled();
     if(intr)
         interruptsDisable();
-
+        
     va_list valist;
     va_start(valist, message);
     loggerPrintFormatted(message, valist);

@@ -93,6 +93,13 @@ void lapicCreateMapping()
     pagingMapPage(virtualBase, physicalBase, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS | G_PAGE_CACHE_DISABLED);
 }
 
+uint32_t lapicReadId()
+{
+    if(!globalPrepared)
+        return 0;
+    return (lapicRead(APIC_REGISTER_ID) >> 24) & 0xFF;
+}
+
 uint32_t lapicRead(uint32_t reg)
 {
     return *((volatile uint32_t*) (virtualBase + reg));
@@ -129,13 +136,6 @@ void lapicStartTimer()
     lapicWrite(APIC_REGISTER_TIMER_DIV, 0x3);
     lapicWrite(APIC_REGISTER_LVT_TIMER, 32 | APIC_LVT_TIMER_MODE_PERIODIC);
     lapicWrite(APIC_REGISTER_TIMER_INITCNT, ticksPer10ms / 10);
-}
-
-uint32_t lapicReadId()
-{
-    if(!globalPrepared)
-        return 0;
-    return (lapicRead(APIC_REGISTER_ID) >> 24) & 0xFF;
 }
 
 void lapicSendEndOfInterrupt()

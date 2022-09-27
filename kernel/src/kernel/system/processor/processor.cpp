@@ -22,6 +22,7 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/kernel.hpp"
 #include "shared/logger/logger.hpp"
+#include "kernel/system/system.hpp"
 
 static g_processor* processors = 0;
 static uint32_t processorsAvailable = 0;
@@ -112,7 +113,16 @@ uint16_t processorGetNumberOfProcessors()
 
 uint32_t processorGetCurrentId()
 {
-	if(apicIdToProcessorMapping == 0)
+	#warning "TODO: Fix multiprocessor handling"
+	// For some reason, calling lapicReadId causes weird behaviour and
+	// makes the system not boot anymore due to some deadlocking issue.
+	// The following loop causes the same behaviour:
+	//
+	// volatile int x = 0;
+	// while(x++ < 10000) {}
+	return 0;
+
+	if(!apicIdToProcessorMapping)
 		return 0;
 	return apicIdToProcessorMapping[lapicReadId()];
 }

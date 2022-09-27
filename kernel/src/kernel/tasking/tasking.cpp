@@ -77,6 +77,9 @@ g_task* taskingGetById(g_tid id)
 
 void taskingYield()
 {
+    if(!systemIsReady())
+        return;
+
     g_task* task = taskingGetCurrentTask();
     volatile g_processor_state* kernelState = task->state;
     task->timesYielded++;
@@ -161,7 +164,7 @@ void taskingApplySecurityLevel(volatile g_processor_state* state, g_security_lev
         state->ds = G_GDT_DESCRIPTOR_KERNEL_DATA | G_SEGMENT_SELECTOR_RING0;
         state->es = G_GDT_DESCRIPTOR_KERNEL_DATA | G_SEGMENT_SELECTOR_RING0;
         state->fs = G_GDT_DESCRIPTOR_KERNEL_DATA | G_SEGMENT_SELECTOR_RING0;
-        state->gs = G_GDT_DESCRIPTOR_KERNEL_DATA | G_SEGMENT_SELECTOR_RING0;
+        state->gs = G_GDT_DESCRIPTOR_USERTHREADPTR;
     }
     else
     {
@@ -170,7 +173,7 @@ void taskingApplySecurityLevel(volatile g_processor_state* state, g_security_lev
         state->ds = G_GDT_DESCRIPTOR_USER_DATA | G_SEGMENT_SELECTOR_RING3;
         state->es = G_GDT_DESCRIPTOR_USER_DATA | G_SEGMENT_SELECTOR_RING3;
         state->fs = G_GDT_DESCRIPTOR_USER_DATA | G_SEGMENT_SELECTOR_RING3;
-        state->gs = G_GDT_DESCRIPTOR_USER_DATA | G_SEGMENT_SELECTOR_RING3;
+        state->gs = G_GDT_DESCRIPTOR_USERTHREADPTR;
     }
 
     if(securityLevel <= G_SECURITY_LEVEL_DRIVER)
@@ -354,7 +357,6 @@ void taskingApplySwitch()
 
     // For TLS: write user thread address to GDT & set GS of thread to user pointer segment
     gdtSetUserThreadObjectAddress(task->tlsCopy.userThreadObject);
-    task->state->gs = 0x30;
 
     // Set TSS ESP0 for ring 3 tasks to return onto
     gdtSetTssEsp0(task->interruptStack.end);
