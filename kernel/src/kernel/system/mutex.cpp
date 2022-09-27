@@ -57,7 +57,9 @@ void mutexAcquire(g_mutex* mutex)
 {
     MUTEX_GUARD;
 
-    while(!mutexTryAcquire(mutex))
+    uint32_t owner = systemIsReady() ? taskingGetCurrentTask()->id : -processorGetCurrentId();
+
+    while(!mutexTryAcquire(mutex, owner))
     {
         if(interruptsAreEnabled())
             taskingYield();
@@ -66,7 +68,7 @@ void mutexAcquire(g_mutex* mutex)
     }
 }
 
-bool mutexTryAcquire(g_mutex* mutex)
+bool mutexTryAcquire(g_mutex* mutex, uint32_t owner)
 {
     MUTEX_GUARD;
 
@@ -78,9 +80,6 @@ bool mutexTryAcquire(g_mutex* mutex)
 
     SPINLOCK_ACQUIRE(mutex->lock);
 
-    g_task* task = taskingGetCurrentTask();
-    #warning "TODO: This isn't optimal."
-    uint32_t owner = task ? task->id : 0xFFFF + processorGetCurrentId();
     if(mutex->depth == 0 || mutex->owner == owner)
     {
         mutex->owner = owner;

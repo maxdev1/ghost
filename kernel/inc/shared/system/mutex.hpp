@@ -43,7 +43,7 @@ void _mutexInitialize(g_mutex* mutex);
  * Acquires the mutex. Increases the lock count for this processor.
  */
 void mutexAcquire(g_mutex* mutex);
-bool mutexTryAcquire(g_mutex* mutex);
+bool mutexTryAcquire(g_mutex* mutex, uint32_t owner);
 
 /**
  * Releases the mutex. Decreases the lock count for this processor.
