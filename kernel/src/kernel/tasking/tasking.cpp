@@ -359,6 +359,9 @@ void taskingApplySwitch()
     // For TLS: write user thread address to GDT & set GS of thread to user pointer segment
     gdtSetUserThreadObjectAddress(task->tlsCopy.userThreadObject);
 
+    #warning "TODO: Check if this is required:"
+    task->state->gs = G_GDT_DESCRIPTOR_USERTHREADPTR;
+
     // Set TSS ESP0 for ring 3 tasks to return onto
     gdtSetTssEsp0(task->interruptStack.end);
 }
