@@ -22,7 +22,8 @@
 #define __WINDOWSERVER_COMPONENTS_TEXT_MOVE_CARETMOVESTRATEGY__
 
 #include "components/text/caret_direction.hpp"
-#include "input/keyboard/keyboard.hpp"
+
+#include <libinput/keyboard/keyboard.hpp>
 
 class text_component_t;
 

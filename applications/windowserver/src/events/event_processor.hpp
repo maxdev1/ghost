@@ -21,9 +21,9 @@
 #ifndef __WINDOWSERVER_EVENTS_EVENTPROCESSOR__
 #define __WINDOWSERVER_EVENTS_EVENTPROCESSOR__
 
-#include "input/keyboard/keyboard.hpp"
-#include "input/mouse/mouse.hpp"
 #include <deque>
+#include <libinput/keyboard/keyboard.hpp>
+#include <libinput/mouse/mouse.hpp>
 
 #define DEFAULT_MULTICLICK_TIMESPAN 150
 
@@ -34,25 +34,23 @@
 class event_processor_t
 {
   public:
-    uint32_t multiclickTimespan;
+	uint32_t multiclickTimespan;
 
-    event_processor_t();
+	event_processor_t();
 
-    std::deque<g_key_info> key_info_buffer;
-    uint8_t key_info_buffer_lock = 0;
-    void bufferKeyEvent(g_key_info keyInfo);
+	std::deque<g_key_info> key_info_buffer;
+	uint8_t key_info_buffer_lock = 0;
+	void bufferKeyEvent(g_key_info keyInfo);
 
-    std::deque<void*> command_message_buffer;
-    uint8_t command_message_buffer_lock = 0;
-    // void bufferCommandMessage(void* commandMessage);
+	std::deque<void*> command_message_buffer;
+	g_atom command_message_buffer_lock = 0;
+	void bufferCommandMessage(void* commandMessage);
 
-    void process();
-    // void process_command(g_tid sender_tid, g_ui_message_header* request_header, command_message_response_t& response_out);
+	void process();
 
-    void translateKeyEvent(g_key_info& info);
-    void processKeyState();
-
-    void processMouseState();
+	void translateKeyEvent(g_key_info& info);
+	void processKeyState();
+	void processMouseState();
 };
 
 #endif

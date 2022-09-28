@@ -12,6 +12,7 @@ BUILD_PORTS=0
 KERNEL_REPACK_ONLY=0
 KERNEL_BUILD_WITH_APPS=0
 APPS=()
+APPS_CLEAN=0
 
 # Define some helpers
 pushd() {
@@ -119,7 +120,11 @@ build_apps() {
 	if [ $NUM_APPS -gt "0" ]; then
 		for var in ${APPS[@]}; do
 			if [ -d $var ]; then
-				build_app $var all
+				if [ $APPS_CLEAN = 1 ]; then
+					build_app $var clean all
+				else
+					build_app $var all
+				fi
 			else
 				printf "\e[1;31m$var (?)\e[0m "
 			fi
@@ -152,6 +157,7 @@ print_help() {
 	echo "Usage: $0"
 	echo "  --apps                  build all apps clean and repack the image"
 	echo "  --apps windowserver     build only specific apps and repack the image"
+	echo "  --apps-clean terminal   build only specific apps clean and repack the image"
 	echo "  --kernel                build kernel and not repack only"
 	echo "  --ports                 enables building all ports, even if not necessary"
 	echo ""
@@ -171,6 +177,12 @@ for var in "$@"; do
 		BUILD_LIBAPI=0
 		KERNEL_REPACK_ONLY=1
 		COLLECT_APPS=1
+	elif [[ "$var" = "--apps-clean" ]]; then
+		BUILD_LIBC=0
+		BUILD_LIBAPI=0
+		KERNEL_REPACK_ONLY=1
+		COLLECT_APPS=1
+		APPS_CLEAN=1
 	elif [[ "$var" = "--ports" ]]; then
 		BUILD_PORTS=1
 	elif [[ "$var" = "--kernel" ]]; then

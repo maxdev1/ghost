@@ -21,12 +21,12 @@
 #ifndef __TEXT_FIELD__
 #define __TEXT_FIELD__
 
-#include "components/text/fonts/font.hpp"
-#include "components/text/fonts/text_layouter.hpp"
+#include <libwindow/text/font.hpp>
+#include <libwindow/text/text_layouter.hpp>
 #include "components/text/text_component.hpp"
 #include "components/titled_component.hpp"
-#include "input/keyboard/keyboard.hpp"
 
+#include <libinput/keyboard/keyboard.hpp>
 #include <libwindow/metrics/insets.hpp>
 #include <list>
 #include <string>

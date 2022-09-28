@@ -31,7 +31,7 @@
 #include "video/graphics.hpp"
 
 #include <libwindow/metrics/rectangle.hpp>
-#include <libwindow/ui.hpp>
+#include <libwindow/interface.hpp>
 #include <map>
 #include <stdio.h>
 #include <vector>

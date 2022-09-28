@@ -18,19 +18,46 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <functional>
 #include <ghost.h>
-#include <libwindow/ui.hpp>
 
-g_ui_component_id windowCreate()
+#include "libwindow/properties.hpp"
+#include "libwindow/ui.hpp"
+#include "libwindow/window.hpp"
+
+class __g_window_close_listener : public g_listener
 {
-    g_tid driver_tid = g_task_get_id(G_WINDOWSERVER_ID);
-    if(driver_tid == -1)
-    {
-        return false;
-    }
-    g_message_transaction transaction = g_get_message_tx_id();
+  private:
+	std::function<void()> func;
 
-    // TODO
+  public:
+	__g_window_close_listener(std::function<void()> func) : func(func)
+	{
+	}
+	void process(g_ui_component_event_header* header)
+	{
+		func();
+	}
+};
 
-    return false;
+g_window* g_window::create()
+{
+	return createComponent<g_window, G_UI_COMPONENT_TYPE_WINDOW>();
+}
+
+bool g_window::isResizable()
+{
+	uint32_t value;
+	g_component::getNumericProperty(G_UI_PROPERTY_RESIZABLE, &value);
+	return value;
+}
+
+void g_window::setResizable(bool resizable)
+{
+	g_component::setNumericProperty(G_UI_PROPERTY_RESIZABLE, resizable);
+}
+
+bool g_window::onClose(std::function<void()> func)
+{
+	return setListener(G_UI_COMPONENT_EVENT_TYPE_CLOSE, new __g_window_close_listener(func));
 }

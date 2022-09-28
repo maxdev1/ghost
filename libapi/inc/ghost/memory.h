@@ -34,7 +34,7 @@ __BEGIN_C
 /**
  * Page alignment macros
  */
-#define G_PAGE_ALIGN_DOWN(value)				((value) & ~(G_PAGE_SIZE - 1))
+#define G_PAGE_ALIGN_DOWN(value)			((value) & ~(G_PAGE_SIZE - 1))
 #define G_PAGE_ALIGN_UP(value)				(((value) & (G_PAGE_SIZE - 1)) ? (G_PAGE_ALIGN_DOWN((value)) + G_PAGE_SIZE) : (value))
 
 #define G_TABLE_IN_DIRECTORY_INDEX(address)	((uint32_t)((address / G_PAGE_SIZE) / 1024))

@@ -21,7 +21,7 @@
 #ifndef __WINDOWSERVER_COMPONENTS_EVENTLISTENERINFO__
 #define __WINDOWSERVER_COMPONENTS_EVENTLISTENERINFO__
 
-#include <libwindow/ui.hpp>
+#include <libwindow/interface.hpp>
 #include <ghost.h>
 #include <list>
 #include <string>
