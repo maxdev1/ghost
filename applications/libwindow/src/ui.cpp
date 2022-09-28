@@ -106,7 +106,6 @@ void g_ui::event_dispatch_thread()
 		auto stat = g_receive_message(buffer, buffer_size);
 		if(stat == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 		{
-
 			// event message
 			g_ui_component_event_header* event_header = (g_ui_component_event_header*) G_MESSAGE_CONTENT(buffer);
 			g_component* component = g_component_registry::get(event_header->component_id);
@@ -117,7 +116,6 @@ void g_ui::event_dispatch_thread()
 				continue;
 			}
 
-			// tell the component delegate to handle the event
 			component->handle(event_header);
 		}
 		else

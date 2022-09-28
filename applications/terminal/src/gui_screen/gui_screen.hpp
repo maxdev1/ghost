@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "screen.hpp"
+#include "raster.hpp"
 
 #include <cairo/cairo.h>
 #include <list>
@@ -78,9 +79,7 @@ class gui_screen_t : public screen_t
 	/**
 	 * Screen buffer
 	 */
-	uint8_t* raster_buffer = 0;
-	g_dimension raster_size;
-	g_atom raster_lock = 0;
+	raster_t* raster;
 	int cursor_x = 0;
 	int cursor_y = 0;
 

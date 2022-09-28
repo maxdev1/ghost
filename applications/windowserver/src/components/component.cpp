@@ -521,7 +521,6 @@ bool component_t::setNumericProperty(int property, uint32_t value)
 		else if(value == G_UI_LAYOUT_MANAGER_GRID)
 		{
 			setLayoutManager(new grid_layout_manager_t(1, 1));
-			klog("setting grid layout");
 			return true;
 		}
 	}

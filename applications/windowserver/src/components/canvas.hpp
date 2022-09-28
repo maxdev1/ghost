@@ -48,10 +48,9 @@ class canvas_t : public component_t
 
 	async_resizer_info_t* asyncInfo;
 
+	g_atom currentBufferLock = 0;
 	buffer_info_t currentBuffer;
 	buffer_info_t nextBuffer;
-
-	bool mustCheckAgain;
 
 	canvas_t(g_tid partnerThread);
 	virtual ~canvas_t();
