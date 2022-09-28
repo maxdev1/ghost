@@ -40,7 +40,6 @@ int main()
         return -1;
     }
 
-    klog("initialize ps2 driver");
     ps2DriverInitialize();
     ps2DriverReceiveMessages();
     return 0;
@@ -60,9 +59,7 @@ void ps2DriverInitialize()
         return;
     }
 
-    klog("ps2 descriptors, mouse: %i/%i, keyboard: %i/%i", mouseRead, mouseWrite, keyboardRead, keyboardWrite);
     ps2Initialize(ps2MouseCallback, ps2KeyboardCallback);
-    klog("ps2 after initialize");
 }
 
 void ps2MouseCallback(int16_t x, int16_t y, uint8_t flags)

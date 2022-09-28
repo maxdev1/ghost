@@ -39,8 +39,6 @@ int main(int argc, char* argv[])
  */
 void terminal_t::execute()
 {
-
-	// initialize the screen
 	initializeScreen();
 	if(!screen)
 	{
@@ -315,7 +313,6 @@ void terminal_t::input_routine()
  */
 void terminal_t::output_routine(output_routine_startinfo_t* info)
 {
-
 	int buflen = 1024;
 	char* buf = new char[buflen];
 

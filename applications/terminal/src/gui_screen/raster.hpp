@@ -18,50 +18,41 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_CANVAS__
-#define __LIBWINDOW_CANVAS__
+#ifndef __TERMINAL_GUISCREEN_RASTER__
+#define __TERMINAL_GUISCREEN_RASTER__
 
-#include <cstdint>
+#include <ghost.h>
 
-#include "libwindow/color_argb.hpp"
-#include "libwindow/component.hpp"
-#include "libwindow/listener/canvas_buffer_listener.hpp"
-
-struct g_canvas_buffer_info
+/**
+ *
+ */
+class raster_t
 {
-	uint8_t* buffer;
-	uint16_t width;
-	uint16_t height;
-};
+  private:
+	g_atom lock = 0;
+	uint8_t* buffer = 0;
 
-class g_canvas : public g_component
-{
-  protected:
-	g_address currentBuffer;
-	g_address nextBuffer;
-
-	/**
-	 * Listener only for user purpose, so a client gets an event once the
-	 * buffer was changed.
-	 */
-	g_canvas_buffer_listener* userListener;
-
-	g_canvas(uint32_t id) : g_component(id), currentBuffer(0), nextBuffer(0), userListener(0)
-	{
-	}
+	int width = 0;
+	int height = 0;
 
   public:
-	static g_canvas* create();
-
-	void acknowledgeNewBuffer(g_address address);
-
-	void blit(g_rectangle rect);
-	g_canvas_buffer_info getBuffer();
-
-	void setBufferListener(g_canvas_buffer_listener* l)
+	int getWidth() const
 	{
-		userListener = l;
+		return width;
 	}
+	int getHeight() const
+	{
+		return height;
+	}
+
+	void scrollBy(int y);
+	void resizeTo(int width, int height);
+	void clean();
+	void put(int x, int y, uint8_t c);
+
+	void lockBuffer();
+	uint8_t getUnlocked(int x, int y);
+	void unlockBuffer();
 };
 
 #endif

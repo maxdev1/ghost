@@ -31,13 +31,11 @@ canvas_t::canvas_t(g_tid partnerThread) : partnerThread(partnerThread)
 	currentBuffer.localMapping = nullptr;
 	nextBuffer.localMapping = nullptr;
 
-	mustCheckAgain = false;
-
 	asyncInfo = new async_resizer_info_t();
 	asyncInfo->canvas = this;
 	asyncInfo->alive = true;
 	asyncInfo->lock = 0;
-	asyncInfo->checkAtom = 1;
+	asyncInfo->checkAtom = 0;
 	g_create_thread_d((void*) canvas_t::asyncBufferResizer, asyncInfo);
 }
 
@@ -77,12 +75,6 @@ void canvas_t::handleBoundChange(g_rectangle oldBounds)
 
 /**
  * Checks whether the current buffer is still sufficient for the required amount of pixels.
- *
- * If the buffer is not sufficient and was acknowledged, a new buffer is allocated and an event is
- * sent to the client so it knows the new buffer must be acknowledged.
- *
- * If the buffer is not sufficient but was not yet acknowledged by the client, we wait until the current
- * one is acknowledged to then create a new buffer later on.
  */
 void canvas_t::checkBuffer()
 {
@@ -95,22 +87,12 @@ void canvas_t::checkBuffer()
 
 	uint16_t requiredPages = G_PAGE_ALIGN_UP(requiredSize) / G_PAGE_SIZE;
 
-	// if next buffer not yet acknowledged, ask client to acknowledge it
-	if(nextBuffer.localMapping != nullptr && !nextBuffer.acknowledged)
-	{
-		mustCheckAgain = true;
-
-		// send event again
-		requestClientToAcknowledgeNewBuffer();
-
-		// if there is no buffer yet, create one
-	}
-	else if(currentBuffer.localMapping == nullptr)
+	// if there is no buffer yet, create one
+	if(currentBuffer.localMapping == nullptr)
 	{
 		createNewBuffer(requiredPages);
 
-		// if current buffer is acknowledged but too small, create a new one
-	}
+	} // if current buffer is acknowledged but too small, create a new one
 	else if(currentBuffer.acknowledged)
 	{
 		g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer.localMapping;
@@ -178,7 +160,8 @@ void canvas_t::requestClientToAcknowledgeNewBuffer()
 
 void canvas_t::clientHasAcknowledgedCurrentBuffer()
 {
-	// previous buffer can be deleted
+	g_atomic_lock(&currentBufferLock);
+
 	if(currentBuffer.localMapping != nullptr)
 	{
 		g_unmap(currentBuffer.localMapping);
@@ -192,12 +175,7 @@ void canvas_t::clientHasAcknowledgedCurrentBuffer()
 	g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer.localMapping;
 	header->ready = false;
 
-	// if the window was resized during an un-acknowledged state, we must now create a new buffer
-	if(mustCheckAgain)
-	{
-		mustCheckAgain = false;
-		checkBuffer();
-	}
+	currentBufferLock = 0;
 }
 
 void canvas_t::paint()
@@ -205,30 +183,37 @@ void canvas_t::paint()
 	auto bounds = getBounds();
 	auto cr = graphics.getContext();
 
-	// there muts be a buffer that is acknowledged
-	if(currentBuffer.localMapping != 0 && currentBuffer.acknowledged)
+	g_atomic_lock(&currentBufferLock);
+	if(currentBuffer.localMapping == 0 || !currentBuffer.acknowledged)
 	{
-		g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer.localMapping;
-
-		if(header->ready)
-		{
-			header->ready = false;
-
-			// make background empty
-			clearSurface();
-
-			// create a cairo surface from the buffer
-			uint8_t* bufferContent = (uint8_t*) (currentBuffer.localMapping + G_UI_CANVAS_SHARED_MEMORY_HEADER_SIZE);
-			cairo_surface_t* bufferSurface = cairo_image_surface_create_for_data(bufferContent, CAIRO_FORMAT_ARGB32, header->paintable_width,
-																				 header->paintable_height, cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, header->paintable_width));
-			cairo_set_source_surface(cr, bufferSurface, 0, 0);
-			cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-			cairo_paint(cr);
-
-			// mark painted area as dirty
-			markDirty(g_rectangle(header->blit_x, header->blit_y, header->blit_width, header->blit_height));
-		}
+		currentBufferLock = 0;
+		return;
 	}
+
+	g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer.localMapping;
+	if(!header->ready)
+	{
+		currentBufferLock = 0;
+		return;
+	}
+
+	header->ready = false;
+
+	// make background empty
+	clearSurface();
+
+	// create a cairo surface from the buffer
+	uint8_t* bufferContent = (uint8_t*) (currentBuffer.localMapping + G_UI_CANVAS_SHARED_MEMORY_HEADER_SIZE);
+	cairo_surface_t* bufferSurface = cairo_image_surface_create_for_data(bufferContent, CAIRO_FORMAT_ARGB32, header->paintable_width,
+																		 header->paintable_height, cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, header->paintable_width));
+	cairo_set_source_surface(cr, bufferSurface, 0, 0);
+	cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+	cairo_paint(cr);
+
+	// mark painted area as dirty
+	markDirty(g_rectangle(header->blit_x, header->blit_y, header->blit_width, header->blit_height));
+
+	currentBufferLock = 0;
 }
 
 void canvas_t::blit()

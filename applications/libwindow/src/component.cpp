@@ -264,13 +264,11 @@ bool g_component::setListener(g_ui_component_event_type eventType, g_listener* n
 
 void g_component::handle(g_ui_component_event_header* header)
 {
-
 	auto eventType = header->type;
-	g_listener* listener = listeners[eventType];
 
-	if(listener != nullptr)
+	if(listeners.count(eventType) > 0)
 	{
-		listener->process(header);
+		listeners[eventType]->process(header);
 	}
 }
 

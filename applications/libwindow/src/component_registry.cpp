@@ -40,12 +40,10 @@ void g_component_registry::add(g_component* component)
  */
 g_component* g_component_registry::get(g_ui_component_id id)
 {
+	g_atomic_lock(&components_lock);
+	g_component* component;
 	if(components.count(id) > 0)
-	{
-		g_atomic_lock(&components_lock);
-		g_component* component = components[id];
-		components_lock = 0;
-		return component;
-	}
-	return 0;
+		component = components[id];
+	components_lock = 0;
+	return component;
 }

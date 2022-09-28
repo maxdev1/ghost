@@ -205,7 +205,6 @@ void interface_receiver_t::processCommand(g_tid senderTid, g_ui_message_header* 
 		}
 		else
 		{
-			klog("set visible: %i", component->id);
 			component->setVisible(request->visible);
 			response->status = G_UI_PROTOCOL_SUCCESS;
 		}
