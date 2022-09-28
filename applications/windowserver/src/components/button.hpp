@@ -25,7 +25,7 @@
 #include "components/button_state.hpp"
 #include "components/component.hpp"
 #include "components/label.hpp"
-#include "components/text/fonts/font.hpp"
+#include <libwindow/text/font.hpp>
 #include "components/titled_component.hpp"
 
 #include <libwindow/metrics/insets.hpp>

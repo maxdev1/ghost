@@ -24,9 +24,13 @@
 
 void bounds_event_component_t::fireBoundsChange(g_rectangle& bounds)
 {
-    event_listener_info_t listener_info;
-    if(self->getListener(G_UI_COMPONENT_EVENT_TYPE_BOUNDS, listener_info))
-    {
-        // TODO send
-    }
+	event_listener_info_t listener_info;
+	if(self->getListener(G_UI_COMPONENT_EVENT_TYPE_BOUNDS, listener_info))
+	{
+		g_ui_component_bounds_event bounds_event;
+		bounds_event.header.type = G_UI_COMPONENT_EVENT_TYPE_BOUNDS;
+		bounds_event.header.component_id = listener_info.component_id;
+		bounds_event.bounds = bounds;
+		g_send_message(listener_info.target_thread, &bounds_event, sizeof(g_ui_component_bounds_event));
+	}
 }

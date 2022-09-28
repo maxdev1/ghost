@@ -21,7 +21,7 @@
 #ifndef __LIBWINDOW_METRICS_INSETS__
 #define __LIBWINDOW_METRICS_INSETS__
 
-#include "point.hpp"
+#include "libwindow/metrics/point.hpp"
 #include <cstdint>
 
 class g_insets

@@ -22,17 +22,18 @@
 #define __WINDOWSERVER_EVENTS_KEYEVENT__
 
 #include "events/event.hpp"
-#include "input/keyboard/keyboard.hpp"
+
+#include <libinput/keyboard/keyboard.hpp>
 #include <stdint.h>
 
 class key_event_t : public event_t
 {
   public:
-    g_key_info info;
+	g_key_info info;
 
-    virtual ~key_event_t() {}
+	virtual ~key_event_t() {}
 
-    virtual component_t* visit(component_t* component);
+	virtual component_t *visit(component_t *component);
 };
 
 #endif

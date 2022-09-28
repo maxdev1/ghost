@@ -23,7 +23,7 @@
 
 #include "events/event.hpp"
 #include "events/locatable.hpp"
-#include <libwindow/ui.hpp>
+#include <libwindow/interface.hpp>
 
 class mouse_event_t : public event_t, public locatable_t
 {

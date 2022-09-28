@@ -21,9 +21,9 @@
 #ifndef __LIBWINDOW_METRICS_RECTANGLE__
 #define __LIBWINDOW_METRICS_RECTANGLE__
 
-#include "dimension.hpp"
-#include "insets.hpp"
-#include "point.hpp"
+#include "libwindow/metrics/dimension.hpp"
+#include "libwindow/metrics/insets.hpp"
+#include "libwindow/metrics/point.hpp"
 #include <cstdint>
 
 struct g_rectangle

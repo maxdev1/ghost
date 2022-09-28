@@ -30,6 +30,7 @@
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/system.hpp"
 #include "kernel/tasking/tasking.hpp"
+#include "kernel/tasking/wait.hpp"
 #include "shared/system/mutex.hpp"
 
 #include "shared/runtime/constructors.hpp"
@@ -42,138 +43,141 @@ static g_mutex applicationCoreLock;
 
 extern "C" void kernelMain(g_setup_information* setupInformation)
 {
-    runtimeAbiCallGlobalConstructors();
+	runtimeAbiCallGlobalConstructors();
 
-    if(G_PRETTY_BOOT)
-        prettyBootEnable(false);
-    else
-        consoleVideoClear();
+	if(G_PRETTY_BOOT)
+		prettyBootEnable(false);
+	else
+		consoleVideoClear();
 
-    kernelInitialize(setupInformation);
+	kernelInitialize(setupInformation);
 
-    g_address initialPdPhys = setupInformation->initialPageDirectoryPhysical;
-    memoryUnmapSetupMemory();
-    kernelRunBootstrapCore(initialPdPhys);
+	g_address initialPdPhys = setupInformation->initialPageDirectoryPhysical;
+	memoryUnmapSetupMemory();
+	kernelRunBootstrapCore(initialPdPhys);
 
-    __builtin_unreachable();
+	__builtin_unreachable();
 }
 
 void kernelInitialize(g_setup_information* setupInformation)
 {
-    kernelLoggerInitialize(setupInformation);
-    memoryInitialize(setupInformation);
+	kernelLoggerInitialize(setupInformation);
+	memoryInitialize(setupInformation);
 
-    g_multiboot_module* ramdiskModule = multibootFindModule(setupInformation->multibootInformation, "/boot/ramdisk");
-    if(!ramdiskModule)
-    {
-        G_PRETTY_BOOT_FAIL("Ramdisk not found (did you supply enough memory?");
-        kernelPanic("%! ramdisk not found (did you supply enough memory?)", "kern");
-    }
-    ramdiskLoadFromModule(ramdiskModule);
+	g_multiboot_module* ramdiskModule = multibootFindModule(setupInformation->multibootInformation, "/boot/ramdisk");
+	if(!ramdiskModule)
+	{
+		G_PRETTY_BOOT_FAIL("Ramdisk not found (did you supply enough memory?");
+		kernelPanic("%! ramdisk not found (did you supply enough memory?)", "kern");
+	}
+	ramdiskLoadFromModule(ramdiskModule);
 }
 
 void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 {
-    logDebug("%! has entered kernel", "bsp");
-    mutexInitialize(&bootstrapCoreLock);
-    mutexInitialize(&applicationCoreLock);
+	logDebug("%! has entered kernel", "bsp");
+	mutexInitialize(&bootstrapCoreLock);
+	mutexInitialize(&applicationCoreLock);
 
-    mutexAcquire(&bootstrapCoreLock);
+	mutexAcquire(&bootstrapCoreLock);
 
-    systemInitializeBsp(initialPdPhys);
-    filesystemInitialize();
-    pipeInitialize();
-    messageInitialize();
+	systemInitializeBsp(initialPdPhys);
+	filesystemInitialize();
+	pipeInitialize();
+	messageInitialize();
 
-    taskingInitializeBsp();
-    syscallRegisterAll();
+	taskingInitializeBsp();
+	syscallRegisterAll();
 
-    g_process* initializationProcess = taskingCreateProcess();
-    taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) kernelInitializationThread, initializationProcess, G_SECURITY_LEVEL_KERNEL));
+	g_process* initializationProcess = taskingCreateProcess();
+	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) kernelInitializationThread, initializationProcess, G_SECURITY_LEVEL_KERNEL));
 
-    logInfo("%! booting on %i cores", "kernel", processorGetNumberOfProcessors());
-    mutexRelease(&bootstrapCoreLock);
+	logInfo("%! booting on %i cores", "kernel", processorGetNumberOfProcessors());
+	mutexRelease(&bootstrapCoreLock);
 
-    systemWaitForApplicationCores();
-    systemMarkReady();
-    interruptsEnable();
-    for(;;)
-        asm("hlt");
+	systemWaitForApplicationCores();
+	systemMarkReady();
+	interruptsEnable();
+	for(;;)
+		asm("hlt");
 }
 
 void kernelRunApplicationCore()
 {
-    logDebug("%! has entered kernel, waiting for bsp", "ap");
-    mutexAcquire(&bootstrapCoreLock);
-    mutexRelease(&bootstrapCoreLock);
+	logDebug("%! has entered kernel, waiting for bsp", "ap");
+	mutexAcquire(&bootstrapCoreLock);
+	mutexRelease(&bootstrapCoreLock);
 
-    mutexAcquire(&applicationCoreLock);
-    logDebug("%! initializing %i", "ap", processorGetCurrentId());
-    systemInitializeAp();
-    taskingInitializeAp();
-    mutexRelease(&applicationCoreLock);
+	mutexAcquire(&applicationCoreLock);
+	logDebug("%! initializing %i", "ap", processorGetCurrentId());
+	systemInitializeAp();
+	taskingInitializeAp();
+	mutexRelease(&applicationCoreLock);
 
-    systemWaitForApplicationCores();
-    interruptsEnable();
-    for(;;)
-        asm("hlt");
+	systemWaitForApplicationCores();
+	interruptsEnable();
+	for(;;)
+		asm("hlt");
 }
 
 void kernelSpawnService(const char* path, const char* args, g_security_level securityLevel)
 {
 
-    g_task* currentTask = taskingGetCurrentTask();
-    g_fd fd;
-    g_fs_open_status open = filesystemOpen(path, G_FILE_FLAG_MODE_READ, currentTask, &fd);
-    if(open == G_FS_OPEN_SUCCESSFUL)
-    {
-        g_process* outProcess;
-        g_spawn_status spawn = taskingSpawn(currentTask, fd, securityLevel, &outProcess);
-        outProcess->environment.arguments = args;
-        if(spawn == G_SPAWN_STATUS_SUCCESSFUL)
-            logInfo("%! loaded binary: %s (task: %i)", "kernel", path, outProcess->main->id);
-        else
-            logInfo("%! failed to spawn %s with status %i", "kernel", path, spawn);
-    }
-    else
-    {
-        logInfo("%! failed to find %s with status %i", "kernel", path, open);
-    }
+	g_task* currentTask = taskingGetCurrentTask();
+	g_fd fd;
+	g_fs_open_status open = filesystemOpen(path, G_FILE_FLAG_MODE_READ, currentTask, &fd);
+	if(open == G_FS_OPEN_SUCCESSFUL)
+	{
+		g_process* outProcess;
+		g_spawn_status spawn = taskingSpawn(currentTask, fd, securityLevel, &outProcess);
+		outProcess->environment.arguments = args;
+		if(spawn == G_SPAWN_STATUS_SUCCESSFUL)
+			logInfo("%! loaded binary: %s (task: %i)", "kernel", path, outProcess->main->id);
+		else
+			logInfo("%! failed to spawn %s with status %i", "kernel", path, spawn);
+	}
+	else
+	{
+		logInfo("%! failed to find %s with status %i", "kernel", path, open);
+	}
 }
 
 void kernelInitializationThread()
 {
-    logInfo("%! loading system services", "init");
+	logInfo("%! loading system services", "init");
 
-    G_PRETTY_BOOT_STATUS_P(40);
-    kernelSpawnService("/applications/ps2driver.bin", "", G_SECURITY_LEVEL_DRIVER);
-    G_PRETTY_BOOT_STATUS_P(60);
-    kernelSpawnService("/applications/vbedriver.bin", "", G_SECURITY_LEVEL_DRIVER);
-    G_PRETTY_BOOT_STATUS_P(80);
-    kernelSpawnService("/applications/windowserver.bin", "", G_SECURITY_LEVEL_APPLICATION);
+	G_PRETTY_BOOT_STATUS_P(40);
+	kernelSpawnService("/applications/ps2driver.bin", "", G_SECURITY_LEVEL_DRIVER);
+	G_PRETTY_BOOT_STATUS_P(60);
+	kernelSpawnService("/applications/vbedriver.bin", "", G_SECURITY_LEVEL_DRIVER);
+	G_PRETTY_BOOT_STATUS_P(80);
+	kernelSpawnService("/applications/windowserver.bin", "", G_SECURITY_LEVEL_APPLICATION);
 
-    taskingExit();
+	waitSleep(taskingGetCurrentTask(), 3000);
+	kernelSpawnService("/applications/terminal.bin", "", G_SECURITY_LEVEL_APPLICATION);
+
+	taskingExit();
 }
 
 void kernelPanic(const char* msg, ...)
 {
-    interruptsDisable();
-    logInfo("%*%! unrecoverable error on processor %i", 0x0C, "kernerr", processorGetCurrentId());
+	interruptsDisable();
+	logInfo("%*%! unrecoverable error on processor %i", 0x0C, "kernerr", processorGetCurrentId());
 
-    va_list valist;
-    va_start(valist, msg);
-    loggerPrintFormatted(msg, valist);
-    va_end(valist);
-    loggerPrintCharacter('\n');
+	va_list valist;
+	va_start(valist, msg);
+	loggerPrintFormatted(msg, valist);
+	va_end(valist);
+	loggerPrintCharacter('\n');
 
-    for(;;)
-        asm("hlt");
+	for(;;)
+		asm("hlt");
 }
 
 void kernelHalt()
 {
-    logInfo("%! execution finished, halting", "postkern");
-    interruptsDisable();
-    for(;;)
-        asm("hlt");
+	logInfo("%! execution finished, halting", "postkern");
+	interruptsDisable();
+	for(;;)
+		asm("hlt");
 }

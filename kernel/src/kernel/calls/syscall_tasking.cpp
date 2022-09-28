@@ -70,6 +70,7 @@ void syscallJoin(g_task* task, g_syscall_join* data)
     waitJoinTask(task, data->taskId);
 }
 
+#warning "TODO: This interface should be cleaned up"
 void syscallRegisterSignalHandler(g_task* task, g_syscall_register_signal_handler* data)
 {
     if(data->signal >= 0 && data->signal < SIG_COUNT)

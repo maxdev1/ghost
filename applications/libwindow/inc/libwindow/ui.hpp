@@ -18,69 +18,56 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_WINDOW__
-#define __LIBWINDOW_WINDOW__
+#ifndef __LIBWINDOW_UI__
+#define __LIBWINDOW_UI__
 
-#include <stdint.h>
+class g_listener;
+class g_canvas;
 
-#define G_WINDOWSERVER_ID "windowserver"
+#include "libwindow/interface.hpp"
+#include "libwindow/metrics/dimension.hpp"
 
-typedef int g_ui_component_id;
+typedef int g_ui_open_status;
+const g_ui_open_status G_UI_OPEN_STATUS_SUCCESSFUL = 0;
+const g_ui_open_status G_UI_OPEN_STATUS_COMMUNICATION_FAILED = 1;
+const g_ui_open_status G_UI_OPEN_STATUS_FAILED = 2;
+const g_ui_open_status G_UI_OPEN_STATUS_EXISTING = 3;
 
-/**
- * Types of events that can be listened to
- */
-typedef uint32_t g_ui_component_event_type;
-const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_ACTION = 0;
-const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_BOUNDS = 1;
-const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_CANVAS_WFA = 2; // "wait for acknowledge"-event
-const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_KEY = 3;
-const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_FOCUS = 4;
-const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_MOUSE = 5;
-const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_CLOSE = 6;
-
-/**
- * Mouse events
- */
-typedef uint8_t g_mouse_button;
-#define G_MOUSE_BUTTON_NONE ((g_mouse_button) 0x0)
-#define G_MOUSE_BUTTON_1 ((g_mouse_button) 0x1)
-#define G_MOUSE_BUTTON_2 ((g_mouse_button) 0x2)
-#define G_MOUSE_BUTTON_3 ((g_mouse_button) 0x4)
-
-typedef uint8_t g_mouse_event_type;
-#define G_MOUSE_EVENT_NONE ((g_mouse_event_type) 0)
-#define G_MOUSE_EVENT_MOVE ((g_mouse_event_type) 1)
-#define G_MOUSE_EVENT_PRESS ((g_mouse_event_type) 2)
-#define G_MOUSE_EVENT_RELEASE ((g_mouse_event_type) 3)
-#define G_MOUSE_EVENT_DRAG_RELEASE ((g_mouse_event_type) 4)
-#define G_MOUSE_EVENT_DRAG ((g_mouse_event_type) 5)
-#define G_MOUSE_EVENT_ENTER ((g_mouse_event_type) 6)
-#define G_MOUSE_EVENT_LEAVE ((g_mouse_event_type) 7)
-
-/**
- * Creates a window.
- */
-g_ui_component_id windowCreate();
-
-/**
- * Canvas shared memory header
- */
-typedef struct
+struct g_ui_event_dispatch_data
 {
-    uint16_t paintable_width;
-    uint16_t paintable_height;
-    uint16_t blit_x;
-    uint16_t blit_y;
-    uint16_t blit_width;
-    uint16_t blit_height;
-    uint8_t ready;
-} __attribute__((packed)) g_ui_canvas_shared_memory_header;
+	g_listener *listener;
+	uint8_t *data;
+	uint32_t length;
+};
 
 /**
- * Cairo requires the canvas memory buffer to be aligned. This constant must be used to calculate
- * the address for the canvas buffer in the canvas shared memory.
+ * ID of the thread that the window server creates when
+ * initializing the UI communication.
  */
-#define G_UI_CANVAS_SHARED_MEMORY_HEADER_SIZE ((sizeof(g_ui_canvas_shared_memory_header) - sizeof(g_ui_canvas_shared_memory_header) % sizeof(g_address)) + sizeof(g_address))
+extern g_tid g_ui_delegate_tid;
+
+/**
+ * ID of the event dispatcher thread that is continuously waiting
+ * for events from the window manager to fire the respective listener
+ * that was attached.
+ */
+extern g_tid g_ui_event_dispatcher_tid;
+
+class g_ui
+{
+  private:
+	static void event_dispatch_thread();
+	static void event_dispatch_queue_add(const g_ui_event_dispatch_data &data);
+
+  public:
+	static g_ui_open_status open();
+
+	static void add_listener(g_listener *l);
+	static void remove_listener(g_listener *l);
+
+	static bool register_desktop_canvas(g_canvas *c);
+
+	static bool get_screen_dimension(g_dimension *out);
+};
 
 #endif

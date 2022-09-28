@@ -21,106 +21,112 @@
 #include "shared/system/mutex.hpp"
 #include "kernel/kernel.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
+#include "kernel/system/system.hpp"
 #include "kernel/tasking/tasking.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/video/console_video.hpp"
-#include "kernel/system/system.hpp"
 
 volatile int mutexInitializerLock = 0;
 #define G_MUTEX_INITIALIZED 0xFEED
 
-#define SPINLOCK_ACQUIRE(lock)      while(!__sync_bool_compare_and_swap(&lock, 0, 1)) asm("pause");
-#define SPINLOCK_RELEASE(lock)      lock = 0;
-#define MUTEX_GUARD                 if(mutex->initialized != G_MUTEX_INITIALIZED) mutexErrorUninitialized(mutex);
+#define SPINLOCK_ACQUIRE(lock)                        \
+	while(!__sync_bool_compare_and_swap(&lock, 0, 1)) \
+		asm("pause");
+#define SPINLOCK_RELEASE(lock) lock = 0;
+#define MUTEX_GUARD                               \
+	if(mutex->initialized != G_MUTEX_INITIALIZED) \
+		mutexErrorUninitialized(mutex);
 
 void mutexErrorUninitialized(g_mutex* mutex)
 {
-    kernelPanic("%! %i: tried to use uninitialized mutex %h", "mutex", processorGetCurrentId(), mutex);
+	kernelPanic("%! %i: tried to use uninitialized mutex %h", "mutex", processorGetCurrentId(), mutex);
 }
 
 void _mutexInitialize(g_mutex* mutex)
 {
-    SPINLOCK_ACQUIRE(mutexInitializerLock);
+	SPINLOCK_ACQUIRE(mutexInitializerLock);
 
-    if(mutex->initialized == G_MUTEX_INITIALIZED)
-        kernelPanic("%! attempted to initialize mutex %x twice", "mutex", mutex);
+	if(mutex->initialized == G_MUTEX_INITIALIZED)
+		kernelPanic("%! attempted to initialize mutex %x twice", "mutex", mutex);
 
-    mutex->initialized = G_MUTEX_INITIALIZED;
-    mutex->lock = 0;
-    mutex->depth = 0;
-    mutex->owner = -1;
+	mutex->initialized = G_MUTEX_INITIALIZED;
+	mutex->lock = 0;
+	mutex->depth = 0;
+	mutex->owner = -1;
 
-    SPINLOCK_RELEASE(mutexInitializerLock);
+	SPINLOCK_RELEASE(mutexInitializerLock);
 }
 
 void mutexAcquire(g_mutex* mutex)
 {
-    MUTEX_GUARD;
+	MUTEX_GUARD;
 
-    uint32_t owner = systemIsReady() ? taskingGetCurrentTask()->id : -processorGetCurrentId();
+	uint32_t owner = systemIsReady() ? taskingGetCurrentTask()->id : -processorGetCurrentId();
 
-    while(!mutexTryAcquire(mutex, owner))
-    {
-        if(interruptsAreEnabled())
-            taskingYield();
-        else
-            asm("pause");
-    }
+	while(!mutexTryAcquire(mutex, owner))
+	{
+		if(systemIsReady())
+			taskingYield();
+		else
+			asm("pause");
+	}
 }
 
 bool mutexTryAcquire(g_mutex* mutex, uint32_t owner)
 {
-    MUTEX_GUARD;
+	MUTEX_GUARD;
 
-    bool set = false;
+	bool set = false;
 
-    int intr = interruptsAreEnabled();
-    if(intr)
-        interruptsDisable();
+	int intr = interruptsAreEnabled();
+	if(intr)
+		interruptsDisable();
 
-    SPINLOCK_ACQUIRE(mutex->lock);
+	SPINLOCK_ACQUIRE(mutex->lock);
 
-    if(mutex->depth == 0 || mutex->owner == owner)
-    {
-        mutex->owner = owner;
-        mutex->depth++;
-        set = true;
+	if(mutex->depth == 0 || mutex->owner == owner)
+	{
+		mutex->owner = owner;
+		mutex->depth++;
+		set = true;
 
-        if(systemIsReady() && mutex->depth == 1) {
-            taskingGetLocal()->lockCount++;
-        }
-    }
+		if(systemIsReady() && mutex->depth == 1)
+		{
+			taskingGetLocal()->lockCount++;
+		}
+	}
 
-    SPINLOCK_RELEASE(mutex->lock);
+	SPINLOCK_RELEASE(mutex->lock);
 
-    if(intr)
-        interruptsEnable();
+	if(intr)
+		interruptsEnable();
 
-    return set;
+	return set;
 }
 
 void mutexRelease(g_mutex* mutex)
 {
-    MUTEX_GUARD;
+	MUTEX_GUARD;
 
-    int intr = interruptsAreEnabled();
-    if(intr)
-        interruptsDisable();
+	int intr = interruptsAreEnabled();
+	if(intr)
+		interruptsDisable();
 
-    SPINLOCK_ACQUIRE(mutex->lock);
+	SPINLOCK_ACQUIRE(mutex->lock);
 
-    if(mutex->depth > 0 && --mutex->depth == 0)
-    {
-        mutex->depth = 0;
-        mutex->owner = -1;
+	if(mutex->depth > 0 && --mutex->depth == 0)
+	{
+		mutex->depth = 0;
+		mutex->owner = -1;
 
-        if(systemIsReady()) {
-            taskingGetLocal()->lockCount--;
-        }
-    }
+		if(systemIsReady())
+		{
+			taskingGetLocal()->lockCount--;
+		}
+	}
 
-    SPINLOCK_RELEASE(mutex->lock);
+	SPINLOCK_RELEASE(mutex->lock);
 
-    if(intr)
-        interruptsEnable();
+	if(intr)
+		interruptsEnable();
 }

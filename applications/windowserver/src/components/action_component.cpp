@@ -24,19 +24,24 @@
 
 void action_component_t::fireAction()
 {
-    if(internalHandler)
-    {
-        internalHandler->handle(this);
-        return;
-    }
+	if(internalHandler)
+	{
+		internalHandler->handle(this);
+		return;
+	}
 
-    /**
-     * TODO:
-     * Otherwise send message to client.
-     */
+	// otherwise send message to registered thread
+	event_listener_info_t listener_info;
+	if(self->getListener(G_UI_COMPONENT_EVENT_TYPE_ACTION, listener_info))
+	{
+		g_ui_component_action_event action_event;
+		action_event.header.type = G_UI_COMPONENT_EVENT_TYPE_ACTION;
+		action_event.header.component_id = listener_info.component_id;
+		g_send_message(listener_info.target_thread, &action_event, sizeof(g_ui_component_action_event));
+	}
 }
 
 void action_component_t::setInternalActionHandler(internal_action_handler_t* handler)
 {
-    this->internalHandler = handler;
+	this->internalHandler = handler;
 }

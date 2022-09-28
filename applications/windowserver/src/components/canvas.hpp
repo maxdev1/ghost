@@ -25,41 +25,55 @@
 
 struct buffer_info_t
 {
-    uint8_t* localMapping;
-    uint8_t* remoteMapping;
-    uint16_t pages;
-    bool acknowledged;
+	uint8_t* localMapping;
+	uint8_t* remoteMapping;
+	uint16_t pages;
+	bool acknowledged;
+};
+
+class canvas_t;
+struct async_resizer_info_t
+{
+	bool alive;
+	g_atom lock;
+	g_atom checkAtom;
+	canvas_t* canvas;
 };
 
 class canvas_t : public component_t
 {
   public:
-    g_pid partnerProcess;
-    g_tid partnerThread;
+	g_pid partnerProcess;
+	g_tid partnerThread;
 
-    buffer_info_t currentBuffer;
-    buffer_info_t nextBuffer;
+	async_resizer_info_t* asyncInfo;
 
-    bool mustCheckAgain;
+	buffer_info_t currentBuffer;
+	buffer_info_t nextBuffer;
 
-    canvas_t(g_tid partnerThread);
+	bool mustCheckAgain;
 
-    virtual void paint();
+	canvas_t(g_tid partnerThread);
+	virtual ~canvas_t();
 
-    virtual bool handle()
-    {
-        return false;
-    }
+	virtual void paint();
 
-    virtual void handleBoundChange(g_rectangle oldBounds);
+	virtual bool handle()
+	{
+		return false;
+	}
 
-    void createNewBuffer(uint16_t requiredPages);
-    void clientHasAcknowledgedCurrentBuffer();
-    void requestClientToAcknowledgeNewBuffer();
-    void blit();
+	virtual void handleBoundChange(g_rectangle oldBounds);
+
+	static void asyncBufferResizer(async_resizer_info_t* info);
+
+	void createNewBuffer(uint16_t requiredPages);
+	void clientHasAcknowledgedCurrentBuffer();
+	void requestClientToAcknowledgeNewBuffer();
+	void blit();
 
   private:
-    void checkBuffer();
+	void checkBuffer();
 };
 
 #endif

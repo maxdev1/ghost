@@ -3,7 +3,6 @@
 .modifydates
 .changes
 build.log
-.vscode
 temp
 variables.sh
 language.settings.xml
