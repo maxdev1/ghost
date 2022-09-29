@@ -19,14 +19,14 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/filesystem/filesystem.hpp"
+#include "kernel/filesystem/filesystem_pipedelegate.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/filesystem/filesystem_ramdiskdelegate.hpp"
-#include "kernel/filesystem/filesystem_pipedelegate.hpp"
-#include "kernel/tasking/tasking.hpp"
-#include "kernel/tasking/wait.hpp"
-#include "kernel/memory/memory.hpp"
 #include "kernel/ipc/pipes.hpp"
 #include "kernel/kernel.hpp"
+#include "kernel/memory/memory.hpp"
+#include "kernel/tasking/tasking.hpp"
+#include "kernel/tasking/wait.hpp"
 
 #include "shared/system/mutex.hpp"
 #include "shared/utils/string.hpp"
@@ -198,7 +198,7 @@ g_fs_open_status filesystemFindChild(g_fs_node* parent, const char* name, g_fs_n
 }
 
 g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node** outChild, bool* outFoundAllButLast, g_fs_node** outLastFoundParent,
-	const char** outFileNameStart)
+								const char** outFileNameStart)
 {
 	if(parent == 0)
 	{
@@ -601,15 +601,18 @@ int filesystemGetAbsolutePathLength(g_fs_node* node)
 	}
 
 	int length = 0;
-	if(node->parent) {
+	if(node->parent)
+	{
 		length = filesystemGetAbsolutePathLength(node->parent);
 	}
 
 	int calced;
-	if(length == 1) {
+	if(length == 1)
+	{
 		calced = stringLength(node->name);
 	}
-	else {
+	else
+	{
 		calced = stringLength(node->name) + 1;
 	}
 	return length + calced;
@@ -624,15 +627,18 @@ int filesystemGetAbsolutePath(g_fs_node* node, char* buffer)
 	}
 
 	int length = 0;
-	if(node->parent) {
+	if(node->parent)
+	{
 		length = filesystemGetAbsolutePath(node->parent, buffer);
 	}
 
 	int copied;
-	if(length == 1) {
+	if(length == 1)
+	{
 		copied = stringCopy(&buffer[length], node->name);
 	}
-	else {
+	else
+	{
 		buffer[length] = '/';
 		copied = stringCopy(&buffer[length + 1], node->name) + 1;
 	}

@@ -36,6 +36,7 @@ g_register_irq_handler_status g_register_irq_handler(uint8_t irq, void (*handler
 	g_syscall_register_irq_handler data;
 	data.irq = irq;
 	data.handlerAddress = (uintptr_t) handler;
+	#warning "I think entry is not used (or necessary)"
 	data.entryAddress = (uintptr_t) __g_enter_irq_handler;
 	data.returnAddress = (uintptr_t) __g_restore_interrupted_state_callback;
 	g_syscall(G_SYSCALL_REGISTER_IRQ_HANDLER, (uint32_t) &data);
