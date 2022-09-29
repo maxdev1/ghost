@@ -31,7 +31,10 @@ print_status() {
 	if [ $? -eq 0 ]; then
 		printf "\e[1;92m\u2714\e[0m\n"
 	else
-		printf "\e[1;31m\u274c\e[0m\n"
+		printf "\e[1;31m\u274c\e[0m log: "
+		printf "\n\n"
+		tail -n 100 build.log | awk '$0="   "$0'
+		printf "\n"
 	fi
 }
 

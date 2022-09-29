@@ -72,7 +72,6 @@ void g_canvas::acknowledgeNewBuffer(g_address address)
 	if(address == currentBuffer)
 		return;
 
-	klog("server sent new buffer: %x", address);
 	nextBuffer = address;
 
 	if(userListener)
