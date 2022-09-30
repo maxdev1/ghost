@@ -23,6 +23,7 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/wait.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/utils/string.hpp"
 
 void syscallSleep(g_task* task, g_syscall_sleep* data)
 {
@@ -79,7 +80,12 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 		{
 			data->pid = targetProcess->id;
 			filesystemProcessCreateStdio(task->process->id, targetProcess->id, data->inStdio, data->outStdio);
-			#warning TODO: Pass arguments
+
+			targetProcess->environment.executablePath = stringDuplicate(data->path);
+			if(data->args)
+				targetProcess->environment.arguments = stringDuplicate(data->args);
+			if(data->workdir)
+				targetProcess->environment.workingDirectory = stringDuplicate(data->workdir);
 		}
 	}
 	else

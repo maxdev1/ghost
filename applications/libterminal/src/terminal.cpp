@@ -57,7 +57,6 @@ void g_terminal::setMode(g_terminal_mode mode)
  */
 int g_terminal::readUnbuffered()
 {
-
 	int c = getc(stdin);
 
 	// Escaped sequences

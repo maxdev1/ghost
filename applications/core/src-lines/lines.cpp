@@ -18,65 +18,24 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "stdio.h"
-#include "stdio_internal.h"
-#include "string.h"
-
-#define _DEFAULT_BUFSIZE	1024
-
-FILE _stdin;
-FILE* stdin = &_stdin;
-char _stdin_buf[_DEFAULT_BUFSIZE];
-
-FILE _stdout;
-FILE* stdout = &_stdout;
-char _stdout_buf[_DEFAULT_BUFSIZE];
-
-FILE _stderr;
-FILE* stderr = &_stderr;
-char _stderr_buf[_DEFAULT_BUFSIZE];
+#include <stdio.h>
+#include <ghost.h>
 
 /**
  *
  */
-void __init_stdio() {
+int main(int argc, char** argv) {
 
-	// this initialization method avoids the use of malloc in the early
-	// stage and leaves the task of allocating enough space to the OS,
-	// allowing the program to fail on load instead of here, where it
-	// could not be handled properly
-
-	memset(stdin, 0, sizeof(FILE));
-	memset(_stdin_buf, 0, _DEFAULT_BUFSIZE);
-	__fdopen_static(STDIN_FILENO, "r", stdin);
-	setvbuf(stdin, _stdin_buf, _IOLBF, _DEFAULT_BUFSIZE);
-
-	memset(stdout, 0, sizeof(FILE));
-	memset(_stdout_buf, 0, _DEFAULT_BUFSIZE);
-	__fdopen_static(STDOUT_FILENO, "w", stdout);
-	setvbuf(stdout, _stdout_buf, _IOLBF, _DEFAULT_BUFSIZE);
-
-	memset(stderr, 0, sizeof(FILE));
-	memset(_stderr_buf, 0, _DEFAULT_BUFSIZE);
-	__fdopen_static(STDERR_FILENO, "w", stderr);
-	setvbuf(stderr, _stderr_buf, _IONBF, _DEFAULT_BUFSIZE);
-}
-
-/**
- *
- */
-void __fini_stdio() {
-
-	// close all descriptors
-	// skip stdin/stdout/stderr
-	FILE* f = __open_file_list;
-	while (f) {
-		FILE* n = f->next;
-		if(f->file_descriptor > STDERR_FILENO && g_atomic_try_lock(&f->lock)) {
-			__fclose_static_unlocked(f);
-			f->lock = 0;
+	int c;
+	int lines = 0;
+	while((c = getchar()) != -1) {
+		if(lines == 0) {
+			lines = 1;
 		}
-		f = n;
+		if(c == '\n') {
+			lines++;
+		}
 	}
-}
 
+	printf("%i", lines);
+}
