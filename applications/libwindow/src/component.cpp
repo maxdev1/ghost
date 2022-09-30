@@ -281,3 +281,8 @@ bool g_component::setLayout(g_ui_layout_manager layout)
 {
 	return setNumericProperty(G_UI_PROPERTY_LAYOUT_MANAGER, layout);
 }
+
+bool g_component::setBackground(uint32_t argb)
+{
+	return setNumericProperty(G_UI_PROPERTY_BACKGROUND, argb);
+}

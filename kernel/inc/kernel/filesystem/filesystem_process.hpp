@@ -21,10 +21,10 @@
 #ifndef __KERNEL_FILESYSTEM_PROCESS__
 #define __KERNEL_FILESYSTEM_PROCESS__
 
-#include "ghost/kernel.h"
 #include "ghost/fs.h"
-#include "kernel/utils/hashmap.hpp"
+#include "ghost/kernel.h"
 #include "kernel/filesystem/filesystem.hpp"
+#include "kernel/utils/hashmap.hpp"
 
 /**
  * Structure of a file descriptor.
@@ -66,7 +66,7 @@ void filesystemProcessRemove(g_pid pid);
  * Creates a file descriptor opening a node.
  */
 g_fs_open_status filesystemProcessCreateDescriptor(g_pid pid, g_fs_virt_id nodeId, g_file_flag_mode flags,
-		g_file_descriptor** outDescriptor, g_fd optionalFd = G_FD_NONE);
+												   g_file_descriptor** outDescriptor, g_fd optionalFd = G_FD_NONE);
 
 /**
  * Finds a file descriptor.
@@ -82,5 +82,10 @@ void filesystemProcessRemoveDescriptor(g_pid pid, g_fd fd);
  * Clones a file descriptor.
  */
 g_file_descriptor* filesystemProcessCloneDescriptor(g_file_descriptor* descriptor, g_pid targetPid, g_fd targetFd);
+
+/**
+ * Creates stdio for a new process (and possibly maps requested values).
+ */
+void filesystemProcessCreateStdio(g_pid pid, g_pid targetPid, g_fd* inStdio, g_fd* outStdio);
 
 #endif

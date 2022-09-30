@@ -19,9 +19,9 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/calls/syscall_tasking.hpp"
+#include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/wait.hpp"
-
 #include "shared/logger/logger.hpp"
 
 void syscallSleep(g_task* task, g_syscall_sleep* data)
@@ -78,7 +78,8 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 		if(data->spawnStatus == G_SPAWN_STATUS_SUCCESSFUL)
 		{
 			data->pid = targetProcess->id;
-#warning TODO finish implementation (pass arguments etc.)
+			filesystemProcessCreateStdio(task->process->id, targetProcess->id, data->inStdio, data->outStdio);
+			#warning TODO: Pass arguments
 		}
 	}
 	else

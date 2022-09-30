@@ -9,6 +9,7 @@ fi
 SRC="src"
 ARTIFACT_NAME="gsh.bin"
 CFLAGS="-std=c++11 -I$SRC"
+LDFLAGS="-lterminal"
 
 # Include application build tasks
 . "../applications.sh"

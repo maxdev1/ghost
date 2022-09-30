@@ -18,7 +18,47 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __GHOST_SHELL__
-#define __GHOST_SHELL__
+#ifndef __GHOST_GOSH_PARSER__
+#define __GHOST_GOSH_PARSER__
+
+#include <vector>
+#include <string>
+
+struct pipe_expression_t;
+struct program_call_t;
+
+/**
+ *
+ */
+struct pipe_expression_t {
+	std::vector<program_call_t*> calls;
+};
+
+/**
+ *
+ */
+struct program_call_t {
+	std::string program;
+	std::vector<std::string> arguments;
+};
+
+/**
+ *
+ */
+class parser_t {
+private:
+	char current;
+	int position;
+	std::string input;
+
+	void step();
+	void skip_whitespace();
+public:
+	parser_t(std::string input);
+
+	bool pipe_expression(pipe_expression_t** out);
+	bool program_call(program_call_t** out);
+	bool argument(std::string& out);
+};
 
 #endif

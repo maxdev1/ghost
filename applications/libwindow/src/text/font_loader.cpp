@@ -28,6 +28,9 @@ g_font* g_font_loader::getFont(std::string path, std::string name)
 		return existing;
 
 	g_font* newFont = g_font::load(path, name);
+	if(!newFont)
+		return nullptr;
+
 	if(g_font_manager::getInstance()->registerFont(name, newFont))
 		return newFont;
 

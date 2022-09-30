@@ -51,11 +51,14 @@ g_fs_open_status filesystemProcessCreateDescriptor(g_pid pid, g_fs_virt_id nodeI
 
 	g_file_descriptor* descriptor = (g_file_descriptor*) heapAllocate(sizeof(g_file_descriptor));
 
-	if(optionalFd == G_FD_NONE) {
+	if(optionalFd == G_FD_NONE)
+	{
 		mutexAcquire(&info->nextDescriptorLock);
 		descriptor->id = info->nextDescriptor++;
 		mutexRelease(&info->nextDescriptorLock);
-	} else {
+	}
+	else
+	{
 		descriptor->id = optionalFd;
 	}
 	descriptor->nodeId = nodeId;
@@ -112,11 +115,12 @@ void filesystemProcessRemoveDescriptor(g_pid pid, g_fd fd)
 	heapFree(descriptor);
 }
 
-g_file_descriptor* filesystemProcessCloneDescriptor(g_file_descriptor* sourceFd, g_pid targetPid, g_fd targetFd) {
+g_file_descriptor* filesystemProcessCloneDescriptor(g_file_descriptor* sourceFd, g_pid targetPid, g_fd targetFd)
+{
 
 	if(targetFd != G_FD_NONE)
 		filesystemProcessRemoveDescriptor(targetPid, targetFd);
-	
+
 	g_file_descriptor* createdFd;
 	g_fs_open_status status = filesystemProcessCreateDescriptor(targetPid, sourceFd->nodeId, sourceFd->openFlags, &createdFd, targetFd);
 	if(status != G_FS_OPEN_SUCCESSFUL)
@@ -127,4 +131,46 @@ g_file_descriptor* filesystemProcessCloneDescriptor(g_file_descriptor* sourceFd,
 
 	createdFd->offset = sourceFd->offset;
 	return createdFd;
+}
+
+/**
+ *
+ */
+void filesystemProcessCreateStdioPipe(g_pid sourcePid, g_pid targetPid, g_fd sourceFd, g_fd* out, g_fd targetFd)
+{
+	*out = G_FD_NONE;
+
+	if(sourceFd == G_FD_NONE)
+	{
+#warning TODO What happens in this case?
+	}
+	else
+	{
+		// If source fd is given, try to clone it to target process
+		g_file_descriptor* sourceDescriptor = filesystemProcessGetDescriptor(sourcePid, sourceFd);
+		if(!sourceDescriptor)
+		{
+			logInfo("%! failed to clone source fd %i:%i to %i:%i, source descriptor not found", "filesystem", sourcePid, sourceFd, targetPid, targetFd);
+			return;
+		}
+
+		g_file_descriptor* targetDescriptor = filesystemProcessCloneDescriptor(sourceDescriptor, targetPid, targetFd);
+		if(!targetDescriptor)
+		{
+			logInfo("%! failed to clone source fd %i:%i to %i:%i", "filesystem", sourcePid, sourceFd, targetPid, targetFd);
+			return;
+		}
+
+		*out = targetDescriptor->id;
+	}
+}
+
+/**
+ *
+ */
+void filesystemProcessCreateStdio(g_pid sourcePid, g_pid targetPid, g_fd* inStdio, g_fd* outStdio)
+{
+	filesystemProcessCreateStdioPipe(sourcePid, targetPid, inStdio[0], &outStdio[0], 0);
+	filesystemProcessCreateStdioPipe(sourcePid, targetPid, inStdio[1], &outStdio[1], 1);
+	filesystemProcessCreateStdioPipe(sourcePid, targetPid, inStdio[2], &outStdio[2], 2);
 }

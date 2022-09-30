@@ -101,6 +101,7 @@ class g_component : public g_bounds_event_component
 	g_rectangle getBounds();
 
 	bool setVisible(bool visible);
+	bool setBackground(uint32_t argb);
 
 	bool setNumericProperty(int property, uint32_t value);
 	bool getNumericProperty(int property, uint32_t* out);
