@@ -119,6 +119,7 @@ bool gui_screen_t::initialize()
 
 	window = g_window::create();
 	window->setTitle("Terminal");
+	window->setBackground(ARGB(100, 0, 0, 0));
 
 	canvas = g_canvas::create();
 	canvas->setBufferListener(new canvas_buffer_listener_t(this));
@@ -209,7 +210,7 @@ void gui_screen_t::paint()
 
 		// clear
 		cairo_save(cr);
-		cairo_set_source_rgba(cr, 0, 0, 0, 1);
+		cairo_set_source_rgba(cr, 0, 0, 0, 0);
 		cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
 		cairo_paint(cr);
 		cairo_restore(cr);
@@ -223,7 +224,7 @@ void gui_screen_t::paint()
 			if(blink_on)
 			{
 				cairo_save(cr);
-				cairo_set_source_rgba(cr, 0.5, 0.7, 1, 1);
+				cairo_set_source_rgba(cr, 0.8, 0.8, 0.8, 1);
 				cairo_rectangle(cr, cursor_x * char_width + padding, cursor_y * char_height + padding + 1, char_width, char_height + 1);
 				cairo_fill(cr);
 				cairo_restore(cr);
@@ -231,7 +232,7 @@ void gui_screen_t::paint()
 		}
 
 		cairo_set_font_face(cr, font->getFace());
-		cairo_set_font_size(cr, 14);
+		cairo_set_font_size(cr, font_size);
 		auto scaled_face = cairo_get_scaled_font(cr);
 
 		raster->lockBuffer();
@@ -255,7 +256,7 @@ void gui_screen_t::paint()
 					}
 					else
 					{
-						cairo_set_source_rgba(cr, 1, 1, 1, 1);
+						cairo_set_source_rgba(cr, 0.8, 0.8, 0.8, 1);
 					}
 					cairo_translate(cr, x * char_width + padding, (y + 1) * char_height + padding);
 					cairo_glyph_path(cr, char_layout->glyph_buffer, char_layout->cluster_buffer[0].num_glyphs);
@@ -366,7 +367,9 @@ void gui_screen_t::moveCursor(int x, int y)
 	cursor_y = y;
 
 	// Break line when cursor is at end of screen
-	if(cursor_x >= raster->getWidth())
+	g_rectangle canvas_bounds = canvas->getBounds();
+
+	if(cursor_x >= canvas_bounds.width / char_width)
 	{
 		cursor_x = 0;
 		cursor_y++;
@@ -378,7 +381,7 @@ void gui_screen_t::moveCursor(int x, int y)
 	}
 
 	// Scroll screen if required
-	int yscroll = (cursor_y >= raster->getHeight());
+	int yscroll = (cursor_y >= canvas_bounds.height / char_height);
 	if(yscroll > 0)
 	{
 		raster->scrollBy(yscroll);

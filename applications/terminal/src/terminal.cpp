@@ -215,7 +215,7 @@ void terminal_t::input_routine()
 			{
 				if(current_process)
 				{
-					// TODO find signal alternative
+					g_kill(current_process);
 				}
 			}
 			else if(readInput.key == "KEY_BACKSPACE" && readInput.pressed)
@@ -321,10 +321,8 @@ void terminal_t::output_routine(output_routine_startinfo_t* info)
 	{
 		g_fs_read_status stat;
 		int r = g_read_s(info->error_output ? info->terminal->shell_err : info->terminal->shell_out, buf, buflen, &stat);
-
 		if(stat == G_FS_READ_SUCCESSFUL)
 		{
-
 			for(int i = 0; i < r; i++)
 			{
 				char c = buf[i];

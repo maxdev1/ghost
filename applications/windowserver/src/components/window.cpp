@@ -117,7 +117,7 @@ void window_t::paint()
 	cairo_line_to(cr, bounds.width - shadowSize, bounds.height - shadowSize);
 	cairo_line_to(cr, shadowSize, bounds.height - shadowSize);
 	cairo_close_path(cr);
-	cairo_set_source_rgba(cr, 0.95, 0.95, 0.95, focused ? 1 : 0.95);
+	cairo_set_source_rgba(cr, ARGB_FR_FROM(backgroundColor), ARGB_FG_FROM(backgroundColor), ARGB_FB_FROM(backgroundColor), focused ? 1 : 0.95);
 	cairo_fill(cr);
 
 	// draw cross
@@ -432,6 +432,15 @@ bool window_t::setNumericProperty(int property, uint32_t value)
 	if(property == G_UI_PROPERTY_RESIZABLE)
 	{
 		resizable = value;
+		return true;
+	}
+
+	if(property == G_UI_PROPERTY_BACKGROUND)
+	{
+		backgroundColor = value;
+
+		uint32_t avg = (ARGB_A_FROM(value) + ARGB_G_FROM(value) + ARGB_B_FROM(value)) / 3;
+		label.setColor(avg > 128 ? ARGB(255, 0, 0, 0) : ARGB(255, 255, 255, 255));
 		return true;
 	}
 
