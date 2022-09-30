@@ -393,12 +393,12 @@ int main(int argc, char* argv[])
 				success = true;
 
 				// close write end in this process
-				//g_close(out_pipe_w);
+				g_close(out_pipe_w);
 
 				if(previous_out_pipe_r != -1)
 				{
 					// close read end of previous pipe in this process
-					//g_close(previous_out_pipe_r);
+					g_close(previous_out_pipe_r);
 				}
 
 				// remember for next process
