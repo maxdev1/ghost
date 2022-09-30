@@ -21,33 +21,24 @@
 #ifndef __KERNEL_REQUESTS__
 #define __KERNEL_REQUESTS__
 
+#include "kernel/filesystem/filesystem.hpp"
 #include "kernel/tasking/tasking.hpp"
 
- /**
-  * Type of an interrupt handler
-  */
-typedef struct
+struct g_irq_device
 {
+	g_fs_node* node;
 	g_tid task;
-	g_virtual_address handlerAddress;
-	g_virtual_address entryAddress;
-	g_virtual_address returnAddress;
-} g_irq_handler;
-
-/**
- * Handles an interrupt request.
- */
-void requestsHandle(g_task* task);
-
-/**
- * Registers a user-space interrupt request handler.
- */
-void requestsRegisterHandler(uint8_t irq, g_tid handlerTask, g_virtual_address handlerAddress, g_virtual_address entryAddress, g_virtual_address returnAddress);
+};
 
 /**
  * Calls the user-space handler for an IRQ if there is one registered
  * on the given task.
  */
-void requestsCallUserspaceHandler(uint8_t irq);
+void requestsWriteToIrqDevice(g_task* task, uint8_t irq);
+
+/**
+ * Retrieves (or creates) the IO device for the IRQ.
+ */
+g_irq_device* requestsGetIrqDevice(uint8_t irq);
 
 #endif

@@ -26,12 +26,6 @@
 __BEGIN_C
 
 /**
- * The address of this function is inserted as the return address for signal & irq handlers.
- * It does nothing but calling the <g_restore_interrupted_state> function.
- */
-void __g_restore_interrupted_state_callback();
-
-/**
  * Util functions
  */
 void* __g_memcpy(void* dest, const void* src, size_t num);

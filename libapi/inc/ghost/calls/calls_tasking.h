@@ -172,58 +172,17 @@ typedef struct {
 /**
  * @field irq
  * 		irq to register for
- * @field handlerAddress
- * 		address of the users handler function
- * @Field entryAddress
- * 		address of the function to enter when the IRQ occurs
- * @field callback
- * 		address of the function to be returned to when
- * 		the handler function returns
+ * @field fd
+ * 		file descriptor to read from
  * @field status
  * 		result of the command
  */
 typedef struct {
 	uint8_t irq;
-	g_virtual_address handlerAddress;
-	g_virtual_address entryAddress;
-	g_virtual_address returnAddress;
-	g_register_irq_handler_status status;
-}__attribute__((packed)) g_syscall_register_irq_handler;
+	g_fd fd;
+	g_open_irq_device_status status;
+}__attribute__((packed)) g_syscall_open_irq_device;
 
-/**
- * @field signal
- * 		signal to register for
- * @field handlerAddress
- * 		address of the handler function
- * @field callbackAddress
- * 		address of the function to be returned to when
- * 		the handler function returns
- * @field previousHandlerAddress
- * 		address of the previously registered handler
- * @field status
- * 		result of the command
- */
-typedef struct {
-	int signal;
-	g_virtual_address handlerAddress;
-	g_virtual_address returnAddress;
-	g_virtual_address previousHandlerAddress;
-	g_register_signal_handler_status status;
-}__attribute__((packed)) g_syscall_register_signal_handler;
-
-/**
- * @field signal
- * 		signal to raise
- * @field process
- * 		target process
- * @field status
- * 		result of the command
- */
-typedef struct {
-	int signal;
-	g_pid process;
-	g_raise_signal_status status;
-}__attribute__((packed)) g_syscall_raise_signal;
 
 /**
  * @field processInfo

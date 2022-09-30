@@ -18,17 +18,17 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost/user.h"
 #include "__internal.h"
+#include "ghost/user.h"
 
 /**
  *
  */
-void* g_register_signal_handler(int signal, void(*handler)(int)) {
-	g_syscall_register_signal_handler data;
-	data.signal = signal;
-	data.handlerAddress = (uintptr_t) handler;
-	data.returnAddress = (uintptr_t) __g_restore_interrupted_state_callback;
-	g_syscall(G_SYSCALL_REGISTER_SIGNAL_HANDLER, (uint32_t) &data);
-	return (void*) data.previousHandlerAddress;
+g_open_irq_device_status g_open_irq_device(uint8_t irq, g_fd* outFd)
+{
+	g_syscall_open_irq_device data;
+	data.irq = irq;
+	g_syscall(G_SYSCALL_OPEN_IRQ_DEVICE, (uint32_t) &data);
+	*outFd = data.fd;
+	return data.status;
 }

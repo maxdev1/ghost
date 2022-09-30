@@ -20,97 +20,54 @@
 
 #include "ghost/memory.h"
 
+#include "kernel/calls/syscall.hpp"
+#include "kernel/filesystem/filesystem.hpp"
+#include "kernel/ipc/pipes.hpp"
 #include "kernel/memory/memory.hpp"
-#include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/interrupts/requests.hpp"
 #include "kernel/system/processor/processor.hpp"
-#include "kernel/tasking/scheduler.hpp"
-#include "kernel/tasking/tasking.hpp"
-
+#include "kernel/tasking/tasking_memory.hpp"
 #include "shared/logger/logger.hpp"
 
-#include "kernel/calls/syscall.hpp"
-#include "kernel/kernel.hpp"
+g_irq_device* devices[256] = {0};
 
-#include "shared/system/io_port.hpp"
-#include "shared/system/mutex.hpp"
-
-g_irq_handler* handlers[256] = {0};
-
-void requestsHandle(g_task* task)
+g_irq_device* requestsGetIrqDevice(uint8_t irq)
 {
-    const uint32_t intr = task->state->intr;
+	g_irq_device* device = devices[irq];
+	if(device)
+		return device;
 
-    if(intr == 0x81)
-    {
-        // Special handling for when a kernel thread yields using <taskingYield>
-        taskingSchedule();
-    }
-    else if(intr == 0x80)
-    {
-        syscallHandle(task);
-    }
-    else
-    {
-        const uint32_t irq = intr - 0x20;
+	g_fs_node* node;
+	if(filesystemCreatePipe(true, &node) != G_FS_PIPE_SUCCESSFUL)
+	{
+		logInfo("%! failed to create IO pipe for IRQ %i", "requests", irq);
+		return nullptr;
+	}
 
-        if(irq == 0) // Timer triggers scheduling
-        {
-            taskingGetLocal()->time += APIC_MILLISECONDS_PER_TICK;
-            taskingSchedule();
-        }
-        else if(irq < 256 && handlers[irq]) // User-space irq handling
-        {
-            requestsCallUserspaceHandler(irq);
-        }
-        else
-        {
-            logDebug("%! unhandled irq %i", "requests", irq);
-        }
-    }
+	device = (g_irq_device*) heapAllocate(sizeof(g_irq_device));
+	device->node = node;
+	devices[irq] = device;
+	return device;
 }
 
-void requestsCallUserspaceHandler(uint8_t irq)
+void requestsWriteToIrqDevice(g_task* task, uint8_t irq)
 {
-    g_irq_handler* handler = handlers[irq];
-    g_task* handlerTask = taskingGetById(handler->task);
+	g_irq_device* device = requestsGetIrqDevice(irq);
+	if(!device)
+		return;
 
-    if(!handlerTask)
-    {
-        logInfo("%! no handler task for irq #%i", "irq", irq);
-        return;
-    }
+	uint8_t buf[1];
+	buf[0] = irq;
+	int64_t len;
 
-    if(handlerTask->interruptedState)
-    {
-        logDebug("%! handling task %i interrupted while getting irq #%i", "irq", handlerTask->id, irq);
-        return;
-    }
+	g_fs_write_status status;
+	int attempts = 100;
+	while((status = filesystemWrite(device->node, buf, 0, 1, &len)) == G_FS_WRITE_BUSY && --attempts)
+	{
+		filesystemWaitToWrite(task, device->node);
+	}
 
-#warning "TODO: Disable interrupts here, otherwise the task might get interrupted and stays in an unexpected state"
-    g_task* last = taskingGetCurrentTask();
-    taskingSetCurrentTask(handlerTask);
-    taskingApplySwitch();
-
-    void (*userSpaceHandler)() = (void (*)()) handler->handlerAddress;
-    userSpaceHandler();
-
-    taskingSetCurrentTask(last);
-#warning "TODO: Enable interrupts again"
-}
-
-void requestsRegisterHandler(uint8_t irq, g_tid handlerTask, g_virtual_address handlerAddress, g_virtual_address entryAddress, g_virtual_address returnAddress)
-{
-    if(handlers[irq])
-    {
-        logInfo("%! tried to register handler for irq %i which is already taken", "irq", irq);
-        return;
-    }
-
-    g_irq_handler* handler = (g_irq_handler*) heapAllocate(sizeof(g_irq_handler));
-    handler->task = handlerTask;
-    handler->returnAddress = returnAddress;
-    handler->entryAddress = entryAddress;
-    handler->handlerAddress = handlerAddress;
-    handlers[irq] = handler;
+	g_task* devTask = taskingGetById(device->task);
+	if(devTask)
+		taskingSetCurrentTask(devTask);
 }

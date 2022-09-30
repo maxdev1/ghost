@@ -18,8 +18,6 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost/signal.h"
-
 #include "kernel/calls/syscall_memory.hpp"
 #include "kernel/tasking/tasking_memory.hpp"
 #include "kernel/memory/lower_heap.hpp"

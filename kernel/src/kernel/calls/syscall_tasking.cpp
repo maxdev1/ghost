@@ -18,11 +18,8 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost/signal.h"
-
 #include "kernel/calls/syscall_tasking.hpp"
 #include "kernel/memory/memory.hpp"
-#include "kernel/system/interrupts/requests.hpp"
 #include "kernel/tasking/wait.hpp"
 
 #include "shared/logger/logger.hpp"
@@ -68,66 +65,6 @@ void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
 void syscallJoin(g_task* task, g_syscall_join* data)
 {
 	waitJoinTask(task, data->taskId);
-}
-
-#warning "TODO: This interface should be cleaned up"
-void syscallRegisterSignalHandler(g_task* task, g_syscall_register_signal_handler* data)
-{
-	if(data->signal >= 0 && data->signal < SIG_COUNT)
-	{
-		g_signal_handler* handler =
-			&(task->process->signalHandlers[data->signal]);
-		data->previousHandlerAddress = handler->handlerAddress;
-		handler->handlerAddress = data->handlerAddress;
-		handler->returnAddress = data->returnAddress;
-		handler->task = task->id;
-
-		data->status = G_REGISTER_SIGNAL_HANDLER_STATUS_SUCCESSFUL;
-		logDebug("%! signal handler %h registered for signal %i", "syscall", data->handlerAddress, data->signal);
-	}
-	else
-	{
-		data->previousHandlerAddress = 0;
-		data->status = G_REGISTER_SIGNAL_HANDLER_STATUS_INVALID_SIGNAL;
-		logDebug("%! failed to register signal handler %h for invalid signal %i", "syscall", data->handlerAddress, data->signal);
-	}
-}
-
-void syscallRegisterIrqHandler(g_task* task,
-							   g_syscall_register_irq_handler* data)
-{
-	if(task->securityLevel <= G_SECURITY_LEVEL_DRIVER)
-	{
-		if(data->irq >= 0 && data->irq < 256)
-		{
-			requestsRegisterHandler(data->irq, task->id, data->handlerAddress, data->entryAddress, data->returnAddress);
-
-			data->status = G_REGISTER_IRQ_HANDLER_STATUS_SUCCESSFUL;
-			logDebug("%! task %i: irq handler %h registered for irq %i", "irq", task->id, data->handlerAddress, data->irq);
-		}
-		else
-		{
-			data->status = G_REGISTER_IRQ_HANDLER_STATUS_INVALID_IRQ;
-			logInfo("%! task %i: failed to register irq handler %h for invalid "
-					"irq %i",
-					"irq", task->id, data->handlerAddress, data->irq);
-		}
-	}
-	else
-	{
-		data->status = G_REGISTER_IRQ_HANDLER_STATUS_NOT_PERMITTED;
-		logInfo("%! task %i: not permitted to register irq handler %h for irq %i", "irq", task->id, data->handlerAddress, data->irq);
-	}
-}
-
-void syscallRestoreInterruptedState(g_task* task)
-{
-	taskingRestoreInterruptedState(task);
-}
-
-void syscallRaiseSignal(g_task* task, g_syscall_raise_signal* data)
-{
-	data->status = taskingRaiseSignal(task, data->signal);
 }
 
 void syscallSpawn(g_task* task, g_syscall_spawn* data)
