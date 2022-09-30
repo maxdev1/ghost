@@ -67,12 +67,12 @@ void interruptsCheckPrerequisites()
 
 void interruptsEnable()
 {
-	asm("sti");
+	asm volatile("sti");
 }
 
 void interruptsDisable()
 {
-	asm("cli");
+	asm volatile("cli");
 }
 
 bool interruptsAreEnabled()
@@ -84,25 +84,43 @@ bool interruptsAreEnabled()
 /**
  * Interrupt handler routine, called by the interrupt stubs (assembly file)
  */
-extern "C" g_virtual_address _interruptHandler(g_virtual_address esp)
+extern "C" g_virtual_address _interruptHandler(g_virtual_address state)
 {
-	if(taskingStore(esp))
+	g_task* task = taskingGetCurrentTask();
+	if(task)
 	{
-		g_task* task = taskingGetCurrentTask();
-		if(task->state->intr < 0x20)
+		task->state = (g_processor_state*) state;
+		task->active = false;
+
+		if(task->state->intr < 0x20) // Exception
 		{
 			exceptionsHandle(task);
 		}
+		else if(task->state->intr == 0x20) // Timer
+		{
+			taskingGetLocal()->time += APIC_MILLISECONDS_PER_TICK;
+			taskingSchedule();
+		}
+		else if(task->state->intr == 0x80) // Syscall
+		{
+			syscallHandle(task);
+		}
+		else if(task->state->intr == 0x81) // Yield
+		{
+			taskingSchedule();
+		}
 		else
 		{
-			requestsHandle(task);
+			uint8_t irq = task->state->intr - 0x20;
+			requestsWriteToIrqDevice(task, irq);
 		}
 	}
-
-	taskingApplySwitch();
+	else
+	{
+		taskingSchedule();
+	}
 
 	lapicSendEndOfInterrupt();
-
 	return (g_virtual_address) taskingGetCurrentTask()->state;
 }
 

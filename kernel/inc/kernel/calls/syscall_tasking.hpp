@@ -40,14 +40,6 @@ void syscallJoin(g_task* task, g_syscall_join* data);
 
 void syscallSleep(g_task* task, g_syscall_sleep* data);
 
-void syscallRegisterSignalHandler(g_task* task, g_syscall_register_signal_handler* data);
-
-void syscallRegisterIrqHandler(g_task* task, g_syscall_register_irq_handler* data);
-
-void syscallRestoreInterruptedState(g_task* task);
-
-void syscallRaiseSignal(g_task* task, g_syscall_raise_signal* data);
-
 void syscallSpawn(g_task* task, g_syscall_spawn* data);
 
 void syscallTaskGetTls(g_task* task, g_syscall_task_get_tls* data);

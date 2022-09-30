@@ -82,9 +82,6 @@ void __g_init_libc()
 	// set default locale (N1548-7.11.1.1-4)
 	setlocale(LC_ALL, "C");
 
-	// set default signal handlers
-	signal(SIGINT, SIG_DFL);
-
 	// initialize standard I/O
 	__init_stdio();
 }

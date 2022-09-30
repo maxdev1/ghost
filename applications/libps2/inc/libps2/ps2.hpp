@@ -24,9 +24,9 @@
 #include <stdint.h>
 
 typedef uint8_t ps2_status_t;
-#define G_PS2_STATUS_SUCCESS                ((g_register_signal_handler_status) 0)
-#define G_PS2_STATUS_FAILED_INITIALIZE      ((g_register_signal_handler_status) 1)
-#define G_PS2_STATUS_FAILED_ACKNOWLEDGE     ((g_register_signal_handler_status) 2)
+#define G_PS2_STATUS_SUCCESS                ((ps2_status_t) 0)
+#define G_PS2_STATUS_FAILED_INITIALIZE      ((ps2_status_t) 1)
+#define G_PS2_STATUS_FAILED_ACKNOWLEDGE     ((ps2_status_t) 2)
 
 
 #define G_PS2_DATA_PORT     0x60

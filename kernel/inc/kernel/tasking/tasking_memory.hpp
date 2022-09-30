@@ -23,8 +23,9 @@
 
 #include "kernel/tasking/tasking.hpp"
 
+#define G_TASKING_MEMORY_INTERRUPT_STACK_PAGES 2
 #define G_TASKING_MEMORY_KERNEL_STACK_PAGES 2
-#define G_TASKING_MEMORY_USER_STACK_PAGES   10
+#define G_TASKING_MEMORY_USER_STACK_PAGES 10
 
 /**
  * Extends the heap of the task by an amount.
@@ -33,10 +34,10 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 
 /**
  * Creates the stacks for a newly created task.
- * 
+ *
  * For a task running on kernel-level, only the main stack is created. On interrupt
  * handling the current state is always pushed on top of this stack.
- * 
+ *
  * For user-space tasks, there is a user-space stack and a dedicated interrupt stack
  * that is switched to when handling interrupts.
  */
@@ -51,8 +52,8 @@ void taskingMemoryCreateStacks(g_task* task);
 g_physical_address taskingMemoryCreatePageDirectory();
 
 /**
- * Creates an interrupt stack for the given task.
+ * Creates and maps a stack.
  */
-void taskingMemoryCreateInterruptStack(g_task* task);
+g_stack taskingMemoryCreateStack(g_address_range_pool* addressRangePool, uint32_t tableFlags, uint32_t pageFlags, int pages);
 
 #endif

@@ -19,7 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <libterminal/terminal.hpp>
-#include <signal.h>
 #include <unistd.h>
 
 #include "gui_screen/gui_screen.hpp"
@@ -216,7 +215,7 @@ void terminal_t::input_routine()
 			{
 				if(current_process)
 				{
-					g_raise_signal(current_process, SIGINT);
+					// TODO find signal alternative
 				}
 			}
 			else if(readInput.key == "KEY_BACKSPACE" && readInput.pressed)

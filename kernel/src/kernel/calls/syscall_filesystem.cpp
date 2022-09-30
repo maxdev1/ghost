@@ -21,6 +21,7 @@
 #include "kernel/calls/syscall_filesystem.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
+#include "kernel/system/interrupts/requests.hpp"
 #include "shared/logger/logger.hpp"
 
 void syscallFsOpen(g_task* task, g_syscall_fs_open* data)
@@ -30,7 +31,8 @@ void syscallFsOpen(g_task* task, g_syscall_fs_open* data)
 	if(data->status == G_FS_OPEN_SUCCESSFUL)
 	{
 		data->fd = fd;
-	} else
+	}
+	else
 	{
 		data->fd = G_FD_NONE;
 	}
@@ -154,4 +156,39 @@ void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 	}
 
 	data->status = G_FS_PIPE_SUCCESSFUL;
+}
+
+void syscallOpenIrqDevice(g_task* task, g_syscall_open_irq_device* data)
+{
+	if(task->securityLevel <= G_SECURITY_LEVEL_DRIVER)
+	{
+		g_irq_device* irqDevice = requestsGetIrqDevice(data->irq);
+		if(!irqDevice)
+		{
+			data->status = G_OPEN_IRQ_DEVICE_STATUS_ERROR;
+			logInfo("%! task %i: failed to retrieve device for irq %i", "irq", task->id, data->irq);
+			return;
+		}
+
+		irqDevice->task = task->id;
+
+		g_fd fd;
+		g_file_flag_mode readFlags = (G_FILE_FLAG_MODE_READ | G_FILE_FLAG_MODE_BLOCKING);
+		if(filesystemOpen(irqDevice->node, readFlags, task, &fd) == G_FS_OPEN_SUCCESSFUL)
+		{
+			data->status = G_OPEN_IRQ_DEVICE_STATUS_SUCCESSFUL;
+			data->fd = fd;
+			logDebug("%! task %i: opened device for IRQ %i", "irq", task->id, data->irq);
+		}
+		else
+		{
+			data->status = G_OPEN_IRQ_DEVICE_STATUS_ERROR;
+			logInfo("%! task %i: failed to open device for IRQ %i", "irq", task->id, data->irq);
+		}
+	}
+	else
+	{
+		data->status = G_OPEN_IRQ_DEVICE_STATUS_NOT_PERMITTED;
+		logInfo("%! task %i: not permitted to open device for irq %i", "irq", task->id, data->irq);
+	}
 }

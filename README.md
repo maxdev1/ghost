@@ -14,7 +14,7 @@ as building instructions.
 ## Features
 * Pure micro-kernel
 * Multiprocessor- & multitasking support (SMP)
-* IPC - pipes, signals, messages, shared memory
+* IPC - pipes, messages, shared memory
 * GCC patches (OS specific toolchain)
 * Self-made libc
 * C++ support (libstdc++ port)

@@ -31,7 +31,7 @@ volatile int mutexInitializerLock = 0;
 
 #define SPINLOCK_ACQUIRE(lock)                        \
 	while(!__sync_bool_compare_and_swap(&lock, 0, 1)) \
-		asm("pause");
+		asm volatile("pause");
 #define SPINLOCK_RELEASE(lock) lock = 0;
 #define MUTEX_GUARD                               \
 	if(mutex->initialized != G_MUTEX_INITIALIZED) \
@@ -47,7 +47,7 @@ void _mutexInitialize(g_mutex* mutex)
 	SPINLOCK_ACQUIRE(mutexInitializerLock);
 
 	if(mutex->initialized == G_MUTEX_INITIALIZED)
-		kernelPanic("%! attempted to initialize mutex %x twice", "mutex", mutex);
+		logWarn("%! initializing mutex %x twice", "mutex", mutex);
 
 	mutex->initialized = G_MUTEX_INITIALIZED;
 	mutex->lock = 0;
@@ -68,7 +68,7 @@ void mutexAcquire(g_mutex* mutex)
 		if(systemIsReady())
 			taskingYield();
 		else
-			asm("pause");
+			asm volatile("pause");
 	}
 }
 

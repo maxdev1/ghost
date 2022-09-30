@@ -60,6 +60,7 @@ g_task* taskingGetCurrentTask()
 void taskingSetCurrentTask(g_task* task)
 {
 	taskingGetLocal()->scheduling.current = task;
+	taskingApplySwitch();
 }
 
 g_tid taskingGetNextId()
@@ -75,23 +76,22 @@ g_task* taskingGetById(g_tid id)
 	return hashmapGet(taskGlobalMap, id, (g_task*) 0);
 }
 
+/**
+ * When yielding, store the state pointer (on top of the interrupt stack)
+ * and when returned, restore this state.
+ */
 void taskingYield()
 {
 	if(!systemIsReady())
 		return;
 
 	g_task* task = taskingGetCurrentTask();
-	volatile g_processor_state* kernelState = task->state;
 	task->timesYielded++;
 
-	/* We call the interrupt 0x81 which will be handled in the interrupt
-	request handling sequence <requestsHandle>. */
-	asm volatile("int $0x81"
-				 :
-				 : "a"(0), "b"(0)
-				 : "cc", "memory");
-
-	taskingGetCurrentTask()->state = kernelState;
+	auto previousState = task->state;
+	asm volatile("int $0x81" ::
+					 : "cc", "memory");
+	taskingGetCurrentTask()->state = previousState;
 }
 
 void taskingExit()
@@ -255,7 +255,7 @@ g_task* taskingCreateThreadVm86(g_process* process, uint32_t intr, g_vm86_regist
 
 	// Create task space
 	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(task->process->pageDirectory);
-	taskingMemoryCreateInterruptStack(task);
+	task->interruptStack = taskingMemoryCreateStack(memoryVirtualRangePool, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS, G_TASKING_MEMORY_INTERRUPT_STACK_PAGES);
 
 	g_processor_state_vm86* state = (g_processor_state_vm86*) (task->interruptStack.end - sizeof(g_processor_state_vm86));
 	task->state = (g_processor_state*) state;
@@ -272,8 +272,8 @@ g_task* taskingCreateThreadVm86(g_process* process, uint32_t intr, g_vm86_regist
 	state->defaultFrame.eip = G_FP_OFF(ivt->entry[intr]);
 	state->defaultFrame.cs = G_FP_SEG(ivt->entry[intr]);
 	state->defaultFrame.eflags = 0x20202;
-	g_virtual_address userStackVirt = (uint32_t) lowerHeapAllocate(0x2000);
-	state->defaultFrame.ss = ((G_PAGE_ALIGN_DOWN(userStackVirt) + 0x1000) >> 4);
+	g_virtual_address userStackVirt = (uint32_t) lowerHeapAllocate(2 * G_PAGE_SIZE);
+	state->defaultFrame.ss = ((G_PAGE_ALIGN_DOWN(userStackVirt) + G_PAGE_SIZE) >> 4);
 
 	state->gs = 0x00;
 	state->fs = 0x00;
@@ -322,20 +322,6 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 	mutexRelease(&local->lock);
 }
 
-bool taskingStore(g_virtual_address esp)
-{
-	g_task* task = taskingGetCurrentTask();
-	if(!task)
-	{
-		taskingSchedule();
-		return false;
-	}
-
-	task->active = false;
-	task->state = (g_processor_state*) esp;
-	return true;
-}
-
 void taskingApplySwitch()
 {
 	g_task* task = taskingGetCurrentTask();
@@ -368,14 +354,8 @@ void taskingApplySwitch()
 
 void taskingSchedule()
 {
-	auto local = taskingGetLocal();
-
-	if(local->lockCount > 0)
-	{
-		return;
-	}
-
-	schedulerSchedule(local);
+	schedulerSchedule(taskingGetLocal());
+	taskingApplySwitch();
 }
 
 g_process* taskingCreateProcess()
@@ -396,13 +376,6 @@ g_process* taskingCreateProcess()
 	process->virtualRangePool = (g_address_range_pool*) heapAllocate(sizeof(g_address_range_pool));
 	addressRangePoolInitialize(process->virtualRangePool);
 	addressRangePoolAddRange(process->virtualRangePool, G_CONST_USER_VIRTUAL_RANGES_START, G_CONST_USER_VIRTUAL_RANGES_END);
-
-	for(int i = 0; i < SIG_COUNT; i++)
-	{
-		process->signalHandlers[i].handlerAddress = 0;
-		process->signalHandlers[i].returnAddress = 0;
-		process->signalHandlers[i].task = 0;
-	}
 
 	process->heap.brk = 0;
 	process->heap.start = 0;
@@ -707,126 +680,6 @@ void taskingTemporarySwitchBack(g_physical_address back)
 		local->scheduling.current->overridePageDirectory = 0;
 	}
 	pagingSwitchToSpace(back);
-}
-
-g_raise_signal_status taskingRaiseSignal(g_task* task, int signal)
-{
-	g_signal_handler* handler = &(task->process->signalHandlers[signal]);
-	if(handler->handlerAddress)
-	{
-		g_task* handlingTask = 0;
-		if(handler->task == task->id)
-			handlingTask = task;
-		else
-			handlingTask = taskingGetById(handler->task);
-
-		if(!handlingTask)
-		{
-			logInfo("%! signal(%i, %i): registered signal handler task %i doesn't "
-					"exist",
-					"signal", task->id, signal, handler->task);
-			return G_RAISE_SIGNAL_STATUS_INVALID_TARGET;
-		}
-
-		if(handlingTask->interruptedState)
-		{
-			logInfo("%! can't raise signal in currently interrupted task %i", "signal", task->id);
-			return G_RAISE_SIGNAL_STATUS_INVALID_STATE;
-		}
-
-		taskingInterruptTask(task, handler->handlerAddress, handler->returnAddress, 1, signal);
-	}
-	else if(signal == SIGSEGV)
-	{
-		logInfo("%! thread %i killed by SIGSEGV", "signal", task->id);
-		task->status = G_THREAD_STATUS_DEAD;
-		if(taskingGetCurrentTask() == task)
-			taskingSchedule();
-	}
-
-	return G_RAISE_SIGNAL_STATUS_SUCCESSFUL;
-}
-
-/**
- * TODO: This method is terrible and should be removed.
- */
-void taskingInterruptTask(g_task* task, g_virtual_address entry, g_virtual_address returnAddress, int argumentCount, ...)
-{
-	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
-	{
-		logInfo("%! kernel task %i can not be interrupted", "tasking", task->id);
-		return;
-	}
-
-	if(task->interruptedState)
-	{
-		logInfo("%! tried to interrupt task %i which is already interrupted", "tasking", task->id);
-		return;
-	}
-
-	// Another processor might currently run this task
-	while(task->active)
-	{
-		logInfo("%! waiting for task to be released", "tasking");
-	}
-
-	/* Here we must also not use the temporary-switching, as the tasks directory
-	may not be overridden. It must be executed while holding a mutex anyway so
-	nothing runs meanwhile. */
-	mutexAcquire(&task->process->lock);
-	g_physical_address back = pagingGetCurrentSpace();
-	pagingSwitchToSpace(task->process->pageDirectory);
-
-	// Prepare interruption
-	task->interruptedState = (g_task_interrupted_state*) heapAllocate(sizeof(g_task_interrupted_state));
-	task->interruptedState->previousStatus = task->status;
-	task->status = G_THREAD_STATUS_RUNNING;
-
-	// Save processor state
-	memoryCopy(&task->interruptedState->state, task->state, sizeof(g_processor_state));
-	task->interruptedState->statePtr = (g_processor_state*) task->state;
-
-	// Set the new entry
-	task->state->eip = entry;
-
-	// Pass parameters on stack
-	uint32_t* esp = (uint32_t*) (task->state->esp);
-	va_list args;
-	va_start(args, argumentCount);
-	while(argumentCount--)
-	{
-		--esp;
-		*esp = va_arg(args, uint32_t);
-	}
-	va_end(args);
-
-	// Put return address on stack
-	--esp;
-	*esp = returnAddress;
-
-	// Set new ESP
-	task->state->esp = (uint32_t) esp;
-
-	pagingSwitchToSpace(back);
-	mutexRelease(&task->process->lock);
-}
-
-void taskingRestoreInterruptedState(g_task* task)
-{
-	mutexAcquire(&task->process->lock);
-
-	if(task->interruptedState)
-	{
-		task->status = task->interruptedState->previousStatus;
-
-		task->state = task->interruptedState->statePtr;
-		memoryCopy((void*) task->state, &task->interruptedState->state, sizeof(g_processor_state));
-
-		heapFree(task->interruptedState);
-		task->interruptedState = 0;
-	}
-
-	mutexRelease(&task->process->lock);
 }
 
 g_spawn_status taskingSpawn(g_task* spawner, g_fd file, g_security_level securityLevel,

@@ -22,7 +22,6 @@
 #define __KERNEL_TASKING__
 
 #include "ghost/kernel.h"
-#include "ghost/signal.h"
 #include "ghost/system.h"
 
 #include "kernel/calls/syscall.hpp"
@@ -37,35 +36,20 @@ struct g_tasking_local;
 struct g_elf_object;
 
 /**
- *
- */
-typedef uint8_t g_task_interrupted_state_type;
-
-#define G_TASK_INTERRUPT_INFO_TYPE_NONE ((g_task_interrupted_state_type) 0)
-#define G_TASK_INTERRUPT_INFO_TYPE_IRQ ((g_task_interrupted_state_type) 1)
-#define G_TASK_INTERRUPT_INFO_TYPE_SIGNAL ((g_task_interrupted_state_type) 2)
-
-/**
- *
- */
-class g_task_interrupted_state
-{
-  public:
-    g_processor_state state;
-    g_processor_state* statePtr;
-
-    g_thread_status previousStatus;
-};
-
-/**
  * Data used by virtual 8086 processes
  */
 struct g_task_information_vm86
 {
-    uint8_t cpuIf;
-    g_vm86_registers* out;
-    uint32_t interruptRecursionLevel;
-    g_virtual_address userStack;
+	uint8_t cpuIf;
+	g_vm86_registers* out;
+	uint32_t interruptRecursionLevel;
+	g_virtual_address userStack;
+};
+
+struct g_stack
+{
+	g_virtual_address start;
+	g_virtual_address end;
 };
 
 /**
@@ -75,79 +59,72 @@ struct g_task_information_vm86
  */
 struct g_task
 {
-    g_process* process;
-    g_tid id;
-    g_security_level securityLevel;
-    g_thread_status status;
-    g_thread_type type;
+	g_process* process;
+	g_tid id;
+	g_security_level securityLevel;
+	g_thread_status status;
+	g_thread_type type;
 
-    /**
-     * Indicates whether this task is currently running on the processor that its assigned to.
-     */
-    g_bool active;
+	/**
+	 * Indicates whether this task is currently running on the processor that its assigned to.
+	 */
+	g_bool active;
 
-    /**
-     * Pointer to the processor-local tasking structure that this task is currently scheduled on.
-     */
-    g_tasking_local* assignment;
+	/**
+	 * Pointer to the processor-local tasking structure that this task is currently scheduled on.
+	 */
+	g_tasking_local* assignment;
 
-    /**
-     * Number of times this task was ever scheduled.
-     */
-    int timesScheduled;
-    int timesYielded;
+	/**
+	 * Number of times this task was ever scheduled.
+	 */
+	int timesScheduled;
+	int timesYielded;
 
-    /**
-     * Sometimes a task needs to do work in the address space of a different process.
-     * If the override page directory is set, it switches here instead of the current
-     * process directory.
-     */
-    g_physical_address overridePageDirectory;
+	/**
+	 * Sometimes a task needs to do work in the address space of a different process.
+	 * If the override page directory is set, it switches here instead of the current
+	 * process directory.
+	 */
+	g_physical_address overridePageDirectory;
 
-    struct
-    {
-        g_virtual_address userThreadObject;
-        g_virtual_address start;
-        g_virtual_address end;
-    } tlsCopy;
+	struct
+	{
+		g_virtual_address userThreadObject;
+		g_virtual_address start;
+		g_virtual_address end;
+	} tlsCopy;
 
-    /**
-     * Pointer to the top of the stack of where the registers of this task were pushed
-     * during interruption. This may only be accessed when we are within the process
-     * address space.
-     */
-    volatile g_processor_state* state;
-    struct
-    {
-        g_virtual_address start;
-        g_virtual_address end;
-    } interruptStack;
+	/**
+	 * Pointer to the top of the stack of where the registers of this task were pushed
+	 * during interruption. This may only be accessed when we are within the process
+	 * address space.
+	 */
+	volatile g_processor_state* state;
 
-    struct
-    {
-        g_virtual_address start;
-        g_virtual_address end;
-    } stack;
+	/**
+	 * For Ring 3 tasks, the interrupt stack is used during interrupt handling.
+	 */
+	g_stack interruptStack;
 
-    /**
-     * If the task gets interrupted by a signal or an IRQ, the current state is stored in this
-     * structure and later restored from it.
-     */
-    g_task_interrupted_state* interruptedState;
+	/**
+	 * The stack that the task normally operates on.
+	 */
+	g_stack stack;
 
-    /**
-     * If the thread is user-created, we must store info on where the thread should enter.
-     */
-    struct
-    {
-        void* function;
-        void* data;
-    } userEntry;
+	/**
+	 * If the thread is user-created, we must store info on where the thread should enter.
+	 */
+	struct
+	{
+		void* function;
+		void* data;
+	} userEntry;
 
-    /**
-     * Only filled for VM86 tasks.
-     */
-    g_task_information_vm86* vm86Data;
+	/**
+	 * Only filled for VM86 tasks.
+	 */
+	g_task_information_vm86* vm86Data;
 };
 
 /**
@@ -155,15 +132,15 @@ struct g_task
  */
 struct g_task_entry
 {
-    g_task* task;
-    g_task_entry* next;
+	g_task* task;
+	g_task_entry* next;
 };
 
 struct g_schedule_entry
 {
-    g_task* task;
-    uint32_t schedulerRound;
-    g_schedule_entry* next;
+	g_task* task;
+	uint32_t schedulerRound;
+	g_schedule_entry* next;
 };
 
 /**
@@ -172,36 +149,25 @@ struct g_schedule_entry
  */
 struct g_tasking_local
 {
-    g_mutex lock;
-    int lockCount;
+	g_mutex lock;
+	int lockCount;
 
-    /**
-     * Tasking information.
-     */
-    struct
-    {
-        g_schedule_entry* list;
-        g_task* current;
+	/**
+	 * Tasking information.
+	 */
+	struct
+	{
+		g_schedule_entry* list;
+		g_task* current;
 
-        uint32_t round;
-        g_task* idleTask;
-    } scheduling;
+		uint32_t round;
+		g_task* idleTask;
+	} scheduling;
 
-    /**
-     * Approximation of milliseconds that this processor has run.
-     */
-    uint32_t time;
-};
-
-/**
- * A signal handler registration.
- */
-struct g_signal_handler
-{
-  public:
-    g_virtual_address handlerAddress = 0;
-    g_virtual_address returnAddress = 0;
-    g_tid task = 0;
+	/**
+	 * Approximation of milliseconds that this processor has run.
+	 */
+	uint32_t time;
 };
 
 /**
@@ -217,47 +183,45 @@ virtual range is not managed by the kernel (for example MMIO). */
  */
 struct g_process
 {
-    g_pid id;
-    g_mutex lock;
+	g_pid id;
+	g_mutex lock;
 
-    g_task* main;
-    g_task_entry* tasks;
+	g_task* main;
+	g_task_entry* tasks;
 
-    g_physical_address pageDirectory;
-    g_address_range_pool* virtualRangePool;
+	g_physical_address pageDirectory;
+	g_address_range_pool* virtualRangePool;
 
-    g_signal_handler signalHandlers[SIG_COUNT];
+	struct
+	{
+		g_virtual_address location;
+		uint32_t size;
 
-    struct
-    {
-        g_virtual_address location;
-        uint32_t size;
+		uint32_t userThreadOffset;
+	} tlsMaster;
 
-        uint32_t userThreadOffset;
-    } tlsMaster;
+	struct
+	{
+		g_virtual_address start;
+		g_virtual_address end;
+	} image;
+	g_elf_object* object;
 
-    struct
-    {
-        g_virtual_address start;
-        g_virtual_address end;
-    } image;
-    g_elf_object* object;
+	struct
+	{
+		g_virtual_address brk;
+		g_virtual_address start;
+		int pages;
+	} heap;
 
-    struct
-    {
-        g_virtual_address brk;
-        g_virtual_address start;
-        int pages;
-    } heap;
+	struct
+	{
+		const char* arguments;
+		const char* executablePath;
+		char* workingDirectory;
+	} environment;
 
-    struct
-    {
-        const char* arguments;
-        const char* executablePath;
-        char* workingDirectory;
-    } environment;
-
-    g_process_info* userProcessInfo;
+	g_process_info* userProcessInfo;
 };
 
 /**
@@ -416,24 +380,6 @@ g_physical_address taskingTemporarySwitchToSpace(g_physical_address pageDirector
 void taskingTemporarySwitchBack(g_physical_address pageDirectory);
 
 /**
- * Raises a signal in the task.
- */
-g_raise_signal_status taskingRaiseSignal(g_task* task, int signal);
-
-/**
- * Interrupts a task and continues its execution at the given entry address. The variadic arguments
- * are passed as parameters to the entry function. The returnAddress must point to a function that
- * can be executed in the tasks space and is called once the entry function exits. This should usually
- * be the <__g_restore_interrupted_state_callback> which performs the state restore routine.
- */
-void taskingInterruptTask(g_task* task, g_virtual_address entry, g_virtual_address returnAddress, int argumentCount, ...);
-
-/**
- * Restores the interrupted state of the task created by <taskingInterruptTask>.
- */
-void taskingRestoreInterruptedState(g_task* task);
-
-/**
  * Spawns an executable. This calls the correct binary loader in the background and creates a new
  * process, loading the executable object and necessary libraries and executing it.
  *
@@ -449,7 +395,7 @@ void taskingRestoreInterruptedState(g_task* task);
  * 		out parameter for executable validation details
  */
 g_spawn_status taskingSpawn(g_task* spawner, g_fd file, g_security_level securityLevel,
-                            g_process** outProcess, g_spawn_validation_details* outValidationDetails = 0);
+							g_process** outProcess, g_spawn_validation_details* outValidationDetails = 0);
 
 /**
  * Adds the task to the process task list.

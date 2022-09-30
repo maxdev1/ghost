@@ -828,53 +828,19 @@ void g_fs_set_transaction_status(g_fs_transaction_id id, g_fs_transaction_status
 g_fs_create_node_status g_fs_create_node(uint32_t parent, char* name, g_fs_node_type type, uint64_t fs_id, uint32_t* out_created_id);
 
 /**
- * Registers the <handler> routine as the handler for the <irq>.
- *
+ * Opens the IO device for an IRQ.
+ * 
  * @param irq
- * 		IRQ number to handle
+ * 		IRQ number
  *
- * @param handler
- * 		handler routine to call
+ * @param outFd
+ * 		output for the file descriptor
  *
- * @return one of the {g_register_irq_handler_status} codes
- *
- * @security-level DRIVER
- */
-g_register_irq_handler_status g_register_irq_handler(uint8_t irq, void (*handler)(uint8_t));
-
-/**
- * Restores the interruption state (for example after signal/irq handling) of the current thread.
- */
-void g_restore_interrupted_state();
-
-/**
- * Registers the <handler> routine as the handler for the <irq>.
- *
- * @param signal
- * 		signal to handle
- *
- * @param handler
- * 		handler routine to call
- *
- * @return
- * 		previously registered handler
+ * @return one of the {g_open_irq_device_status} codes
  *
  * @security-level DRIVER
  */
-void* g_register_signal_handler(int signal, void(*handler)(int));
-
-/**
- * Raises the <signal> in the <process>.
- *
- * @param process
- * 		target process
- *
- * @param signal
- * 		signal number
- *
- * @return one of the {g_raise_signal_status} codes
- */
-g_raise_signal_status g_raise_signal(g_pid process, int signal);
+g_open_irq_device_status g_open_irq_device(uint8_t irq, g_fd* outFd);
 
 /**
  * Executes the given kernquery.
