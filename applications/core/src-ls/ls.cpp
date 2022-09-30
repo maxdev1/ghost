@@ -18,65 +18,68 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "stdio.h"
-#include "stdio_internal.h"
-#include "string.h"
-
-#define _DEFAULT_BUFSIZE	1024
-
-FILE _stdin;
-FILE* stdin = &_stdin;
-char _stdin_buf[_DEFAULT_BUFSIZE];
-
-FILE _stdout;
-FILE* stdout = &_stdout;
-char _stdout_buf[_DEFAULT_BUFSIZE];
-
-FILE _stderr;
-FILE* stderr = &_stderr;
-char _stderr_buf[_DEFAULT_BUFSIZE];
+#include <stdio.h>
+#include <ghost.h>
+#include <string.h>
 
 /**
  *
  */
-void __init_stdio() {
+int main(int argc, char** argv) {
 
-	// this initialization method avoids the use of malloc in the early
-	// stage and leaves the task of allocating enough space to the OS,
-	// allowing the program to fail on load instead of here, where it
-	// could not be handled properly
-
-	memset(stdin, 0, sizeof(FILE));
-	memset(_stdin_buf, 0, _DEFAULT_BUFSIZE);
-	__fdopen_static(STDIN_FILENO, "r", stdin);
-	setvbuf(stdin, _stdin_buf, _IOLBF, _DEFAULT_BUFSIZE);
-
-	memset(stdout, 0, sizeof(FILE));
-	memset(_stdout_buf, 0, _DEFAULT_BUFSIZE);
-	__fdopen_static(STDOUT_FILENO, "w", stdout);
-	setvbuf(stdout, _stdout_buf, _IOLBF, _DEFAULT_BUFSIZE);
-
-	memset(stderr, 0, sizeof(FILE));
-	memset(_stderr_buf, 0, _DEFAULT_BUFSIZE);
-	__fdopen_static(STDERR_FILENO, "w", stderr);
-	setvbuf(stderr, _stderr_buf, _IONBF, _DEFAULT_BUFSIZE);
-}
-
-/**
- *
- */
-void __fini_stdio() {
-
-	// close all descriptors
-	// skip stdin/stdout/stderr
-	FILE* f = __open_file_list;
-	while (f) {
-		FILE* n = f->next;
-		if(f->file_descriptor > STDERR_FILENO && g_atomic_try_lock(&f->lock)) {
-			__fclose_static_unlocked(f);
-			f->lock = 0;
+	// decide which directory to read
+	char* directory;
+	if (argc > 1) {
+		char* argument = argv[1];
+		if (strlen(argument) < G_PATH_MAX) {
+			directory = argument;
+		} else {
+			fprintf(stderr, "given argument is not a valid path name\n");
+			return 1;
 		}
-		f = n;
+	} else {
+		directory = new char[G_PATH_MAX];
+		g_get_working_directory(directory);
 	}
-}
 
+	// open the directory
+	g_fs_open_directory_status stat;
+	auto* iter = g_open_directory_s(directory, &stat);
+
+	// check for errors
+	if (stat != G_FS_OPEN_DIRECTORY_SUCCESSFUL) {
+		fprintf(stderr, "failed to read directory\n");
+		return 1;
+	}
+
+	g_fs_directory_entry* entry;
+	while (true) {
+		g_fs_read_directory_status rstat;
+		entry = g_read_directory_s(iter, &rstat);
+
+		if (rstat == G_FS_READ_DIRECTORY_SUCCESSFUL) {
+			if (entry == 0) {
+				break;
+			}
+
+			if (entry->type == G_FS_NODE_TYPE_FILE) {
+				printf("   ");
+			} else if (entry->type == G_FS_NODE_TYPE_FOLDER) {
+				printf(" + ");
+			} else {
+				printf(" ~ ");
+			}
+			printf("%s\n", entry->name);
+
+		} else if (rstat == G_FS_READ_DIRECTORY_EOD) {
+			break;
+
+		} else {
+			fprintf(stderr, "failed to read directory\n");
+			break;
+		}
+	}
+
+	g_close_directory(iter);
+
+}

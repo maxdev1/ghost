@@ -24,6 +24,8 @@
 #include "gui_screen/gui_screen.hpp"
 #include "terminal.hpp"
 
+g_pid shell_pid;
+
 int main(int argc, char* argv[])
 {
 	terminal_t term;
@@ -127,14 +129,14 @@ void terminal_t::start_shell()
 	}
 
 	// spawn binary
-	g_pid out_pid;
 	g_fd stdio_in[3];
 	stdio_in[0] = shellin_r;
 	stdio_in[1] = shellout_w;
 	stdio_in[2] = shellerr_w;
 	g_fd stdio_target[3];
-	g_spawn_status status = g_spawn_poi("/applications/gsh.bin", "", "/", G_SECURITY_LEVEL_APPLICATION, &out_pid, stdio_target, stdio_in);
+	g_spawn_status status = g_spawn_poi("/applications/gsh.bin", "", "/", G_SECURITY_LEVEL_APPLICATION, &shell_pid, stdio_target, stdio_in);
 
+	klog("shell process %i", shell_pid);
 	if(status != G_SPAWN_STATUS_SUCCESSFUL)
 	{
 		klog("Terminal: Failed to spawn shell process");
@@ -213,8 +215,9 @@ void terminal_t::input_routine()
 			}
 			else if((readInput.ctrl && readInput.key == "KEY_C") || (readInput.key == "KEY_ESC"))
 			{
-				if(current_process)
+				if(current_process && current_process != shell_pid)
 				{
+					klog("kill %i", current_process);
 					g_kill(current_process);
 				}
 			}

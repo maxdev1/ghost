@@ -114,7 +114,7 @@ void windowserver_t::initializeGraphics()
 
 void windowserver_t::renderLoop(g_rectangle screenBounds)
 {
-	g_create_thread((void*) &windowserver_t::fpsCounter);
+	// g_create_thread((void*) &windowserver_t::fpsCounter);
 
 	g_graphics global;
 	global.resize(screenBounds.width, screenBounds.height, false);
