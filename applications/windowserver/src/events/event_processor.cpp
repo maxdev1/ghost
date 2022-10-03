@@ -38,16 +38,16 @@ event_processor_t::event_processor_t()
 
 void event_processor_t::bufferKeyEvent(g_key_info keyInfo)
 {
-	g_atomic_lock(&key_info_buffer_lock);
+	g_atomic_lock(key_info_buffer_lock);
 	key_info_buffer.push_back(keyInfo);
-	key_info_buffer_lock = 0;
+	g_atomic_unlock(key_info_buffer_lock);
 }
 
 void event_processor_t::bufferCommandMessage(void* commandMessage)
 {
-	g_atomic_lock(&command_message_buffer_lock);
+	g_atomic_lock(command_message_buffer_lock);
 	command_message_buffer.push_back(commandMessage);
-	command_message_buffer_lock = 0;
+	g_atomic_unlock(command_message_buffer_lock);
 }
 
 void event_processor_t::process()
@@ -58,13 +58,13 @@ void event_processor_t::process()
 
 void event_processor_t::processKeyState()
 {
-	g_atomic_lock(&key_info_buffer_lock);
+	g_atomic_lock(key_info_buffer_lock);
 	while(key_info_buffer.size() > 0)
 	{
 		translateKeyEvent(key_info_buffer.back());
 		key_info_buffer.pop_back();
 	}
-	key_info_buffer_lock = 0;
+	g_atomic_unlock(key_info_buffer_lock);
 }
 
 void event_processor_t::translateKeyEvent(g_key_info& info)

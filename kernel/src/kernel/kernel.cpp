@@ -29,11 +29,11 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/system.hpp"
+#include "kernel/tasking/atoms.hpp"
 #include "kernel/tasking/tasking.hpp"
 #include "kernel/tasking/wait.hpp"
-#include "shared/system/mutex.hpp"
-
 #include "shared/runtime/constructors.hpp"
+#include "shared/system/mutex.hpp"
 #include "shared/system/serial_port.hpp"
 #include "shared/video/console_video.hpp"
 #include "shared/video/pretty_boot.hpp"
@@ -85,6 +85,7 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	filesystemInitialize();
 	pipeInitialize();
 	messageInitialize();
+	atomicInitialize();
 
 	taskingInitializeBsp();
 	syscallRegisterAll();

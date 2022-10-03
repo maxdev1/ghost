@@ -21,6 +21,7 @@
 #include "kernel/calls/syscall_tasking.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/memory/memory.hpp"
+#include "kernel/tasking/atoms.hpp"
 #include "kernel/tasking/wait.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/utils/string.hpp"
@@ -28,6 +29,28 @@
 void syscallSleep(g_task* task, g_syscall_sleep* data)
 {
 	waitSleep(task, data->milliseconds);
+}
+
+void syscallAtomicInitialize(g_task* task, g_syscall_atomic_initialize* data)
+{
+	data->atom = atomicCreate();
+}
+
+void syscallAtomicLock(g_task* task, g_syscall_atomic_lock* data)
+{
+	uint64_t timeoutTime = data->timeout > 0 ? taskingGetLocal()->time + data->timeout : 0;
+
+	while(!(data->was_set = atomicLock(task, data->atom, data->is_try, data->set_on_finish, timeoutTime)))
+	{
+		if(data->is_try)
+			break;
+		taskingYield();
+	}
+}
+
+void syscallAtomicUnlock(g_task* task, g_syscall_atomic_unlock* data)
+{
+	atomicUnlock(data->atom);
 }
 
 void syscallYield(g_task* task)

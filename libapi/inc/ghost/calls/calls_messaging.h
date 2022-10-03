@@ -78,7 +78,7 @@ typedef struct {
 	size_t maximum;
 	g_message_receive_mode mode;
 	g_message_transaction transaction;
-	uint8_t* break_condition;
+	g_atom break_condition;
 
 	g_message_receive_status status;
 }__attribute__((packed)) g_syscall_receive_message;

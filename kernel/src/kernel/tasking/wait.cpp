@@ -26,7 +26,6 @@
 void waitSleep(g_task* task, uint64_t milliseconds)
 {
 	uint64_t wakeTime = taskingGetLocal()->time + milliseconds;
-	task->status = G_THREAD_STATUS_WAITING;
 	for(;;)
 	{
 		if(taskingGetLocal()->time > wakeTime)
@@ -35,13 +34,11 @@ void waitSleep(g_task* task, uint64_t milliseconds)
 		}
 		taskingYield();
 	}
-	task->status = G_THREAD_STATUS_RUNNING;
 }
 
 void waitForFile(g_task* task, g_fs_node* file,
 				 bool (*waitResolverFromDelegate)(g_fs_virt_id))
 {
-	task->status = G_THREAD_STATUS_WAITING;
 	for(;;)
 	{
 		if(waitResolverFromDelegate(file->id))
@@ -50,12 +47,10 @@ void waitForFile(g_task* task, g_fs_node* file,
 		}
 		taskingYield();
 	}
-	task->status = G_THREAD_STATUS_RUNNING;
 }
 
 void waitJoinTask(g_task* task, g_tid otherTaskId)
 {
-	task->status = G_THREAD_STATUS_WAITING;
 	for(;;)
 	{
 		g_task* otherTask = taskingGetById(otherTaskId);
@@ -66,5 +61,4 @@ void waitJoinTask(g_task* task, g_tid otherTaskId)
 		}
 		taskingYield();
 	}
-	task->status = G_THREAD_STATUS_RUNNING;
 }

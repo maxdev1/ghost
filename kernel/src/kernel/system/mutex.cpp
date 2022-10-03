@@ -86,14 +86,9 @@ bool mutexTryAcquire(g_mutex* mutex, uint32_t owner)
 
 	if(mutex->depth == 0 || mutex->owner == owner)
 	{
+		++mutex->depth;
 		mutex->owner = owner;
-		mutex->depth++;
 		set = true;
-
-		if(systemIsReady() && mutex->depth == 1)
-		{
-			taskingGetLocal()->lockCount++;
-		}
 	}
 
 	SPINLOCK_RELEASE(mutex->lock);
@@ -114,14 +109,13 @@ void mutexRelease(g_mutex* mutex)
 
 	SPINLOCK_ACQUIRE(mutex->lock);
 
-	if(mutex->depth > 0 && --mutex->depth == 0)
+	if(mutex->depth > 0)
 	{
-		mutex->depth = 0;
-		mutex->owner = -1;
-
-		if(systemIsReady())
+		--mutex->depth;
+		if(mutex->depth == 0)
 		{
-			taskingGetLocal()->lockCount--;
+			mutex->depth = 0;
+			mutex->owner = -1;
 		}
 	}
 

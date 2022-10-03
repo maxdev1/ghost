@@ -51,7 +51,7 @@ class terminal_t
 	 * Screen that is the visual interface to the user.
 	 */
 	screen_t* screen;
-	g_atom screen_lock = 0;
+	g_atom screen_lock = g_atomic_initialize();
 
 	/**
 	 * Mode flags

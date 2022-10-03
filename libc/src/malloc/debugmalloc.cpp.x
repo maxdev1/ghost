@@ -4,7 +4,7 @@
 #include "string.h"
 #include "unistd.h"
 
-static uint8_t heap_lock = 0;
+static g_atom heap_lock = g_atomic_initialize();
 static uint8_t* heap_start = 0;
 static uint8_t* heap_used = 0;
 static uint8_t* heap_end = 0;
@@ -38,7 +38,7 @@ void free(void* ptr) {
 		return;
 	}
 
-	g_atomic_lock(&heap_lock);
+	g_atomic_lock(heap_lock);
 
 	allocation_header_t* header = (allocation_header_t*) ((uint8_t*) ptr - sizeof(allocation_header_t));
 	if(header->magic != MAGIC) {
@@ -56,7 +56,7 @@ void free(void* ptr) {
 	__asm__ __volatile__ ("mov %%ebp, %0" : "=r"(ebp));
 	header->previous_free = (uint32_t) ebp[1];
 
-	heap_lock = 0;
+	g_atomic_unlock(heap_lock);
 }
 
 /**
@@ -64,7 +64,7 @@ void free(void* ptr) {
  */
 void* malloc(size_t size) {
 
-	g_atomic_lock(&heap_lock);
+	g_atomic_lock(heap_lock);
 
 	if (heap_start == 0) {
 		heap_start = (uint8_t*) sbrk(0);
@@ -83,7 +83,7 @@ void* malloc(size_t size) {
 	header->magic = MAGIC;
 	heap_used += needed;
 
-	heap_lock = 0;
+	g_atomic_unlock(heap_lock);
 	return ((uint8_t*) header) + sizeof(allocation_header_t);
 }
 

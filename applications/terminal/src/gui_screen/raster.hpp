@@ -29,7 +29,7 @@
 class raster_t
 {
   private:
-	g_atom lock = 0;
+	g_atom lock = g_atomic_initialize();
 	uint8_t* buffer = 0;
 
 	int width = 0;

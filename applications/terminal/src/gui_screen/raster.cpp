@@ -24,7 +24,7 @@
 
 void raster_t::scrollBy(int y)
 {
-	g_atomic_lock(&lock);
+	g_atomic_lock(lock);
 
 	// TODO optimize
 	int len = width * height;
@@ -37,12 +37,12 @@ void raster_t::scrollBy(int y)
 		}
 	}
 
-	lock = 0;
+	g_atomic_unlock(lock);
 }
 
 void raster_t::resizeTo(int newWidth, int newHeight)
 {
-	g_atomic_lock(&lock);
+	g_atomic_lock(lock);
 
 	uint8_t* oldBuffer = buffer;
 	int oldWidth = width;
@@ -66,7 +66,7 @@ void raster_t::resizeTo(int newWidth, int newHeight)
 		delete oldBuffer;
 	}
 
-	lock = 0;
+	g_atomic_unlock(lock);
 }
 
 uint8_t raster_t::getUnlocked(int x, int y)
@@ -89,24 +89,24 @@ uint8_t raster_t::getUnlocked(int x, int y)
 
 void raster_t::lockBuffer()
 {
-	g_atomic_lock(&lock);
+	g_atomic_lock(lock);
 }
 
 void raster_t::unlockBuffer()
 {
-	lock = 0;
+	g_atomic_unlock(lock);
 }
 
 void raster_t::clean()
 {
-	g_atomic_lock(&lock);
+	g_atomic_lock(lock);
 	memset(buffer, 0, height * width);
-	lock = 0;
+	g_atomic_unlock(lock);
 }
 
 void raster_t::put(int x, int y, uint8_t c)
 {
-	g_atomic_lock(&lock);
+	g_atomic_lock(lock);
 
 	if(y >= height)
 		y = height - 1;
@@ -119,5 +119,5 @@ void raster_t::put(int x, int y, uint8_t c)
 
 	buffer[y * width + x] = c;
 
-	lock = 0;
+	g_atomic_unlock(lock);
 }

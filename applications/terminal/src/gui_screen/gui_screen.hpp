@@ -66,12 +66,12 @@ class gui_screen_t : public screen_t
 	g_dimension bufferSize;
 	cairo_t* existingContext = 0;
 
-	uint8_t paint_uptodate = false;
+	g_atom paint_uptodate = g_atomic_initialize();
 	bool cursorBlink = false;
 
 	std::list<g_key_info> input_buffer;
-	uint8_t input_buffer_empty = true;
-	g_atom input_buffer_lock = 0;
+	g_atom input_buffer_empty = g_atomic_initialize();
+	g_atom input_buffer_lock = g_atomic_initialize();
 
 	bool focused = false;
 	uint64_t last_input_time = 0;

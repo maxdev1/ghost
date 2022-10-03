@@ -18,17 +18,45 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "stdio.h"
-#include "stdio_internal.h"
-#include "string.h"
+#ifndef __KERNEL_ATOMS__
+#define __KERNEL_ATOMS__
+
+#include "ghost/types.h"
+#include "kernel/filesystem/filesystem.hpp"
+#include "kernel/tasking/tasking.hpp"
+
+struct g_atom_waiter
+{
+	g_tid task;
+	g_atom_waiter* next;
+};
+
+struct g_atom_entry
+{
+	g_mutex lock;
+	int value;
+	g_atom_waiter* waiters;
+};
 
 /**
- *
+ * Initializes the atoms.
  */
-int __fflush_read(FILE* stream) {
+void atomicInitialize();
 
-	g_atomic_lock(stream->lock);
-	int res = __fflush_read_unlocked(stream);
-	g_atomic_unlock(stream->lock);
-	return res;
-}
+/**
+ * Creates a new atom that can then be locked with the other functions.
+ */
+g_atom atomicCreate();
+
+/**
+ * Attempts to lock the atom and returns whether locking was successful. If it is not a try
+ * and the lock is already set, the task is put to sleep.
+ */
+bool atomicLock(g_task* task, g_atom atom, bool isTry, bool setOnFinish, uint64_t timeout);
+
+/**
+ * Unlocks the atom and wakes the next waiting task.
+ */
+void atomicUnlock(g_atom atom);
+
+#endif

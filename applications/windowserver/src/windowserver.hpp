@@ -38,7 +38,7 @@ class windowserver_t
 	event_processor_t* event_processor;
 	screen_t* screen;
 	background_t* background;
-	uint8_t render_atom = 0;
+	g_atom render_atom = g_atomic_initialize();
 
 	/**
 	 * Sets up the windowing system by configuring a video output, setting up the

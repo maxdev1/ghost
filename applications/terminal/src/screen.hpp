@@ -72,7 +72,7 @@ class screen_t
   public:
 	screen_color_t colorForeground = SC_WHITE;
 	screen_color_t colorBackground = SC_BLACK;
-	g_atom _lock = 0;
+	g_atom _lock = g_atomic_initialize();
 
 	virtual ~screen_t()
 	{
@@ -108,11 +108,11 @@ class screen_t
 
 	virtual void lock()
 	{
-		g_atomic_lock(&_lock);
+		g_atomic_lock(_lock);
 	}
 	virtual void unlock()
 	{
-		_lock = false;
+		g_atomic_unlock(_lock);
 	}
 
 	virtual void setScrollAreaScreen() = 0;

@@ -44,7 +44,7 @@ typedef uint32_t g_far_pointer;
 #define G_LINEAR_TO_FP(linear)			((linear > 0x100000) ? 0 : ((((linear >> 4) & 0xFFFF) << 16) + (linear & 0xFL)))
 
 // type used for atomic locks
-typedef uint8_t g_atom;
+typedef uint32_t g_atom;
 typedef uint8_t g_bool;
 
 __END_C

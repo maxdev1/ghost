@@ -269,8 +269,7 @@ void gui_screen_t::paint()
 
 		canvas->blit(g_rectangle(0, 0, bufferSize.width, bufferSize.height));
 
-		paint_uptodate = true;
-		g_atomic_block(&paint_uptodate);
+		g_atomic_lock(paint_uptodate);
 	}
 }
 
@@ -337,26 +336,21 @@ void gui_screen_t::writeChar(char c)
 		raster->put(cursor_x, cursor_y, c);
 		moveCursor(cursor_x + 1, cursor_y);
 	}
-	paint_uptodate = false;
+	g_atomic_unlock(paint_uptodate);
 }
 
 g_key_info gui_screen_t::readInput()
 {
-	if(input_buffer.size() == 0)
-	{
-		g_atomic_block(&input_buffer_empty);
-	}
-
-	g_atomic_lock(&input_buffer_lock);
+	g_atomic_lock(input_buffer_lock);
 
 	g_key_info result = input_buffer.front();
 	input_buffer.pop_front();
 	if(input_buffer.size() == 0)
 	{
-		input_buffer_empty = true;
+		g_atomic_lock(input_buffer_empty);
 	}
 
-	input_buffer_lock = 0;
+	g_atomic_unlock(input_buffer_lock);
 
 	return result;
 }
@@ -403,16 +397,16 @@ int gui_screen_t::getCursorY()
 
 void gui_screen_t::buffer_input(const g_key_info& info)
 {
-	g_atomic_lock(&input_buffer_lock);
+	g_atomic_lock(input_buffer_lock);
 	input_buffer.push_back(info);
 	last_input_time = g_millis();
-	input_buffer_empty = false;
-	input_buffer_lock = 0;
+	g_atomic_unlock(input_buffer_empty);
+	g_atomic_unlock(input_buffer_lock);
 }
 
 void gui_screen_t::repaint()
 {
-	paint_uptodate = false;
+	g_atomic_unlock(paint_uptodate);
 }
 
 void gui_screen_t::set_focused(bool _focused)

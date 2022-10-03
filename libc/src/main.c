@@ -52,7 +52,7 @@ int __g_main()
 
 	// initialize libc
 	__g_init_libc();
-
+	
 	// default return value
 	int ret = -1;
 
