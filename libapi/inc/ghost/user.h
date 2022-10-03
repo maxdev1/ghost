@@ -21,18 +21,28 @@
 #ifndef __GHOST_USER__
 #define __GHOST_USER__
 
+#include "ghost/calls/calls.h"
+#include "ghost/common.h"
+#include "ghost/fs.h"
+#include "ghost/ipc.h"
+#include "ghost/kernel.h"
+#include "ghost/ramdisk.h"
+#include "ghost/system.h"
+#include "ghost/types.h"
 #include <stdarg.h>
 #include <stddef.h>
-#include "ghost/types.h"
-#include "ghost/common.h"
-#include "ghost/kernel.h"
-#include "ghost/system.h"
-#include "ghost/ramdisk.h"
-#include "ghost/ipc.h"
-#include "ghost/fs.h"
-#include "ghost/calls/calls.h"
 
 __BEGIN_C
+
+/**
+ * Creates an atom used for locking.
+ *
+ * @returns atom
+ * 		the atom
+ *
+ * @security-level APPLICATION
+ */
+g_atom g_atomic_initialize();
 
 /**
  * Performs an atomic wait. If the atom is true, the executing task must
@@ -45,13 +55,11 @@ __BEGIN_C
  *
  * @security-level APPLICATION
  */
-void g_atomic_lock(g_atom* atom);
-void g_atomic_lock_dual(g_atom* a1, g_atom* a2);
-g_bool g_atomic_lock_to(g_atom* atom, uint64_t timeout);
-g_bool g_atomic_lock_dual_to(g_atom* a1, g_atom* a2, uint64_t timeout);
+void g_atomic_lock(g_atom atom);
+g_bool g_atomic_lock_to(g_atom atom, uint64_t timeout);
 
 /**
- * Trys to perform atomic wait. If the lock is already locked, the function
+ * Trys to perform atomic lock. If the lock is already locked, the function
  * returns 0. Otherwise, the lock is set as in {g_atomic_lock} and the
  * function returns 1.
  *
@@ -60,10 +68,8 @@ g_bool g_atomic_lock_dual_to(g_atom* a1, g_atom* a2, uint64_t timeout);
  *
  * @security-level APPLICATION
  */
-g_bool g_atomic_try_lock(g_atom* atom);
-g_bool g_atomic_try_lock_dual(g_atom* a1, g_atom* a2);
-g_bool g_atomic_try_lock_to(g_atom* atom, uint64_t timeout);
-g_bool g_atomic_try_lock_dual_to(g_atom* a1, g_atom* a2, uint64_t timeout);
+g_bool g_atomic_try_lock(g_atom atom);
+g_bool g_atomic_try_lock_to(g_atom atom, uint64_t timeout);
 
 /**
  * Performs an atomic block. If the atom is true, the executing task must
@@ -75,10 +81,18 @@ g_bool g_atomic_try_lock_dual_to(g_atom* a1, g_atom* a2, uint64_t timeout);
  *
  * @security-level APPLICATION
  */
-void g_atomic_block(g_atom* atom);
-void g_atomic_block_dual(g_atom* a1, g_atom* a2);
-g_bool g_atomic_block_to(g_atom* atom, uint64_t timeout);
-g_bool g_atomic_block_dual_to(g_atom* a1, g_atom* a2, uint64_t timeout);
+void g_atomic_block(g_atom atom);
+g_bool g_atomic_block_to(g_atom atom, uint64_t timeout);
+
+/**
+ * Unlocks the atom.
+ *
+ * @param atom
+ * 		the atom to use
+ *
+ * @security-level APPLICATION
+ */
+void g_atomic_unlock(g_atom atom);
 
 /**
  * Spawns a program binary.
@@ -282,7 +296,7 @@ int64_t g_tell_s(g_fd fd, g_fs_tell_status* out_status);
  * @param path
  * 		buffer of at least {G_PATH_MAX} bytes size
  * 		containing the new working directory
- * 
+ *
  * @return one of the {g_set_working_directory_status} codes
  *
  * @security-level APPLICATION if no process given, otherwise KERNEL
@@ -307,7 +321,7 @@ g_get_working_directory_status g_get_working_directory_l(char* buffer, size_t ma
 
 /**
  * Sets the working directory for the current process.
- * 
+ *
  * @param path
  * 		buffer of at least <maxlen> or {G_PATH_MAX} bytes size
  *
@@ -563,7 +577,7 @@ g_message_receive_status g_receive_message(void* buf, size_t max);
 g_message_receive_status g_receive_message_m(void* buf, size_t max, g_message_receive_mode mode);
 g_message_receive_status g_receive_message_t(void* buf, size_t max, g_message_transaction tx);
 g_message_receive_status g_receive_message_tm(void* buf, size_t max, g_message_transaction tx, g_message_receive_mode mode);
-g_message_receive_status g_receive_message_tmb(void* buf, size_t max, g_message_transaction tx, g_message_receive_mode mode, uint8_t* break_condition);
+g_message_receive_status g_receive_message_tmb(void* buf, size_t max, g_message_transaction tx, g_message_receive_mode mode, g_atom break_condition);
 
 /**
  * Registers the executing task for the given identifier.
@@ -788,7 +802,7 @@ g_fs_pipe_status g_pipe_b(g_fd* out_write, g_fd* out_read, g_bool blocking);
  * @security-level DRIVER
  */
 g_fs_register_as_delegate_status g_fs_register_as_delegate(const char* name, g_fs_phys_id phys_mountpoint_id, g_fs_virt_id* out_mountpoint_id,
-		g_address* out_transaction_storage);
+														   g_address* out_transaction_storage);
 
 /**
  * Updates the status for a filesystem transaction.
@@ -829,7 +843,7 @@ g_fs_create_node_status g_fs_create_node(uint32_t parent, char* name, g_fs_node_
 
 /**
  * Opens the IO device for an IRQ.
- * 
+ *
  * @param irq
  * 		IRQ number
  *
@@ -875,7 +889,7 @@ void* g_task_get_tls();
 /**
  * Returns a pointer to the process information structure. This structure for example
  * contains a list of all loaded objects.
- * 
+ *
  * @return a pointer to a g_process_info
  */
 g_process_info* g_process_get_info();

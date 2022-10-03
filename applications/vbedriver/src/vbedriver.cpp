@@ -27,6 +27,7 @@
 
 int main()
 {
+	klog("vbedriver");
 	uint32_t tid = g_get_tid();
 	if (!g_task_register_id(G_VBE_DRIVER_IDENTIFIER))
 	{

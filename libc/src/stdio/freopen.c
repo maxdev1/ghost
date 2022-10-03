@@ -29,7 +29,7 @@
  */
 FILE* freopen(const char* filename, const char* mode, FILE* stream) {
 
-	g_atomic_lock(&stream->lock);
+	g_atomic_lock(stream->lock);
 	FILE* res;
 	if (stream->impl_reopen) {
 		res = stream->impl_reopen(filename, mode, stream);
@@ -37,6 +37,6 @@ FILE* freopen(const char* filename, const char* mode, FILE* stream) {
 		errno = ENOTSUP;
 		res = NULL;
 	}
-	stream->lock = 0;
+	g_atomic_unlock(stream->lock);
 	return res;
 }

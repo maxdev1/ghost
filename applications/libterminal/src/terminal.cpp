@@ -30,7 +30,7 @@
 static int* buffer = nullptr;
 static int bufferedChars = 0;
 static int bufferSize = 64;
-static g_atom bufferLock = 0;
+static g_atom bufferLock = g_atomic_initialize();
 
 /**
  *
@@ -83,7 +83,7 @@ int g_terminal::readUnbuffered()
  */
 void g_terminal::bufferChar(int c)
 {
-	g_atomic_lock(&bufferLock);
+	g_atomic_lock(bufferLock);
 
 	// Create buffer
 	if(buffer == 0)
@@ -104,7 +104,7 @@ void g_terminal::bufferChar(int c)
 		buffer[bufferedChars++] = c;
 	}
 
-	bufferLock = 0;
+	g_atomic_unlock(bufferLock);
 }
 
 /**
@@ -128,7 +128,7 @@ int g_terminal::getChar()
 {
 
 	int c;
-	g_atomic_lock(&bufferLock);
+	g_atomic_lock(bufferLock);
 
 	// If there are chars in the buffer, take these
 	if(buffer && bufferedChars > 0)
@@ -142,7 +142,7 @@ int g_terminal::getChar()
 		c = readUnbuffered();
 	}
 
-	bufferLock = 0;
+	g_atomic_unlock(bufferLock);
 	return c;
 }
 

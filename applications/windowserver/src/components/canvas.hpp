@@ -48,7 +48,7 @@ class canvas_t : public component_t
 
 	async_resizer_info_t* asyncInfo;
 
-	g_atom currentBufferLock = 0;
+	g_atom currentBufferLock = g_atomic_initialize();
 	buffer_info_t currentBuffer;
 	buffer_info_t nextBuffer;
 

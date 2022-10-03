@@ -84,7 +84,15 @@
         "stdexcept": "cpp",
         "typeinfo": "cpp",
         "xfacet": "cpp",
-        "mutex": "cpp"
+        "mutex": "cpp",
+        "condition_variable": "cpp",
+        "rope": "cpp",
+        "dynamic_bitset": "cpp",
+        "set": "cpp",
+        "ratio": "cpp",
+        "ghost.h": "c",
+        "stdio_internal.h": "c",
+        "STDIO_INTERNAL.H": "cpp"
     },
     "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: LLVM, SpaceBeforeParens: Never, UseTab: Always, BreakBeforeBraces: Allman, SpaceAfterCStyleCast: true, ColumnLimit: 0, IndentWidth: 4, TabWidth: 4, PointerAlignment: Left, DerivePointerAlignment: false }"
 }

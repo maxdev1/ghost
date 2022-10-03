@@ -6,8 +6,7 @@
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/kernel/inc/**",
                 "${workspaceFolder}/libapi/inc/**",
-                "${workspaceFolder}/libc/inc/**",
-                "\\\\wsl.localhost\\Ubuntu\\ghost\\sysroot\\system\\include\\**"
+                "${workspaceFolder}/libc/inc/**"
             ],
             "defines": [
                 "_DEBUG",

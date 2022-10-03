@@ -25,16 +25,17 @@
 #include "interface/interface_responder.hpp"
 
 std::deque<command_message_response_t> buffer;
-uint8_t buffer_empty = true;
-uint8_t buffer_lock = 0;
+g_atom buffer_empty = g_atomic_initialize();
+g_atom buffer_lock = g_atomic_initialize();
 
 void interfaceResponderThread()
 {
+	g_atomic_lock(buffer_empty);
 	while(true)
 	{
-		g_atomic_lock(&buffer_empty);
+		g_atomic_lock(buffer_empty);
 
-		g_atomic_lock(&buffer_lock);
+		g_atomic_lock(buffer_lock);
 		while(buffer.size() > 0)
 		{
 			command_message_response_t& response = buffer.back();
@@ -44,14 +45,14 @@ void interfaceResponderThread()
 
 			buffer.pop_back();
 		}
-		buffer_lock = 0;
+		g_atomic_unlock(buffer_lock);
 	}
 }
 
 void interfaceResponderSend(command_message_response_t& response)
 {
-	g_atomic_lock(&buffer_lock);
+	g_atomic_lock(buffer_lock);
 	buffer.push_back(response);
-	buffer_empty = false;
-	buffer_lock = 0;
+	g_atomic_unlock(buffer_empty);
+	g_atomic_unlock(buffer_lock);
 }

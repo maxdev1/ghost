@@ -46,7 +46,7 @@ void interface_receiver_t::run()
 	while(!stop)
 	{
 		// receive messages
-		g_message_receive_status stat = g_receive_message_tmb(buffer, bufferLength, G_MESSAGE_TRANSACTION_NONE, G_MESSAGE_RECEIVE_MODE_BLOCKING, &stop);
+		g_message_receive_status stat = g_receive_message_tmb(buffer, bufferLength, G_MESSAGE_TRANSACTION_NONE, G_MESSAGE_RECEIVE_MODE_BLOCKING, stop);
 
 		if(stop)
 		{

@@ -20,46 +20,42 @@
 
 #include "kernel/calls/syscall_messaging.hpp"
 #include "kernel/ipc/message.hpp"
+#include "kernel/tasking/atoms.hpp"
 #include "kernel/tasking/tasking_directory.hpp"
 #include "kernel/tasking/wait.hpp"
 #include "shared/logger/logger.hpp"
 
 void syscallRegisterTaskIdentifier(g_task* task, g_syscall_task_id_register* data)
 {
-    data->successful = taskingDirectoryRegister(data->identifier, task->id, task->securityLevel);
+	data->successful = taskingDirectoryRegister(data->identifier, task->id, task->securityLevel);
 }
 
 void syscallGetTaskForIdentifier(g_task* task, g_syscall_task_id_get* data)
 {
-    data->resultTaskId = taskingDirectoryGet(data->identifier);
+	data->resultTaskId = taskingDirectoryGet(data->identifier);
 }
 
 void syscallMessageSend(g_task* task, g_syscall_send_message* data)
 {
-    data->status = messageSend(task->id, data->receiver, data->buffer, data->length, data->transaction);
-
-    while(data->mode == G_MESSAGE_SEND_MODE_BLOCKING && data->status == G_MESSAGE_SEND_STATUS_QUEUE_FULL)
-    {
-        taskingYield();
-
-        data->status = messageSend(task->id, data->receiver, data->buffer, data->length, data->transaction);
-    }
+	while((data->status = messageSend(task->id, data->receiver, data->buffer, data->length, data->transaction)) == G_MESSAGE_SEND_STATUS_QUEUE_FULL &&
+		  data->mode == G_MESSAGE_SEND_MODE_BLOCKING)
+	{
+		taskingYield();
+	}
 }
 
 void syscallMessageReceive(g_task* task, g_syscall_receive_message* data)
 {
-    data->status = messageReceive(task->id, data->buffer, data->maximum, data->transaction);
+	while((data->status = messageReceive(task->id, data->buffer, data->maximum, data->transaction)) == G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY &&
+		  data->mode == G_MESSAGE_RECEIVE_MODE_BLOCKING)
+	{
+		// TODO When messageReceive starts putting the task to sleep, this will not make sense anymore:
+		if(data->break_condition && atomicLock(task, data->break_condition, true, false, 0))
+		{
+			data->status = G_MESSAGE_RECEIVE_STATUS_INTERRUPTED;
+			break;
+		}
 
-    while(data->mode == G_MESSAGE_RECEIVE_MODE_BLOCKING && data->status == G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY)
-    {
-        taskingYield();
-
-        if(data->break_condition && *data->break_condition)
-        {
-            data->status = G_MESSAGE_RECEIVE_STATUS_INTERRUPTED;
-            break;
-        }
-
-        data->status = messageReceive(task->id, data->buffer, data->maximum, data->transaction);
-    }
+		taskingYield();
+	}
 }

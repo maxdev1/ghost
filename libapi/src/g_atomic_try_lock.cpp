@@ -18,33 +18,15 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost/user.h"
 #include "__internal.h"
+#include "ghost/user.h"
 
-/**
- *
- */
-g_bool g_atomic_try_lock(g_atom* atom) {
-	return __g_atomic_lock(atom, nullptr, true, true, false, 0);
+g_bool g_atomic_try_lock(g_atom atom)
+{
+	return __g_atomic_lock(atom, true, true, false, 0);
 }
 
-/**
- *
- */
-g_bool g_atomic_try_lock_dual(g_atom* atom_1, g_atom* atom_2) {
-	return __g_atomic_lock(atom_1, atom_2, true, true, false, 0);
-}
-
-/**
- *
- */
-g_bool g_atomic_try_lock_to(g_atom* atom, uint64_t timeout) {
-	return __g_atomic_lock(atom, nullptr, true, true, true, timeout);
-}
-
-/**
- *
- */
-g_bool g_atomic_try_lock_dual_to(g_atom* atom_1, g_atom* atom_2, uint64_t timeout) {
-	return __g_atomic_lock(atom_1, atom_2, true, true, true, timeout);
+g_bool g_atomic_try_lock_to(g_atom atom, uint64_t timeout)
+{
+	return __g_atomic_lock(atom, true, true, true, timeout);
 }

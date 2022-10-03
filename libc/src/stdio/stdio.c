@@ -22,7 +22,7 @@
 #include "stdio_internal.h"
 #include "string.h"
 
-#define _DEFAULT_BUFSIZE	1024
+#define _DEFAULT_BUFSIZE 1024
 
 FILE _stdin;
 FILE* stdin = &_stdin;
@@ -36,15 +36,14 @@ FILE _stderr;
 FILE* stderr = &_stderr;
 char _stderr_buf[_DEFAULT_BUFSIZE];
 
-/**
- *
- */
-void __init_stdio() {
-
+void __init_stdio()
+{
 	// this initialization method avoids the use of malloc in the early
 	// stage and leaves the task of allocating enough space to the OS,
 	// allowing the program to fail on load instead of here, where it
 	// could not be handled properly
+
+	__open_file_list_initialize();
 
 	memset(stdin, 0, sizeof(FILE));
 	memset(_stdin_buf, 0, _DEFAULT_BUFSIZE);
@@ -62,21 +61,19 @@ void __init_stdio() {
 	setvbuf(stderr, _stderr_buf, _IONBF, _DEFAULT_BUFSIZE);
 }
 
-/**
- *
- */
-void __fini_stdio() {
-
+void __fini_stdio()
+{
 	// close all descriptors
 	// skip stdin/stdout/stderr
 	FILE* f = __open_file_list;
-	while (f) {
+	while(f)
+	{
 		FILE* n = f->next;
-		if(f->file_descriptor > STDERR_FILENO && g_atomic_try_lock(&f->lock)) {
+		if(f->file_descriptor > STDERR_FILENO && g_atomic_try_lock(f->lock))
+		{
 			__fclose_static_unlocked(f);
 			f->lock = 0;
 		}
 		f = n;
 	}
 }
-

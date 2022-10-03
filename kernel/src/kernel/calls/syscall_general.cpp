@@ -19,166 +19,106 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/calls/syscall_general.hpp"
-#include "kernel/tasking/wait.hpp"
-
 #include "kernel/memory/heap.hpp"
+#include "kernel/tasking/wait.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/utils/string.hpp"
 
-void syscallAtomicLock(g_task* task, g_syscall_atomic_lock* data)
-{
-    // try to immediately resolve it
-    if(data->is_try)
-    {
-        if(*data->atom_1 && (!data->atom_2 || *data->atom_2))
-        {
-            data->was_set = false;
-        }
-        else
-        {
-            *data->atom_1 = true;
-            if(data->atom_2)
-            {
-                *data->atom_2 = true;
-            }
-            data->was_set = true;
-        }
-        return;
-    }
-
-    // check if the thread must sleep
-    if(*data->atom_1 && (!data->atom_2 || *data->atom_2))
-    {
-        uint64_t startTime = taskingGetLocal()->time;
-        task->status = G_THREAD_STATUS_WAITING;
-
-        for(;;)
-        {
-            if(data->timeout > 0 && taskingGetLocal()->time - startTime > data->timeout)
-            {
-                data->has_timeout = true;
-                break;
-            }
-
-            // once waiting is finished, set the atom if required
-            bool keep_wait = *data->atom_1 && (!data->atom_2 || *data->atom_2);
-            if(!keep_wait)
-            {
-                break;
-            }
-
-            taskingYield();
-        }
-        task->status = G_THREAD_STATUS_RUNNING;
-    }
-
-    // set result values
-    if(data->set_on_finish)
-    {
-        *data->atom_1 = true;
-        if(data->atom_2)
-        {
-            *data->atom_2 = true;
-        }
-        data->was_set = true;
-    }
-}
-
 void syscallLog(g_task* task, g_syscall_log* data)
 {
-    logInfo("%! %i: %s", "log", task->id, data->message);
+	logInfo("%! %i: %s", "log", task->id, data->message);
 }
 
 void syscallSetVideoLog(g_task* task, g_syscall_set_video_log* data)
 {
-    loggerEnableVideo(data->enabled);
+	loggerEnableVideo(data->enabled);
 }
 
 void syscallTest(g_task* task, g_syscall_test* data)
 {
-    data->result = data->test;
+	data->result = data->test;
 }
 
 void syscallReleaseCliArguments(g_task* task, g_syscall_cli_args_release* data)
 {
-    if(task->process->environment.arguments)
-        stringCopy(data->buffer, task->process->environment.arguments);
-    else
-        data->buffer[0] = 0;
+	if(task->process->environment.arguments)
+		stringCopy(data->buffer, task->process->environment.arguments);
+	else
+		data->buffer[0] = 0;
 }
 
 void syscallGetMilliseconds(g_task* task, g_syscall_millis* data)
 {
-    data->millis = taskingGetLocal()->time;
+	data->millis = taskingGetLocal()->time;
 }
 
 void syscallGetExecutablePath(g_task* task, g_syscall_fs_get_executable_path* data)
 {
-    if(task->process->environment.executablePath)
-        stringCopy(data->buffer, task->process->environment.executablePath);
-    else
-        data->buffer[0] = 0;
+	if(task->process->environment.executablePath)
+		stringCopy(data->buffer, task->process->environment.executablePath);
+	else
+		data->buffer[0] = 0;
 }
 
 void syscallGetWorkingDirectory(g_task* task, g_syscall_fs_get_working_directory* data)
 {
-    const char* workingDirectory = task->process->environment.workingDirectory;
-    if(workingDirectory)
-    {
-        size_t length = stringLength(workingDirectory);
-        if(length + 1 > data->maxlen)
-        {
-            data->result = G_GET_WORKING_DIRECTORY_SIZE_EXCEEDED;
-        }
-        else
-        {
-            stringCopy(data->buffer, workingDirectory);
-            data->result = G_GET_WORKING_DIRECTORY_SUCCESSFUL;
-        }
-    }
-    else
-    {
-        stringCopy(data->buffer, "/");
-        data->result = G_GET_WORKING_DIRECTORY_SUCCESSFUL;
-    }
+	const char* workingDirectory = task->process->environment.workingDirectory;
+	if(workingDirectory)
+	{
+		size_t length = stringLength(workingDirectory);
+		if(length + 1 > data->maxlen)
+		{
+			data->result = G_GET_WORKING_DIRECTORY_SIZE_EXCEEDED;
+		}
+		else
+		{
+			stringCopy(data->buffer, workingDirectory);
+			data->result = G_GET_WORKING_DIRECTORY_SUCCESSFUL;
+		}
+	}
+	else
+	{
+		stringCopy(data->buffer, "/");
+		data->result = G_GET_WORKING_DIRECTORY_SUCCESSFUL;
+	}
 }
 
 void syscallSetWorkingDirectory(g_task* task, g_syscall_fs_set_working_directory* data)
 {
-    g_fs_node* child;
-    g_fs_open_status openStatus = filesystemFind(0, data->path, &child);
-    if(openStatus == G_FS_OPEN_SUCCESSFUL)
-    {
-        if(child->type == G_FS_NODE_TYPE_FOLDER || child->type == G_FS_NODE_TYPE_MOUNTPOINT || child->type == G_FS_NODE_TYPE_ROOT)
-        {
-            if(task->process->environment.workingDirectory)
-            {
-                heapFree(task->process->environment.workingDirectory);
-            }
+	g_fs_node* child;
+	g_fs_open_status openStatus = filesystemFind(0, data->path, &child);
+	if(openStatus == G_FS_OPEN_SUCCESSFUL)
+	{
+		if(child->type == G_FS_NODE_TYPE_FOLDER || child->type == G_FS_NODE_TYPE_MOUNTPOINT || child->type == G_FS_NODE_TYPE_ROOT)
+		{
+			if(task->process->environment.workingDirectory)
+			{
+				heapFree(task->process->environment.workingDirectory);
+			}
 
-            int length = filesystemGetAbsolutePathLength(child);
-            task->process->environment.workingDirectory = (char*) heapAllocate(length + 1);
-            filesystemGetAbsolutePath(child, task->process->environment.workingDirectory);
-            data->result = G_SET_WORKING_DIRECTORY_SUCCESSFUL;
-        }
-        else
-        {
-            data->result = G_SET_WORKING_DIRECTORY_NOT_A_FOLDER;
-        }
-    }
-    else if(openStatus == G_FS_OPEN_NOT_FOUND)
-    {
-        data->result = G_SET_WORKING_DIRECTORY_NOT_FOUND;
-    }
-    else
-    {
-        data->result = G_SET_WORKING_DIRECTORY_ERROR;
-    }
+			int length = filesystemGetAbsolutePathLength(child);
+			task->process->environment.workingDirectory = (char*) heapAllocate(length + 1);
+			filesystemGetAbsolutePath(child, task->process->environment.workingDirectory);
+			data->result = G_SET_WORKING_DIRECTORY_SUCCESSFUL;
+		}
+		else
+		{
+			data->result = G_SET_WORKING_DIRECTORY_NOT_A_FOLDER;
+		}
+	}
+	else if(openStatus == G_FS_OPEN_NOT_FOUND)
+	{
+		data->result = G_SET_WORKING_DIRECTORY_NOT_FOUND;
+	}
+	else
+	{
+		data->result = G_SET_WORKING_DIRECTORY_ERROR;
+	}
 }
 
 void syscallKernQuery(g_task* task, g_syscall_fs_set_working_directory* data)
 {
-    logInfo("syscall not implemented: syscallKernQuery");
-    for(;;)
-        ;
+	logInfo("syscall not implemented: syscallKernQuery");
+	for(;;)
+		;
 }

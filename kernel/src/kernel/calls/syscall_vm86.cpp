@@ -36,7 +36,6 @@ void syscallCallVm86(g_task* task, g_syscall_call_vm86* data)
     g_task* vm86task = taskingCreateThreadVm86(task->process, data->interrupt, data->in, registerStore);
     taskingAssign(taskingGetLocal(), vm86task);
 
-    task->status = G_THREAD_STATUS_WAITING;
     for(;;)
     {
         if(vm86task == 0 || vm86task->status == G_THREAD_STATUS_DEAD || vm86task->status == G_THREAD_STATUS_UNUSED)
@@ -52,5 +51,4 @@ void syscallCallVm86(g_task* task, g_syscall_call_vm86* data)
 
         taskingYield();
     }
-    task->status = G_THREAD_STATUS_RUNNING;
 }

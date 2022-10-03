@@ -26,68 +26,68 @@
 
 void grid_layout_manager_t::layout()
 {
-    if(component == 0)
-        return;
+	if(component == 0)
+		return;
 
-    g_rectangle usedBounds = component->getBounds();
+	g_rectangle usedBounds = component->getBounds();
 
-    usedBounds.x = padding.left;
-    usedBounds.y = padding.top;
-    usedBounds.width -= padding.left + padding.right;
-    usedBounds.height -= padding.top + padding.bottom;
+	usedBounds.x = padding.left;
+	usedBounds.y = padding.top;
+	usedBounds.width -= padding.left + padding.right;
+	usedBounds.height -= padding.top + padding.bottom;
 
-    int rowHeight = 0;
-    int cellWidth = (columns > 0) ? (usedBounds.width / columns) : usedBounds.width;
-    int itemWidth = (columns > 0) ? ((usedBounds.width - (columns - 1) * colSpace) / columns) : usedBounds.width;
+	int rowHeight = 0;
+	int cellWidth = (columns > 0) ? (usedBounds.width / columns) : usedBounds.width;
+	int itemWidth = (columns > 0) ? ((usedBounds.width - (columns - 1) * colSpace) / columns) : usedBounds.width;
 
-    g_atomic_lock(component->getChildrenLock());
-    auto children = component->getChildren();
+	g_atomic_lock(component->getChildrenLock());
+	auto children = component->getChildren();
 
-    int x = usedBounds.x;
-    int y = usedBounds.y;
-    int curRow = 0;
-    int curCol = 0;
-    for(auto& ref : children)
-    {
-        component_t* child = ref.component;
+	int x = usedBounds.x;
+	int y = usedBounds.y;
+	int curRow = 0;
+	int curCol = 0;
+	for(auto& ref : children)
+	{
+		component_t* child = ref.component;
 
-        int itemHeight = ((rows > 0) ? ((usedBounds.height - (rows - 1) * rowSpace) / rows) : child->getPreferredSize().height);
+		int itemHeight = ((rows > 0) ? ((usedBounds.height - (rows - 1) * rowSpace) / rows) : child->getPreferredSize().height);
 
-        int xoff = (columns > 0) ? (((float) curCol / columns) * colSpace) : 0;
-        int yoff = (rows > 0) ? (((float) curRow / rows) * rowSpace) : 0;
-        child->setBounds(g_rectangle(x + xoff, y + yoff, itemWidth, itemHeight));
+		int xoff = (columns > 0) ? (((float) curCol / columns) * colSpace) : 0;
+		int yoff = (rows > 0) ? (((float) curRow / rows) * rowSpace) : 0;
+		child->setBounds(g_rectangle(x + xoff, y + yoff, itemWidth, itemHeight));
 
-        x += cellWidth;
-        curCol++;
+		x += cellWidth;
+		curCol++;
 
-        int cellHeight = ((rows > 0) ? (usedBounds.height / rows) : (child->getPreferredSize().height + rowSpace));
-        if(cellHeight > rowHeight)
-        {
-            rowHeight = cellHeight;
-        }
-        if(x + cellWidth > usedBounds.x + usedBounds.width)
-        {
-            x = usedBounds.x;
-            y += rowHeight;
-            rowHeight = 0;
-            curRow++;
-            curCol = 0;
-        }
-    }
-    *component->getChildrenLock() = 0;
+		int cellHeight = ((rows > 0) ? (usedBounds.height / rows) : (child->getPreferredSize().height + rowSpace));
+		if(cellHeight > rowHeight)
+		{
+			rowHeight = cellHeight;
+		}
+		if(x + cellWidth > usedBounds.x + usedBounds.width)
+		{
+			x = usedBounds.x;
+			y += rowHeight;
+			rowHeight = 0;
+			curRow++;
+			curCol = 0;
+		}
+	}
+	g_atomic_unlock(component->getChildrenLock());
 
-    auto prefPreferred = component->getPreferredSize();
+	auto prefPreferred = component->getPreferredSize();
 
-    int addedHeight = rowHeight + padding.bottom;
-    if(rows == 0)
-    {
-        addedHeight -= rowSpace;
-    }
-    auto newPref = g_dimension(x, y + addedHeight);
+	int addedHeight = rowHeight + padding.bottom;
+	if(rows == 0)
+	{
+		addedHeight -= rowSpace;
+	}
+	auto newPref = g_dimension(x, y + addedHeight);
 
-    if(prefPreferred != newPref)
-    {
-        component->setPreferredSize(newPref);
-        component->markParentFor(COMPONENT_REQUIREMENT_LAYOUT);
-    }
+	if(prefPreferred != newPref)
+	{
+		component->setPreferredSize(newPref);
+		component->markParentFor(COMPONENT_REQUIREMENT_LAYOUT);
+	}
 }

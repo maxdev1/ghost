@@ -34,7 +34,7 @@ size_t __g_strlen(const char* s);
 /**
  * Simplified function used in the atomic wait API functions.
  */
-g_bool __g_atomic_lock(g_atom* atom_1, g_atom* atom_2, bool set_on_finish, bool is_try, g_bool has_timeout, uint64_t timeout);
+g_bool __g_atomic_lock(g_atom atom, bool set_on_finish, bool is_try, g_bool has_timeout, uint64_t timeout);
 
 __END_C
 

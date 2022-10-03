@@ -18,17 +18,12 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "stdio.h"
-#include "stdio_internal.h"
-#include "string.h"
+#include "__internal.h"
+#include "ghost/user.h"
 
-/**
- *
- */
-int __fflush_read(FILE* stream) {
-
-	g_atomic_lock(stream->lock);
-	int res = __fflush_read_unlocked(stream);
-	g_atomic_unlock(stream->lock);
-	return res;
+g_atom g_atomic_initialize()
+{
+	g_syscall_atomic_initialize data;
+	g_syscall(G_SYSCALL_ATOMIC_INITIALIZE, (uint32_t) &data);
+	return data.atom;
 }

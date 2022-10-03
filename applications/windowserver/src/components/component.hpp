@@ -89,7 +89,7 @@ class component_t : public bounds_event_component_t
     g_rectangle bounds;
     component_t* parent;
     std::vector<component_child_reference_t> children;
-    uint8_t children_lock = 0;
+    g_atom children_lock = g_atomic_initialize();
 
     g_dimension minimumSize;
     g_dimension preferredSize;
@@ -159,9 +159,9 @@ class component_t : public bounds_event_component_t
         return children;
     }
 
-    uint8_t* getChildrenLock()
+    g_atom getChildrenLock()
     {
-        return &children_lock;
+        return children_lock;
     }
 
     bool canHandleEvents() const;

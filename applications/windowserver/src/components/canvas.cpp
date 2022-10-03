@@ -34,8 +34,8 @@ canvas_t::canvas_t(g_tid partnerThread) : partnerThread(partnerThread)
 	asyncInfo = new async_resizer_info_t();
 	asyncInfo->canvas = this;
 	asyncInfo->alive = true;
-	asyncInfo->lock = 0;
-	asyncInfo->checkAtom = 0;
+	asyncInfo->lock = g_atomic_initialize();
+	asyncInfo->checkAtom = g_atomic_initialize();
 	g_create_thread_d((void*) canvas_t::asyncBufferResizer, asyncInfo);
 }
 
@@ -45,22 +45,22 @@ canvas_t::canvas_t(g_tid partnerThread) : partnerThread(partnerThread)
  */
 canvas_t::~canvas_t()
 {
-	g_atomic_lock(&asyncInfo->lock);
+	g_atomic_lock(asyncInfo->lock);
 	asyncInfo->alive = false;
-	asyncInfo->lock = 0;
+	g_atomic_unlock(asyncInfo->lock);
 }
 
 void canvas_t::asyncBufferResizer(async_resizer_info_t* asyncInfo)
 {
 	while(true)
 	{
-		g_atomic_lock_to(&asyncInfo->checkAtom, 10000);
+		g_atomic_lock_to(asyncInfo->checkAtom, 10000);
 
-		g_atomic_lock(&asyncInfo->lock);
+		g_atomic_lock(asyncInfo->lock);
 		if(!asyncInfo->alive)
 			break;
 		asyncInfo->canvas->checkBuffer();
-		asyncInfo->lock = 0;
+		g_atomic_unlock(asyncInfo->lock);
 	}
 	delete asyncInfo;
 }
@@ -70,7 +70,7 @@ void canvas_t::asyncBufferResizer(async_resizer_info_t* asyncInfo)
  */
 void canvas_t::handleBoundChange(g_rectangle oldBounds)
 {
-	asyncInfo->checkAtom = 0;
+	g_atomic_unlock(asyncInfo->checkAtom);
 }
 
 /**
@@ -160,7 +160,7 @@ void canvas_t::requestClientToAcknowledgeNewBuffer()
 
 void canvas_t::clientHasAcknowledgedCurrentBuffer()
 {
-	g_atomic_lock(&currentBufferLock);
+	g_atomic_lock(currentBufferLock);
 
 	if(currentBuffer.localMapping != nullptr)
 	{
@@ -175,7 +175,7 @@ void canvas_t::clientHasAcknowledgedCurrentBuffer()
 	g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer.localMapping;
 	header->ready = false;
 
-	currentBufferLock = 0;
+	g_atomic_unlock(currentBufferLock);
 }
 
 void canvas_t::paint()
@@ -183,17 +183,17 @@ void canvas_t::paint()
 	auto bounds = getBounds();
 	auto cr = graphics.getContext();
 
-	g_atomic_lock(&currentBufferLock);
+	g_atomic_lock(currentBufferLock);
 	if(currentBuffer.localMapping == 0 || !currentBuffer.acknowledged)
 	{
-		currentBufferLock = 0;
+		g_atomic_unlock(currentBufferLock);
 		return;
 	}
 
 	g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer.localMapping;
 	if(!header->ready)
 	{
-		currentBufferLock = 0;
+		g_atomic_unlock(currentBufferLock);
 		return;
 	}
 
@@ -213,7 +213,7 @@ void canvas_t::paint()
 	// mark painted area as dirty
 	markDirty(g_rectangle(header->blit_x, header->blit_y, header->blit_width, header->blit_height));
 
-	currentBufferLock = 0;
+	g_atomic_unlock(currentBufferLock);
 }
 
 void canvas_t::blit()

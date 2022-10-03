@@ -203,9 +203,9 @@ void terminal_t::input_routine()
 			{
 				if(echo)
 				{
-					g_atomic_lock(&screen_lock);
+					g_atomic_lock(screen_lock);
 					screen->writeChar('\n');
-					screen_lock = 0;
+					g_atomic_unlock(screen_lock);
 				}
 
 				buffer += '\n';
@@ -235,9 +235,9 @@ void terminal_t::input_routine()
 
 					if(echo)
 					{
-						g_atomic_lock(&screen_lock);
+						g_atomic_lock(screen_lock);
 						screen->writeChar(chr);
-						screen_lock = 0;
+						g_atomic_unlock(screen_lock);
 					}
 				}
 			}
@@ -251,9 +251,9 @@ void terminal_t::input_routine()
 
 				if(echo)
 				{
-					g_atomic_lock(&screen_lock);
+					g_atomic_lock(screen_lock);
 					screen->writeChar('\n');
-					screen_lock = 0;
+					g_atomic_unlock(screen_lock);
 				}
 			}
 			else if(readInput.key == "KEY_BACKSPACE" && readInput.pressed)
@@ -262,9 +262,9 @@ void terminal_t::input_routine()
 
 				if(echo)
 				{
-					g_atomic_lock(&screen_lock);
+					g_atomic_lock(screen_lock);
 					screen->backspace();
-					screen_lock = 0;
+					g_atomic_unlock(screen_lock);
 				}
 			}
 			else if(readInput.key == "KEY_ARROW_LEFT" && readInput.pressed)
@@ -300,9 +300,9 @@ void terminal_t::input_routine()
 
 					if(echo)
 					{
-						g_atomic_lock(&screen_lock);
+						g_atomic_lock(screen_lock);
 						screen->writeChar(chr);
-						screen_lock = 0;
+						g_atomic_unlock(screen_lock);
 					}
 				}
 			}
@@ -331,9 +331,9 @@ void terminal_t::output_routine(output_routine_startinfo_t* info)
 				char c = buf[i];
 
 				// Lock screen and set error color if required
-				g_atomic_lock(&info->terminal->screen_lock);
+				g_atomic_lock(info->terminal->screen_lock);
 				info->terminal->process_output_character(&status, info->error_output, c);
-				info->terminal->screen_lock = 0;
+				g_atomic_unlock(info->terminal->screen_lock);
 			}
 		}
 		else
