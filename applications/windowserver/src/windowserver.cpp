@@ -114,7 +114,8 @@ void windowserver_t::initializeGraphics()
 
 void windowserver_t::renderLoop(g_rectangle screenBounds)
 {
-	// g_create_thread((void*) &windowserver_t::fpsCounter);
+	g_create_thread((void*) &windowserver_t::fpsCounter);
+	g_task_register_id("windowserver/renderer");
 
 	g_graphics global;
 	global.resize(screenBounds.width, screenBounds.height, false);
@@ -221,6 +222,7 @@ component_t* windowserver_t::dispatch(component_t* component, event_t& event)
 
 void windowserver_t::fpsCounter()
 {
+	g_task_register_id("windowserver/fps-counter");
 	int seconds = 0;
 
 	for(;;)

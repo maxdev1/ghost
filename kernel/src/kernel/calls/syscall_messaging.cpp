@@ -50,7 +50,7 @@ void syscallMessageReceive(g_task* task, g_syscall_receive_message* data)
 		  data->mode == G_MESSAGE_RECEIVE_MODE_BLOCKING)
 	{
 		// TODO When messageReceive starts putting the task to sleep, this will not make sense anymore:
-		if(data->break_condition && atomicLock(task, data->break_condition, true, false, 0))
+		if(data->break_condition && atomicLock(task, data->break_condition, true, false))
 		{
 			data->status = G_MESSAGE_RECEIVE_STATUS_INTERRUPTED;
 			break;
