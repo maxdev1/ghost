@@ -28,7 +28,7 @@ static g_mutex fullLock;
 static g_hashmap<g_atom, g_atom_entry*>* atomMap;
 
 void _atomicSetTaskWaiting(g_atom_entry* entry, g_task* task);
-void _atomicWakeNextWaiter(g_atom_entry* entry);
+void _atomicWakeWaitingTasks(g_atom_entry* entry);
 
 void atomicInitialize()
 {
@@ -39,21 +39,21 @@ void atomicInitialize()
 
 g_atom atomicCreate()
 {
-	mutexAcquire(&fullLock);
 
 	g_atom_entry* entry = (g_atom_entry*) heapAllocate(sizeof(g_atom_entry));
 	mutexInitialize(&entry->lock);
 	entry->value = 0;
 	entry->waiters = nullptr;
 
+	mutexAcquire(&fullLock);
 	g_atom atom = ++nextAtom;
+	mutexRelease(&fullLock);
 	hashmapPut(atomMap, atom, entry);
 
-	mutexRelease(&fullLock);
 	return atom;
 }
 
-bool atomicLock(g_task* task, g_atom atom, bool isTry, bool setOnFinish, uint64_t timeoutTime)
+bool atomicLock(g_task* task, g_atom atom, bool isTry, bool setOnFinish)
 {
 	g_atom_entry* entry = hashmapGet<g_atom, g_atom_entry*>(atomMap, atom, nullptr);
 	if(!entry)
@@ -91,24 +91,59 @@ void atomicUnlock(g_atom atom)
 
 	mutexAcquire(&entry->lock);
 	entry->value = 0;
-	_atomicWakeNextWaiter(entry);
+	_atomicWakeWaitingTasks(entry);
 	mutexRelease(&entry->lock);
 }
 
-void _atomicWakeNextWaiter(g_atom_entry* entry)
+void atomicRemoveFromWaiters(g_atom atom, g_tid task)
 {
-	auto waiter = entry->waiters;
-	if(!waiter)
-		return;
-
-	g_task* wakeTask = taskingGetById(waiter->task);
-	if(wakeTask && wakeTask->status == G_THREAD_STATUS_WAITING)
+	g_atom_entry* entry = hashmapGet<g_atom, g_atom_entry*>(atomMap, atom, nullptr);
+	if(!entry)
 	{
-		wakeTask->status = G_THREAD_STATUS_RUNNING;
+		logWarn("%! task %i tried to unlock unknown atom %i", "atoms", task->id, atom);
+		return;
 	}
 
-	entry->waiters = waiter->next;
-	heapFree(waiter);
+	mutexAcquire(&entry->lock);
+
+	g_atom_waiter* prev = nullptr;
+	g_atom_waiter* waiter = entry->waiters;
+	while(waiter)
+	{
+		if(waiter->task == task)
+		{
+			auto next = waiter->next;
+			if(prev)
+				prev->next = next;
+			else
+				entry->waiters = next;
+
+			heapFree(waiter);
+			break;
+		}
+		prev = waiter;
+		waiter = waiter->next;
+	}
+
+	mutexRelease(&entry->lock);
+}
+
+void _atomicWakeWaitingTasks(g_atom_entry* entry)
+{
+	auto waiter = entry->waiters;
+	while(waiter)
+	{
+		g_task* wakeTask = taskingGetById(waiter->task);
+		if(wakeTask && wakeTask->status == G_THREAD_STATUS_WAITING)
+		{
+			wakeTask->status = G_THREAD_STATUS_RUNNING;
+		}
+
+		auto next = waiter->next;
+		heapFree(waiter);
+		waiter = next;
+	}
+	entry->waiters = nullptr;
 }
 
 void _atomicSetTaskWaiting(g_atom_entry* entry, g_task* task)
@@ -117,6 +152,7 @@ void _atomicSetTaskWaiting(g_atom_entry* entry, g_task* task)
 
 	g_atom_waiter* waiter = (g_atom_waiter*) heapAllocate(sizeof(g_atom_waiter));
 	waiter->task = task->id;
+	waiter->next = nullptr;
 
 	if(entry->waiters)
 	{
@@ -133,7 +169,6 @@ void _atomicSetTaskWaiting(g_atom_entry* entry, g_task* task)
 	}
 	else
 	{
-		waiter->next = nullptr;
 		entry->waiters = waiter;
 	}
 }

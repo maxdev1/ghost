@@ -30,11 +30,6 @@
 void heapInitialize(g_virtual_address start, g_virtual_address end);
 
 /**
- * Expands the heap space by {G_CONST_KERNEL_HEAP_EXPAND_STEP} bytes.
- */
-bool heapExpand();
-
-/**
  * Allocates a number of bytes on the kernel heap.
  *
  * Causes a panic if it fails.

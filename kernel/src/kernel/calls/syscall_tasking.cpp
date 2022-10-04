@@ -23,12 +23,15 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/atoms.hpp"
 #include "kernel/tasking/wait.hpp"
+#include "kernel/tasking/clock.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/utils/string.hpp"
 
 void syscallSleep(g_task* task, g_syscall_sleep* data)
 {
-	waitSleep(task, data->milliseconds);
+	clockWakeAt(task->id, taskingGetLocal()->time + data->milliseconds);
+	task->status = G_THREAD_STATUS_WAITING;
+	taskingSchedule();
 }
 
 void syscallAtomicInitialize(g_task* task, g_syscall_atomic_initialize* data)
@@ -38,14 +41,23 @@ void syscallAtomicInitialize(g_task* task, g_syscall_atomic_initialize* data)
 
 void syscallAtomicLock(g_task* task, g_syscall_atomic_lock* data)
 {
-	uint64_t timeoutTime = data->timeout > 0 ? taskingGetLocal()->time + data->timeout : 0;
+	bool useTimeout = (data->timeout > 0);
+	if(useTimeout)
+		clockWakeAt(task->id, taskingGetLocal()->time + data->timeout);
 
-	while(!(data->was_set = atomicLock(task, data->atom, data->is_try, data->set_on_finish, timeoutTime)))
+	while(
+		(!useTimeout || !(data->has_timeout = clockHasTimedOut(task->id))) &&
+		!(data->was_set = atomicLock(task, data->atom, data->is_try, data->set_on_finish)))
 	{
 		if(data->is_try)
 			break;
+
 		taskingYield();
 	}
+
+	if(useTimeout)
+		clockUnsetAlarm(task->id);
+	atomicRemoveFromWaiters(data->atom, task->id);
 }
 
 void syscallAtomicUnlock(g_task* task, g_syscall_atomic_unlock* data)
@@ -55,7 +67,7 @@ void syscallAtomicUnlock(g_task* task, g_syscall_atomic_unlock* data)
 
 void syscallYield(g_task* task)
 {
-	taskingYield();
+	taskingSchedule();
 }
 
 void syscallExit(g_task* task, g_syscall_exit* data)

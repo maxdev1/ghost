@@ -26,12 +26,6 @@
 #include "kernel/tasking/tasking.hpp"
 
 /**
- * Puts the task to wait and lets it sleep for the given number of milliseconds.
- * If executed from the current task, you must yield.
- */
-void waitSleep(g_task* task, uint64_t milliseconds);
-
-/**
  * Called by the file system if a task needs to wait until it can read from/write to a file.
  */
 void waitForFile(g_task* task, g_fs_node* file, bool (*waitResolverFromDelegate)(g_fs_virt_id));

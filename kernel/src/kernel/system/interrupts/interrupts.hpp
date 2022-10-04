@@ -24,6 +24,17 @@
 #include "ghost/types.h"
 #include "kernel/system/processor/processor.hpp"
 
+/**
+ * Pauses/resumes interrupts within the same scope.
+ */
+#define INTERRUPTS_PAUSE                        \
+	int __intr_paused = interruptsAreEnabled(); \
+	if(__intr_paused)                           \
+		interruptsDisable();
+#define INTERRUPTS_RESUME \
+	if(__intr_paused)     \
+		interruptsEnable();
+
 void interruptsCheckPrerequisites();
 
 void interruptsInitializeBsp();
