@@ -186,7 +186,7 @@ bool exceptionsHandlePageFault(g_task* task)
 		// TODO Somehow give the user task a chance to do something
 		task->status = G_THREAD_STATUS_DEAD;
 	}
-	taskingYield();
+	taskingSchedule();
 	return true;
 }
 
@@ -204,14 +204,14 @@ bool exceptionsHandleGeneralProtectionFault(g_task* task)
 		else if(result == VIRTUAL_MONITOR_HANDLING_RESULT_FINISHED)
 		{
 			task->status = G_THREAD_STATUS_DEAD;
-			taskingYield();
+			taskingSchedule();
 			return true;
 		}
 		else if(result == VIRTUAL_MONITOR_HANDLING_RESULT_UNHANDLED_OPCODE)
 		{
 			logInfo("%! %i unable to handle gpf for vm86 task", "exception", processorGetCurrentId());
 			task->status = G_THREAD_STATUS_DEAD;
-			taskingYield();
+			taskingSchedule();
 			return true;
 		}
 	}
@@ -220,7 +220,7 @@ bool exceptionsHandleGeneralProtectionFault(g_task* task)
 
 	logInfo("%! #%i task %i killed due to general protection fault at EIP %h", "exception", processorGetCurrentId(), task->id, task->state->eip);
 	task->status = G_THREAD_STATUS_DEAD;
-	taskingYield();
+	taskingSchedule();
 	return true;
 }
 
@@ -229,7 +229,7 @@ bool exceptionsKillTask(g_task* task)
 	logInfo("%! task %i killed due to exception %i (error %i) at EIP %h", "exception", task->id, task->state->intr,
 			task->state->error, task->state->eip);
 	task->status = G_THREAD_STATUS_DEAD;
-	taskingYield();
+	taskingSchedule();
 	return true;
 }
 

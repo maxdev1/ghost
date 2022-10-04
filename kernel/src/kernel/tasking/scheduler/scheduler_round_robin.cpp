@@ -71,8 +71,8 @@ void schedulerSchedule(g_tasking_local* local)
 		return;
 	}
 
-	g_schedule_entry* next = schedulerGetNextTask(local);
-	g_schedule_entry* entry = next;
+	g_schedule_entry* start = schedulerGetNextTask(local);
+	g_schedule_entry* entry = start;
 	for(;;)
 	{
 		if(entry->schedulerRound < local->scheduling.round)
@@ -94,7 +94,7 @@ void schedulerSchedule(g_tasking_local* local)
 			entry = local->scheduling.list;
 		}
 
-		if(entry == next)
+		if(entry == start)
 		{
 			local->scheduling.current = local->scheduling.idleTask;
 			local->scheduling.idleTask->timesScheduled++;
@@ -105,9 +105,10 @@ void schedulerSchedule(g_tasking_local* local)
 	mutexRelease(&local->lock);
 
 #if G_DEBUG_THREAD_DUMPING
-	static int i = 0;
-	if(i++ % 10000 == 0)
+	static int lastLog = 0;
+	if(lastLog++ > 10000)
 	{
+		lastLog = 0;
 		schedulerDump();
 	}
 #endif
@@ -118,7 +119,7 @@ void schedulerDump()
 	g_tasking_local* local = taskingGetLocal();
 	mutexAcquire(&local->lock);
 
-	logInfo("%! dump @%i", "sched", processorGetCurrentId());
+	logInfo("%! dump @%i (time: %i)", "sched", processorGetCurrentId(), local->time);
 	g_schedule_entry* entry = local->scheduling.list;
 	while(entry)
 	{
@@ -140,16 +141,19 @@ void schedulerDump()
 			taskState = "waiting";
 		}
 
-		logInfo("%# p: %i, t: %i, %s, tSch: %i, tYld: %i, time: %i, round: %i",
-				entry->task->process->id, entry->task->id, taskState, entry->task->timesScheduled, entry->task->timesYielded,
-				entry->task->timesScheduled - entry->task->timesYielded, entry->schedulerRound);
+		if(entry->task->status != G_THREAD_STATUS_DEAD)
+		{
+			logInfo("%# p: %i, t: %i, %s, tSch: %i, tYld: %i, time: %i, round: %i",
+					entry->task->process->id, entry->task->id, taskState, entry->task->timesScheduled, entry->task->timesYielded,
+					entry->task->timesScheduled - entry->task->timesYielded, entry->schedulerRound);
+		}
 		entry = entry->next;
 	}
 
 	g_task* idle = local->scheduling.idleTask;
-	logInfo("%# p: %i, t: %i, tSch: %i, tYld: %i, time: %i, round: %i",
+	logInfo("%# p: %i, t: %i, tSch: %i, tYld: %i, time: %i",
 			idle->process->id, idle->id, idle->timesScheduled, idle->timesYielded,
-			idle->timesScheduled - idle->timesYielded, entry->schedulerRound);
+			idle->timesScheduled - idle->timesYielded);
 
 	mutexRelease(&local->lock);
 }
