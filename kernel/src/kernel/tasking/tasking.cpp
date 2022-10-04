@@ -91,7 +91,7 @@ void taskingYield()
 	auto previousState = task->state;
 	asm volatile("int $0x81" ::
 					 : "cc", "memory");
-	taskingGetCurrentTask()->state = previousState;
+	task->state = previousState;
 }
 
 void taskingExit()
@@ -354,7 +354,8 @@ void taskingApplySwitch()
 
 void taskingSchedule()
 {
-	schedulerSchedule(taskingGetLocal());
+	auto local = taskingGetLocal();
+	schedulerSchedule(local);
 	taskingApplySwitch();
 }
 
@@ -433,7 +434,7 @@ void taskingIdleThread()
 {
 	for(;;)
 	{
-		asm("hlt");
+		asm volatile("hlt");
 	}
 }
 

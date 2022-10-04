@@ -113,10 +113,7 @@ void mutexRelease(g_mutex* mutex)
 	{
 		--mutex->depth;
 		if(mutex->depth == 0)
-		{
-			mutex->depth = 0;
 			mutex->owner = -1;
-		}
 	}
 
 	SPINLOCK_RELEASE(mutex->lock);
