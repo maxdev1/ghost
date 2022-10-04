@@ -52,11 +52,16 @@ g_atom atomicCreate();
  * Attempts to lock the atom and returns whether locking was successful. If it is not a try
  * and the lock is already set, the task is put to sleep.
  */
-bool atomicLock(g_task* task, g_atom atom, bool isTry, bool setOnFinish, uint64_t timeout);
+bool atomicLock(g_task* task, g_atom atom, bool isTry, bool setOnFinish);
 
 /**
  * Unlocks the atom and wakes the next waiting task.
  */
 void atomicUnlock(g_atom atom);
+
+/**
+ * Removes the task from a wait queue, for example in case of timeouts.
+ */
+void atomicRemoveFromWaiters(g_atom atom, g_tid task);
 
 #endif

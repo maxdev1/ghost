@@ -14,9 +14,10 @@ with TARGET "all"
 #
 INC=inc
 BIN=bin
-SRC_LOADER=src/loader
-SRC_KERNEL=src/kernel
-SRC_SHARED=src/shared
+SRC=src
+SRC_LOADER=$SRC/loader
+SRC_KERNEL=$SRC/kernel
+SRC_SHARED=$SRC/shared
 
 #
 # Compiler flags
@@ -203,9 +204,9 @@ target_qemu_debug_gdb() {
 #
 target_all() {
 	target_compile_ap_startup
-	target_compile $SRC_SHARED $OBJ_SHARED "-I$INC"
-	target_compile $SRC_LOADER $OBJ_LOADER "-I$INC"
-	target_compile $SRC_KERNEL $OBJ_KERNEL "-I$INC"
+	target_compile $SRC_SHARED $OBJ_SHARED "-I$INC -I$SRC"
+	target_compile $SRC_LOADER $OBJ_LOADER "-I$INC -I$SRC"
+	target_compile $SRC_KERNEL $OBJ_KERNEL "-I$INC -I$SRC"
 	target_link $ARTIFACT_LOADER $LINKSCRIPT_LOADER "$OBJ_LOADER/* $OBJ_SHARED/*"
 	target_link $ARTIFACT_KERNEL $LINKSCRIPT_KERNEL "$OBJ_KERNEL/* $OBJ_SHARED/*"
 	target_ramdisk
