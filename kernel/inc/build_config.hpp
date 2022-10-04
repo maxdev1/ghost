@@ -40,7 +40,7 @@
 
 // fine-grained debugging options
 #define G_DEBUG_WHOS_WAITING false
-#define G_DEBUG_LOCKS_DEADLOCKING false
+#define G_DEBUG_MUTEXES false
 #define G_DEBUG_THREAD_DUMPING false
 
 // mode for the debug interface

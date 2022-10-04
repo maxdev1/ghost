@@ -23,19 +23,6 @@
 #include "kernel/memory/heap.hpp"
 #include "shared/logger/logger.hpp"
 
-void waitSleep(g_task* task, uint64_t milliseconds)
-{
-	uint64_t wakeTime = taskingGetLocal()->time + milliseconds;
-	for(;;)
-	{
-		if(taskingGetLocal()->time > wakeTime)
-		{
-			break;
-		}
-		taskingYield();
-	}
-}
-
 void waitForFile(g_task* task, g_fs_node* file,
 				 bool (*waitResolverFromDelegate)(g_fs_virt_id))
 {

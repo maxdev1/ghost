@@ -30,6 +30,7 @@ g_atom buffer_lock = g_atomic_initialize();
 
 void interfaceResponderThread()
 {
+	g_task_register_id("windowserver/interface-responder");
 	g_atomic_lock(buffer_empty);
 	while(true)
 	{

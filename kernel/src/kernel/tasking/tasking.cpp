@@ -31,6 +31,7 @@
 #include "kernel/system/interrupts/ivt.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/system/system.hpp"
+#include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/elf/elf_loader.hpp"
 #include "kernel/tasking/scheduler.hpp"
 #include "kernel/tasking/tasking_directory.hpp"
@@ -482,7 +483,9 @@ void taskingCleanupThread()
 		}
 
 		// Sleep for some time
-		waitSleep(task, 3000);
+		clockWakeAt(task->id, taskingGetLocal()->time + 3000);
+		task->status = G_THREAD_STATUS_WAITING;
+		taskingYield();
 	}
 }
 

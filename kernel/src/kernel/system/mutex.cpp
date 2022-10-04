@@ -25,6 +25,7 @@
 #include "kernel/tasking/tasking.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/video/console_video.hpp"
+#include "kernel/debug/debug.hpp"
 
 volatile int mutexInitializerLock = 0;
 #define G_MUTEX_INITIALIZED 0xFEED
@@ -63,8 +64,21 @@ void mutexAcquire(g_mutex* mutex)
 
 	uint32_t owner = systemIsReady() ? taskingGetCurrentTask()->id : -processorGetCurrentId();
 
+#if G_DEBUG_MUTEXES
+	int dead = 0;
+#endif
+
 	while(!mutexTryAcquire(mutex, owner))
 	{
+#if G_DEBUG_MUTEXES
+		dead++;
+		if(dead > 10000)
+		{
+			logInfo("%i likely deadlocked @%x (owner: %i, depth: %i)", owner, mutex, mutex->owner, mutex->depth);
+			DEBUG_TRACE_STACK;
+		}
+#endif
+
 		if(systemIsReady())
 			taskingYield();
 		else
@@ -78,9 +92,7 @@ bool mutexTryAcquire(g_mutex* mutex, uint32_t owner)
 
 	bool set = false;
 
-	int intr = interruptsAreEnabled();
-	if(intr)
-		interruptsDisable();
+	INTERRUPTS_PAUSE;
 
 	SPINLOCK_ACQUIRE(mutex->lock);
 
@@ -93,8 +105,7 @@ bool mutexTryAcquire(g_mutex* mutex, uint32_t owner)
 
 	SPINLOCK_RELEASE(mutex->lock);
 
-	if(intr)
-		interruptsEnable();
+	INTERRUPTS_RESUME;
 
 	return set;
 }
@@ -103,9 +114,7 @@ void mutexRelease(g_mutex* mutex)
 {
 	MUTEX_GUARD;
 
-	int intr = interruptsAreEnabled();
-	if(intr)
-		interruptsDisable();
+	INTERRUPTS_PAUSE;
 
 	SPINLOCK_ACQUIRE(mutex->lock);
 
@@ -118,6 +127,5 @@ void mutexRelease(g_mutex* mutex)
 
 	SPINLOCK_RELEASE(mutex->lock);
 
-	if(intr)
-		interruptsEnable();
+	INTERRUPTS_RESUME;
 }
