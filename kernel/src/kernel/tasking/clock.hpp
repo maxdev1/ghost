@@ -18,51 +18,43 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "shared/logger/logger.hpp"
-#include "kernel/system/interrupts/interrupts.hpp"
-#include "kernel/system/smp.hpp"
-#include "shared/system/mutex.hpp"
-#include "shared/utils/string.hpp"
-#include "shared/video/console_video.hpp"
+#ifndef __KERNEL_CLOCK__
+#define __KERNEL_CLOCK__
 
-void loggerPrintLocked(const char* message, ...)
+#include "ghost/types.h"
+#include "kernel/filesystem/filesystem.hpp"
+#include "kernel/tasking/tasking.hpp"
+
+struct g_clock_waiter
 {
-	INTERRUPTS_PAUSE;
+	g_tid task;
+	uint32_t wakeTime;
+	g_clock_waiter* next;
+};
 
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
+/**
+ * Initializes the clock.
+ */
+void clockInitialize();
 
-	INTERRUPTS_RESUME;
-}
+/**
+ * Puts the task to sleep and makes it wake up at the given wake time.
+ */
+void clockWakeAt(g_tid task, uint64_t wakeTime);
 
-void loggerPrintlnLocked(const char* message, ...)
-{
-	INTERRUPTS_PAUSE;
+/**
+ * Called when the local time has changed. Wakes tasks at the given time.
+ */
+void clockUpdate();
 
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
-	loggerPrintCharacter('\n');
+/**
+ * Removes the task from the wake list.
+ */
+void clockUnsetAlarm(g_tid task);
 
-	INTERRUPTS_RESUME;
-}
+/**
+ * Returns whether this alarm has already timed out.
+ */
+bool clockHasTimedOut(g_tid task);
 
-void loggerPrintUnlocked(const char* message, ...)
-{
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
-}
-
-void loggerPrintlnUnlocked(const char* message, ...)
-{
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
-	loggerPrintCharacter('\n');
-}
+#endif

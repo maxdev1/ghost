@@ -28,6 +28,7 @@
 #include "kernel/system/interrupts/lapic.hpp"
 #include "kernel/system/interrupts/pic.hpp"
 #include "kernel/system/interrupts/requests.hpp"
+#include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking.hpp"
 #include "shared/system/mutex.hpp"
 
@@ -99,6 +100,7 @@ extern "C" g_virtual_address _interruptHandler(g_virtual_address state)
 		else if(task->state->intr == 0x20) // Timer
 		{
 			taskingGetLocal()->time += APIC_MILLISECONDS_PER_TICK;
+			clockUpdate();
 			taskingSchedule();
 		}
 		else if(task->state->intr == 0x80) // Syscall

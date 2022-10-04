@@ -18,51 +18,25 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "shared/logger/logger.hpp"
-#include "kernel/system/interrupts/interrupts.hpp"
-#include "kernel/system/smp.hpp"
-#include "shared/system/mutex.hpp"
-#include "shared/utils/string.hpp"
-#include "shared/video/console_video.hpp"
+#ifndef __KERNEL_DEBUG__
+#define __KERNEL_DEBUG__
 
-void loggerPrintLocked(const char* message, ...)
-{
-	INTERRUPTS_PAUSE;
+#define DEBUG_TRACE_STACK                                  \
+	{                                                      \
+		uint32_t ebpv;                                     \
+		asm volatile("push %%ebp\n"                        \
+					 "pop %0"                              \
+					 : "=g"(ebpv));                        \
+		uint32_t* ebp = reinterpret_cast<uint32_t*>(ebpv); \
+		logInfo("%# stack trace:");                        \
+		for(int frame = 0; frame < 8; ++frame)             \
+		{                                                  \
+			uint32_t eip = ebp[1];                         \
+			if(eip == 0)                                   \
+				break;                                     \
+			ebp = reinterpret_cast<uint32_t*>(ebp[0]);     \
+			logInfo("%#  %h", eip);                        \
+		}                                                  \
+	}
 
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
-
-	INTERRUPTS_RESUME;
-}
-
-void loggerPrintlnLocked(const char* message, ...)
-{
-	INTERRUPTS_PAUSE;
-
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
-	loggerPrintCharacter('\n');
-
-	INTERRUPTS_RESUME;
-}
-
-void loggerPrintUnlocked(const char* message, ...)
-{
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
-}
-
-void loggerPrintlnUnlocked(const char* message, ...)
-{
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
-	loggerPrintCharacter('\n');
-}
+#endif

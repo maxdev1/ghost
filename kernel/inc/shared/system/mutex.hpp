@@ -26,17 +26,23 @@
 
 struct g_mutex
 {
-    volatile int initialized = 0;
-    volatile int lock = 0;
+	volatile int initialized = 0;
+	volatile int lock = 0;
 
-    int depth = 0;
-    uint32_t owner = -1;
+	int depth = 0;
+	uint32_t owner = -1;
 };
 
 /**
  * Initializes the mutex.
  */
-#define mutexInitialize(mutex) _mutexInitialize(mutex); // logInfo("%! initalize %x @%s", "mutex", mutex, __func__);
+#if G_DEBUG_MUTEXES
+#define mutexInitialize(mutex) \
+	_mutexInitialize(mutex);   \
+	logInfo("%! initalize %x @%s", "mutex", mutex, __func__);
+#else
+#define mutexInitialize(mutex) _mutexInitialize(mutex);
+#endif
 void _mutexInitialize(g_mutex* mutex);
 
 /**
