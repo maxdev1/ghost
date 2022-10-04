@@ -151,6 +151,7 @@ struct g_tasking_local
 {
 	g_mutex lock;
 	int lockCount;
+	bool lockSetIF;
 
 	/**
 	 * Tasking information.
