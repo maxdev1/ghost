@@ -54,7 +54,6 @@ void heapInitialize(g_virtual_address start, g_virtual_address end)
 
 void* heapAllocate(uint32_t size)
 {
-	INTERRUPTS_PAUSE;
 	mutexAcquire(&heapLock);
 
 	if(!heapInitialized)
@@ -66,7 +65,6 @@ void* heapAllocate(uint32_t size)
 		if(_heapExpand())
 		{
 			mutexRelease(&heapLock);
-			INTERRUPTS_RESUME;
 			return heapAllocate(size);
 		}
 
@@ -77,7 +75,6 @@ void* heapAllocate(uint32_t size)
 	heapAmountInUse += size;
 
 	mutexRelease(&heapLock);
-	INTERRUPTS_RESUME;
 
 	return ptr;
 }
@@ -94,13 +91,11 @@ void heapFree(void* ptr)
 	if(!heapInitialized)
 		kernelPanic("%! tried to use uninitialized kernel heap", "kernheap");
 
-	INTERRUPTS_PAUSE;
 	mutexAcquire(&heapLock);
 
 	heapAmountInUse -= chunkAllocatorFree(&heapAllocator, ptr);
 
 	mutexRelease(&heapLock);
-	INTERRUPTS_RESUME;
 }
 
 uint32_t heapGetUsedAmount()

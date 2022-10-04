@@ -86,6 +86,9 @@ void taskingYield()
 	if(!systemIsReady())
 		return;
 
+	if(taskingGetLocal()->lockCount)
+		kernelPanic("%! can't yield while %i locks are held", "tasking", taskingGetLocal()->lockCount);
+
 	g_task* task = taskingGetCurrentTask();
 	task->timesYielded++;
 
@@ -135,6 +138,7 @@ void taskingInitializeLocal()
 	g_tasking_local* local = taskingGetLocal();
 	local->time = 0;
 	local->lockCount = 0;
+	local->lockSetIF = false;
 
 	local->scheduling.current = 0;
 	local->scheduling.list = 0;

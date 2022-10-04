@@ -62,7 +62,7 @@ void mutexAcquire(g_mutex* mutex)
 {
 	MUTEX_GUARD;
 
-	uint32_t owner = systemIsReady() ? taskingGetCurrentTask()->id : -processorGetCurrentId();
+	uint32_t owner = processorGetCurrentId();
 
 #if G_DEBUG_MUTEXES
 	int dead = 0;
@@ -78,11 +78,7 @@ void mutexAcquire(g_mutex* mutex)
 			DEBUG_TRACE_STACK;
 		}
 #endif
-
-		if(systemIsReady())
-			taskingYield();
-		else
-			asm volatile("pause");
+		asm volatile("pause");
 	}
 }
 
@@ -92,20 +88,27 @@ bool mutexTryAcquire(g_mutex* mutex, uint32_t owner)
 
 	bool set = false;
 
-	INTERRUPTS_PAUSE;
+	bool intr = interruptsAreEnabled();
+	if(intr)
+		interruptsDisable();
 
 	SPINLOCK_ACQUIRE(mutex->lock);
 
 	if(mutex->depth == 0 || mutex->owner == owner)
 	{
+		if(systemIsReady() && mutex->depth == 0)
+		{
+			auto local = taskingGetLocal();
+			if(local->lockCount == 0)
+				local->lockSetIF = intr;
+			local->lockCount++;
+		}
 		++mutex->depth;
 		mutex->owner = owner;
 		set = true;
 	}
 
 	SPINLOCK_RELEASE(mutex->lock);
-
-	INTERRUPTS_RESUME;
 
 	return set;
 }
@@ -114,18 +117,28 @@ void mutexRelease(g_mutex* mutex)
 {
 	MUTEX_GUARD;
 
-	INTERRUPTS_PAUSE;
+	bool intr = false;
 
 	SPINLOCK_ACQUIRE(mutex->lock);
 
 	if(mutex->depth > 0)
 	{
 		--mutex->depth;
-		if(mutex->depth == 0)
+		if( mutex->depth == 0)
+		{
+			if(systemIsReady()) {
+				auto local = taskingGetLocal();
+				local->lockCount--;
+				if(local->lockCount == 0)
+					intr = local->lockSetIF;
+			}
+
 			mutex->owner = -1;
+		}
 	}
 
 	SPINLOCK_RELEASE(mutex->lock);
 
-	INTERRUPTS_RESUME;
+	if(intr)
+		interruptsEnable();
 }
