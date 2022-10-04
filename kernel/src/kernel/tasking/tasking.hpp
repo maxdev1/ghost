@@ -167,7 +167,7 @@ struct g_tasking_local
 	/**
 	 * Approximation of milliseconds that this processor has run.
 	 */
-	uint64_t time;
+	uint32_t time;
 };
 
 /**

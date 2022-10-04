@@ -6,8 +6,7 @@ fi
 . "$ROOT/ghost.sh"
 
 
-
-TARGET=$1
+TARGET=$@
 
 with TARGET					"all"
 with SRC					"src"
@@ -156,23 +155,25 @@ target_install() {
 
 
 # execute targets
-if [[ $TARGET == "install-headers" ]]; then
-	target_install_headers
-	
-elif [[ $TARGET == "all" ]]; then
-	target_check_c_conformity
-	target_compile
-	target_assemble_crts
-	target_archive
-	target_install
-	
-elif [[ $TARGET == "clean" ]]; then
-	target_clean
-	
-else
-	echo "unknown target: '$TARGET'"
-	exit 1
-fi
+for var in $TARGET; do
+	if [[ $var == "install-headers" ]]; then
+		target_install_headers
+		
+	elif [[ $var == "all" ]]; then
+		target_check_c_conformity
+		target_compile
+		target_assemble_crts
+		target_archive
+		target_install
+		
+	elif [[ $var == "clean" ]]; then
+		target_clean
+		
+	else
+		echo "unknown target: '$var'"
+		exit 1
+	fi
+done
 
 target_successful
 exit 0
