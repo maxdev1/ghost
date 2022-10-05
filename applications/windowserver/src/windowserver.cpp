@@ -98,6 +98,11 @@ void windowserver_t::createVitalComponents(g_rectangle screenBounds)
 	screen->addChild(background);
 	cursor_t::focusedComponent = screen;
 
+	stateLabel = new label_t();
+	stateLabel->setTitle("");
+	stateLabel->setBounds(g_rectangle(10, 0, 200, 30));
+	background->addChild(stateLabel);
+
 	// background.load("/system/graphics/wallpaper.png");
 }
 
@@ -116,7 +121,7 @@ void windowserver_t::initializeGraphics()
 
 void windowserver_t::renderLoop(g_rectangle screenBounds)
 {
-	// g_create_thread((void*) &windowserver_t::fpsCounter);
+	g_create_thread((void*) &windowserver_t::fpsCounter);
 	g_task_register_id("windowserver/renderer");
 
 	g_graphics global;
@@ -227,11 +232,15 @@ void windowserver_t::fpsCounter()
 	g_task_register_id("windowserver/fps-counter");
 	int seconds = 0;
 
+	int renders  = 0;
 	for(;;)
 	{
 		g_sleep(1000);
 		seconds++;
-		klog("fps: %i", framesTotal);
+		std::stringstream s;
+		s << "FPS: " << framesTotal << ", Time: " << renders++ << "s";
+		windowserver_t::instance()->stateLabel->setTitle(s.str());
+		windowserver_t::instance()->triggerRender();
 		framesTotal = 0;
 	}
 }

@@ -38,6 +38,7 @@ class windowserver_t
 	event_processor_t* event_processor;
 	screen_t* screen;
 	background_t* background;
+	label_t* stateLabel;
 	g_atom render_atom = g_atomic_initialize();
 
 	/**

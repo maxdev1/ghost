@@ -189,7 +189,6 @@ void terminal_t::write_termkey_to_shell(int termkey)
  */
 void terminal_t::input_routine()
 {
-
 	std::string buffer = "";
 	while(true)
 	{
