@@ -62,16 +62,18 @@ void syscall(uint32_t callId, void* syscallData)
 	volatile g_processor_state* state;
 	if(reg->reentrant)
 	{
-		state = task->state;
-		interruptsEnable();
-	}
+		// TODO This doesn't work yet
+		// state = task->state;
+		// interruptsEnable();
+	} 
 
 	reg->handler(task, syscallData);
 
 	if(reg->reentrant)
 	{
-		interruptsDisable();
-		task->state = state;
+		// TODO This doesn't work yet
+		// interruptsDisable();
+		// task->state = state;
 	}
 }
 
