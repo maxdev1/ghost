@@ -75,7 +75,7 @@ void createTestWindow()
 {
 	window_t* window = new window_t;
 	window->setTitle("Components");
-	window->setBounds(g_rectangle(10, 10, 320, 430));
+	window->setBounds(g_rectangle(30, 30, 320, 430));
 	window->setLayoutManager(new grid_layout_manager_t(1, 1));
 
 	scrollpane_t* scroller = new scrollpane_t;

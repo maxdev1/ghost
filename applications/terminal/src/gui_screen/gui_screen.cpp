@@ -346,19 +346,19 @@ g_key_info gui_screen_t::readInput()
 {
 	g_key_info result;
 
-	g_atomic_lock(input_buffer_lock);
-
-	if(input_buffer.size() > 0)
-	{
-		result = input_buffer.front();
-		input_buffer.pop_front();
+	for(;;) {
+		g_atomic_lock(input_buffer_lock);
 		if(input_buffer.size() == 0)
 		{
+			g_atomic_unlock(input_buffer_lock);
 			g_atomic_lock(input_buffer_empty);
+		} else {
+			result = input_buffer.front();
+			input_buffer.pop_front();
+			g_atomic_unlock(input_buffer_lock);
+			break;
 		}
 	}
-
-	g_atomic_unlock(input_buffer_lock);
 
 	return result;
 }
