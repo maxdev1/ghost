@@ -191,6 +191,10 @@ target_qemu() {
 	fi
 }
 
+target_lingemu() {
+	lingemu runvirt -m 1024 --diskcontroller type=ahci,name=ahcibus1 --disk $ISO_TGT,disktype=cdrom,controller=ahcibus1
+	fi
+}
 #
 # Run in QEMU and call debugger
 #
@@ -244,6 +248,8 @@ elif [[ $TARGET == "qemu-debug-gdb" ]]; then
 elif [[ $TARGET == "clean" ]]; then
 	target_clean
 	
+elif [[ $TARGET == "lingemu" ]]; then
+	target_lingemu	
 else
 	echo "unknown target: '$TARGET'"
 	exit 1
