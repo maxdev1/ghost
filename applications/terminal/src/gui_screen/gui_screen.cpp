@@ -150,7 +150,6 @@ bool gui_screen_t::initialize()
 
 void gui_screen_t::blink_cursor_entry(gui_screen_t* screen)
 {
-
 	while(true)
 	{
 		screen->blink_cursor();
@@ -272,6 +271,7 @@ void gui_screen_t::paint()
 
 		canvas->blit(g_rectangle(0, 0, bufferSize.width, bufferSize.height));
 
+		g_atomic_lock(paint_uptodate);
 		g_atomic_lock(paint_uptodate);
 	}
 }
