@@ -128,7 +128,7 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* exe
     }
     hashmapIteratorEnd(&it);
 
-    info->kernelSyscallEntry = syscall;
+    info->syscallKernelEntry = syscall;
     process->userProcessInfo = info;
 
     return executableImageEnd + G_PAGE_ALIGN_UP(totalRequired);

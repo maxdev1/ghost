@@ -19,8 +19,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/calls/syscall_general.hpp"
+#include "kernel/filesystem/filesystem.hpp"
 #include "kernel/memory/heap.hpp"
-#include "kernel/tasking/wait.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/utils/string.hpp"
 

@@ -26,15 +26,14 @@
 /**
  *
  */
-size_t __fread_unlocked(const void* ptr, size_t size, size_t nmemb,
-		FILE* stream) {
+size_t __fread_unlocked(const void* ptr, size_t size, size_t nmemb, FILE* stream) {
 
 	// check for illegal arguments
 	if (size == 0 || nmemb == 0) {
 		return 0;
 	}
 
-	// check if stream is writable
+	// check if stream is readable
 	if ((stream->flags & G_FILE_FLAG_MODE_READ) == 0) {
 		errno = EBADF;
 		stream->flags |= G_FILE_FLAG_ERROR;
@@ -50,13 +49,6 @@ size_t __fread_unlocked(const void* ptr, size_t size, size_t nmemb,
 
 	// unbuffered files perform direct read
 	if (stream->buffer_mode == _IONBF) {
-
-		// if the last access was a write, flush it
-		if (stream->flags & G_FILE_FLAG_BUFFER_DIRECTION_WRITE) {
-			if (__fflush_write_unlocked(stream) == EOF) {
-				return EOF;
-			}
-		}
 
 		// if stream has no read implementation, return with error
 		if (stream->impl_read == NULL) {
@@ -79,8 +71,8 @@ size_t __fread_unlocked(const void* ptr, size_t size, size_t nmemb,
 
 		while (done < total) {
 			// call read implementation
-			ssize_t read = stream->impl_read(&(((uint8_t*) ptr)[done]), total,
-					stream);
+			uint8_t* pos = &(((uint8_t*) ptr)[done]);
+			ssize_t read = stream->impl_read(pos, total - done, stream);
 
 			if (read == 0) {
 				stream->flags |= G_FILE_FLAG_EOF;

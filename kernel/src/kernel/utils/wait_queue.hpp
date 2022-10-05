@@ -18,21 +18,30 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_WAIT__
-#define __KERNEL_WAIT__
+#ifndef __UTILS_WAITQUEUE__
+#define __UTILS_WAITQUEUE__
 
-#include "ghost/types.h"
-#include "kernel/filesystem/filesystem.hpp"
 #include "kernel/tasking/tasking.hpp"
 
-/**
- * Called by the file system if a task needs to wait until it can read from/write to a file.
- */
-void waitForFile(g_task* task, g_fs_node* file, bool (*waitResolverFromDelegate)(g_fs_virt_id));
+struct g_wait_queue_entry
+{
+	g_tid task;
+	g_wait_queue_entry* next;
+};
 
 /**
- * Puts the given task into a waiting state, waiting until the other task has finished work.
+ * Adds a task entry to the given wait queue.
  */
-void waitJoinTask(g_task* task, g_tid otherTaskId);
+void waitQueueAdd(g_wait_queue_entry** queue, g_tid task);
+
+/**
+ * Removes the entry for this task id from the wait queue.
+ */
+void waitQueueRemove(g_wait_queue_entry** queue, g_tid task);
+
+/**
+ * Wakes all tasks in the queue.
+ */
+void waitQueueWake(g_wait_queue_entry** queue);
 
 #endif

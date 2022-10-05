@@ -67,8 +67,6 @@ bool atomicLock(g_task* task, g_atom atom, bool isTry, bool setOnFinish)
 	if(entry->value)
 	{
 		ret = false;
-		if(!isTry)
-			_atomicSetTaskWaiting(entry, task);
 	}
 	else
 	{
@@ -85,7 +83,7 @@ void atomicUnlock(g_atom atom)
 	g_atom_entry* entry = hashmapGet<g_atom, g_atom_entry*>(atomMap, atom, nullptr);
 	if(!entry)
 	{
-		logWarn("%! task %i tried to unlock unknown atom %i", "atoms", task->id, atom);
+		logWarn("%! task %i tried to unlock unknown atom %i", "atoms", taskingGetCurrentTask()->id, atom);
 		return;
 	}
 
@@ -95,12 +93,31 @@ void atomicUnlock(g_atom atom)
 	mutexRelease(&entry->lock);
 }
 
-void atomicRemoveFromWaiters(g_atom atom, g_tid task)
+void atomicWaitForLock(g_atom atom, g_tid task)
 {
 	g_atom_entry* entry = hashmapGet<g_atom, g_atom_entry*>(atomMap, atom, nullptr);
 	if(!entry)
 	{
-		logWarn("%! task %i tried to unlock unknown atom %i", "atoms", task->id, atom);
+		logWarn("%! tried to add waiter for task task %i to unknown atom %i", "atoms", task, atom);
+		return;
+	}
+
+	mutexAcquire(&entry->lock);
+
+	g_atom_waiter* waiter = (g_atom_waiter*) heapAllocate(sizeof(g_atom_waiter));
+	waiter->task = task;
+	waiter->next = entry->waiters;
+	entry->waiters = waiter;
+
+	mutexRelease(&entry->lock);
+}
+
+void atomicUnwaitForLock(g_atom atom, g_tid task)
+{
+	g_atom_entry* entry = hashmapGet<g_atom, g_atom_entry*>(atomMap, atom, nullptr);
+	if(!entry)
+	{
+		logWarn("%! tried to remove waiter for task %i from unknown atom %i", "atoms", task, atom);
 		return;
 	}
 
@@ -144,31 +161,4 @@ void _atomicWakeWaitingTasks(g_atom_entry* entry)
 		waiter = next;
 	}
 	entry->waiters = nullptr;
-}
-
-void _atomicSetTaskWaiting(g_atom_entry* entry, g_task* task)
-{
-	task->status = G_THREAD_STATUS_WAITING;
-
-	g_atom_waiter* waiter = (g_atom_waiter*) heapAllocate(sizeof(g_atom_waiter));
-	waiter->task = task->id;
-	waiter->next = nullptr;
-
-	if(entry->waiters)
-	{
-		auto last = entry->waiters;
-		while(last)
-		{
-			if(!last->next)
-			{
-				last->next = waiter;
-				break;
-			}
-			last = last->next;
-		}
-	}
-	else
-	{
-		entry->waiters = waiter;
-	}
 }

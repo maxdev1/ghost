@@ -119,7 +119,7 @@ bool gui_screen_t::initialize()
 
 	window = g_window::create();
 	window->setTitle("Terminal");
-	window->setBackground(ARGB(100, 0, 0, 0));
+	window->setBackground(ARGB(100, 40, 40, 42));
 
 	canvas = g_canvas::create();
 	canvas->setBufferListener(new canvas_buffer_listener_t(this));
@@ -138,6 +138,10 @@ bool gui_screen_t::initialize()
 	font = g_font_loader::get("consolas");
 
 	raster = new raster_t();
+
+	input_buffer_lock = g_atomic_initialize();
+	input_buffer_empty = g_atomic_initialize();
+	g_atomic_lock(input_buffer_empty);
 
 	g_create_thread_d((void*) paint_entry, this);
 	g_create_thread_d((void*) blink_cursor_entry, this);
@@ -167,7 +171,6 @@ void gui_screen_t::paint_entry(gui_screen_t* screen)
 
 char_layout_t* gui_screen_t::get_char_layout(cairo_scaled_font_t* scaled_face, char c)
 {
-
 	// Take char from layout cache
 	auto entry = char_layout_cache.find(c);
 	if(entry != char_layout_cache.end())
@@ -341,13 +344,18 @@ void gui_screen_t::writeChar(char c)
 
 g_key_info gui_screen_t::readInput()
 {
+	g_key_info result;
+
 	g_atomic_lock(input_buffer_lock);
 
-	g_key_info result = input_buffer.front();
-	input_buffer.pop_front();
-	if(input_buffer.size() == 0)
+	if(input_buffer.size() > 0)
 	{
-		g_atomic_lock(input_buffer_empty);
+		result = input_buffer.front();
+		input_buffer.pop_front();
+		if(input_buffer.size() == 0)
+		{
+			g_atomic_lock(input_buffer_empty);
+		}
 	}
 
 	g_atomic_unlock(input_buffer_lock);

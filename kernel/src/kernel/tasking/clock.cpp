@@ -36,7 +36,7 @@ void clockInitialize()
 	waiters = nullptr;
 }
 
-void clockWakeAt(g_tid task, uint64_t wakeTime)
+void clockWaitForTime(g_tid task, uint64_t wakeTime)
 {
 	mutexAcquire(&lock);
 
@@ -100,7 +100,7 @@ void clockUpdate()
 	mutexRelease(&lock);
 }
 
-void clockUnsetAlarm(g_tid task)
+void clockUnwaitForTime(g_tid task)
 {
 	mutexAcquire(&lock);
 

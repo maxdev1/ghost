@@ -26,7 +26,6 @@
 #include "kernel/kernel.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "kernel/tasking/wait.hpp"
 
 #include "shared/system/mutex.hpp"
 #include "shared/utils/string.hpp"
@@ -82,8 +81,8 @@ void filesystemCreateRoot()
 	pipeDelegate->write = filesystemPipeDelegateWrite;
 	pipeDelegate->truncate = filesystemPipeDelegateTruncate;
 	pipeDelegate->getLength = filesystemPipeDelegateGetLength;
-	pipeDelegate->waitResolverRead = filesystemPipeDelegateWaitResolverRead;
-	pipeDelegate->waitResolverWrite = filesystemPipeDelegateWaitResolverWrite;
+	pipeDelegate->waitForRead = filesystemPipeDelegateWaitForRead;
+	pipeDelegate->waitForWrite = filesystemPipeDelegateWaitForWrite;
 	pipeDelegate->close = filesystemPipeDelegateClose;
 
 	pipesFolder = filesystemCreateNode(G_FS_NODE_TYPE_FOLDER, "pipes");
@@ -359,7 +358,13 @@ g_fs_read_status filesystemRead(g_task* task, g_fd fd, uint8_t* buffer, uint64_t
 	g_fs_read_status status;
 	while((status = filesystemRead(node, buffer, descriptor->offset, length, &read)) == G_FS_READ_BUSY && node->blocking)
 	{
-		filesystemWaitToRead(task, node);
+		g_fs_delegate* delegate = filesystemFindDelegate(node);
+		if(!delegate->waitForRead)
+			kernelPanic("%! task %i tried to wait for file %i but delegate didn't provide wait-for-read implementation", "filesytem", task->id, node->id);
+
+		delegate->waitForRead(task->id, node);
+		task->status = G_THREAD_STATUS_WAITING;
+		taskingYield();
 	}
 	if(read > 0)
 	{
@@ -433,7 +438,13 @@ g_fs_write_status filesystemWrite(g_task* task, g_fd fd, uint8_t* buffer, uint64
 
 	while((status = filesystemWrite(node, buffer, startOffset, length, &wrote)) == G_FS_WRITE_BUSY && node->blocking)
 	{
-		filesystemWaitToWrite(task, node);
+		g_fs_delegate* delegate = filesystemFindDelegate(node);
+		if(!delegate->waitForWrite)
+			kernelPanic("%! task %i tried to wait for file %i but delegate didn't provide wait-for-write implementation", "filesytem", task->id, node->id);
+
+		delegate->waitForWrite(task->id, node);
+		task->status = G_THREAD_STATUS_WAITING;
+		taskingYield();
 	}
 	if(wrote > 0)
 	{
@@ -468,24 +479,6 @@ g_fs_open_status filesystemTruncate(g_fs_node* file)
 		return G_FS_OPEN_ERROR;
 
 	return delegate->truncate(file);
-}
-
-void filesystemWaitToWrite(g_task* task, g_fs_node* file)
-{
-	g_fs_delegate* delegate = filesystemFindDelegate(file);
-	if(!delegate->waitResolverWrite)
-		kernelPanic("%! task %i tried to wait for file %i but delegate didn't provide wait resolver", "filesytem", task->id, file->id);
-
-	waitForFile(task, file, delegate->waitResolverWrite);
-}
-
-void filesystemWaitToRead(g_task* task, g_fs_node* file)
-{
-	g_fs_delegate* delegate = filesystemFindDelegate(file);
-	if(!delegate->waitResolverRead)
-		kernelPanic("%! task %i tried to wait for file %i but delegate didn't provide wait resolver", "filesytem", task->id, file->id);
-
-	waitForFile(task, file, delegate->waitResolverRead);
 }
 
 g_fs_pipe_status filesystemCreatePipe(g_bool blocking, g_fs_node** outPipeNode)
@@ -534,12 +527,17 @@ g_fs_close_status filesystemClose(g_pid pid, g_fd fd, g_bool removeDescriptor)
 		kernelPanic("%! failed to close file %i, delegate had no implementation", "fs", file->id);
 
 	g_fs_close_status status = delegate->close(file);
-	if(status == G_FS_CLOSE_SUCCESSFUL && removeDescriptor)
+	if(status == G_FS_CLOSE_SUCCESSFUL)
 	{
-		filesystemProcessRemoveDescriptor(pid, fd);
+		logDebug("%! closed file descriptor %i in process %i", "fs", fd, pid);
+	}
+	else
+	{
+		logWarn("%! failed to close fd %i in process %i with status: %i", "fs", fd, pid, status);
 	}
 
-	logDebug("%! closed file descriptor %i in process %i", "fs", fd, pid);
+	if(removeDescriptor)
+		filesystemProcessRemoveDescriptor(pid, fd);
 
 	return status;
 }

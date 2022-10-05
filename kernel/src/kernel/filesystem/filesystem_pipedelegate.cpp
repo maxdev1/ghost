@@ -28,66 +28,42 @@
 
 g_fs_open_status filesystemPipeDelegateOpen(g_fs_node* node)
 {
-    pipeAddReference(node->physicalId);
-    return G_FS_OPEN_SUCCESSFUL;
+	pipeAddReference(node->physicalId);
+	return G_FS_OPEN_SUCCESSFUL;
 }
 
 g_fs_close_status filesystemPipeDelegateClose(g_fs_node* node)
 {
-    pipeRemoveReference(node->physicalId);
-    return G_FS_CLOSE_SUCCESSFUL;
+	pipeRemoveReference(node->physicalId);
+	return G_FS_CLOSE_SUCCESSFUL;
 }
 
 g_fs_read_status filesystemPipeDelegateRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead)
 {
-    return pipeRead(node->physicalId, buffer, offset, length, outRead);
+	return pipeRead(node->physicalId, buffer, offset, length, outRead);
 }
 
 g_fs_write_status filesystemPipeDelegateWrite(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote)
 {
-    return pipeWrite(node->physicalId, buffer, offset, length, outWrote);
+	return pipeWrite(node->physicalId, buffer, offset, length, outWrote);
 }
 
 g_fs_length_status filesystemPipeDelegateGetLength(g_fs_node* node, uint64_t* outLength)
 {
-    return pipeGetLength(node->physicalId, outLength);
+	return pipeGetLength(node->physicalId, outLength);
 }
 
 g_fs_open_status filesystemPipeDelegateTruncate(g_fs_node* file)
 {
-    return pipeTruncate(file->physicalId);
+	return pipeTruncate(file->physicalId);
 }
 
-bool filesystemPipeDelegateWaitResolverRead(g_fs_virt_id nodeId)
+void filesystemPipeDelegateWaitForRead(g_tid task, g_fs_node* node)
 {
-    g_fs_node* node = filesystemGetNode(nodeId);
-    if(!node)
-    {
-        return true;
-    }
-
-    g_pipeline* pipe = pipeGetById(node->physicalId);
-    if(!pipe)
-    {
-        return true;
-    }
-
-    return pipe->size > 0;
+	pipeWaitForRead(task, node->physicalId);
 }
 
-bool filesystemPipeDelegateWaitResolverWrite(g_fs_virt_id nodeId)
+void filesystemPipeDelegateWaitForWrite(g_tid task, g_fs_node* node)
 {
-    g_fs_node* node = filesystemGetNode(nodeId);
-    if(!node)
-    {
-        return true;
-    }
-
-    g_pipeline* pipe = pipeGetById(node->physicalId);
-    if(!pipe)
-    {
-        return true;
-    }
-
-    return pipe->size < pipe->capacity;
+	pipeWaitForWrite(task, node->physicalId);
 }

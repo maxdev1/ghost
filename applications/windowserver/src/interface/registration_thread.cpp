@@ -30,7 +30,7 @@ void interfaceRegistrationThread()
 	g_tid tid = g_get_tid();
 	if(!g_task_register_id(G_UI_REGISTRATION_THREAD_IDENTIFIER))
 	{
-		klog("failed to register task identifier for registration thread");
+		klog("failed to register as \"%s\"", G_UI_REGISTRATION_THREAD_IDENTIFIER);
 		return;
 	}
 

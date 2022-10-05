@@ -19,13 +19,13 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "shared/system/mutex.hpp"
+#include "kernel/debug/debug.hpp"
 #include "kernel/kernel.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/system.hpp"
 #include "kernel/tasking/tasking.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/video/console_video.hpp"
-#include "kernel/debug/debug.hpp"
 
 volatile int mutexInitializerLock = 0;
 #define G_MUTEX_INITIALIZED 0xFEED
@@ -124,9 +124,10 @@ void mutexRelease(g_mutex* mutex)
 	if(mutex->depth > 0)
 	{
 		--mutex->depth;
-		if( mutex->depth == 0)
+		if(mutex->depth == 0)
 		{
-			if(systemIsReady()) {
+			if(systemIsReady())
+			{
 				auto local = taskingGetLocal();
 				local->lockCount--;
 				if(local->lockCount == 0)

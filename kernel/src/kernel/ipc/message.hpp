@@ -22,14 +22,18 @@
 #define __KERNEL_IPC_MESSAGE__
 
 #include "ghost.h"
+#include "kernel/utils/wait_queue.hpp"
 #include "shared/system/mutex.hpp"
 
 struct g_message_queue
 {
-    g_mutex lock;
-    g_message_header* head;
-    g_message_header* tail;
-    uint32_t size;
+	g_mutex lock;
+	g_message_header* head;
+	g_message_header* tail;
+	uint32_t size;
+
+	g_tid task;
+	g_wait_queue_entry* waitersSend;
 };
 
 /**
@@ -51,5 +55,10 @@ g_message_receive_status messageReceive(g_tid receiver, g_message_header* out, u
  * When a task is removed, this function is called to cleanup any occupied memory.
  */
 void messageTaskRemoved(g_tid task);
+
+void messageWaitForSend(g_tid sender, g_tid receiver);
+void messageUnwaitForSend(g_tid sender, g_tid receiver);
+void messageWaitForReceive(g_tid receiver);
+void messageUnwaitForReceive(g_tid receiver);
 
 #endif

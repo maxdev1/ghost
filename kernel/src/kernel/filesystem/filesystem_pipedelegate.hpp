@@ -38,8 +38,8 @@ g_fs_length_status filesystemPipeDelegateGetLength(g_fs_node* node, uint64_t* ou
 
 g_fs_open_status filesystemPipeDelegateTruncate(g_fs_node* file);
 
-bool filesystemPipeDelegateWaitResolverRead(g_fs_virt_id nodeId);
+void filesystemPipeDelegateWaitForRead(g_tid task, g_fs_node* node);
 
-bool filesystemPipeDelegateWaitResolverWrite(g_fs_virt_id nodeId);
+void filesystemPipeDelegateWaitForWrite(g_tid task, g_fs_node* node);
 
 #endif

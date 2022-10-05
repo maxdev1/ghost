@@ -39,7 +39,8 @@ window_t::window_t() : backgroundColor(RGB(240, 240, 240)), borderWidth(DEFAULT_
 	crossPressed = false;
 	focused = false;
 
-	shadowSize = 10;
+	shadowSize = 5;
+	padding = 5;
 
 	graphics.setAverageFactor(250);
 
@@ -53,8 +54,9 @@ window_t::window_t() : backgroundColor(RGB(240, 240, 240)), borderWidth(DEFAULT_
 void window_t::layout()
 {
 	g_rectangle bounds = getBounds();
-	label.setBounds(g_rectangle(18, 12, bounds.width - 30, 25));
-	panel.setBounds(g_rectangle(11, 40, bounds.width - 22, bounds.height - 51));
+	int titleHeight = 30;
+	label.setBounds(g_rectangle(padding + 10, padding, bounds.width - padding - 20, titleHeight));
+	panel.setBounds(g_rectangle(padding, padding + titleHeight, bounds.width - padding * 2, bounds.height - titleHeight - padding * 2));
 	crossBounds = g_rectangle(bounds.width - 35, 17, 15, 15);
 }
 
@@ -101,7 +103,7 @@ void window_t::paint()
 	}
 	for(int i = 0; i < shadowSize + 4; i++)
 	{
-		roundedRectangle(cr, i, i + 3, bounds.width - 2 * i, bounds.height - 2 * i, 10);
+		roundedRectangle(cr, i, i + 3, bounds.width - 2 * i, bounds.height - 2 * i, shadowSize);
 		cairo_set_source_rgba(cr, 0, 0, 0, shadowAlpha);
 		cairo_stroke(cr);
 		shadowAlpha += shadowAlphaAdd;
@@ -109,14 +111,7 @@ void window_t::paint()
 	}
 
 	// draw background
-	double degrees = M_PI / 180.0;
-	cairo_new_sub_path(cr);
-	double radius = 3;
-	cairo_arc(cr, shadowSize + radius, shadowSize + radius, radius, 180 * degrees, 270 * degrees);
-	cairo_arc(cr, bounds.width - radius - shadowSize, shadowSize + radius, radius, -90 * degrees, 0 * degrees);
-	cairo_line_to(cr, bounds.width - shadowSize, bounds.height - shadowSize);
-	cairo_line_to(cr, shadowSize, bounds.height - shadowSize);
-	cairo_close_path(cr);
+	roundedRectangle(cr, shadowSize, shadowSize, bounds.width - 2 * shadowSize, bounds.height - 2 * shadowSize, shadowSize);
 	cairo_set_source_rgba(cr, ARGB_FR_FROM(backgroundColor), ARGB_FG_FROM(backgroundColor), ARGB_FB_FROM(backgroundColor), focused ? 1 : 0.95);
 	cairo_fill(cr);
 

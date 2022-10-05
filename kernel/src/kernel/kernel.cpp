@@ -32,7 +32,6 @@
 #include "kernel/tasking/atoms.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "kernel/tasking/wait.hpp"
 #include "shared/runtime/constructors.hpp"
 #include "shared/system/mutex.hpp"
 #include "shared/system/serial_port.hpp"
@@ -148,7 +147,6 @@ void kernelSpawnService(const char* path, const char* args, g_security_level sec
 void kernelInitializationThread()
 {
 	logInfo("%! loading system services", "init");
-	interruptsDisable();
 
 	G_PRETTY_BOOT_STATUS_P(40);
 	kernelSpawnService("/applications/ps2driver.bin", "", G_SECURITY_LEVEL_DRIVER);
@@ -156,12 +154,6 @@ void kernelInitializationThread()
 	kernelSpawnService("/applications/vbedriver.bin", "", G_SECURITY_LEVEL_DRIVER);
 	G_PRETTY_BOOT_STATUS_P(80);
 	kernelSpawnService("/applications/windowserver.bin", "", G_SECURITY_LEVEL_APPLICATION);
-
-	clockWakeAt(taskingGetCurrentTask()->id, taskingGetLocal()->time + 3000);
-	taskingGetCurrentTask()->status = G_THREAD_STATUS_WAITING;
-	taskingYield();
-
-	kernelSpawnService("/applications/terminal.bin", "", G_SECURITY_LEVEL_APPLICATION);
 
 	taskingExit();
 }
