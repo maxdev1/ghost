@@ -6,7 +6,8 @@ fi
 . "$ROOT/ghost.sh"
 
 # Flags
-BUILD_LIBC=1
+BUILD_LIBC_CLEAN=1
+BUILD_LIBC=0
 BUILD_LIBAPI=1
 BUILD_PORTS=0
 KERNEL_REPACK_ONLY=0
@@ -82,8 +83,11 @@ build_libapi() {
 build_libc() {
 	pushd libc
 	print_name libc
-	if [ $BUILD_LIBC = 1 ]; then
+	if [ $BUILD_LIBC_CLEAN = 1 ]; then
 		build_target clean && build_target all
+		print_status
+	elif [ $BUILD_LIBC = 1 ]; then
+		build_target all
 		print_status
 	else
 		print_skipped
@@ -176,12 +180,12 @@ for var in "$@"; do
 	if [ $COLLECT_APPS = 1 ]; then
 		APPS+=($var)
 	elif [[ "$var" = "--apps" ]]; then
-		BUILD_LIBC=0
+		BUILD_LIBC_CLEAN=0
 		BUILD_LIBAPI=0
 		KERNEL_REPACK_ONLY=1
 		COLLECT_APPS=1
 	elif [[ "$var" = "--apps-clean" ]]; then
-		BUILD_LIBC=0
+		BUILD_LIBC_CLEAN=0
 		BUILD_LIBAPI=0
 		KERNEL_REPACK_ONLY=1
 		COLLECT_APPS=1
@@ -190,6 +194,8 @@ for var in "$@"; do
 		BUILD_PORTS=1
 	elif [[ "$var" = "--kernel" ]]; then
 		KERNEL_BUILD_WITH_APPS=1
+	elif [[ "$var" = "--libc" ]]; then
+		BUILD_LIBC=1
 	elif [[ "$var" = "--help" || "$var" = "-h" || "$var" = "?" ]]; then
 		print_help
 		exit 0
