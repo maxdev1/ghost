@@ -60,14 +60,6 @@ void requestsWriteToIrqDevice(g_task* task, uint8_t irq)
 	buf[0] = irq;
 	int64_t len;
 
-	g_fs_write_status status;
-	int attempts = 100;
-	while((status = filesystemWrite(device->node, buf, 0, 1, &len)) == G_FS_WRITE_BUSY && --attempts)
-	{
-		filesystemWaitToWrite(task, device->node);
-	}
-
-	g_task* devTask = taskingGetById(device->task);
-	if(devTask)
-		taskingSetCurrentTask(devTask);
+	// TODO Check status? Wake target task?
+	filesystemWrite(device->node, buf, 0, 1, &len);
 }

@@ -22,14 +22,13 @@
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/atoms.hpp"
-#include "kernel/tasking/wait.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/utils/string.hpp"
 
 void syscallSleep(g_task* task, g_syscall_sleep* data)
 {
-	clockWakeAt(task->id, taskingGetLocal()->time + data->milliseconds);
+	clockWaitForTime(task->id, taskingGetLocal()->time + data->milliseconds);
 	task->status = G_THREAD_STATUS_WAITING;
 	taskingSchedule();
 }
@@ -43,7 +42,7 @@ void syscallAtomicLock(g_task* task, g_syscall_atomic_lock* data)
 {
 	bool useTimeout = (data->timeout > 0);
 	if(useTimeout)
-		clockWakeAt(task->id, taskingGetLocal()->time + data->timeout);
+		clockWaitForTime(task->id, taskingGetLocal()->time + data->timeout);
 
 	while(
 		(!useTimeout || !(data->has_timeout = clockHasTimedOut(task->id))) &&
@@ -52,12 +51,14 @@ void syscallAtomicLock(g_task* task, g_syscall_atomic_lock* data)
 		if(data->is_try)
 			break;
 
+		atomicWaitForLock(data->atom, task->id);
+		task->status = G_THREAD_STATUS_WAITING;
 		taskingYield();
 	}
 
 	if(useTimeout)
-		clockUnsetAlarm(task->id);
-	atomicRemoveFromWaiters(data->atom, task->id);
+		clockUnwaitForTime(task->id);
+	atomicUnwaitForLock(data->atom, task->id);
 }
 
 void syscallAtomicUnlock(g_task* task, g_syscall_atomic_unlock* data)
@@ -100,7 +101,7 @@ void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
 
 void syscallJoin(g_task* task, g_syscall_join* data)
 {
-	waitJoinTask(task, data->taskId);
+	taskingWaitForExit(data->taskId, task->id);
 }
 
 void syscallSpawn(g_task* task, g_syscall_spawn* data)

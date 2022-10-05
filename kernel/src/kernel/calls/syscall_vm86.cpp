@@ -20,7 +20,6 @@
 
 #include "kernel/calls/syscall_vm86.hpp"
 #include "kernel/memory/memory.hpp"
-#include "kernel/tasking/wait.hpp"
 #include "shared/logger/logger.hpp"
 
 void syscallCallVm86(g_task* task, g_syscall_call_vm86* data)

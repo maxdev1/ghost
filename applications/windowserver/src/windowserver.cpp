@@ -83,6 +83,8 @@ void windowserver_t::launch()
 
 	createInterface();
 
+	g_spawn("/applications/terminal.bin", "", "", G_SECURITY_LEVEL_APPLICATION);
+
 	renderLoop(screenBounds);
 }
 
@@ -114,7 +116,7 @@ void windowserver_t::initializeGraphics()
 
 void windowserver_t::renderLoop(g_rectangle screenBounds)
 {
-	g_create_thread((void*) &windowserver_t::fpsCounter);
+	// g_create_thread((void*) &windowserver_t::fpsCounter);
 	g_task_register_id("windowserver/renderer");
 
 	g_graphics global;

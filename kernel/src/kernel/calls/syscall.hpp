@@ -35,7 +35,8 @@ typedef void (*g_syscall_handler)(g_task*, void*);
  */
 struct g_syscall_registration
 {
-    g_syscall_handler handler;
+	g_syscall_handler handler;
+	bool reentrant;
 };
 
 /**
@@ -65,11 +66,6 @@ void syscallRunThreaded(g_syscall_handler handler, g_task* caller, void* syscall
  * source task and enters the system call handler accordingly.
  */
 void syscallThreadEntry();
-
-/**
- * Creates a system call registration.
- */
-void syscallRegister(int call, g_syscall_handler handler, bool threaded);
 
 /**
  * Creates the system call table.

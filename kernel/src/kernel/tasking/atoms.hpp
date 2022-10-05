@@ -62,6 +62,11 @@ void atomicUnlock(g_atom atom);
 /**
  * Removes the task from a wait queue, for example in case of timeouts.
  */
-void atomicRemoveFromWaiters(g_atom atom, g_tid task);
+void atomicUnwaitForLock(g_atom atom, g_tid task);
+
+/**
+ * Adds the task to the wait queue for the atom.
+ */
+void atomicWaitForLock(g_atom atom, g_tid task);
 
 #endif

@@ -21,17 +21,16 @@
 #include "kernel/memory/heap.hpp"
 #include "kernel/tasking/atoms.hpp"
 #include "kernel/tasking/scheduler.hpp"
-#include "kernel/tasking/wait.hpp"
 #include "shared/logger/logger.hpp"
+
+#define G_DEBUG_LOG_PAUSE 5000
 
 void schedulerInitializeLocal()
 {
-	taskingGetLocal()->scheduling.round = 1;
 }
 
 void schedulerPrepareEntry(g_schedule_entry* entry)
 {
-	entry->schedulerRound = 0;
 }
 
 g_schedule_entry* schedulerGetNextTask(g_tasking_local* local)
@@ -41,6 +40,7 @@ g_schedule_entry* schedulerGetNextTask(g_tasking_local* local)
 	{
 		return entry;
 	}
+
 	while(entry)
 	{
 		if(entry->task == local->scheduling.current)
@@ -49,6 +49,7 @@ g_schedule_entry* schedulerGetNextTask(g_tasking_local* local)
 		}
 		entry = entry->next;
 	}
+
 	if(entry)
 	{
 		entry = entry->next;
@@ -75,17 +76,12 @@ void schedulerSchedule(g_tasking_local* local)
 	g_schedule_entry* entry = start;
 	for(;;)
 	{
-		if(entry->schedulerRound < local->scheduling.round)
+		g_task* task = entry->task;
+		if(task->status == G_THREAD_STATUS_RUNNING)
 		{
-			entry->schedulerRound = local->scheduling.round;
-
-			g_task* task = entry->task;
-			if(task->status == G_THREAD_STATUS_RUNNING)
-			{
-				local->scheduling.current = task;
-				local->scheduling.current->timesScheduled++;
-				break;
-			}
+			local->scheduling.current = task;
+			local->scheduling.current->statistics.timesScheduled++;
+			break;
 		}
 
 		entry = entry->next;
@@ -97,22 +93,23 @@ void schedulerSchedule(g_tasking_local* local)
 		if(entry == start)
 		{
 			local->scheduling.current = local->scheduling.idleTask;
-			local->scheduling.idleTask->timesScheduled++;
-			local->scheduling.round++;
+			local->scheduling.idleTask->statistics.timesScheduled++;
 			break;
 		}
 	}
 	mutexRelease(&local->lock);
 
 #if G_DEBUG_THREAD_DUMPING
-	static int lastLog = 0;
-	if(lastLog++ > 10000)
+	static int lastLogTime = 0;
+	if((local->time - lastLogTime) > G_DEBUG_LOG_PAUSE)
 	{
-		lastLog = 0;
+		lastLogTime = local->time;
 		schedulerDump();
 	}
 #endif
 }
+
+#define USAGE(timesScheduled, timesYielded) ((timesScheduled - timesYielded) / (G_DEBUG_LOG_PAUSE / 1000))
 
 void schedulerDump()
 {
@@ -126,34 +123,34 @@ void schedulerDump()
 		const char* taskState;
 		if(entry->task->status == G_THREAD_STATUS_RUNNING)
 		{
-			taskState = "running";
+			taskState = "";
 		}
 		else if(entry->task->status == G_THREAD_STATUS_UNUSED)
 		{
-			taskState = "unused";
+			taskState = " [unused]";
 		}
 		else if(entry->task->status == G_THREAD_STATUS_DEAD)
 		{
-			taskState = "dead";
+			taskState = " [dead]";
 		}
 		else if(entry->task->status == G_THREAD_STATUS_WAITING)
 		{
-			taskState = "waiting";
+			taskState = " [waiting]";
 		}
 
 		if(entry->task->status != G_THREAD_STATUS_DEAD)
 		{
-			logInfo("%# p: %i, t: %i, %s, tSch: %i, tYld: %i, time: %i, round: %i",
-					entry->task->process->id, entry->task->id, taskState, entry->task->timesScheduled, entry->task->timesYielded,
-					entry->task->timesScheduled - entry->task->timesYielded, entry->schedulerRound);
+			logInfo("%# (%i:%i)%s usage: %i", entry->task->process->id, entry->task->id, taskState, USAGE(entry->task->statistics.timesScheduled, entry->task->statistics.timesYielded));
+			entry->task->statistics.timesScheduled = 0;
+			entry->task->statistics.timesYielded = 0;
 		}
 		entry = entry->next;
 	}
 
 	g_task* idle = local->scheduling.idleTask;
-	logInfo("%# p: %i, t: %i, tSch: %i, tYld: %i, time: %i",
-			idle->process->id, idle->id, idle->timesScheduled, idle->timesYielded,
-			idle->timesScheduled - idle->timesYielded);
+	logInfo("%# (%i:%i) idle, usage: %i", idle->process->id, idle->id, USAGE(idle->statistics.timesScheduled, idle->statistics.timesYielded));
+	idle->statistics.timesScheduled = 0;
+	idle->statistics.timesYielded = 0;
 
 	mutexRelease(&local->lock);
 }

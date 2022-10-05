@@ -72,7 +72,7 @@ void __fini_stdio()
 		if(f->file_descriptor > STDERR_FILENO && g_atomic_try_lock(f->lock))
 		{
 			__fclose_static_unlocked(f);
-			f->lock = 0;
+			g_atomic_unlock(f->lock);
 		}
 		f = n;
 	}

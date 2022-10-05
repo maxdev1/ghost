@@ -18,15 +18,14 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <ghost.h>
 #include "stdlib.h"
+#include <ghost.h>
 
 /**
  *
  */
-void abort() {
-
-	#warning TODO send a SIGABRT
+void abort()
+{
 	g_log("program aborted");
 	g_exit(-1);
 }

@@ -26,8 +26,7 @@
 /**
  *
  */
-size_t __fwrite_unlocked(const void* ptr, size_t size, size_t nmemb,
-		FILE* stream) {
+size_t __fwrite_unlocked(const void* ptr, size_t size, size_t nmemb, FILE* stream) {
 
 	// check for illegal arguments
 	if (size == 0 || nmemb == 0) {
@@ -51,13 +50,6 @@ size_t __fwrite_unlocked(const void* ptr, size_t size, size_t nmemb,
 	// unbuffered files perform direct write
 	if (stream->buffer_mode == _IONBF) {
 
-		// if the last access was a read, flush it
-		if (stream->flags & G_FILE_FLAG_BUFFER_DIRECTION_READ) {
-			if (__fflush_read_unlocked(stream) == EOF) {
-				return EOF;
-			}
-		}
-
 		// if stream has no write implementation, return with error
 		if (stream->impl_write == NULL) {
 			errno = EBADF;
@@ -77,8 +69,8 @@ size_t __fwrite_unlocked(const void* ptr, size_t size, size_t nmemb,
 
 		while (done < total) {
 			// call write implementation
-			ssize_t written = stream->impl_write(&(((uint8_t*) ptr)[done]),
-					total, stream);
+			uint8_t* pos = &(((uint8_t*) ptr)[done]);
+			ssize_t written = stream->impl_write(pos, total - done, stream);
 
 			if (written == 0) {
 				stream->flags |= G_FILE_FLAG_EOF;

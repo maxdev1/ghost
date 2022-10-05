@@ -145,7 +145,7 @@ typedef struct
      * Provides a pointer to the "syscall" function of the kernel, required when attempting
      * to use a system call while within a user-space interrupt service routine.
      */
-    void (*kernelSyscallEntry)(uint32_t, void*);
+    void (*syscallKernelEntry)(uint32_t, void*);
 } __attribute__((packed)) g_process_info;
 
 /**

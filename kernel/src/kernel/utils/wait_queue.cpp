@@ -18,34 +18,51 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "kernel/tasking/wait.hpp"
-
+#include "kernel/utils/wait_queue.hpp"
 #include "kernel/memory/heap.hpp"
-#include "shared/logger/logger.hpp"
 
-void waitForFile(g_task* task, g_fs_node* file,
-				 bool (*waitResolverFromDelegate)(g_fs_virt_id))
+void waitQueueAdd(g_wait_queue_entry** queue, g_tid task)
 {
-	for(;;)
+	g_wait_queue_entry* waiter = (g_wait_queue_entry*) heapAllocate(sizeof(g_wait_queue_entry));
+	waiter->task = task;
+	waiter->next = *queue;
+	*queue = waiter;
+}
+
+void waitQueueRemove(g_wait_queue_entry** queue, g_tid task)
+{
+	g_wait_queue_entry* prev = nullptr;
+	g_wait_queue_entry* waiter = *queue;
+	while(waiter)
 	{
-		if(waitResolverFromDelegate(file->id))
+		if(waiter->task == task)
 		{
+			auto next = waiter->next;
+			if(prev)
+				prev->next = next;
+			else
+				*queue = next;
+
+			heapFree(waiter);
 			break;
 		}
-		taskingYield();
+		prev = waiter;
+		waiter = waiter->next;
 	}
 }
 
-void waitJoinTask(g_task* task, g_tid otherTaskId)
+void waitQueueWake(g_wait_queue_entry** queue)
 {
-	for(;;)
+	auto waiter = *queue;
+	while(waiter)
 	{
-		g_task* otherTask = taskingGetById(otherTaskId);
-		if(otherTask == 0 || otherTask->status == G_THREAD_STATUS_DEAD ||
-		   otherTask->status == G_THREAD_STATUS_UNUSED)
-		{
-			break;
-		}
-		taskingYield();
+		g_task* task = taskingGetById(waiter->task);
+		if(task && task->status == G_THREAD_STATUS_WAITING)
+			task->status = G_THREAD_STATUS_RUNNING;
+
+		auto next = waiter->next;
+		heapFree(waiter);
+		waiter = next;
 	}
+	*queue = nullptr;
 }

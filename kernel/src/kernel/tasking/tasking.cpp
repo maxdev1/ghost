@@ -36,8 +36,8 @@
 #include "kernel/tasking/scheduler.hpp"
 #include "kernel/tasking/tasking_directory.hpp"
 #include "kernel/tasking/tasking_memory.hpp"
-#include "kernel/tasking/wait.hpp"
 #include "kernel/utils/hashmap.hpp"
+#include "kernel/utils/wait_queue.hpp"
 #include "shared/logger/logger.hpp"
 
 static g_tasking_local* taskingLocal = 0;
@@ -45,6 +45,8 @@ static g_mutex taskingIdLock;
 static g_tid taskingIdNext = 0;
 
 static g_hashmap<g_tid, g_task*>* taskGlobalMap;
+
+void _taskingSetDefaults(g_task* task, g_process* process, g_security_level level);
 
 g_tasking_local* taskingGetLocal()
 {
@@ -90,7 +92,7 @@ void taskingYield()
 		kernelPanic("%! can't yield while %i locks are held", "tasking", taskingGetLocal()->lockCount);
 
 	g_task* task = taskingGetCurrentTask();
-	task->timesYielded++;
+	task->statistics.timesYielded++;
 
 	auto previousState = task->state;
 	asm volatile("int $0x81" ::
@@ -142,7 +144,6 @@ void taskingInitializeLocal()
 
 	local->scheduling.current = 0;
 	local->scheduling.list = 0;
-	local->scheduling.round = 0;
 	local->scheduling.idleTask = 0;
 
 	mutexInitialize(&local->lock);
@@ -215,19 +216,8 @@ void taskingAddToProcessTaskList(g_process* process, g_task* task)
 g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_security_level level)
 {
 	g_task* task = (g_task*) heapAllocateClear(sizeof(g_task));
-	if(process->main == 0)
-	{
-		task->id = process->id;
-	}
-	else
-	{
-		task->id = taskingGetNextId();
-	}
-	task->process = process;
-	task->securityLevel = level;
-	task->status = G_THREAD_STATUS_RUNNING;
+	_taskingSetDefaults(task, process, level);
 	task->type = G_THREAD_TYPE_DEFAULT;
-	task->active = false;
 
 	// Create task space
 	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(task->process->pageDirectory);
@@ -252,10 +242,7 @@ g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_securit
 g_task* taskingCreateThreadVm86(g_process* process, uint32_t intr, g_vm86_registers in, g_vm86_registers* out)
 {
 	g_task* task = (g_task*) heapAllocateClear(sizeof(g_task));
-	task->id = taskingGetNextId();
-	task->process = process;
-	task->securityLevel = G_SECURITY_LEVEL_KERNEL;
-	task->status = G_THREAD_STATUS_RUNNING;
+	_taskingSetDefaults(task, process, G_SECURITY_LEVEL_KERNEL);
 	task->type = G_THREAD_TYPE_VM86;
 
 	// Create task space
@@ -295,6 +282,19 @@ g_task* taskingCreateThreadVm86(g_process* process, uint32_t intr, g_vm86_regist
 	taskingAddToProcessTaskList(process, task);
 	hashmapPut(taskGlobalMap, task->id, task);
 	return task;
+}
+
+void _taskingSetDefaults(g_task* task, g_process* process, g_security_level level)
+{
+	if(process->main == 0)
+		task->id = process->id;
+	else
+		task->id = taskingGetNextId();
+	task->process = process;
+	task->securityLevel = level;
+	task->status = G_THREAD_STATUS_RUNNING;
+	task->active = false;
+	task->waitersJoin = nullptr;
 }
 
 void taskingAssign(g_tasking_local* local, g_task* task)
@@ -487,7 +487,7 @@ void taskingCleanupThread()
 		}
 
 		// Sleep for some time
-		clockWakeAt(task->id, taskingGetLocal()->time + 3000);
+		clockWaitForTime(task->id, taskingGetLocal()->time + 3000);
 		task->status = G_THREAD_STATUS_WAITING;
 		taskingYield();
 	}
@@ -497,6 +497,9 @@ void taskingRemoveThread(g_task* task)
 {
 	if(task->status != G_THREAD_STATUS_DEAD)
 		kernelPanic("%! tried to remove a task %i that is not dead", "tasking", task->id);
+
+	// Wake up tasks that joined this task
+	waitQueueWake(&task->waitersJoin);
 
 	// Switch to task space
 	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(task->process->pageDirectory);
@@ -694,4 +697,15 @@ g_spawn_status taskingSpawn(g_task* spawner, g_fd file, g_security_level securit
 							g_process** outProcess, g_spawn_validation_details* outValidationDetails)
 {
 	return elfLoadExecutable(spawner, file, securityLevel, outProcess, outValidationDetails);
+}
+
+void taskingWaitForExit(g_tid joinedTid, g_tid waiter)
+{
+	g_task* task = taskingGetById(joinedTid);
+	if(!task)
+		return;
+
+	mutexAcquire(&task->process->lock);
+	waitQueueAdd(&task->waitersJoin, waiter);
+	mutexRelease(&task->process->lock);
 }

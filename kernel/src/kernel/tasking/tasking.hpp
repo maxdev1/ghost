@@ -23,7 +23,6 @@
 
 #include "ghost/kernel.h"
 #include "ghost/system.h"
-
 #include "kernel/calls/syscall.hpp"
 #include "kernel/memory/address_range_pool.hpp"
 #include "kernel/memory/paging.hpp"
@@ -52,6 +51,8 @@ struct g_stack
 	g_virtual_address end;
 };
 
+struct g_wait_queue_entry;
+
 /**
  * A task is a single thread executing either in user or kernel level.
  *
@@ -78,8 +79,11 @@ struct g_task
 	/**
 	 * Number of times this task was ever scheduled.
 	 */
-	int timesScheduled;
-	int timesYielded;
+	struct
+	{
+		int timesScheduled;
+		int timesYielded;
+	} statistics;
 
 	/**
 	 * Sometimes a task needs to do work in the address space of a different process.
@@ -125,6 +129,11 @@ struct g_task
 	 * Only filled for VM86 tasks.
 	 */
 	g_task_information_vm86* vm86Data;
+
+	/**
+	 * List of tasks that wait for this task to die.
+	 */
+	g_wait_queue_entry* waitersJoin;
 };
 
 /**
@@ -139,7 +148,6 @@ struct g_task_entry
 struct g_schedule_entry
 {
 	g_task* task;
-	uint32_t schedulerRound;
 	g_schedule_entry* next;
 };
 
@@ -150,33 +158,38 @@ struct g_schedule_entry
 struct g_tasking_local
 {
 	g_mutex lock;
+
+	/**
+	 * When mutexes are used, each first acquire call to a mutex increases
+	 * the lockCount by one, each last release call to a mutex decreases it.
+	 * On the first acquire, the interrupt flag is stored and interrupts are
+	 * disabled, on the last release the interrupt flag is restored.
+	 */
 	int lockCount;
 	bool lockSetIF;
 
 	/**
-	 * Tasking information.
+	 * Scheduling information for this processor.
 	 */
 	struct
 	{
 		g_schedule_entry* list;
 		g_task* current;
 
-		uint32_t round;
 		g_task* idleTask;
 	} scheduling;
 
 	/**
 	 * Approximation of milliseconds that this processor has run.
 	 */
-	uint32_t time;
+	uint64_t time;
 };
 
 /**
  * Flags used when allocating virtual ranges.
  */
 #define G_PROC_VIRTUAL_RANGE_FLAG_NONE 0
-/* Weak flag signals that the physical memory mapped behind the
-virtual range is not managed by the kernel (for example MMIO). */
+/* Weak flag signals that the physical memory mapped behind the virtual range is not managed by the kernel (for example MMIO). */
 #define G_PROC_VIRTUAL_RANGE_FLAG_WEAK 1
 
 /**
@@ -402,5 +415,10 @@ g_spawn_status taskingSpawn(g_task* spawner, g_fd file, g_security_level securit
  * Adds the task to the process task list.
  */
 void taskingAddToProcessTaskList(g_process* process, g_task* task);
+
+/**
+ * Waits until the task exits and then wakes the waiting task.
+ */
+void taskingWaitForExit(g_tid task, g_tid waiter);
 
 #endif

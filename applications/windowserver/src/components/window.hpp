@@ -72,6 +72,7 @@ class window_t : public component_t, public titled_component_t
     window_resize_mode_t resizeMode;
 
     int shadowSize;
+    int padding;
     g_rectangle crossBounds;
 
   public:

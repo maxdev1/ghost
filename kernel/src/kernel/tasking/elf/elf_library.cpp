@@ -65,7 +65,7 @@ g_virtual_address elfLibraryLoadDependencies(g_task* caller, g_elf_object* objec
 
 		} else if(status == G_SPAWN_STATUS_DEPENDENCY_DUPLICATE)
 		{
-			logDebug("%!   duplicate dependency ignored: %s -> %s", "elf", object->name, dependency->name);
+			//logDebug("%!   duplicate dependency ignored: %s -> %s", "elf", object->name, dependency->name);
 
 		} else
 		{
@@ -252,7 +252,7 @@ void elfObjectApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 
 			} else
 			{
-				logDebug("%!     binary contains unhandled relocation: %i", "elf", type);
+				// logDebug("%!     binary contains unhandled relocation: %i", "elf", type);
 			}
 
 			entry++;

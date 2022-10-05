@@ -22,7 +22,6 @@
 #include "kernel/ipc/message.hpp"
 #include "kernel/tasking/atoms.hpp"
 #include "kernel/tasking/tasking_directory.hpp"
-#include "kernel/tasking/wait.hpp"
 #include "shared/logger/logger.hpp"
 
 void syscallRegisterTaskIdentifier(g_task* task, g_syscall_task_id_register* data)
@@ -40,8 +39,11 @@ void syscallMessageSend(g_task* task, g_syscall_send_message* data)
 	while((data->status = messageSend(task->id, data->receiver, data->buffer, data->length, data->transaction)) == G_MESSAGE_SEND_STATUS_QUEUE_FULL &&
 		  data->mode == G_MESSAGE_SEND_MODE_BLOCKING)
 	{
+		messageWaitForSend(task->id, data->receiver);
+		task->status = G_THREAD_STATUS_WAITING;
 		taskingYield();
 	}
+	messageUnwaitForSend(task->id, data->receiver);
 }
 
 void syscallMessageReceive(g_task* task, g_syscall_receive_message* data)
@@ -49,13 +51,17 @@ void syscallMessageReceive(g_task* task, g_syscall_receive_message* data)
 	while((data->status = messageReceive(task->id, data->buffer, data->maximum, data->transaction)) == G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY &&
 		  data->mode == G_MESSAGE_RECEIVE_MODE_BLOCKING)
 	{
-		// TODO When messageReceive starts putting the task to sleep, this will not make sense anymore:
-		if(data->break_condition && atomicLock(task, data->break_condition, true, false))
-		{
-			data->status = G_MESSAGE_RECEIVE_STATUS_INTERRUPTED;
-			break;
-		}
+		/**
+		 * TODO: "Break condition" doesn't work anymore since there is no connection between atoms and
+		 * the message wait queues. This must be somehow connected and the task waken when required.
+		 */
+		// if(data->break_condition && atomicLock(task, data->break_condition, true, false))
+		//{
+		//	data->status = G_MESSAGE_RECEIVE_STATUS_INTERRUPTED;
+		//	break;
+		// }
 
+		task->status = G_THREAD_STATUS_WAITING;
 		taskingYield();
 	}
 }

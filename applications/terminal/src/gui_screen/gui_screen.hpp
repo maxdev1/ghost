@@ -70,8 +70,8 @@ class gui_screen_t : public screen_t
 	bool cursorBlink = false;
 
 	std::list<g_key_info> input_buffer;
-	g_atom input_buffer_empty = g_atomic_initialize();
-	g_atom input_buffer_lock = g_atomic_initialize();
+	g_atom input_buffer_empty;
+	g_atom input_buffer_lock;
 
 	bool focused = false;
 	uint64_t last_input_time = 0;

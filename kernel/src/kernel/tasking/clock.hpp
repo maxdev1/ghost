@@ -38,22 +38,24 @@ struct g_clock_waiter
 void clockInitialize();
 
 /**
- * Puts the task to sleep and makes it wake up at the given wake time.
+ * Adds the task to the queue of tasks that are waiting for a specific time. This
+ * queue is ordered ascending by the time of wake-up.
  */
-void clockWakeAt(g_tid task, uint64_t wakeTime);
+void clockWaitForTime(g_tid task, uint64_t wakeTime);
 
 /**
- * Called when the local time has changed. Wakes tasks at the given time.
+ * Called when the local time has changed. Wakes all tasks on top of the wait queue
+ * for which the wake-up time is lower than the current.
  */
 void clockUpdate();
 
 /**
- * Removes the task from the wake list.
+ * Removes the task from the wake queue.
  */
-void clockUnsetAlarm(g_tid task);
+void clockUnwaitForTime(g_tid task);
 
 /**
- * Returns whether this alarm has already timed out.
+ * @returns true when the wake-up time for this task was reached or the queue entry removed.
  */
 bool clockHasTimedOut(g_tid task);
 

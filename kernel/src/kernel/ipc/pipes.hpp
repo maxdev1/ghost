@@ -22,6 +22,7 @@
 #define __KERNEL_IPC_PIPES__
 
 #include "ghost.h"
+#include "kernel/utils/wait_queue.hpp"
 #include "shared/system/mutex.hpp"
 
 /**
@@ -47,6 +48,9 @@ struct g_pipeline
 	uint32_t capacity;
 
 	uint16_t references;
+
+	g_wait_queue_entry* waitersRead;
+	g_wait_queue_entry* waitersWrite;
 };
 
 /**
@@ -91,5 +95,8 @@ g_fs_open_status pipeTruncate(g_fs_phys_id pipeId);
  * Deletes the pipe.
  */
 void pipeDeleteInternal(g_fs_phys_id pipeId, g_pipeline* pipe);
+
+void pipeWaitForRead(g_tid task, g_fs_phys_id pipeId);
+void pipeWaitForWrite(g_tid task, g_fs_phys_id pipeId);
 
 #endif
