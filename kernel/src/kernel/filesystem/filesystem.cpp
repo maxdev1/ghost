@@ -321,10 +321,10 @@ g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task
 	}
 
 	// Actually open the file
-	return filesystemOpen(file, flags, task, outFd);
+	return filesystemOpenNodeFd(file, flags, task->process->id, outFd);
 }
 
-g_fs_open_status filesystemOpen(g_fs_node* file, g_file_flag_mode flags, g_task* task, g_fd* outFd)
+g_fs_open_status filesystemOpenNode(g_fs_node* file, g_file_flag_mode flags, g_pid process, g_file_descriptor** outDescriptor, g_fd optionalTargetFd)
 {
 	g_fs_delegate* delegate = filesystemFindDelegate(file);
 	if(!delegate->open)
@@ -333,10 +333,17 @@ g_fs_open_status filesystemOpen(g_fs_node* file, g_file_flag_mode flags, g_task*
 	g_fs_open_status status = delegate->open(file);
 	if(status == G_FS_OPEN_SUCCESSFUL)
 	{
-		g_file_descriptor* descriptor;
-		filesystemProcessCreateDescriptor(task->process->id, file->id, flags, &descriptor);
-		*outFd = descriptor->id;
+		status = filesystemProcessCreateDescriptor(process, file->id, flags, outDescriptor, optionalTargetFd);
 	}
+	return status;
+}
+
+g_fs_open_status filesystemOpenNodeFd(g_fs_node* file, g_file_flag_mode flags, g_pid process, g_fd* outFd, g_fd optionalTargetFd)
+{
+	g_file_descriptor* descriptor;
+	auto status = filesystemOpenNode(file, flags, process, &descriptor, optionalTargetFd);
+	if(descriptor)
+		*outFd = descriptor->id;
 	return status;
 }
 
@@ -536,6 +543,7 @@ g_fs_close_status filesystemClose(g_pid pid, g_fd fd, g_bool removeDescriptor)
 		logWarn("%! failed to close fd %i in process %i with status: %i", "fs", fd, pid, status);
 	}
 
+	// TODO In which case do we *not* remove it?
 	if(removeDescriptor)
 		filesystemProcessRemoveDescriptor(pid, fd);
 

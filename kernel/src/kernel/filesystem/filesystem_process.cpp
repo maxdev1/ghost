@@ -115,62 +115,61 @@ void filesystemProcessRemoveDescriptor(g_pid pid, g_fd fd)
 	heapFree(descriptor);
 }
 
-g_file_descriptor* filesystemProcessCloneDescriptor(g_file_descriptor* sourceFd, g_pid targetPid, g_fd targetFd)
+g_fs_clonefd_status filesystemProcessCloneDescriptor(g_pid sourcePid, g_fd sourceFd, g_pid targetPid, g_fd targetFd, g_fd* outFd)
 {
-
 	if(targetFd != G_FD_NONE)
-		filesystemProcessRemoveDescriptor(targetPid, targetFd);
+		filesystemClose(targetPid, targetFd, true);
+
+	g_file_descriptor* sourceDescriptor = filesystemProcessGetDescriptor(sourcePid, sourceFd);
+	if(!sourceDescriptor)
+		return G_FS_CLONEFD_INVALID_SOURCE_FD;
+
+	g_fs_node* node = filesystemGetNode(sourceDescriptor->nodeId);
+	if(!node)
+	{
+		logInfo("%! failed to clone descriptor %i to process %i, node not found", "fs", sourceDescriptor->id, targetPid);
+		return G_FS_CLONEFD_INVALID_SOURCE_FD;
+	}
 
 	g_file_descriptor* createdFd;
-	g_fs_open_status status = filesystemProcessCreateDescriptor(targetPid, sourceFd->nodeId, sourceFd->openFlags, &createdFd, targetFd);
+	g_fs_open_status status = filesystemOpenNode(node, sourceDescriptor->openFlags, targetPid, &createdFd, targetFd);
 	if(status != G_FS_OPEN_SUCCESSFUL)
 	{
-		logInfo("%! failed to clone descriptor %i to process %i in descriptor %i with status %i", "filesystem", sourceFd->id, targetPid, targetFd, status);
-		return 0;
+		logInfo("%! failed to clone descriptor %i to process %i in descriptor %i with status %i", "fs", sourceDescriptor->id, targetPid, targetFd, status);
+		return G_FS_CLONEFD_ERROR;
 	}
+	*outFd = createdFd->id;
 
-	createdFd->offset = sourceFd->offset;
-	return createdFd;
+	createdFd->offset = sourceDescriptor->offset;
+
+	return G_FS_CLONEFD_SUCCESSFUL;
 }
 
 /**
  *
  */
-void filesystemProcessCreateStdioPipe(g_pid sourcePid, g_pid targetPid, g_fd sourceFd, g_fd* out, g_fd targetFd)
+void filesystemProcessCreateStdioPipe(g_pid sourcePid, g_fd sourceFd, g_pid targetPid, g_fd targetFd, g_fd* outFd)
 {
-	*out = G_FD_NONE;
-
 	if(sourceFd == G_FD_NONE)
 	{
-#warning TODO What happens in this case?
+		*outFd = G_FD_NONE;
+		return;
 	}
-	else
+
+	auto status = filesystemProcessCloneDescriptor(sourcePid, sourceFd, targetPid, targetFd, outFd);
+	if(status != G_FS_CLONEFD_SUCCESSFUL)
 	{
-		// If source fd is given, try to clone it to target process
-		g_file_descriptor* sourceDescriptor = filesystemProcessGetDescriptor(sourcePid, sourceFd);
-		if(!sourceDescriptor)
-		{
-			logInfo("%! failed to clone source fd %i:%i to %i:%i, source descriptor not found", "filesystem", sourcePid, sourceFd, targetPid, targetFd);
-			return;
-		}
-
-		g_file_descriptor* targetDescriptor = filesystemProcessCloneDescriptor(sourceDescriptor, targetPid, targetFd);
-		if(!targetDescriptor)
-		{
-			logInfo("%! failed to clone source fd %i:%i to %i:%i", "filesystem", sourcePid, sourceFd, targetPid, targetFd);
-			return;
-		}
-
-		*out = targetDescriptor->id;
+		logInfo("%! failed to create stdio by cloning fd %i:%i to %i:%i", "filesystem", sourcePid, sourceFd, targetPid, targetFd);
+		return;
 	}
 }
 
 /**
  *
  */
-void filesystemProcessCreateStdio(g_pid sourcePid, g_pid targetPid, g_fd* inStdio, g_fd* outStdio)
+void filesystemProcessCreateStdio(g_pid sourcePid, g_fd* sourceStdio, g_pid targetPid, g_fd* targetStdio)
 {
-	filesystemProcessCreateStdioPipe(sourcePid, targetPid, inStdio[0], &outStdio[0], 0);
-	filesystemProcessCreateStdioPipe(sourcePid, targetPid, inStdio[1], &outStdio[1], 1);
-	filesystemProcessCreateStdioPipe(sourcePid, targetPid, inStdio[2], &outStdio[2], 2);
+	filesystemProcessCreateStdioPipe(sourcePid, sourceStdio[0], targetPid, 0, &targetStdio[0]);
+	filesystemProcessCreateStdioPipe(sourcePid, sourceStdio[1], targetPid, 1, &targetStdio[1]);
+	filesystemProcessCreateStdioPipe(sourcePid, sourceStdio[2], targetPid, 2, &targetStdio[2]);
 }

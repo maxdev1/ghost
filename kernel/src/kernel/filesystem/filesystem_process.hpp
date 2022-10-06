@@ -81,11 +81,11 @@ void filesystemProcessRemoveDescriptor(g_pid pid, g_fd fd);
 /**
  * Clones a file descriptor.
  */
-g_file_descriptor* filesystemProcessCloneDescriptor(g_file_descriptor* descriptor, g_pid targetPid, g_fd targetFd);
+g_fs_clonefd_status filesystemProcessCloneDescriptor(g_pid sourcePid, g_fd sourceFd, g_pid targetPid, g_fd targetFd, g_fd* outFd);
 
 /**
  * Creates stdio for a new process (and possibly maps requested values).
  */
-void filesystemProcessCreateStdio(g_pid pid, g_pid targetPid, g_fd* inStdio, g_fd* outStdio);
+void filesystemProcessCreateStdio(g_pid sourcePid, g_fd* sourceStdio, g_pid targetPid, g_fd* targetStdio);
 
 #endif

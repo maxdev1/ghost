@@ -240,7 +240,7 @@ void interface_receiver_t::processCommand(g_tid senderTid, g_ui_message_header* 
 		}
 		else
 		{
-			if(component->setNumericProperty(request->property, (bool) request->value))
+			if(component->setNumericProperty(request->property, request->value))
 			{
 				response->status = G_UI_PROTOCOL_SUCCESS;
 			}

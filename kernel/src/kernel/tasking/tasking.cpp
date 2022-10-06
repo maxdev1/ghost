@@ -56,7 +56,8 @@ g_tasking_local* taskingGetLocal()
 g_task* taskingGetCurrentTask()
 {
 	if(!systemIsReady())
-		return nullptr;
+		kernelPanic("%! can't access current task before initializing system", "tasking");
+
 	return taskingGetLocal()->scheduling.current;
 }
 

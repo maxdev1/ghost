@@ -98,7 +98,7 @@ void atomicWaitForLock(g_atom atom, g_tid task)
 	g_atom_entry* entry = hashmapGet<g_atom, g_atom_entry*>(atomMap, atom, nullptr);
 	if(!entry)
 	{
-		logWarn("%! tried to add waiter for task task %i to unknown atom %i", "atoms", task, atom);
+		logWarn("%! tried to add waiter for task %i to unknown atom %i", "atoms", task, atom);
 		return;
 	}
 

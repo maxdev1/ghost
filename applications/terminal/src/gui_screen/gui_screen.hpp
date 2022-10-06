@@ -84,8 +84,9 @@ class gui_screen_t : public screen_t
 	int cursor_y = 0;
 
 	int char_width = 8;
-	int char_height = 14;
-	uint8_t font_size = 12;
+	int char_height = 18;
+	uint8_t font_size = 14;
+	int padding = 3;
 
 	std::map<char, char_layout_t*> char_layout_cache;
 

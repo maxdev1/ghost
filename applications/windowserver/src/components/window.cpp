@@ -112,7 +112,11 @@ void window_t::paint()
 
 	// draw background
 	roundedRectangle(cr, shadowSize, shadowSize, bounds.width - 2 * shadowSize, bounds.height - 2 * shadowSize, shadowSize);
-	cairo_set_source_rgba(cr, ARGB_FR_FROM(backgroundColor), ARGB_FG_FROM(backgroundColor), ARGB_FB_FROM(backgroundColor), focused ? 1 : 0.95);
+	cairo_set_source_rgba(cr,
+						  ARGB_FR_FROM(backgroundColor),
+						  ARGB_FG_FROM(backgroundColor),
+						  ARGB_FB_FROM(backgroundColor),
+						  ARGB_FA_FROM(backgroundColor) * (focused ? 1.0 : 0.95));
 	cairo_fill(cr);
 
 	// draw cross

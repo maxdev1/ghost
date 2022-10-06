@@ -110,6 +110,10 @@ class terminal_focus_listener_t : public g_focus_listener
 
 bool gui_screen_t::initialize()
 {
+	input_buffer_lock = g_atomic_initialize();
+	input_buffer_empty = g_atomic_initialize();
+	g_atomic_lock(input_buffer_empty);
+
 	auto status = g_ui::open();
 	if(status != G_UI_OPEN_STATUS_SUCCESSFUL)
 	{
@@ -119,7 +123,7 @@ bool gui_screen_t::initialize()
 
 	window = g_window::create();
 	window->setTitle("Terminal");
-	window->setBackground(ARGB(100, 40, 40, 42));
+	window->setBackground(ARGB(253, 0, 0, 2));
 
 	canvas = g_canvas::create();
 	canvas->setBufferListener(new canvas_buffer_listener_t(this));
@@ -138,10 +142,6 @@ bool gui_screen_t::initialize()
 	font = g_font_loader::get("consolas");
 
 	raster = new raster_t();
-
-	input_buffer_lock = g_atomic_initialize();
-	input_buffer_empty = g_atomic_initialize();
-	g_atomic_lock(input_buffer_empty);
 
 	g_create_thread_d((void*) paint_entry, this);
 	g_create_thread_d((void*) blink_cursor_entry, this);
@@ -197,7 +197,6 @@ char_layout_t* gui_screen_t::get_char_layout(cairo_scaled_font_t* scaled_face, c
 
 void gui_screen_t::paint()
 {
-	int padding = 0;
 	while(true)
 	{
 		auto windowBounds = window->getBounds();
@@ -248,6 +247,8 @@ void gui_screen_t::paint()
 
 				// Render only the character
 				char_layout_t* char_layout = get_char_layout(scaled_face, c);
+				cairo_text_extents_t char_extents;
+				cairo_scaled_font_glyph_extents(scaled_face, char_layout->glyph_buffer, 1, &char_extents);
 
 				if(char_layout)
 				{
@@ -260,7 +261,9 @@ void gui_screen_t::paint()
 					{
 						cairo_set_source_rgba(cr, 0.8, 0.8, 0.8, 1);
 					}
-					cairo_translate(cr, x * char_width + padding, (y + 1) * char_height + padding);
+					cairo_translate(cr,
+									x * char_width + padding,
+									y * char_height + char_height - (char_height - font_size) / 2 + padding);
 					cairo_glyph_path(cr, char_layout->glyph_buffer, char_layout->cluster_buffer[0].num_glyphs);
 					cairo_fill(cr);
 					cairo_restore(cr);
@@ -346,13 +349,16 @@ g_key_info gui_screen_t::readInput()
 {
 	g_key_info result;
 
-	for(;;) {
+	for(;;)
+	{
 		g_atomic_lock(input_buffer_lock);
 		if(input_buffer.size() == 0)
 		{
 			g_atomic_unlock(input_buffer_lock);
 			g_atomic_lock(input_buffer_empty);
-		} else {
+		}
+		else
+		{
 			result = input_buffer.front();
 			input_buffer.pop_front();
 			g_atomic_unlock(input_buffer_lock);
@@ -426,6 +432,8 @@ void gui_screen_t::set_focused(bool _focused)
 void gui_screen_t::update_visible_buffer_size()
 {
 	g_rectangle canvas_bounds = canvas->getBounds();
+	canvas_bounds.width -= 2 * padding;
+	canvas_bounds.height -= 2 * padding;
 	int newWidth = canvas_bounds.width / char_width;
 	int newHeight = canvas_bounds.height / char_height;
 
