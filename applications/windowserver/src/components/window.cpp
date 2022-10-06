@@ -57,7 +57,7 @@ void window_t::layout()
 	int titleHeight = 30;
 	label.setBounds(g_rectangle(padding + 10, padding, bounds.width - padding - 20, titleHeight));
 	panel.setBounds(g_rectangle(padding, padding + titleHeight, bounds.width - padding * 2, bounds.height - titleHeight - padding * 2));
-	crossBounds = g_rectangle(bounds.width - 35, 17, 15, 15);
+	crossBounds = g_rectangle(bounds.width - 30, 14, 15, 15);
 }
 
 /**

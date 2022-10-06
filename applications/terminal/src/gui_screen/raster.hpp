@@ -22,6 +22,7 @@
 #define __TERMINAL_GUISCREEN_RASTER__
 
 #include <ghost.h>
+#include <libwindow/metrics/rectangle.hpp>
 
 /**
  *
@@ -34,6 +35,7 @@ class raster_t
 
 	int width = 0;
 	int height = 0;
+	g_rectangle changed;
 
   public:
 	int getWidth() const
@@ -46,13 +48,15 @@ class raster_t
 	}
 
 	void scrollBy(int y);
-	void resizeTo(int width, int height);
+	bool resizeTo(int width, int height);
 	void clean();
 	void put(int x, int y, uint8_t c);
 
 	void lockBuffer();
 	uint8_t getUnlocked(int x, int y);
 	void unlockBuffer();
+
+	g_rectangle popChanges();
 };
 
 #endif
