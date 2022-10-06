@@ -62,18 +62,16 @@ void syscall(uint32_t callId, void* syscallData)
 	volatile g_processor_state* state;
 	if(reg->reentrant)
 	{
-		// TODO This doesn't work yet
-		// state = task->state;
-		// interruptsEnable();
-	} 
+		state = task->state;
+		interruptsEnable();
+	}
 
 	reg->handler(task, syscallData);
 
 	if(reg->reentrant)
 	{
-		// TODO This doesn't work yet
-		// interruptsDisable();
-		// task->state = state;
+		interruptsDisable();
+		task->state = state;
 	}
 }
 
@@ -121,7 +119,7 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_TASK_GET_TLS, (g_syscall_handler) syscallTaskGetTls, false);
 	_syscallRegister(G_SYSCALL_PROCESS_GET_INFO, (g_syscall_handler) syscallProcessGetInfo, false);
 
-	_syscallRegister(G_SYSCALL_CALL_VM86, (g_syscall_handler) syscallCallVm86, true);
+	_syscallRegister(G_SYSCALL_CALL_VM86, (g_syscall_handler) syscallCallVm86, false);
 	_syscallRegister(G_SYSCALL_LOWER_MEMORY_ALLOCATE, (g_syscall_handler) syscallLowerMemoryAllocate, true);
 	_syscallRegister(G_SYSCALL_LOWER_MEMORY_FREE, (g_syscall_handler) syscallLowerMemoryFree, true);
 	_syscallRegister(G_SYSCALL_ALLOCATE_MEMORY, (g_syscall_handler) syscallAllocateMemory, true);
@@ -141,15 +139,15 @@ void syscallRegisterAll()
 
 	_syscallRegister(G_SYSCALL_GET_MILLISECONDS, (g_syscall_handler) syscallGetMilliseconds, false);
 
-	_syscallRegister(G_SYSCALL_FS_OPEN, (g_syscall_handler) syscallFsOpen, true);
-	_syscallRegister(G_SYSCALL_FS_SEEK, (g_syscall_handler) syscallFsSeek, true);
-	_syscallRegister(G_SYSCALL_FS_READ, (g_syscall_handler) syscallFsRead, true);
-	_syscallRegister(G_SYSCALL_FS_WRITE, (g_syscall_handler) syscallFsWrite, true);
-	_syscallRegister(G_SYSCALL_FS_CLOSE, (g_syscall_handler) syscallFsClose, true);
-	_syscallRegister(G_SYSCALL_FS_CLONEFD, (g_syscall_handler) syscallFsCloneFd, true);
-	_syscallRegister(G_SYSCALL_FS_LENGTH, (g_syscall_handler) syscallFsLength, true);
-	_syscallRegister(G_SYSCALL_FS_TELL, (g_syscall_handler) syscallFsTell, true);
-	_syscallRegister(G_SYSCALL_FS_STAT, (g_syscall_handler) syscallFsStat, true);
-	_syscallRegister(G_SYSCALL_FS_FSTAT, (g_syscall_handler) syscallFsFstat, true);
-	_syscallRegister(G_SYSCALL_FS_PIPE, (g_syscall_handler) syscallFsPipe, true);
+	_syscallRegister(G_SYSCALL_FS_OPEN, (g_syscall_handler) syscallFsOpen, false);
+	_syscallRegister(G_SYSCALL_FS_SEEK, (g_syscall_handler) syscallFsSeek, false);
+	_syscallRegister(G_SYSCALL_FS_READ, (g_syscall_handler) syscallFsRead, false);
+	_syscallRegister(G_SYSCALL_FS_WRITE, (g_syscall_handler) syscallFsWrite, false);
+	_syscallRegister(G_SYSCALL_FS_CLOSE, (g_syscall_handler) syscallFsClose, false);
+	_syscallRegister(G_SYSCALL_FS_CLONEFD, (g_syscall_handler) syscallFsCloneFd, false);
+	_syscallRegister(G_SYSCALL_FS_LENGTH, (g_syscall_handler) syscallFsLength, false);
+	_syscallRegister(G_SYSCALL_FS_TELL, (g_syscall_handler) syscallFsTell, false);
+	_syscallRegister(G_SYSCALL_FS_STAT, (g_syscall_handler) syscallFsStat, false);
+	_syscallRegister(G_SYSCALL_FS_FSTAT, (g_syscall_handler) syscallFsFstat, false);
+	_syscallRegister(G_SYSCALL_FS_PIPE, (g_syscall_handler) syscallFsPipe, false);
 }

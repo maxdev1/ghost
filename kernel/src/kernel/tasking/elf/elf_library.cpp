@@ -98,7 +98,7 @@ g_fd elfLibraryOpen(g_task* caller, const char* name)
 	}
 
 	g_fd fd;
-	g_fs_open_status openStatus = filesystemOpen(file, G_FILE_FLAG_MODE_BINARY | G_FILE_FLAG_MODE_READ, caller, &fd);
+	g_fs_open_status openStatus = filesystemOpenNodeFd(file, G_FILE_FLAG_MODE_BINARY | G_FILE_FLAG_MODE_READ, caller->process->id, &fd);
 	if(openStatus != G_FS_OPEN_SUCCESSFUL) {
 		logInfo("%! unable to open dependency %s", "elf", absolutePath);
 		heapFree(absolutePath);

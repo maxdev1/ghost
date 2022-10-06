@@ -32,15 +32,15 @@ static g_fd mouseIn;
 void input_receiver_t::initialize()
 {
 	ps2DriverInitialize(&keyboardIn, &mouseIn);
-	g_create_thread((void *) input_receiver_t::startReceiveMouseEvents);
-	g_create_thread((void *) input_receiver_t::startReceiveKeyEvents);
+	g_create_thread((void*) input_receiver_t::startReceiveMouseEvents);
+	g_create_thread((void*) input_receiver_t::startReceiveKeyEvents);
 }
 
 void input_receiver_t::startReceiveKeyEvents()
 {
 	g_task_register_id("windowserver/key-receiver");
 
-	event_processor_t *event_queue = windowserver_t::instance()->event_processor;
+	event_processor_t* event_queue = windowserver_t::instance()->event_processor;
 
 	while(true)
 	{
@@ -55,8 +55,8 @@ void input_receiver_t::startReceiveMouseEvents()
 {
 	g_task_register_id("windowserver/mouse-receiver");
 
-	windowserver_t *instance = windowserver_t::instance();
-	event_processor_t *event_queue = instance->event_processor;
+	windowserver_t* instance = windowserver_t::instance();
+	event_processor_t* event_queue = instance->event_processor;
 	g_dimension resolution = instance->video_output->getResolution();
 
 	while(true)

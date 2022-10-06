@@ -5,9 +5,13 @@ if [ -f "$ROOT/variables.sh" ]; then
 fi
 . "$ROOT/ghost.sh"
 
-$SH echo.sh $1
-$SH ls.sh $1
-$SH reverse.sh $1
-$SH lines.sh $1
-$SH read.sh $1
-$SH write.sh $1
+TARGET=$@
+
+with TARGET "all"
+
+$SH echo.sh $@
+$SH ls.sh $@
+$SH reverse.sh $@
+$SH lines.sh $@
+$SH read.sh $@
+$SH write.sh $@

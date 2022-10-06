@@ -28,6 +28,7 @@
 struct g_fs_node;
 struct g_fs_node_entry;
 struct g_fs_delegate;
+struct g_file_descriptor;
 
 /**
  * A node on the virtual file system.
@@ -141,7 +142,8 @@ g_fs_delegate* filesystemFindDelegate(g_fs_node* node);
  * Opens a file, creating a file descriptor.
  */
 g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task* task, g_fd* outFd);
-g_fs_open_status filesystemOpen(g_fs_node* file, g_file_flag_mode flags, g_task* task, g_fd* outFd);
+g_fs_open_status filesystemOpenNode(g_fs_node* file, g_file_flag_mode flags, g_pid process, g_file_descriptor** outDescriptor, g_fd optionalTargetFd = G_FD_NONE);
+g_fs_open_status filesystemOpenNodeFd(g_fs_node* file, g_file_flag_mode flags, g_pid process, g_fd* outFd, g_fd optionalTargetFd = G_FD_NONE);
 
 /**
  * Reads bytes from a file.

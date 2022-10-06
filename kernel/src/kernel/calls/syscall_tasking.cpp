@@ -115,7 +115,7 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 		if(data->spawnStatus == G_SPAWN_STATUS_SUCCESSFUL)
 		{
 			data->pid = targetProcess->id;
-			filesystemProcessCreateStdio(task->process->id, targetProcess->id, data->inStdio, data->outStdio);
+			filesystemProcessCreateStdio(task->process->id, data->inStdio, targetProcess->id, data->outStdio);
 
 			targetProcess->environment.executablePath = stringDuplicate(data->path);
 			if(data->args)
