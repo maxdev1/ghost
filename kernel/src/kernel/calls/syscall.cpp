@@ -129,7 +129,7 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_SBRK, (g_syscall_handler) syscallSbrk, true);
 
 	_syscallRegister(G_SYSCALL_SPAWN, (g_syscall_handler) syscallSpawn, true);
-	_syscallRegister(G_SYSCALL_CREATE_THREAD, (g_syscall_handler) syscallCreateThread, true);
+	_syscallRegister(G_SYSCALL_CREATE_THREAD, (g_syscall_handler) syscallCreateThread, false);
 	_syscallRegister(G_SYSCALL_GET_THREAD_ENTRY, (g_syscall_handler) syscallGetThreadEntry, false);
 
 	_syscallRegister(G_SYSCALL_REGISTER_TASK_IDENTIFIER, (g_syscall_handler) syscallRegisterTaskIdentifier, false);

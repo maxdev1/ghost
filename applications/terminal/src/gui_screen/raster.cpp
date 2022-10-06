@@ -40,9 +40,14 @@ void raster_t::scrollBy(int y)
 	g_atomic_unlock(lock);
 }
 
-void raster_t::resizeTo(int newWidth, int newHeight)
+bool raster_t::resizeTo(int newWidth, int newHeight)
 {
 	g_atomic_lock(lock);
+
+	if(newWidth == width && newHeight == height) {
+		g_atomic_unlock(lock);
+		return false;
+	}
 
 	uint8_t* oldBuffer = buffer;
 	int oldWidth = width;
@@ -66,7 +71,13 @@ void raster_t::resizeTo(int newWidth, int newHeight)
 		delete oldBuffer;
 	}
 
+	changed.x = 0;
+	changed.y = 0;
+	changed.width = newWidth;
+	changed.height = newHeight;
+
 	g_atomic_unlock(lock);
+	return true;
 }
 
 uint8_t raster_t::getUnlocked(int x, int y)
@@ -104,6 +115,7 @@ void raster_t::clean()
 	g_atomic_unlock(lock);
 }
 
+#include <stdio.h>
 void raster_t::put(int x, int y, uint8_t c)
 {
 	g_atomic_lock(lock);
@@ -119,5 +131,24 @@ void raster_t::put(int x, int y, uint8_t c)
 
 	buffer[y * width + x] = c;
 
+	if(changed.width == 0) {
+		changed.x = x;
+		changed.y = y;
+		changed.width = 1;
+		changed.height = 1;
+	} else {
+		if(x < changed.x) changed.x = x;
+		if(y < changed.y) changed.y = y;
+		if(x > changed.getRight()) changed.setRight(x);
+		if(y > changed.getBottom()) changed.setBottom(x);
+	}
+
 	g_atomic_unlock(lock);
+}
+
+g_rectangle raster_t::popChanges()
+{
+	g_rectangle changes = changed;
+	changed = g_rectangle(0, 0, 0, 0);
+	return changes;
 }

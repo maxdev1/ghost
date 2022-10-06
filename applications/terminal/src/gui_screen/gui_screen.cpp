@@ -195,8 +195,36 @@ char_layout_t* gui_screen_t::get_char_layout(cairo_scaled_font_t* scaled_face, c
 	return 0;
 }
 
+void gui_screen_t::printGlyph(cairo_t* cr, cairo_scaled_font_t* scaled_face, int x, int y, uint8_t c, bool blink_on)
+{
+
+	char_layout_t* char_layout = get_char_layout(scaled_face, c);
+	cairo_text_extents_t char_extents;
+	cairo_scaled_font_glyph_extents(scaled_face, char_layout->glyph_buffer, 1, &char_extents);
+
+	if(!char_layout)
+		return;
+
+	cairo_save(cr);
+	if(cursor_x == x && cursor_y == y && blink_on)
+	{
+		cairo_set_source_rgba(cr, 0, 0, 0, 1);
+	}
+	else
+	{
+		cairo_set_source_rgba(cr, 0.8, 0.8, 0.8, 1);
+	}
+	cairo_translate(cr,
+					x * char_width + padding,
+					y * char_height + char_height - (char_height - font_size) / 2 + padding);
+	cairo_glyph_path(cr, char_layout->glyph_buffer, char_layout->cluster_buffer[0].num_glyphs);
+	cairo_fill(cr);
+	cairo_restore(cr);
+}
+
 void gui_screen_t::paint()
 {
+	bool firstPaint = true;
 	while(true)
 	{
 		auto windowBounds = window->getBounds();
@@ -208,12 +236,30 @@ void gui_screen_t::paint()
 			g_sleep(100);
 			continue;
 		}
+		else if(firstPaint)
+		{
+			cairo_save(cr);
+			cairo_set_source_rgba(cr, 0, 0, 0, 0);
+			cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+			cairo_paint(cr);
+			cairo_restore(cr);
+			firstPaint = false;
+		}
 
-		// clear
+		g_rectangle changed = raster->popChanges();
+
+		// clear changed
 		cairo_save(cr);
 		cairo_set_source_rgba(cr, 0, 0, 0, 0);
-		cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-		cairo_paint(cr);
+		cairo_rectangle(cr, changed.x * char_width + padding, changed.y * char_height + padding, changed.width, changed.height);
+		cairo_fill(cr);
+		cairo_restore(cr);
+
+		// clear cursor
+		cairo_save(cr);
+		cairo_set_source_rgba(cr, 0, 0, 0, 0);
+		cairo_rectangle(cr, cursor_x * char_width + padding, cursor_y * char_height + padding + 1, char_width, char_height + 1);
+		cairo_fill(cr);
 		cairo_restore(cr);
 
 		// paint cursor
@@ -222,7 +268,7 @@ void gui_screen_t::paint()
 		{
 			blink_on = (g_millis() - last_input_time < 300) || cursorBlink;
 
-			if(blink_on)
+			if(blink_on && false)
 			{
 				cairo_save(cr);
 				cairo_set_source_rgba(cr, 0.8, 0.8, 0.8, 1);
@@ -237,39 +283,20 @@ void gui_screen_t::paint()
 		auto scaled_face = cairo_get_scaled_font(cr);
 
 		raster->lockBuffer();
-		for(int y = 0; y < raster->getHeight(); y++)
+
+		for(int y = changed.y; y < changed.y + changed.height; y++)
 		{
-			for(int x = 0; x < raster->getWidth(); x++)
+			for(int x = changed.x; x < changed.x + changed.width; x++)
 			{
 				uint8_t c = raster->getUnlocked(x, y);
-				if(c == 0)
-					continue;
-
-				// Render only the character
-				char_layout_t* char_layout = get_char_layout(scaled_face, c);
-				cairo_text_extents_t char_extents;
-				cairo_scaled_font_glyph_extents(scaled_face, char_layout->glyph_buffer, 1, &char_extents);
-
-				if(char_layout)
-				{
-					cairo_save(cr);
-					if(cursor_x == x && cursor_y == y && blink_on)
-					{
-						cairo_set_source_rgba(cr, 0, 0, 0, 1);
-					}
-					else
-					{
-						cairo_set_source_rgba(cr, 0.8, 0.8, 0.8, 1);
-					}
-					cairo_translate(cr,
-									x * char_width + padding,
-									y * char_height + char_height - (char_height - font_size) / 2 + padding);
-					cairo_glyph_path(cr, char_layout->glyph_buffer, char_layout->cluster_buffer[0].num_glyphs);
-					cairo_fill(cr);
-					cairo_restore(cr);
-				}
+				if(c)
+					printGlyph(cr, scaled_face, x, y, c, blink_on);
 			}
 		}
+		uint8_t underCursorC = raster->getUnlocked(cursor_x, cursor_y);
+		if(underCursorC)
+			printGlyph(cr, scaled_face, cursor_x, cursor_y, underCursorC, blink_on);
+
 		raster->unlockBuffer();
 
 		canvas->blit(g_rectangle(0, 0, bufferSize.width, bufferSize.height));
@@ -443,7 +470,8 @@ void gui_screen_t::update_visible_buffer_size()
 	if(newHeight < char_height)
 		newHeight = char_height;
 
-	raster->resizeTo(newWidth, newHeight);
+	if(!raster->resizeTo(newWidth, newHeight))
+		return;
 
 	// Ensure cursor is in bounds
 	if(cursor_x > newWidth)

@@ -118,6 +118,8 @@ class gui_screen_t : public screen_t
 	 */
 	char_layout_t* get_char_layout(cairo_scaled_font_t* scaled_face, char c);
 
+	void printGlyph(cairo_t* cr, cairo_scaled_font_t* scaled_face, int x, int y, uint8_t c, bool blink_on);
+
   public:
 	/**
 	 * Initializes the UI components for the screen.

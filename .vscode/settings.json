@@ -97,7 +97,8 @@
         "slist": "cpp",
         "valarray": "cpp",
         "stdlib.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "locale": "cpp"
     },
     "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: LLVM, SpaceBeforeParens: Never, UseTab: Always, BreakBeforeBraces: Allman, SpaceAfterCStyleCast: true, ColumnLimit: 0, IndentWidth: 4, TabWidth: 4, PointerAlignment: Left, DerivePointerAlignment: false }"
 }
