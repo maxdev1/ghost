@@ -37,7 +37,6 @@ static g_atom bufferLock = g_atomic_initialize();
  */
 void g_terminal::setEcho(bool echo)
 {
-
 	std::cout << (char) G_TERMKEY_ESC << "{" << (echo ? "1" : "0") << "e";
 	std::flush(std::cout);
 }

@@ -51,6 +51,7 @@ class raster_t
 	bool resizeTo(int width, int height);
 	void clean();
 	void put(int x, int y, uint8_t c);
+	void dirty(int x, int y);
 
 	void lockBuffer();
 	uint8_t getUnlocked(int x, int y);
