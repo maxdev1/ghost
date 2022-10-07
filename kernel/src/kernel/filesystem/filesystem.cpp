@@ -518,7 +518,7 @@ g_fs_close_status filesystemClose(g_pid pid, g_fd fd, g_bool removeDescriptor)
 	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(pid, fd);
 	if(!descriptor)
 	{
-		logInfo("%! failed to close fd %i in process %i, illegal descriptor", "fs", fd, pid);
+		logDebug("%! failed to close fd %i in process %i, illegal descriptor", "fs", fd, pid);
 		return G_FS_CLOSE_INVALID_FD;
 	}
 

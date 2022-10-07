@@ -37,6 +37,11 @@ void raster_t::scrollBy(int y)
 		}
 	}
 
+	changed.x = 0;
+	changed.y = 0;
+	changed.width = width;
+	changed.height = height;
+
 	g_atomic_unlock(lock);
 }
 
@@ -44,7 +49,8 @@ bool raster_t::resizeTo(int newWidth, int newHeight)
 {
 	g_atomic_lock(lock);
 
-	if(newWidth == width && newHeight == height) {
+	if(newWidth == width && newHeight == height)
+	{
 		g_atomic_unlock(lock);
 		return false;
 	}
@@ -73,8 +79,8 @@ bool raster_t::resizeTo(int newWidth, int newHeight)
 
 	changed.x = 0;
 	changed.y = 0;
-	changed.width = newWidth;
-	changed.height = newHeight;
+	changed.width = width;
+	changed.height = height;
 
 	g_atomic_unlock(lock);
 	return true;
@@ -111,11 +117,53 @@ void raster_t::unlockBuffer()
 void raster_t::clean()
 {
 	g_atomic_lock(lock);
+
 	memset(buffer, 0, height * width);
+
+	changed.x = 0;
+	changed.y = 0;
+	changed.width = width;
+	changed.height = height;
+
 	g_atomic_unlock(lock);
 }
 
-#include <stdio.h>
+void raster_t::dirty(int x, int y)
+{
+	g_atomic_lock(lock);
+
+	if(changed.width == 0)
+	{
+		changed.x = x;
+		changed.y = y;
+		changed.width = 1;
+		changed.height = 1;
+	}
+	else
+	{
+		if(x < changed.x)
+		{
+			changed.width += changed.x - x;
+			changed.x = x;
+		}
+		else if(x + 1 > changed.x + changed.width)
+		{
+			changed.width = (x + 1) - changed.x;
+		}
+		if(y < changed.y)
+		{
+			changed.height += changed.y - y;
+			changed.y = y;
+		}
+		else if(y + 1 > changed.y + changed.height)
+		{
+			changed.height = (y + 1) - changed.y;
+		}
+	}
+
+	g_atomic_unlock(lock);
+}
+
 void raster_t::put(int x, int y, uint8_t c)
 {
 	g_atomic_lock(lock);
@@ -131,19 +179,9 @@ void raster_t::put(int x, int y, uint8_t c)
 
 	buffer[y * width + x] = c;
 
-	if(changed.width == 0) {
-		changed.x = x;
-		changed.y = y;
-		changed.width = 1;
-		changed.height = 1;
-	} else {
-		if(x < changed.x) changed.x = x;
-		if(y < changed.y) changed.y = y;
-		if(x > changed.getRight()) changed.setRight(x);
-		if(y > changed.getBottom()) changed.setBottom(x);
-	}
-
 	g_atomic_unlock(lock);
+
+	dirty(x, y);
 }
 
 g_rectangle raster_t::popChanges()

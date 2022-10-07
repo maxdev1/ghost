@@ -212,6 +212,8 @@ class g_terminal
 	static void setScrollArea(int start, int end);
 	static void scroll(int amount);
 	static void setCursorVisible(bool visible);
+
+	static void flush();
 };
 
 #endif
