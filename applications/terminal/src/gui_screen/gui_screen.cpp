@@ -20,8 +20,8 @@
 
 #include "gui_screen/gui_screen.hpp"
 #include <ghost.h>
-#include <libinput/keyboard/keyboard.hpp>
 #include <libfont/font_loader.hpp>
+#include <libinput/keyboard/keyboard.hpp>
 #include <list>
 #include <string.h>
 
@@ -110,6 +110,8 @@ class terminal_focus_listener_t : public g_focus_listener
 
 bool gui_screen_t::initialize()
 {
+	raster = new raster_t();
+
 	input_buffer_lock = g_atomic_initialize();
 	input_buffer_empty = g_atomic_initialize();
 	g_atomic_lock(input_buffer_empty);
@@ -140,8 +142,6 @@ bool gui_screen_t::initialize()
 	window->setListener(G_UI_COMPONENT_EVENT_TYPE_FOCUS, new terminal_focus_listener_t(this));
 
 	font = g_font_loader::get("consolas");
-
-	raster = new raster_t();
 
 	g_create_thread_d((void*) paint_entry, this);
 	g_create_thread_d((void*) blink_cursor_entry, this);
