@@ -35,7 +35,6 @@
 	if(__intr_paused)     \
 		interruptsEnable();
 
-
 /**
  * Sets up interrupts on the bootstrap processor.
  */
@@ -46,15 +45,30 @@ void interruptsInitializeBsp();
  */
 void interruptsInitializeAp();
 
+/**
+ * Enables interrupts.
+ */
 void interruptsEnable();
 
+/**
+ * Disables interrupts.
+ */
 void interruptsDisable();
 
+/**
+ * @returns whether interrupts are enabled
+ */
 bool interruptsAreEnabled();
 
+/**
+ * Installs all ISRs into the IDT.
+ */
 void interruptsInstallRoutines();
 
-extern "C" g_virtual_address _interruptHandler(g_virtual_address state);
+/**
+ * Interrupt handler routine. Stores the current task state and then processes the interrupt.
+ */
+extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_state* state);
 
 /**
  * @see assembly
@@ -189,7 +203,7 @@ extern "C" void _ireq93();
 extern "C" void _ireq94();
 extern "C" void _ireq95();
 extern "C" void _ireqSyscall();
-extern "C" void _ireq97();
+extern "C" void _ireqYield();
 extern "C" void _ireq98();
 extern "C" void _ireq99();
 extern "C" void _ireq100();

@@ -34,6 +34,8 @@
 #include "kernel/tasking/tasking.hpp"
 #include "shared/system/mutex.hpp"
 
+void _interruptsSendEndOfInterrupt(uint8_t irq);
+
 void interruptsInitializeBsp()
 {
 	idtPrepare();
@@ -56,7 +58,7 @@ void interruptsInitializeBsp()
 	else
 	{
 		picRemapIrqs();
-		pitStartAsTimer(G_TIMER_FREQUENCY);
+		pitStartTimer();
 	}
 }
 
@@ -64,6 +66,52 @@ void interruptsInitializeAp()
 {
 	idtLoad();
 	lapicInitialize();
+}
+
+extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_state* state)
+{
+	g_task* task = taskingGetCurrentTask();
+	if(task)
+	{
+		task->state = (g_processor_state*) state;
+		task->active = false;
+	}
+	else
+	{
+		taskingSchedule();
+	}
+
+	uint8_t intr = state->intr;
+
+	if(intr < 0x20) // Exception
+	{
+		exceptionsHandle(task);
+	}
+	else
+	{
+		uint8_t irq = intr - 0x20;
+		if(intr == 0x20) // Timer
+		{
+			clockUpdate();
+			taskingSchedule();
+		}
+		else if(intr == 0x80) // Syscall
+		{
+			syscallHandle(task);
+		}
+		else if(intr == 0x81) // Yield
+		{
+			taskingSchedule();
+		}
+		else
+		{
+			requestsWriteToIrqDevice(task, irq);
+		}
+
+		_interruptsSendEndOfInterrupt(irq);
+	}
+
+	return taskingGetCurrentTask()->state;
 }
 
 void interruptsEnable()
@@ -82,63 +130,12 @@ bool interruptsAreEnabled()
 	return eflags & (1 << 9);
 }
 
-void interruptsSendEndOfInterrupt(uint8_t irq)
+void _interruptsSendEndOfInterrupt(uint8_t irq)
 {
 	if(lapicIsAvailable())
 		lapicSendEndOfInterrupt();
 	else
 		picSendEndOfInterrupt(irq);
-}
-
-/**
- * Interrupt handler routine, called by the interrupt stubs (assembly file)
- */
-extern "C" g_virtual_address _interruptHandler(g_virtual_address state)
-{
-	uint8_t irq = 0;
-
-	g_task* task = taskingGetCurrentTask();
-	if(task)
-	{
-		task->state = (g_processor_state*) state;
-		task->active = false;
-
-		uint8_t intr = task->state->intr;
-		irq = intr - 0x20;
-
-		if(intr < 0x20) // Exception
-		{
-			exceptionsHandle(task);
-		}
-		else
-		{
-			if(intr == 0x20) // Timer
-			{
-				clockUpdate();
-				taskingSchedule();
-			}
-			else if(intr == 0x80) // Syscall
-			{
-				syscallHandle(task);
-			}
-			else if(intr == 0x81) // Yield
-			{
-				taskingSchedule();
-			}
-			else // Other IRQs are written to FS device
-			{
-				requestsWriteToIrqDevice(task, irq);
-			}
-		}
-	}
-	else
-	{
-		taskingSchedule();
-	}
-
-	interruptsSendEndOfInterrupt(irq);
-
-	return (g_virtual_address) taskingGetCurrentTask()->state;
 }
 
 void interruptsInstallRoutines()
@@ -273,7 +270,7 @@ void interruptsInstallRoutines()
 	idtCreateGate(126, (uint32_t) _ireq94, 0x08, 0x8E);
 	idtCreateGate(127, (uint32_t) _ireq95, 0x08, 0x8E);
 	idtCreateGate(128, (uint32_t) _ireqSyscall, 0x08, 0xEE);
-	idtCreateGate(129, (uint32_t) _ireq97, 0x08, 0x8E);
+	idtCreateGate(129, (uint32_t) _ireqYield, 0x08, 0x8E);
 	idtCreateGate(130, (uint32_t) _ireq98, 0x08, 0x8E);
 	idtCreateGate(131, (uint32_t) _ireq99, 0x08, 0x8E);
 	idtCreateGate(132, (uint32_t) _ireq100, 0x08, 0x8E);

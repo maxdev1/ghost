@@ -19,8 +19,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/interrupts/apic/ioapic.hpp"
-#include "kernel/memory/memory.hpp"
 #include "kernel/kernel.hpp"
+#include "kernel/memory/memory.hpp"
 
 static g_ioapic* ioapicList = 0;
 
@@ -199,4 +199,3 @@ void ioapicUnmaskIrq(uint32_t irq)
 		ioapicUnmask(io, irq);
 	}
 }
-

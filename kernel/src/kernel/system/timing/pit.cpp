@@ -19,10 +19,10 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/timing/pit.hpp"
-#include "shared/system/io_port.hpp"
+#include "kernel/system/configuration.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/system/io_port.hpp"
 
-static uint32_t timerClocking;
 static uint32_t sleepDivisor;
 
 void pitPrepareSleep(uint32_t microseconds)
@@ -48,15 +48,14 @@ void pitPrepareSleep(uint32_t microseconds)
 
 void pitPerformSleep()
 {
-
 	// Write the prepared sleep divisor
 	ioPortWriteByte(0x42, sleepDivisor & 0xFF);
 	ioPortWriteByte(0x42, sleepDivisor >> 8);
 
 	// Reset the PIT counter and let it start
 	uint8_t pitControlByte = ioPortReadByte(0x61);
-	ioPortWriteByte(0x61, (uint8_t) pitControlByte & ~1);	// clear bit 0
-	ioPortWriteByte(0x61, (uint8_t) pitControlByte | 1);		// set bit 0
+	ioPortWriteByte(0x61, (uint8_t) pitControlByte & ~1); // clear bit 0
+	ioPortWriteByte(0x61, (uint8_t) pitControlByte | 1);  // set bit 0
 
 	// Wait for PIT counter to reach 0
 	while(!(ioPortReadByte(0x61) & 0x20))
@@ -64,19 +63,13 @@ void pitPerformSleep()
 	}
 }
 
-void pitStartAsTimer(uint32_t hz)
+void pitStartTimer()
 {
+	uint32_t hz = G_TIMER_FREQUENCY;
 	logDebug("%! started as timer on %i hertz", "pit", hz);
 
-	timerClocking = hz;
 	uint32_t divisor = PIT_FREQUENCY / hz; // Calculate the divisor
 	ioPortWriteByte(0x43, PIT_CHANNEL_0 | PIT_ACCESS_LOHIBYTE | PIT_OPMODE_3_SQUARE_WAV);
 	ioPortWriteByte(0x40, divisor & 0xFF); // Set low byte of the divisor
-	ioPortWriteByte(0x40, divisor >> 8); // Set high byte of the divisor
+	ioPortWriteByte(0x40, divisor >> 8);   // Set high byte of the divisor
 }
-
-uint32_t pitGetTimerClocking()
-{
-	return timerClocking;
-}
-

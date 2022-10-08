@@ -35,6 +35,7 @@
 #define G_PRETTY_BOOT_FAIL(text) prettyBootFail(text)
 #else
 #define G_PRETTY_BOOT_STATUS(text, percent)
+#define G_PRETTY_BOOT_STATUS_P(percent)
 #define G_PRETTY_BOOT_FAIL(text)
 #endif
 
