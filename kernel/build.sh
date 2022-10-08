@@ -193,6 +193,13 @@ target_qemu() {
 }
 
 #
+# Run in lingemu
+#
+target_lingemu() {
+	lingemu runvirt -m 1024 --diskcontroller type=ahci,name=ahcibus1 --disk $ISO_TGT,disktype=cdrom,controller=ahcibus1
+}
+
+#
 # Run in QEMU and call debugger
 #
 target_qemu_debug_gdb() {
@@ -240,6 +247,9 @@ for var in $TARGET; do
 	elif [[ "$var" == "qemu" ]]; then
 		target_qemu
 		
+	elif [[ $TARGET == "lingemu" ]]; then
+		target_lingemu
+    
 	elif [[ "$var" == "qemu-debug-gdb" ]]; then
 		target_qemu_debug_gdb
 		
