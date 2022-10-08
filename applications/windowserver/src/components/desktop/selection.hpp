@@ -18,39 +18,15 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __WINDOWSERVER_COMPONENTS_BACKGROUND__
-#define __WINDOWSERVER_COMPONENTS_BACKGROUND__
+#ifndef __WINDOWSERVER_COMPONENTS_DESKTOP_SELECTION__
+#define __WINDOWSERVER_COMPONENTS_DESKTOP_SELECTION__
 
 #include "components/component.hpp"
-#include "components/desktop/desktop_item.hpp"
-#include "components/desktop/selection.hpp"
-#include <libwindow/metrics/rectangle.hpp>
 
-class background_t : public component_t
+class selection_t : public component_t
 {
-  private:
-	cairo_surface_t* surface = 0;
-	desktop_item_t* selectedItem = nullptr;
-	selection_t* selection;
-
   public:
-	int gridScale = 100;
-
-	background_t();
-
-	virtual ~background_t()
-	{
-	}
-
 	virtual void paint();
-
-	virtual void load(const char* path);
-
-	void showSelection(g_rectangle& selection);
-	void hideSelection();
-	void startLoadDesktopItems();
-	void setSelectedItem(desktop_item_t* item);
-	desktop_item_t* getSelectedItem();
 };
 
 #endif

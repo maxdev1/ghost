@@ -73,8 +73,8 @@ void desktop_item_t::paint()
 	auto selected = (background->getSelectedItem() == this);
 	if(hovered || selected)
 	{
-		roundedRectangle(cr, 0, 0, bounds.width, bounds.height, 10);
-		cairo_set_source_rgba(cr, 0.2, 0.4, 0.9, selected ? 0.7 : 0.5);
+		roundedRectangle(cr, 3, 3, bounds.width - 6, bounds.height - 6, 5);
+		cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, selected ? 0.5 : 0.3);
 		cairo_fill(cr);
 	}
 

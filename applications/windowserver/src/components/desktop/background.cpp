@@ -21,6 +21,13 @@
 #include "components/desktop/background.hpp"
 #include "components/desktop/desktop_item.hpp"
 
+background_t::background_t()
+{
+	selection = new selection_t();
+	selection->setVisible(false);
+	addChild(selection);
+}
+
 void background_t::load(const char* path)
 {
 	if(surface)
@@ -55,25 +62,19 @@ void background_t::paint()
 		cairo_rectangle(cr, bgx, bgy, bounds.width, bounds.height);
 		cairo_fill(cr);
 	}
-
-	// Selection
-	if(selection.width != 0 || selection.height != 0)
-	{
-		cairo_set_source_rgba(cr, 1, 1, 1, 1);
-
-		cairo_set_line_width(cr, 0.5);
-		static const double dash[] = {2.0};
-		cairo_set_dash(cr, dash, 1, 0);
-
-		cairo_rectangle(cr, selection.x, selection.y, selection.width, selection.height);
-		cairo_stroke(cr);
-	}
 }
 
-void background_t::showSelection(g_rectangle& selection)
+void background_t::showSelection(g_rectangle& newSelection)
 {
-	this->selection = selection;
-	markFor(COMPONENT_REQUIREMENT_PAINT);
+	if(newSelection.width > 0 || newSelection.height > 0)
+	{
+		selection->setBounds(newSelection);
+		selection->setVisible(true);
+	}
+	else
+	{
+		selection->setVisible(false);
+	}
 
 	if(this->selectedItem)
 	{
@@ -85,9 +86,7 @@ void background_t::showSelection(g_rectangle& selection)
 
 void background_t::hideSelection()
 {
-	this->selection.width = 0;
-	this->selection.height = 0;
-	markFor(COMPONENT_REQUIREMENT_PAINT);
+	selection->setVisible(false);
 }
 
 void background_t::startLoadDesktopItems()
