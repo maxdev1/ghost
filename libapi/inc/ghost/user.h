@@ -884,7 +884,7 @@ void g_cli_args_release(char* buffer);
 /**
  * @return a pointer to the user-thread object in the TLS of the current thread.
  */
-void* g_task_get_tls();
+g_user_threadlocal* g_task_get_tls();
 
 /**
  * Returns a pointer to the process information structure. This structure for example

@@ -125,10 +125,6 @@ void schedulerDump()
 		{
 			taskState = "";
 		}
-		else if(entry->task->status == G_THREAD_STATUS_UNUSED)
-		{
-			taskState = " [unused]";
-		}
 		else if(entry->task->status == G_THREAD_STATUS_DEAD)
 		{
 			taskState = " [dead]";

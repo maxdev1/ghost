@@ -176,6 +176,11 @@ uint16_t processorGetNumberOfProcessors();
 uint32_t processorGetCurrentId();
 
 /**
+ * The slow cousin of <processorGetCurrentId>, should be used sparsely.
+ */
+uint32_t processorGetCurrentIdFromApic();
+
+/**
  * Creates an id mapping table that contains a mapping from
  * APIC id to processor logical id.
  */

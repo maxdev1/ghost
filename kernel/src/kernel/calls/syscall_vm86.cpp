@@ -37,7 +37,7 @@ void syscallCallVm86(g_task* task, g_syscall_call_vm86* data)
 
     for(;;)
     {
-        if(vm86task == 0 || vm86task->status == G_THREAD_STATUS_DEAD || vm86task->status == G_THREAD_STATUS_UNUSED)
+        if(vm86task == 0 || vm86task->status == G_THREAD_STATUS_DEAD)
         {
             /* VM86 task has finished, copy out registers */
             *data->out = *registerStore;

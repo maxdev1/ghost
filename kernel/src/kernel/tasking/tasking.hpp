@@ -45,10 +45,21 @@ struct g_task_information_vm86
 	g_virtual_address userStack;
 };
 
+/**
+ * Task stack information
+ */
 struct g_stack
 {
 	g_virtual_address start;
 	g_virtual_address end;
+};
+
+/**
+ * Thread-local information used by the kernel
+ */
+struct g_kernel_threadlocal
+{
+	uint32_t processor;
 };
 
 struct g_wait_queue_entry;
@@ -92,12 +103,16 @@ struct g_task
 	 */
 	g_physical_address overridePageDirectory;
 
+	/**
+	 * Thread-local information for this task.
+	 */
 	struct
 	{
-		g_virtual_address userThreadObject;
+		g_kernel_threadlocal* kernelThreadLocal;
+		g_user_threadlocal* userThreadLocal;
 		g_virtual_address start;
 		g_virtual_address end;
-	} tlsCopy;
+	} threadLocal;
 
 	/**
 	 * Pointer to the top of the stack of where the registers of this task were pushed
@@ -158,6 +173,7 @@ struct g_schedule_entry
 struct g_tasking_local
 {
 	g_mutex lock;
+	uint32_t processor;
 
 	/**
 	 * When mutexes are used, each first acquire call to a mutex increases
@@ -280,6 +296,11 @@ void taskingInitializeLocal();
 void taskingAssign(g_tasking_local* local, g_task* task);
 
 /**
+ * Assignes the task to the processor with the lowest load.
+ */
+void taskingAssignBalanced(g_task* task);
+
+/**
  * Creates an empty process. Creates a new page directory with the kernel areas
  * correctly mapped and instantiates a virtual range allocator.
  *
@@ -384,12 +405,14 @@ void taskingIdleThread();
 g_task* taskingGetById(g_tid id);
 
 /**
- * Temporarily switches this task to a different address space.
+ * When a task needs to do work within the address space of another task, it can temporarily
+ * switch to that tasks directory. The override page directory of the currently executing task
+ * is set to the temporary directory until using <taskingTemporarySwitchBack>.
  */
 g_physical_address taskingTemporarySwitchToSpace(g_physical_address pageDirectory);
 
 /**
- * Switches back from temporarily switching to a different directory.
+ * Switches back from temporary space switch.
  */
 void taskingTemporarySwitchBack(g_physical_address pageDirectory);
 

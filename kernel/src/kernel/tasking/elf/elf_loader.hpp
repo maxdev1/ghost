@@ -274,9 +274,9 @@ g_spawn_status elfTlsLoadData(g_task* caller, g_fd file, elf32_phdr* header, g_e
  * when the TLS data is being loaded from each binary. The in-memory representation of our master
  * image looks like this:
  * 
- * [Executable TLS content|g_user_thread|Shared lib TLS content|Shared lib TLS content|...]
+ * [Executable TLS content|g_user_threadlocal|Shared lib TLS content|Shared lib TLS content|...]
  * 
- * When a new thread is created, a copy of this master image is created. The address of g_user_thread
+ * When a new thread is created, a copy of this master image is created. The address of g_user_threadlocal
  * is then put into the GDT entry.
  */
 void elf32TlsCreateMasterImage(g_task* caller, g_fd file, g_process* process, g_elf_object* executableObject);

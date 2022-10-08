@@ -32,7 +32,6 @@ void gdtPrepare()
 
 	for(uint32_t i = 0; i < cores; i++)
 		gdtList[i] = (g_gdt_list_entry*) heapAllocate(sizeof(g_gdt_list_entry));
-
 }
 
 void gdtInitialize()
@@ -60,10 +59,13 @@ void gdtInitialize()
 	// TSS descriptor, position 0x28
 	gdtCreateGate(&localGdt->entry[5], (uint32_t) &localGdt->tss, sizeof(g_tss), G_ACCESS_BYTE__TSS_386_SEGMENT, 0x40);
 	localGdt->tss.ss0 = G_GDT_DESCRIPTOR_KERNEL_DATA; // kernel data segment
-	localGdt->tss.esp0 = 0; // will later be initialized
+	localGdt->tss.esp0 = 0;							  // will later be initialized
 
 	// User thread pointer segment 0x30
 	gdtCreateGate(&localGdt->entry[6], 0, 0xFFFFFFFF, G_ACCESS_BYTE__USER_DATA_SEGMENT, 0xCF);
+
+	// Kernel thread pointer segment 0x38
+	gdtCreateGate(&localGdt->entry[7], 0, 0xFFFFFFFF, G_ACCESS_BYTE__KERNEL_DATA_SEGMENT, 0xCF);
 
 	_loadGdt((uint32_t) &localGdt->ptr);
 	_loadTss(G_GDT_DESCRIPTOR_TSS);
@@ -74,8 +76,13 @@ void gdtSetTssEsp0(uint32_t esp0)
 	gdtList[processorGetCurrentId()]->tss.esp0 = esp0;
 }
 
-void gdtSetUserThreadObjectAddress(g_virtual_address userThreadObjectAddress)
+void gdtSetTlsAddresses(g_user_threadlocal* userThreadLocal, g_kernel_threadlocal* kernelThreadLocal)
 {
-	g_gdt_list_entry* list_entry = gdtList[processorGetCurrentId()];
-	gdtCreateGate(&list_entry->entry[6], userThreadObjectAddress, 0xFFFFFFFF, G_ACCESS_BYTE__USER_DATA_SEGMENT, 0xCF);
+	uint32_t processor = processorGetCurrentId();
+
+	g_gdt_list_entry* userLocalEntry = gdtList[processor];
+	gdtCreateGate(&userLocalEntry->entry[6], (g_virtual_address) userThreadLocal, 0xFFFFFFFF, G_ACCESS_BYTE__USER_DATA_SEGMENT, 0xCF);
+
+	g_gdt_list_entry* kernelLocalEntry = gdtList[processor];
+	gdtCreateGate(&kernelLocalEntry->entry[7], (g_virtual_address) kernelThreadLocal, 0xFFFFFFFF, G_ACCESS_BYTE__KERNEL_DATA_SEGMENT, 0xCF);
 }

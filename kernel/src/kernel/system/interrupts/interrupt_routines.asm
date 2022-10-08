@@ -72,8 +72,10 @@ interruptRoutine:
 	mov ds, ax
 	mov es, ax
 	mov fs, ax
-	mov gs, ax
 	mov ss, ax
+	; Segment points to kernel thread-local data
+	mov ax, 0x38
+	mov gs, ax
 
 	; Stack pointer argument
 	push esp

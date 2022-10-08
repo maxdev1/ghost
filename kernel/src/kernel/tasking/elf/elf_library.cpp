@@ -221,7 +221,7 @@ void elfObjectApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 				if(cS)
 				{
 					/**
-					 * For TLS_TPOFF we insert the offset relative to the g_user_thread which is put
+					 * For TLS_TPOFF we insert the offset relative to the g_user_threadlocal which is put
 					 * into the segment referenced in GS.
 					 */
 					*((uint32_t*) cP) = symbolInfo.object->tlsMaster.offset - executableObject->tlsMasterUserThreadOffset + symbolInfo.value;

@@ -32,10 +32,10 @@ typedef struct {
  * The tls_index we get passed here resides in the GOT. The relocations that fill those values are done
  * in the ELF loader for R_386_TLS_DTPMOD32 and R_386_TLS_DTPOFF32.
  * 
- * What we need to do here is ask the kernel for the current threads TLS master image location and then
+ * What we need to do here is ask the kernel for the current threads user-threadlocal object location and then
  * reference to it, according to the offset we get passed.
  */
 __attribute__((__regparm__(1))) void* ___tls_get_addr(tls_index* index) {
-    g_virtual_address userThreadObjectAddr = (g_virtual_address) g_task_get_tls();
-    return (void*) (userThreadObjectAddr + index->ti_offset);
+    g_virtual_address userThreadLocalAddr = (g_virtual_address) g_task_get_tls();
+    return (void*) (userThreadLocalAddr + index->ti_offset);
 }

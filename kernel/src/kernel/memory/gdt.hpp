@@ -21,11 +21,13 @@
 #ifndef __KERNEL_GDT__
 #define __KERNEL_GDT__
 
-#include "ghost/types.h"
+#include "kernel/tasking/tasking.hpp"
 #include "shared/memory/gdt.hpp"
 #include "shared/memory/tss.hpp"
+#include <ghost/kernel.h>
+#include <ghost/types.h>
 
-#define G_GDT_NUM_ENTRIES 7
+#define G_GDT_NUM_ENTRIES 8
 
 struct g_gdt_list_entry
 {
@@ -51,14 +53,14 @@ g_gdt_list_entry* gdtGetForCore(uint32_t coreId);
 
 /**
  * Sets the ESP0 of the TSS of the current core the given address.
- * The CPU switches to this specified stack before entering an interrupt handler.
+ * When switching from Ring 3 to Ring 0, this ESP is used as the new stack.
  */
 void gdtSetTssEsp0(g_virtual_address esp0);
 
 /**
- * For thread local storage, it is needed to write the address of the so-called
- * "user thread" object to the GDT.
+ * For thread local storage, it is necessary to write two addresses into our GDT so that we can do
+ * user-thread-local and kernel-thread-local addressing via the segment value in GS.
  */
-void gdtSetUserThreadObjectAddress(g_virtual_address userThreadAddr);
+void gdtSetTlsAddresses(g_user_threadlocal* userThreadLocal, g_kernel_threadlocal* kernelThreadLocal);
 
 #endif

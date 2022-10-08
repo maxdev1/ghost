@@ -47,12 +47,14 @@ typedef uint8_t g_security_level;
 #define G_SECURITY_LEVEL_APPLICATION 2
 
 /**
- * Required by the System V ABI for x86 to have thread-local-storage.
+ * Required for thread-local storage. GS contains the index of the segment
+ * which points to this structure (System V ABI for x86). With segment-relative
+ * addressing, the TLS content is accessed.
  */
-typedef struct _g_user_thread
+typedef struct _g_user_threadlocal
 {
-    struct _g_user_thread* self;
-} g_user_thread;
+	struct _g_user_threadlocal* self;
+} g_user_threadlocal;
 
 /**
  * VM86 related
@@ -64,14 +66,14 @@ typedef uint8_t g_vm86_call_status;
 
 typedef struct
 {
-    uint16_t ax;
-    uint16_t bx;
-    uint16_t cx;
-    uint16_t dx;
-    uint16_t si;
-    uint16_t di;
-    uint16_t ds;
-    uint16_t es;
+	uint16_t ax;
+	uint16_t bx;
+	uint16_t cx;
+	uint16_t dx;
+	uint16_t si;
+	uint16_t di;
+	uint16_t ds;
+	uint16_t es;
 } __attribute__((packed)) g_vm86_registers;
 
 /**
@@ -105,7 +107,6 @@ typedef uint8_t g_thread_status;
 #define G_THREAD_STATUS_DEAD ((g_thread_status) 0)
 #define G_THREAD_STATUS_RUNNING ((g_thread_status) 1)
 #define G_THREAD_STATUS_WAITING ((g_thread_status) 2)
-#define G_THREAD_STATUS_UNUSED ((g_thread_status) 3)
 
 /**
  * Pipes
@@ -117,16 +118,16 @@ typedef uint8_t g_thread_status;
  */
 typedef struct _g_object_info
 {
-    const char* name;
+	const char* name;
 
-    void (*init)(void);
-    void (*fini)(void);
-    void (**preinitArray)(void);
-    uint32_t preinitArraySize;
-    void (**initArray)(void);
-    uint32_t initArraySize;
-    void (**finiArray)(void);
-    uint32_t finiArraySize;
+	void (*init)(void);
+	void (*fini)(void);
+	void (**preinitArray)(void);
+	uint32_t preinitArraySize;
+	void (**initArray)(void);
+	uint32_t initArraySize;
+	void (**finiArray)(void);
+	uint32_t finiArraySize;
 } __attribute__((packed)) g_object_info;
 
 /**
@@ -135,17 +136,17 @@ typedef struct _g_object_info
  */
 typedef struct
 {
-    /**
-     * Information about all loaded ELF objects.
-     */
-    g_object_info* objectInfos;
-    uint32_t objectInfosSize;
+	/**
+	 * Information about all loaded ELF objects.
+	 */
+	g_object_info* objectInfos;
+	uint32_t objectInfosSize;
 
-    /**
-     * Provides a pointer to the "syscall" function of the kernel, required when attempting
-     * to use a system call while within a user-space interrupt service routine.
-     */
-    void (*syscallKernelEntry)(uint32_t, void*);
+	/**
+	 * Provides a pointer to the "syscall" function of the kernel, required when attempting
+	 * to use a system call while within a user-space interrupt service routine.
+	 */
+	void (*syscallKernelEntry)(uint32_t, void*);
 } __attribute__((packed)) g_process_info;
 
 /**
