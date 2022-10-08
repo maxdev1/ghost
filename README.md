@@ -1,9 +1,12 @@
 # ABOUT GHOST
-**Ghost** is an operating system for the Intel x86 platform. The project is licensed as GPLv3.
-The kernel and the userspace applications are written from scratch in C++ and Assembly (and some C).
-The kernel is not based on any existing kernel and partially Unix-compatible.
+**Ghost** is a hobby operating system for the Intel x86 platform.
+The entire OS is written from scratch in C/C++ and Assembly.
+The kernel is not based on any existing kernel, but is partially compatible to Unix.
 
 This is the main development repository.
+
+**Update 2020/10/08:** With the recent backmerge I've fixed a lot of bugs in the kernel and
+rewrote a lot of the user-space code. Still work-in-progress, working towards a version 1.0.0.
 
 *Project website:* http://ghostkernel.org/
 
@@ -26,9 +29,8 @@ as building instructions.
 * Userspace filesystem driver support
 * Serial COM1 kernel logging
 * Virtual 8086 for BIOS calls
-* Copy-on-write implementation, `fork()`
 
-![Screenshot of 0.5.6b](https://ghostkernel.org/files/ghost-0.5.6-highres.png)
+![Screenshot of 0.10.0](https://ghostkernel.org/files/ghost-0.10.0.png)
 
 ## Ported software
 * musl (libm part of Ghost's libc)
