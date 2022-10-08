@@ -22,11 +22,13 @@
 #define __SYSTEM_SMP_MUTEX__
 
 #include "ghost/stdint.h"
+#include "shared/logger/logger.hpp"
 
 struct g_mutex
 {
 	volatile int initialized = 0;
 	volatile int lock = 0;
+
 	int depth = 0;
 	uint32_t owner = -1;
 };
@@ -34,32 +36,24 @@ struct g_mutex
 /**
  * Initializes the mutex.
  */
-void mutexInitialize(g_mutex* mutex);
+#if G_DEBUG_MUTEXES
+#define mutexInitialize(mutex) \
+	_mutexInitialize(mutex);   \
+	logInfo("%! initalize %x @%s", "mutex", mutex, __func__);
+#else
+#define mutexInitialize(mutex) _mutexInitialize(mutex);
+#endif
+void _mutexInitialize(g_mutex* mutex);
 
 /**
  * Acquires the mutex. Increases the lock count for this processor.
  */
 void mutexAcquire(g_mutex* mutex);
-bool mutexTryAcquire(g_mutex* mutex);
+bool mutexTryAcquire(g_mutex* mutex, uint32_t owner);
 
 /**
  * Releases the mutex. Decreases the lock count for this processor.
  */
 void mutexRelease(g_mutex* mutex);
-
-/**
- * Acquires the mutex.
- *
- * The smp parameter decides if the lock count for this processor should be increased.
- */
-void mutexAcquire(g_mutex* mutex, bool smp);
-bool mutexTryAcquire(g_mutex* mutex, bool smp);
-
-/**
- * Releases the mutex.
- *
- * The smp parameter decides if the lock count for this processor should be decreased.
- */
-void mutexRelease(g_mutex* mutex, bool smp);
 
 #endif

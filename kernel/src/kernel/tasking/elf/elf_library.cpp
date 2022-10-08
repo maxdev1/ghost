@@ -65,7 +65,7 @@ g_virtual_address elfLibraryLoadDependencies(g_task* caller, g_elf_object* objec
 
 		} else if(status == G_SPAWN_STATUS_DEPENDENCY_DUPLICATE)
 		{
-			logDebug("%!   duplicate dependency ignored: %s -> %s", "elf", object->name, dependency->name);
+			//logDebug("%!   duplicate dependency ignored: %s -> %s", "elf", object->name, dependency->name);
 
 		} else
 		{
@@ -98,7 +98,7 @@ g_fd elfLibraryOpen(g_task* caller, const char* name)
 	}
 
 	g_fd fd;
-	g_fs_open_status openStatus = filesystemOpen(file, G_FILE_FLAG_MODE_BINARY | G_FILE_FLAG_MODE_READ, caller, &fd);
+	g_fs_open_status openStatus = filesystemOpenNodeFd(file, G_FILE_FLAG_MODE_BINARY | G_FILE_FLAG_MODE_READ, caller->process->id, &fd);
 	if(openStatus != G_FS_OPEN_SUCCESSFUL) {
 		logInfo("%! unable to open dependency %s", "elf", absolutePath);
 		heapFree(absolutePath);
@@ -177,7 +177,7 @@ void elfObjectApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 				}
 				else {
 					if(ELF32_ST_BIND(symbol->st_info) != STB_WEAK) {
-						logInfo("%!     missing symbol '%s' (%h, bind: %i)", "elf", symbolName, cP, ELF32_ST_BIND(symbol->st_info));
+						logDebug("%!     missing symbol '%s' (%h, bind: %i)", "elf", symbolName, cP, ELF32_ST_BIND(symbol->st_info));
 					}
 					cS = 0;
 				}
@@ -252,7 +252,7 @@ void elfObjectApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 
 			} else
 			{
-				logDebug("%!     binary contains unhandled relocation: %i", "elf", type);
+				// logDebug("%!     binary contains unhandled relocation: %i", "elf", type);
 			}
 
 			entry++;

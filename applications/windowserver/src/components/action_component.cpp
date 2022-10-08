@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,24 +18,22 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <components/action_component.hpp>
-#include <components/component.hpp>
+#include "components/action_component.hpp"
+#include "components/component.hpp"
 #include <stdio.h>
 
-/**
- *
- */
-void action_component_t::fireAction() {
-
-	// if there is an internal handler, use it
-	if (internalHandler) {
+void action_component_t::fireAction()
+{
+	if(internalHandler)
+	{
 		internalHandler->handle(this);
 		return;
 	}
 
 	// otherwise send message to registered thread
 	event_listener_info_t listener_info;
-	if (self->getListener(G_UI_COMPONENT_EVENT_TYPE_ACTION, listener_info)) {
+	if(self->getListener(G_UI_COMPONENT_EVENT_TYPE_ACTION, listener_info))
+	{
 		g_ui_component_action_event action_event;
 		action_event.header.type = G_UI_COMPONENT_EVENT_TYPE_ACTION;
 		action_event.header.component_id = listener_info.component_id;
@@ -43,9 +41,7 @@ void action_component_t::fireAction() {
 	}
 }
 
-/**
- *
- */
-void action_component_t::setInternalActionHandler(internal_action_handler_t* handler) {
+void action_component_t::setInternalActionHandler(internal_action_handler_t* handler)
+{
 	this->internalHandler = handler;
 }

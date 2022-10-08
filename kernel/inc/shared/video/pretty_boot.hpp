@@ -21,17 +21,17 @@
 #ifndef __PRETTY_BOOT__
 #define __PRETTY_BOOT__
 
-#include <stdarg.h>
-#include "ghost/stdint.h"
 #include "build_config.hpp"
+#include "ghost/stdint.h"
+#include <stdarg.h>
 
-
-#define G_PRETTY_BOOT_PROGRESS_BAR_Y_POS	15
-#define G_PRETTY_BOOT_LOGO_Y_POS			7
-
+#define G_PRETTY_BOOT_PROGRESS_BAR_Y_POS 15
+#define G_PRETTY_BOOT_LOGO_X_POS 29
+#define G_PRETTY_BOOT_LOGO_Y_POS 8
 
 #if G_PRETTY_BOOT
 #define G_PRETTY_BOOT_STATUS(text, percent) prettyBootUpdateStatus(text, percent)
+#define G_PRETTY_BOOT_STATUS_P(percent) prettyBootUpdateStatus(nullptr, percent)
 #define G_PRETTY_BOOT_FAIL(text) prettyBootFail(text)
 #else
 #define G_PRETTY_BOOT_STATUS(text, percent)

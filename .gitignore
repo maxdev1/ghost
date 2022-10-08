@@ -2,7 +2,7 @@
 .project
 .modifydates
 .changes
-.vscode
+build.log
 temp
 variables.sh
 language.settings.xml

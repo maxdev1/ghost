@@ -3,20 +3,27 @@ ROOT="../.."
 if [ -f "$ROOT/variables.sh" ]; then
 	. "$ROOT/variables.sh"
 fi
-. "$ROOT/ghost.sh" 2&> /dev/null
+. "$ROOT/ghost.sh" 2 &>/dev/null
+. "$ROOT/applications/shared.sh"
 
+# Requirements
+requireVar "ARTIFACT_NAME"
+requireTool changes
 
-TARGET=$1
+# Variables
+TARGET=$@
+
 with TARGET "all"
+with SRC "src"
+with OBJ "obj"
 
 ARTIFACT_LOCAL=$OBJ/$ARTIFACT_NAME
 ARTIFACT_LOCAL_STATIC=$OBJ/$ARTIFACT_NAME_STATIC
 ARTIFACT_TARGET=$SYSROOT_APPLICATIONS/$ARTIFACT_NAME
 ARTIFACT_TARGET_STATIC=$SYSROOT_APPLICATIONS/$ARTIFACT_NAME_STATIC
 
+# Targets
 target_headline $TARGET
-requireTool changes
-
 
 target_clean() {
 	echo "cleaning:"
@@ -30,33 +37,6 @@ target_clean() {
 	changes --clear
 }
 
-target_compile() {
-	echo "compiling:"
-	
-	# check if headers have changed
-	headers_have_changed=0
-	for file in $(find "$SRC" -iname "*.h" -o -iname "*.hpp"); do
-		changes -c $file
-		if [ $? -eq 1 ]; then
-			headers_have_changed=1
-		fi
-		changes -s $file
-	done
-	
-	# compile sources
-	for file in $(find "$SRC" -iname "*.c" -o -iname "*.cpp"); do 
-		changes -c $file
-		changed=$?
-		if ( [ $headers_have_changed -eq 1 ] || [ $changed -eq 1 ] ); then
-			out=`sourceToObject $file`
-			list $out
-			$CROSS_CXX -c $file -o "$OBJ/$out" $CFLAGS
-			failOnError
-			changes -s $file
-		fi
-	done
-}
-
 target_link() {
 	echo "linking:"
 	$CROSS_CXX -o $ARTIFACT_LOCAL $OBJ/*.o $LDFLAGS
@@ -67,23 +47,21 @@ target_link() {
 		list $ARTIFACT_LOCAL_STATIC
 	fi
 }
-	
+
 target_clean_target() {
-	
 	echo "cleaning target:"
-	rm $ARTIFACT_TARGET 2&> /dev/null
+	rm $ARTIFACT_TARGET 2 &>/dev/null
 	list $ARTIFACT_TARGET
 
 	if [ "$MAKE_STATIC" == 1 ]; then
-		rm $ARTIFACT_TARGET_STATIC 2&> /dev/null
+		rm $ARTIFACT_TARGET_STATIC 2 &>/dev/null
 		list $ARTIFACT_TARGET_STATIC
 	fi
 }
 
 target_install() {
-	
 	target_clean_target
-	
+
 	echo "installing artifact"
 	cp $ARTIFACT_LOCAL $ARTIFACT_TARGET
 
@@ -93,20 +71,32 @@ target_install() {
 	fi
 }
 
+print_help() {
+	echo "Usage: $0"
+	echo "  clean         cleans the output directory"
+	echo "  all           builds, links and installs the application"
+	echo ""
+}
 
-# execute targets
-if [[ $TARGET == "all" ]]; then
-	target_compile
-	target_link
-	target_install
-	
-elif [[ $TARGET == "clean" ]]; then
-	target_clean
-	
-else
-	echo "unknown target: '$TARGET'"
-	exit 1
-fi
+# Execute
+for var in $TARGET; do
+	if [[ "$var" = "all" ]]; then
+		target_compile
+		target_link
+		target_install
+
+	elif [[ "$var" == "clean" ]]; then
+		target_clean
+
+	elif [[ "$var" = "--help" || "$var" = "-h" || "$var" = "?" ]]; then
+		print_help
+		exit 0
+
+	else
+		echo "unknown target: '$var'"
+		exit 1
+	fi
+done
 
 target_successful
 exit 0

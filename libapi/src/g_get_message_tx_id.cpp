@@ -18,18 +18,19 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost/user.h"
 #include "ghost/stdint.h"
+#include "ghost/user.h"
 
-static g_atom __next_transaction_lock = false;
+static g_atom __next_transaction_lock = g_atomic_initialize();
 static g_message_transaction __next_transaction = G_MESSAGE_TRANSACTION_FIRST;
 
 /**
  *
  */
-g_message_transaction g_get_message_tx_id() {
-	g_atomic_lock((uint8_t*) &__next_transaction_lock);
+g_message_transaction g_get_message_tx_id()
+{
+	g_atomic_lock(__next_transaction_lock);
 	g_message_transaction next_topic = __next_transaction++;
-	__next_transaction_lock = false;
+	g_atomic_unlock(__next_transaction_lock);
 	return next_topic;
 }

@@ -6,13 +6,12 @@ fi
 . "$ROOT/ghost.sh"
 
 
-TARGET=$1
+TARGET=$@
 
 with TARGET					"all"
 with SRC					"src"
 with OBJ					"obj"
 with INC					"inc"
-with INC_SYSTEM_HEADERS		"../kernel/inc/ghost"
 
 with ARTIFACT_NAME			"libghostapi.a"
 with ARTIFACT_LOCAL			"$ARTIFACT_NAME"
@@ -21,7 +20,7 @@ with ARTIFACT_NAME_SHARED	"libghostapi.so"
 with ARTIFACT_LOCAL_SHARED	"$ARTIFACT_NAME_SHARED"
 with ARTIFACT_TARGET_SHARED	"$SYSROOT_SYSTEM_LIB/$ARTIFACT_NAME_SHARED"
 
-with CFLAGS					"-std=c++11 -fpic -I$INC -I$INC_SYSTEM_HEADERS"
+with CFLAGS					"-std=c++11 -fpic -I$INC"
 with LDFLAGS				"-shared -shared-libgcc"
 
 
@@ -83,9 +82,6 @@ target_clean_target() {
 target_install_headers() {
 	echo "installing api headers"
 	cp -r $INC/* $SYSROOT_SYSTEM_INCLUDE/
-
-	echo "installing kernel headers"
-	cp -r $INC_SYSTEM_HEADERS $SYSROOT_SYSTEM_INCLUDE
 }
 
 target_install() {
@@ -99,20 +95,22 @@ target_install() {
 
 
 # execute targets
-if [[ $TARGET == "install-headers" ]]; then
-	target_install_headers
+for var in $TARGET; do
+	if [[ $var == "install-headers" ]]; then
+		target_install_headers
 
-elif [[ $TARGET == "all" ]]; then
-	target_compile
-	target_archive
-	target_install
-	
-elif [[ $TARGET == "clean" ]]; then
-	target_clean
-	
-else
-	echo "unknown target: '$TARGET'"
-	exit 1
-fi
+	elif [[ $var == "all" ]]; then
+		target_compile
+		target_archive
+		target_install
+		
+	elif [[ $var == "clean" ]]; then
+		target_clean
+		
+	else
+		echo "unknown target: '$var'"
+		exit 1
+	fi
+done
 
 exit 0

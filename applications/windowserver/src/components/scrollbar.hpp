@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,87 +18,87 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __SCROLLBAR__
-#define __SCROLLBAR__
+#ifndef __WINDOWSERVER_COMPONENTS_SCROLLBAR__
+#define __WINDOWSERVER_COMPONENTS_SCROLLBAR__
 
-#include <components/button_state.hpp>
-#include <components/component.hpp>
+#include "components/button_state.hpp"
+#include "components/component.hpp"
 
 class scrollbar_t;
 
-/**
- *
- */
-enum class scrollbar_orientation_t
-	: uint8_t {
-		VERTICAL, HORIZONTAL
+enum class scrollbar_orientation_t : uint8_t
+{
+    VERTICAL,
+    HORIZONTAL
 };
 
-/**
- *
- */
-class scroll_handler_t {
-public:
-	virtual ~scroll_handler_t() {
-	}
-	virtual void handleScroll(scrollbar_t* bar) = 0;
+class scroll_handler_t
+{
+  public:
+    virtual ~scroll_handler_t()
+    {
+    }
+    virtual void handleScroll(scrollbar_t* bar) = 0;
 };
 
-/**
- *
- */
-class scrollbar_t: public component_t {
-private:
-	scrollbar_orientation_t orientation;
+class scrollbar_t : public component_t
+{
+  private:
+    scrollbar_orientation_t orientation;
 
-	int modelPosition;
-	int modelVisibleArea;
-	int modelTotalArea;
+    int modelPosition;
+    int viewportLength;
+    int contentLength;
 
-	button_state_t decButtonState;
-	button_state_t incButtonState;
+    button_state_t decButtonState;
+    button_state_t incButtonState;
 
-	bool knobDrag;
-	int dragPressPosition;
-	int dragViewPosition;
+    bool knobDrag;
+    int dragPressPosition;
+    int dragViewPosition;
 
-	scroll_handler_t* scrollHandler;
+    scroll_handler_t* scrollHandler;
 
-public:
-	scrollbar_t(scrollbar_orientation_t orientation) :
-			orientation(orientation), modelPosition(0), modelVisibleArea(0), modelTotalArea(0), knobDrag(false), dragPressPosition(0), dragViewPosition(0), scrollHandler(
-					0) {
-	}
+  public:
+    scrollbar_t(scrollbar_orientation_t orientation) : orientation(orientation), modelPosition(0),
+                                                       viewportLength(0), contentLength(0), knobDrag(false),
+                                                       dragPressPosition(0), dragViewPosition(0), scrollHandler(0)
+    {
+    }
 
-	virtual void paint();
-	virtual bool handle(event_t& event);
+    virtual void paint();
 
-	virtual void setScrollHandler(scroll_handler_t* handler) {
-		scrollHandler = handler;
-	}
-	virtual scroll_handler_t* gettScrollHandler() {
-		return scrollHandler;
-	}
+    virtual component_t* handleMouseEvent(mouse_event_t& e);
 
-	void setModelArea(int visibleArea, int totalArea);
-	int getModelVisibleArea() const {
-		return modelVisibleArea;
-	}
-	int getModelTotalArea() const {
-		return modelTotalArea;
-	}
+    virtual void setScrollHandler(scroll_handler_t* handler)
+    {
+        scrollHandler = handler;
+    }
+    virtual scroll_handler_t* gettScrollHandler()
+    {
+        return scrollHandler;
+    }
 
-	void setModelPosition(int position);
+    void setViewLengths(int visibleArea, int totalArea);
+    int getviewportLength() const
+    {
+        return viewportLength;
+    }
+    int getcontentLength() const
+    {
+        return contentLength;
+    }
 
-	int getModelPosition() const {
-		return modelPosition;
-	}
+    void setModelPosition(int position);
+    int getModelPosition() const
+    {
+        return modelPosition;
+    }
 
-	int getViewMax();
-	int getKnobSize();
+    int getKnobSpace();
+    int getKnobLength();
 
-	g_rectangle calculateKnob();
-
+    g_rectangle calculateKnob();
 };
 
 #endif

@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -23,24 +23,25 @@
 
 class component_t;
 
-/**
- *
- */
-class layout_manager_t {
-protected:
-	component_t* component;
-public:
-	layout_manager_t() :
-			component(0) {
-	}
-	virtual ~layout_manager_t() {
-	}
+class layout_manager_t
+{
+  protected:
+    component_t* component;
 
-	void setComponent(component_t* newComp) {
-		component = newComp;
-	}
+  public:
+    layout_manager_t() : component(0)
+    {
+    }
+    virtual ~layout_manager_t()
+    {
+    }
 
-	virtual void layout() = 0;
+    void setComponent(component_t* newComp)
+    {
+        component = newComp;
+    }
+
+    virtual void layout() = 0;
 };
 
 #endif

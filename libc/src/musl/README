@@ -1,4 +1,4 @@
-This folder contains the libm sources taken from the musl libc.
+This folder contains the libm sources taken from the musl libc (https://musl.libc.org/).
 
 The architecture folders are currently not really taken into account, everything
 that is found in all subfolders is simply built.

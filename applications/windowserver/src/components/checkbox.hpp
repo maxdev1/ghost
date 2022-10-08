@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,39 +18,38 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __CHECKBOX__
-#define __CHECKBOX__
+#ifndef __WINDOWSERVER_COMPONENTS_CHECKBOX__
+#define __WINDOWSERVER_COMPONENTS_CHECKBOX__
 
-#include <components/component.hpp>
-#include <components/label.hpp>
+#include "components/component.hpp"
+#include "components/label.hpp"
 
-#define DEFAULT_BOX_SIZE		20
-#define DEFAULT_BOX_TEXT_GAP	5
+#define DEFAULT_BOX_SIZE 20
+#define DEFAULT_BOX_TEXT_GAP 5
 
-/**
- *
- */
-class checkbox_t: public component_t {
-private:
-	label_t label;
-	bool checked;
-	int boxSize;
-	int boxTextGap;
+class checkbox_t : public component_t
+{
+  private:
+    label_t label;
+    bool checked;
+    int boxSize;
+    int boxTextGap;
 
-	bool hovered;
-	bool pressed;
+    bool hovered;
+    bool pressed;
 
-public:
-	checkbox_t();
+  public:
+    checkbox_t();
 
-	virtual void layout();
-	virtual void paint();
-	virtual bool handle(event_t& e);
-	virtual void handleBoundChange(g_rectangle oldBounds);
+    virtual void layout();
+    virtual void paint();
+    virtual component_t* handleMouseEvent(mouse_event_t& e);
+    virtual void handleBoundChange(g_rectangle oldBounds);
 
-	label_t& getLabel() {
-		return label;
-	}
+    label_t& getLabel()
+    {
+        return label;
+    }
 };
 
 #endif

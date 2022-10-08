@@ -1,48 +1,77 @@
-#ifndef GRIDLAYOUTMANAGER_HPP_
-#define GRIDLAYOUTMANAGER_HPP_
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <layout/layout_manager.hpp>
-#include <ghostuser/graphics/metrics/insets.hpp>
+#ifndef __WINDOWSERVER_LAYOUT_GRIDLAYOUTMANAGER__
+#define __WINDOWSERVER_LAYOUT_GRIDLAYOUTMANAGER__
 
-/**
- *
- */
-class grid_layout_manager_t: public layout_manager_t {
-private:
-	int columns;
-	int rows;
-	g_insets padding;
-	int horizontalCellSpace;
-	int verticalCellSpace;
+#include "layout/layout_manager.hpp"
+#include <libwindow/metrics/dimension.hpp>
+#include <libwindow/metrics/insets.hpp>
 
-public:
-	grid_layout_manager_t(int columns, int rows);
+class grid_layout_manager_t : public layout_manager_t
+{
+  private:
+    int columns;
+    int rows;
+    g_insets padding;
+    int rowSpace;
+    int colSpace;
 
-	void setPadding(g_insets _padding) {
-		padding = _padding;
-	}
+  public:
+    grid_layout_manager_t(int columns = 1, int rows = 0, int rowSpace = 0, int columnSpace = 0)
+        : columns(columns), rows(rows), padding(g_insets(0, 0, 0, 0)),
+          rowSpace(rowSpace), colSpace(columnSpace)
+    {
+    }
 
-	g_insets getPadding() const {
-		return padding;
-	}
+    void setPadding(g_insets _padding)
+    {
+        padding = _padding;
+    }
 
-	void setHorizontalCellSpace(int _space) {
-		horizontalCellSpace = _space;
-	}
+    g_insets getPadding() const
+    {
+        return padding;
+    }
 
-	int getHorizontalCellSpace() const {
-		return horizontalCellSpace;
-	}
+    void setRowSpace(int _space)
+    {
+        rowSpace = _space;
+    }
 
-	void setVerticalCellSpace(int _space) {
-		verticalCellSpace = _space;
-	}
+    int getRowSpace() const
+    {
+        return rowSpace;
+    }
 
-	int getVerticalCellSpace() const {
-		return verticalCellSpace;
-	}
+    void setColSpace(int _space)
+    {
+        colSpace = _space;
+    }
 
-	virtual void layout();
+    int getColSpace() const
+    {
+        return colSpace;
+    }
+
+    virtual void layout();
 };
 
 #endif

@@ -5,14 +5,11 @@ if [ -f "$ROOT/variables.sh" ]; then
 fi
 . "$ROOT/ghost.sh"
 
-
-# Define build setup
-SRC=src
-OBJ=obj
-ARTIFACT_NAME=windowserver.bin
-CFLAGS="-std=c++11 -I$SRC -I$SYSROOT/system/include/freetype2"
-LDFLAGS="-lghostuser -lcairo -lfreetype -lpixman-1 -lpng -lz"
+# Build configuration
+SRC="src"
+ARTIFACT_NAME="windowserver.bin"
+CFLAGS="-std=c++11 -I$SYSROOT_SYSTEM_INCLUDE/freetype2 -I$SRC"
+LDFLAGS="-linput -lvbedriver -lps2driver -lproperties -lwindow -lcairo -lfreetype -lpixman-1 -lpng -lz"
 
 # Include application build tasks
 . "../applications.sh"
-$SH

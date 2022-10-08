@@ -53,8 +53,8 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 	{
 		logInfo("%! process %i went out of memory during sbrk", "syscall", process->main->id);
 		*outAddress = -1;
-
-	} else
+	}
+	else
 	{
 		// expand if necessary
 		g_virtual_address virt_above;
@@ -89,58 +89,44 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 	return success;
 }
 
-void taskingMemoryCreateInterruptStack(g_task* task)
-{
-	// Interrupt stack
-	g_physical_address intPhys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-	g_virtual_address intVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
-	pagingMapPage(intVirt, intPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
-	pageReferenceTrackerIncrement(intPhys);
-	task->interruptStack.start = intVirt;
-	task->interruptStack.end = intVirt + G_PAGE_SIZE;
-}
-
 void taskingMemoryCreateStacks(g_task* task)
 {
-	/* Ring 3 tasks need an additional interrupt stack */
+	// Interrupt stack only for Ring 3 tasks
 	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
 	{
 		task->interruptStack.start = 0;
 		task->interruptStack.end = 0;
-	} else
+	}
+	else
 	{
-		taskingMemoryCreateInterruptStack(task);
+		task->interruptStack = taskingMemoryCreateStack(memoryVirtualRangePool, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS, G_TASKING_MEMORY_INTERRUPT_STACK_PAGES);
 	}
 
-	/* Define paging flags and range size */
-	uint32_t tableFlags, pageFlags;
-	int pages;
-	g_virtual_address stackVirt;
+	// Create task stack
 	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
-	{
-		tableFlags = DEFAULT_KERNEL_TABLE_FLAGS;
-		pageFlags = DEFAULT_KERNEL_PAGE_FLAGS;
-		pages = G_TASKING_MEMORY_KERNEL_STACK_PAGES;
-		stackVirt = addressRangePoolAllocate(memoryVirtualRangePool, pages);
-	} else
-	{
-		tableFlags = DEFAULT_USER_TABLE_FLAGS;
-		pageFlags = DEFAULT_USER_PAGE_FLAGS;
-		pages = G_TASKING_MEMORY_USER_STACK_PAGES;
-		stackVirt = addressRangePoolAllocate(task->process->virtualRangePool, pages);
-	}
+		task->stack = taskingMemoryCreateStack(memoryVirtualRangePool, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS, G_TASKING_MEMORY_KERNEL_STACK_PAGES);
+	else
+		task->stack = taskingMemoryCreateStack(task->process->virtualRangePool, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS, G_TASKING_MEMORY_USER_STACK_PAGES);
 
-	/* Here we reserve a virtual address range for the stack and allocate a physical page
-	only as the last page of our range. When the process faults, the stack is filled up. */
+	// Set entry stack pointer
+	task->state = (g_processor_state*) (task->stack.end - sizeof(g_processor_state));
+}
+
+g_stack taskingMemoryCreateStack(g_address_range_pool* addressRangePool, uint32_t tableFlags, uint32_t pageFlags, int pages)
+{
+	g_virtual_address stackVirt = addressRangePoolAllocate(addressRangePool, pages);
+
+	// Only allocate and map the last page of the stack; when the process faults, lazy-allocate more physical space.
+	// The first page of the allocated virtual range is used as a "guard page" and makes the process fault when accessed.
 	g_physical_address pagePhys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
 	pageReferenceTrackerIncrement(pagePhys);
+	uint32_t stackEnd = stackVirt + pages * G_PAGE_SIZE;
+	pagingMapPage(stackEnd - G_PAGE_SIZE, pagePhys, tableFlags, pageFlags);
 
-	task->stack.start = stackVirt;
-	task->stack.end = stackVirt + pages * G_PAGE_SIZE;
-	pagingMapPage(task->stack.end - G_PAGE_SIZE, pagePhys, tableFlags, pageFlags);
-
-	/* Set stack pointer */
-	task->state = (g_processor_state*) (task->stack.end - sizeof(g_processor_state));
+	g_stack stack;
+	stack.start = stackVirt;
+	stack.end = stackEnd;
+	return stack;
 }
 
 g_physical_address taskingMemoryCreatePageDirectory()
@@ -170,4 +156,3 @@ g_physical_address taskingMemoryCreatePageDirectory()
 	pagingUnmapPage(directoryTempVirt);
 	return directoryPhys;
 }
-

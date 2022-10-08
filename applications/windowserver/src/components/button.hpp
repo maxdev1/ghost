@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,58 +18,56 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __BUTTON__
-#define __BUTTON__
+#ifndef __WINDOWSERVER_COMPONENTS_BUTTON__
+#define __WINDOWSERVER_COMPONENTS_BUTTON__
 
-#include <components/action_component.hpp>
-#include <components/component.hpp>
-#include <components/button_state.hpp>
-#include <components/label.hpp>
-#include <components/titled_component.hpp>
-#include <ghostuser/graphics/text/font.hpp>
-#include <ghostuser/graphics/metrics/insets.hpp>
+#include "components/action_component.hpp"
+#include "components/button_state.hpp"
+#include "components/component.hpp"
+#include "components/label.hpp"
+#include <libwindow/text/font.hpp>
+#include "components/titled_component.hpp"
+
+#include <libwindow/metrics/insets.hpp>
 #include <string>
 
-/**
- *
- */
-class button_t: public component_t, public titled_component_t, public action_component_t {
-private:
-	button_state_t state;
-	label_t label;
-	g_insets insets;
-	bool enabled;
+class button_t : public component_t, public titled_component_t, public action_component_t
+{
+  private:
+    button_state_t state;
+    label_t label;
+    g_insets insets;
+    bool enabled;
 
-public:
-	/**
-	 *
-	 */
-	button_t();
-	virtual ~button_t() {
-	}
+  public:
+    button_t();
+    virtual ~button_t()
+    {
+    }
 
-	virtual void layout();
-	virtual void paint();
-	virtual bool handle(event_t& e);
-	virtual void handleBoundChange(g_rectangle oldBounds);
+    virtual void update();
+    virtual void layout();
+    virtual void paint();
+    virtual component_t* handleMouseEvent(mouse_event_t& e);
+    virtual component_t* handleFocusEvent(focus_event_t& e);
 
-	virtual void setTitle(std::string title);
-	virtual std::string getTitle();
+    virtual void setTitle(std::string title);
+    virtual std::string getTitle();
 
-	label_t& getLabel() {
-		return label;
-	}
+    virtual void setEnabled(bool enabled);
+    virtual bool isEnabled() const
+    {
+        return enabled;
+    }
 
-	/**
-	 *
-	 */
-	virtual bool getNumericProperty(int property, uint32_t* out);
+    label_t& getLabel()
+    {
+        return label;
+    }
 
-	/**
-	 *
-	 */
-	virtual bool setNumericProperty(int property, uint32_t value);
+    virtual bool getNumericProperty(int property, uint32_t* out);
 
+    virtual bool setNumericProperty(int property, uint32_t value);
 };
 
 #endif

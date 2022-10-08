@@ -45,6 +45,8 @@ g_spawn_status g_spawn_poid(const char* path, const char* args, const char* work
 {
 	g_syscall_spawn spawnData;
 	spawnData.path = (char*) path;
+	spawnData.args = args;
+	spawnData.workdir = workdir;
 	spawnData.securityLevel = securityLevel;
 
 	if(inStdio)

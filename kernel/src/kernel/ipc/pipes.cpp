@@ -49,6 +49,8 @@ g_fs_pipe_status pipeCreate(g_fs_phys_id* outPipeId)
 	pipe->buffer = (uint8_t*) heapAllocate(pipe->capacity);
 	pipe->readPosition = pipe->buffer;
 	pipe->writePosition = pipe->buffer;
+	pipe->waitersRead = nullptr;
+	pipe->waitersWrite = nullptr;
 
 	g_fs_phys_id pipeId = pipeGetNextId();
 	hashmapPut<g_fs_phys_id, g_pipeline*>(pipeMap, pipeId, pipe);
@@ -80,7 +82,8 @@ void pipeAddReference(g_fs_phys_id pipeId)
 		mutexAcquire(&pipe->lock);
 		pipe->references++;
 		mutexRelease(&pipe->lock);
-	} else
+	}
+	else
 	{
 		logInfo("%! tried to add reference to non-existing pipe %i", "pipe", pipeId);
 	}
@@ -103,7 +106,8 @@ void pipeRemoveReference(g_fs_phys_id pipeId)
 		{
 			pipeDeleteInternal(pipeId, pipe);
 		}
-	} else
+	}
+	else
 	{
 		logInfo("%! tried to remove reference from non-existing pipe %i", "pipe", pipeId);
 	}
@@ -123,7 +127,10 @@ g_fs_read_status pipeRead(g_fs_phys_id pipeId, uint8_t* buffer, uint64_t offset,
 {
 	g_pipeline* pipe = pipeGetById(pipeId);
 	if(!pipe)
+	{
+		logInfo("%! tried to read from non-existing pipe %i", "pipe", pipeId);
 		return G_FS_READ_ERROR;
+	}
 
 	mutexAcquire(&pipe->lock);
 
@@ -145,8 +152,8 @@ g_fs_read_status pipeRead(g_fs_phys_id pipeId, uint8_t* buffer, uint64_t offset,
 
 		// set the read pointer to it's new location
 		pipe->readPosition = (uint8_t*) ((uint32_t) pipe->buffer + remaining);
-
-	} else
+	}
+	else
 	{
 		// there are enough bytes left from read pointer, copy it to buffer
 		memoryCopy(buffer, pipe->readPosition, length);
@@ -171,8 +178,9 @@ g_fs_read_status pipeRead(g_fs_phys_id pipeId, uint8_t* buffer, uint64_t offset,
 		// finish with success
 		*outRead = length;
 		status = G_FS_READ_SUCCESSFUL;
-
-	} else
+		waitQueueWake(&pipe->waitersWrite);
+	}
+	else
 	{
 		*outRead = 0;
 		status = G_FS_READ_BUSY;
@@ -212,8 +220,8 @@ g_fs_write_status pipeWrite(g_fs_phys_id pipeId, uint8_t* buffer, uint64_t offse
 
 			// set the write pointer to the new location
 			pipe->writePosition = (uint8_t*) ((uint32_t) pipe->buffer + remain);
-
-		} else
+		}
+		else
 		{
 			// just write bytes at write pointer
 			memoryCopy(pipe->writePosition, buffer, length);
@@ -231,8 +239,9 @@ g_fs_write_status pipeWrite(g_fs_phys_id pipeId, uint8_t* buffer, uint64_t offse
 		pipe->size += length;
 		*outWrote = length;
 		status = G_FS_WRITE_SUCCESSFUL;
-
-	} else
+		waitQueueWake(&pipe->waitersRead);
+	}
+	else
 	{
 		*outWrote = 0;
 		status = G_FS_WRITE_BUSY;
@@ -265,4 +274,26 @@ g_fs_open_status pipeTruncate(g_fs_phys_id pipeId)
 	mutexRelease(&pipe->lock);
 
 	return G_FS_OPEN_SUCCESSFUL;
+}
+
+void pipeWaitForRead(g_tid task, g_fs_phys_id pipeId)
+{
+	g_pipeline* pipe = pipeGetById(pipeId);
+	if(!pipe)
+		return;
+
+	mutexAcquire(&pipe->lock);
+	waitQueueAdd(&pipe->waitersRead, task);
+	mutexRelease(&pipe->lock);
+}
+
+void pipeWaitForWrite(g_tid task, g_fs_phys_id pipeId)
+{
+	g_pipeline* pipe = pipeGetById(pipeId);
+	if(!pipe)
+		return;
+
+	mutexAcquire(&pipe->lock);
+	waitQueueAdd(&pipe->waitersWrite, task);
+	mutexRelease(&pipe->lock);
 }

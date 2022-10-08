@@ -20,31 +20,42 @@
 
 #include "kernel/system/interrupts/interrupts.hpp"
 
-#include "kernel/system/interrupts/exceptions.hpp"
-#include "kernel/system/interrupts/requests.hpp"
-#include "kernel/system/interrupts/lapic.hpp"
-#include "kernel/system/interrupts/ioapic.hpp"
-#include "kernel/system/interrupts/pic.hpp"
-#include "kernel/system/interrupts/idt.hpp"
-#include "shared/system/mutex.hpp"
-#include "kernel/tasking/tasking.hpp"
-#include "kernel/memory/gdt.hpp"
 #include "kernel/kernel.hpp"
+#include "kernel/memory/gdt.hpp"
+#include "kernel/system/interrupts/apic/ioapic.hpp"
+#include "kernel/system/interrupts/apic/lapic.hpp"
+#include "kernel/system/interrupts/exceptions.hpp"
+#include "kernel/system/interrupts/idt.hpp"
+#include "kernel/system/interrupts/pic.hpp"
+#include "kernel/system/interrupts/requests.hpp"
+#include "kernel/system/timing/pit.hpp"
+#include "kernel/tasking/clock.hpp"
+#include "kernel/tasking/tasking.hpp"
+#include "shared/system/mutex.hpp"
 
 void interruptsInitializeBsp()
 {
-	interruptsCheckPrerequisites();
-
 	idtPrepare();
 	idtLoad();
 	interruptsInstallRoutines();
 
-	picDisable();
-	lapicInitialize();
-	ioapicInitializeAll();
+	if(lapicIsAvailable())
+	{
+		if(!ioapicAreAvailable())
+			kernelPanic("%! no I/O APIC controllers found", "system");
 
-	ioapicCreateIsaRedirectionEntry(1, 1, 0); // keyboard
-	ioapicCreateIsaRedirectionEntry(12, 12, 0); // mouse
+		picDisable();
+		lapicInitialize();
+		ioapicInitializeAll();
+
+		ioapicCreateIsaRedirectionEntry(1, 1, 0);	// keyboard
+		ioapicCreateIsaRedirectionEntry(12, 12, 0); // mouse
+	}
+	else
+	{
+		picRemapIrqs();
+		pitStartAsTimer(1000);
+	}
 }
 
 void interruptsInitializeAp()
@@ -53,56 +64,80 @@ void interruptsInitializeAp()
 	lapicInitialize();
 }
 
-void interruptsCheckPrerequisites()
-{
-	if(!lapicGlobalIsPrepared())
-		kernelPanic("%! no local APIC controller found", "system");
-
-	if(!ioapicAreAvailable())
-		kernelPanic("%! no I/O APIC controllers found", "system");
-
-	if(!processorListAvailable())
-		kernelPanic("%! no processors found", "system");
-}
-
 void interruptsEnable()
 {
-	asm("sti");
+	asm volatile("sti");
 }
 
 void interruptsDisable()
 {
-	asm("cli");
+	asm volatile("cli");
 }
 
 bool interruptsAreEnabled()
 {
-    uint32_t eflags = processorReadEflags();
-    return eflags & (1 << 9);
+	uint32_t eflags = processorReadEflags();
+	return eflags & (1 << 9);
+}
+
+void interruptsSendEndOfInterrupt(uint8_t irq)
+{
+	if(lapicIsAvailable())
+		lapicSendEndOfInterrupt();
+	else
+		picSendEndOfInterrupt(irq);
 }
 
 /**
  * Interrupt handler routine, called by the interrupt stubs (assembly file)
  */
-extern "C" g_virtual_address _interruptHandler(g_virtual_address esp)
+extern "C" g_virtual_address _interruptHandler(g_virtual_address state)
 {
-	g_tasking_local* local = taskingGetLocal();
-	local->inInterruptHandler = true;
+	uint8_t irq = 0;
 
-	if(taskingStore(esp))
+	g_task* task = taskingGetCurrentTask();
+	if(task)
 	{
-		if(local->scheduling.current->state->intr < 0x20)
+		task->state = (g_processor_state*) state;
+		task->active = false;
+
+		uint8_t intr = task->state->intr;
+		irq = intr - 0x20;
+
+		if(intr < 0x20) // Exception
 		{
-			exceptionsHandle(local->scheduling.current);
-		} else {
-			requestsHandle(local->scheduling.current);
+			exceptionsHandle(task);
+		}
+		else
+		{
+			if(intr == 0x20) // Timer
+			{
+				taskingGetLocal()->time += APIC_MILLISECONDS_PER_TICK;
+				clockUpdate();
+				taskingSchedule();
+			}
+			else if(intr == 0x80) // Syscall
+			{
+				syscallHandle(task);
+			}
+			else if(intr == 0x81) // Yield
+			{
+				taskingSchedule();
+			}
+			else // Other IRQs are written to FS device
+			{
+				requestsWriteToIrqDevice(task, irq);
+			}
 		}
 	}
+	else
+	{
+		taskingSchedule();
+	}
 
-	local->inInterruptHandler = false;
-	esp = taskingRestore(esp);
-	lapicSendEndOfInterrupt();
-	return esp;
+	interruptsSendEndOfInterrupt(irq);
+
+	return (g_virtual_address) taskingGetCurrentTask()->state;
 }
 
 void interruptsInstallRoutines()

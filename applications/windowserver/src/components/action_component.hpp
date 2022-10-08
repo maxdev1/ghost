@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,13 +18,12 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __ACTION_COMPONENT__
-#define __ACTION_COMPONENT__
+#ifndef __WINDOWSERVER_COMPONENTS_ACTIONCOMPONENT__
+#define __WINDOWSERVER_COMPONENTS_ACTIONCOMPONENT__
 
 #include <ghost.h>
-#include <string>
 #include <list>
-#include <ghostuser/ui/interface_specification.hpp>
+#include <string>
 
 class component_t;
 class action_component_t;
@@ -32,11 +31,13 @@ class action_component_t;
 /**
  * Used so the window server can itself be the handler for an action component.
  */
-class internal_action_handler_t {
-public:
-	virtual ~internal_action_handler_t() {
-	}
-	virtual void handle(action_component_t* source) = 0;
+class internal_action_handler_t
+{
+  public:
+    virtual ~internal_action_handler_t()
+    {
+    }
+    virtual void handle(action_component_t* source) = 0;
 };
 
 /**
@@ -44,35 +45,23 @@ public:
  * The component may fire actions which are dispatched to the registered
  * listener for processing.
  */
-class action_component_t {
-protected:
-	component_t* self;
-	internal_action_handler_t* internalHandler;
+class action_component_t
+{
+  protected:
+    component_t* self;
+    internal_action_handler_t* internalHandler;
 
-public:
-	/**
-	 *
-	 */
-	action_component_t(component_t* self) :
-			self(self), internalHandler(nullptr) {
-	}
+  public:
+    action_component_t(component_t* self) : self(self), internalHandler(nullptr)
+    {
+    }
 
-	/**
-	 *
-	 */
-	virtual ~action_component_t() {
-	}
+    virtual ~action_component_t()
+    {
+    }
 
-	/**
-	 *
-	 */
-	virtual void fireAction();
-
-	/**
-	 *
-	 */
-	virtual void setInternalActionHandler(internal_action_handler_t* handler);
-
+    virtual void fireAction();
+    virtual void setInternalActionHandler(internal_action_handler_t* handler);
 };
 
 #endif

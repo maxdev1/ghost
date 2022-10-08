@@ -48,9 +48,11 @@ extern void (*__fini_array_end[])() __attribute__((weak));
  */
 int __g_main()
 {
+	g_process_get_info();
+
 	// initialize libc
 	__g_init_libc();
-
+	
 	// default return value
 	int ret = -1;
 
@@ -79,9 +81,6 @@ void __g_init_libc()
 
 	// set default locale (N1548-7.11.1.1-4)
 	setlocale(LC_ALL, "C");
-
-	// set default signal handlers
-	signal(SIGINT, SIG_DFL);
 
 	// initialize standard I/O
 	__init_stdio();
@@ -124,10 +123,9 @@ void __g_init_libc_call_init()
 
 	} else
 	{
-		g_process_info* processInfo = g_process_get_info();
-		for(int i = 0; i < processInfo->objectInfosSize; i++)
+		for(int i = 0; i < g_current_process_info->objectInfosSize; i++)
 		{
-			g_object_info* objectInfo = &processInfo->objectInfos[i];
+			g_object_info* objectInfo = &g_current_process_info->objectInfos[i];
 			if(objectInfo->preinitArray)
 			{
 				for(uint32_t i = 0; i < objectInfo->preinitArraySize; i++)
@@ -168,10 +166,9 @@ void __g_fini_libc_call_fini()
 
 	} else
 	{
-		g_process_info* processInfo = g_process_get_info();
-		for(int i = 0; i < processInfo->objectInfosSize; i++)
+		for(int i = 0; i < g_current_process_info->objectInfosSize; i++)
 		{
-			g_object_info* objectInfo = &processInfo->objectInfos[i];
+			g_object_info* objectInfo = &g_current_process_info->objectInfos[i];
 			if(objectInfo->fini)
 			{
 				objectInfo->fini();

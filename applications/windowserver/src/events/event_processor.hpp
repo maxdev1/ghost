@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,42 +18,39 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __EVENT_PROCESSOR__
-#define __EVENT_PROCESSOR__
+#ifndef __WINDOWSERVER_EVENTS_EVENTPROCESSOR__
+#define __WINDOWSERVER_EVENTS_EVENTPROCESSOR__
 
-#include <ghostuser/io/keyboard.hpp>
-#include <ghostuser/io/mouse.hpp>
-#include <ghostuser/ui/interface_specification.hpp>
-#include <ghostuser/tasking/lock.hpp>
-#include <interface/command_message_responder_thread.hpp>
 #include <deque>
+#include <libinput/keyboard/keyboard.hpp>
+#include <libinput/mouse/mouse.hpp>
 
-#define DEFAULT_MULTICLICK_TIMESPAN	250
+#define DEFAULT_MULTICLICK_TIMESPAN 150
 
 /**
  * The event queue is used to store any incoming events for
  * later processing.
  */
-class event_processor_t {
-public:
+class event_processor_t
+{
+  public:
 	uint32_t multiclickTimespan;
 
 	event_processor_t();
 
 	std::deque<g_key_info> key_info_buffer;
-	g_lock key_info_buffer_lock;
+	g_atom key_info_buffer_lock = g_atomic_initialize();
 	void bufferKeyEvent(g_key_info keyInfo);
 
 	std::deque<void*> command_message_buffer;
-	g_lock command_message_buffer_lock;
+	g_atom command_message_buffer_lock = g_atomic_initialize();
 	void bufferCommandMessage(void* commandMessage);
 
 	void process();
-	void process_command(g_tid sender_tid, g_ui_message_header* request_header, command_message_response_t& response_out);
 
 	void translateKeyEvent(g_key_info& info);
+	void processKeyState();
 	void processMouseState();
-
 };
 
 #endif

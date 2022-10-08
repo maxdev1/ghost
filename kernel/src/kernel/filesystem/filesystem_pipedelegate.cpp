@@ -19,10 +19,9 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/filesystem/filesystem_pipedelegate.hpp"
-#include "kernel/tasking/wait_resolver.hpp"
-#include "kernel/memory/memory.hpp"
 #include "kernel/ipc/pipes.hpp"
 #include "kernel/kernel.hpp"
+#include "kernel/memory/memory.hpp"
 
 #include "shared/system/mutex.hpp"
 #include "shared/utils/string.hpp"
@@ -59,44 +58,12 @@ g_fs_open_status filesystemPipeDelegateTruncate(g_fs_node* file)
 	return pipeTruncate(file->physicalId);
 }
 
-bool filesystemPipeDelegateWaitResolverRead(g_task* task)
+void filesystemPipeDelegateWaitForRead(g_tid task, g_fs_node* node)
 {
-	g_wait_resolver_for_file_data* waitData = (g_wait_resolver_for_file_data*) task->waitData;
-
-	g_fs_node* node = filesystemGetNode(waitData->nodeId);
-	if(!node)
-	{
-		logInfo("%! task %i was waiting to read from file %i which doesn't exist", "pipes", task->id, waitData->nodeId);
-		return true;
-	}
-
-	g_pipeline* pipe = pipeGetById(node->physicalId);
-	if(!pipe)
-	{
-		logInfo("%! task %i was waiting to read from pipe %i which doesn't exist", "pipes", task->id, node->physicalId);
-		return true;
-	}
-
-	return pipe->size > 0;
+	pipeWaitForRead(task, node->physicalId);
 }
 
-bool filesystemPipeDelegateWaitResolverWrite(g_task* task)
+void filesystemPipeDelegateWaitForWrite(g_tid task, g_fs_node* node)
 {
-	g_wait_resolver_for_file_data* waitData = (g_wait_resolver_for_file_data*) task->waitData;
-
-	g_fs_node* node = filesystemGetNode(waitData->nodeId);
-	if(!node)
-	{
-		logInfo("%! task %i was waiting to write to file %i which doesn't exist", "pipes", task->id, waitData->nodeId);
-		return true;
-	}
-
-	g_pipeline* pipe = pipeGetById(node->physicalId);
-	if(!pipe)
-	{
-		logInfo("%! task %i was waiting to write to pipe %i which doesn't exist", "pipes", task->id, node->physicalId);
-		return true;
-	}
-
-	return pipe->size < pipe->capacity;
+	pipeWaitForWrite(task, node->physicalId);
 }

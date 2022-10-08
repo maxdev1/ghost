@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,18 +18,18 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LOCATABLE__
-#define __LOCATABLE__
+#ifndef __WINDOWSERVER_EVENTS_LOCATABLE__
+#define __WINDOWSERVER_EVENTS_LOCATABLE__
+
+#include <libwindow/metrics/point.hpp>
 
 class component_t;
 
-/**
- *
- */
-class locatable_t {
-public:
-	g_point position;
-	g_point screenPosition;
+class locatable_t
+{
+  public:
+    g_point position;
+    g_point screenPosition;
 };
 
 #endif

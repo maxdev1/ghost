@@ -19,14 +19,13 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/filesystem/filesystem.hpp"
+#include "kernel/filesystem/filesystem_pipedelegate.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/filesystem/filesystem_ramdiskdelegate.hpp"
-#include "kernel/filesystem/filesystem_pipedelegate.hpp"
-#include "kernel/tasking/tasking.hpp"
-#include "kernel/tasking/wait.hpp"
-#include "kernel/memory/memory.hpp"
 #include "kernel/ipc/pipes.hpp"
 #include "kernel/kernel.hpp"
+#include "kernel/memory/memory.hpp"
+#include "kernel/tasking/tasking.hpp"
 
 #include "shared/system/mutex.hpp"
 #include "shared/utils/string.hpp"
@@ -82,8 +81,8 @@ void filesystemCreateRoot()
 	pipeDelegate->write = filesystemPipeDelegateWrite;
 	pipeDelegate->truncate = filesystemPipeDelegateTruncate;
 	pipeDelegate->getLength = filesystemPipeDelegateGetLength;
-	pipeDelegate->waitResolverRead = filesystemPipeDelegateWaitResolverRead;
-	pipeDelegate->waitResolverWrite = filesystemPipeDelegateWaitResolverWrite;
+	pipeDelegate->waitForRead = filesystemPipeDelegateWaitForRead;
+	pipeDelegate->waitForWrite = filesystemPipeDelegateWaitForWrite;
 	pipeDelegate->close = filesystemPipeDelegateClose;
 
 	pipesFolder = filesystemCreateNode(G_FS_NODE_TYPE_FOLDER, "pipes");
@@ -198,7 +197,7 @@ g_fs_open_status filesystemFindChild(g_fs_node* parent, const char* name, g_fs_n
 }
 
 g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node** outChild, bool* outFoundAllButLast, g_fs_node** outLastFoundParent,
-		const char** outFileNameStart)
+								const char** outFileNameStart)
 {
 	if(parent == 0)
 	{
@@ -295,7 +294,8 @@ g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task
 				return G_FS_OPEN_ERROR;
 			}
 		}
-	} else if(status == G_FS_OPEN_NOT_FOUND)
+	}
+	else if(status == G_FS_OPEN_NOT_FOUND)
 	{
 		if(flags & G_FILE_FLAG_MODE_CREATE)
 		{
@@ -303,25 +303,28 @@ g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task
 			{
 				logInfo("%! failed to create file '%s' in parent %i because folders do not exist", "fs", path, relative->id);
 				return G_FS_OPEN_ERROR;
-			} else if(filesystemCreateFile(lastFoundParent, filenameStart, &file) != G_FS_OPEN_SUCCESSFUL)
+			}
+			else if(filesystemCreateFile(lastFoundParent, filenameStart, &file) != G_FS_OPEN_SUCCESSFUL)
 			{
 				logInfo("%! failed to create file '%s' in parent %i", "fs", path, relative->id);
 				return G_FS_OPEN_ERROR;
 			}
-		} else
+		}
+		else
 		{
 			return G_FS_OPEN_NOT_FOUND;
 		}
-	} else
+	}
+	else
 	{
 		return status;
 	}
 
 	// Actually open the file
-	return filesystemOpen(file, flags, task, outFd);
+	return filesystemOpenNodeFd(file, flags, task->process->id, outFd);
 }
 
-g_fs_open_status filesystemOpen(g_fs_node* file, g_file_flag_mode flags, g_task* task, g_fd* outFd)
+g_fs_open_status filesystemOpenNode(g_fs_node* file, g_file_flag_mode flags, g_pid process, g_file_descriptor** outDescriptor, g_fd optionalTargetFd)
 {
 	g_fs_delegate* delegate = filesystemFindDelegate(file);
 	if(!delegate->open)
@@ -330,10 +333,17 @@ g_fs_open_status filesystemOpen(g_fs_node* file, g_file_flag_mode flags, g_task*
 	g_fs_open_status status = delegate->open(file);
 	if(status == G_FS_OPEN_SUCCESSFUL)
 	{
-		g_file_descriptor* descriptor;
-		filesystemProcessCreateDescriptor(task->process->id, file->id, flags, &descriptor);
-		*outFd = descriptor->id;
+		status = filesystemProcessCreateDescriptor(process, file->id, flags, outDescriptor, optionalTargetFd);
 	}
+	return status;
+}
+
+g_fs_open_status filesystemOpenNodeFd(g_fs_node* file, g_file_flag_mode flags, g_pid process, g_fd* outFd, g_fd optionalTargetFd)
+{
+	g_file_descriptor* descriptor;
+	auto status = filesystemOpenNode(file, flags, process, &descriptor, optionalTargetFd);
+	if(descriptor)
+		*outFd = descriptor->id;
 	return status;
 }
 
@@ -355,8 +365,13 @@ g_fs_read_status filesystemRead(g_task* task, g_fd fd, uint8_t* buffer, uint64_t
 	g_fs_read_status status;
 	while((status = filesystemRead(node, buffer, descriptor->offset, length, &read)) == G_FS_READ_BUSY && node->blocking)
 	{
-		filesystemWaitToRead(task, node);
-		taskingKernelThreadYield();
+		g_fs_delegate* delegate = filesystemFindDelegate(node);
+		if(!delegate->waitForRead)
+			kernelPanic("%! task %i tried to wait for file %i but delegate didn't provide wait-for-read implementation", "filesytem", task->id, node->id);
+
+		delegate->waitForRead(task->id, node);
+		task->status = G_THREAD_STATUS_WAITING;
+		taskingYield();
 	}
 	if(read > 0)
 	{
@@ -427,10 +442,16 @@ g_fs_write_status filesystemWrite(g_task* task, g_fd fd, uint8_t* buffer, uint64
 
 	int64_t wrote;
 	g_fs_write_status status;
+
 	while((status = filesystemWrite(node, buffer, startOffset, length, &wrote)) == G_FS_WRITE_BUSY && node->blocking)
 	{
-		filesystemWaitToWrite(task, node);
-		taskingKernelThreadYield();
+		g_fs_delegate* delegate = filesystemFindDelegate(node);
+		if(!delegate->waitForWrite)
+			kernelPanic("%! task %i tried to wait for file %i but delegate didn't provide wait-for-write implementation", "filesytem", task->id, node->id);
+
+		delegate->waitForWrite(task->id, node);
+		task->status = G_THREAD_STATUS_WAITING;
+		taskingYield();
 	}
 	if(wrote > 0)
 	{
@@ -467,24 +488,6 @@ g_fs_open_status filesystemTruncate(g_fs_node* file)
 	return delegate->truncate(file);
 }
 
-void filesystemWaitToWrite(g_task* task, g_fs_node* file)
-{
-	g_fs_delegate* delegate = filesystemFindDelegate(file);
-	if(!delegate->waitResolverWrite)
-		kernelPanic("%! task %i tried to wait for file %i but delegate didn't provide wait resolver", "filesytem", task->id, file->id);
-
-	waitForFile(task, file, delegate->waitResolverWrite);
-}
-
-void filesystemWaitToRead(g_task* task, g_fs_node* file)
-{
-	g_fs_delegate* delegate = filesystemFindDelegate(file);
-	if(!delegate->waitResolverRead)
-		kernelPanic("%! task %i tried to wait for file %i but delegate didn't provide wait resolver", "filesytem", task->id, file->id);
-
-	waitForFile(task, file, delegate->waitResolverRead);
-}
-
 g_fs_pipe_status filesystemCreatePipe(g_bool blocking, g_fs_node** outPipeNode)
 {
 	g_fs_phys_id pipeId;
@@ -515,7 +518,7 @@ g_fs_close_status filesystemClose(g_pid pid, g_fd fd, g_bool removeDescriptor)
 	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(pid, fd);
 	if(!descriptor)
 	{
-		logInfo("%! failed to close fd %i in process %i, illegal descriptor", "fs", fd, pid);
+		logDebug("%! failed to close fd %i in process %i, illegal descriptor", "fs", fd, pid);
 		return G_FS_CLOSE_INVALID_FD;
 	}
 
@@ -531,12 +534,18 @@ g_fs_close_status filesystemClose(g_pid pid, g_fd fd, g_bool removeDescriptor)
 		kernelPanic("%! failed to close file %i, delegate had no implementation", "fs", file->id);
 
 	g_fs_close_status status = delegate->close(file);
-	if(status == G_FS_CLOSE_SUCCESSFUL && removeDescriptor)
+	if(status == G_FS_CLOSE_SUCCESSFUL)
 	{
-		filesystemProcessRemoveDescriptor(pid, fd);
+		logDebug("%! closed file descriptor %i in process %i", "fs", fd, pid);
+	}
+	else
+	{
+		logWarn("%! failed to close fd %i in process %i with status: %i", "fs", fd, pid, status);
 	}
 
-	logDebug("%! closed file descriptor %i in process %i", "fs", fd, pid);
+	// TODO In which case do we *not* remove it?
+	if(removeDescriptor)
+		filesystemProcessRemoveDescriptor(pid, fd);
 
 	return status;
 }
@@ -566,10 +575,12 @@ g_fs_seek_status filesystemSeek(g_task* task, g_fd fd, g_fs_seek_mode mode, int6
 	if(mode == G_FS_SEEK_CUR)
 	{
 		descriptor->offset += amount;
-	} else if(mode == G_FS_SEEK_SET)
+	}
+	else if(mode == G_FS_SEEK_SET)
 	{
 		descriptor->offset = amount;
-	} else if(mode == G_FS_SEEK_END)
+	}
+	else if(mode == G_FS_SEEK_END)
 	{
 		descriptor->offset = length - amount;
 	}
@@ -596,14 +607,18 @@ int filesystemGetAbsolutePathLength(g_fs_node* node)
 	}
 
 	int length = 0;
-	if(node->parent) {
+	if(node->parent)
+	{
 		length = filesystemGetAbsolutePathLength(node->parent);
 	}
 
 	int calced;
-	if(length == 1) {
+	if(length == 1)
+	{
 		calced = stringLength(node->name);
-	} else {
+	}
+	else
+	{
 		calced = stringLength(node->name) + 1;
 	}
 	return length + calced;
@@ -618,14 +633,18 @@ int filesystemGetAbsolutePath(g_fs_node* node, char* buffer)
 	}
 
 	int length = 0;
-	if(node->parent) {
+	if(node->parent)
+	{
 		length = filesystemGetAbsolutePath(node->parent, buffer);
 	}
 
 	int copied;
-	if(length == 1) {
+	if(length == 1)
+	{
 		copied = stringCopy(&buffer[length], node->name);
-	} else {
+	}
+	else
+	{
 		buffer[length] = '/';
 		copied = stringCopy(&buffer[length + 1], node->name) + 1;
 	}
