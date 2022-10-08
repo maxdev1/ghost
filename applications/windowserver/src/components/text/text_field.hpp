@@ -21,8 +21,8 @@
 #ifndef __TEXT_FIELD__
 #define __TEXT_FIELD__
 
-#include <libwindow/text/font.hpp>
-#include <libwindow/text/text_layouter.hpp>
+#include <libfont/font.hpp>
+#include <libfont/text_layouter.hpp>
 #include "components/text/text_component.hpp"
 #include "components/titled_component.hpp"
 

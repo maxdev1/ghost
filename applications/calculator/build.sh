@@ -7,9 +7,9 @@ fi
 
 # Build configuration
 SRC="src"
-ARTIFACT_NAME="terminal.bin"
-CFLAGS="-std=c++11 -I$SYSROOT_SYSTEM_INCLUDE/freetype2 -I$SRC"
-LDFLAGS="-lwindow -lfont -lterminal -linput -lproperties -lcairo -lfreetype -lpixman-1 -lpng -lz"
+ARTIFACT_NAME="calculator.bin"
+CFLAGS="-std=c++11 -I$SRC"
+LDFLAGS="-lwindow"
 
 # Include application build tasks
 . "../applications.sh"

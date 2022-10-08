@@ -25,13 +25,13 @@
 #include <list>
 #include <map>
 
+#include <libfont/font.hpp>
 #include <libwindow/button.hpp>
 #include <libwindow/canvas.hpp>
 #include <libwindow/label.hpp>
 #include <libwindow/listener/action_listener.hpp>
 #include <libwindow/listener/focus_listener.hpp>
 #include <libwindow/listener/key_listener.hpp>
-#include <libwindow/text/font.hpp>
 #include <libwindow/textfield.hpp>
 #include <libwindow/ui.hpp>
 #include <libwindow/window.hpp>

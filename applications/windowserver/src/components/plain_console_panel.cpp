@@ -19,7 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "components/plain_console_panel.hpp"
-#include <libwindow/text/font_loader.hpp>
+#include <libfont/font_loader.hpp>
 #include "events/focus_event.hpp"
 
 plain_console_panel_t::plain_console_panel_t()

@@ -18,21 +18,14 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_TEXT_FONTLOADER__
-#define __LIBWINDOW_TEXT_FONTLOADER__
+#ifndef __LIBFONT_TEXT_TEXTALIGNMENT__
+#define __LIBFONT_TEXT_TEXTALIGNMENT__
 
-#include "libwindow/text/font.hpp"
-#include <string>
-
-class g_font_loader
+enum class g_text_alignment : uint16_t
 {
-  private:
-	static g_font* getFont(std::string path, std::string name);
-	static g_font* getSystemFont(std::string name);
-
-  public:
-	static g_font* get(std::string name);
-	static g_font* getDefault();
+    LEFT,
+    CENTER,
+    RIGHT
 };
 
 #endif

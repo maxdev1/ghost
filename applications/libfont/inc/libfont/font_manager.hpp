@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,69 +18,57 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "libwindow/text/font_manager.hpp"
+#ifndef __LIBFONT_TEXT_FONTMANAGER__
+#define __LIBFONT_TEXT_FONTMANAGER__
 
-static g_font_manager* instance = 0;
+#include "libfont/font.hpp"
+#include "libfont/freetype.hpp"
+#include <map>
+#include <string>
 
-g_font_manager* g_font_manager::getInstance()
+class g_font_manager
 {
-	if(instance == 0)
-	{
-		instance = new g_font_manager();
-	}
-	return instance;
-}
+  private:
+    FT_Library library;
+    std::map<std::string, g_font*> fontRegistry;
 
-g_font_manager::g_font_manager()
-{
-	initializeEngine();
-}
+    g_font_manager();
+    ~g_font_manager();
 
-g_font_manager::~g_font_manager()
-{
-	destroyEngine();
-}
+    void initializeEngine();
+    void destroyEngine();
 
-void g_font_manager::initializeEngine()
-{
-	FT_Error error = FT_Init_FreeType(&library);
-	if(error)
-		klog("freetype2 failed at FT_Init_FreeType with error code %i", error);
-}
+  public:
+    /**
+     * @return the instance of the font manager singleton
+     */
+    static g_font_manager* getInstance();
 
-void g_font_manager::destroyEngine()
-{
-	FT_Error error = FT_Done_Library(library);
-	if(error)
-		klog("freetype2 failed at FT_Done_Library with error code %i", error);
-}
+    /**
+     * Registers the font.
+     *
+     * @param name			name to which the font shall be registered
+     */
+    bool registerFont(std::string name, g_font* font);
 
-g_font* g_font_manager::getFont(std::string name)
-{
-	if(fontRegistry.count(name) > 0)
-		return fontRegistry[name];
-	return nullptr;
-}
+    /**
+     * Looks for an existing font with the "name".
+     *
+     * @param name	the name to which the font is registered
+     */
+    g_font* getFont(std::string name);
 
-bool g_font_manager::registerFont(std::string name, g_font* font)
-{
-	if(fontRegistry.count(name) > 0)
-	{
-		klog("tried to create font '%s' that already exists", name.c_str());
-		return false;
-	}
+    /**
+     * Deletes the font and removes it from the font registry.
+     *
+     * @param font	the font to destroy
+     */
+    void destroyFont(g_font* font);
 
-	fontRegistry[name] = font;
-	return true;
-}
+    /**
+     * @return the freetype library handle
+     */
+    FT_Library getLibraryHandle();
+};
 
-void g_font_manager::destroyFont(g_font* font)
-{
-	fontRegistry.erase(font->getName());
-	delete font;
-}
-
-FT_Library g_font_manager::getLibraryHandle()
-{
-	return library;
-}
+#endif

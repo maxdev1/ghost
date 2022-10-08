@@ -27,8 +27,8 @@
 
 #include <libproperties/parser.hpp>
 #include <libwindow/properties.hpp>
-#include <libwindow/text/font_loader.hpp>
-#include <libwindow/text/font_manager.hpp>
+#include <libfont/font_loader.hpp>
+#include <libfont/font_manager.hpp>
 #include <sstream>
 
 text_field_t::text_field_t() : cursor(0), marker(0), scrollX(0), secure(false), focused(false),

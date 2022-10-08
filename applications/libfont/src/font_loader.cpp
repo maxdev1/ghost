@@ -18,88 +18,40 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_TEXT_TEXTLAYOUTER__
-#define __LIBWINDOW_TEXT_TEXTLAYOUTER__
+#include "libfont/font_loader.hpp"
+#include "libfont/font_manager.hpp"
 
-#include "libwindow/metrics/dimension.hpp"
-#include "libwindow/metrics/point.hpp"
-#include "libwindow/metrics/rectangle.hpp"
-#include "libwindow/text/font.hpp"
-#include "libwindow/text/text_alignment.hpp"
-#include <vector>
-
-/**
- *
- */
-struct g_positioned_glyph
+g_font* g_font_loader::getFont(std::string path, std::string name)
 {
-	g_positioned_glyph() : line(-1), glyph(0), glyph_count(0)
-	{
-	}
+	g_font* existing = g_font_manager::getInstance()->getFont(name);
+	if(existing)
+		return existing;
 
-	int line;
-	g_point position;
+	g_font* newFont = g_font::load(path, name);
+	if(!newFont)
+		return nullptr;
 
-	g_dimension size;
-	g_point advance;
+	if(g_font_manager::getInstance()->registerFont(name, newFont))
+		return newFont;
 
-	cairo_glyph_t* glyph;
-	int glyph_count;
-};
+	delete newFont;
+	return nullptr;
+}
 
-/**
- *
- */
-struct g_layouted_text
+g_font* g_font_loader::getSystemFont(std::string name)
 {
+	return getFont("/system/graphics/fonts/" + name + ".ttf", name);
+}
 
-	// List of glyphs with their positions
-	std::vector<g_positioned_glyph> positions;
-
-	// Bounds of the entire layouted text
-	g_rectangle textBounds;
-
-	// Buffers
-	cairo_glyph_t* glyph_buffer = nullptr;
-	int glyph_count;
-	cairo_text_cluster_t* cluster_buffer = nullptr;
-	int cluster_count;
-};
-
-/**
- *
- */
-class g_text_layouter
+g_font* g_font_loader::get(std::string name)
 {
-  private:
-	/**
-	 *
-	 */
-	g_text_layouter()
-	{
-	}
+	g_font* font = getSystemFont(name);
+	if(font)
+		return font;
+	return getDefault();
+}
 
-  public:
-	/**
-	 * @return the instance of the font manager singleton
-	 */
-	static g_text_layouter* getInstance();
-
-	/**
-	 *
-	 */
-	g_layouted_text* initializeBuffer();
-
-	/**
-	 *
-	 */
-	void layout(cairo_t* cr, const char* text, g_font* font, int size, g_rectangle bounds, g_text_alignment alignment, g_layouted_text* layout,
-				bool breakOnOverflow = true);
-
-	/**
-	 *
-	 */
-	void destroyLayout(g_layouted_text* layout);
-};
-
-#endif
+g_font* g_font_loader::getDefault()
+{
+	return getFont("/system/graphics/fonts/default.ttf", "default");
+}

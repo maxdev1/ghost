@@ -25,7 +25,7 @@
 
 #include <libproperties/parser.hpp>
 #include <libwindow/properties.hpp>
-#include <libwindow/text/text_alignment.hpp>
+#include <libfont/text_alignment.hpp>
 #include <math.h>
 
 button_t::button_t() : insets(g_insets(5, 10, 5, 10)), action_component_t(this)

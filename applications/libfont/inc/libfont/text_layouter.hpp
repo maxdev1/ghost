@@ -18,14 +18,88 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_TEXT_TEXTALIGNMENT__
-#define __LIBWINDOW_TEXT_TEXTALIGNMENT__
+#ifndef __LIBFONT_TEXT_TEXTLAYOUTER__
+#define __LIBFONT_TEXT_TEXTLAYOUTER__
 
-enum class g_text_alignment : uint16_t
+#include "libwindow/metrics/dimension.hpp"
+#include "libwindow/metrics/point.hpp"
+#include "libwindow/metrics/rectangle.hpp"
+#include "libfont/font.hpp"
+#include "libfont/text_alignment.hpp"
+#include <vector>
+
+/**
+ *
+ */
+struct g_positioned_glyph
 {
-    LEFT,
-    CENTER,
-    RIGHT
+	g_positioned_glyph() : line(-1), glyph(0), glyph_count(0)
+	{
+	}
+
+	int line;
+	g_point position;
+
+	g_dimension size;
+	g_point advance;
+
+	cairo_glyph_t* glyph;
+	int glyph_count;
+};
+
+/**
+ *
+ */
+struct g_layouted_text
+{
+
+	// List of glyphs with their positions
+	std::vector<g_positioned_glyph> positions;
+
+	// Bounds of the entire layouted text
+	g_rectangle textBounds;
+
+	// Buffers
+	cairo_glyph_t* glyph_buffer = nullptr;
+	int glyph_count;
+	cairo_text_cluster_t* cluster_buffer = nullptr;
+	int cluster_count;
+};
+
+/**
+ *
+ */
+class g_text_layouter
+{
+  private:
+	/**
+	 *
+	 */
+	g_text_layouter()
+	{
+	}
+
+  public:
+	/**
+	 * @return the instance of the font manager singleton
+	 */
+	static g_text_layouter* getInstance();
+
+	/**
+	 *
+	 */
+	g_layouted_text* initializeBuffer();
+
+	/**
+	 *
+	 */
+	void layout(cairo_t* cr, const char* text, g_font* font, int size, g_rectangle bounds, g_text_alignment alignment, g_layouted_text* layout,
+				bool breakOnOverflow = true);
+
+	/**
+	 *
+	 */
+	void destroyLayout(g_layouted_text* layout);
 };
 
 #endif

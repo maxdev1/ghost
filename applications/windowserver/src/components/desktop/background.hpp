@@ -22,25 +22,32 @@
 #define __WINDOWSERVER_COMPONENTS_BACKGROUND__
 
 #include "components/component.hpp"
+#include "components/desktop/desktop_item.hpp"
 #include <libwindow/metrics/rectangle.hpp>
 
 class background_t : public component_t
 {
   private:
-    cairo_surface_t* surface = 0;
-    g_rectangle selection;
+	cairo_surface_t* surface = 0;
+	g_rectangle selection;
+	desktop_item_t* selectedItem = nullptr;
 
   public:
-    virtual ~background_t()
-    {
-    }
+	int gridScale = 100;
 
-    virtual void paint();
+	virtual ~background_t()
+	{
+	}
 
-    virtual void load(const char* path);
+	virtual void paint();
 
-    void showSelection(g_rectangle& selection);
-    void hideSelection();
+	virtual void load(const char* path);
+
+	void showSelection(g_rectangle& selection);
+	void hideSelection();
+	void startLoadDesktopItems();
+	void setSelectedItem(desktop_item_t* item);
+	desktop_item_t* getSelectedItem();
 };
 
 #endif

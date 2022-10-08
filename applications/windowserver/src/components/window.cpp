@@ -28,7 +28,7 @@
 #include <cairo/cairo.h>
 #include <libproperties/parser.hpp>
 #include <libwindow/properties.hpp>
-#include <libwindow/text/font_manager.hpp>
+#include <libfont/font_manager.hpp>
 #include <math.h>
 
 window_t::window_t() : backgroundColor(RGB(240, 240, 240)), borderWidth(DEFAULT_BORDER_WIDTH), cornerSize(DEFAULT_CORNER_SIZE)

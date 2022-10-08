@@ -18,8 +18,8 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "libwindow/text/font.hpp"
-#include "libwindow/text/font_manager.hpp"
+#include "libfont/font.hpp"
+#include "libfont/font_manager.hpp"
 #include <string.h>
 
 g_font::g_font(std::string name, uint8_t* source, uint32_t sourceLength) : name(name)
