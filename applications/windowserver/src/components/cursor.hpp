@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,65 +18,51 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __CURSOR__
-#define __CURSOR__
+#ifndef __WINDOWSERVER_COMPONENTS_CURSOR__
+#define __WINDOWSERVER_COMPONENTS_CURSOR__
 
-#include <components/component.hpp>
-#include <events/mouse_event.hpp>
-#include <ghostuser/graphics/metrics/point.hpp>
+#include "components/component.hpp"
+#include "events/mouse_event.hpp"
 
-#include <string.h>
-#include <cstdio>
-#include <sstream>
-#include <map>
-#include <fstream>
 #include <cairo/cairo.h>
+#include <cstdio>
+#include <fstream>
+#include <libwindow/metrics/point.hpp>
+#include <map>
+#include <sstream>
+#include <string.h>
 
-#define FALLBACK_CURSOR_SIZE	10
+#define FALLBACK_CURSOR_SIZE 10
 
-/**
- *
- */
-struct cursor_configuration {
-	cairo_surface_t* surface;
-	g_point hitpoint;
-	g_dimension size;
+struct cursor_configuration
+{
+    std::string name;
+    cairo_surface_t* surface;
+    g_point hitpoint;
+    g_dimension size;
 };
 
-/**
- *
- */
-class cursor_t {
-public:
-	static g_point position;
-	static g_point nextPosition;
-	static g_mouse_button pressedButtons;
-	static g_mouse_button nextPressedButtons;
+class cursor_t
+{
+  public:
+    static g_point position;
+    static g_point nextPosition;
+    static g_mouse_button pressedButtons;
+    static g_mouse_button nextPressedButtons;
 
-	static component_t* draggedComponent;
-	static component_t* hoveredComponent;
-	static component_t* focusedComponent;
+    static component_t* pressedComponent;
+    static component_t* draggedComponent;
+    static component_t* hoveredComponent;
+    static component_t* focusedComponent;
 
-	/**
-	 *
-	 */
-	static void paint(g_graphics* global);
+    static void paint(g_graphics* global);
 
-	/**
-	 *
-	 */
-	static g_rectangle getArea();
+    static g_rectangle getArea();
 
-	/**
-	 *
-	 */
-	static void set(std::string name);
+    static std::string get();
+    static void set(std::string name);
 
-	/**
-	 *
-	 */
-	static bool load(std::string cursorPath);
-
+    static bool load(std::string cursorPath);
 };
 
 #endif

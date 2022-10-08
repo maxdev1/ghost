@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,25 +18,27 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __MOUSE_EVENT__
-#define __MOUSE_EVENT__
+#ifndef __WINDOWSERVER_EVENTS_MOUSEEVENT__
+#define __WINDOWSERVER_EVENTS_MOUSEEVENT__
 
-#include <events/event.hpp>
-#include <events/locatable.hpp>
-#include <ghostuser/ui/interface_specification.hpp>
+#include "events/event.hpp"
+#include "events/locatable.hpp"
+#include <libwindow/interface.hpp>
 
-/**
- *
- */
-class mouse_event_t: public event_t, public locatable_t {
-public:
-	mouse_event_t() :
-			type(G_MOUSE_EVENT_NONE), buttons(G_MOUSE_BUTTON_NONE), clickCount(1) {
-	}
+class mouse_event_t : public event_t, public locatable_t
+{
+  public:
+    mouse_event_t() : type(G_MOUSE_EVENT_NONE), buttons(G_MOUSE_BUTTON_NONE), clickCount(1)
+    {
+    }
 
-	g_mouse_event_type type;
-	g_mouse_button buttons;
-	int clickCount;
+    virtual ~mouse_event_t() {}
+
+    g_mouse_event_type type;
+    g_mouse_button buttons;
+    int clickCount;
+
+    virtual component_t* visit(component_t* component);
 };
 
 #endif

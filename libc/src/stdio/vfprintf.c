@@ -27,8 +27,8 @@
  */
 int vfprintf(FILE* stream, const char* format, va_list arglist) {
 
-	g_atomic_lock(&stream->lock);
+	g_atomic_lock(stream->lock);
 	int res = __vfprintf_unlocked(stream, format, arglist);
-	stream->lock = 0;
+	g_atomic_unlock(stream->lock);
 	return res;
 }

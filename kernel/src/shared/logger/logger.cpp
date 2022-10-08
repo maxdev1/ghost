@@ -19,17 +19,17 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "shared/logger/logger.hpp"
-
-#include "shared/utils/string.hpp"
-#include "shared/system/serial_port.hpp"
-#include "shared/system/bios_data_area.hpp"
-#include "shared/video/console_video.hpp"
+#include "build_config.hpp"
 #include "shared/debug/debug_interface.hpp"
+#include "shared/system/bios_data_area.hpp"
+#include "shared/system/serial_port.hpp"
+#include "shared/utils/string.hpp"
+#include "shared/video/console_video.hpp"
 
 static const uint32_t LOGGER_HEADER_WIDTH = 10;
 
 static bool logSerial = false;
-static bool logVideo = true;
+static bool logVideo = G_VIDEO_LOG_BOOT;
 
 void loggerEnableSerial(bool serial)
 {
@@ -41,13 +41,14 @@ void loggerEnableVideo(bool video)
 	logVideo = video;
 }
 
-void loggerPrintFormatted(const char *message_const, va_list valist)
+void loggerPrintFormatted(const char* message_const, va_list valist)
 {
-	char *message = (char *) message_const;
+	char* message = (char*) message_const;
 
 	uint16_t headerColor = 0x07;
 
-	while(*message)
+	int max = 500;
+	while(*message && --max)
 	{
 		if(*message != '%')
 		{
@@ -61,38 +62,38 @@ void loggerPrintFormatted(const char *message_const, va_list valist)
 		{ // integer
 			int32_t val = va_arg(valist, int32_t);
 			loggerPrintNumber(val, 10);
-
-		} else if(*message == 'h' || *message == 'x')
+		}
+		else if(*message == 'h' || *message == 'x')
 		{ // positive hex number
 			uint32_t val = va_arg(valist, uint32_t);
 			loggerPrintPlain("0x");
 			loggerPrintNumber(val, 16);
-
-		} else if(*message == 'b')
+		}
+		else if(*message == 'b')
 		{ // boolean
 			int val = va_arg(valist, int);
-			loggerPrintPlain((const char *) (val ? "true" : "false"));
-
-		} else if(*message == 'c')
+			loggerPrintPlain((const char*) (val ? "true" : "false"));
+		}
+		else if(*message == 'c')
 		{ // char
 			int val = va_arg(valist, int);
 			loggerPrintCharacter((char) val);
-
-		} else if(*message == 's')
+		}
+		else if(*message == 's')
 		{ // string
 			char* val = va_arg(valist, char*);
 			loggerPrintPlain(val);
-
-		} else if(*message == '#')
+		}
+		else if(*message == '#')
 		{ // indented printing
 			for(uint32_t i = 0; i < LOGGER_HEADER_WIDTH + 2; i++)
 			{
 				loggerPrintCharacter(' ');
 			}
-
-		} else if(*message == '!')
+		}
+		else if(*message == '!')
 		{ // indented header printing
-			char *val = va_arg(valist, char *);
+			char* val = va_arg(valist, char*);
 			uint32_t headerlen = stringLength(val);
 
 			if(headerlen < LOGGER_HEADER_WIDTH)
@@ -106,12 +107,12 @@ void loggerPrintFormatted(const char *message_const, va_list valist)
 			consoleVideoSetColor(headerColor);
 			loggerPrintPlain(val);
 			consoleVideoSetColor(0x0F);
-
-		} else if(*message == '%')
+		}
+		else if(*message == '%')
 		{ // escaped %
 			loggerPrintCharacter(*message);
-
-		} else if(*message == '*')
+		}
+		else if(*message == '*')
 		{ // header color change
 			headerColor = (uint16_t) (va_arg(valist, int));
 		}
@@ -137,7 +138,7 @@ void loggerPrintNumber(uint32_t number, uint16_t base)
 	// Write chars in reverse order, not nullterminated
 	char revbuf[32];
 
-	char *cbufp = revbuf;
+	char* cbufp = revbuf;
 	int len = 0;
 	do
 	{

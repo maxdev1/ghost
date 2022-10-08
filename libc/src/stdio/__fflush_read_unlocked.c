@@ -50,11 +50,8 @@ int __fflush_read_unlocked(FILE* stream) {
 	// restore the position
 	int res = 0;
 	if (current_position >= 0) {
-		size_t buffered_bytes = stream->buffered_bytes_read
-				- stream->buffered_bytes_read_offset;
-		off_t restored_position =
-				(uintmax_t) current_position < (uintmax_t) buffered_bytes ?
-						0 : current_position - buffered_bytes;
+		size_t buffered_bytes = stream->buffered_bytes_read - stream->buffered_bytes_read_offset;
+		off_t restored_position = (uintmax_t) current_position < (uintmax_t) buffered_bytes ? 0 : current_position - buffered_bytes;
 
 		if (stream->impl_seek(stream, restored_position, SEEK_SET) < 0) {
 			stream->flags |= G_FILE_FLAG_ERROR;

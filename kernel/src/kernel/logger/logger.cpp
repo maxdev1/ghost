@@ -18,36 +18,28 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include "shared/logger/logger.hpp"
+#include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/smp.hpp"
 #include "shared/system/mutex.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/system/mutex.hpp"
-
 #include "shared/utils/string.hpp"
 #include "shared/video/console_video.hpp"
 
-static g_mutex printLock;
-
-void loggerInitialize()
-{
-	mutexInitialize(&printLock);
-}
-
 void loggerPrintLocked(const char* message, ...)
 {
-	mutexAcquire(&printLock);
+	INTERRUPTS_PAUSE;
 
 	va_list valist;
 	va_start(valist, message);
 	loggerPrintFormatted(message, valist);
 	va_end(valist);
 
-	mutexRelease(&printLock);
+	INTERRUPTS_RESUME;
 }
 
 void loggerPrintlnLocked(const char* message, ...)
 {
-	mutexAcquire(&printLock);
+	INTERRUPTS_PAUSE;
 
 	va_list valist;
 	va_start(valist, message);
@@ -55,7 +47,7 @@ void loggerPrintlnLocked(const char* message, ...)
 	va_end(valist);
 	loggerPrintCharacter('\n');
 
-	mutexRelease(&printLock);
+	INTERRUPTS_RESUME;
 }
 
 void loggerPrintUnlocked(const char* message, ...)
@@ -73,12 +65,4 @@ void loggerPrintlnUnlocked(const char* message, ...)
 	loggerPrintFormatted(message, valist);
 	va_end(valist);
 	loggerPrintCharacter('\n');
-}
-
-void loggerManualLock() {
-	mutexAcquire(&printLock);
-}
-
-void loggerManualUnlock() {
-	mutexRelease(&printLock);
 }

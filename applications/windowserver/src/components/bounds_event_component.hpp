@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,41 +18,31 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __BOUNDS_EVENT_COMPONENT__
-#define __BOUNDS_EVENT_COMPONENT__
+#ifndef __WINDOWSERVER_COMPONENTS_BOUNDSEVENTCOMPONENT__
+#define __WINDOWSERVER_COMPONENTS_BOUNDSEVENTCOMPONENT__
 
 #include <ghost.h>
-#include <string>
+#include <libwindow/metrics/rectangle.hpp>
 #include <list>
-#include <ghostuser/ui/interface_specification.hpp>
+#include <string>
 
 class component_t;
 
-/**
- *
- */
-class bounds_event_component_t {
-private:
-	component_t* self;
+class bounds_event_component_t
+{
+  private:
+    component_t* self;
 
-public:
-	/**
-	 *
-	 */
-	bounds_event_component_t(component_t* self) :
-			self(self) {
-	}
+  public:
+    bounds_event_component_t(component_t* self) : self(self)
+    {
+    }
 
-	/**
-	 *
-	 */
-	virtual ~bounds_event_component_t() {
-	}
+    virtual ~bounds_event_component_t()
+    {
+    }
 
-	/**
-	 *
-	 */
-	virtual void fireBoundsChange(g_rectangle& bounds);
+    virtual void fireBoundsChange(g_rectangle& bounds);
 };
 
 #endif

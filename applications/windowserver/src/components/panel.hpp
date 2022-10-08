@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,30 +18,26 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __PANEL__
-#define __PANEL__
+#ifndef __WINDOWSERVER_COMPONENTS_PANEL__
+#define __WINDOWSERVER_COMPONENTS_PANEL__
 
-#include <components/component.hpp>
+#include "components/component.hpp"
 
-/**
- *
- */
-class panel_t: public component_t {
-private:
-	g_color_argb background;
-public:
-	panel_t() :
-			background(ARGB(230, 240, 240, 240)) {
-	}
+class panel_t : public component_t
+{
+  private:
+    g_color_argb background;
 
-	virtual void paint();
+  public:
+    panel_t() : background(ARGB(0, 0, 0, 0))
+    {
+        needsGraphics = false;
+    }
 
-	virtual bool handle() {
-		return false;
-	}
+    virtual void paint();
 
-	void setBackground(g_color_argb color);
-	g_color_argb getBackground();
+    void setBackground(g_color_argb color);
+    g_color_argb getBackground();
 };
 
 #endif

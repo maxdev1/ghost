@@ -28,8 +28,8 @@
  */
 size_t fread(const void* ptr, size_t size, size_t nmemb, FILE* stream) {
 
-	g_atomic_lock(&stream->lock);
+	g_atomic_lock(stream->lock);
 	size_t len = __fread_unlocked(ptr, size, nmemb, stream);
-	stream->lock = 0;
+	g_atomic_unlock(stream->lock);
 	return len;
 }

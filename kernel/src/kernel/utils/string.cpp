@@ -21,7 +21,11 @@
 #include "shared/utils/string.hpp"
 #include "kernel/memory/memory.hpp"
 
-char* stringDuplicate(const char* str) {
+char* stringDuplicate(const char* str)
+{
+	if(!str)
+		return nullptr;
+
 	int len = stringLength(str);
 	char* out = (char*) heapAllocate(sizeof(char) * (len + 1));
 	memoryCopy(out, str, len);

@@ -18,33 +18,39 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include "errno.h"
+#include "ghost/user.h"
+#include "inttypes.h"
 #include "stdio.h"
 #include "stdio_internal.h"
-#include "errno.h"
-#include "inttypes.h"
 #include "stdlib.h"
 
-uint8_t tmpnam_lock = 0;
+g_atom tmpnam_lock = 0;
 char* tmpnam_static = NULL;
 uint64_t tmpnam_next = 0;
 
 /**
  *
  */
-char* tmpnam(char* buf) {
-
+char* tmpnam(char* buf)
+{
 	// lock tmpnam
-	g_atomic_lock(&tmpnam_lock);
+	if(!tmpnam_lock)
+		tmpnam_lock = g_atomic_initialize(); // TODO Bad initialization
+	g_atomic_lock(tmpnam_lock);
 
 	// set buffers
-	if (buf == NULL) {
+	if(buf == NULL)
+	{
 		// allocate the internal buffer if necessary
-		if (tmpnam_static == NULL) {
+		if(tmpnam_static == NULL)
+		{
 			tmpnam_static = (char*) malloc(L_tmpnam);
 
-			if (tmpnam_static == NULL) {
+			if(tmpnam_static == NULL)
+			{
 				errno = ENOMEM;
-				tmpnam_lock = 0;
+				g_atomic_unlock(tmpnam_lock);
 				return NULL;
 			}
 		}
@@ -57,10 +63,10 @@ char* tmpnam(char* buf) {
 	++tmpnam_next;
 
 	snprintf(buf, L_tmpnam, "/system/temp/%" PRIu64 "-%" PRIu64, tmpnam_next,
-			g_get_pid());
+			 g_get_pid());
 
 	// unlock tmpnam
-	tmpnam_lock = 0;
+	g_atomic_unlock(tmpnam_lock);
 
 	return buf;
 }

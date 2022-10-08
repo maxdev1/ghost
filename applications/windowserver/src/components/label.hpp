@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,46 +18,44 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LABEL__
-#define __LABEL__
+#ifndef __WINDOWSERVER_COMPONENTS_LABEL__
+#define __WINDOWSERVER_COMPONENTS_LABEL__
 
-#include <components/component.hpp>
-#include <components/titled_component.hpp>
-#include <ghostuser/graphics/text/font.hpp>
-#include <ghostuser/graphics/text/text_alignment.hpp>
+#include "components/component.hpp"
+#include <libwindow/text/font.hpp>
+#include <libwindow/text/text_alignment.hpp>
+#include "components/titled_component.hpp"
 
-/**
- *
- */
-class label_t: public component_t, public titled_component_t {
-private:
-	g_font* font;
-	int fontSize;
-	cairo_text_extents_t lastExtents;
+class label_t : public component_t, public titled_component_t
+{
+  private:
+    g_font* font;
+    int fontSize;
+    cairo_text_extents_t lastExtents;
 
-	std::string text;
-	g_text_alignment alignment;
-	g_color_argb color;
+    std::string text;
+    g_text_alignment alignment;
+    g_color_argb color;
 
-public:
-	label_t();
-	virtual ~label_t() {
-	}
+  public:
+    label_t();
+    virtual ~label_t()
+    {
+    }
 
-	virtual void paint();
-	virtual void update();
-	virtual bool handle(event_t& e);
+    virtual void paint();
+    virtual void update();
 
-	virtual void setFont(g_font* font);
+    virtual void setFont(g_font* font);
 
-	virtual void setColor(g_color_argb color);
-	virtual g_color_argb getColor();
+    virtual void setColor(g_color_argb color);
+    virtual g_color_argb getColor();
 
-	virtual void setTitle(std::string title);
-	virtual std::string getTitle();
+    virtual void setTitle(std::string title);
+    virtual std::string getTitle();
 
-	void setAlignment(g_text_alignment alignment);
-	g_text_alignment getAlignment();
+    void setAlignment(g_text_alignment alignment);
+    g_text_alignment getAlignment();
 };
 
 #endif

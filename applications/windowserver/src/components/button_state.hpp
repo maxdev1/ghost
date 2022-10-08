@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,19 +18,17 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __BUTTON_STATE__
-#define __BUTTON_STATE__
+#ifndef __WINDOWSERVER_COMPONENTS_BUTTONSTATE__
+#define __WINDOWSERVER_COMPONENTS_BUTTONSTATE__
 
-/**
- *
- */
-struct button_state_t {
-	button_state_t() :
-			hovered(false), pressed(false), focused(false) {
-	}
-	bool hovered;
-	bool pressed;
-	bool focused;
+struct button_state_t
+{
+    button_state_t() : hovered(false), pressed(false), focused(false)
+    {
+    }
+    bool hovered;
+    bool pressed;
+    bool focused;
 };
 
 #endif

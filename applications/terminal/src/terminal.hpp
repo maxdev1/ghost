@@ -21,156 +21,102 @@
 #ifndef __GHOST_TERMINAL__
 #define __GHOST_TERMINAL__
 
-#include <screen.hpp>
-#include <standard_io.hpp>
-
 #include <ghost.h>
-#include <stdint.h>
-#include <vector>
+#include <libterminal/terminal.hpp>
+#include <screen.hpp>
+#include <stream_status.hpp>
+
+class terminal_t;
+
+/**
+ * Information struct used to pass information to the output thread.
+ */
+struct output_routine_startinfo_t
+{
+	bool error_output;
+	terminal_t* terminal;
+};
 
 /**
  *
  */
-typedef int terminal_input_status_t;
-const terminal_input_status_t TERMINAL_INPUT_STATUS_DEFAULT = 0;
-const terminal_input_status_t TERMINAL_INPUT_STATUS_EXIT = 1;
-const terminal_input_status_t TERMINAL_INPUT_STATUS_SCREEN_SWITCH = 2;
-const terminal_input_status_t TERMINAL_INPUT_STATUS_SCREEN_CREATE = 3;
-
-#define BUILTIN_COMMAND_CD			"cd "
-#define BUILTIN_COMMAND_SLEEP		"sleep "
-#define BUILTIN_COMMAND_CLEAR		"clear"
-#define BUILTIN_COMMAND_TERM		"terminal"
-#define BUILTIN_COMMAND_TERM_P		"terminal "
-#define BUILTIN_COMMAND_TERMS		"terminals"
-#define BUILTIN_COMMAND_BACKGROUND	"background "
-#define BUILTIN_COMMAND_KBD_SET		"keyboard set "
-#define BUILTIN_COMMAND_KBD_INFO	"keyboard info"
-#define BUILTIN_COMMAND_SCANCODE	"scancode"
-#define BUILTIN_COMMAND_HELP		"help"
-
-/**
- *
- */
-typedef struct {
-	int number;
-} create_terminal_info_t;
-
-extern int terminal_index;
-
-/**
- * Used to remember the status of a stream, for example whether a control
- * sequence is currently being sent.
- */
-typedef int terminal_stream_status_t;
-const terminal_stream_status_t TERMINAL_STREAM_STATUS_TEXT = 0;
-const terminal_stream_status_t TERMINAL_STREAM_STATUS_LAST_WAS_ESC = 1;
-const terminal_stream_status_t TERMINAL_STREAM_STATUS_WITHIN_VT100 = 2;
-const terminal_stream_status_t TERMINAL_STREAM_STATUS_WITHIN_GHOSTTERM = 3;
-#define TERMINAL_STREAM_CONTROL_MAX_PARAMETERS	4
-
-typedef struct {
-	terminal_stream_status_t status = TERMINAL_STREAM_STATUS_TEXT;
-	int parameterCount = 0;
-	int parameters[TERMINAL_STREAM_CONTROL_MAX_PARAMETERS];
-	char controlCharacter;
-} stream_control_status_t;
-
-/**
- *
- */
-class terminal_t {
-public:
-	/**
-	 * Sets up the terminal, loading the default keyboard layout
-	 */
-	static void prepare();
+class terminal_t
+{
+  private:
+	g_fd shell_in;
+	g_fd shell_out;
+	g_fd shell_err;
 
 	/**
-	 * Creates a terminal.
+	 * Screen that is the visual interface to the user.
 	 */
-	static void create_terminal(create_terminal_info_t* inf);
-
-	/**
-	 * Main loop of the terminal. Reads the entered commands, tries to
-	 * handle them as built-in commands and otherwise tries to execute the
-	 * executable in the current directory.
-	 */
-	void run(create_terminal_info_t* inf);
-
-	/**
-	 * Tries to handle the command as a built-in command.
-	 *
-	 * @param command
-	 * 		the command to handle
-	 *
-	 * @return whether the command was a builtin command
-	 */
-	bool handle_builtin(std::string command);
-
-	/**
-	 *
-	 */
-	void run_command(std::string command);
-	bool run_term_command(std::string command, g_fd* term_in, g_fd* term_out,
-			g_fd* term_err, g_pid* int_pid);
-
-	/**
-	 *
-	 */
-	bool execute(std::string shortpath, std::string args, g_pid* out_pid,
-			g_fd out_stdio[3], g_fd in_stdio[3]);
-
-	g_set_working_directory_status write_working_directory();
-	void read_working_directory();
-
-	static void switch_to_next();
-	static void switch_to(terminal_t* terminal);
-	static std::string read_input(std::string there, terminal_t* term,
-			terminal_input_status_t* out_status, bool* continue_input);
-
-	static void standard_in_thread(standard_in_thread_data_t* data);
-	static void standard_out_thread(standard_out_thread_data_t* data);
-	static inline void process_output_character(
-			standard_out_thread_data_t* data, stream_control_status_t* status,
-			char c);
-	static void process_vt100_sequence(standard_out_thread_data_t* data,
-			stream_control_status_t* status);
-	static void process_ghostterm_sequence(standard_out_thread_data_t* data,
-			stream_control_status_t* status);
-
-	/**
-	 * Translates a color given as a VT100 parameter to a screen color which
-	 * can be used by the screens.
-	 */
-	static inline screen_color_t convert_vt100_to_screen_color(int color);
-
-	/**
-	 *
-	 */
-	static void writeToScreen(screen_t* screen, std::string str,
-			screen_color_t background = SC_BLACK, screen_color_t foreground =
-					SC_WHITE);
-
-	bool file_exists(std::string path);
-	bool find_executable(std::string path, std::string& out);
-
-	static bool runs_headless();
-
-	bool input_raw = false;
-
-private:
-	std::string working_directory;
 	screen_t* screen;
-	uint8_t inactive;
+	g_atom screen_lock = g_atomic_initialize();
 
 	/**
-	 * Function used as the main entry point for a terminal instance.
+	 * Mode flags
 	 */
-	static void terminal_start_routine(create_terminal_info_t* inf);
-	terminal_t();
+	bool echo;
+	g_terminal_mode input_mode;
 
-	static screen_t* addScreen();
+	/**
+	 * ID of the currently controlled process
+	 */
+	g_pid current_process;
+
+  public:
+	/**
+	 *
+	 */
+	terminal_t() : screen(0), shell_in(G_FD_NONE), shell_out(G_FD_NONE), shell_err(G_FD_NONE),
+				   echo(true), input_mode(G_TERMINAL_MODE_DEFAULT), current_process(-1)
+	{
+	}
+
+	/**
+	 * Starts the terminal application.
+	 */
+	void execute();
+
+	/**
+	 * Initializes the terminals screen. If successful, the terminals screen property
+	 * is set to the new screen, otherwise it remains null.
+	 */
+	void initializeScreen();
+
+	/**
+	 * Starts the shell process, mapping the in/out/error pipes to this thread.
+	 */
+	void start_shell();
+
+	/**
+	 *
+	 */
+	void write_string_to_shell(std::string line);
+
+	/**
+	 *
+	 */
+	void write_termkey_to_shell(int termkey);
+
+	/**
+	 * Thread that continuously reads the keyboard input, processes and redirects
+	 * it to the shell.
+	 */
+	void input_routine();
+
+	/**
+	 * Thread that reads the output of the executing program and processes it.
+	 */
+	static void output_routine(output_routine_startinfo_t* info);
+
+	/**
+	 *
+	 */
+	void process_output_character(stream_control_status_t* status, bool error_stream, char c);
+	void process_vt100_sequence(stream_control_status_t* status);
+	static screen_color_t convert_vt100_to_screen_color(int color);
+	void process_ghostterm_sequence(stream_control_status_t* status);
 };
 
 #endif

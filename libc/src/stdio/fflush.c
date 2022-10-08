@@ -41,8 +41,8 @@ int fflush(FILE* stream) {
 	}
 
 	// lock file and perform flush
-	g_atomic_lock(&stream->lock);
+	g_atomic_lock(stream->lock);
 	int res = __fflush_unlocked(stream);
-	stream->lock = 0;
+	g_atomic_unlock(stream->lock);
 	return res;
 }

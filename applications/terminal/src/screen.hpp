@@ -18,102 +18,108 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <libinput/keyboard/keyboard.hpp>
 #include <stdint.h>
 #include <string>
-#include <ghostuser/io/keyboard.hpp>
 
 #ifndef SCREEN_HPP_
 #define SCREEN_HPP_
-
-#define SCREEN_WIDTH	80
-#define SCREEN_HEIGHT	25
-#define VIDEO_MEMORY	0xB8000
 
 /**
  *
  */
 typedef uint8_t screen_color_t;
 
-#define SC_BLACK		0x0
-#define SC_BLUE			0x1
-#define SC_GREEN		0x2
-#define SC_CYAN			0x3
-#define SC_RED			0x4
-#define SC_MAGENTA		0x5
-#define SC_BROWN		0x6
-#define SC_LGRAY		0x7
-#define SC_DARKGRAY		0x8
-#define SC_LBLUE		0x9
-#define SC_LGREEN		0xA
-#define SC_LCYAN		0xB
-#define SC_LRED			0xC
-#define SC_LMAGENTA		0xD
-#define SC_YELLOW		0xE
-#define SC_WHITE		0xF
+#define SC_BLACK 0x0
+#define SC_BLUE 0x1
+#define SC_GREEN 0x2
+#define SC_CYAN 0x3
+#define SC_RED 0x4
+#define SC_MAGENTA 0x5
+#define SC_BROWN 0x6
+#define SC_LGRAY 0x7
+#define SC_DARKGRAY 0x8
+#define SC_LBLUE 0x9
+#define SC_LGREEN 0xA
+#define SC_LCYAN 0xB
+#define SC_LRED 0xC
+#define SC_LMAGENTA 0xD
+#define SC_YELLOW 0xE
+#define SC_WHITE 0xF
 
-#define SC_COLOR(ba, fo)	(fo | (ba << 4))
+#define SC_COLOR(ba, fo) (fo | (ba << 4))
 
-#define VT100_COLOR_BLACK	0
-#define VT100_COLOR_RED		1
-#define VT100_COLOR_GREEN	2
-#define VT100_COLOR_YELLOW	3
-#define VT100_COLOR_BLUE	4
-#define VT100_COLOR_MAGENTA	5
-#define VT100_COLOR_CYAN	6
-#define VT100_COLOR_WHITE	7
+#define VT100_COLOR_BLACK 0
+#define VT100_COLOR_RED 1
+#define VT100_COLOR_GREEN 2
+#define VT100_COLOR_YELLOW 3
+#define VT100_COLOR_BLUE 4
+#define VT100_COLOR_MAGENTA 5
+#define VT100_COLOR_CYAN 6
+#define VT100_COLOR_WHITE 7
+#define VT100_COLOR_GRAY 8
 
 /**
  * OEM-US special characters
  */
-#define OEMUS_CHAR_UE	((char) 0x81) /*�*/
+#define OEMUS_CHAR_UE ((char) 0x81) /*�*/
 
 /**
  *
  */
-class screen_t {
-public:
+class screen_t
+{
+  public:
 	screen_color_t colorForeground = SC_WHITE;
 	screen_color_t colorBackground = SC_BLACK;
-	g_atom _lock = 0;
+	g_atom _lock = g_atomic_initialize();
 
-	virtual ~screen_t() {
+	virtual ~screen_t()
+	{
 	}
 
+	virtual g_key_info readInput() = 0;
 	virtual void clean() = 0;
-	virtual void deactivate() = 0;
-	virtual void activate() = 0;
-
 	virtual void backspace() = 0;
 	virtual void writeChar(char c) = 0;
-	virtual void updateCursor() = 0;
 	virtual void moveCursor(int x, int y) = 0;
 	virtual int getCursorX() = 0;
 	virtual int getCursorY() = 0;
 
-	virtual void setColorForeground(int c) {
+	virtual void setColorForeground(int c)
+	{
 		colorForeground = c;
 	}
-	virtual void setColorBackground(int c) {
+	virtual void setColorBackground(int c)
+	{
 		colorBackground = c;
 	}
-	virtual int getColorForeground() {
+	virtual int getColorForeground()
+	{
 		return colorForeground;
 	}
-	virtual int getColorBackground() {
+	virtual int getColorBackground()
+	{
 		return colorBackground;
 	}
 
-	virtual void lock() {
-		g_atomic_lock(&_lock);
+	virtual int getWidth() = 0;
+	virtual int getHeight() = 0;
+
+	virtual void lock()
+	{
+		g_atomic_lock(_lock);
 	}
-	virtual void unlock() {
-		_lock = false;
+	virtual void unlock()
+	{
+		g_atomic_unlock(_lock);
 	}
 
-	virtual g_key_info readInput(bool* cancelCondition) = 0;
+	virtual void setScrollAreaScreen() = 0;
+	virtual void setScrollArea(int start, int end) = 0;
+	virtual void scroll(int value) = 0;
 
-	virtual void workingDirectoryChanged(std::string str) {
-	}
+	virtual void setCursorVisible(bool visible) = 0;
 };
 
 #endif

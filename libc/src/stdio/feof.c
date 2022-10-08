@@ -26,7 +26,7 @@
  */
 int feof(FILE* stream) {
 
-	g_atomic_lock(&stream->lock);
+	g_atomic_lock(stream->lock);
 	int res;
 	if (stream->impl_eof) {
 		res = stream->impl_eof(stream);
@@ -34,6 +34,6 @@ int feof(FILE* stream) {
 		errno = ENOTSUP;
 		res = EOF;
 	}
-	stream->lock = 0;
+	g_atomic_unlock(stream->lock);
 	return res;
 }

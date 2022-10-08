@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,146 +18,114 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __WINDOW__
-#define __WINDOW__
+#ifndef __WINDOWSERVER_COMPONENTS_WINDOW__
+#define __WINDOWSERVER_COMPONENTS_WINDOW__
 
-#include <components/component.hpp>
-#include <components/label.hpp>
-#include <components/titled_component.hpp>
-#include <components/panel.hpp>
+#include "components/component.hpp"
+#include "components/label.hpp"
+#include "components/panel.hpp"
+#include "components/titled_component.hpp"
 
 /**
  * constants for border sizes
  */
-#define DEFAULT_BORDER_WIDTH		7
-#define DEFAULT_CORNER_SIZE			15
+#define DEFAULT_BORDER_WIDTH 7
+#define DEFAULT_CORNER_SIZE 15
 
 /**
  * modes used when resizing windows
  */
-enum window_resize_mode_t {
-	RESIZE_MODE_NONE,
-	RESIZE_MODE_MOVE,
-	RESIZE_MODE_TOP,
-	RESIZE_MODE_TOP_RIGHT,
-	RESIZE_MODE_RIGHT,
-	RESIZE_MODE_BOTTOM_RIGHT,
-	RESIZE_MODE_BOTTOM,
-	RESIZE_MODE_BOTTOM_LEFT,
-	RESIZE_MODE_LEFT,
-	RESIZE_MODE_TOP_LEFT
+enum window_resize_mode_t
+{
+    RESIZE_MODE_NONE,
+    RESIZE_MODE_MOVE,
+    RESIZE_MODE_TOP,
+    RESIZE_MODE_TOP_RIGHT,
+    RESIZE_MODE_RIGHT,
+    RESIZE_MODE_BOTTOM_RIGHT,
+    RESIZE_MODE_BOTTOM,
+    RESIZE_MODE_BOTTOM_LEFT,
+    RESIZE_MODE_LEFT,
+    RESIZE_MODE_TOP_LEFT
 };
 
 /**
  *
  */
-class window_t: public component_t, public titled_component_t {
-private:
-	int borderWidth;
-	int cornerSize;
-	g_color_argb backgroundColor;
-	bool resizable;
+class window_t : public component_t, public titled_component_t
+{
+  private:
+    int borderWidth;
+    int cornerSize;
+    g_color_argb backgroundColor;
+    bool resizable;
 
-	label_t label;
-	panel_t panel;
+    label_t label;
+    panel_t panel;
 
-	bool crossPressed;
-	bool crossHovered;
-	bool focused;
+    bool crossPressed;
+    bool crossHovered;
+    bool focused;
 
-	int shadowSize;
-	g_rectangle crossBounds;
+    g_point pressPoint;
+    g_rectangle pressBounds;
+    window_resize_mode_t resizeMode;
 
-public:
-	window_t();
+    int shadowSize;
+    int padding;
+    g_rectangle crossBounds;
 
-	virtual ~window_t() {
-	}
+  public:
+    window_t();
 
-	/**
-	 *
-	 */
-	panel_t* getPanel() {
-		return &panel;
-	}
+    virtual ~window_t()
+    {
+    }
 
-	/**
-	 *
-	 */
-	void setBackground(g_color_argb color) {
-		backgroundColor = color;
-		markFor(COMPONENT_REQUIREMENT_PAINT);
-	}
+    panel_t* getPanel()
+    {
+        return &panel;
+    }
 
-	/**
-	 *
-	 */
-	g_color_argb getBackground() {
-		return backgroundColor;
-	}
+    void setBackground(g_color_argb color)
+    {
+        backgroundColor = color;
+        markFor(COMPONENT_REQUIREMENT_PAINT);
+    }
 
-	/**
-	 *
-	 */
-	virtual void addChild(component_t* component, component_child_reference_type_t type = COMPONENT_CHILD_REFERENCE_TYPE_DEFAULT);
+    g_color_argb getBackground()
+    {
+        return backgroundColor;
+    }
 
-	/**
-	 *
-	 */
-	virtual void layout();
+    virtual void addChild(component_t* component, component_child_reference_type_t type = COMPONENT_CHILD_REFERENCE_TYPE_DEFAULT);
 
-	/**
-	 *
-	 */
-	virtual void paint();
+    virtual void layout();
 
-	/**
-	 *
-	 */
-	virtual void handleBoundChange(g_rectangle oldBounds);
+    virtual void paint();
 
-	/**
-	 *
-	 */
-	virtual bool handle(event_t& e);
+    virtual component_t* handleFocusEvent(focus_event_t& e);
+    virtual component_t* handleMouseEvent(mouse_event_t& e);
 
-	/**
-	 *
-	 */
-	virtual bool getNumericProperty(int property, uint32_t* out);
+    virtual bool getNumericProperty(int property, uint32_t* out);
 
-	/**
-	 *
-	 */
-	virtual bool setNumericProperty(int property, uint32_t value);
+    virtual bool setNumericProperty(int property, uint32_t value);
 
-	/**
-	 *
-	 */
-	virtual void setTitle(std::string title);
+    virtual void setTitle(std::string title);
 
-	/**
-	 *
-	 */
-	virtual std::string getTitle();
+    virtual std::string getTitle();
 
-	/**
-	 *
-	 */
-	virtual void close();
+    virtual void close();
 
-	/**
-	 *
-	 */
-	virtual void setLayoutManager(layout_manager_t* layoutManager);
+    virtual void setLayoutManager(layout_manager_t* layoutManager);
 
-	/**
-	 * @return whether this type of component is a window.
-	 */
-	virtual bool isWindow() {
-		return true;
-	}
-
+    /**
+     * @return whether this type of component is a window.
+     */
+    virtual bool isWindow()
+    {
+        return true;
+    }
 };
 
 #endif

@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,30 +18,32 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __FOCUS_EVENT__
-#define __FOCUS_EVENT__
+#ifndef __WINDOWSERVER_EVENTS_FOCUSEVENT__
+#define __WINDOWSERVER_EVENTS_FOCUSEVENT__
 
-#include <events/event.hpp>
+#include "events/event.hpp"
 #include <stdint.h>
 
-/**
- *
- */
-enum focus_event_type_t {
-	FOCUS_EVENT_NONE, FOCUS_EVENT_GAINED, FOCUS_EVENT_LOST
+enum focus_event_type_t
+{
+    FOCUS_EVENT_NONE,
+    FOCUS_EVENT_GAINED,
+    FOCUS_EVENT_LOST
 };
 
-/**
- *
- */
-class focus_event_t: public event_t {
-public:
-	focus_event_t() :
-			type(FOCUS_EVENT_NONE), newFocusedComponent(nullptr) {
-	}
+class focus_event_t : public event_t
+{
+  public:
+    focus_event_type_t type;
+    component_t* newFocusedComponent;
 
-	focus_event_type_t type;
-	component_t* newFocusedComponent;
+    focus_event_t() : type(FOCUS_EVENT_NONE), newFocusedComponent(nullptr)
+    {
+    }
+
+    virtual ~focus_event_t() {}
+
+    virtual component_t* visit(component_t* component);
 };
 
 #endif
