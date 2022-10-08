@@ -66,9 +66,9 @@ void background_t::paint()
 
 void background_t::showSelection(g_rectangle& newSelection)
 {
-	if(newSelection.width > 0 || newSelection.height > 0)
+	if(newSelection.width != 0 || newSelection.height != 0)
 	{
-		selection->setBounds(newSelection);
+		selection->setBounds(newSelection.asNormalized());
 		selection->setVisible(true);
 	}
 	else
