@@ -21,34 +21,34 @@
 #ifndef __BUILD_CONFIG__
 #define __BUILD_CONFIG__
 
-#include "shared/logger/logger_level.hpp"
 #include "shared/debug/debug_interface_mode.hpp"
+#include "shared/logger/logger_level.hpp"
+
+#define STR_(x) #x
+#define STR(x) STR_(x)
 
 #if !(defined(_ARCH_X86_) || defined(_ARCH_X86_64_))
 #error "No architecture defined for build. Need to specify either _ARCH_X86_ or _ARCH_x86_64_"
 #endif
 
 // pretty boot
-#define G_PRETTY_BOOT		false
+#define G_PRETTY_BOOT true
+#define G_VIDEO_LOG_BOOT false
 
 // logging settings
-#define G_LOG_LEVEL			G_LOG_LEVEL_INFO
+#define G_LOG_LEVEL G_LOG_LEVEL_INFO
 
 // fine-grained debugging options
 #define G_DEBUG_WHOS_WAITING false
-#define G_DEBUG_LOCKS_DEADLOCKING false
+#define G_DEBUG_MUTEXES false
 #define G_DEBUG_THREAD_DUMPING false
 
 // mode for the debug interface
 #define G_DEBUG_INTERFACE_MODE G_DEBUG_INTERFACE_MODE_PLAIN_LOG
 
 // version
-#define G_VERSION_MAJOR		0
-#define G_VERSION_MINOR		7
-#define G_VERSION_PATCH		0
-
-// paths to system binaries
-#define G_INIT_BINARY_NAME	"applications/init.bin"
-#define G_IDLE_BINARY_NAME	"applications/idle.bin"
+#define G_VERSION_MAJOR 0
+#define G_VERSION_MINOR 10
+#define G_VERSION_PATCH 0
 
 #endif

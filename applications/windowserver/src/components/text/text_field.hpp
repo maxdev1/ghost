@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -21,168 +21,168 @@
 #ifndef __TEXT_FIELD__
 #define __TEXT_FIELD__
 
-#include <components/text/text_component.hpp>
-#include <components/titled_component.hpp>
-#include <ghostuser/graphics/metrics/insets.hpp>
-#include <ghostuser/graphics/text/font.hpp>
-#include <ghostuser/graphics/text/text_layouter.hpp>
-#include <ghostuser/io/keyboard.hpp>
+#include <libwindow/text/font.hpp>
+#include <libwindow/text/text_layouter.hpp>
+#include "components/text/text_component.hpp"
+#include "components/titled_component.hpp"
 
-#include <string>
+#include <libinput/keyboard/keyboard.hpp>
+#include <libwindow/metrics/insets.hpp>
 #include <list>
+#include <string>
 
-/**
- *
- */
-enum class text_field_visual_status_t
-	: uint8_t {
-		NORMAL, HOVERED
+enum class text_field_visual_status_t : uint8_t
+{
+    NORMAL,
+    HOVERED
 };
 
-/**
- *
- */
-class text_field_t: public text_component_t, public titled_component_t {
-private:
-	std::string text;
-	text_field_visual_status_t visualStatus;
-	bool focused;
-	bool secure;
+class text_field_t : public text_component_t, public titled_component_t
+{
+  private:
+    std::string text;
+    text_field_visual_status_t visualStatus;
+    bool focused;
+    bool secure;
 
-	g_font* font;
+    g_font* font;
 
-	int scrollX;
-	int fontSize;
-	g_color_argb textColor;
-	g_insets insets;
+    int scrollX;
+    int fontSize;
+    g_color_argb textColor;
+    g_insets insets;
 
-	int cursor;
-	int marker;
+    int cursor;
+    int marker;
 
-	g_layouted_text* viewModel;
+    g_layouted_text* viewModel;
 
-	void loadDefaultFont();
-	void applyScroll();
+    bool shiftDown = false;
 
-public:
-	text_field_t();
-	virtual ~text_field_t();
+    void loadDefaultFont();
+    void applyScroll();
 
-	/**
-	 *
-	 */
-	virtual void update();
+  public:
+    text_field_t();
+    virtual ~text_field_t();
 
-	/**
-	 *
-	 */
-	virtual void paint();
+    /**
+     *
+     */
+    virtual void update();
 
-	/**
-	 *
-	 */
-	virtual bool handle(event_t& e);
+    /**
+     *
+     */
+    virtual void paint();
 
-	/**
-	 *
-	 */
-	virtual void setText(std::string text);
+    virtual component_t* handleKeyEvent(key_event_t& e);
+    virtual component_t* handleMouseEvent(mouse_event_t& e);
+    virtual component_t* handleFocusEvent(focus_event_t& e);
 
-	/**
-	 *
-	 */
-	virtual std::string getText() {
-		return text;
-	}
+    virtual void setText(std::string text);
+    virtual std::string getText()
+    {
+        return text;
+    }
 
-	/**
-	 *
-	 */
-	virtual void setTitle(std::string title) {
-		setText(title);
-	}
+    virtual void setSecure(bool secure);
+    virtual bool isSecure()
+    {
+        return secure;
+    }
 
-	/**
-	 *
-	 */
-	virtual std::string getTitle() {
-		return getText();
-	}
+    /**
+     *
+     */
+    virtual void setTitle(std::string title)
+    {
+        setText(title);
+    }
 
-	/**
-	 *
-	 */
-	virtual void setCursor(int pos);
+    /**
+     *
+     */
+    virtual std::string getTitle()
+    {
+        return getText();
+    }
 
-	/**
-	 *
-	 */
-	virtual int getCursor() {
-		return cursor;
-	}
+    /**
+     *
+     */
+    virtual void setCursor(int pos);
 
-	/**
-	 *
-	 */
-	virtual void setMarker(int pos);
+    /**
+     *
+     */
+    virtual int getCursor()
+    {
+        return cursor;
+    }
 
-	/**
-	 *
-	 */
-	virtual int getMarker() {
-		return marker;
-	}
+    /**
+     *
+     */
+    virtual void setMarker(int pos);
 
-	/**
-	 *
-	 */
-	void backspace(g_key_info& info);
+    /**
+     *
+     */
+    virtual int getMarker()
+    {
+        return marker;
+    }
 
-	/**
-	 *
-	 */
-	void insert(std::string text);
+    /**
+     *
+     */
+    void backspace(g_key_info& info);
 
-	/**
-	 *
-	 */
-	int viewToPosition(g_point p);
+    /**
+     *
+     */
+    void insert(std::string text);
 
-	/**
-	 *
-	 */
-	g_rectangle glyphToView(g_positioned_glyph& g);
+    /**
+     *
+     */
+    int viewToPosition(g_point p);
 
-	/**
-	 *
-	 */
-	int positionToUnscrolledCursorX(int pos);
+    /**
+     *
+     */
+    g_rectangle glyphToView(g_positioned_glyph& g);
 
-	/**
-	 *
-	 */
-	g_rectangle positionToCursorBounds(int pos);
+    /**
+     *
+     */
+    int positionToUnscrolledCursorX(int pos);
 
-	/**
-	 *
-	 */
-	void setFont(g_font* f);
+    /**
+     *
+     */
+    g_rectangle positionToCursorBounds(int pos);
 
-	/**
-	 *
-	 */
-	virtual g_range getSelectedRange();
+    /**
+     *
+     */
+    void setFont(g_font* f);
 
-	/**
-	 *
-	 */
-	virtual bool getNumericProperty(int property, uint32_t* out);
+    /**
+     *
+     */
+    virtual g_range getSelectedRange();
 
-	/**
-	 *
-	 */
-	virtual bool setNumericProperty(int property, uint32_t value);
+    /**
+     *
+     */
+    virtual bool getNumericProperty(int property, uint32_t* out);
 
+    /**
+     *
+     */
+    virtual bool setNumericProperty(int property, uint32_t value);
 };
 
 #endif

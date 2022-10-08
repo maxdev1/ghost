@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,19 +18,22 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KEY_EVENT__
-#define __KEY_EVENT__
+#ifndef __WINDOWSERVER_EVENTS_KEYEVENT__
+#define __WINDOWSERVER_EVENTS_KEYEVENT__
 
-#include <events/event.hpp>
-#include <ghostuser/io/keyboard.hpp>
+#include "events/event.hpp"
+
+#include <libinput/keyboard/keyboard.hpp>
 #include <stdint.h>
 
-/**
- *
- */
-class key_event_t: public event_t {
-public:
+class key_event_t : public event_t
+{
+  public:
 	g_key_info info;
+
+	virtual ~key_event_t() {}
+
+	virtual component_t *visit(component_t *component);
 };
 
 #endif

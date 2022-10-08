@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,31 +18,21 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __TITLED_COMPONENT__
-#define __TITLED_COMPONENT__
+#ifndef __WINDOWSERVER_COMPONENTS_TITLEDCOMPONENT__
+#define __WINDOWSERVER_COMPONENTS_TITLEDCOMPONENT__
 
 #include <string>
 
-/**
- *
- */
-class titled_component_t {
-public:
-	/**
-	 *
-	 */
-	virtual ~titled_component_t() {
-	}
+class titled_component_t
+{
+  public:
+    virtual ~titled_component_t()
+    {
+    }
 
-	/**
-	 *
-	 */
-	virtual void setTitle(std::string title) = 0;
+    virtual void setTitle(std::string title) = 0;
 
-	/**
-	 *
-	 */
-	virtual std::string getTitle() = 0;
+    virtual std::string getTitle() = 0;
 };
 
 #endif

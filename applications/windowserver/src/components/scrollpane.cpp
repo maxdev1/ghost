@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,87 +18,166 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <components/scrollpane.hpp>
-#include <events/mouse_event.hpp>
+#include "components/scrollpane.hpp"
+#include "events/mouse_event.hpp"
 #include <stdio.h>
 
-/**
- *
- */
-void scrollpane_t::setViewPort(component_t* component) {
-	viewPort = component;
-	addChild(component);
+#define SCROLLBAR_SIZE 15
 
-	addChild(&horizontalScrollbar, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
-	horizontalScrollbar.setScrollHandler(this);
-
-	addChild(&verticalScrollbar, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
-	verticalScrollbar.setScrollHandler(this);
+scrollpane_t::scrollpane_t()
+{
+    needsGraphics = false;
 }
 
-/**
- *
- */
-void scrollpane_t::layout() {
-	auto bounds = getBounds();
+void scrollpane_t::setContent(component_t* component)
+{
+    if(this->content)
+        removeChild(this->content);
 
-	verticalScrollbar.setModelArea(bounds.height, viewPort->getBounds().height);
-	verticalScrollbar.setBounds(g_rectangle(bounds.width - 15, 0, 15, bounds.height - 15));
+    this->content = component;
+    addChild(this->content);
 
-	horizontalScrollbar.setModelArea(bounds.width, viewPort->getBounds().width);
-	horizontalScrollbar.setBounds(g_rectangle(0, bounds.height - 15, bounds.width - 15, 15));
+    addChild(&horizontalScrollbar, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
+    horizontalScrollbar.setScrollHandler(this);
+
+    addChild(&verticalScrollbar, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
+    verticalScrollbar.setScrollHandler(this);
 }
 
-/**
- *
- */
-void scrollpane_t::setPosition(g_point& newPosition) {
+void scrollpane_t::handleScroll(scrollbar_t* bar)
+{
 
-	if (viewPort != nullptr) {
-		scrollPosition = newPosition;
-
-		g_rectangle viewPortSize = viewPort->getBounds();
-		g_rectangle bounds = getBounds();
-
-		// limit if too small
-		if (scrollPosition.x > 0) {
-			scrollPosition.x = 0;
-
-		} else if (viewPortSize.width < bounds.width) {
-			scrollPosition.x = 0;
-
-		} else if (scrollPosition.x + viewPortSize.width < bounds.width) {
-			scrollPosition.x = bounds.width - viewPortSize.width;
-		}
-
-		if (scrollPosition.y > 0) {
-			scrollPosition.y = 0;
-
-		} else if (viewPortSize.height < bounds.height) {
-			scrollPosition.y = 0;
-
-		} else if (scrollPosition.y + viewPortSize.height < bounds.height) {
-			scrollPosition.y = bounds.height - viewPortSize.height;
-		}
-
-		viewPort->setBounds(g_rectangle(scrollPosition.x, scrollPosition.y, viewPortSize.width, viewPortSize.height));
-	}
-
+    if(bar == &verticalScrollbar)
+    {
+        scrollPosition.y = -verticalScrollbar.getModelPosition();
+        updateContent();
+    }
+    else if(bar == &horizontalScrollbar)
+    {
+        scrollPosition.x = -horizontalScrollbar.getModelPosition();
+        updateContent();
+    }
 }
 
-/**
- *
- */
-void scrollpane_t::handleScroll(scrollbar_t* bar) {
+g_dimension scrollpane_t::calculateViewport(g_dimension contentSize)
+{
+    showVbar = false;
+    showHbar = false;
 
-	if (bar == &verticalScrollbar) {
-		g_point pos = scrollPosition;
-		pos.y = -verticalScrollbar.getModelPosition();
-		setPosition(pos);
+    g_dimension viewportSize = getBounds().getSize();
 
-	} else if (bar == &horizontalScrollbar) {
-		g_point pos = scrollPosition;
-		pos.x = -horizontalScrollbar.getModelPosition();
-		setPosition(pos);
-	}
+    if(contentSize.height > viewportSize.height)
+    {
+        showVbar = true;
+    }
+    if(contentSize.width > (showVbar ? viewportSize.width - SCROLLBAR_SIZE : viewportSize.width))
+    {
+        showHbar = true;
+    }
+    if(contentSize.height > (showHbar ? viewportSize.height - SCROLLBAR_SIZE : viewportSize.height))
+    {
+        showVbar = true;
+    }
+    if(contentSize.width > (showVbar ? viewportSize.width - SCROLLBAR_SIZE : viewportSize.width))
+    {
+        showHbar = true;
+    }
+
+    if(showHbar)
+    {
+        viewportSize.height -= SCROLLBAR_SIZE;
+    }
+    if(showVbar)
+    {
+        viewportSize.width -= SCROLLBAR_SIZE;
+    }
+    return viewportSize;
+}
+
+void scrollpane_t::layout()
+{
+    auto contentSize = content->getPreferredSize();
+    if(fixedWidth)
+    {
+        contentSize.width = getBounds().width - SCROLLBAR_SIZE;
+    }
+    if(fixedHeight)
+    {
+        contentSize.height = getBounds().height - SCROLLBAR_SIZE;
+    }
+    auto viewportSize = calculateViewport(contentSize);
+
+    auto bounds = getBounds();
+    if(showVbar)
+    {
+        verticalScrollbar.setViewLengths(viewportSize.height, contentSize.height);
+        verticalScrollbar.setBounds(g_rectangle(bounds.width - SCROLLBAR_SIZE, 0, SCROLLBAR_SIZE, viewportSize.height));
+        verticalScrollbar.setVisible(true);
+    }
+    else
+    {
+        verticalScrollbar.setVisible(false);
+    }
+
+    if(showHbar)
+    {
+        horizontalScrollbar.setViewLengths(viewportSize.width, contentSize.width);
+        horizontalScrollbar.setBounds(g_rectangle(0, bounds.height - SCROLLBAR_SIZE, viewportSize.width, SCROLLBAR_SIZE));
+        horizontalScrollbar.setVisible(true);
+    }
+    else
+    {
+        horizontalScrollbar.setVisible(false);
+    }
+
+    updateContent();
+
+    markFor(COMPONENT_REQUIREMENT_PAINT);
+}
+
+void scrollpane_t::updateContent()
+{
+    if(!content)
+        return;
+
+    auto contentSize = content->getPreferredSize();
+    if(fixedWidth)
+    {
+        contentSize.width = getBounds().width;
+    }
+    if(fixedHeight)
+    {
+        contentSize.height = getBounds().height;
+    }
+    auto viewportSize = calculateViewport(contentSize);
+
+    if(scrollPosition.x > 0)
+    {
+        scrollPosition.x = 0;
+    }
+    else if(contentSize.width < viewportSize.width)
+    {
+        scrollPosition.x = 0;
+    }
+    else if(scrollPosition.x + contentSize.width < viewportSize.width)
+    {
+        scrollPosition.x = viewportSize.width - contentSize.width;
+    }
+
+    if(scrollPosition.y > 0)
+    {
+        scrollPosition.y = 0;
+    }
+    else if(contentSize.height < viewportSize.height)
+    {
+        scrollPosition.y = 0;
+    }
+    else if(scrollPosition.y + contentSize.height < viewportSize.height)
+    {
+        scrollPosition.y = viewportSize.height - contentSize.height;
+    }
+
+    content->setBounds(g_rectangle(scrollPosition.x, scrollPosition.y,
+                                   fixedWidth ? viewportSize.width : contentSize.width,
+                                   fixedHeight ? viewportSize.height : contentSize.height));
 }

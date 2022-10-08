@@ -18,49 +18,42 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "registration_thread.hpp"
-#include <ghostuser/ui/interface_specification.hpp>
-#include <interface/command_message_receiver_thread.hpp>
-#include <interface/application_exit_cleanup_thread.hpp>
+#include <libwindow/interface.hpp>
 #include <stdio.h>
 
-/**
- *
- */
-void registration_thread_t::run() {
+#include "interface/application_exit_cleanup.hpp"
+#include "interface/interface_receiver.hpp"
+#include "registration_thread.hpp"
 
+void interfaceRegistrationThread()
+{
 	g_tid tid = g_get_tid();
-
-	// register this thread
-	if (!g_task_register_id(G_UI_REGISTRATION_THREAD_IDENTIFIER)) {
-		klog("failed to register task identifier for registration thread");
+	if(!g_task_register_id(G_UI_REGISTRATION_THREAD_IDENTIFIER))
+	{
+		klog("failed to register as \"%s\"", G_UI_REGISTRATION_THREAD_IDENTIFIER);
 		return;
 	}
 
-	// wait for initialization requests
 	size_t bufferLength = sizeof(g_message_header) + sizeof(g_ui_initialize_request);
 	uint8_t* buffer = new uint8_t[bufferLength];
 
-	while (true) {
+	while(true)
+	{
 		g_message_receive_status stat = g_receive_message(buffer, bufferLength);
 
-		if (stat == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) {
+		if(stat == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+		{
 			g_message_header* request_message = (g_message_header*) buffer;
 			g_ui_initialize_request* request = (g_ui_initialize_request*) G_MESSAGE_CONTENT(buffer);
 
-			// create handler thread
-			command_message_receiver_thread_t* communicator = new command_message_receiver_thread_t();
-			g_tid communicator_tid = communicator->start();
+			auto receiver = new interface_receiver_t();
+			g_tid receiverTid = g_create_thread_d((void*) &interfaceReceiverThread, receiver);
+			g_create_thread_d((void*) &interfaceApplicationExitCleanupThread, new application_exit_cleanup_handler_t(g_get_pid_for_tid(request_message->sender), receiver));
 
-			// create a thread that cleans up the ui when the client thread exits
-			application_exit_cleanup_thread_t* cleanup = new application_exit_cleanup_thread_t(g_get_pid_for_tid(request_message->sender), communicator);
-			cleanup->start();
-
-			// send response
 			g_ui_initialize_response response;
 			response.header.id = G_UI_PROTOCOL_INITIALIZATION;
 			response.status = G_UI_PROTOCOL_SUCCESS;
-			response.window_server_delegate_thread = communicator_tid;
+			response.window_server_delegate_thread = receiverTid;
 			g_send_message_t(request_message->sender, &response, sizeof(g_ui_initialize_response), request_message->transaction);
 		}
 	}

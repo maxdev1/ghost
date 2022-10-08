@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,17 +18,15 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __CARET_DIRECTION__
-#define __CARET_DIRECTION__
+#ifndef __WINDOWSERVER_COMPONENTS_TEXT_CARETDIRECTION__
+#define __WINDOWSERVER_COMPONENTS_TEXT_CARETDIRECTION__
 
 #include <stdint.h>
 
-/**
- *
- */
-enum class caret_direction_t
-	: uint8_t {
-		LEFT, RIGHT
+enum class caret_direction_t : uint8_t
+{
+    LEFT,
+    RIGHT
 };
 
 #endif

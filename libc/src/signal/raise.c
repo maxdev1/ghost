@@ -18,21 +18,15 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include "errno.h"
 #include "signal.h"
 #include "stdio.h"
-#include "errno.h"
 
 /**
  *
  */
-int raise(int sig) {
-
-	g_raise_signal_status status = g_raise_signal(g_get_tid(), sig);
-
-	if(status == G_RAISE_SIGNAL_STATUS_SUCCESSFUL) {
-		return 0;
-	}
-
+int raise(int sig)
+{
 	errno = EINVAL;
 	return -1;
 }

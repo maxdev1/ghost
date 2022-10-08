@@ -19,67 +19,70 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "shared/video/pretty_boot.hpp"
-#include "shared/video/console_video.hpp"
-#include "shared/utils/string.hpp"
-#include "shared/memory/memory.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/memory/memory.hpp"
+#include "shared/utils/string.hpp"
+#include "shared/video/console_video.hpp"
 
 void prettyBootEnable(bool clearScreen)
 {
-	loggerEnableVideo(false);
-	if(clearScreen)
-		consoleVideoClear();
+    loggerEnableVideo(false);
+    if(clearScreen)
+        consoleVideoClear();
 
-	consoleVideoPutString(15, G_PRETTY_BOOT_LOGO_Y_POS, "  \xDC\xDC\xDC\xDC  \xDC          \xDC    \xDC  \xDC                \xDC  ", 0x09);
-	consoleVideoPutString(15, G_PRETTY_BOOT_LOGO_Y_POS + 1, " \xDE\xDB  \xDB\xDD\xDE\xDB         \xDE\xDB   \xDE\xDB \xDE\xDD               \xDE\xDB  ", 0x09);
-	consoleVideoPutString(15, G_PRETTY_BOOT_LOGO_Y_POS + 2,
-			" \xDE\xDB \xDC\xDC \xDE\xDB\xDC\xDC \xDC\xDC\xDC \xDC\xDC\xDE\xDB\xDC  \xDE\xDB\xDB\xDB  \xDC\xDC\xDC \xDC\xDC \xDC\xDC\xDC \xDC\xDC\xDC\xDE\xDB  ",
-			0x09);
-	consoleVideoPutString(15, G_PRETTY_BOOT_LOGO_Y_POS + 3,
-			" \xDE\xDB  \xDB\xDD\xDE\xDB \xDB\xDE\xDB \xDB\xDD\xDF\xDC\xDE\xDB   \xDE\xDB \xDE\xDD\xDE\xDB \xDF\xDE\xDB \xDE\xDB \xDB\xDE\xDB \xDF\xDE\xDB  ",
-			0x09);
-	consoleVideoPutString(15, G_PRETTY_BOOT_LOGO_Y_POS + 4,
-			"  \xDF\xDF\xDF\xDF  \xDF \xDF \xDF\xDF\xDF \xDF\xDF \xDF    \xDF  \xDF \xDF\xDF\xDF \xDF  \xDF \xDF \xDF\xDF\xDF \xDF\xDF ", 0x09);
+    consoleVideoPutString(G_PRETTY_BOOT_LOGO_X_POS, G_PRETTY_BOOT_LOGO_Y_POS,
+                          "  \xDC\xDC\xDC\xDC  \xDC          \xDC  ",
+                          0x09);
+    consoleVideoPutString(G_PRETTY_BOOT_LOGO_X_POS, G_PRETTY_BOOT_LOGO_Y_POS + 1,
+                          " \xDE\xDB  \xDB\xDD\xDE\xDB         \xDE\xDB  ",
+                          0x09);
+    consoleVideoPutString(G_PRETTY_BOOT_LOGO_X_POS, G_PRETTY_BOOT_LOGO_Y_POS + 2,
+                          " \xDE\xDB \xDC\xDC \xDE\xDB\xDC\xDC \xDC\xDC\xDC \xDC\xDC\xDE\xDB\xDC ",
+                          0x09);
+    consoleVideoPutString(G_PRETTY_BOOT_LOGO_X_POS, G_PRETTY_BOOT_LOGO_Y_POS + 3,
+                          " \xDE\xDB  \xDB\xDD\xDE\xDB \xDB\xDE\xDB \xDB\xDD\xDF\xDC\xDE\xDB  ",
+                          0x09);
+    consoleVideoPutString(G_PRETTY_BOOT_LOGO_X_POS, G_PRETTY_BOOT_LOGO_Y_POS + 4,
+                          "  \xDF\xDF\xDF\xDF  \xDF \xDF \xDF\xDF\xDF \xDF\xDF \xDF  ",
+                          0x09);
 
-	consoleVideoPutString(0, 0, "Version 0.5.6", 0x07);
-	prettyBootPrintCentered("Copyright (c) 2012-2016 Max Schl\x81ssel", 23, 0x07);
+    prettyBootPrintCentered("Version " STR(G_VERSION_MAJOR) "." STR(G_VERSION_MINOR) "." STR(G_VERSION_PATCH), 17, 0x07);
+    prettyBootPrintCentered("(c) 2012-2022 Max Schl\x81ssel", 23, 0x07);
 
-	consoleVideoSetVisualCursor(-1, -1);
+    consoleVideoSetVisualCursor(-1, -1);
 }
 
 void prettyBootPrintProgressBar(int percent, uint8_t color)
 {
+    double cells = (20.0 / 100.0) * percent;
+    if(cells < 1)
+        cells = 1;
 
-	for(int i = 30; i < 50; i++)
-		consoleVideoPutChar(i, G_PRETTY_BOOT_PROGRESS_BAR_Y_POS, ' ', 0x80);
-
-	double cells = (20.0 / 100.0) * percent;
-	if(cells < 1)
-		cells = 1;
-
-	for(int i = 30; i < 30 + (int) cells; i++)
-		consoleVideoPutChar(i, G_PRETTY_BOOT_PROGRESS_BAR_Y_POS, ' ', color);
+    for(int i = 30; i < 30 + (int) cells; i++)
+        consoleVideoPutChar(i, G_PRETTY_BOOT_PROGRESS_BAR_Y_POS, '\xDC', color);
+    for(int i = 30 + cells; i < 50; i++)
+        consoleVideoPutChar(i, G_PRETTY_BOOT_PROGRESS_BAR_Y_POS, '\xDC', 0x07);
 }
 
 void prettyBootPrintCentered(const char* string, int y, uint8_t color)
 {
+    int strl = stringLength(string);
+    int left_bound = 40 - strl / 2;
 
-	int strl = stringLength(string);
-	int left_bound = 40 - strl / 2;
-
-	for(int i = 0; i < 80; i++)
-		consoleVideoPutChar(i, y, ' ', 0x00);
-	consoleVideoPutString(left_bound, y, string, color);
+    for(int i = 0; i < 80; i++)
+        consoleVideoPutChar(i, y, ' ', 0x00);
+    consoleVideoPutString(left_bound, y, string, color);
 }
 
 void prettyBootUpdateStatus(const char* string, int percent)
 {
-	prettyBootPrintProgressBar(percent, 0x90);
-	prettyBootPrintCentered(string, G_PRETTY_BOOT_PROGRESS_BAR_Y_POS + 2, 0x0F);
+    prettyBootPrintProgressBar(percent, 0x09);
+    if(string)
+        prettyBootPrintCentered(string, G_PRETTY_BOOT_PROGRESS_BAR_Y_POS + 2, 0x0F);
 }
 
 void prettyBootFail(const char* string)
 {
-	prettyBootPrintProgressBar(100, 0xC0);
-	prettyBootPrintCentered(string, G_PRETTY_BOOT_PROGRESS_BAR_Y_POS + 2, 0x0F);
+    prettyBootPrintProgressBar(100, 0xC0);
+    prettyBootPrintCentered(string, G_PRETTY_BOOT_PROGRESS_BAR_Y_POS + 2, 0x0F);
 }

@@ -18,22 +18,9 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __INTERFACE_REGISTRATION_THREAD__
-#define __INTERFACE_REGISTRATION_THREAD__
+#ifndef __WINDOWSERVER_INTERFACE_REGISTRATIONTHREAD__
+#define __WINDOWSERVER_INTERFACE_REGISTRATIONTHREAD__
 
-#include <ghostuser/tasking/thread.hpp>
-
-/**
- *
- */
-class registration_thread_t: public g_thread {
-public:
-
-	/**
-	 *
-	 */
-	virtual void run();
-
-};
+void interfaceRegistrationThread();
 
 #endif

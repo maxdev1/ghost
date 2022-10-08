@@ -18,42 +18,49 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "kernel/tasking/scheduler.hpp"
 #include "kernel/memory/heap.hpp"
+#include "kernel/tasking/atoms.hpp"
+#include "kernel/tasking/scheduler.hpp"
 #include "shared/logger/logger.hpp"
-#include "kernel/tasking/wait.hpp"
+
+#define G_DEBUG_LOG_PAUSE 5000
 
 void schedulerInitializeLocal()
 {
-	taskingGetLocal()->scheduling.round = 1;
-}
-
-void schedulerNewTimeSlot()
-{
-	taskingGetLocal()->scheduling.round++;
 }
 
 void schedulerPrepareEntry(g_schedule_entry* entry)
 {
-	entry->schedulerRound = 0;
 }
 
-void schedulerPleaseSchedule(g_task* task)
+g_schedule_entry* schedulerGetNextTask(g_tasking_local* local)
 {
-	taskingGetLocal()->scheduling.preferredNextTask = task;
+	g_schedule_entry* entry = local->scheduling.list;
+	if(local->scheduling.current == local->scheduling.idleTask)
+	{
+		return entry;
+	}
+
+	while(entry)
+	{
+		if(entry->task == local->scheduling.current)
+		{
+			break;
+		}
+		entry = entry->next;
+	}
+
+	if(entry)
+	{
+		entry = entry->next;
+	}
+	if(!entry)
+	{
+		entry = local->scheduling.list;
+	}
+	return entry;
 }
 
-/**
- * This scheduler implementation keeps a round counter on the
- * local tasking structure and each schedule entry. A new round
- * starts when a new timeslot starts.
- * 
- * When looking for a new task to schedule, each task in the list
- * is checked once. Only tasks that have not been scheduled in this
- * round are taken into account.
- * 
- * If all tasks are waiting/were already scheduled, the idle task is run.
- */
 void schedulerSchedule(g_tasking_local* local)
 {
 	mutexAcquire(&local->lock);
@@ -65,91 +72,85 @@ void schedulerSchedule(g_tasking_local* local)
 		return;
 	}
 
-	// Find task in list
-	bool switchToPreferred = local->scheduling.preferredNextTask != 0;
-	g_task* searchTask = switchToPreferred ? local->scheduling.preferredNextTask : local->scheduling.current;
-	local->scheduling.preferredNextTask = 0;
-
-	g_schedule_entry* entry = local->scheduling.list;
-	while(entry)
+	g_schedule_entry* start = schedulerGetNextTask(local);
+	g_schedule_entry* entry = start;
+	for(;;)
 	{
-		if(entry->task == searchTask)
-		{
-			break;
-		}
-		entry = entry->next;
-	}
-	if(!entry)
-	{
-		entry = local->scheduling.list;
-	}
-
-	// Select next in list
-	if(!switchToPreferred)
-	{
-		entry = entry->next;
-		if(!entry)
-		{
-			entry = local->scheduling.list;
-		}
-	}
-
-	bool switched = false;
-	uint32_t max = local->scheduling.taskCount;
-	while(max-- > 0 && entry)
-	{
-		/* If this task has already done some work this round, we skip it */
-		if(entry->schedulerRound >= local->scheduling.round)
-		{
-			entry = entry->next;
-			if(!entry)
-			{
-				entry = local->scheduling.list;
-			}
-			continue;
-		}
-
-		entry->schedulerRound = local->scheduling.round;
-
-		/* Task is running, so we can schedule it */
 		g_task* task = entry->task;
 		if(task->status == G_THREAD_STATUS_RUNNING)
 		{
 			local->scheduling.current = task;
-			switched = true;
+			local->scheduling.current->statistics.timesScheduled++;
 			break;
 		}
 
-		/* If the task is waiting, we must see why */
-		if(task->status == G_THREAD_STATUS_WAITING)
-		{
-			/* Now we check if the task can be woken up again. */
-			bool wakeUp = waitTryWake(task);
-
-			if(wakeUp)
-			{
-				local->scheduling.current = task;
-				switched = true;
-				break;
-			}
-		}
-
-		/* Go to the next entry */
 		entry = entry->next;
 		if(!entry)
 		{
 			entry = local->scheduling.list;
 		}
+
+		if(entry == start)
+		{
+			local->scheduling.current = local->scheduling.idleTask;
+			local->scheduling.idleTask->statistics.timesScheduled++;
+			break;
+		}
+	}
+	mutexRelease(&local->lock);
+
+#if G_DEBUG_THREAD_DUMPING
+	static int lastLogTime = 0;
+	if((local->time - lastLogTime) > G_DEBUG_LOG_PAUSE)
+	{
+		lastLogTime = local->time;
+		schedulerDump();
+	}
+#endif
+}
+
+#define USAGE(timesScheduled, timesYielded) ((timesScheduled - timesYielded) / (G_DEBUG_LOG_PAUSE / 1000))
+
+void schedulerDump()
+{
+	g_tasking_local* local = taskingGetLocal();
+	mutexAcquire(&local->lock);
+
+	logInfo("%! dump @%i (time: %i)", "sched", processorGetCurrentId(), local->time);
+	g_schedule_entry* entry = local->scheduling.list;
+	while(entry)
+	{
+		const char* taskState;
+		if(entry->task->status == G_THREAD_STATUS_RUNNING)
+		{
+			taskState = "";
+		}
+		else if(entry->task->status == G_THREAD_STATUS_UNUSED)
+		{
+			taskState = " [unused]";
+		}
+		else if(entry->task->status == G_THREAD_STATUS_DEAD)
+		{
+			taskState = " [dead]";
+		}
+		else if(entry->task->status == G_THREAD_STATUS_WAITING)
+		{
+			taskState = " [waiting]";
+		}
+
+		if(entry->task->status != G_THREAD_STATUS_DEAD)
+		{
+			logInfo("%# (%i:%i)%s usage: %i", entry->task->process->id, entry->task->id, taskState, USAGE(entry->task->statistics.timesScheduled, entry->task->statistics.timesYielded));
+			entry->task->statistics.timesScheduled = 0;
+			entry->task->statistics.timesYielded = 0;
+		}
+		entry = entry->next;
 	}
 
-	if(switched)
-	{
-		local->scheduling.current->timesScheduled++;
-	} else
-	{
-		// Nothing to schedule, idle
-		local->scheduling.current = local->scheduling.idleTask;
-	}
+	g_task* idle = local->scheduling.idleTask;
+	logInfo("%# (%i:%i) idle, usage: %i", idle->process->id, idle->id, USAGE(idle->statistics.timesScheduled, idle->statistics.timesYielded));
+	idle->statistics.timesScheduled = 0;
+	idle->statistics.timesYielded = 0;
 
 	mutexRelease(&local->lock);
 }

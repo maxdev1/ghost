@@ -19,10 +19,10 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/calls/syscall_messaging.hpp"
-#include "shared/logger/logger.hpp"
-#include "kernel/tasking/tasking_directory.hpp"
 #include "kernel/ipc/message.hpp"
-#include "kernel/tasking/wait.hpp"
+#include "kernel/tasking/atoms.hpp"
+#include "kernel/tasking/tasking_directory.hpp"
+#include "shared/logger/logger.hpp"
 
 void syscallRegisterTaskIdentifier(g_task* task, g_syscall_task_id_register* data)
 {
@@ -36,22 +36,32 @@ void syscallGetTaskForIdentifier(g_task* task, g_syscall_task_id_get* data)
 
 void syscallMessageSend(g_task* task, g_syscall_send_message* data)
 {
-	data->status = messageSend(task->id, data->receiver, data->buffer, data->length, data->transaction);
-
-	if(data->mode == G_MESSAGE_SEND_MODE_BLOCKING && data->status == G_MESSAGE_SEND_STATUS_QUEUE_FULL)
+	while((data->status = messageSend(task->id, data->receiver, data->buffer, data->length, data->transaction)) == G_MESSAGE_SEND_STATUS_QUEUE_FULL &&
+		  data->mode == G_MESSAGE_SEND_MODE_BLOCKING)
 	{
-		waitForMessageSend(task);
-		taskingSchedule();
+		messageWaitForSend(task->id, data->receiver);
+		task->status = G_THREAD_STATUS_WAITING;
+		taskingYield();
 	}
+	messageUnwaitForSend(task->id, data->receiver);
 }
 
 void syscallMessageReceive(g_task* task, g_syscall_receive_message* data)
 {
-	data->status = messageReceive(task->id, data->buffer, data->maximum, data->transaction);
-
-	if(data->mode == G_MESSAGE_RECEIVE_MODE_BLOCKING && data->status == G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY)
+	while((data->status = messageReceive(task->id, data->buffer, data->maximum, data->transaction)) == G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY &&
+		  data->mode == G_MESSAGE_RECEIVE_MODE_BLOCKING)
 	{
-		waitForMessageReceive(task);
-		taskingSchedule();
+		/**
+		 * TODO: "Break condition" doesn't work anymore since there is no connection between atoms and
+		 * the message wait queues. This must be somehow connected and the task waken when required.
+		 */
+		// if(data->break_condition && atomicLock(task, data->break_condition, true, false))
+		//{
+		//	data->status = G_MESSAGE_RECEIVE_STATUS_INTERRUPTED;
+		//	break;
+		// }
+
+		task->status = G_THREAD_STATUS_WAITING;
+		taskingYield();
 	}
 }

@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,19 +18,17 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __INPUT_RECEIVER__
-#define __INPUT_RECEIVER__
+#ifndef __WINDOWSERVER_INPUT_INPUTRECEIVER__
+#define __WINDOWSERVER_INPUT_INPUTRECEIVER__
 
-#include <windowserver.hpp>
+#include "windowserver.hpp"
 
-/**
- *
- */
-class input_receiver_t {
-public:
-	static void initialize();
-	static void startReceiveMouseEvents();
-	static void startReceiveKeyEvents();
+class input_receiver_t
+{
+  public:
+    static void initialize();
+    static void startReceiveMouseEvents();
+    static void startReceiveKeyEvents();
 };
 
 #endif

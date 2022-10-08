@@ -21,6 +21,7 @@
 #include "kernel/calls/syscall_filesystem.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
+#include "kernel/system/interrupts/requests.hpp"
 #include "shared/logger/logger.hpp"
 
 void syscallFsOpen(g_task* task, g_syscall_fs_open* data)
@@ -30,7 +31,8 @@ void syscallFsOpen(g_task* task, g_syscall_fs_open* data)
 	if(data->status == G_FS_OPEN_SUCCESSFUL)
 	{
 		data->fd = fd;
-	} else
+	}
+	else
 	{
 		data->fd = G_FD_NONE;
 	}
@@ -73,24 +75,7 @@ void syscallFsLength(g_task* task, g_syscall_fs_length* data)
 
 void syscallFsCloneFd(g_task* task, g_syscall_fs_clonefd* data)
 {
-	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(data->source_pid, data->source_fd);
-	if(!descriptor)
-	{
-		data->status = G_FS_CLONEFD_INVALID_SOURCE_FD;
-		data->result = G_FD_NONE;
-		return;
-	}
-
-	g_file_descriptor* clone = filesystemProcessCloneDescriptor(descriptor, data->target_pid, data->target_fd);
-	if(!clone)
-	{
-		data->result = G_FD_NONE;
-		data->status = G_FS_CLONEFD_ERROR;
-		return;
-	}
-
-	data->result = clone->id;
-	data->status = G_FS_CLONEFD_SUCCESSFUL;
+	data->status = filesystemProcessCloneDescriptor(data->source_pid, data->source_fd, data->target_pid, data->target_fd, &data->result);
 }
 
 void syscallFsTell(g_task* task, g_syscall_fs_tell* data)
@@ -132,7 +117,7 @@ void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 	}
 
 	g_file_flag_mode writeFlags = (G_FILE_FLAG_MODE_WRITE | (data->blocking ? G_FILE_FLAG_MODE_BLOCKING : 0));
-	g_fs_open_status writeOpen = filesystemOpen(pipeNode, writeFlags, task, &data->write_fd);
+	g_fs_open_status writeOpen = filesystemOpenNodeFd(pipeNode, writeFlags, task->process->id, &data->write_fd);
 	if(writeOpen != G_FS_OPEN_SUCCESSFUL)
 	{
 		logInfo("%! failed to open write end of pipe %i for task %i with status %i", "filesystem", pipeNode->id, task->id, writeOpen);
@@ -141,7 +126,7 @@ void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 	}
 
 	g_file_flag_mode readFlags = (G_FILE_FLAG_MODE_READ | (data->blocking ? G_FILE_FLAG_MODE_BLOCKING : 0));
-	g_fs_open_status readOpen = filesystemOpen(pipeNode, readFlags, task, &data->read_fd);
+	g_fs_open_status readOpen = filesystemOpenNodeFd(pipeNode, readFlags, task->process->id, &data->read_fd);
 	if(readOpen != G_FS_OPEN_SUCCESSFUL)
 	{
 		if(filesystemClose(task->process->id, writeOpen, true) != G_FS_CLOSE_SUCCESSFUL)
@@ -154,4 +139,39 @@ void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 	}
 
 	data->status = G_FS_PIPE_SUCCESSFUL;
+}
+
+void syscallOpenIrqDevice(g_task* task, g_syscall_open_irq_device* data)
+{
+	if(task->securityLevel <= G_SECURITY_LEVEL_DRIVER)
+	{
+		g_irq_device* irqDevice = requestsGetIrqDevice(data->irq);
+		if(!irqDevice)
+		{
+			data->status = G_OPEN_IRQ_DEVICE_STATUS_ERROR;
+			logInfo("%! task %i: failed to retrieve device for irq %i", "irq", task->id, data->irq);
+			return;
+		}
+
+		irqDevice->task = task->id;
+
+		g_fd fd;
+		g_file_flag_mode readFlags = (G_FILE_FLAG_MODE_READ | G_FILE_FLAG_MODE_BLOCKING);
+		if(filesystemOpenNodeFd(irqDevice->node, readFlags, task->process->id, &fd) == G_FS_OPEN_SUCCESSFUL)
+		{
+			data->status = G_OPEN_IRQ_DEVICE_STATUS_SUCCESSFUL;
+			data->fd = fd;
+			logDebug("%! task %i: opened device for IRQ %i", "irq", task->id, data->irq);
+		}
+		else
+		{
+			data->status = G_OPEN_IRQ_DEVICE_STATUS_ERROR;
+			logInfo("%! task %i: failed to open device for IRQ %i", "irq", task->id, data->irq);
+		}
+	}
+	else
+	{
+		data->status = G_OPEN_IRQ_DEVICE_STATUS_NOT_PERMITTED;
+		logInfo("%! task %i: not permitted to open device for irq %i", "irq", task->id, data->irq);
+	}
 }

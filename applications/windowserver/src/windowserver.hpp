@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -21,25 +21,25 @@
 #ifndef __WINDOWSERVER__
 #define __WINDOWSERVER__
 
-#include <components/component.hpp>
-#include <components/screen.hpp>
-#include <components/label.hpp>
-#include <events/event_processor.hpp>
-#include "output/video_output.hpp"
-#include "interface/command_message_responder_thread.hpp"
-
-#define BENCHMARKING 0
+#include "components/component.hpp"
+#include "components/desktop/background.hpp"
+#include "components/desktop/screen.hpp"
+#include "components/label.hpp"
+#include "events/event_processor.hpp"
+#include "video/video_output.hpp"
 
 /**
  *
  */
-class windowserver_t {
-public:
-	video_output_t* video_output;
+class windowserver_t
+{
+  public:
+	g_video_output* video_output;
 	event_processor_t* event_processor;
 	screen_t* screen;
-	command_message_responder_thread_t* responder_thread;
-	uint8_t render_atom;
+	background_t* background;
+	label_t* stateLabel;
+	g_atom render_atom = g_atomic_initialize();
 
 	/**
 	 * Sets up the windowing system by configuring a video output, setting up the
@@ -48,10 +48,14 @@ public:
 	 */
 	void launch();
 
-	/**
-	 *
-	 */
-	void mainLoop(g_rectangle screenBounds);
+	void initializeGraphics();
+	void createVitalComponents(g_rectangle screenBounds);
+	void loadCursor();
+
+	void renderLoop(g_rectangle screenBounds);
+	void triggerRender();
+	static void initializeInput();
+	static void fpsCounter();
 
 	/**
 	 * Blits the component state.
@@ -61,9 +65,9 @@ public:
 	/**
 	 * Dispatches the given event to the component.
 	 *
-	 * @return whether the event was handled
+	 * @return the component that has handled the event or NULL
 	 */
-	bool dispatch(component_t* component, event_t& event);
+	component_t* dispatch(component_t* component, event_t& event);
 
 	/**
 	 * Dispatches the given event upwards the component tree.
@@ -71,27 +75,16 @@ public:
 	component_t* dispatchUpwards(component_t* component, event_t& event);
 
 	/**
+	 * Creates the command receiver interface.
+	 */
+	void createInterface();
+
+	/**
 	 * Returns the singleton instance of the window server.
 	 *
 	 * @return the instance
 	 */
 	static windowserver_t* instance();
-
-	/**
-	 * TODO remove
-	 */
-	void createTestComponents();
-
-	/**
-	 *
-	 */
-	void loadCursor();
-
-	/**
-	 *
-	 */
-	void triggerRender();
-
 };
 
 #endif

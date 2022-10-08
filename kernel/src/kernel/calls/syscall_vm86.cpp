@@ -20,22 +20,34 @@
 
 #include "kernel/calls/syscall_vm86.hpp"
 #include "kernel/memory/memory.hpp"
-#include "kernel/tasking/wait.hpp"
 #include "shared/logger/logger.hpp"
 
 void syscallCallVm86(g_task* task, g_syscall_call_vm86* data)
 {
-	if (task->securityLevel > G_SECURITY_LEVEL_DRIVER)
-	{
-		data->status = G_VM86_CALL_STATUS_FAILED_NOT_PERMITTED;
-		return;
-	}
+    if(task->securityLevel > G_SECURITY_LEVEL_DRIVER)
+    {
+        data->status = G_VM86_CALL_STATUS_FAILED_NOT_PERMITTED;
+        return;
+    }
 
-	g_vm86_registers* registerStore = (g_vm86_registers*) heapAllocate(sizeof(g_vm86_registers));
+    g_vm86_registers* registerStore = (g_vm86_registers*) heapAllocate(sizeof(g_vm86_registers));
 
-	g_task* vm86task = taskingCreateThreadVm86(task->process, data->interrupt, data->in, registerStore);
-	taskingAssign(taskingGetLocal(), vm86task);
-	waitForVm86(task, vm86task, registerStore);
-	taskingSchedule();
+    g_task* vm86task = taskingCreateThreadVm86(task->process, data->interrupt, data->in, registerStore);
+    taskingAssign(taskingGetLocal(), vm86task);
+
+    for(;;)
+    {
+        if(vm86task == 0 || vm86task->status == G_THREAD_STATUS_DEAD || vm86task->status == G_THREAD_STATUS_UNUSED)
+        {
+            /* VM86 task has finished, copy out registers */
+            *data->out = *registerStore;
+
+            heapFree(registerStore);
+
+            data->status = G_VM86_CALL_STATUS_SUCCESSFUL;
+            break;
+        }
+
+        taskingYield();
+    }
 }
-

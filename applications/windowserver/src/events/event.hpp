@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,16 +18,20 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __EVENT__
-#define __EVENT__
+#ifndef __WINDOWSERVER_EVENTS_EVENT__
+#define __WINDOWSERVER_EVENTS_EVENT__
 
-/**
- *
- */
-class event_t {
-public:
-	virtual ~event_t() {
-	}
+class component_t;
+
+class event_t
+{
+  public:
+    virtual ~event_t() {}
+
+    /**
+     * Lets the event apply on the component.
+     */
+    virtual component_t* visit(component_t* component) = 0;
 };
 
 #endif

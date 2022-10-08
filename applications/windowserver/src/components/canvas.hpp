@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,50 +18,60 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __CANVAS__
-#define __CANVAS__
+#ifndef __WINDOWSERVER_COMPONENTS_CANVAS__
+#define __WINDOWSERVER_COMPONENTS_CANVAS__
 
-#include <components/component.hpp>
+#include "components/component.hpp"
 
-/**
- *
- */
-struct buffer_info_t {
+struct buffer_info_t
+{
 	uint8_t* localMapping;
 	uint8_t* remoteMapping;
 	uint16_t pages;
 	bool acknowledged;
 };
 
-/**
- *
- */
-class canvas_t: public component_t {
-public:
+class canvas_t;
+struct async_resizer_info_t
+{
+	bool alive;
+	g_atom lock;
+	g_atom checkAtom;
+	canvas_t* canvas;
+};
+
+class canvas_t : public component_t
+{
+  public:
 	g_pid partnerProcess;
 	g_tid partnerThread;
 
+	async_resizer_info_t* asyncInfo;
+
+	g_atom currentBufferLock = g_atomic_initialize();
 	buffer_info_t currentBuffer;
 	buffer_info_t nextBuffer;
 
-	bool mustCheckAgain;
-
 	canvas_t(g_tid partnerThread);
+	virtual ~canvas_t();
 
 	virtual void paint();
 
-	virtual bool handle() {
+	virtual bool handle()
+	{
 		return false;
 	}
 
 	virtual void handleBoundChange(g_rectangle oldBounds);
+
+	static void asyncBufferResizer(async_resizer_info_t* info);
 
 	void createNewBuffer(uint16_t requiredPages);
 	void clientHasAcknowledgedCurrentBuffer();
 	void requestClientToAcknowledgeNewBuffer();
 	void blit();
 
-private:
+  private:
 	void checkBuffer();
 };
 

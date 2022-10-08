@@ -21,30 +21,24 @@
 #include "kernel/system/interrupts/pic.hpp"
 #include "shared/system/io_port.hpp"
 
-void picSendEoi(uint8_t intr)
+void picSendEndOfInterrupt(uint8_t irq)
 {
-	/*
-	 If the interrupt is an IRQ (> 32) and on the second PIC (> 8)
-	 we have to tell the slave that the interrupt has ended too
-	 */
-	if(intr >= 0x20 + 0x08)
-	{
+	if(irq >= 0x8)
 		ioPortWriteByte(PIC2_COMMAND, 0x20);
-	}
 
 	ioPortWriteByte(PIC1_COMMAND, 0x20);
 }
 
 void picMaskIrq(uint8_t irq)
 {
-
 	uint16_t port;
 	uint8_t value;
 
 	if(irq < 8)
 	{
 		port = PIC1_DATA;
-	} else
+	}
+	else
 	{
 		port = PIC2_DATA;
 		irq -= 8;
@@ -57,14 +51,14 @@ void picMaskIrq(uint8_t irq)
 
 void picUnmaskIrq(uint8_t irq)
 {
-
 	uint16_t port;
 	uint8_t value;
 
 	if(irq < 8)
 	{
 		port = PIC1_DATA;
-	} else
+	}
+	else
 	{
 		port = PIC2_DATA;
 		irq -= 8;
@@ -73,7 +67,6 @@ void picUnmaskIrq(uint8_t irq)
 	value = ioPortReadByte(port);
 	value &= ~(1 << irq);
 	ioPortWriteByte(port, value);
-
 }
 
 void picRemapIrqs()
@@ -105,4 +98,3 @@ void picMaskAll()
 	ioPortWriteByte(PIC1_DATA, 0xFF);
 	ioPortWriteByte(PIC2_DATA, 0xFF);
 }
-

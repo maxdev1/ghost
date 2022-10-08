@@ -18,24 +18,23 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __COMPONENT_REGISTRY__
-#define __COMPONENT_REGISTRY__
+#ifndef __WINDOWSERVER_INTERFACE_COMPONENTREGISTRY__
+#define __WINDOWSERVER_INTERFACE_COMPONENTREGISTRY__
 
-#include <ghostuser/tasking/thread.hpp>
-#include <components/component.hpp>
-#include <ghostuser/ui/interface_specification.hpp>
+#include <libwindow/interface.hpp>
 
-/**
- *
- */
-class component_registry_t {
-public:
+#include "components/component.hpp"
+
+class component_registry_t
+{
+  public:
 	static g_ui_component_id add(g_pid process, component_t* component);
 	static component_t* get(g_ui_component_id id);
 
 	static void remove_component(g_pid pid, g_ui_component_id id);
 	static void cleanup_process(g_pid pid);
-private:
+
+  private:
 	static void remove_process_components(g_pid process, component_t* component, std::list<component_t*>& removedComponents);
 };
 

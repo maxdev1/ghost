@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,45 +18,58 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __SCROLLPANE__
-#define __SCROLLPANE__
+#ifndef __WINDOWSERVER_COMPONENTS_SCROLLPANE__
+#define __WINDOWSERVER_COMPONENTS_SCROLLPANE__
 
-#include <components/component.hpp>
-#include <components/scrollbar.hpp>
-#include <components/panel.hpp>
+#include "components/component.hpp"
+#include "components/panel.hpp"
+#include "components/scrollbar.hpp"
 
-/**
- *
- */
-class scrollpane_t: public component_t, public scroll_handler_t {
-private:
-	component_t* viewPort;
-	g_point scrollPosition;
-	scrollbar_t verticalScrollbar;
-	scrollbar_t horizontalScrollbar;
+class scrollpane_t : public component_t, public scroll_handler_t
+{
+  private:
+    component_t* content = nullptr;
+    g_point scrollPosition = g_point(0, 0);
+    scrollbar_t verticalScrollbar = scrollbar_t(scrollbar_orientation_t::VERTICAL);
+    scrollbar_t horizontalScrollbar = scrollbar_t(scrollbar_orientation_t::HORIZONTAL);
 
-public:
-	scrollpane_t() :
-			scrollPosition(g_point(0, 0)), viewPort(nullptr), verticalScrollbar(scrollbar_orientation_t::VERTICAL), horizontalScrollbar(
-					scrollbar_orientation_t::HORIZONTAL) {
-	}
+    bool fixedWidth = false;
+    bool fixedHeight = false;
 
-	virtual g_point getPosition() const {
-		return scrollPosition;
-	}
+    bool showHbar = false;
+    bool showVbar = false;
 
-	virtual void layout();
+  public:
+    scrollpane_t();
 
-	virtual void setPosition(g_point& position);
+    virtual g_point getPosition() const
+    {
+        return scrollPosition;
+    }
 
-	virtual void setViewPort(component_t* content);
+    virtual void layout();
 
-	virtual component_t* getViewPort() const {
-		return viewPort;
-	}
+    virtual void updateContent();
 
-	virtual void handleScroll(scrollbar_t* bar);
+    virtual void setContent(component_t* content);
 
+    virtual component_t* getContent() const
+    {
+        return content;
+    }
+
+    virtual void handleScroll(scrollbar_t* bar);
+
+    g_dimension calculateViewport(g_dimension contentPrefSize);
+
+    void setFixedWidth(bool fix)
+    {
+        this->fixedWidth = fix;
+    }
+    void setFixedHeight(bool fix)
+    {
+        this->fixedHeight = fix;
+    }
 };
 
 #endif
