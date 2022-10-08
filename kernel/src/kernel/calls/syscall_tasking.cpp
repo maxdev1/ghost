@@ -28,7 +28,7 @@
 
 void syscallSleep(g_task* task, g_syscall_sleep* data)
 {
-	clockWaitForTime(task->id, taskingGetLocal()->time + data->milliseconds);
+	clockWaitForTime(task->id, clockGetLocal()->time + data->milliseconds);
 	task->status = G_THREAD_STATUS_WAITING;
 	taskingSchedule();
 }
@@ -42,7 +42,7 @@ void syscallAtomicLock(g_task* task, g_syscall_atomic_lock* data)
 {
 	bool useTimeout = (data->timeout > 0);
 	if(useTimeout)
-		clockWaitForTime(task->id, taskingGetLocal()->time + data->timeout);
+		clockWaitForTime(task->id, clockGetLocal()->time + data->timeout);
 
 	while(
 		(!useTimeout || !(data->has_timeout = clockHasTimedOut(task->id))) &&

@@ -114,7 +114,6 @@ extern "C" g_virtual_address _interruptHandler(g_virtual_address state)
 		{
 			if(intr == 0x20) // Timer
 			{
-				taskingGetLocal()->time += (1000 / G_TIMER_FREQUENCY);
 				clockUpdate();
 				taskingSchedule();
 			}

@@ -33,9 +33,28 @@ struct g_clock_waiter
 };
 
 /**
+ * Processor local clock information.
+ */
+struct g_clock_local
+{
+	g_clock_waiter* waiters;
+	g_mutex lock;
+
+	/**
+	 * Approximation of milliseconds that this processor has run.
+	 */
+	uint64_t time;
+};
+
+/**
  * Initializes the clock.
  */
 void clockInitialize();
+
+/**
+ * Returns the processor-local clock structure.
+ */
+g_clock_local* clockGetLocal();
 
 /**
  * Adds the task to the queue of tasks that are waiting for a specific time. This

@@ -23,6 +23,10 @@
 #include "kernel/tasking/scheduler.hpp"
 #include "shared/logger/logger.hpp"
 
+#if G_DEBUG_THREAD_DUMPING
+#include "kernel/tasking/clock.hpp"
+#endif
+
 #define G_DEBUG_LOG_PAUSE 5000
 
 void schedulerInitializeLocal()
@@ -101,9 +105,9 @@ void schedulerSchedule(g_tasking_local* local)
 
 #if G_DEBUG_THREAD_DUMPING
 	static int lastLogTime = 0;
-	if((local->time - lastLogTime) > G_DEBUG_LOG_PAUSE)
+	if((clockGetLocal()->time - lastLogTime) > G_DEBUG_LOG_PAUSE)
 	{
-		lastLogTime = local->time;
+		lastLogTime = clockGetLocal()->time;
 		schedulerDump();
 	}
 #endif
@@ -116,7 +120,7 @@ void schedulerDump()
 	g_tasking_local* local = taskingGetLocal();
 	mutexAcquire(&local->lock);
 
-	logInfo("%! dump @%i (time: %i)", "sched", processorGetCurrentId(), local->time);
+	logInfo("%! dump @%i", "sched", processorGetCurrentId());
 	g_schedule_entry* entry = local->scheduling.list;
 	while(entry)
 	{
