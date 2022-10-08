@@ -545,6 +545,8 @@ void taskingRemoveThread(g_task* task)
 	// Clean up miscellaneous memory
 	messageTaskRemoved(task->id);
 
+	// TODO: Clean up atoms
+
 	/* Remove interrupt stack */
 	if(task->interruptStack.start)
 	{

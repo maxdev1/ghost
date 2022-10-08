@@ -93,6 +93,20 @@ void atomicUnlock(g_atom atom)
 	mutexRelease(&entry->lock);
 }
 
+void atomicDestroy(g_atom atom)
+{
+	atomicUnlock(atom);
+
+	mutexAcquire(&atomMap->lock);
+	g_atom_entry* entry = hashmapGet<g_atom, g_atom_entry*>(atomMap, atom, nullptr);
+	if(entry)
+	{
+		hashmapRemove(atomMap, atom);
+		heapFree(entry);
+	}
+	mutexRelease(&atomMap->lock);
+}
+
 void atomicWaitForLock(g_atom atom, g_tid task)
 {
 	g_atom_entry* entry = hashmapGet<g_atom, g_atom_entry*>(atomMap, atom, nullptr);

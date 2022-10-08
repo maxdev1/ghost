@@ -18,60 +18,12 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_ATOMS__
-#define __KERNEL_ATOMS__
+#include "__internal.h"
+#include "ghost/user.h"
 
-#include "ghost/types.h"
-#include "kernel/filesystem/filesystem.hpp"
-#include "kernel/tasking/tasking.hpp"
-
-struct g_atom_waiter
+void g_atomic_destroy(g_atom atom)
 {
-	g_tid task;
-	g_atom_waiter* next;
-};
-
-struct g_atom_entry
-{
-	g_mutex lock;
-	int value;
-	g_atom_waiter* waiters;
-};
-
-/**
- * Initializes the atoms.
- */
-void atomicInitialize();
-
-/**
- * Creates a new atom that can then be locked with the other functions.
- */
-g_atom atomicCreate();
-
-/**
- * Destroys an atom.
- */
-void atomicDestroy(g_atom atom);
-
-/**
- * Attempts to lock the atom and returns whether locking was successful. If it is not a try
- * and the lock is already set, the task is put to sleep.
- */
-bool atomicLock(g_task* task, g_atom atom, bool isTry, bool setOnFinish);
-
-/**
- * Unlocks the atom and wakes the next waiting task.
- */
-void atomicUnlock(g_atom atom);
-
-/**
- * Removes the task from a wait queue, for example in case of timeouts.
- */
-void atomicUnwaitForLock(g_atom atom, g_tid task);
-
-/**
- * Adds the task to the wait queue for the atom.
- */
-void atomicWaitForLock(g_atom atom, g_tid task);
-
-#endif
+	g_syscall_atomic_destroy data;
+	data.atom = atom;
+	g_syscall(G_SYSCALL_ATOMIC_DESTROY, (uint32_t) &data);
+}

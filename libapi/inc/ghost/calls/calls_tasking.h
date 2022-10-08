@@ -114,6 +114,15 @@ typedef struct
 /**
  * @field atom
  * 		the atom
+ */
+typedef struct
+{
+	g_atom atom;
+} __attribute__((packed)) g_syscall_atomic_destroy;
+
+/**
+ * @field atom
+ * 		the atom
  *
  * @field try_only
  * 		whether or not to only try locking the atom

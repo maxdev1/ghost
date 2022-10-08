@@ -24,12 +24,6 @@
 #include "ghost/calls/calls.h"
 #include "kernel/tasking/tasking.hpp"
 
-void syscallAtomicInitialize(g_task* task, g_syscall_atomic_initialize* data);
-
-void syscallAtomicLock(g_task* task, g_syscall_atomic_lock* data);
-
-void syscallAtomicUnlock(g_task* task, g_syscall_atomic_unlock* data);
-
 void syscallLog(g_task* task, g_syscall_log* data);
 
 void syscallSetVideoLog(g_task* task, g_syscall_set_video_log* data);

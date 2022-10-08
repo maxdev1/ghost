@@ -95,6 +95,16 @@ g_bool g_atomic_block_to(g_atom atom, uint64_t timeout);
 void g_atomic_unlock(g_atom atom);
 
 /**
+ * Frees an atom when no longer needed. Unlocks it first.
+ *
+ * @param atom
+ * 		the atom to use
+ *
+ * @security-level APPLICATION
+ */
+void g_atomic_destroy(g_atom atom);
+
+/**
  * Spawns a program binary.
  *
  * @param path absolute path of the executable
