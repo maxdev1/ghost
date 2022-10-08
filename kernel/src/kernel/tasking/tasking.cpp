@@ -103,7 +103,9 @@ void taskingYield()
 
 void taskingExit()
 {
-	taskingGetCurrentTask()->status = G_THREAD_STATUS_DEAD;
+	auto task = taskingGetCurrentTask();
+	task->status = G_THREAD_STATUS_DEAD;
+	waitQueueWake(&task->waitersJoin);
 	taskingYield();
 }
 
