@@ -18,11 +18,10 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "kernel/tasking/elf/elf_loader.hpp"
-#include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/memory/memory.hpp"
-
+#include "kernel/memory/page_reference_tracker.hpp"
+#include "kernel/tasking/elf/elf_loader.hpp"
 
 g_spawn_status elfTlsLoadData(g_task* caller, g_fd file, elf32_phdr* phdr, g_elf_object* object, g_address_range_pool* rangeAllocator)
 {
@@ -44,17 +43,20 @@ g_spawn_status elfTlsLoadData(g_task* caller, g_fd file, elf32_phdr* phdr, g_elf
 	object->tlsMaster.totalsize = phdr->p_memsz;
 
 	/* Calculate offset in TLS master image */
-	if(object->executable) {
-		/* Executable gets offset 0 and is followed with the g_user_thread */
+	if(object->executable)
+	{
+		/* Executable gets offset 0 and is followed with the g_user_threadlocal */
 		object->tlsMaster.offset = 0;
 		uint32_t size = G_ALIGN_UP(object->tlsMaster.totalsize, object->tlsMaster.alignment);
-		object->tlsMasterTotalSize = size + sizeof(g_user_thread);
+		object->tlsMasterTotalSize = size + sizeof(g_user_threadlocal);
 		object->tlsMasterUserThreadOffset = size;
 	}
-	else {
+	else
+	{
 		/* Shared libraries just get the next free position */
 		g_elf_object* executableObject = object;
-		while(executableObject->parent) executableObject = executableObject->parent;
+		while(executableObject->parent)
+			executableObject = executableObject->parent;
 		object->tlsMaster.offset = executableObject->tlsMasterTotalSize;
 		executableObject->tlsMasterTotalSize += G_ALIGN_UP(object->tlsMaster.totalsize, object->tlsMaster.alignment);
 	}
@@ -65,8 +67,8 @@ g_spawn_status elfTlsLoadData(g_task* caller, g_fd file, elf32_phdr* phdr, g_elf
 void elf32TlsCreateMasterImage(g_task* caller, g_fd file, g_process* process, g_elf_object* executableObject)
 {
 	/* Allocate memory */
-	uint32_t sizeInPages = G_PAGE_ALIGN_UP(executableObject->tlsMasterTotalSize);
-	uint32_t requiredPages = sizeInPages / G_PAGE_SIZE;
+	uint32_t size = G_PAGE_ALIGN_UP(executableObject->tlsMasterTotalSize);
+	uint32_t requiredPages = size / G_PAGE_SIZE;
 	g_virtual_address tlsStart = addressRangePoolAllocate(process->virtualRangePool, requiredPages);
 	for(uint32_t i = 0; i < requiredPages; i++)
 	{
@@ -74,7 +76,6 @@ void elf32TlsCreateMasterImage(g_task* caller, g_fd file, g_process* process, g_
 		pagingMapPage(tlsStart + i * G_PAGE_SIZE, page, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
 		pageReferenceTrackerIncrement(page);
 	}
-
 
 	/* Copy all contents */
 	memorySetBytes((uint8_t*) tlsStart, 0, executableObject->tlsMasterTotalSize);
@@ -94,7 +95,7 @@ void elf32TlsCreateMasterImage(g_task* caller, g_fd file, g_process* process, g_
 
 	/* Update process */
 	process->tlsMaster.location = tlsStart;
-	process->tlsMaster.size = sizeInPages;
+	process->tlsMaster.size = size;
 	process->tlsMaster.userThreadOffset = executableObject->tlsMasterUserThreadOffset;
 	logDebug("%!   created TLS master: %h, size: %h", "elf", process->tlsMaster.location, process->tlsMaster.size);
 }

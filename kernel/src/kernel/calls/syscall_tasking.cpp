@@ -133,7 +133,7 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 
 void syscallTaskGetTls(g_task* task, g_syscall_task_get_tls* data)
 {
-	data->userThreadObject = (void*) task->tlsCopy.userThreadObject;
+	data->userThreadLocal = task->threadLocal.userThreadLocal;
 }
 
 void syscallProcessGetInfo(g_task* task, g_syscall_process_get_info* data)
@@ -162,7 +162,7 @@ void syscallCreateThread(g_task* task, g_syscall_create_thread* data)
 		thread->userEntry.data = data->userData;
 		data->threadId = thread->id;
 		data->status = G_CREATE_THREAD_STATUS_SUCCESSFUL;
-		taskingAssign(taskingGetLocal(), thread);
+		taskingAssignBalanced(thread);
 	}
 	else
 	{

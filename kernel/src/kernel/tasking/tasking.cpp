@@ -142,10 +142,11 @@ void taskingInitializeLocal()
 	local->time = 0;
 	local->lockCount = 0;
 	local->lockSetIF = false;
+	local->processor = processorGetCurrentId();
 
-	local->scheduling.current = 0;
-	local->scheduling.list = 0;
-	local->scheduling.idleTask = 0;
+	local->scheduling.current = nullptr;
+	local->scheduling.list = nullptr;
+	local->scheduling.idleTask = nullptr;
 
 	mutexInitialize(&local->lock);
 
@@ -153,6 +154,10 @@ void taskingInitializeLocal()
 	local->scheduling.idleTask = taskingCreateThread((g_virtual_address) taskingIdleThread, idle, G_SECURITY_LEVEL_KERNEL);
 	local->scheduling.idleTask->type = G_THREAD_TYPE_VITAL;
 	logInfo("%! core: %i idle task: %i", "tasking", processorGetCurrentId(), idle->main->id);
+
+	// Before switching to the very first task, we must initialize this so that there is
+	// an initial state for accessing kernel thread-local storage
+	gdtSetTlsAddresses(nullptr, local->scheduling.idleTask->threadLocal.kernelThreadLocal);
 
 	g_process* cleanup = taskingCreateProcess();
 	g_task* cleanupTask = taskingCreateThread((g_virtual_address) taskingCleanupThread, cleanup, G_SECURITY_LEVEL_KERNEL);
@@ -172,7 +177,6 @@ void taskingApplySecurityLevel(volatile g_processor_state* state, g_security_lev
 		state->ds = G_GDT_DESCRIPTOR_KERNEL_DATA | G_SEGMENT_SELECTOR_RING0;
 		state->es = G_GDT_DESCRIPTOR_KERNEL_DATA | G_SEGMENT_SELECTOR_RING0;
 		state->fs = G_GDT_DESCRIPTOR_KERNEL_DATA | G_SEGMENT_SELECTOR_RING0;
-		state->gs = G_GDT_DESCRIPTOR_USERTHREADPTR;
 	}
 	else
 	{
@@ -181,7 +185,7 @@ void taskingApplySecurityLevel(volatile g_processor_state* state, g_security_lev
 		state->ds = G_GDT_DESCRIPTOR_USER_DATA | G_SEGMENT_SELECTOR_RING3;
 		state->es = G_GDT_DESCRIPTOR_USER_DATA | G_SEGMENT_SELECTOR_RING3;
 		state->fs = G_GDT_DESCRIPTOR_USER_DATA | G_SEGMENT_SELECTOR_RING3;
-		state->gs = G_GDT_DESCRIPTOR_USERTHREADPTR;
+		state->gs = G_GDT_DESCRIPTOR_USERTHREADLOCAL;
 	}
 
 	if(securityLevel <= G_SECURITY_LEVEL_DRIVER)
@@ -227,10 +231,7 @@ g_task* taskingCreateThread(g_virtual_address eip, g_process* process, g_securit
 	taskingResetTaskState(task);
 	task->state->eip = eip;
 
-	if(task->securityLevel != G_SECURITY_LEVEL_KERNEL)
-	{
-		taskingPrepareThreadLocalStorage(task);
-	}
+	taskingPrepareThreadLocalStorage(task);
 
 	taskingTemporarySwitchBack(returnDirectory);
 
@@ -277,6 +278,8 @@ g_task* taskingCreateThreadVm86(g_process* process, uint32_t intr, g_vm86_regist
 	task->vm86Data->userStack = userStackVirt;
 	task->vm86Data->out = out;
 
+	taskingPrepareThreadLocalStorage(task);
+
 	taskingTemporarySwitchBack(returnDirectory);
 
 	// Put in process task list & global map
@@ -296,6 +299,37 @@ void _taskingSetDefaults(g_task* task, g_process* process, g_security_level leve
 	task->status = G_THREAD_STATUS_RUNNING;
 	task->active = false;
 	task->waitersJoin = nullptr;
+}
+
+void taskingAssignBalanced(g_task* task)
+{
+	int lowestTaskCount = -1;
+	g_tasking_local* assignTo;
+
+	for(uint32_t proc = 0; proc < processorGetNumberOfProcessors(); proc++)
+	{
+		g_tasking_local* local = &taskingLocal[proc];
+		mutexAcquire(&local->lock);
+
+		int taskCount = 0;
+		auto entry = local->scheduling.list;
+		while(entry)
+		{
+			if(entry->task->status != G_THREAD_STATUS_DEAD)
+				++taskCount;
+			entry = entry->next;
+		}
+
+		if(lowestTaskCount == -1 || taskCount < lowestTaskCount)
+		{
+			lowestTaskCount = taskCount;
+			assignTo = local;
+		}
+
+		mutexRelease(&local->lock);
+	}
+
+	taskingAssign(assignTo, task);
 }
 
 void taskingAssign(g_tasking_local* local, g_task* task)
@@ -325,6 +359,9 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 
 	task->assignment = local;
 
+	// Add thread-local information on which processor this task runs now
+	task->threadLocal.kernelThreadLocal->processor = local->processor;
+
 	mutexRelease(&local->lock);
 }
 
@@ -348,11 +385,8 @@ void taskingApplySwitch()
 		pagingSwitchToSpace(task->process->pageDirectory);
 	}
 
-	// For TLS: write user thread address to GDT & set GS of thread to user pointer segment
-	gdtSetUserThreadObjectAddress(task->tlsCopy.userThreadObject);
-
-#warning "TODO: Check if this is required:"
-	task->state->gs = G_GDT_DESCRIPTOR_USERTHREADPTR;
+	// For TLS: write thread-local addresses to GDT
+	gdtSetTlsAddresses(task->threadLocal.userThreadLocal, task->threadLocal.kernelThreadLocal);
 
 	// Set TSS ESP0 for ring 3 tasks to return onto
 	gdtSetTssEsp0(task->interruptStack.end);
@@ -397,43 +431,47 @@ g_process* taskingCreateProcess()
 
 void taskingPrepareThreadLocalStorage(g_task* thread)
 {
-	// if tls master copy available, copy it to thread
+	// Kernel thread-local storage
+	g_kernel_threadlocal* kernelThreadLocal = (g_kernel_threadlocal*) heapAllocate(sizeof(g_kernel_threadlocal));
+	kernelThreadLocal->processor = processorGetCurrentId();
+	thread->threadLocal.kernelThreadLocal = kernelThreadLocal;
+
+	// User thread-local storage from binaries
 	g_process* process = thread->process;
-	if(process->tlsMaster.location == 0)
+	if(process->tlsMaster.location)
 	{
-		logDebug("%! while loading task %i: process %i does not have a tls", "tls", thread->id, process->id);
-		return;
+		// allocate virtual range with required size
+		uint32_t requiredSize = process->tlsMaster.size;
+		uint32_t requiredPages = G_PAGE_ALIGN_UP(requiredSize) / G_PAGE_SIZE;
+		g_virtual_address tlsStart = addressRangePoolAllocate(process->virtualRangePool, requiredPages);
+		g_virtual_address tlsEnd = tlsStart + requiredPages * G_PAGE_SIZE;
+
+		// copy tls contents
+		for(g_virtual_address page = tlsStart; page < tlsEnd; page += G_PAGE_SIZE)
+		{
+			g_physical_address phys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+			pagingMapPage(page, phys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+			pageReferenceTrackerIncrement(phys);
+		}
+
+		// zero & copy TLS content
+		if(process->tlsMaster.location)
+		{
+			memorySetBytes((void*) tlsStart, 0, process->tlsMaster.size);
+			memoryCopy((void*) tlsStart, (void*) process->tlsMaster.location, process->tlsMaster.size);
+		}
+
+		// fill user thread
+		g_user_threadlocal* userThreadLocal = (g_user_threadlocal*) (tlsStart + process->tlsMaster.userThreadOffset);
+		userThreadLocal->self = userThreadLocal;
+
+		// set threads TLS location
+		thread->threadLocal.userThreadLocal = userThreadLocal;
+		thread->threadLocal.start = tlsStart;
+		thread->threadLocal.end = tlsEnd;
+
+		logDebug("%! created tls copy in process %i, thread %i at %h", "threadmgr", process->id, thread->id, thread->threadLocal.start);
 	}
-
-	// allocate virtual range with required size
-	uint32_t requiredSize = process->tlsMaster.size;
-	uint32_t requiredPages = G_PAGE_ALIGN_UP(requiredSize) / G_PAGE_SIZE;
-	g_virtual_address tlsCopyStart = addressRangePoolAllocate(process->virtualRangePool, requiredPages);
-	g_virtual_address tlsCopyEnd = tlsCopyStart + requiredPages * G_PAGE_SIZE;
-
-	// copy tls contents
-	for(g_virtual_address page = tlsCopyStart; page < tlsCopyEnd; page += G_PAGE_SIZE)
-	{
-		g_physical_address phys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-		pagingMapPage(page, phys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
-		pageReferenceTrackerIncrement(phys);
-	}
-
-	// zero & copy TLS content
-	memorySetBytes((void*) tlsCopyStart, 0, process->tlsMaster.size);
-	memoryCopy((void*) tlsCopyStart, (void*) process->tlsMaster.location, process->tlsMaster.size);
-
-	// fill user thread
-	g_virtual_address userThreadObject = tlsCopyStart + process->tlsMaster.userThreadOffset;
-	g_user_thread* userThread = (g_user_thread*) userThreadObject;
-	userThread->self = userThread;
-
-	// set threads TLS location
-	thread->tlsCopy.userThreadObject = userThreadObject;
-	thread->tlsCopy.start = tlsCopyStart;
-	thread->tlsCopy.end = tlsCopyEnd;
-
-	logDebug("%! created tls copy in process %i, thread %i at %h", "threadmgr", process->main->id, thread->id, thread->tlsCopy.start);
 }
 
 void taskingIdleThread()
@@ -549,9 +587,9 @@ void taskingRemoveThread(g_task* task)
 	}
 
 	/* Free TLS copy if available */
-	if(task->tlsCopy.start)
+	if(task->threadLocal.start)
 	{
-		for(g_virtual_address page = task->tlsCopy.start; page < task->tlsCopy.end; page += G_PAGE_SIZE)
+		for(g_virtual_address page = task->threadLocal.start; page < task->threadLocal.end; page += G_PAGE_SIZE)
 		{
 			g_physical_address pagePhys = pagingVirtualToPhysical(page);
 			if(pagePhys > 0)
@@ -561,8 +599,9 @@ void taskingRemoveThread(g_task* task)
 				pagingUnmapPage(page);
 			}
 		}
-		addressRangePoolFree(task->process->virtualRangePool, task->tlsCopy.start);
+		addressRangePoolFree(task->process->virtualRangePool, task->threadLocal.start);
 	}
+	heapFree(task->threadLocal.kernelThreadLocal);
 
 	taskingTemporarySwitchBack(returnDirectory);
 

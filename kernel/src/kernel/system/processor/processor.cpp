@@ -24,6 +24,7 @@
 #include "kernel/system/interrupts/apic/lapic.hpp"
 #include "kernel/system/system.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/memory/gdt_macros.hpp"
 
 static g_processor* processors = 0;
 static uint32_t processorsAvailable = 0;
@@ -114,10 +115,23 @@ uint16_t processorGetNumberOfProcessors()
 
 uint32_t processorGetCurrentId()
 {
-// Using lapicReadId for some reason makes everything VERY slow.
-#warning "TODO: Fix multiprocessor handling"
-	return 0;
+	// While system is not ready, read the processor ID from the APIC
+	// which is very slow but works for the time being.
+	if(!systemIsReady())
+		return processorGetCurrentIdFromApic();
 
+	// Kernel thread-local data is in segment 0x38
+	// GS:0x0 is relative address within <g_kernel_threadlocal>
+	uint32_t processor;
+	asm volatile("mov $" STR(G_GDT_DESCRIPTOR_KERNELTHREADLOCAL) ", %%eax\n"
+				 "mov %%eax, %%gs\n"
+				 "mov %%gs:0x0, %0"
+				 : "=r"(processor)::"eax");
+	return processor;
+}
+
+uint32_t processorGetCurrentIdFromApic()
+{
 	if(!apicIdToProcessorMapping)
 		return 0;
 	return apicIdToProcessorMapping[lapicReadId()];

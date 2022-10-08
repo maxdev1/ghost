@@ -27,13 +27,9 @@
 #include "shared/logger/logger.hpp"
 #include "shared/video/console_video.hpp"
 
-volatile int mutexInitializerLock = 0;
+g_spinlock mutexInitializerLock = 0;
 #define G_MUTEX_INITIALIZED 0xFEED
 
-#define SPINLOCK_ACQUIRE(lock)                        \
-	while(!__sync_bool_compare_and_swap(&lock, 0, 1)) \
-		asm volatile("pause");
-#define SPINLOCK_RELEASE(lock) lock = 0;
 #define MUTEX_GUARD                               \
 	if(mutex->initialized != G_MUTEX_INITIALIZED) \
 		mutexErrorUninitialized(mutex);
@@ -45,7 +41,7 @@ void mutexErrorUninitialized(g_mutex* mutex)
 
 void _mutexInitialize(g_mutex* mutex)
 {
-	SPINLOCK_ACQUIRE(mutexInitializerLock);
+	G_SPINLOCK_ACQUIRE(mutexInitializerLock);
 
 	if(mutex->initialized == G_MUTEX_INITIALIZED)
 		logWarn("%! initializing mutex %x twice", "mutex", mutex);
@@ -55,7 +51,7 @@ void _mutexInitialize(g_mutex* mutex)
 	mutex->depth = 0;
 	mutex->owner = -1;
 
-	SPINLOCK_RELEASE(mutexInitializerLock);
+	G_SPINLOCK_RELEASE(mutexInitializerLock);
 }
 
 void mutexAcquire(g_mutex* mutex)
@@ -92,7 +88,7 @@ bool mutexTryAcquire(g_mutex* mutex, uint32_t owner)
 	if(intr)
 		interruptsDisable();
 
-	SPINLOCK_ACQUIRE(mutex->lock);
+	G_SPINLOCK_ACQUIRE(mutex->lock);
 
 	if(mutex->depth == 0 || mutex->owner == owner)
 	{
@@ -108,7 +104,7 @@ bool mutexTryAcquire(g_mutex* mutex, uint32_t owner)
 		set = true;
 	}
 
-	SPINLOCK_RELEASE(mutex->lock);
+	G_SPINLOCK_RELEASE(mutex->lock);
 
 	return set;
 }
@@ -119,7 +115,7 @@ void mutexRelease(g_mutex* mutex)
 
 	bool intr = false;
 
-	SPINLOCK_ACQUIRE(mutex->lock);
+	G_SPINLOCK_ACQUIRE(mutex->lock);
 
 	if(mutex->depth > 0)
 	{
@@ -138,7 +134,7 @@ void mutexRelease(g_mutex* mutex)
 		}
 	}
 
-	SPINLOCK_RELEASE(mutex->lock);
+	G_SPINLOCK_RELEASE(mutex->lock);
 
 	if(intr)
 		interruptsEnable();

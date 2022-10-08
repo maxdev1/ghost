@@ -23,8 +23,8 @@
 /**
  *
  */
-void* g_task_get_tls() {
+g_user_threadlocal* g_task_get_tls() {
 	g_syscall_task_get_tls data;
 	g_syscall(G_SYSCALL_TASK_GET_TLS, (uint32_t) &data);
-	return data.userThreadObject;
+	return data.userThreadLocal;
 }
