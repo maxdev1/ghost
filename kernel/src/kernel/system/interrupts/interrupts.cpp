@@ -22,6 +22,7 @@
 
 #include "kernel/kernel.hpp"
 #include "kernel/memory/gdt.hpp"
+#include "kernel/system/configuration.hpp"
 #include "kernel/system/interrupts/apic/ioapic.hpp"
 #include "kernel/system/interrupts/apic/lapic.hpp"
 #include "kernel/system/interrupts/exceptions.hpp"
@@ -48,13 +49,14 @@ void interruptsInitializeBsp()
 		lapicInitialize();
 		ioapicInitializeAll();
 
-		ioapicCreateIsaRedirectionEntry(1, 1, 0);	// keyboard
-		ioapicCreateIsaRedirectionEntry(12, 12, 0); // mouse
+		// Redirect keyboard (1) and mouse (12) IRQs
+		ioapicCreateIsaRedirectionEntry(1, 1, 0);
+		ioapicCreateIsaRedirectionEntry(12, 12, 0);
 	}
 	else
 	{
 		picRemapIrqs();
-		pitStartAsTimer(1000);
+		pitStartAsTimer(G_TIMER_FREQUENCY);
 	}
 }
 
@@ -112,7 +114,7 @@ extern "C" g_virtual_address _interruptHandler(g_virtual_address state)
 		{
 			if(intr == 0x20) // Timer
 			{
-				taskingGetLocal()->time += APIC_MILLISECONDS_PER_TICK;
+				taskingGetLocal()->time += (1000 / G_TIMER_FREQUENCY);
 				clockUpdate();
 				taskingSchedule();
 			}

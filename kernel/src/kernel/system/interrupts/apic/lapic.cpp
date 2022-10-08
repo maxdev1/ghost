@@ -23,6 +23,7 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/system/acpi/acpi.hpp"
 #include "kernel/system/acpi/madt.hpp"
+#include "kernel/system/configuration.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/system/timing/pit.hpp"
 
@@ -36,13 +37,11 @@ void lapicSetup(g_physical_address address)
 {
 	physicalBase = address;
 
-	// Warn if APIC not at expected location
 	if(physicalBase != G_EXPECTED_APIC_PHYSICAL_ADDRESS)
 		logWarn("%! is at %h, not %h as expected", "lapic", physicalBase, G_EXPECTED_APIC_PHYSICAL_ADDRESS);
 
 	logDebug("%! base is %h", "lapic", physicalBase);
 
-	// Map it to virtual space
 	lapicCreateMapping();
 	available = true;
 }
@@ -137,7 +136,7 @@ void lapicStartTimer()
 	// Start timer as periodic on IRQ 0
 	lapicWrite(APIC_REGISTER_TIMER_DIV, 0x3);
 	lapicWrite(APIC_REGISTER_LVT_TIMER, 32 | APIC_LVT_TIMER_MODE_PERIODIC);
-	lapicWrite(APIC_REGISTER_TIMER_INITCNT, ticksPer10ms / 10);
+	lapicWrite(APIC_REGISTER_TIMER_INITCNT, ticksPer10ms / (G_TIMER_FREQUENCY / 100));
 }
 
 void lapicSendEndOfInterrupt()

@@ -112,9 +112,6 @@
 
 #define APIC_ICR_DESTINATION_MAKE(i) (((uint64_t) i & 0xFF) << 56)
 
-// the APIC timer is configured to tick every 1 millisecond.
-#define APIC_MILLISECONDS_PER_TICK 1
-
 void lapicSetup(g_physical_address lapicAddress);
 
 bool lapicIsAvailable();
