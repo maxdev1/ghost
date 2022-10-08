@@ -75,7 +75,6 @@ void kernelInitialize(g_setup_information* setupInformation)
 
 void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 {
-	logDebug("%! has entered kernel", "bsp");
 	mutexInitialize(&bootstrapCoreLock);
 	mutexInitialize(&applicationCoreLock);
 
@@ -91,13 +90,13 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	taskingInitializeBsp();
 	syscallRegisterAll();
 
-	g_process* initializationProcess = taskingCreateProcess();
-	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) kernelInitializationThread, initializationProcess, G_SECURITY_LEVEL_KERNEL));
+	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) kernelInitializationThread, taskingCreateProcess(), G_SECURITY_LEVEL_KERNEL));
 
-	logInfo("%! booting on %i cores", "kernel", processorGetNumberOfProcessors());
+	logInfo("%! starting on %i cores", "kernel", processorGetNumberOfProcessors());
 	mutexRelease(&bootstrapCoreLock);
 
 	systemWaitForApplicationCores();
+
 	systemMarkReady();
 	interruptsEnable();
 	for(;;)
@@ -106,17 +105,20 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 
 void kernelRunApplicationCore()
 {
-	logDebug("%! has entered kernel, waiting for bsp", "ap");
 	mutexAcquire(&bootstrapCoreLock);
 	mutexRelease(&bootstrapCoreLock);
 
 	mutexAcquire(&applicationCoreLock);
-	logDebug("%! initializing %i", "ap", processorGetCurrentId());
+
 	systemInitializeAp();
 	taskingInitializeAp();
+
+	systemMarkApplicationCoreReady();
 	mutexRelease(&applicationCoreLock);
 
 	systemWaitForApplicationCores();
+
+	systemWaitForReady();
 	interruptsEnable();
 	for(;;)
 		asm("hlt");
