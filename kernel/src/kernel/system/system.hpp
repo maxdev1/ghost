@@ -42,6 +42,11 @@ void systemInitializeAp();
 void systemWaitForApplicationCores();
 
 /**
+ * Wait until the system is marked as ready.
+ */
+void systemWaitForReady();
+
+/**
  * Marks another application core as ready.
  */
 void systemMarkApplicationCoreReady();

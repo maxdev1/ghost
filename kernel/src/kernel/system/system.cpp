@@ -59,14 +59,19 @@ void systemInitializeAp()
 
 	gdtInitialize();
 	interruptsInitializeAp();
-
-	systemMarkApplicationCoreReady();
 }
 
 void systemWaitForApplicationCores()
 {
 	logDebug("%! waiting for %i application processors", processorGetCurrentId() == 0 ? "bsp" : "ap", applicationCoresWaiting);
 	while(applicationCoresWaiting > 0)
+		asm("pause");
+}
+
+void systemWaitForReady()
+{
+	logDebug("%! waiting for system to be ready", processorGetCurrentId() == 0 ? "bsp" : "ap");
+	while(!systemReady)
 		asm("pause");
 }
 
