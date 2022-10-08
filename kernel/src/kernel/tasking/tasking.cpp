@@ -115,18 +115,6 @@ void taskingInitializeBsp()
 	taskingLocal = (g_tasking_local*) heapAllocate(sizeof(g_tasking_local) * numProcs);
 	taskGlobalMap = hashmapCreateNumeric<g_tid, g_task*>(128);
 
-	if(numProcs > 1)
-	{
-		logInfo("%! disabling video log to boot on %i processors", "tasking", numProcs);
-		/**
-		 * TODO: The logger causes issues an multi-processor systems since
-		 * it doesn't use a mutex but only disables interrupts. This is fine
-		 * on single-core systems but causes issues here. Should be fixed
-		 * by using the mutex there properly.
-		 */
-		loggerEnableVideo(false);
-	}
-
 	taskingInitializeLocal();
 	taskingDirectoryInitialize();
 }

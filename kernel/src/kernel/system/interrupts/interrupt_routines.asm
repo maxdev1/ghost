@@ -273,7 +273,7 @@ handleRoutine _ireq93, 125
 handleRoutine _ireq94, 126
 handleRoutine _ireq95, 127
 handleRoutine _ireqSyscall, 128
-handleRoutine _ireq97, 129
+handleRoutine _ireqYield, 129
 handleRoutine _ireq98, 130
 handleRoutine _ireq99, 131
 handleRoutine _ireq100, 132
