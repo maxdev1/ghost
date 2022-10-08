@@ -24,6 +24,14 @@
 #include "ghost/calls/calls.h"
 #include "kernel/tasking/tasking.hpp"
 
+void syscallAtomicInitialize(g_task* task, g_syscall_atomic_initialize* data);
+
+void syscallAtomicLock(g_task* task, g_syscall_atomic_lock* data);
+
+void syscallAtomicUnlock(g_task* task, g_syscall_atomic_unlock* data);
+
+void syscallAtomicDestroy(g_task* task, g_syscall_atomic_destroy* data);
+
 void syscallExit(g_task* task, g_syscall_exit* data);
 
 void syscallYield(g_task* task);

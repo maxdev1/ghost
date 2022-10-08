@@ -66,6 +66,11 @@ void syscallAtomicUnlock(g_task* task, g_syscall_atomic_unlock* data)
 	atomicUnlock(data->atom);
 }
 
+void syscallAtomicDestroy(g_task* task, g_syscall_atomic_destroy* data)
+{
+	atomicDestroy(data->atom);
+}
+
 void syscallYield(g_task* task)
 {
 	taskingSchedule();

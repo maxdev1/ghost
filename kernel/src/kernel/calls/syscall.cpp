@@ -105,6 +105,7 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_ATOMIC_INITIALIZE, (g_syscall_handler) syscallAtomicInitialize, false);
 	_syscallRegister(G_SYSCALL_ATOMIC_LOCK, (g_syscall_handler) syscallAtomicLock, false);
 	_syscallRegister(G_SYSCALL_ATOMIC_UNLOCK, (g_syscall_handler) syscallAtomicUnlock, false);
+	_syscallRegister(G_SYSCALL_ATOMIC_DESTROY, (g_syscall_handler) syscallAtomicDestroy, false);
 	_syscallRegister(G_SYSCALL_LOG, (g_syscall_handler) syscallLog, false);
 	_syscallRegister(G_SYSCALL_SET_VIDEO_LOG, (g_syscall_handler) syscallSetVideoLog, false);
 	_syscallRegister(G_SYSCALL_TEST, (g_syscall_handler) syscallTest, false);

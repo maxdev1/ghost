@@ -18,20 +18,21 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include "file.h"
+#include "stdint.h"
 #include "stdio.h"
 #include "stdio_internal.h"
-#include "stdint.h"
 #include "stdlib.h"
-#include "file.h"
 #include "unistd.h"
 
 /**
  *
  */
-int __fclose_static(FILE* stream) {
-
-	g_atomic_lock(stream->lock);
+int __fclose_static(FILE* stream)
+{
+	g_atom lock = stream->lock;
+	g_atomic_lock(lock);
 	int res = __fclose_static_unlocked(stream);
-	g_atomic_unlock(stream->lock);
+	g_atomic_destroy(lock);
 	return res;
 }
