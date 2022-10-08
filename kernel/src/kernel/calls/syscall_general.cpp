@@ -21,6 +21,7 @@
 #include "kernel/calls/syscall_general.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/memory/heap.hpp"
+#include "kernel/tasking/clock.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/utils/string.hpp"
 
@@ -49,7 +50,7 @@ void syscallReleaseCliArguments(g_task* task, g_syscall_cli_args_release* data)
 
 void syscallGetMilliseconds(g_task* task, g_syscall_millis* data)
 {
-	data->millis = taskingGetLocal()->time;
+	data->millis = clockGetLocal()->time;
 }
 
 void syscallGetExecutablePath(g_task* task, g_syscall_fs_get_executable_path* data)

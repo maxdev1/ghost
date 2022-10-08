@@ -139,7 +139,6 @@ void taskingInitializeAp()
 void taskingInitializeLocal()
 {
 	g_tasking_local* local = taskingGetLocal();
-	local->time = 0;
 	local->lockCount = 0;
 	local->lockSetIF = false;
 	local->processor = processorGetCurrentId();
@@ -526,7 +525,7 @@ void taskingCleanupThread()
 		}
 
 		// Sleep for some time
-		clockWaitForTime(task->id, taskingGetLocal()->time + 3000);
+		clockWaitForTime(task->id, clockGetLocal()->time + 3000);
 		task->status = G_THREAD_STATUS_WAITING;
 		taskingYield();
 	}

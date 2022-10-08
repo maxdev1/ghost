@@ -194,11 +194,6 @@ struct g_tasking_local
 
 		g_task* idleTask;
 	} scheduling;
-
-	/**
-	 * Approximation of milliseconds that this processor has run.
-	 */
-	uint64_t time;
 };
 
 /**

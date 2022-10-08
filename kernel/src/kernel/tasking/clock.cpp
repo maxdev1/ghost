@@ -19,36 +19,49 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/tasking/clock.hpp"
+#include "kernel/kernel.hpp"
 #include "kernel/memory/heap.hpp"
+#include "kernel/system/configuration.hpp"
 #include "kernel/tasking/tasking.hpp"
 #include "kernel/utils/hashmap.hpp"
 #include "shared/logger/logger.hpp"
 
-/**
- * List of all tasks waiting for a specific time, ordered ascending by the wake-up time.
- */
-static g_clock_waiter* waiters;
-static g_mutex lock;
+static g_clock_local* locals = 0;
 
 void clockInitialize()
 {
-	mutexInitialize(&lock);
-	waiters = nullptr;
+	uint32_t numProcs = processorGetNumberOfProcessors();
+	locals = (g_clock_local*) heapAllocate(sizeof(g_clock_local) * numProcs);
+
+	for(uint32_t i = 0; i < numProcs; i++)
+	{
+		mutexInitialize(&locals[i].lock);
+		locals[i].waiters = nullptr;
+	}
+}
+
+g_clock_local* clockGetLocal()
+{
+	if(!locals)
+		kernelPanic("%! attempted to use clock before initializing it", "clock");
+
+	return &locals[processorGetCurrentId()];
 }
 
 void clockWaitForTime(g_tid task, uint64_t wakeTime)
 {
-	mutexAcquire(&lock);
+	auto local = clockGetLocal();
+	mutexAcquire(&local->lock);
 
 	g_clock_waiter* waiter = (g_clock_waiter*) heapAllocate(sizeof(g_clock_waiter));
 	waiter->task = task;
 	waiter->wakeTime = wakeTime;
 	waiter->next = nullptr;
 
-	if(waiters)
+	if(local->waiters)
 	{
 		g_clock_waiter* prev = nullptr;
-		g_clock_waiter* entry = waiters;
+		g_clock_waiter* entry = local->waiters;
 		while(entry)
 		{
 			// Insert in middle
@@ -58,7 +71,7 @@ void clockWaitForTime(g_tid task, uint64_t wakeTime)
 				if(prev)
 					prev->next = waiter;
 				else
-					waiters = waiter;
+					local->waiters = waiter;
 				break;
 			}
 			prev = entry;
@@ -72,40 +85,44 @@ void clockWaitForTime(g_tid task, uint64_t wakeTime)
 	else
 	{
 		// Insert at head
-		waiters = waiter;
+		local->waiters = waiter;
 	}
 
-	mutexRelease(&lock);
+	mutexRelease(&local->lock);
 }
 
 void clockUpdate()
 {
-	auto time = taskingGetLocal()->time;
+	auto local = clockGetLocal();
+	mutexAcquire(&local->lock);
 
-	mutexAcquire(&lock);
+	// Update local time
+	local->time += (1000 / G_TIMER_FREQUENCY);
 
-	while(waiters && time >= waiters->wakeTime)
+	// Wake waiters
+	while(local->waiters && local->time >= local->waiters->wakeTime)
 	{
-		g_task* task = taskingGetById(waiters->task);
+		g_task* task = taskingGetById(local->waiters->task);
 		if(task)
 		{
 			task->status = G_THREAD_STATUS_RUNNING;
 		}
 
-		auto next = waiters->next;
-		heapFree(waiters);
-		waiters = next;
+		auto next = local->waiters->next;
+		heapFree(local->waiters);
+		local->waiters = next;
 	}
 
-	mutexRelease(&lock);
+	mutexRelease(&local->lock);
 }
 
 void clockUnwaitForTime(g_tid task)
 {
-	mutexAcquire(&lock);
+	auto local = clockGetLocal();
+	mutexAcquire(&local->lock);
 
 	g_clock_waiter* prev = nullptr;
-	g_clock_waiter* entry = waiters;
+	g_clock_waiter* entry = local->waiters;
 	while(entry)
 	{
 		if(entry->task == task)
@@ -114,7 +131,7 @@ void clockUnwaitForTime(g_tid task)
 			if(prev)
 				prev->next = next;
 			else
-				waiters = next;
+				local->waiters = next;
 
 			heapFree(entry);
 			entry = next;
@@ -126,20 +143,20 @@ void clockUnwaitForTime(g_tid task)
 		}
 	}
 
-	mutexRelease(&lock);
+	mutexRelease(&local->lock);
 }
 
 bool clockHasTimedOut(g_tid task)
 {
-	auto time = taskingGetLocal()->time;
+	auto local = clockGetLocal();
+	mutexAcquire(&local->lock);
+
 	bool timeout = true;
 
-	mutexAcquire(&lock);
-
-	g_clock_waiter* entry = waiters;
+	g_clock_waiter* entry = local->waiters;
 	while(entry)
 	{
-		if(entry->task == task && time < entry->wakeTime)
+		if(entry->task == task && local->time < entry->wakeTime)
 		{
 			timeout = false;
 			break;
@@ -147,7 +164,6 @@ bool clockHasTimedOut(g_tid task)
 		entry = entry->next;
 	}
 
-	mutexRelease(&lock);
-
+	mutexRelease(&local->lock);
 	return timeout;
 }
