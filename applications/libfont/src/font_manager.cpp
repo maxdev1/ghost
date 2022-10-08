@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,13 +18,69 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_TEXT_FREETYPE__
-#define __LIBWINDOW_TEXT_FREETYPE__
+#include "libfont/font_manager.hpp"
 
-#include <ft2build.h>
-#include FT_FREETYPE_H
-#include FT_MODULE_H
-#include FT_GLYPH_H
-#include FT_SIZES_H
+static g_font_manager* instance = 0;
 
-#endif
+g_font_manager* g_font_manager::getInstance()
+{
+	if(instance == 0)
+	{
+		instance = new g_font_manager();
+	}
+	return instance;
+}
+
+g_font_manager::g_font_manager()
+{
+	initializeEngine();
+}
+
+g_font_manager::~g_font_manager()
+{
+	destroyEngine();
+}
+
+void g_font_manager::initializeEngine()
+{
+	FT_Error error = FT_Init_FreeType(&library);
+	if(error)
+		klog("freetype2 failed at FT_Init_FreeType with error code %i", error);
+}
+
+void g_font_manager::destroyEngine()
+{
+	FT_Error error = FT_Done_Library(library);
+	if(error)
+		klog("freetype2 failed at FT_Done_Library with error code %i", error);
+}
+
+g_font* g_font_manager::getFont(std::string name)
+{
+	if(fontRegistry.count(name) > 0)
+		return fontRegistry[name];
+	return nullptr;
+}
+
+bool g_font_manager::registerFont(std::string name, g_font* font)
+{
+	if(fontRegistry.count(name) > 0)
+	{
+		klog("tried to create font '%s' that already exists", name.c_str());
+		return false;
+	}
+
+	fontRegistry[name] = font;
+	return true;
+}
+
+void g_font_manager::destroyFont(g_font* font)
+{
+	fontRegistry.erase(font->getName());
+	delete font;
+}
+
+FT_Library g_font_manager::getLibraryHandle()
+{
+	return library;
+}

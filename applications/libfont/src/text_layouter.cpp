@@ -18,7 +18,7 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "libwindow/text/text_layouter.hpp"
+#include "libfont/text_layouter.hpp"
 
 #define BOUNDS_EMPTY 0xFFFFFF
 static g_text_layouter* instance = 0;

@@ -21,7 +21,7 @@
 #include "gui_screen/gui_screen.hpp"
 #include <ghost.h>
 #include <libinput/keyboard/keyboard.hpp>
-#include <libwindow/text/font_loader.hpp>
+#include <libfont/font_loader.hpp>
 #include <list>
 #include <string.h>
 

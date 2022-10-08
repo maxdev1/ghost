@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,57 +18,20 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_TEXT_FONTMANAGER__
-#define __LIBWINDOW_TEXT_FONTMANAGER__
+#ifndef __CALCULATOR__
+#define __CALCULATOR__
 
-#include "libwindow/text/font.hpp"
-#include "libwindow/text/freetype.hpp"
-#include <map>
 #include <string>
 
-class g_font_manager
-{
-  private:
-    FT_Library library;
-    std::map<std::string, g_font*> fontRegistry;
+#define COM_NONE 0
+#define COM_PLUS 1
+#define COM_MINUS 2
+#define COM_MULT 3
+#define COM_DIV 4
+#define COM_EQ 5
+#define COM_CLEAR 6
 
-    g_font_manager();
-    ~g_font_manager();
-
-    void initializeEngine();
-    void destroyEngine();
-
-  public:
-    /**
-     * @return the instance of the font manager singleton
-     */
-    static g_font_manager* getInstance();
-
-    /**
-     * Registers the font.
-     *
-     * @param name			name to which the font shall be registered
-     */
-    bool registerFont(std::string name, g_font* font);
-
-    /**
-     * Looks for an existing font with the "name".
-     *
-     * @param name	the name to which the font is registered
-     */
-    g_font* getFont(std::string name);
-
-    /**
-     * Deletes the font and removes it from the font registry.
-     *
-     * @param font	the font to destroy
-     */
-    void destroyFont(g_font* font);
-
-    /**
-     * @return the freetype library handle
-     */
-    FT_Library getLibraryHandle();
-};
+void pad_button_pressed(int num);
+void command_pressed(int com);
 
 #endif

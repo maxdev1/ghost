@@ -22,18 +22,40 @@
 #define __WINDOWSERVER_COMPONENTS_DESKTOPITEM__
 
 #include "components/component.hpp"
+#include "components/label.hpp"
+#include <cairo/cairo.h>
+#include <libwindow/metrics/point.hpp>
 #include <libwindow/metrics/rectangle.hpp>
+
+class background_t;
 
 class desktop_item_t : public component_t
 {
+  private:
+	background_t* background;
+
+	label_t* label;
+	bool hovered = false;
+	cairo_surface_t* surface = 0;
+
+	g_point pressLocation;
+	g_point pressOffset;
+
+	std::string title;
+	std::string icon;
+
   public:
-    desktop_item_t();
+	desktop_item_t(background_t* background, std::string title, std::string program, std::string icon);
 
-    virtual ~desktop_item_t()
-    {
-    }
+	std::string program;
 
-    virtual void paint();
+	virtual ~desktop_item_t()
+	{
+	}
+
+	virtual component_t* handleMouseEvent(mouse_event_t& e);
+	virtual void layout();
+	virtual void paint();
 };
 
 #endif

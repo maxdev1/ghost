@@ -22,8 +22,8 @@
 #define __WINDOWSERVER_COMPONENTS_PLAINCONSOLE__
 
 #include "components/component.hpp"
-#include <libwindow/text/font.hpp>
-#include <libwindow/text/text_alignment.hpp>
+#include <libfont/font.hpp>
+#include <libfont/text_alignment.hpp>
 
 #include <string>
 

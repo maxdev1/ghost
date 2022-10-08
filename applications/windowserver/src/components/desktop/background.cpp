@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "components/desktop/background.hpp"
+#include "components/desktop/desktop_item.hpp"
 
 void background_t::load(const char* path)
 {
@@ -73,6 +74,13 @@ void background_t::showSelection(g_rectangle& selection)
 {
 	this->selection = selection;
 	markFor(COMPONENT_REQUIREMENT_PAINT);
+
+	if(this->selectedItem)
+	{
+		auto previouslySelected = this->selectedItem;
+		this->selectedItem = nullptr;
+		previouslySelected->markFor(COMPONENT_REQUIREMENT_PAINT);
+	}
 }
 
 void background_t::hideSelection()
@@ -80,4 +88,28 @@ void background_t::hideSelection()
 	this->selection.width = 0;
 	this->selection.height = 0;
 	markFor(COMPONENT_REQUIREMENT_PAINT);
+}
+
+void background_t::startLoadDesktopItems()
+{
+	desktop_item_t* terminal = new desktop_item_t(this, "Terminal", "/applications/terminal.bin", "/system/graphics/app-icons/terminal.png");
+	terminal->setBounds(g_rectangle(gridScale, gridScale, gridScale, gridScale));
+	this->addChild(terminal);
+
+	desktop_item_t* calculator = new desktop_item_t(this, "Calculator", "/applications/calculator.bin", "/system/graphics/app-icons/calculator.png");
+	calculator->setBounds(g_rectangle(gridScale, gridScale * 2, gridScale, gridScale));
+	this->addChild(calculator);
+}
+
+void background_t::setSelectedItem(desktop_item_t* item)
+{
+	auto previouslySelected = this->selectedItem;
+	this->selectedItem = item;
+	if(previouslySelected)
+		previouslySelected->markFor(COMPONENT_REQUIREMENT_PAINT);
+}
+
+desktop_item_t* background_t::getSelectedItem()
+{
+	return this->selectedItem;
 }

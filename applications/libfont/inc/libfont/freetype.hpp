@@ -18,40 +18,13 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "libwindow/text/font_loader.hpp"
-#include "libwindow/text/font_manager.hpp"
+#ifndef __LIBFONT_TEXT_FREETYPE__
+#define __LIBFONT_TEXT_FREETYPE__
 
-g_font* g_font_loader::getFont(std::string path, std::string name)
-{
-	g_font* existing = g_font_manager::getInstance()->getFont(name);
-	if(existing)
-		return existing;
+#include <ft2build.h>
+#include FT_FREETYPE_H
+#include FT_MODULE_H
+#include FT_GLYPH_H
+#include FT_SIZES_H
 
-	g_font* newFont = g_font::load(path, name);
-	if(!newFont)
-		return nullptr;
-
-	if(g_font_manager::getInstance()->registerFont(name, newFont))
-		return newFont;
-
-	delete newFont;
-	return nullptr;
-}
-
-g_font* g_font_loader::getSystemFont(std::string name)
-{
-	return getFont("/system/graphics/fonts/" + name + ".ttf", name);
-}
-
-g_font* g_font_loader::get(std::string name)
-{
-	g_font* font = getSystemFont(name);
-	if(font)
-		return font;
-	return getDefault();
-}
-
-g_font* g_font_loader::getDefault()
-{
-	return getFont("/system/graphics/fonts/default.ttf", "default");
-}
+#endif

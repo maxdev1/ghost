@@ -79,11 +79,11 @@ void windowserver_t::launch()
 	g_dimension resolution = video_output->getResolution();
 	g_rectangle screenBounds(0, 0, resolution.width, resolution.height);
 	createVitalComponents(screenBounds);
-	test_t::createTestComponents();
 
 	createInterface();
 
-	g_spawn("/applications/terminal.bin", "", "", G_SECURITY_LEVEL_APPLICATION);
+	// test_t::createTestComponents();
+	// g_spawn("/applications/terminal.bin", "", "", G_SECURITY_LEVEL_APPLICATION);
 
 	renderLoop(screenBounds);
 }
@@ -97,10 +97,12 @@ void windowserver_t::createVitalComponents(g_rectangle screenBounds)
 	background->setBounds(screenBounds);
 	screen->addChild(background);
 	cursor_t::focusedComponent = screen;
+	background->startLoadDesktopItems();
 
 	stateLabel = new label_t();
 	stateLabel->setTitle("");
-	stateLabel->setBounds(g_rectangle(10, 0, 200, 30));
+	stateLabel->setAlignment(g_text_alignment::RIGHT);
+	stateLabel->setBounds(g_rectangle(screenBounds.width - 200, screenBounds.height - 30, 200, 30));
 	background->addChild(stateLabel);
 
 	// background.load("/system/graphics/wallpaper.png");
@@ -232,7 +234,7 @@ void windowserver_t::fpsCounter()
 	g_task_register_id("windowserver/fps-counter");
 	int seconds = 0;
 
-	int renders  = 0;
+	int renders = 0;
 	for(;;)
 	{
 		g_sleep(1000);

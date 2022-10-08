@@ -19,7 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "components/label.hpp"
-#include <libwindow/text/font_loader.hpp>
+#include <libfont/font_loader.hpp>
 #include "events/mouse_event.hpp"
 
 #include <cairo/cairo-ft.h>
