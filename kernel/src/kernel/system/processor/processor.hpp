@@ -22,7 +22,6 @@
 #define __KERNEL_PROCESSOR__
 
 #include "ghost/stdint.h"
-#include "kernel/system/interrupts/lapic.hpp"
 #include "kernel/system/processor/processor_state.hpp"
 
 /**

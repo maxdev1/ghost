@@ -18,43 +18,22 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_SYSTEM__
-#define __KERNEL_SYSTEM__
-
-#include "ghost/types.h"
+#include "kernel/system/interrupts/apic/apic.hpp"
+#include "kernel/system/acpi/acpi.hpp"
+#include "kernel/system/acpi/madt.hpp"
 #include "kernel/system/processor/processor.hpp"
+#include "shared/logger/logger.hpp"
 
-/**
- * Sets up all the basic system components that are required to initialize
- * higher level parts of the kernel. If multiple cores are available, the
- * initial physical page directory address is passed to their bootstrap code.
- */
-void systemInitializeBsp(g_physical_address initialPdPhys);
-
-/**
- * Sets up the remaining components which need local initialization on each core.
- */
-void systemInitializeAp();
-
-/**
- * Waits until all application cores were marked as ready.
- */
-void systemWaitForApplicationCores();
-
-/**
- * Marks another application core as ready.
- */
-void systemMarkApplicationCoreReady();
-
-/**
- * Marks the system as ready, meaning that all vital system components are initialized
- * and tasking is ready to start.
- */
-void systemMarkReady();
-
-/**
- * @return true when the system bootstrap is finished on all processors.
- */
-bool systemIsReady();
-
-#endif
+void apicDetect()
+{
+	g_acpi_entry* madt = acpiGetEntryWithSignature("APIC");
+	if(madt)
+	{
+		madtParse(madt->header);
+	}
+	else
+	{
+		logWarn("%! no APIC descriptors found, using legacy PIC", "system");
+		processorAdd(0, 0);
+	}
+}

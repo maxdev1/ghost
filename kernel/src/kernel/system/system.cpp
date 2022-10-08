@@ -22,6 +22,7 @@
 #include "kernel/kernel.hpp"
 #include "kernel/memory/gdt.hpp"
 #include "kernel/system/acpi/acpi.hpp"
+#include "kernel/system/interrupts/apic/apic.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/smp.hpp"
 
@@ -31,48 +32,56 @@ static bool systemReady = false;
 
 void systemInitializeBsp(g_physical_address initialPdPhys)
 {
-    processorInitializeBsp();
+	processorInitializeBsp();
 
-    acpiInitialize();
-    interruptsInitializeBsp();
-    smpInitialize(initialPdPhys);
+	acpiInitialize();
+	apicDetect();
 
-    gdtPrepare();
-    gdtInitialize();
+	if(!processorListAvailable())
+		kernelPanic("%! no processors found", "system");
 
-    applicationCoresWaiting = processorGetNumberOfProcessors() - 1;
-    bspInitialized = true;
+	gdtPrepare();
+	gdtInitialize();
+
+	interruptsInitializeBsp();
+
+	auto numCores = processorGetNumberOfProcessors();
+	if(numCores > 1)
+		smpInitialize(initialPdPhys);
+
+	applicationCoresWaiting = numCores - 1;
+	bspInitialized = true;
 }
 
 void systemInitializeAp()
 {
-    processorInitializeAp();
-    interruptsInitializeAp();
+	processorInitializeAp();
 
-    gdtInitialize();
+	gdtInitialize();
+	interruptsInitializeAp();
 
-    systemMarkApplicationCoreReady();
+	systemMarkApplicationCoreReady();
 }
 
 void systemWaitForApplicationCores()
 {
-    logDebug("%! waiting for %i application processors", processorGetCurrentId() == 0 ? "bsp" : "ap", applicationCoresWaiting);
-    while(applicationCoresWaiting > 0)
-        asm("pause");
+	logDebug("%! waiting for %i application processors", processorGetCurrentId() == 0 ? "bsp" : "ap", applicationCoresWaiting);
+	while(applicationCoresWaiting > 0)
+		asm("pause");
 }
 
 void systemMarkApplicationCoreReady()
 {
-    --applicationCoresWaiting;
+	--applicationCoresWaiting;
 }
 
 void systemMarkReady()
 {
-    logInfo("%! ready", "system");
-    systemReady = true;
+	logInfo("%! ready", "system");
+	systemReady = true;
 }
 
 bool systemIsReady()
 {
-    return systemReady;
+	return systemReady;
 }

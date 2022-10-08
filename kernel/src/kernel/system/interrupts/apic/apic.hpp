@@ -18,43 +18,15 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_SYSTEM__
-#define __KERNEL_SYSTEM__
+#ifndef __KERNEL_APIC__
+#define __KERNEL_APIC__
 
 #include "ghost/types.h"
-#include "kernel/system/processor/processor.hpp"
 
 /**
- * Sets up all the basic system components that are required to initialize
- * higher level parts of the kernel. If multiple cores are available, the
- * initial physical page directory address is passed to their bootstrap code.
+ * Attempts to find and parse the MADT (Multiple APIC Description Table).
+ * If possible, all available LAPIC and IOAPIC are detected and prepared.
  */
-void systemInitializeBsp(g_physical_address initialPdPhys);
-
-/**
- * Sets up the remaining components which need local initialization on each core.
- */
-void systemInitializeAp();
-
-/**
- * Waits until all application cores were marked as ready.
- */
-void systemWaitForApplicationCores();
-
-/**
- * Marks another application core as ready.
- */
-void systemMarkApplicationCoreReady();
-
-/**
- * Marks the system as ready, meaning that all vital system components are initialized
- * and tasking is ready to start.
- */
-void systemMarkReady();
-
-/**
- * @return true when the system bootstrap is finished on all processors.
- */
-bool systemIsReady();
+void apicDetect();
 
 #endif
