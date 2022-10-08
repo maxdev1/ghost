@@ -35,10 +35,15 @@
 	if(__intr_paused)     \
 		interruptsEnable();
 
-void interruptsCheckPrerequisites();
 
+/**
+ * Sets up interrupts on the bootstrap processor.
+ */
 void interruptsInitializeBsp();
 
+/**
+ * Sets up interrupts on an application processor.
+ */
 void interruptsInitializeAp();
 
 void interruptsEnable();

@@ -19,7 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/smp.hpp"
-#include "kernel/system/interrupts/lapic.hpp"
+#include "kernel/system/interrupts/apic/lapic.hpp"
 #include "kernel/system/timing/pit.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/filesystem/ramdisk.hpp"

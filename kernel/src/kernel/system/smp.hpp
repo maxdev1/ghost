@@ -22,6 +22,7 @@
 #define __KERNEL_SMP__
 
 #include "kernel/system/processor/processor.hpp"
+#include <ghost/types.h>
 
 extern bool smpInitialized;
 
@@ -31,6 +32,5 @@ extern bool smpInitialized;
 void smpInitialize(g_physical_address initialPageDirectoryPhysical);
 
 void smpInitializeCore(g_processor* cpu);
-
 
 #endif

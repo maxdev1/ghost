@@ -18,7 +18,7 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "kernel/system/interrupts/ioapic.hpp"
+#include "kernel/system/interrupts/apic/ioapic.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/kernel.hpp"
 

@@ -19,10 +19,11 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/processor/processor.hpp"
-#include "kernel/memory/memory.hpp"
 #include "kernel/kernel.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/memory/memory.hpp"
+#include "kernel/system/interrupts/apic/lapic.hpp"
 #include "kernel/system/system.hpp"
+#include "shared/logger/logger.hpp"
 
 static g_processor* processors = 0;
 static uint32_t processorsAvailable = 0;
@@ -94,7 +95,7 @@ void processorAdd(uint32_t apicId, uint32_t processorHardwareId)
 	core->next = processors;
 
 	// BSP executes this code
-	if(apicId == lapicReadId())
+	if(!lapicIsAvailable() || apicId == lapicReadId())
 	{
 		core->bsp = true;
 	}
@@ -113,8 +114,8 @@ uint16_t processorGetNumberOfProcessors()
 
 uint32_t processorGetCurrentId()
 {
-	// Using lapicReadId for some reason makes everything VERY slow.
-	#warning "TODO: Fix multiprocessor handling"
+// Using lapicReadId for some reason makes everything VERY slow.
+#warning "TODO: Fix multiprocessor handling"
 	return 0;
 
 	if(!apicIdToProcessorMapping)
@@ -134,7 +135,9 @@ bool processorSupportsCpuid()
 
 void processorCpuid(uint32_t code, uint32_t* outA, uint32_t* outB, uint32_t* outC, uint32_t* outD)
 {
-	asm volatile("cpuid" : "=a"(*outA), "=b"(*outB), "=c"(*outC), "=d"(*outD) : "a"(code));
+	asm volatile("cpuid"
+				 : "=a"(*outA), "=b"(*outB), "=c"(*outC), "=d"(*outD)
+				 : "a"(code));
 }
 
 void processorEnableSSE()
@@ -143,7 +146,8 @@ void processorEnableSSE()
 	{
 		_enableSSE();
 		logDebug("%! support enabled", "sse");
-	} else
+	}
+	else
 	{
 		logWarn("%! not supported", "sse");
 	}
@@ -221,20 +225,25 @@ g_processor* processorGetList()
 	return processors;
 }
 
-void processorReadMsr(uint32_t msr, uint32_t *lo, uint32_t *hi)
+void processorReadMsr(uint32_t msr, uint32_t* lo, uint32_t* hi)
 {
-	asm volatile("rdmsr" : "=a"(*lo), "=d"(*hi) : "c"(msr));
+	asm volatile("rdmsr"
+				 : "=a"(*lo), "=d"(*hi)
+				 : "c"(msr));
 }
 
 void processorWriteMsr(uint32_t msr, uint32_t lo, uint32_t hi)
 {
-	asm volatile("wrmsr" : : "a"(lo), "d"(hi), "c"(msr));
+	asm volatile("wrmsr"
+				 :
+				 : "a"(lo), "d"(hi), "c"(msr));
 }
 
-uint32_t processorReadEflags() {
-    uint32_t eflags;
-    asm volatile("pushf\n"
-                	"pop %0"
-                   : "=g"(eflags));
+uint32_t processorReadEflags()
+{
+	uint32_t eflags;
+	asm volatile("pushf\n"
+				 "pop %0"
+				 : "=g"(eflags));
 	return eflags;
 }
