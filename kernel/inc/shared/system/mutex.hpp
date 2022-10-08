@@ -18,16 +18,17 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __SYSTEM_SMP_MUTEX__
-#define __SYSTEM_SMP_MUTEX__
+#ifndef __SYSTEM_MUTEX__
+#define __SYSTEM_MUTEX__
 
 #include "ghost/stdint.h"
 #include "shared/logger/logger.hpp"
+#include "shared/system/spinlock.hpp"
 
 struct g_mutex
 {
 	volatile int initialized = 0;
-	volatile int lock = 0;
+	g_spinlock lock = 0;
 
 	int depth = 0;
 	uint32_t owner = -1;

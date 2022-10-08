@@ -18,58 +18,15 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "shared/logger/logger.hpp"
-#include "kernel/system/interrupts/interrupts.hpp"
-#include "kernel/system/smp.hpp"
-#include "shared/system/mutex.hpp"
-#include "shared/system/spinlock.hpp"
-#include "shared/utils/string.hpp"
-#include "shared/video/console_video.hpp"
+#ifndef __SYSTEM_SPINLOCK__
+#define __SYSTEM_SPINLOCK__
 
-g_spinlock loggerLock = 0;
+typedef volatile int g_spinlock;
 
-void loggerPrintLocked(const char* message, ...)
-{
-	INTERRUPTS_PAUSE;
-	G_SPINLOCK_ACQUIRE(loggerLock);
+#define G_SPINLOCK_ACQUIRE(lock)                        \
+	while(!__sync_bool_compare_and_swap(&lock, 0, 1)) \
+		asm volatile("pause");
 
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
+#define G_SPINLOCK_RELEASE(lock) lock = 0;
 
-	G_SPINLOCK_RELEASE(loggerLock);
-	INTERRUPTS_RESUME;
-}
-
-void loggerPrintlnLocked(const char* message, ...)
-{
-	INTERRUPTS_PAUSE;
-	G_SPINLOCK_ACQUIRE(loggerLock);
-
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
-	loggerPrintCharacter('\n');
-
-	G_SPINLOCK_RELEASE(loggerLock);
-	INTERRUPTS_RESUME;
-}
-
-void loggerPrintUnlocked(const char* message, ...)
-{
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
-}
-
-void loggerPrintlnUnlocked(const char* message, ...)
-{
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
-	loggerPrintCharacter('\n');
-}
+#endif
