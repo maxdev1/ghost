@@ -20,6 +20,9 @@
 
 #include "ghost/user.h"
 #include "__internal.h"
+#include <stdio.h>
+
+g_process_info* g_current_process_info;
 
 /**
  *
@@ -28,5 +31,6 @@ g_process_info* g_process_get_info() {
 
 	g_syscall_process_get_info data;
 	g_syscall(G_SYSCALL_PROCESS_GET_INFO, (uint32_t) &data);
+	g_current_process_info = (g_process_info*) data.processInfo;
 	return data.processInfo;
 }

@@ -52,6 +52,7 @@ int __fgetc_unlocked(FILE* stream) {
 	}
 
 	// set direction
+	stream->flags &= ~G_FILE_FLAG_BUFFER_DIRECTION_WRITE;
 	stream->flags |= G_FILE_FLAG_BUFFER_DIRECTION_READ;
 
 	// check if buffer is empty
@@ -66,8 +67,7 @@ int __fgetc_unlocked(FILE* stream) {
 		}
 
 		// fill buffer with data
-		ssize_t read = stream->impl_read(stream->buffer + unget_space,
-				stream->buffer_size - unget_space, stream);
+		ssize_t read = stream->impl_read(stream->buffer + unget_space, stream->buffer_size - unget_space, stream);
 
 		if (read == 0) {
 			stream->flags |= G_FILE_FLAG_EOF;

@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,20 +18,18 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __EVENT_LISTENER_INFO__
-#define __EVENT_LISTENER_INFO__
+#ifndef __WINDOWSERVER_COMPONENTS_EVENTLISTENERINFO__
+#define __WINDOWSERVER_COMPONENTS_EVENTLISTENERINFO__
 
+#include <libwindow/interface.hpp>
 #include <ghost.h>
-#include <string>
 #include <list>
-#include <ghostuser/ui/interface_specification.hpp>
+#include <string>
 
-/**
- *
- */
-typedef struct {
-	g_tid target_thread;
-	g_ui_component_id component_id;
+typedef struct
+{
+    g_tid target_thread;
+    g_ui_component_id component_id;
 } event_listener_info_t;
 
 #endif

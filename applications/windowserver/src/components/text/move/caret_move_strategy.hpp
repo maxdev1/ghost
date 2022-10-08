@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,32 +18,25 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __CARET_MOVE_STRATEGY__
-#define __CARET_MOVE_STRATEGY__
+#ifndef __WINDOWSERVER_COMPONENTS_TEXT_MOVE_CARETMOVESTRATEGY__
+#define __WINDOWSERVER_COMPONENTS_TEXT_MOVE_CARETMOVESTRATEGY__
 
-#include <components/text/caret_direction.hpp>
-#include <ghostuser/io/keyboard.hpp>
+#include "components/text/caret_direction.hpp"
+
+#include <libinput/keyboard/keyboard.hpp>
 
 class text_component_t;
 
-/**
- *
- */
-class caret_move_strategy_t {
-public:
-	virtual ~caret_move_strategy_t() {
-	}
+class caret_move_strategy_t
+{
+  public:
+    virtual ~caret_move_strategy_t()
+    {
+    }
 
-	/**
-	 *
-	 */
-	virtual void moveCaret(text_component_t* component, caret_direction_t direction, g_key_info& keyInfo) = 0;
+    virtual void moveCaret(text_component_t* component, caret_direction_t direction, g_key_info& keyInfo) = 0;
 
-	/**
-	 *
-	 */
-	virtual int calculateSkip(std::string text, int position, caret_direction_t direction) = 0;
-
+    virtual int calculateSkip(std::string text, int position, caret_direction_t direction) = 0;
 };
 
 #endif

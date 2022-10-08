@@ -18,19 +18,52 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost/signal.h"
-
 #include "kernel/calls/syscall_tasking.hpp"
-#include "kernel/tasking/wait.hpp"
-#include "kernel/system/interrupts/requests.hpp"
+#include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/memory/memory.hpp"
-
+#include "kernel/tasking/atoms.hpp"
+#include "kernel/tasking/clock.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/utils/string.hpp"
 
 void syscallSleep(g_task* task, g_syscall_sleep* data)
 {
-	waitSleep(task, data->milliseconds);
+	clockWaitForTime(task->id, taskingGetLocal()->time + data->milliseconds);
+	task->status = G_THREAD_STATUS_WAITING;
 	taskingSchedule();
+}
+
+void syscallAtomicInitialize(g_task* task, g_syscall_atomic_initialize* data)
+{
+	data->atom = atomicCreate();
+}
+
+void syscallAtomicLock(g_task* task, g_syscall_atomic_lock* data)
+{
+	bool useTimeout = (data->timeout > 0);
+	if(useTimeout)
+		clockWaitForTime(task->id, taskingGetLocal()->time + data->timeout);
+
+	while(
+		(!useTimeout || !(data->has_timeout = clockHasTimedOut(task->id))) &&
+		!(data->was_set = atomicLock(task, data->atom, data->is_try, data->set_on_finish)))
+	{
+		if(data->is_try)
+			break;
+
+		atomicWaitForLock(data->atom, task->id);
+		task->status = G_THREAD_STATUS_WAITING;
+		taskingYield();
+	}
+
+	if(useTimeout)
+		clockUnwaitForTime(task->id);
+	atomicUnwaitForLock(data->atom, task->id);
+}
+
+void syscallAtomicUnlock(g_task* task, g_syscall_atomic_unlock* data)
+{
+	atomicUnlock(data->atom);
 }
 
 void syscallYield(g_task* task)
@@ -40,8 +73,7 @@ void syscallYield(g_task* task)
 
 void syscallExit(g_task* task, g_syscall_exit* data)
 {
-	task->status = G_THREAD_STATUS_DEAD;
-	taskingSchedule();
+	taskingExit();
 }
 
 void syscallGetProcessId(g_task* task, g_syscall_get_pid* data)
@@ -60,7 +92,8 @@ void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
 	if(theTask)
 	{
 		data->pid = theTask->process->id;
-	} else
+	}
+	else
 	{
 		data->pid = G_PID_NONE;
 	}
@@ -68,77 +101,7 @@ void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
 
 void syscallJoin(g_task* task, g_syscall_join* data)
 {
-	waitJoinTask(task, data->taskId);
-	taskingSchedule();
-}
-
-void syscallRegisterSignalHandler(g_task* task, g_syscall_register_signal_handler* data)
-{
-	if(data->signal >= 0 && data->signal < SIG_COUNT)
-	{
-		g_signal_handler* handler = &(task->process->signalHandlers[data->signal]);
-		data->previousHandlerAddress = handler->handlerAddress;
-		handler->handlerAddress = data->handlerAddress;
-		handler->returnAddress = data->returnAddress;
-		handler->task = task->id;
-
-		data->status = G_REGISTER_SIGNAL_HANDLER_STATUS_SUCCESSFUL;
-		logDebug("%! signal handler %h registered for signal %i", "syscall", data->handler, data->signal);
-
-	} else
-	{
-		data->previousHandlerAddress = 0;
-		data->status = G_REGISTER_SIGNAL_HANDLER_STATUS_INVALID_SIGNAL;
-		logDebug("%! failed to register signal handler %h for invalid signal %i", "syscall", data->handler, data->signal);
-	}
-}
-
-void syscallRegisterIrqHandler(g_task* task, g_syscall_register_irq_handler* data)
-{
-	if(task->securityLevel == G_SECURITY_LEVEL_DRIVER)
-	{
-		if(data->irq >= 0 && data->irq < 256)
-		{
-			requestsRegisterHandler(data->irq, task->id, data->handlerAddress, data->returnAddress);
-
-			data->status = G_REGISTER_IRQ_HANDLER_STATUS_SUCCESSFUL;
-			logInfo("%! task %i: irq handler %h registered for irq %i", "irq", task->id, data->handlerAddress, data->irq);
-		} else
-		{
-			data->status = G_REGISTER_IRQ_HANDLER_STATUS_INVALID_IRQ;
-			logInfo("%! task %i: failed to register irq handler %h for invalid irq %i", "irq", task->id, data->handlerAddress, data->irq);
-		}
-	} else
-	{
-		data->status = G_REGISTER_IRQ_HANDLER_STATUS_NOT_PERMITTED;
-		logInfo("%! task %i: not permitted to register irq handler %h for irq %i", "irq", task->id, data->handlerAddress, data->irq);
-	}
-}
-
-void syscallRestoreInterruptedState(g_task* task)
-{
-	mutexAcquire(&task->process->lock);
-
-	if(task->interruptionInfo)
-	{
-		task->waitData = task->interruptionInfo->previousWaitData;
-		task->waitResolver = task->interruptionInfo->previousWaitResolver;
-		task->status = task->interruptionInfo->previousStatus;
-
-		// restore processor state
-		task->state = task->interruptionInfo->statePtr;
-		memoryCopy((void*) task->state, &task->interruptionInfo->state, sizeof(g_processor_state));
-
-		heapFree(task->interruptionInfo);
-		task->interruptionInfo = 0;
-	}
-
-	mutexRelease(&task->process->lock);
-}
-
-void syscallRaiseSignal(g_task* task, g_syscall_raise_signal* data)
-{
-	data->status = taskingRaiseSignal(task, data->signal);
+	taskingWaitForExit(data->taskId, task->id);
 }
 
 void syscallSpawn(g_task* task, g_syscall_spawn* data)
@@ -152,9 +115,16 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 		if(data->spawnStatus == G_SPAWN_STATUS_SUCCESSFUL)
 		{
 			data->pid = targetProcess->id;
-			#warning TODO finish implementation (pass arguments etc.)
+			filesystemProcessCreateStdio(task->process->id, data->inStdio, targetProcess->id, data->outStdio);
+
+			targetProcess->environment.executablePath = stringDuplicate(data->path);
+			if(data->args)
+				targetProcess->environment.arguments = stringDuplicate(data->args);
+			if(data->workdir)
+				targetProcess->environment.workingDirectory = stringDuplicate(data->workdir);
 		}
-	} else
+	}
+	else
 	{
 		data->spawnStatus = G_SPAWN_STATUS_IO_ERROR;
 		logInfo("%! failed to find binary '%s'", "kernel", data->path);
@@ -177,7 +147,7 @@ void syscallKill(g_task* task, g_syscall_kill* data)
 	if(target)
 	{
 		target->process->main->status = G_THREAD_STATUS_DEAD;
-		taskingSchedule();
+		taskingYield();
 	}
 }
 
@@ -192,11 +162,12 @@ void syscallCreateThread(g_task* task, g_syscall_create_thread* data)
 		thread->userEntry.data = data->userData;
 		data->threadId = thread->id;
 		data->status = G_CREATE_THREAD_STATUS_SUCCESSFUL;
-	} else
+		taskingAssign(taskingGetLocal(), thread);
+	}
+	else
 	{
 		data->status = G_CREATE_THREAD_STATUS_FAILED;
 	}
-	taskingAssign(taskingGetLocal(), thread);
 
 	mutexRelease(&task->process->lock);
 }
@@ -220,5 +191,3 @@ void syscallGetParentProcessId(g_task* task, g_syscall_get_parent_pid* data)
 	for(;;)
 		;
 }
-
-

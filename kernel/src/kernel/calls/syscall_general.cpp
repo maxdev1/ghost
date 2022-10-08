@@ -19,45 +19,10 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/calls/syscall_general.hpp"
-#include "kernel/tasking/wait.hpp"
-
+#include "kernel/filesystem/filesystem.hpp"
 #include "kernel/memory/heap.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/utils/string.hpp"
-
-void syscallAtomicLock(g_task* task, g_syscall_atomic_lock* data)
-{
-	// try to immediately resolve it
-	if (data->is_try) {
-		if (*data->atom_1 && (!data->atom_2 || *data->atom_2)) {
-			data->was_set = false;
-
-		} else {
-			*data->atom_1 = true;
-			if (data->atom_2) {
-				*data->atom_2 = true;
-			}
-			data->was_set = true;
-		}
-		return;
-	}
-
-	// check if the thread must sleep
-	if (*data->atom_1 && (!data->atom_2 || *data->atom_2)) {
-		waitAtomicLock(task);
-		taskingSchedule();
-		return;
-	}
-
-	// set result values
-	if (data->set_on_finish) {
-		*data->atom_1 = true;
-		if (data->atom_2) {
-			*data->atom_2 = true;
-		}
-		data->was_set = true;
-	}
-}
 
 void syscallLog(g_task* task, g_syscall_log* data)
 {
@@ -104,18 +69,19 @@ void syscallGetWorkingDirectory(g_task* task, g_syscall_fs_get_working_directory
 		if(length + 1 > data->maxlen)
 		{
 			data->result = G_GET_WORKING_DIRECTORY_SIZE_EXCEEDED;
-		} else
+		}
+		else
 		{
 			stringCopy(data->buffer, workingDirectory);
 			data->result = G_GET_WORKING_DIRECTORY_SUCCESSFUL;
 		}
-	} else
+	}
+	else
 	{
 		stringCopy(data->buffer, "/");
 		data->result = G_GET_WORKING_DIRECTORY_SUCCESSFUL;
 	}
 }
-
 
 void syscallSetWorkingDirectory(g_task* task, g_syscall_fs_set_working_directory* data)
 {
@@ -129,21 +95,22 @@ void syscallSetWorkingDirectory(g_task* task, g_syscall_fs_set_working_directory
 			{
 				heapFree(task->process->environment.workingDirectory);
 			}
-			
+
 			int length = filesystemGetAbsolutePathLength(child);
 			task->process->environment.workingDirectory = (char*) heapAllocate(length + 1);
 			filesystemGetAbsolutePath(child, task->process->environment.workingDirectory);
 			data->result = G_SET_WORKING_DIRECTORY_SUCCESSFUL;
-		} else
+		}
+		else
 		{
 			data->result = G_SET_WORKING_DIRECTORY_NOT_A_FOLDER;
 		}
-
-	} else if(openStatus == G_FS_OPEN_NOT_FOUND)
+	}
+	else if(openStatus == G_FS_OPEN_NOT_FOUND)
 	{
 		data->result = G_SET_WORKING_DIRECTORY_NOT_FOUND;
-
-	} else
+	}
+	else
 	{
 		data->result = G_SET_WORKING_DIRECTORY_ERROR;
 	}

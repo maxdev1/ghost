@@ -18,8 +18,6 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost/signal.h"
-
 #include "kernel/calls/syscall_memory.hpp"
 #include "kernel/tasking/tasking_memory.hpp"
 #include "kernel/memory/lower_heap.hpp"
@@ -54,7 +52,7 @@ void syscallAllocateMemory(g_task* task, g_syscall_alloc_mem* data)
 {
 	data->virtualResult = 0;
 
-	uint32_t pages = G_PAGE_ALIGN_UP(data->size);
+	uint32_t pages = G_PAGE_ALIGN_UP(data->size) / G_PAGE_SIZE;
 	if(pages == 0) return;
 
 	/* Prepare a virtual range */

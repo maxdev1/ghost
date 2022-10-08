@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,31 +18,30 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __PLAIN_CONSOLE_PANEL__
-#define __PLAIN_CONSOLE_PANEL__
+#ifndef __WINDOWSERVER_COMPONENTS_PLAINCONSOLE__
+#define __WINDOWSERVER_COMPONENTS_PLAINCONSOLE__
 
-#include <components/component.hpp>
-#include <ghostuser/graphics/text/text_alignment.hpp>
-#include <ghostuser/graphics/text/font.hpp>
+#include "components/component.hpp"
+#include <libwindow/text/font.hpp>
+#include <libwindow/text/text_alignment.hpp>
+
 #include <string>
 
-/**
- *
- */
-class plain_console_panel_t: public component_t {
-private:
-	g_font* font;
-	std::string content;
-	bool focused;
+class plain_console_panel_t : public component_t
+{
+  private:
+    g_font* font;
+    std::string content;
+    bool focused;
 
-public:
-	plain_console_panel_t();
+  public:
+    plain_console_panel_t();
 
-	virtual void update();
-	virtual void paint();
-	virtual bool handle(event_t& e);
+    virtual void update();
+    virtual void paint();
+    virtual component_t* handleFocusEvent(focus_event_t& e);
 
-	void append(char c);
+    void append(char c);
 };
 
 #endif

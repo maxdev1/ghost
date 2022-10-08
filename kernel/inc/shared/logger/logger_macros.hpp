@@ -29,8 +29,8 @@
 #define G_LOGGING_INFO			true
 #define G_IF_LOG_INFO(s)		s
 #else
-#define logInfo(msg...)			{};
-#define logInfon(msg...)		{};
+#define logInfo(msg...)			;
+#define logInfon(msg...)		;
 #define G_LOGGING_INFO			false
 #define G_IF_LOG_INFO(s)
 #endif
@@ -41,8 +41,8 @@
 #define G_LOGGING_WARN			true
 #define G_IF_LOG_WARN(s)		s
 #else
-#define logWarn(msg...)			{};
-#define logWarnn(msg...)		{};
+#define logWarn(msg...)			;
+#define logWarnn(msg...)		;
 #define G_LOGGING_WARN			false
 #define G_IF_LOG_WARN(s)
 #endif
@@ -53,8 +53,8 @@
 #define G_LOGGING_DEBUG			true
 #define G_IF_LOG_DEBUG(s)		s
 #else
-#define logDebug(msg...)		{};
-#define logDebugn(msg...)		{};
+#define logDebug(msg...)		;
+#define logDebugn(msg...)		;
 #define G_LOGGING_DEBUG			false
 #define G_IF_LOG_DEBUG(s)
 #endif

@@ -65,8 +65,7 @@ int __fungetc_unlocked(int c, FILE* stream) {
 
 	// if we reached left end of buffer, try to move bytes
 	if (stream->buffered_bytes_read_offset == 0) {
-		size_t buffered_bytes = stream->buffered_bytes_read
-				- stream->buffered_bytes_read_offset;
+		size_t buffered_bytes = stream->buffered_bytes_read - stream->buffered_bytes_read_offset;
 		size_t buffer_space = stream->buffer_size - buffered_bytes;
 
 		if (buffer_space == 0) {
@@ -75,8 +74,7 @@ int __fungetc_unlocked(int c, FILE* stream) {
 		}
 
 		// move bytes to right
-		memmove(stream->buffer + buffer_space, stream->buffer,
-				sizeof(stream->buffer[0]) * buffered_bytes);
+		memmove(stream->buffer + buffer_space, stream->buffer, sizeof(stream->buffer[0]) * buffered_bytes);
 		stream->buffered_bytes_read_offset = buffer_space;
 		stream->buffered_bytes_read = buffer_space + buffered_bytes;
 	}

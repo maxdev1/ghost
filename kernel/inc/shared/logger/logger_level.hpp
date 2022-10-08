@@ -22,8 +22,8 @@
 #define __LOGGER_LEVEL__
 
 #define G_LOG_LEVEL_NONE	3
-#define G_LOG_LEVEL_INFO	2
-#define G_LOG_LEVEL_WARN	1
+#define G_LOG_LEVEL_WARN	2
+#define G_LOG_LEVEL_INFO	1
 #define G_LOG_LEVEL_DEBUG	0
 
 #endif

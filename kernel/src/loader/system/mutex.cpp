@@ -20,7 +20,7 @@
 
 #include "shared/system/mutex.hpp"
 
-void mutexInitialize(g_mutex* mutex)
+void _mutexInitialize(g_mutex* mutex)
 {
 	if(mutex->initialized)
 		return;

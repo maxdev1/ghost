@@ -38,7 +38,6 @@ int __fputc_unlocked(int c, FILE* stream) {
 
 	// for unbuffered streams, perform direct write
 	if (stream->buffer_mode == _IONBF) {
-
 		if (__fwrite_unlocked(&c8, 1, 1, stream) != 1) {
 			return EOF;
 		}
@@ -60,6 +59,7 @@ int __fputc_unlocked(int c, FILE* stream) {
 	}
 
 	// set direction
+	stream->flags &= ~G_FILE_FLAG_BUFFER_DIRECTION_READ;
 	stream->flags |= G_FILE_FLAG_BUFFER_DIRECTION_WRITE;
 
 	// put byte into buffer

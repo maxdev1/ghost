@@ -35,5 +35,6 @@ sig_handler_t signal(int sig, sig_handler_t handler) {
 		}
 	}
 
-	return (sig_handler_t) g_register_signal_handler(sig, (void*) handler);
+	// i refuse to further deal with signals
+	return 0;
 }
