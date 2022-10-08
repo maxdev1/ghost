@@ -18,39 +18,24 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __WINDOWSERVER_COMPONENTS_BACKGROUND__
-#define __WINDOWSERVER_COMPONENTS_BACKGROUND__
-
-#include "components/component.hpp"
-#include "components/desktop/desktop_item.hpp"
 #include "components/desktop/selection.hpp"
-#include <libwindow/metrics/rectangle.hpp>
+#include <cairo/cairo.h>
 
-class background_t : public component_t
+void selection_t::paint()
 {
-  private:
-	cairo_surface_t* surface = 0;
-	desktop_item_t* selectedItem = nullptr;
-	selection_t* selection;
+	cairo_t* cr = graphics.getContext();
+	auto bounds = getBounds();
 
-  public:
-	int gridScale = 100;
+	cairo_save(cr);
+	cairo_set_source_rgba(cr, 0, 0, 0, 0);
+	cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+	cairo_paint(cr);
+	cairo_restore(cr);
 
-	background_t();
-
-	virtual ~background_t()
-	{
-	}
-
-	virtual void paint();
-
-	virtual void load(const char* path);
-
-	void showSelection(g_rectangle& selection);
-	void hideSelection();
-	void startLoadDesktopItems();
-	void setSelectedItem(desktop_item_t* item);
-	desktop_item_t* getSelectedItem();
-};
-
-#endif
+	static const double dash[] = {2.0};
+	cairo_set_source_rgba(cr, 1, 1, 1, 1);
+	cairo_set_line_width(cr, 1.0);
+	cairo_set_dash(cr, dash, 1, 0);
+	cairo_rectangle(cr, 1.5, 1.5, bounds.width - 1, bounds.height - 1);
+	cairo_stroke(cr);
+}
