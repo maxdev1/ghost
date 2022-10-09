@@ -39,7 +39,7 @@ DIR* opendir(const char* path) {
 		return dir;
 
 	} else if (stat == G_FS_OPEN_DIRECTORY_NOT_FOUND) {
-		errno = ENOTDIR;
+		errno = ENOENT;
 
 	} else if (stat == G_FS_OPEN_DIRECTORY_ERROR) {
 		errno = EIO;

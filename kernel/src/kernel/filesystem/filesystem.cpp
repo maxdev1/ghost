@@ -62,6 +62,7 @@ void filesystemCreateRoot()
 	ramdiskDelegate->create = filesystemRamdiskDelegateCreate;
 	ramdiskDelegate->getLength = filesystemRamdiskDelegateGetLength;
 	ramdiskDelegate->close = filesystemRamdiskDelegateClose;
+	ramdiskDelegate->readDir = filesystemRamdiskDelegateReadDir;
 
 	filesystemRoot = filesystemCreateNode(G_FS_NODE_TYPE_ROOT, "root");
 	filesystemRoot->delegate = ramdiskDelegate;
@@ -286,6 +287,12 @@ g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task
 	// Handle different open cases
 	if(status == G_FS_OPEN_SUCCESSFUL)
 	{
+		if(file->type == G_FS_NODE_TYPE_FOLDER)
+		{
+			logInfo("tried to open folder");
+			return G_FS_OPEN_ERROR;
+		}
+
 		if(flags & G_FILE_FLAG_MODE_TRUNCATE)
 		{
 			if(filesystemTruncate(file) != G_FS_OPEN_SUCCESSFUL)
@@ -649,4 +656,13 @@ int filesystemGetAbsolutePath(g_fs_node* node, char* buffer)
 		copied = stringCopy(&buffer[length + 1], node->name) + 1;
 	}
 	return length + copied;
+}
+
+g_fs_read_directory_status filesystemReadDirectory(g_fs_node* parent, uint32_t index, g_fs_node** outChild)
+{
+	g_fs_delegate* delegate = filesystemFindDelegate(parent);
+	if(!delegate->readDir)
+		kernelPanic("%! failed to read directory %i, delegate had no implementation", "fs", parent->id);
+
+	return delegate->readDir(parent, index, outChild);
 }

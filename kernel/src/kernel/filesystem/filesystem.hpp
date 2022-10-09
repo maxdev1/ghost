@@ -73,6 +73,7 @@ struct g_fs_delegate
 	g_fs_open_status (*create)(g_fs_node* parent, const char* name, g_fs_node** outFile);
 	g_fs_open_status (*truncate)(g_fs_node* file);
 	g_fs_close_status (*close)(g_fs_node* node);
+	g_fs_read_directory_status (*readDir)(g_fs_node* node, uint32_t index, g_fs_node** outNode);
 
 	void (*waitForRead)(g_tid task, g_fs_node* node);
 	void (*waitForWrite)(g_tid task, g_fs_node* node);
@@ -201,5 +202,10 @@ int filesystemGetAbsolutePath(g_fs_node* node, char* buffer);
  * @return the path length
  */
 int filesystemGetAbsolutePathLength(g_fs_node* node);
+
+/**
+ * Reads a directory.
+ */
+g_fs_read_directory_status filesystemReadDirectory(g_fs_node* parent, uint32_t index, g_fs_node** outChild);
 
 #endif

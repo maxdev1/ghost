@@ -22,8 +22,8 @@
 #define __KERNEL_FILESYSTEM_RAMDISK_DELEGATE__
 
 #include "ghost/fs.h"
-#include "shared/system/mutex.hpp"
 #include "kernel/filesystem/filesystem.hpp"
+#include "shared/system/mutex.hpp"
 
 g_fs_open_status filesystemRamdiskDelegateOpen(g_fs_node* node);
 
@@ -40,5 +40,7 @@ g_fs_length_status filesystemRamdiskDelegateGetLength(g_fs_node* node, uint64_t*
 g_fs_open_status filesystemRamdiskDelegateCreate(g_fs_node* parent, const char* name, g_fs_node** outFile);
 
 g_fs_open_status filesystemRamdiskDelegateTruncate(g_fs_node* file);
+
+g_fs_read_directory_status filesystemRamdiskDelegateReadDir(g_fs_node* dir, uint32_t index, g_fs_node** outNode);
 
 #endif
