@@ -1,4 +1,4 @@
-= Ghost System Documentation
+= Ghost OS
 Max Schlüssel <lokoxe@gmail.com>
 v1.2
 :last-update-label!:
@@ -7,9 +7,9 @@ v1.2
 
 About
 -----
-Welcome to the documentation of Ghost OS!
+This is the system documentation of the *Ghost* operating system.
 
-This project is a research operating system for the Intel x86 platform with
+This project is a hobby operating system for the Intel x86 platform with
 almost all components written from scratch. The kernel follows a microkernel
 design. This documentation contains both conceptual and technical details
 for various parts of the system.
