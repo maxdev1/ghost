@@ -82,6 +82,7 @@ class gui_screen_t : public screen_t
 	raster_t* raster;
 	int cursor_x = 0;
 	int cursor_y = 0;
+	g_rectangle canvasBounds;
 
 	int char_width = 8;
 	int char_height = 18;
@@ -149,4 +150,6 @@ class gui_screen_t : public screen_t
 	void scroll(int value);
 
 	void setCursorVisible(bool visible);
+
+	void setCanvasBounds(g_rectangle& bounds);
 };

@@ -36,6 +36,7 @@ class canvas_resize_bounds_listener_t : public g_bounds_listener
 
 	virtual void handle_bounds_changed(g_rectangle bounds)
 	{
+		screen->setCanvasBounds(bounds);
 		screen->update_visible_buffer_size();
 	}
 };
@@ -46,16 +47,10 @@ class input_key_listener_t : public g_key_listener
 	gui_screen_t* screen;
 
   public:
-	/**
-	 *
-	 */
 	input_key_listener_t(gui_screen_t* screen) : screen(screen)
 	{
 	}
 
-	/**
-	 *
-	 */
 	virtual void handle_key_event(g_key_event& e)
 	{
 		screen->buffer_input(g_keyboard::fullKeyInfo(e.info));
@@ -68,16 +63,10 @@ class canvas_buffer_listener_t : public g_canvas_buffer_listener
 	gui_screen_t* screen;
 
   public:
-	/**
-	 *
-	 */
 	canvas_buffer_listener_t(gui_screen_t* screen) : screen(screen)
 	{
 	}
 
-	/**
-	 *
-	 */
 	virtual void handle_buffer_changed()
 	{
 		screen->update_visible_buffer_size();
@@ -227,7 +216,6 @@ void gui_screen_t::paint()
 	bool firstPaint = true;
 	while(true)
 	{
-		auto windowBounds = window->getBounds();
 		update_visible_buffer_size();
 
 		auto cr = getGraphics();
@@ -272,10 +260,10 @@ void gui_screen_t::paint()
 		cairo_save(cr);
 		cairo_set_source_rgba(cr, 0, 0, 0, 0);
 		cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-		cairo_rectangle(cr, 0, 0, windowBounds.width, padding);
-		cairo_rectangle(cr, windowBounds.width - padding, 0, padding, windowBounds.height);
-		cairo_rectangle(cr, 0, windowBounds.height - padding, windowBounds.width, padding);
-		cairo_rectangle(cr, 0, 0, padding, windowBounds.height);
+		cairo_rectangle(cr, 0, 0, canvasBounds.width, padding);
+		cairo_rectangle(cr, canvasBounds.width - padding, 0, padding, canvasBounds.height);
+		cairo_rectangle(cr, 0, canvasBounds.height - padding, canvasBounds.width, padding);
+		cairo_rectangle(cr, 0, 0, padding, canvasBounds.height);
 		cairo_fill(cr);
 		cairo_restore(cr);
 
@@ -492,9 +480,8 @@ void gui_screen_t::set_focused(bool _focused)
 
 void gui_screen_t::update_visible_buffer_size()
 {
-	g_rectangle canvas_bounds = canvas->getBounds();
-	int newWidth = (canvas_bounds.width - 2 * padding) / char_width;
-	int newHeight = (canvas_bounds.height - 2 * padding) / char_height;
+	int newWidth = (this->canvasBounds.width - 2 * padding) / char_width;
+	int newHeight = (this->canvasBounds.height - 2 * padding) / char_height;
 
 	if(newWidth < char_width)
 		newWidth = char_width;
@@ -543,4 +530,9 @@ int gui_screen_t::getWidth()
 int gui_screen_t::getHeight()
 {
 	return raster->getHeight();
+}
+
+void gui_screen_t::setCanvasBounds(g_rectangle& bounds)
+{
+	this->canvasBounds = bounds;
 }

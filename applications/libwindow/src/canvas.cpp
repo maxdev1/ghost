@@ -25,6 +25,7 @@ g_canvas_buffer_info g_canvas::getBuffer()
 {
 	g_canvas_buffer_info info;
 
+	g_atomic_lock(currentBufferLock);
 	if(nextBuffer)
 	{
 		if(currentBuffer)
@@ -54,7 +55,14 @@ g_canvas_buffer_info g_canvas::getBuffer()
 		info.height = header->paintable_height;
 	}
 
+	g_atomic_unlock(currentBufferLock);
+
 	return info;
+}
+
+g_canvas::g_canvas(uint32_t id) : g_component(id), currentBuffer(0), nextBuffer(0), userListener(0)
+{
+	currentBufferLock = g_atomic_initialize();
 }
 
 g_canvas* g_canvas::create()
@@ -69,8 +77,10 @@ g_canvas* g_canvas::create()
 
 void g_canvas::acknowledgeNewBuffer(g_address address)
 {
+	g_atomic_lock(currentBufferLock);
 	if(address == currentBuffer)
 		return;
+	g_atomic_unlock(currentBufferLock);
 
 	nextBuffer = address;
 
@@ -80,23 +90,25 @@ void g_canvas::acknowledgeNewBuffer(g_address address)
 
 void g_canvas::blit(g_rectangle rect)
 {
-	if(currentBuffer == 0)
+	g_atomic_lock(currentBufferLock);
+
+	if(currentBuffer)
 	{
-		return;
+		// write blit parameters
+		g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer;
+		header->blit_x = rect.x;
+		header->blit_y = rect.y;
+		header->blit_width = rect.width;
+		header->blit_height = rect.height;
+		header->ready = true;
+
+		// send blit message
+		g_message_transaction tx = g_get_message_tx_id();
+		g_ui_component_canvas_blit_request request;
+		request.header.id = G_UI_PROTOCOL_CANVAS_BLIT;
+		request.id = this->id;
+		g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_canvas_blit_request), tx);
 	}
 
-	// write blit parameters
-	g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer;
-	header->blit_x = rect.x;
-	header->blit_y = rect.y;
-	header->blit_width = rect.width;
-	header->blit_height = rect.height;
-	header->ready = true;
-
-	// send blit message
-	g_message_transaction tx = g_get_message_tx_id();
-	g_ui_component_canvas_blit_request request;
-	request.header.id = G_UI_PROTOCOL_CANVAS_BLIT;
-	request.id = this->id;
-	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_canvas_blit_request), tx);
+	g_atomic_unlock(currentBufferLock);
 }
