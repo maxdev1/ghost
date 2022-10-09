@@ -39,6 +39,7 @@ class g_canvas : public g_component
   protected:
 	g_address currentBuffer;
 	g_address nextBuffer;
+	g_atom currentBufferLock;
 
 	/**
 	 * Listener only for user purpose, so a client gets an event once the
@@ -46,9 +47,7 @@ class g_canvas : public g_component
 	 */
 	g_canvas_buffer_listener* userListener;
 
-	g_canvas(uint32_t id) : g_component(id), currentBuffer(0), nextBuffer(0), userListener(0)
-	{
-	}
+	g_canvas(uint32_t id);
 
   public:
 	static g_canvas* create();
