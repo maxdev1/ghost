@@ -18,13 +18,13 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <dirent.h>
 #include <gosh.hpp>
 #include <iostream>
 #include <libterminal/terminal.hpp>
 #include <parser.hpp>
-#include <stdio.h>
-
 #include <sstream>
+#include <stdio.h>
 #include <string.h>
 #include <string>
 
@@ -77,20 +77,50 @@ bool gshReadInputLine(std::string& line)
 		}
 		else if(c == '\t' || c == G_TERMKEY_STAB /* TODO implement completion */)
 		{
-			auto pos = g_terminal::getCursor();
-			std::cout << "    ";
-
+			auto beforeCaret = line.substr(0, caret);
 			auto afterCaret = line.substr(caret);
-			line = line.substr(0, caret) + '\t' + afterCaret;
-			caret++;
 
-			pos.x += 4;
-			g_terminal::setCursor(pos);
-			for(char c : afterCaret)
+			std::string searchChild = beforeCaret;
+			auto space = searchChild.find_last_of(' ');
+			if(space != std::string::npos)
 			{
-				std::cout << c;
+				searchChild = searchChild.substr(space + 1);
 			}
-			g_terminal::setCursor(pos);
+
+			std::string completion = "";
+			std::vector<std::string> multiple;
+			DIR* dir = opendir(cwdbuf);
+			if(dir)
+			{
+				dirent* ent;
+				while(ent = readdir(dir))
+				{
+					std::string entname(ent->d_name);
+					if(entname.rfind(searchChild, 0) == 0)
+					{
+						completion = entname.substr(searchChild.size());
+						multiple.push_back(entname);
+					}
+				}
+				closedir(dir);
+			}
+
+			if(multiple.size() > 1)
+			{
+				// TODO
+				klog("Found multiple results");
+			}
+			else if(completion.size() > 0)
+			{
+				line = beforeCaret + completion + afterCaret;
+				auto pos = g_terminal::getCursor();
+
+				caret += completion.size();
+				pos.x += completion.size();
+
+				std::cout << completion << afterCaret;
+				g_terminal::setCursor(pos);
+			}
 		}
 		else if(c == G_TERMKEY_ENTER)
 		{
@@ -210,8 +240,19 @@ bool gshHandleBuiltin(program_call_t* call)
 	{
 		if(call->arguments.size() == 1)
 		{
-			auto newdir = call->arguments.at(0);
-			g_set_working_directory(newdir.c_str());
+			std::string newdir = call->arguments.at(0);
+			newdir = cwd + "/" + newdir;
+
+			DIR* dir = opendir(newdir.c_str());
+			if(dir)
+			{
+				closedir(dir);
+				g_set_working_directory(newdir.c_str());
+			}
+			else
+			{
+				std::cerr << "Directory not found" << std::endl;
+			}
 		}
 		else
 		{

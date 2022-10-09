@@ -25,7 +25,7 @@
 #include <libinput/keyboard/keyboard.hpp>
 #include <libinput/mouse/mouse.hpp>
 
-#define DEFAULT_MULTICLICK_TIMESPAN 150
+#define DEFAULT_MULTICLICK_TIMESPAN 250
 
 /**
  * The event queue is used to store any incoming events for

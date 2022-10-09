@@ -21,8 +21,8 @@
 #include "kernel/filesystem/filesystem_ramdiskdelegate.hpp"
 #include "kernel/filesystem/ramdisk.hpp"
 
-#include "kernel/memory/memory.hpp"
 #include "kernel/kernel.hpp"
+#include "kernel/memory/memory.hpp"
 #include "shared/system/mutex.hpp"
 #include "shared/utils/string.hpp"
 
@@ -94,8 +94,8 @@ g_fs_write_status filesystemRamdiskDelegateWrite(g_fs_node* node, uint8_t* buffe
 		memoryCopy(new_buffer, entry->data, entry->dataSize);
 		entry->data = new_buffer;
 		entry->notOnRdBufferLength = buflen;
-
-	} else if(entry->data == nullptr)
+	}
+	else if(entry->data == nullptr)
 	{
 		uint32_t initbuflen = 32;
 		entry->data = (uint8_t*) heapAllocate(sizeof(uint8_t) * initbuflen);
@@ -149,7 +149,6 @@ g_fs_open_status filesystemRamdiskDelegateCreate(g_fs_node* parent, const char* 
 
 	return G_FS_OPEN_SUCCESSFUL;
 }
-;
 
 g_fs_open_status filesystemRamdiskDelegateTruncate(g_fs_node* file)
 {
@@ -165,4 +164,27 @@ g_fs_open_status filesystemRamdiskDelegateTruncate(g_fs_node* file)
 		entry->data = 0;
 	}
 	return G_FS_OPEN_SUCCESSFUL;
+}
+
+g_fs_read_directory_status filesystemRamdiskDelegateReadDir(g_fs_node* dir, uint32_t index, g_fs_node** outNode)
+{
+	g_ramdisk_entry* dirEntry = ramdiskFindById(dir->physicalId);
+	if(!dirEntry)
+		return G_FS_READ_DIRECTORY_ERROR;
+
+	if(index >= ramdiskGetChildCount(dirEntry->id))
+	{
+		return G_FS_READ_DIRECTORY_EOD;
+	}
+
+	auto childEntry = ramdiskGetChildAt(dirEntry->id, index);
+
+	// TODO this creates duplicate nodes
+	g_fs_node_type nodeType = childEntry->type == G_RAMDISK_ENTRY_TYPE_FILE ? G_FS_NODE_TYPE_FILE : G_FS_NODE_TYPE_FOLDER;
+	g_fs_node* newNode = filesystemCreateNode(nodeType, childEntry->name);
+	newNode->physicalId = childEntry->id;
+	filesystemAddChild(dir, newNode);
+
+	*outNode = newNode;
+	return G_FS_READ_DIRECTORY_SUCCESSFUL;
 }

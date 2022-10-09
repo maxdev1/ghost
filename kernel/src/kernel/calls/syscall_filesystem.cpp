@@ -23,6 +23,7 @@
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/system/interrupts/requests.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/utils/string.hpp"
 
 void syscallFsOpen(g_task* task, g_syscall_fs_open* data)
 {
@@ -174,4 +175,44 @@ void syscallOpenIrqDevice(g_task* task, g_syscall_open_irq_device* data)
 		data->status = G_OPEN_IRQ_DEVICE_STATUS_NOT_PERMITTED;
 		logInfo("%! task %i: not permitted to open device for irq %i", "irq", task->id, data->irq);
 	}
+}
+
+void syscallFsOpenDirectory(g_task* task, g_syscall_fs_open_directory* data)
+{
+	g_fs_node* directory;
+	if(filesystemFind(nullptr, data->path, &directory) == G_FS_OPEN_SUCCESSFUL)
+	{
+		data->iterator->node_id = directory->id;
+		data->iterator->position = 0;
+		data->status = G_FS_OPEN_DIRECTORY_SUCCESSFUL;
+	}
+	else
+	{
+		data->status = G_FS_OPEN_DIRECTORY_NOT_FOUND;
+	}
+}
+
+void syscallFsReadDirectory(g_task* task, g_syscall_fs_read_directory* data)
+{
+	g_fs_node* directory = filesystemGetNode(data->iterator->node_id);
+	if(!directory)
+	{
+		data->status = G_FS_READ_DIRECTORY_ERROR;
+		return;
+	}
+
+	g_fs_node* child;
+	data->status = filesystemReadDirectory(directory, data->iterator->position, &child);
+	if(data->status == G_FS_READ_DIRECTORY_SUCCESSFUL)
+	{
+		data->iterator->entry_buffer.node_id = child->id;
+		data->iterator->entry_buffer.type = child->type;
+		stringCopy(data->iterator->entry_buffer.name, child->name);
+		++data->iterator->position;
+	}
+}
+
+void syscallFsCloseDirectory(g_task* task, g_syscall_fs_close_directory* data)
+{
+	// TODO: Is this needed?
 }
