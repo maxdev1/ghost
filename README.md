@@ -14,26 +14,28 @@ rewrote a lot of the user-space code. Still work-in-progress, working towards a 
 See the `documentation` folder. It contains information about the technical design as well
 as building instructions.
 
+A usually up-to-date version of the documentation is provided here: https://ghostkernel.org/documentation/
+
 ## Features
-* Pure micro-kernel
-* Multiprocessor- & multitasking support (SMP)
-* IPC - pipes, messages, shared memory
-* GCC patches (OS specific toolchain)
-* Self-made libc
-* C++ support (libstdc++ port)
-* libghostapi, extensive kernel API library
+* Currently x86-based
+* Micro-kernel
+* Multi-processor (SMP) & multi-tasking support
+* IPC; pipes, messages, shared memory
+* libghostapi, kernel API library
+* Home-made libc
 * ELF binary & shared library support
-* Window server (GUI with homemade toolkit)
-* VESA video driver
+* OS specific GCC toolchain
+* C++ support
+* Window server (GUI with home-made toolkit)
+* VESA/VBE video driver
 * PS/2 keyboard & mouse driver
-* Userspace filesystem driver support
 * Serial COM1 kernel logging
-* Virtual 8086 for BIOS calls
+* VM86 mode for BIOS calls
 
 ![Screenshot of 0.10.0](https://ghostkernel.org/files/ghost-0.10.0.png)
 
 ## Ported software
-* musl (libm part of Ghost's libc)
+* musl (provides libm part of Ghost libc)
 * cairo
 * freetype
 * libpng

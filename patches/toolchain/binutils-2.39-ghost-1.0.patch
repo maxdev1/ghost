@@ -1,0 +1,80 @@
+diff --git a/bfd/config.bfd b/bfd/config.bfd
+index a4c6c8e8854..7f27c97b94c 100644
+--- a/bfd/config.bfd
++++ b/bfd/config.bfd
+@@ -577,7 +577,7 @@ case "${targ}" in
+     targ_selvecs=hppa_elf32_vec
+     ;;
+ 
+-  i[3-7]86-*-elf* | i[3-7]86-*-rtems* | i[3-7]86-*-genode*)
++  i[3-7]86-*-elf* | i[3-7]86-*-rtems* | i[3-7]86-*-genode* | i[3-7]86-*-ghost*)
+     targ_defvec=i386_elf32_vec
+     targ_selvecs="iamcu_elf32_vec i386_coff_vec"
+     ;;
+@@ -671,7 +671,7 @@ case "${targ}" in
+     targ_selvecs="i386_elf32_vec iamcu_elf32_vec"
+     want64=true
+     ;;
+-  x86_64-*-elf* | x86_64-*-rtems* | x86_64-*-fuchsia | x86_64-*-genode*)
++  x86_64-*-elf* | x86_64-*-rtems* | x86_64-*-fuchsia | x86_64-*-genode* | x86_64-*-ghost*)
+     targ_defvec=x86_64_elf64_vec
+     targ_selvecs="i386_elf32_vec iamcu_elf32_vec x86_64_elf32_vec"
+     case "${targ}" in
+diff --git a/config.sub b/config.sub
+index dba16e84c77..d0da616526d 100755
+--- a/config.sub
++++ b/config.sub
+@@ -1754,7 +1754,7 @@ case $os in
+ 	     | onefs* | tirtos* | phoenix* | fuchsia* | redox* | bme* \
+ 	     | midnightbsd* | amdhsa* | unleashed* | emscripten* | wasi* \
+ 	     | nsk* | powerunix* | genode* | zvmoe* | qnx* | emx* | zephyr* \
+-	     | fiwix* )
++	     | fiwix* | ghost* )
+ 		;;
+ 	# This one is extra strict with allowed versions
+ 	sco3.2v2 | sco3.2v[4-9]* | sco5v6*)
+diff --git a/gas/configure.tgt b/gas/configure.tgt
+index 62f806bdfe8..29fda05638d 100644
+--- a/gas/configure.tgt
++++ b/gas/configure.tgt
+@@ -228,6 +228,7 @@ case ${generic_target} in
+   i386-*-fuchsia*)			fmt=elf ;;
+   i386-*-haiku*)			fmt=elf em=haiku ;;
+   i386-*-genode*)			fmt=elf ;;
++  i386-*-ghost*)			fmt=elf ;;
+   i386-*-bsd*)				fmt=aout em=386bsd ;;
+   i386-*-netbsd*-gnu* | \
+   i386-*-knetbsd*-gnu | \
+diff --git a/ld/configure.tgt b/ld/configure.tgt
+index 2bae9099b6a..8c541db9ea8 100644
+--- a/ld/configure.tgt
++++ b/ld/configure.tgt
+@@ -396,7 +396,7 @@ i[3-7]86-*-openbsd*)
+ i[3-7]86-*-elfiamcu)	targ_emul=elf_iamcu
+ 			targ_extra_emuls=elf_i386
+ 			;;
+-i[3-7]86-*-elf* | i[3-7]86-*-rtems* | i[3-7]86-*-genode*)
++i[3-7]86-*-elf* | i[3-7]86-*-rtems* | i[3-7]86-*-genode* | i[3-7]86-*-ghost*)
+ 			targ_emul=elf_i386
+ 			targ_extra_emuls=elf_iamcu
+ 			;;
+@@ -1020,7 +1020,7 @@ x86_64-*-netbsd* | x86_64-*-openbsd*)
+ 			tdir_elf_i386=`echo ${targ_alias} | \
+ 			    sed -e 's/x86_64/i386/' -e 's/aout//'`
+ 			;;
+-x86_64-*-elf* | x86_64-*-rtems* | x86_64-*-fuchsia* | x86_64-*-genode*)
++x86_64-*-elf* | x86_64-*-rtems* | x86_64-*-fuchsia* | x86_64-*-genode* | x86_64-*-ghost*)
+ 			targ_emul=elf_x86_64
+ 			targ_extra_emuls="elf_i386 elf_iamcu elf32_x86_64"
+ 			targ_extra_libpath="elf_i386 elf_iamcu elf32_x86_64"
+@@ -1095,6 +1095,10 @@ case "${target}" in
+   NATIVE_LIB_DIRS='/lib /usr/lib /usr/local/lib'
+   ;;
+ 
++*-*-ghost*)
++  NATIVE_LIB_DIRS='/system/lib'
++  ;;
++
+ hppa*64*-*-hpux11*)
+   NATIVE_LIB_DIRS=/usr/lib/pa20_64
+   ;;

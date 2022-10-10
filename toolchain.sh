@@ -4,19 +4,28 @@ if [ -f variables.sh ]; then
 fi
 . ghost.sh
 
-# Define globals
-GCC_ARCHIVE=https://ftp.gnu.org/gnu/gcc/gcc-8.2.0/gcc-8.2.0.tar.gz
-GCC_PATCH=patches/toolchain/gcc-8.2.0-ghost-1.2.patch
-GCC_UNPACKED=gcc-8.2.0
+# Archive sources & patch versions
+GCC_ARCHIVE=https://ftp.gnu.org/gnu/gcc/gcc-12.2.0/gcc-12.2.0.tar.gz
+GCC_PATCH=patches/toolchain/gcc-12.2.0-ghost-1.0.patch
+GCC_UNPACKED=gcc-12.2.0
 
-BINUTILS_ARCHIVE=https://ftp.gnu.org/gnu/binutils/binutils-2.31.1.tar.gz
-BINUTILS_PATCH=patches/toolchain/binutils-2.31-ghost-1.2.patch
-BINUTILS_UNPACKED=binutils-2.31.1
+BINUTILS_ARCHIVE=https://ftp.gnu.org/gnu/binutils/binutils-2.39.tar.gz
+BINUTILS_PATCH=patches/toolchain/binutils-2.39-ghost-1.0.patch
+BINUTILS_UNPACKED=binutils-2.39
 
-REQUIRED_AUTOCONF="autoconf (GNU Autoconf) 2.64"
 
-TARGET=i686-ghost
+# Add toolchain bin folder to PATH
+PATH=$PATH:$TOOLCHAIN_BASE/bin
 
+
+# Default definitions
+with REQUIRED_AUTOCONF "autoconf (GNU Autoconf) 2.69"
+with AUTOMAKE	automake
+with AUTOCONF	autoconf
+with HOST_CXX	g++
+
+
+# Parse parameters
 STEP_DOWNLOAD=1
 STEP_CLEAN=0
 STEP_UNPACK=1
@@ -25,17 +34,6 @@ STEP_PATCH=1
 STEP_BUILD_BINUTILS=1
 STEP_BUILD_GCC=1
 
-
-# Add bin folder to PATH
-PATH=$PATH:$TOOLCHAIN_BASE/bin
-
-# Set defaults for variables
-with AUTOMAKE	automake
-with AUTOCONF	autoconf
-with HOST_CXX	g++
-
-
-# Parse parameters
 for var in "$@"; do
 	if [ $var == "--skip-archives" ]; then
 		STEP_DOWNLOAD=0
@@ -54,8 +52,10 @@ for var in "$@"; do
 	elif [ $var == "--clean" ]; then
 		STEP_CLEAN=1
 	elif [ $var == "--help" ]; then
-		echo "Ghost Toolchain setup script"
-		echo "Run this script to build a toolchain for your system."
+		echo ""
+		printf "\e[44mGhost Toolchain setup script\e[0m\n"
+		echo ""
+		echo "Run this script to build a cross toolchain for your host system."
 		echo "The following flags are available:"
 		echo
 		echo "	--skip-download			Skips the downloading of binutils/gcc archives"
@@ -64,6 +64,7 @@ for var in "$@"; do
 		echo "	--skip-build-binutils		Skips building binutils"
 		echo "	--skip-build-gcc		Skips building gcc"
 		echo "	--clean				Cleans everything"
+		echo "	--help				Prints this help screen"
 		echo
 		echo "To specify a different path for your TOOLCHAIN_BASE/SYSROOT,"
 		echo "copy 'variables.sh.template' to 'variables.sh' and use export"
@@ -255,6 +256,23 @@ else
 fi
 
 
+# Build libgcc
+echo "Building target GCC libraries"
+pushd temp/build-gcc
+
+echo "    Building target libgcc"
+make all-target-libgcc -j8			>>ghost-build.log 2>&1
+failOnError
+
+echo "    Installing target libgcc"
+make install-target-libgcc			>>ghost-build.log 2>&1
+failOnError
+
+echo "    Copying artifacts to system/lib"
+cp "$TOOLCHAIN_BASE/$TARGET/lib/libgcc_s.so.1" "$SYSROOT/system/lib/libgcc_s.so.1"
+failOnError
+
+
 # Build libc
 echo "Building libc"
 pushd libc
@@ -271,22 +289,7 @@ failOnError
 popd
 
 
-# Build libgcc & libstdc++-v3
-echo "Building target GCC libraries"
-pushd temp/build-gcc
-
-echo "    Building target libgcc"
-make all-target-libgcc -j8			>>ghost-build.log 2>&1
-failOnError
-
-echo "    Installing target libgcc"
-make install-target-libgcc			>>ghost-build.log 2>&1
-failOnError
-
-echo "    Copying artifacts to system/lib"
-cp "$TOOLCHAIN_BASE/i686-ghost/lib/libgcc_s.so.1" "$SYSROOT/system/lib/libgcc_s.so.1"
-failOnError
-
+# Build libstdc++-v3
 echo "    Building libstdc++-v3"
 make all-target-libstdc++-v3	>>ghost-build.log 2>&1
 failOnError
