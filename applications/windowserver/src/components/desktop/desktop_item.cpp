@@ -115,7 +115,7 @@ component_t* desktop_item_t::handleMouseEvent(mouse_event_t& e)
 		pressOffset = e.position;
 		pressLocation = this->getBounds().getStart();
 
-		if(e.clickCount >= 2)
+		if(e.clickCount == 2)
 		{
 			// TODO
 			g_create_thread_d((void*) &spawnerThread, this);
