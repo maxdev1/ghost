@@ -25,7 +25,10 @@ with LDFLAGS				"-shared -shared-libgcc"
 
 
 echo "target: $TARGET"
-requireTool changes
+
+if [[ "$TARGET" != "install-headers" ]]; then
+	requireTool changes
+fi
 
 # always create output folder
 mkdir -p $OBJ
