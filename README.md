@@ -32,7 +32,7 @@ A usually up-to-date version of the documentation is provided here: https://ghos
 * Serial COM1 kernel logging
 * VM86 mode for BIOS calls
 
-![Screenshot of 0.10.0](https://ghostkernel.org/files/ghost-0.10.0.png)
+![Screenshot of 0.12.0](https://ghostkernel.org/files/ghost-0.12.0.png)
 
 ## Ported software
 * musl (provides libm part of Ghost libc)
