@@ -27,7 +27,11 @@
 __BEGIN_C
 
 // address types
+#if __i386__
 typedef uint32_t g_address;
+#elif __x86_64__
+typedef uint64_t g_address;
+#endif
 typedef g_address g_physical_address;
 typedef g_address g_virtual_address;
 typedef uint32_t g_far_pointer;
