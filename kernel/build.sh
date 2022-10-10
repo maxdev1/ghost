@@ -23,7 +23,7 @@ SRC_SHARED=$SRC/shared
 # Compiler flags
 #
 LDFLAGS="-nostdlib -nostartfiles"
-CFLAGS="-std=c++11 -D_GHOST_KERNEL_=1 -D_ARCH_X86_=1 -Wall -Wno-unused-but-set-variable -ffreestanding -fno-exceptions -fno-rtti"
+CFLAGS="-std=c++11 -D_GHOST_KERNEL_=1 -Wall -Wno-unused-but-set-variable -ffreestanding -fno-exceptions -fno-rtti"
 
 #
 # Object output folders

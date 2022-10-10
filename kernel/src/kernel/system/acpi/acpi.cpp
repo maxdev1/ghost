@@ -85,11 +85,11 @@ void acpiPrepareRootSDT(g_rsdp_descriptor* rsdp)
 		g_rsdp_descriptor_20* rsdp20 = (g_rsdp_descriptor_20*) rsdp;
 		if(rsdp20->xsdtAddress != 0)
 		{
-#if _ARCH_X86_64_
+#if __x86_64__
 			rootTableLocation = rsdp20->xsdtAddress;
 			g_log_debug("%! found XSDT in 64bit range", "acpi");
 			acpiRootIsXsdt = true;
-#elif _ARCH_X86_
+#elif __i386__
 			if(rsdp20->xsdtAddress < 0xFFFFFFFF)
 			{
 				acpiRootIsXsdt = true;
