@@ -129,12 +129,12 @@ popd () {
 }
 
 # Global variables
-with CROSS_HOST			"i686-ghost"
-with CROSS_CC			$CROSS_HOST"-gcc"
-with CROSS_CXX			$CROSS_HOST"-g++"
-with CROSS_LD			$CROSS_HOST"-ld"
-with CROSS_GAS			$CROSS_HOST"-as"
-with CROSS_AR			$CROSS_HOST"-ar"
+with TARGET				"i686-ghost"
+with CROSS_CC			$TARGET"-gcc"
+with CROSS_CXX			$TARGET"-g++"
+with CROSS_LD			$TARGET"-ld"
+with CROSS_GAS			$TARGET"-as"
+with CROSS_AR			$TARGET"-ar"
 
 with TOOLCHAIN_BASE		"/ghost"
 with SYSROOT			$TOOLCHAIN_BASE"/sysroot"

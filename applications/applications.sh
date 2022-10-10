@@ -44,6 +44,7 @@ target_link() {
 
 	if [ "$MAKE_STATIC" == 1 ]; then
 		$CROSS_CXX -static -o $ARTIFACT_LOCAL_STATIC $OBJ/*.o $LDFLAGS
+		failOnError
 		list $ARTIFACT_LOCAL_STATIC
 	fi
 }

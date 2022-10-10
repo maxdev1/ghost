@@ -1,0 +1,145 @@
+diff --git a/config.sub b/config.sub
+index 38f3d037a78..ca51f9b1461 100755
+--- a/config.sub
++++ b/config.sub
+@@ -1749,7 +1749,7 @@ case $os in
+ 	     | onefs* | tirtos* | phoenix* | fuchsia* | redox* | bme* \
+ 	     | midnightbsd* | amdhsa* | unleashed* | emscripten* | wasi* \
+ 	     | nsk* | powerunix* | genode* | zvmoe* | qnx* | emx* | zephyr* \
+-	     | fiwix* )
++	     | fiwix* | ghost* )
+ 		;;
+ 	# This one is extra strict with allowed versions
+ 	sco3.2v2 | sco3.2v[4-9]* | sco5v6*)
+diff --git a/fixincludes/mkfixinc.sh b/fixincludes/mkfixinc.sh
+index df90720b716..8d6282322ea 100755
+--- a/fixincludes/mkfixinc.sh
++++ b/fixincludes/mkfixinc.sh
+@@ -20,6 +20,7 @@ case $machine in
+     powerpcle-*-eabisim* | \
+     powerpcle-*-eabi* | \
+     *-*-vxworks7* | \
++    *-ghost* | \
+     *-musl* )
+ 	#  IF there is no include fixing,
+ 	#  THEN create a no-op fixer and exit
+diff --git a/gcc/config.gcc b/gcc/config.gcc
+index c5064dd3766..0374c591cbc 100644
+--- a/gcc/config.gcc
++++ b/gcc/config.gcc
+@@ -827,6 +827,15 @@ case ${target} in
+ *-*-fuchsia*)
+   native_system_header_dir=/include
+   ;;
++*-*-ghost*)
++  extra_parts="crtbegin.o crtend.o"
++  gas=yes
++  gnu_ld=yes
++  default_use_cxa_atexit=yes
++  use_gcc_stdint=none
++  native_system_header_dir=/system/include
++  tmake_file="t-slibgcc"
++  ;;
+ *-*-linux* | frv-*-*linux* | *-*-kfreebsd*-gnu | *-*-gnu* | *-*-kopensolaris*-gnu | *-*-uclinuxfdpiceabi)
+   extra_options="$extra_options gnu-user.opt"
+   gas=yes
+@@ -1898,6 +1907,14 @@ i[34567]86-*-elfiamcu)
+ i[34567]86-*-elf*)
+ 	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h newlib-stdint.h i386/i386elf.h"
+ 	;;
++i[34567]86-*-ghost*)
++	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h i386/i386elf.h ghost.h glibc-stdint.h"
++	tmake_file="${tmake_file} t-slibgcc"
++	;;
++x86_64-*-ghost*)
++	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h i386/i386elf.h i386/x86-64.h ghost.h glibc-stdint.h"
++	tmake_file="${tmake_file} t-slibgcc"
++	;;
+ x86_64-*-elf*)
+ 	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h newlib-stdint.h i386/i386elf.h i386/x86-64.h"
+ 	;;
+diff --git a/gcc/config/ghost.h b/gcc/config/ghost.h
+new file mode 100644
+index 00000000000..6ae54dc2f92
+--- /dev/null
++++ b/gcc/config/ghost.h
+@@ -0,0 +1,41 @@
++/*
++    Ghost OS
++    Built-in declarations and configurations
++    Contributed by Max Schlüssel
++ */
++#undef TARGET_OS_CPP_BUILTINS
++#define TARGET_OS_CPP_BUILTINS()		\
++do {									\
++	builtin_define_std ("_GHOST_");		\
++	builtin_define_std ("unix");		\
++	builtin_assert ("system=ghost");	\
++	builtin_assert ("system=unix");		\
++	builtin_assert ("system=posix");	\
++} while(0);
++
++// For Ghost-specific changes to GCC
++#undef	TARGET_GHOST
++#define	TARGET_GHOST 1
++
++// Required for dynamic linking
++#undef LINK_SPEC
++#define LINK_SPEC "%{shared:-shared} %{static:-static} %{!shared: %{!static: %{rdynamic:-export-dynamic}}}"
++
++// Define the default library specifications
++#undef	LIB_SPEC
++#define	LIB_SPEC "--start-group -lghostapi -lc --end-group"
++
++// Start and end files
++#undef	STARTFILE_SPEC
++#define	STARTFILE_SPEC "crt0.o%s crti.o%s crtbegin.o%s"
++
++#undef  ENDFILE_SPEC
++#define ENDFILE_SPEC "crtend.o%s crtn.o%s"
++
++// Modify location of the start files
++#undef	STANDARD_STARTFILE_PREFIX
++#define	STANDARD_STARTFILE_PREFIX "/system/lib/"
++
++// ELF object format
++#undef  OBJECT_FORMAT_ELF
++#define OBJECT_FORMAT_ELF
+diff --git a/libgcc/config.host b/libgcc/config.host
+index 8c56fcae5d2..1c9ff56a5c1 100644
+--- a/libgcc/config.host
++++ b/libgcc/config.host
+@@ -722,6 +722,14 @@ x86_64-*-elf* | x86_64-*-rtems*)
+ 	    ;;
+ 	esac
+ 	;;
++i[34567]86-*-ghost*)
++	extra_parts="$extra_parts crti.o crtbegin.o crtend.o crtn.o"
++	tmake_file="$tmake_file i386/t-crtstuff t-crtstuff-pic t-libgcc-pic t-slibgcc t-slibgcc-gld t-slibgcc-elf-ver"
++	;;
++x86_64-*-ghost*)
++	extra_parts="$extra_parts crti.o crtbegin.o crtend.o crtn.o"
++	tmake_file="$tmake_file i386/t-crtstuff t-crtstuff-pic t-libgcc-pic t-slibgcc t-slibgcc-gld t-slibgcc-elf-ver"
++	;;
+ x86_64-*-fuchsia*)
+ 	tmake_file="$tmake_file t-libgcc-pic"
+ 	;;
+diff --git a/libstdc++-v3/crossconfig.m4 b/libstdc++-v3/crossconfig.m4
+index ae5283b7ad3..ef44459c97b 100644
+--- a/libstdc++-v3/crossconfig.m4
++++ b/libstdc++-v3/crossconfig.m4
+@@ -141,6 +141,14 @@ case "${host}" in
+     AC_SUBST(SECTION_FLAGS)
+     ;;
+ 
++  *-ghost*)
++    GLIBCXX_CHECK_COMPILER_FEATURES
++    GLIBCXX_CHECK_LINKER_FEATURES
++    GLIBCXX_CHECK_MATH_SUPPORT
++    GLIBCXX_CHECK_STDLIB_SUPPORT
++    GCC_CHECK_TLS
++    ;;
++
+   *-hpux*)
+     SECTION_FLAGS='-ffunction-sections -fdata-sections'
+     AC_SUBST(SECTION_FLAGS)

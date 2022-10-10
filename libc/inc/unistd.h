@@ -95,6 +95,8 @@ int access(const char* pathname, int mode);
 int fcntl(int fildes, int cmd, ...);
 int rmdir(const char* path);
 int symlink(const char* path1, const char* path2);
+int chdir(const char *path);
+int fchdir(int fd);
 
 __END_C
 

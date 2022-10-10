@@ -11,8 +11,9 @@ The project consists of two repositories:
 * link:https://github.com/maxdev1/ghost[*ghost*], main repository containing the source code
 * link:https://github.com/maxdev1/ghost-sysroot[*ghost-sysroot*], a blueprint for the system root directory
 
-The system root directory (sysroot) is a concept used in cross compiling. It reflects
-the initial filesystem that is present when booting the OS.
+The system root directory (sysroot) is a concept used in cross-compiling. Everything in this
+directory is written to the ramdisk, which is mounted as the root folder of the filesystem
+when the OS has started.
 
 When cross-compiling libraries and applications on your host system, the headers and
 libraries from within this directory are used. This is required to seperate the host
@@ -33,11 +34,11 @@ There are some pre-requisites that you need to install on your host system. Inst
 
 * `apt-get update`
 * `apt-get install libmpfr-dev libgmp-dev libmpc-dev`
-* `apt-get install autoconf2.64 pkg-config xorriso grub-pc-bin`
+* `apt-get install autoconf2.69 pkg-config xorriso grub-pc-bin`
 * `apt-get install make texinfo flex bison gcc g++ nasm`
 * `apt-get install asciidoc asciidoctor`
 
-You may need to `export AUTOCONF=autoconf2.64` depending on your installation.
+You may need to `export AUTOCONF=autoconf2.69` depending on your installation.
 
 On Windows
 ~~~~~~~~~~
@@ -45,15 +46,9 @@ The recommended way of building on Windows is using WSL (link:https://learn.micr
 
 On Mac OS
 ~~~~~~~~~
-If you are on Mac OS X, you must make sure that the GNU GCC is used (default alias points to LLVM).
-Use export to set the correct version:
-
------
-export CC=gcc-5
-export CXX=g++-5
-export CPP=cpp-5
-export LD=gcc-5
------
+There are quite some prerequisites, so probably setting up a Linux VM is easier.
+The least that has to be done to get it working on OS X is to install GCC, build `libmpfr`,
+`libgmp` and `libmpc` from source and prepare the environment properly.
 
 
 Toolchain setup
@@ -64,17 +59,23 @@ necessary to create the toolchain. Once the toolchain was built, add it to your 
 
 Building
 --------
-There is a `build.sh` in the main folder that installs required libraries, builds all
-applications and then builds and packs the kernel.
+Usually all folders contain a `build.sh` which is a simple bash script that builds this
+specific part. Multiple targets can be specified:
 
-NOTE: On some systems while running `build.sh`, I had the problem that the configure script
-	of some ports would hang at either "checking for suffix of executables" or
-	"checking whether we are crosscompiling". Run `killall conftest` to get it running again.
+-----
+./build.sh clean all
+-----
 
-For building manually, the essential order is:
+NOTE: On some systems while running `build.sh`, the configure scripts of some ports
+	might hang at either "checking for suffix of executables" or "checking whether
+	we are crosscompiling". Run `killall conftest` to get it running again.
+
+The `build.sh` in the root directory will attempt to build all components in the correct order.
+For building yourself, the dependency order is:
 
 * `./libapi/build.sh`
 * `./libc/build.sh`
+* Build the required ports
 * `./applications/*/build.sh`
 * `./kernel/build.sh`
 
