@@ -27,8 +27,8 @@
 #define STR_(x) #x
 #define STR(x) STR_(x)
 
-#if !(defined(_ARCH_X86_) || defined(_ARCH_X86_64_))
-#error "No architecture defined for build. Need to specify either _ARCH_X86_ or _ARCH_x86_64_"
+#if !(defined(__i386__) || defined(__x86_64__))
+#error "Build architecture not recognized."
 #endif
 
 // pretty boot
