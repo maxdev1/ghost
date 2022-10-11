@@ -1,6 +1,12 @@
 #!/bin/bash
-# Ghost common build functionality
 
+#
+# Ghost common build functionality
+#
+(return 0 2>/dev/null) && sourced=1 || sourced=0
+if [[ $sourced = 0 ]]; then
+	echo "This file contains definitions used throughout the build. Use 'toolchain.sh' and 'build.sh' instead."
+fi
 
 # Include user variables if available
 if [ -f variables.sh ]; then
