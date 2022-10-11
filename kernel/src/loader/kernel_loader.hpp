@@ -21,7 +21,7 @@
 #ifndef GHOST_LOADER_KERNELLOADER_KERNELLOADER
 #define GHOST_LOADER_KERNELLOADER_KERNELLOADER
 
-#include "ghost/elf32.h"
+#include "elf.h"
 
 #include "shared/multiboot/multiboot.hpp"
 #include "shared/setup_information.hpp"
@@ -43,14 +43,14 @@ void kernelLoaderLoad(g_multiboot_module* kernelModule);
  *
  * @param header the header to check
  */
-void kernelLoaderCheckHeader(elf32_ehdr* header);
+void kernelLoaderCheckHeader(Elf32_Ehdr* header);
 
 /**
  * Loads the kernel binary starting at the given ELF header.
  *
  * @param header the ELF header
  */
-void kernelLoaderLoadBinary(elf32_ehdr* header);
+void kernelLoaderLoadBinary(Elf32_Ehdr* header);
 
 /**
  * Creates the kernels heap.

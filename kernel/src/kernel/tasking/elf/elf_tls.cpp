@@ -23,7 +23,7 @@
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/tasking/elf/elf_loader.hpp"
 
-g_spawn_status elfTlsLoadData(g_task* caller, g_fd file, elf32_phdr* phdr, g_elf_object* object, g_address_range_pool* rangeAllocator)
+g_spawn_status elfTlsLoadData(g_task* caller, g_fd file, Elf32_Phdr* phdr, g_elf_object* object, g_address_range_pool* rangeAllocator)
 {
 	uint32_t bytesToCopy = phdr->p_filesz;
 

@@ -21,7 +21,7 @@
 #ifndef __KERNEL_ELF32_LOADER__
 #define __KERNEL_ELF32_LOADER__
 
-#include "ghost/elf32.h"
+#include "elf.h"
 #include "kernel/filesystem/ramdisk.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/tasking.hpp"
@@ -70,7 +70,7 @@ struct g_elf_object {
 	bool executable;
 	uint16_t id;
 
-	elf32_ehdr header;
+	Elf32_Ehdr header;
 	g_elf_dependency* dependencies;
 
     g_virtual_address startAddress;
@@ -103,12 +103,12 @@ struct g_elf_object {
 	g_elf_object* relocateOrderNext;
 
 	/* In-address-space memory pointers */
-	elf32_dyn* dynamicSection;
+	Elf32_Dyn* dynamicSection;
 	const char* dynamicStringTable;
-	elf32_word dynamicStringTableSize;
-	elf32_sym* dynamicSymbolTable;
-	elf32_word dynamicSymbolTableSize;
-	elf32_word* dynamicSymbolHashTable;
+	Elf32_Word dynamicStringTableSize;
+	Elf32_Sym* dynamicSymbolTable;
+	Elf32_Word dynamicSymbolTableSize;
+	Elf32_Word* dynamicSymbolHashTable;
 
 	void (*init)();
 	void (*fini)();
@@ -164,7 +164,7 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* exe
  * 		current object
  * @return status of segment loading
  */
-g_spawn_status elfLoadLoadSegment(g_task* caller, g_fd file, elf32_phdr* phdr,
+g_spawn_status elfLoadLoadSegment(g_task* caller, g_fd file, Elf32_Phdr* phdr,
 	g_virtual_address baseAddress, g_elf_object* object);
 
 /**
@@ -180,7 +180,7 @@ g_spawn_status elfLoadLoadSegment(g_task* caller, g_fd file, elf32_phdr* phdr,
  * 		whether an executable is validated
  * @returns validation status
  */
-g_spawn_validation_details elfReadAndValidateHeader(g_task* caller, g_fd file, elf32_ehdr* headerBuffer, bool executable);
+g_spawn_validation_details elfReadAndValidateHeader(g_task* caller, g_fd file, Elf32_Ehdr* headerBuffer, bool executable);
 
 /**
  * Validates the given ELF header.
@@ -191,7 +191,7 @@ g_spawn_validation_details elfReadAndValidateHeader(g_task* caller, g_fd file, e
  * 		whether an executable is validated
  * @returns validation status
  */
-g_spawn_validation_details elfValidate(elf32_ehdr* header, bool executable);
+g_spawn_validation_details elfValidate(Elf32_Ehdr* header, bool executable);
 
 /**
  * Reads a number of bytes from a file into a buffer.
@@ -267,7 +267,7 @@ g_virtual_address elfLibraryLoadDependencies(g_task* caller, g_elf_object* paren
  * Loads the TLS master for this object into a buffer. Then, the offset where this TLS data
  * will be loaded into the TLS master image is calculated and put into the object.
  */
-g_spawn_status elfTlsLoadData(g_task* caller, g_fd file, elf32_phdr* header, g_elf_object* object, g_address_range_pool* rangeAllocator);
+g_spawn_status elfTlsLoadData(g_task* caller, g_fd file, Elf32_Phdr* header, g_elf_object* object, g_address_range_pool* rangeAllocator);
 
 /**
  * Creates the TLS master image. The positions for each part of this image where already specified

@@ -134,7 +134,7 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* exe
     return executableImageEnd + G_PAGE_ALIGN_UP(totalRequired);
 }
 
-g_spawn_status elfLoadLoadSegment(g_task* caller, g_fd file, elf32_phdr* phdr, g_virtual_address baseAddress, g_elf_object* object)
+g_spawn_status elfLoadLoadSegment(g_task* caller, g_fd file, Elf32_Phdr* phdr, g_virtual_address baseAddress, g_elf_object* object)
 {
     /* Calculate addresses where segment is loaded */
     g_virtual_address loadBase = baseAddress + phdr->p_vaddr;
@@ -260,9 +260,9 @@ bool elfReadToMemory(g_task* caller, g_fd fd, size_t offset, uint8_t* buffer, ui
     return true;
 }
 
-g_spawn_validation_details elfReadAndValidateHeader(g_task* caller, g_fd file, elf32_ehdr* headerBuffer, bool executable)
+g_spawn_validation_details elfReadAndValidateHeader(g_task* caller, g_fd file, Elf32_Ehdr* headerBuffer, bool executable)
 {
-    if(!elfReadToMemory(caller, file, 0, (uint8_t*) headerBuffer, sizeof(elf32_ehdr)))
+    if(!elfReadToMemory(caller, file, 0, (uint8_t*) headerBuffer, sizeof(Elf32_Ehdr)))
     {
         logInfo("%! failed to spawn file %i due to io error", "elf", file);
         return G_SPAWN_VALIDATION_ELF32_IO_ERROR;
@@ -270,7 +270,7 @@ g_spawn_validation_details elfReadAndValidateHeader(g_task* caller, g_fd file, e
     return elfValidate(headerBuffer, executable);
 }
 
-g_spawn_validation_details elfValidate(elf32_ehdr* header, bool executable)
+g_spawn_validation_details elfValidate(Elf32_Ehdr* header, bool executable)
 {
     if(/* */ (header->e_ident[EI_MAG0] != ELFMAG0) || // 0x7F
        (header->e_ident[EI_MAG1] != ELFMAG1) ||       // E

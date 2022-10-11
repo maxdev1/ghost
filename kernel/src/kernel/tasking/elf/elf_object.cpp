@@ -76,7 +76,7 @@ g_spawn_status elfObjectLoad(g_task* caller, g_elf_object* parentObject, const c
 	for(uint32_t i = 0; i < object->header.e_phnum; i++)
 	{
 		uint32_t phdrOffset = object->header.e_phoff + object->header.e_phentsize * i;
-		uint32_t phdrLength = sizeof(elf32_phdr);
+		uint32_t phdrLength = sizeof(Elf32_Phdr);
 		uint8_t phdrBuffer[phdrLength];
 
 		if(!elfReadToMemory(caller, file, phdrOffset, phdrBuffer, phdrLength))
@@ -86,7 +86,7 @@ g_spawn_status elfObjectLoad(g_task* caller, g_elf_object* parentObject, const c
 			break;
 		}
 
-		elf32_phdr* phdr = (elf32_phdr*) phdrBuffer;
+		Elf32_Phdr* phdr = (Elf32_Phdr*) phdrBuffer;
 		if(phdr->p_type == PT_LOAD)
 		{
 			status = elfLoadLoadSegment(caller, file, phdr, baseAddress, object);
@@ -107,7 +107,7 @@ g_spawn_status elfObjectLoad(g_task* caller, g_elf_object* parentObject, const c
 
 		} else if(phdr->p_type == PT_DYNAMIC)
 		{ 
-			object->dynamicSection = (elf32_dyn*) (baseAddress + phdr->p_vaddr);
+			object->dynamicSection = (Elf32_Dyn*) (baseAddress + phdr->p_vaddr);
 			logDebug("%!   object has dynamic information %h", "elf", object->dynamicSection);
 		}
 	}
@@ -126,7 +126,7 @@ void elfObjectInspect(g_elf_object* object) {
 
 	if(object->dynamicSection) {
 		/* Find tables that we need */
-		elf32_dyn* it = object->dynamicSection;
+		Elf32_Dyn* it = object->dynamicSection;
 		while(it->d_tag) {
 			switch(it->d_tag) {
 				case DT_STRTAB:
@@ -136,12 +136,12 @@ void elfObjectInspect(g_elf_object* object) {
 					object->dynamicStringTableSize = it->d_un.d_val;
 					break;
 				case DT_HASH:
-					object->dynamicSymbolHashTable = (elf32_word*) (object->baseAddress + it->d_un.d_ptr);
+					object->dynamicSymbolHashTable = (Elf32_Word*) (object->baseAddress + it->d_un.d_ptr);
 					/*  The number of symbol table entries should equal nchain; so symbol table indexes also select chain table entries. */
 					object->dynamicSymbolTableSize = object->dynamicSymbolHashTable[1]; 
 					break;
 				case DT_SYMTAB:
-					object->dynamicSymbolTable = (elf32_sym*) (object->baseAddress + it->d_un.d_ptr);
+					object->dynamicSymbolTable = (Elf32_Sym*) (object->baseAddress + it->d_un.d_ptr);
 					break;
 				case DT_INIT:
 					object->init = (void(*)()) (object->baseAddress + it->d_un.d_ptr);
@@ -193,7 +193,7 @@ void elfObjectInspect(g_elf_object* object) {
 			}
 
 			uint32_t pos = 0;
-			elf32_sym* it = object->dynamicSymbolTable;
+			Elf32_Sym* it = object->dynamicSymbolTable;
 			while(pos < object->dynamicSymbolTableSize)
 			{
 				const char* symbol = (const char*) (object->dynamicStringTable + it->st_name);
