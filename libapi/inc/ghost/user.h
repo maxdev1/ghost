@@ -165,7 +165,7 @@ void g_log(const char* message);
  *
  * @security-level APPLICATION
  */
-void g_syscall(uint32_t call, uint32_t data);
+void g_syscall(uint32_t call, g_address data);
 
 /**
  * Opens a file.
