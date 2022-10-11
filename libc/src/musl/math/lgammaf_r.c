@@ -14,7 +14,6 @@
  */
 
 #include "libm.h"
-#include "libc.h"
 
 static const float
 pi  =  3.1415927410e+00, /* 0x40490fdb */
@@ -216,3 +215,4 @@ float __lgammaf_r(float x, int *signgamp)
 	return r;
 }
 
+weak_alias(__lgammaf_r, lgammaf_r);

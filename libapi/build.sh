@@ -23,6 +23,9 @@ with ARTIFACT_TARGET_SHARED	"$SYSROOT_SYSTEM_LIB/$ARTIFACT_NAME_SHARED"
 with CFLAGS					"-std=c++11 -fpic -I$INC"
 with LDFLAGS				"-shared -shared-libgcc"
 
+LINK_STATIC=1
+LINK_SHARED=1
+
 
 echo "target: $TARGET"
 
@@ -71,15 +74,23 @@ target_compile() {
 
 target_archive() {
 	echo "archiving:"
-	$CROSS_AR -r $ARTIFACT_LOCAL $OBJ/*.o
-	$CROSS_CC $LDFLAGS -o $ARTIFACT_LOCAL_SHARED $OBJ/*.o
+	if [ $LINK_STATIC = 1 ]; then
+		$CROSS_AR -r $ARTIFACT_LOCAL $OBJ/*.o
+	fi
+	if [ $LINK_SHARED = 1 ]; then
+		$CROSS_CC $LDFLAGS -o $ARTIFACT_LOCAL_SHARED $OBJ/*.o
+	fi
 }
 	
 target_clean_target() {
-	echo "removing $ARTIFACT_TARGET"
-	rm $ARTIFACT_TARGET 2&> /dev/null
-	echo "removing $ARTIFACT_TARGET_SHARED"
-	rm $ARTIFACT_TARGET_SHARED 2&> /dev/null
+	if [ $LINK_STATIC = 1 ]; then
+		echo "removing $ARTIFACT_TARGET"
+		rm $ARTIFACT_TARGET 2&> /dev/null
+	fi
+	if [ $LINK_SHARED = 1 ]; then
+		echo "removing $ARTIFACT_TARGET_SHARED"
+		rm $ARTIFACT_TARGET_SHARED 2&> /dev/null
+	fi
 }
 
 target_install_headers() {
@@ -92,8 +103,12 @@ target_install() {
 	target_install_headers
 	
 	echo "installing artifacts"
-	cp $ARTIFACT_LOCAL $ARTIFACT_TARGET
-	cp $ARTIFACT_LOCAL_SHARED $ARTIFACT_TARGET_SHARED
+	if [ $LINK_STATIC = 1 ]; then
+		cp $ARTIFACT_LOCAL $ARTIFACT_TARGET
+	fi
+	if [ $LINK_SHARED = 1 ]; then
+		cp $ARTIFACT_LOCAL_SHARED $ARTIFACT_TARGET_SHARED
+	fi
 }
 
 
@@ -102,7 +117,13 @@ for var in $TARGET; do
 	if [[ $var == "install-headers" ]]; then
 		target_install_headers
 
-	elif [[ $var == "all" ]]; then
+	elif [[ $var == "all" || $var == "static" || $var == "shared" ]]; then
+		if [[ $var == "static" ]]; then
+			LINK_SHARED=0
+		elif [[ $var == "shared" ]]; then
+			LINK_STATIC=0
+		fi
+
 		target_compile
 		target_archive
 		target_install

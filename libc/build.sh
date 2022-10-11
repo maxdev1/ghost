@@ -32,6 +32,8 @@ CRT_NAMES=("crt0" "crti" "crtn")
 
 CONFORMITY_CHECK="$SRC/_conformity.c"
 
+LINK_STATIC=1
+LINK_SHARED=1
 
 
 echo "target: $TARGET"
@@ -84,10 +86,13 @@ target_compile() {
 		changed=$?
 		if ( [ $headers_have_changed -eq 1 ] || [ $changed -eq 1 ] ); then
 			out=`sourceToObject $file`
-			list $out
-			$CROSS_CC -c $file -o "$OBJ/$out" $CFLAGS
-			failOnError
-			changes -s $file
+
+			if ( includeInBuild $file ); then
+				list $out
+				$CROSS_CC -c $file -o "$OBJ/$out" $CFLAGS
+				failOnError
+				changes -s $file
+			fi
 		fi
 	done
 
@@ -99,27 +104,35 @@ target_compile() {
 		changed=$?
 		if ( [ $headers_have_changed -eq 1 ] || [ $changed -eq 1 ] ); then
 			out=`sourceToObject $file`
-			list $out
-			$CROSS_GAS -s $file -o "$OBJ/$out"
-			failOnError
-			changes -s $file
+
+			if ( includeInBuild $file ); then
+				list $out
+				$CROSS_GAS -s $file -o "$OBJ/$out"
+				failOnError
+				changes -s $file
+			fi
 		fi
 	done
 }
 
 target_assemble_crts() {
 	echo "assembling CRTs:"
+
 	for name in ${CRT_NAMES[@]}; do
 		list $name
-		$CROSS_GAS $CRT_SRC/$name.S -o "$CRT_OBJ/$name.o"
+		$CROSS_GAS $CRT_SRC/$ARCH/$name.S -o "$CRT_OBJ/$name.o"
 		failOnError
 	done
 }
 
 target_archive() {
 	echo "archiving:"
-	$CROSS_AR -r $ARTIFACT_LOCAL $OBJ/*.o
-	$CROSS_CC $LDFLAGS -o $ARTIFACT_LOCAL_SHARED $OBJ/*.o
+	if [ $LINK_STATIC = 1 ]; then
+		$CROSS_AR -r $ARTIFACT_LOCAL $OBJ/*.o
+	fi
+	if [ $LINK_SHARED = 1 ]; then
+		$CROSS_CC $LDFLAGS -o $ARTIFACT_LOCAL_SHARED $OBJ/*.o
+	fi
 }
 
 target_install_headers() {
@@ -140,8 +153,12 @@ target_install() {
 	mkdir -p $SYSROOT_SYSTEM_LIB
 	
 	echo "installing artifacts"
-	cp $ARTIFACT_LOCAL $ARTIFACT_TARGET
-	cp $ARTIFACT_LOCAL_SHARED $ARTIFACT_TARGET_SHARED
+	if [ $LINK_STATIC = 1 ]; then
+		cp $ARTIFACT_LOCAL $ARTIFACT_TARGET
+	fi
+	if [ $LINK_SHARED = 1 ]; then
+		cp $ARTIFACT_LOCAL_SHARED $ARTIFACT_TARGET_SHARED
+	fi
 	
 	echo "installing crts"
 	for name in ${CRT_NAMES[@]}; do
@@ -159,7 +176,13 @@ for var in $TARGET; do
 	if [[ $var == "install-headers" ]]; then
 		target_install_headers
 		
-	elif [[ $var == "all" ]]; then
+	elif [[ $var == "all" || $var == "static" || $var == "shared" ]]; then
+		if [[ $var == "static" ]]; then
+			LINK_SHARED=0
+		elif [[ $var == "shared" ]]; then
+			LINK_STATIC=0
+		fi
+
 		target_check_c_conformity
 		target_compile
 		target_assemble_crts

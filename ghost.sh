@@ -118,6 +118,15 @@ target_successful() {
 }
 
 #
+# Check if an entry exists in a list
+#
+#	findInList "a b c" " " "a"
+#
+findInList() {
+    [[ "$1" =~ ($2|^)$3($2|$) ]]
+}
+
+#
 # Utils
 #
 pushd () {
@@ -128,6 +137,7 @@ popd () {
     command popd "$@" > /dev/null
 }
 
+
 # Global variables
 with TARGET				"i686-ghost"
 with CROSS_CC			$TARGET"-gcc"
@@ -136,6 +146,37 @@ with CROSS_LD			$TARGET"-ld"
 with CROSS_GAS			$TARGET"-as"
 with CROSS_AR			$TARGET"-ar"
 
+
+# Target architecture
+__TARGET_ARCH_PART=${TARGET%-*}
+if [[ $__TARGET_ARCH_PART == "i686" ]]; then
+	ARCH="i386"
+elif [[ $__TARGET_ARCH_PART == "x86_64" ]]; then
+	ARCH="x86_64"
+else
+	echo "Unsupported architecture: $__TARGET_ARCH_PART"
+	exit 1
+fi
+
+SUPPORTED_ARCHS="i386 x86_64"
+
+#
+# Checks whether the file should be included in the build.
+#
+includeInBuild() {
+	fileArch=$(basename $(dirname $file))
+	if findInList "$SUPPORTED_ARCHS" " " "$fileArch"; then
+		if [[ $ARCH == $fileArch ]]; then
+			return 0
+		else
+			return 1
+		fi
+	fi
+	return 0
+}
+
+
+# Toolchain specifics
 with TOOLCHAIN_BASE		"/ghost"
 with SYSROOT			$TOOLCHAIN_BASE"/sysroot"
 

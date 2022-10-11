@@ -23,14 +23,21 @@
 
 // This header originates from the musl C library http://www.musl-libc.org/
 
-/* Most limits are system-specific */
-#ifdef __x86_x64__
-#error "architecture not supported"
+#ifdef __x86_64__
+#define LONG_BIT		64
+#define __LONG_MAX 0x7fffffffffffffffL
+#define LONG_MAX __LONG_MAX
+#define LLONG_MAX __LONG_MAX
 
 #elif __i386__
 #define LONG_BIT		32
-#define LONG_MAX		0x7fffffffL
-#define LLONG_MAX		0x7fffffffffffffffLL
+#define __LONG_MAX 0x7fffffffL
+#define LONG_MAX __LONG_MAX
+#define LLONG_MAX 0x7fffffffffffffffL
+
+#else
+#error "architecture not supported"
+#endif
 
 /* Support signed or unsigned plain-char */
 #if '\0'-1 > 0
@@ -96,9 +103,6 @@
 
 #define NL_NMAX					16
 
-#else
-#error "architecture not supported"
-#endif
 
 
 #endif
