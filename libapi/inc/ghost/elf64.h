@@ -18,21 +18,23 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef GHOST_SHARED_ELF_ELF32
-#define GHOST_SHARED_ELF_ELF32
+#ifndef GHOST_SHARED_ELF_ELF64
+#define GHOST_SHARED_ELF_ELF64
 
 #include "ghost/stdint.h"
 
 __BEGIN_C
 
 /**
- * ELF32 types
+ * ELF64 types
  */
-typedef uint32_t Elf32_Addr;
-typedef uint16_t Elf32_Half;
-typedef uint32_t Elf32_Off;
-typedef int32_t Elf32_Sword;
-typedef uint32_t Elf32_Word;
+typedef uint32_t Elf64_Addr;
+typedef uint16_t Elf64_Half;
+typedef uint32_t Elf64_Off;
+typedef int32_t Elf64_Sword;
+typedef uint32_t Elf64_Word;
+typedef int64_t  Elf64_Sxword;
+typedef uint64_t Elf64_Xword;
 
 /**
  * Ident header
@@ -85,20 +87,20 @@ typedef uint32_t Elf32_Word;
 
 typedef struct {
 	uint8_t e_ident[EI_NIDENT]; // Ident structure
-	Elf32_Half e_type; // Type
-	Elf32_Half e_machine; // Target architecture
-	Elf32_Word e_version; // EV_CURRENT for standard ELF files
-	Elf32_Addr e_entry; // Entry's virtual address
-	Elf32_Off e_phoff; // Offset to program header table
-	Elf32_Off e_shoff; // Offset to section header table
-	Elf32_Word e_flags; // Architecture-specific flags
-	Elf32_Half e_ehsize; // Size of ELF header in bytes
-	Elf32_Half e_phentsize; // Size of one entry in program header table
-	Elf32_Half e_phnum; // Number of entries in program header table
-	Elf32_Half e_shentsize; // Size of one entry in section header table
-	Elf32_Half e_shnum; // Number of entries in section header table
-	Elf32_Half e_shstrndx; // Section header table index of section name string table
-} __attribute__((packed)) Elf32_Ehdr;
+	Elf64_Half e_type; // Type
+	Elf64_Half e_machine; // Target architecture
+	Elf64_Word e_version; // EV_CURRENT for standard ELF files
+	Elf64_Addr e_entry; // Entry's virtual address
+	Elf64_Off e_phoff; // Offset to program header table
+	Elf64_Off e_shoff; // Offset to section header table
+	Elf64_Word e_flags; // Architecture-specific flags
+	Elf64_Half e_ehsize; // Size of ELF header in bytes
+	Elf64_Half e_phentsize; // Size of one entry in program header table
+	Elf64_Half e_phnum; // Number of entries in program header table
+	Elf64_Half e_shentsize; // Size of one entry in section header table
+	Elf64_Half e_shnum; // Number of entries in section header table
+	Elf64_Half e_shstrndx; // Section header table index of section name string table
+} __attribute__((packed)) Elf64_Ehdr;
 
 /**
  * Program header
@@ -121,26 +123,26 @@ typedef struct {
 #define PF_MASKPROC		0xF0000000
 
 typedef struct {
-	Elf32_Word	p_type;		// Type of the segment
-	Elf32_Off	p_offset;	// Offset of the segment in the binary file
-	Elf32_Addr	p_vaddr;	// Virtual address
-	Elf32_Addr	p_paddr;	// Not relevant for System V
-	Elf32_Word	p_filesz;	// Size of the segment in the binary file
-	Elf32_Word	p_memsz;	// Size of the segment in memory
-	Elf32_Word	p_flags;	// Segment flags
-	Elf32_Word	p_align;	// Alignment information
-} __attribute__((packed)) Elf32_Phdr;
+	Elf64_Word	p_type;		// Type of the segment
+	Elf64_Off	p_offset;	// Offset of the segment in the binary file
+	Elf64_Addr	p_vaddr;	// Virtual address
+	Elf64_Addr	p_paddr;	// Not relevant for System V
+	Elf64_Word	p_filesz;	// Size of the segment in the binary file
+	Elf64_Word	p_memsz;	// Size of the segment in memory
+	Elf64_Word	p_flags;	// Segment flags
+	Elf64_Word	p_align;	// Alignment information
+} __attribute__((packed)) Elf64_Phdr;
 
 /**
  * ELF dynamic section structure
  */
 typedef struct {
-	Elf32_Sword d_tag; // Controls interpretation of d_un, see DT_*
+	Elf64_Sword d_tag; // Controls interpretation of d_un, see DT_*
 	union {
-		Elf32_Word d_val;
-		Elf32_Addr d_ptr;
+		Elf64_Word d_val;
+		Elf64_Addr d_ptr;
 	} d_un;
-} __attribute__((packed)) Elf32_Dyn;
+} __attribute__((packed)) Elf64_Dyn;
 
 #define DT_NULL				0
 #define DT_NEEDED			1
@@ -186,17 +188,17 @@ typedef struct {
  * ELF symbol table
  */
 typedef struct {
-	Elf32_Word	st_name;	// Index to symbol string name
-	Elf32_Addr	st_value;	// Value of associated symbol
-	Elf32_Word	st_size;	// Size of the symbol
+	Elf64_Word	st_name;	// Index to symbol string name
+	Elf64_Addr	st_value;	// Value of associated symbol
+	Elf64_Word	st_size;	// Size of the symbol
 	uint8_t		st_info;	// Type and binding attributes
 	uint8_t		st_other;	// Undefined
-	Elf32_Half	st_shndx;	// Section header table index
-} Elf32_Sym;
+	Elf64_Half	st_shndx;	// Section header table index
+} Elf64_Sym;
 
-#define ELF32_ST_BIND(i)	((i) >> 4)
-#define ELF32_ST_TYPE(i)	((i) & 0xf)
-#define ELF32_ST_INFO(b, t)	(((b) << 4) + ((t) & 0xf) 
+#define ELF64_ST_BIND(i)	((i) >> 4)
+#define ELF64_ST_TYPE(i)	((i) & 0xf)
+#define ELF64_ST_INFO(b, t)	(((b) << 4) + ((t) & 0xf) 
 
 #define STN_UNDEF	0
 
@@ -218,17 +220,17 @@ typedef struct {
  * ELF section header
  */
 typedef struct {
-	Elf32_Word sh_name;
-	Elf32_Word sh_type;
-	Elf32_Word sh_flags;
-	Elf32_Addr sh_addr;
-	Elf32_Off sh_offset;
-	Elf32_Word sh_size;
-	Elf32_Word sh_link;
-	Elf32_Word sh_info;
-	Elf32_Word sh_addralign;
-	Elf32_Word sh_entsize;
-} Elf32_Shdr;
+	Elf64_Word sh_name;
+	Elf64_Word sh_type;
+	Elf64_Word sh_flags;
+	Elf64_Addr sh_addr;
+	Elf64_Off sh_offset;
+	Elf64_Word sh_size;
+	Elf64_Word sh_link;
+	Elf64_Word sh_info;
+	Elf64_Word sh_addralign;
+	Elf64_Word sh_entsize;
+} Elf64_Shdr;
 
 #define SHT_NULL		0
 #define SHT_PROGBITS	1
@@ -251,38 +253,46 @@ typedef struct {
  * Relocation header entry
  */
 typedef struct {
-	Elf32_Addr r_offset;
-	Elf32_Word r_info;
-} Elf32_Rel;
+	Elf64_Addr r_offset;
+	Elf64_Word r_info;
+} Elf64_Rel;
 
-#define ELF32_R_SYM(i)		((i) >> 8)
-#define ELF32_R_TYPE(i)		((unsigned char) (i))
-#define ELF32_R_INFO(s, t)	(((s) << 8) + (unsigned char) (t))
+typedef struct {
+	Elf64_Addr r_offset;
+	Elf64_Word r_info;
+	Elf64_Sxword r_addend;
+} Elf64_Rela;
 
-#define R_386_NONE		0
-#define R_386_32		1
-#define R_386_PC32		2
-#define R_386_GOT32		3
-#define R_386_PLT32		4
-#define R_386_COPY		5
-#define R_386_GLOB_DAT	6
-#define R_386_JMP_SLOT	7
-#define R_386_RELATIVE	8
-#define R_386_GOTOFF	9
-#define R_386_GOTPC		10
+#define ELF64_R_SYM(i)		((i) >> 32)
+#define ELF64_R_TYPE(i)		((i) & 0xFFFFFFFFL)
+#define ELF64_R_INFO(s, t)	(((s) << 32) + ((t) & 0xFFFFFFFFL))
+
+#define R_X86_64_NONE		0
+#define R_X86_64_64			1
+#define R_X86_64_PC32		2
+#define R_X86_64_GOT32		3
+#define R_X86_64_PLT32		4
+#define R_X86_64_COPY		5
+#define R_X86_64_GLOB_DAT	6
+#define R_X86_64_JMP_SLOT	7
+#define R_X86_64_RELATIVE	8
+#define R_X86_64_GOTPCREL	9
+#define R_X86_64_32			10
+#define R_X86_64_32S		11
 
 // Thread-local storage related relocation types
-#define R_386_TLS_GD_PLT	12
-#define R_386_TLS_LDM_PLT	13
-#define R_386_TLS_TPOFF		14
-#define R_386_TLS_IE		15
-#define R_386_TLS_GOTIE		16
-#define R_386_TLS_LE		17
-#define R_386_TLS_GD		18
-#define R_386_TLS_LDM		19
-#define R_386_TLS_LDO_32	32
-#define R_386_TLS_DTPMOD32	35
-#define R_386_TLS_DTPOFF32	36
+// TODO Check these
+#define R_X86_64_TLS_GD_PLT		12
+#define R_X86_64_TLS_LDM_PLT	13
+#define R_X86_64_TLS_TPOFF		14
+#define R_X86_64_TLS_IE			15
+#define R_X86_64_TLS_GOTIE		16
+#define R_X86_64_TLS_LE			17
+#define R_X86_64_TLS_GD			18
+#define R_X86_64_TLS_LDM		19
+#define R_X86_64_TLS_LDO_32		32
+#define R_X86_64_TLS_DTPMOD32	35
+#define R_X86_64_TLS_DTPOFF32	36
 
 __END_C
 

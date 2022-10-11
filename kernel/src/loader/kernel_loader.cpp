@@ -38,7 +38,7 @@ static void (*kernelMain)(g_setup_information*);
 
 void kernelLoaderLoad(g_multiboot_module* kernelModule)
 {
-    elf32_ehdr* elfHeader = (elf32_ehdr*) kernelModule->moduleStart;
+    Elf32_Ehdr* elfHeader = (Elf32_Ehdr*) kernelModule->moduleStart;
     kernelLoaderCheckHeader(elfHeader);
     kernelLoaderLoadBinary(elfHeader);
 
@@ -107,7 +107,7 @@ void kernelLoaderEnterMain(g_address entryAddress, g_address kernelEsp)
     loaderPanic("%! dropped out of kernel main, this should never happen", "kernload");
 }
 
-void kernelLoaderLoadBinary(elf32_ehdr* header)
+void kernelLoaderLoadBinary(Elf32_Ehdr* header)
 {
     logDebug("%! loading binary to higher memory", "kernload");
     uint32_t imageStart = UINT32_MAX;
@@ -115,7 +115,7 @@ void kernelLoaderLoadBinary(elf32_ehdr* header)
 
     for(uint32_t i = 0; i < header->e_phnum; i++)
     {
-        elf32_phdr* programHeader = (elf32_phdr*) (((uint32_t) header) + header->e_phoff + (header->e_phentsize * i));
+        Elf32_Phdr* programHeader = (Elf32_Phdr*) (((uint32_t) header) + header->e_phoff + (header->e_phentsize * i));
 
         if(programHeader->p_type != PT_LOAD)
             continue;
@@ -139,7 +139,7 @@ void kernelLoaderLoadBinary(elf32_ehdr* header)
 
     for(uint32_t i = 0; i < header->e_phnum; i++)
     {
-        elf32_phdr* programHeader = (elf32_phdr*) (((uint32_t) header) + header->e_phoff + (header->e_phentsize * i));
+        Elf32_Phdr* programHeader = (Elf32_Phdr*) (((uint32_t) header) + header->e_phoff + (header->e_phentsize * i));
         if(programHeader->p_type != PT_LOAD)
             continue;
 
@@ -152,7 +152,7 @@ void kernelLoaderLoadBinary(elf32_ehdr* header)
     loaderSetupInformation.kernelImageEnd = imageEnd;
 }
 
-void kernelLoaderCheckHeader(elf32_ehdr* header)
+void kernelLoaderCheckHeader(Elf32_Ehdr* header)
 {
 
     if(!(header->e_ident[EI_MAG0] == ELFMAG0 && header->e_ident[EI_MAG1] == ELFMAG1 && header->e_ident[EI_MAG2] == ELFMAG2 && header->e_ident[EI_MAG3] == ELFMAG3))

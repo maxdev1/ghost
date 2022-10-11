@@ -119,7 +119,7 @@ void elfObjectApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 	
 	for(uint32_t p = 0; p < object->header.e_shnum * object->header.e_shentsize; p += object->header.e_shentsize) {
 		
-		elf32_shdr sectionHeader;
+		Elf32_Shdr sectionHeader;
 		if(!elfReadToMemory(caller, file, object->header.e_shoff + p, (uint8_t*) &sectionHeader, object->header.e_shentsize)) {
 			logInfo("%! failed to read section header from file", "elf");
 			break;
@@ -129,22 +129,22 @@ void elfObjectApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 			continue;
 		}
 
-		elf32_rel* entry = (elf32_rel*) (object->baseAddress + sectionHeader.sh_addr);
-		while(entry < (elf32_rel*) (object->baseAddress + sectionHeader.sh_addr + sectionHeader.sh_size)) {
+		Elf32_Rel* entry = (Elf32_Rel*) (object->baseAddress + sectionHeader.sh_addr);
+		while(entry < (Elf32_Rel*) (object->baseAddress + sectionHeader.sh_addr + sectionHeader.sh_size)) {
 			uint32_t symbolIndex = ELF32_R_SYM(entry->r_info);
 			uint8_t type = ELF32_R_TYPE(entry->r_info);
 
 			uint32_t cS;
 			g_virtual_address cP = object->baseAddress + entry->r_offset;
 
-			elf32_word symbolSize;
+			Elf32_Word symbolSize;
 			const char* symbolName = 0;
 			g_elf_symbol_info symbolInfo;
 
 			if (type == R_386_32 || type == R_386_PC32 || type == R_386_GLOB_DAT || type == R_386_JMP_SLOT || type == R_386_GOTOFF ||
 				type == R_386_TLS_TPOFF || type == R_386_TLS_DTPMOD32 || type == R_386_TLS_DTPOFF32 || type == R_386_COPY)
 			{
-				elf32_sym* symbol = &object->dynamicSymbolTable[symbolIndex];
+				Elf32_Sym* symbol = &object->dynamicSymbolTable[symbolIndex];
 				symbolName = &object->dynamicStringTable[symbol->st_name];
 				symbolSize = symbol->st_size;
 
