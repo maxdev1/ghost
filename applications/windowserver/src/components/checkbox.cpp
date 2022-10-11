@@ -63,7 +63,7 @@ void checkbox_t::paint()
 	if(checked)
 	{
 		int pad = 3;
-		cairo_set_source_rgba(cr, G_COLOR_ARGB_TO_FPARAMS(ARGB(255, 20, 100, 235)));
+		cairo_set_source_rgba(cr, G_COLOR_ARGB_TO_FPARAMS(RGB(25, 125, 255)));
 		cairo_rectangle(cr, 1 + pad, 1.5 + pad, boxSize - pad * 2 - 1, boxSize - pad * 2 - 1.5);
 		cairo_fill(cr);
 	}
