@@ -24,26 +24,25 @@ index df90720b716..8d6282322ea 100755
  	#  IF there is no include fixing,
  	#  THEN create a no-op fixer and exit
 diff --git a/gcc/config.gcc b/gcc/config.gcc
-index c5064dd3766..0374c591cbc 100644
+index c5064dd3766..fd361bc3086 100644
 --- a/gcc/config.gcc
 +++ b/gcc/config.gcc
-@@ -827,6 +827,15 @@ case ${target} in
+@@ -827,6 +827,14 @@ case ${target} in
  *-*-fuchsia*)
    native_system_header_dir=/include
    ;;
 +*-*-ghost*)
-+  extra_parts="crtbegin.o crtend.o"
 +  gas=yes
 +  gnu_ld=yes
 +  default_use_cxa_atexit=yes
-+  use_gcc_stdint=none
++  use_gcc_stdint=wrap
 +  native_system_header_dir=/system/include
 +  tmake_file="t-slibgcc"
 +  ;;
  *-*-linux* | frv-*-*linux* | *-*-kfreebsd*-gnu | *-*-gnu* | *-*-kopensolaris*-gnu | *-*-uclinuxfdpiceabi)
    extra_options="$extra_options gnu-user.opt"
    gas=yes
-@@ -1898,6 +1907,14 @@ i[34567]86-*-elfiamcu)
+@@ -1898,6 +1906,14 @@ i[34567]86-*-elfiamcu)
  i[34567]86-*-elf*)
  	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h newlib-stdint.h i386/i386elf.h"
  	;;
@@ -60,7 +59,7 @@ index c5064dd3766..0374c591cbc 100644
  	;;
 diff --git a/gcc/config/ghost.h b/gcc/config/ghost.h
 new file mode 100644
-index 00000000000..6ae54dc2f92
+index 00000000000..a81133512ed
 --- /dev/null
 +++ b/gcc/config/ghost.h
 @@ -0,0 +1,41 @@
@@ -93,10 +92,10 @@ index 00000000000..6ae54dc2f92
 +
 +// Start and end files
 +#undef	STARTFILE_SPEC
-+#define	STARTFILE_SPEC "crt0.o%s crti.o%s crtbegin.o%s"
++#define STARTFILE_SPEC "%{!shared: %{!pg:crt0.o%s}} crti.o%s %{!shared:crtbegin.o%s}"
 +
 +#undef  ENDFILE_SPEC
-+#define ENDFILE_SPEC "crtend.o%s crtn.o%s"
++#define ENDFILE_SPEC "%{!shared:crtend.o%s} crtn.o%s"
 +
 +// Modify location of the start files
 +#undef	STANDARD_STARTFILE_PREFIX
@@ -125,10 +124,10 @@ index 8c56fcae5d2..1c9ff56a5c1 100644
  	tmake_file="$tmake_file t-libgcc-pic"
  	;;
 diff --git a/libstdc++-v3/crossconfig.m4 b/libstdc++-v3/crossconfig.m4
-index ae5283b7ad3..ef44459c97b 100644
+index ae5283b7ad3..2492adc468d 100644
 --- a/libstdc++-v3/crossconfig.m4
 +++ b/libstdc++-v3/crossconfig.m4
-@@ -141,6 +141,14 @@ case "${host}" in
+@@ -141,6 +141,13 @@ case "${host}" in
      AC_SUBST(SECTION_FLAGS)
      ;;
  
@@ -137,7 +136,6 @@ index ae5283b7ad3..ef44459c97b 100644
 +    GLIBCXX_CHECK_LINKER_FEATURES
 +    GLIBCXX_CHECK_MATH_SUPPORT
 +    GLIBCXX_CHECK_STDLIB_SUPPORT
-+    GCC_CHECK_TLS
 +    ;;
 +
    *-hpux*)

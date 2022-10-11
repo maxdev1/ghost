@@ -4,6 +4,31 @@ if [ -f variables.sh ]; then
 fi
 . ghost.sh
 
+
+#
+# === Ghost Toolchain setup script ===
+#
+# This script attempts to download, patch and build the Ghost-specific toolchain
+# so that your host system is capable of building binaries for Ghost.
+# 
+# The following pre-requirements must be installed on your system:
+#
+#    gcc g++ nasm make texinfo flex bison
+#    libmpfr-dev libgmp-dev libmpc-dev autoconf pkg-config
+#    grub-pc-bin xorriso
+#
+# The build will fail if any of these requirements are not present.
+# To modify parameters, check the "variables.sh.template".
+#
+
+echo ""
+printf "\e[44mGhost Toolchain setup script\e[0m\n"
+echo ""
+echo "Target architecture:    $TARGET"
+echo "Toolchain base:         $TOOLCHAIN_BASE"
+echo ""
+
+
 # Archive sources & patch versions
 GCC_ARCHIVE=https://ftp.gnu.org/gnu/gcc/gcc-12.2.0/gcc-12.2.0.tar.gz
 GCC_PATCH=patches/toolchain/gcc-12.2.0-ghost-1.0.patch
@@ -52,9 +77,6 @@ for var in "$@"; do
 	elif [ $var == "--clean" ]; then
 		STEP_CLEAN=1
 	elif [ $var == "--help" ]; then
-		echo ""
-		printf "\e[44mGhost Toolchain setup script\e[0m\n"
-		echo ""
 		echo "Run this script to build a cross toolchain for your host system."
 		echo "The following flags are available:"
 		echo
@@ -111,10 +133,6 @@ if [[ $? != 0 ]]; then
 	echo "       $($AUTOCONF --version | sed -n 1p)"
 	exit
 fi
-
-
-# Print some information
-echo "Toolchain will be installed to: $TOOLCHAIN_BASE"
 
 
 
@@ -256,46 +274,66 @@ else
 fi
 
 
+# Build libc static
+echo "Building libc static"
+pushd libc
+$SH build.sh clean static					>>ghost-build.log 2>&1
+failOnError
+popd
+
+
+# Build libapi
+echo "Building libapi static"
+pushd libapi
+$SH build.sh clean static					>>ghost-build.log 2>&1
+failOnError
+popd
+
+
 # Build libgcc
 echo "Building target GCC libraries"
 pushd temp/build-gcc
 
 echo "    Building target libgcc"
-make all-target-libgcc -j8			>>ghost-build.log 2>&1
+make all-target-libgcc -j8				>>ghost-build.log 2>&1
 failOnError
 
 echo "    Installing target libgcc"
-make install-target-libgcc			>>ghost-build.log 2>&1
+make install-target-libgcc				>>ghost-build.log 2>&1
 failOnError
 
 echo "    Copying artifacts to system/lib"
 cp "$TOOLCHAIN_BASE/$TARGET/lib/libgcc_s.so.1" "$SYSROOT/system/lib/libgcc_s.so.1"
 failOnError
 
+popd
 
-# Build libc
-echo "Building libc"
+
+# Build libc shared
+echo "Building libc shared"
 pushd libc
-$SH build.sh all						>>ghost-build.log 2>&1
+$SH build.sh shared					>>ghost-build.log 2>&1
 failOnError
 popd
 
-
-# Build libapi
-echo "Building libapi"
+# Build libapi shared
+echo "Building libapi shared"
 pushd libapi
-$SH build.sh all						>>ghost-build.log 2>&1
+$SH build.sh shared					>>ghost-build.log 2>&1
 failOnError
 popd
+
 
 
 # Build libstdc++-v3
+pushd temp/build-gcc
+
 echo "    Building libstdc++-v3"
-make all-target-libstdc++-v3	>>ghost-build.log 2>&1
+make all-target-libstdc++-v3 -j8		>>ghost-build.log 2>&1
 failOnError
 
 echo "    Installing libstdc++-v3"
-make install-target-libstdc++-v3	>>ghost-build.log 2>&1
+make install-target-libstdc++-v3		>>ghost-build.log 2>&1
 failOnError
 
 popd
