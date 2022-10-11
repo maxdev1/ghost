@@ -35,7 +35,7 @@ int32_t g_write_s(g_fd file, const void* buffer, uint64_t length, g_fs_write_sta
 	data.fd = file;
 	data.buffer = (uint8_t*) buffer;
 	data.length = length;
-	g_syscall(G_SYSCALL_FS_WRITE, (uint32_t) &data);
+	g_syscall(G_SYSCALL_FS_WRITE, (g_address) &data);
 	if (out_status) {
 		*out_status = data.status;
 	}

@@ -26,5 +26,5 @@
 void g_cli_args_release(char* buffer) {
 	g_syscall_cli_args_release data;
 	data.buffer = buffer;
-	g_syscall(G_SYSCALL_RELEASE_CLI_ARGUMENTS, (uint32_t) &data);
+	g_syscall(G_SYSCALL_RELEASE_CLI_ARGUMENTS, (g_address) &data);
 }

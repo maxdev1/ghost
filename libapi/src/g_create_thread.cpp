@@ -27,7 +27,7 @@
  */
 void threadsetuproutine() {
 	g_syscall_get_thread_entry data;
-	g_syscall(G_SYSCALL_GET_THREAD_ENTRY, (uint32_t) &data);
+	g_syscall(G_SYSCALL_GET_THREAD_ENTRY, (g_address) &data);
 
 	void (*userEntry)(void*) = (void(*)(void*)) (data.userEntry);
 
@@ -56,7 +56,7 @@ g_tid g_create_thread_ds(void* function, void* userData, g_create_thread_status*
 	data.initialEntry = (void*) threadsetuproutine;
 	data.userEntry = function;
 	data.userData = userData;
-	g_syscall(G_SYSCALL_CREATE_THREAD, (uint32_t) &data);
+	g_syscall(G_SYSCALL_CREATE_THREAD, (g_address) &data);
 	if (out_status) {
 		*out_status = data.status;
 	}

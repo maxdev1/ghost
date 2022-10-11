@@ -26,6 +26,6 @@
 g_set_working_directory_status g_set_working_directory(const char* path) {
 	g_syscall_fs_set_working_directory data;
 	data.path = (char*) path;
-	g_syscall(G_SYSCALL_SET_WORKING_DIRECTORY, (uint32_t) &data);
+	g_syscall(G_SYSCALL_SET_WORKING_DIRECTORY, (g_address) &data);
 	return data.result;
 }

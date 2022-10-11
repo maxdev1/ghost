@@ -35,7 +35,7 @@ g_bool __g_atomic_lock(g_atom atom, bool set_on_finish, bool is_try, g_bool has_
 
 	data.was_set = false;
 
-	g_syscall(G_SYSCALL_ATOMIC_LOCK, (uint32_t) &data);
+	g_syscall(G_SYSCALL_ATOMIC_LOCK, (g_address) &data);
 
 	return data.was_set;
 }

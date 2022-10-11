@@ -26,6 +26,6 @@
 uint32_t g_test(uint32_t test) {
 	g_syscall_test data;
 	data.test = test;
-	g_syscall(G_SYSCALL_TEST, (uint32_t) &data);
+	g_syscall(G_SYSCALL_TEST, (g_address) &data);
 	return data.result;
 }

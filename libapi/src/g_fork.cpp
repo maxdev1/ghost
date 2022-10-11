@@ -25,7 +25,7 @@
  */
 g_tid g_fork() {
 	g_syscall_fork data;
-	g_syscall(G_SYSCALL_FORK, (uint32_t) &data);
+	g_syscall(G_SYSCALL_FORK, (g_address) &data);
 	return data.forkedId;
 }
 

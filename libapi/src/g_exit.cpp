@@ -27,6 +27,6 @@
 void g_exit(int code) {
 	g_syscall_exit data;
 	data.code = code;
-	g_syscall(G_SYSCALL_EXIT, (uint32_t) &data);
+	g_syscall(G_SYSCALL_EXIT, (g_address) &data);
 	__builtin_unreachable();
 }

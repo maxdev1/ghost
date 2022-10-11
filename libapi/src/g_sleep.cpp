@@ -24,7 +24,7 @@
  *
  */
 void g_sleep(uint64_t ms) {
-	g_syscall_sleep sleepData;
-	sleepData.milliseconds = ms;
-	g_syscall(G_SYSCALL_SLEEP, (uint32_t) &sleepData);
+	g_syscall_sleep data;
+	data.milliseconds = ms;
+	g_syscall(G_SYSCALL_SLEEP, (g_address) &data);
 }

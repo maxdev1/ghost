@@ -34,7 +34,7 @@ g_fs_directory_entry* g_read_directory_s(g_fs_directory_iterator* iterator, g_fs
 
 	g_syscall_fs_read_directory data;
 	data.iterator = iterator;
-	g_syscall(G_SYSCALL_FS_READ_DIRECTORY, (uint32_t) &data);
+	g_syscall(G_SYSCALL_FS_READ_DIRECTORY, (g_address) &data);
 
 	if (out_status) {
 		*out_status = data.status;

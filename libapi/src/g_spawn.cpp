@@ -43,36 +43,36 @@ g_spawn_status g_spawn_poi(const char* path, const char* args, const char* workd
 g_spawn_status g_spawn_poid(const char* path, const char* args, const char* workdir, g_security_level securityLevel, g_pid* pid, g_fd outStdio[3],
 		g_fd inStdio[3], g_spawn_validation_details* outValidationDetails)
 {
-	g_syscall_spawn spawnData;
-	spawnData.path = (char*) path;
-	spawnData.args = args;
-	spawnData.workdir = workdir;
-	spawnData.securityLevel = securityLevel;
+	g_syscall_spawn data;
+	data.path = (char*) path;
+	data.args = args;
+	data.workdir = workdir;
+	data.securityLevel = securityLevel;
 
 	if(inStdio)
 	{
-		spawnData.inStdio[0] = inStdio[0];
-		spawnData.inStdio[1] = inStdio[1];
-		spawnData.inStdio[2] = inStdio[2];
+		data.inStdio[0] = inStdio[0];
+		data.inStdio[1] = inStdio[1];
+		data.inStdio[2] = inStdio[2];
 	} else
 	{
-		spawnData.inStdio[0] = -1;
-		spawnData.inStdio[1] = -1;
-		spawnData.inStdio[2] = -1;
+		data.inStdio[0] = -1;
+		data.inStdio[1] = -1;
+		data.inStdio[2] = -1;
 	}
 
-	g_syscall(G_SYSCALL_SPAWN, (uint32_t) &spawnData);
+	g_syscall(G_SYSCALL_SPAWN, (g_address) &data);
 
 	if(outStdio)
 	{
-		outStdio[0] = spawnData.outStdio[0];
-		outStdio[1] = spawnData.outStdio[1];
-		outStdio[2] = spawnData.outStdio[2];
+		outStdio[0] = data.outStdio[0];
+		outStdio[1] = data.outStdio[1];
+		outStdio[2] = data.outStdio[2];
 	}
 	if(pid)
-		*pid = spawnData.pid;
+		*pid = data.pid;
 	if(outValidationDetails)
-		*outValidationDetails = spawnData.validationDetails;
-	return spawnData.spawnStatus;
+		*outValidationDetails = data.validationDetails;
+	return data.spawnStatus;
 }
 

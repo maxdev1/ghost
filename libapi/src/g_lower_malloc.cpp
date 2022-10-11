@@ -26,6 +26,6 @@
 void* g_lower_malloc(uint32_t size) {
 	g_syscall_lower_malloc data;
 	data.size = size;
-	g_syscall(G_SYSCALL_LOWER_MEMORY_ALLOCATE, (uint32_t) &data);
+	g_syscall(G_SYSCALL_LOWER_MEMORY_ALLOCATE, (g_address) &data);
 	return data.result;
 }

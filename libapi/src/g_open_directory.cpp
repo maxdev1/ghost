@@ -39,7 +39,7 @@ g_fs_directory_iterator* g_open_directory_s(const char* path, g_fs_open_director
 	g_syscall_fs_open_directory data;
 	data.path = (char*) path;
 	data.iterator = iterator;
-	g_syscall(G_SYSCALL_FS_OPEN_DIRECTORY, (uint32_t) &data);
+	g_syscall(G_SYSCALL_FS_OPEN_DIRECTORY, (g_address) &data);
 
 	if (out_status) {
 		*out_status = data.status;

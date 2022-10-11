@@ -25,5 +25,5 @@ void g_atomic_destroy(g_atom atom)
 {
 	g_syscall_atomic_destroy data;
 	data.atom = atom;
-	g_syscall(G_SYSCALL_ATOMIC_DESTROY, (uint32_t) &data);
+	g_syscall(G_SYSCALL_ATOMIC_DESTROY, (g_address) &data);
 }

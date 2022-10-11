@@ -26,6 +26,6 @@
 g_tid g_task_get_id(const char* identifier) {
 	g_syscall_task_id_get data;
 	data.identifier = (char*) identifier;
-	g_syscall(G_SYSCALL_GET_TASK_FOR_IDENTIFIER, (uint32_t) &data);
+	g_syscall(G_SYSCALL_GET_TASK_FOR_IDENTIFIER, (g_address) &data);
 	return data.resultTaskId;
 }

@@ -35,7 +35,7 @@ int64_t g_seek_s(g_fd fd, int64_t off, g_fs_seek_mode mode, g_fs_seek_status* ou
 	data.fd = fd;
 	data.amount = off;
 	data.mode = mode;
-	g_syscall(G_SYSCALL_FS_SEEK, (uint32_t) &data);
+	g_syscall(G_SYSCALL_FS_SEEK, (g_address) &data);
 	if (out_status) {
 		*out_status = data.status;
 	}

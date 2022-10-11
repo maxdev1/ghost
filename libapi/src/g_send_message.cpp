@@ -49,7 +49,7 @@ g_message_send_status g_send_message_tm(g_tid tid, void* buf, size_t len, g_mess
 	data.receiver = tid;
 	data.mode = mode;
 	data.transaction = tx;
-	g_syscall(G_SYSCALL_MESSAGE_SEND, (uint32_t) &data);
+	g_syscall(G_SYSCALL_MESSAGE_SEND, (g_address) &data);
 	return data.status;
 }
 

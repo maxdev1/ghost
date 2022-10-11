@@ -33,7 +33,7 @@ int64_t g_tell_s(g_fd fd, g_fs_tell_status* out_status) {
 
 	g_syscall_fs_tell data;
 	data.fd = fd;
-	g_syscall(G_SYSCALL_FS_TELL, (uint32_t) &data);
+	g_syscall(G_SYSCALL_FS_TELL, (g_address) &data);
 	if (out_status) {
 		*out_status = data.status;
 	}
