@@ -31,7 +31,7 @@ __BEGIN_C
 #define __JMP_BUF_TYPE		unsigned long long
 
 #elif defined(__i386__)
-#define __JMP_BUF_LENGTH	9
+#define __JMP_BUF_LENGTH	6
 #define __JMP_BUF_TYPE		unsigned long
 
 #else

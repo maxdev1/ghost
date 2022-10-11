@@ -79,7 +79,6 @@
  */
 
 #include "libm.h"
-#include "libc.h"
 
 static const double
 pi  =  3.14159265358979311600e+00, /* 0x400921FB, 0x54442D18 */
@@ -281,3 +280,4 @@ double __lgamma_r(double x, int *signgamp)
 	return r;
 }
 
+weak_alias(__lgamma_r, lgamma_r);

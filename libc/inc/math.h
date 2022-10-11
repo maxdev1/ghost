@@ -26,55 +26,72 @@
 
 __BEGIN_C
 
-// these are normally defined in arch-specific files in musl
-typedef double double_t;
+// From musl: include/bits/alltypes.h
+#if __i386__
+typedef long double float_t;
+typedef long double double_t;
+#elif __x86_64__
 typedef float float_t;
-
-// weak-alias is normally defined in libc.h
-#undef weak_alias
-#define weak_alias(old, new) \
-	extern __typeof(old) new __attribute__((weak, alias(#old)))
-
-
-#if 100*__GNUC__+__GNUC_MINOR__ >= 303
-#define NAN       __builtin_nanf("")
-#define INFINITY  __builtin_inff()
+typedef double double_t;
 #else
-#define NAN       (0.0f/0.0f)
-#define INFINITY  1e5000f
+#error "architecture not supported"
+#endif
+
+#if 100 * __GNUC__ + __GNUC_MINOR__ >= 303
+#define NAN __builtin_nanf("")
+#define INFINITY __builtin_inff()
+#else
+#define NAN (0.0f / 0.0f)
+#define INFINITY 1e5000f
 #endif
 
 #define HUGE_VALF INFINITY
-#define HUGE_VAL  ((double)INFINITY)
-#define HUGE_VALL ((long double)INFINITY)
+#define HUGE_VAL ((double) INFINITY)
+#define HUGE_VALL ((long double) INFINITY)
 
-#define MATH_ERRNO  1
+#define MATH_ERRNO 1
 #define MATH_ERREXCEPT 2
 #define math_errhandling 2
 
-#define FP_ILOGBNAN (-1-(int)(((unsigned)-1)>>1))
+#define FP_ILOGBNAN (-1 - 0x7fffffff)
 #define FP_ILOGB0 FP_ILOGBNAN
 
-#define FP_NAN       0
-#define FP_INFINITE  1
-#define FP_ZERO      2
+#define FP_NAN 0
+#define FP_INFINITE 1
+#define FP_ZERO 2
 #define FP_SUBNORMAL 3
-#define FP_NORMAL    4
+#define FP_NORMAL 4
+
+#ifdef __FP_FAST_FMA
+#define FP_FAST_FMA 1
+#endif
+
+#ifdef __FP_FAST_FMAF
+#define FP_FAST_FMAF 1
+#endif
+
+#ifdef __FP_FAST_FMAL
+#define FP_FAST_FMAL 1
+#endif
 
 int __fpclassify(double);
 int __fpclassifyf(float);
 int __fpclassifyl(long double);
 
-static __inline unsigned __FLOAT_BITS(float __f) {
-	union {
+static __inline unsigned __FLOAT_BITS(float __f)
+{
+	union
+	{
 		float __f;
 		unsigned __i;
 	} __u;
 	__u.__f = __f;
 	return __u.__i;
 }
-static __inline unsigned long long __DOUBLE_BITS(double __f) {
-	union {
+static __inline unsigned long long __DOUBLE_BITS(double __f)
+{
+	union
+	{
 		double __f;
 		unsigned long long __i;
 	} __u;
@@ -82,72 +99,67 @@ static __inline unsigned long long __DOUBLE_BITS(double __f) {
 	return __u.__i;
 }
 
-#define fpclassify(x) ( \
-	sizeof(x) == sizeof(float) ? __fpclassifyf(x) : \
-	sizeof(x) == sizeof(double) ? __fpclassify(x) : \
-	__fpclassifyl(x) )
+#define fpclassify(x) (                                                                           \
+	sizeof(x) == sizeof(float) ? __fpclassifyf(x) : sizeof(x) == sizeof(double) ? __fpclassify(x) \
+																				: __fpclassifyl(x))
 
-#define isinf(x) ( \
-	sizeof(x) == sizeof(float) ? (__FLOAT_BITS(x) & 0x7fffffff) == 0x7f800000 : \
-	sizeof(x) == sizeof(double) ? (__DOUBLE_BITS(x) & -1ULL>>1) == 0x7ffULL<<52 : \
-	__fpclassifyl(x) == FP_INFINITE)
+#define isinf(x) (                                                                                                                                              \
+	sizeof(x) == sizeof(float) ? (__FLOAT_BITS(x) & 0x7fffffff) == 0x7f800000 : sizeof(x) == sizeof(double) ? (__DOUBLE_BITS(x) & -1ULL >> 1) == 0x7ffULL << 52 \
+																											: __fpclassifyl(x) == FP_INFINITE)
 
-#define isnan(x) ( \
-	sizeof(x) == sizeof(float) ? (__FLOAT_BITS(x) & 0x7fffffff) > 0x7f800000 : \
-	sizeof(x) == sizeof(double) ? (__DOUBLE_BITS(x) & -1ULL>>1) > 0x7ffULL<<52 : \
-	__fpclassifyl(x) == FP_NAN)
+#define isnan(x) (                                                                                                                                            \
+	sizeof(x) == sizeof(float) ? (__FLOAT_BITS(x) & 0x7fffffff) > 0x7f800000 : sizeof(x) == sizeof(double) ? (__DOUBLE_BITS(x) & -1ULL >> 1) > 0x7ffULL << 52 \
+																										   : __fpclassifyl(x) == FP_NAN)
 
-#define isnormal(x) ( \
-	sizeof(x) == sizeof(float) ? ((__FLOAT_BITS(x)+0x00800000) & 0x7fffffff) >= 0x01000000 : \
-	sizeof(x) == sizeof(double) ? ((__DOUBLE_BITS(x)+(1ULL<<52)) & -1ULL>>1) >= 1ULL<<53 : \
-	__fpclassifyl(x) == FP_NORMAL)
+#define isnormal(x) (                                                                                                                                                                       \
+	sizeof(x) == sizeof(float) ? ((__FLOAT_BITS(x) + 0x00800000) & 0x7fffffff) >= 0x01000000 : sizeof(x) == sizeof(double) ? ((__DOUBLE_BITS(x) + (1ULL << 52)) & -1ULL >> 1) >= 1ULL << 53 \
+																														   : __fpclassifyl(x) == FP_NORMAL)
 
-#define isfinite(x) ( \
-	sizeof(x) == sizeof(float) ? (__FLOAT_BITS(x) & 0x7fffffff) < 0x7f800000 : \
-	sizeof(x) == sizeof(double) ? (__DOUBLE_BITS(x) & -1ULL>>1) < 0x7ffULL<<52 : \
-	__fpclassifyl(x) > FP_INFINITE)
+#define isfinite(x) (                                                                                                                                         \
+	sizeof(x) == sizeof(float) ? (__FLOAT_BITS(x) & 0x7fffffff) < 0x7f800000 : sizeof(x) == sizeof(double) ? (__DOUBLE_BITS(x) & -1ULL >> 1) < 0x7ffULL << 52 \
+																										   : __fpclassifyl(x) > FP_INFINITE)
 
 int __signbit(double);
 int __signbitf(float);
 int __signbitl(long double);
 
-#define signbit(x) ( \
-	sizeof(x) == sizeof(float) ? (int)(__FLOAT_BITS(x)>>31) : \
-	sizeof(x) == sizeof(double) ? (int)(__DOUBLE_BITS(x)>>63) : \
-	__signbitl(x) )
+#define signbit(x) (                                                                                                          \
+	sizeof(x) == sizeof(float) ? (int) (__FLOAT_BITS(x) >> 31) : sizeof(x) == sizeof(double) ? (int) (__DOUBLE_BITS(x) >> 63) \
+																							 : __signbitl(x))
 
-#define isunordered(x,y) (isnan((x)) ? ((void)(y),1) : isnan((y)))
+#define isunordered(x, y) (isnan((x)) ? ((void) (y), 1) : isnan((y)))
 
-#define __ISREL_DEF(rel, op, type) \
-static __inline int __is##rel(type __x, type __y) \
-{ return !isunordered(__x,__y) && __x op __y; }
+#define __ISREL_DEF(rel, op, type)                    \
+	static __inline int __is##rel(type __x, type __y) \
+	{                                                 \
+		return !isunordered(__x, __y) && __x op __y;  \
+	}
 
-__ISREL_DEF(lessf, <, float)
-__ISREL_DEF(less, <, double)
+__ISREL_DEF(lessf, <, float_t)
+__ISREL_DEF(less, <, double_t)
 __ISREL_DEF(lessl, <, long double)
-__ISREL_DEF(lessequalf, <=, float)
-__ISREL_DEF(lessequal, <=, double)
+__ISREL_DEF(lessequalf, <=, float_t)
+__ISREL_DEF(lessequal, <=, double_t)
 __ISREL_DEF(lessequall, <=, long double)
-__ISREL_DEF(lessgreaterf, !=, float)
-__ISREL_DEF(lessgreater, !=, double)
+__ISREL_DEF(lessgreaterf, !=, float_t)
+__ISREL_DEF(lessgreater, !=, double_t)
 __ISREL_DEF(lessgreaterl, !=, long double)
-__ISREL_DEF(greaterf, >, float)
-__ISREL_DEF(greater, >, double)
+__ISREL_DEF(greaterf, >, float_t)
+__ISREL_DEF(greater, >, double_t)
 __ISREL_DEF(greaterl, >, long double)
-__ISREL_DEF(greaterequalf, >=, float)
-__ISREL_DEF(greaterequal, >=, double)
+__ISREL_DEF(greaterequalf, >=, float_t)
+__ISREL_DEF(greaterequal, >=, double_t)
 __ISREL_DEF(greaterequall, >=, long double)
 
-#define __tg_pred_2(x, y, p) ( \
-	sizeof((x)+(y)) == sizeof(float) ? p##f(x, y) : \
-	sizeof((x)+(y)) == sizeof(double) ? p(x, y) : \
-	p##l(x, y) )
+#define __tg_pred_2(x, y, p) (                                                                      \
+	sizeof((x) + (y)) == sizeof(float) ? p##f(x, y) : sizeof((x) + (y)) == sizeof(double) ? p(x, y) \
+																						  : p##l(x, y))
 
-#define isless(x, y)            __tg_pred_2(x, y, __isless)
-#define islessequal(x, y)       __tg_pred_2(x, y, __islessequal)
-#define islessgreater(x, y)     __tg_pred_2(x, y, __islessgreater)
-#define isgreater(x, y)         __tg_pred_2(x, y, __isgreater)
-#define isgreaterequal(x, y)    __tg_pred_2(x, y, __isgreaterequal)
+#define isless(x, y) __tg_pred_2(x, y, __isless)
+#define islessequal(x, y) __tg_pred_2(x, y, __islessequal)
+#define islessgreater(x, y) __tg_pred_2(x, y, __islessgreater)
+#define isgreater(x, y) __tg_pred_2(x, y, __isgreater)
+#define isgreaterequal(x, y) __tg_pred_2(x, y, __isgreaterequal)
 
 double acos(double);
 float acosf(float);
@@ -245,9 +257,9 @@ double fmod(double, double);
 float fmodf(float, float);
 long double fmodl(long double, long double);
 
-double frexp(double, int *);
-float frexpf(float, int *);
-long double frexpl(long double, int *);
+double frexp(double, int*);
+float frexpf(float, int*);
+long double frexpl(long double, int*);
 
 double hypot(double, double);
 float hypotf(float, float);
@@ -301,13 +313,13 @@ long lround(double);
 long lroundf(float);
 long lroundl(long double);
 
-double modf(double, double *);
-float modff(float, float *);
-long double modfl(long double, long double *);
+double modf(double, double*);
+float modff(float, float*);
+long double modfl(long double, long double*);
 
-double nan(const char *);
-float nanf(const char *);
-long double nanl(const char *);
+double nan(const char*);
+float nanf(const char*);
+long double nanl(const char*);
 
 double nearbyint(double);
 float nearbyintf(float);
@@ -329,9 +341,9 @@ double remainder(double, double);
 float remainderf(float, float);
 long double remainderl(long double, long double);
 
-double remquo(double, double, int *);
-float remquof(float, float, int *);
-long double remquol(long double, long double, int *);
+double remquo(double, double, int*);
+float remquof(float, float, int*);
+long double remquol(long double, long double, int*);
 
 double rint(double);
 float rintf(float);
@@ -377,22 +389,19 @@ double trunc(double);
 float truncf(float);
 long double truncl(long double);
 
-#undef  MAXFLOAT
-#define MAXFLOAT        3.40282346638528859812e+38F
-
-#define M_E             2.7182818284590452354   /* e */
-#define M_LOG2E         1.4426950408889634074   /* log_2 e */
-#define M_LOG10E        0.43429448190325182765  /* log_10 e */
-#define M_LN2           0.69314718055994530942  /* log_e 2 */
-#define M_LN10          2.30258509299404568402  /* log_e 10 */
-#define M_PI            3.14159265358979323846  /* pi */
-#define M_PI_2          1.57079632679489661923  /* pi/2 */
-#define M_PI_4          0.78539816339744830962  /* pi/4 */
-#define M_1_PI          0.31830988618379067154  /* 1/pi */
-#define M_2_PI          0.63661977236758134308  /* 2/pi */
-#define M_2_SQRTPI      1.12837916709551257390  /* 2/sqrt(pi) */
-#define M_SQRT2         1.41421356237309504880  /* sqrt(2) */
-#define M_SQRT1_2       0.70710678118654752440  /* 1/sqrt(2) */
+#define M_E 2.7182818284590452354		  /* e */
+#define M_LOG2E 1.4426950408889634074	  /* log_2 e */
+#define M_LOG10E 0.43429448190325182765	  /* log_10 e */
+#define M_LN2 0.69314718055994530942	  /* log_e 2 */
+#define M_LN10 2.30258509299404568402	  /* log_e 10 */
+#define M_PI 3.14159265358979323846		  /* pi */
+#define M_PI_2 1.57079632679489661923	  /* pi/2 */
+#define M_PI_4 0.78539816339744830962	  /* pi/4 */
+#define M_1_PI 0.31830988618379067154	  /* 1/pi */
+#define M_2_PI 0.63661977236758134308	  /* 2/pi */
+#define M_2_SQRTPI 1.12837916709551257390 /* 2/sqrt(pi) */
+#define M_SQRT2 1.41421356237309504880	  /* sqrt(2) */
+#define M_SQRT1_2 0.70710678118654752440  /* 1/sqrt(2) */
 
 extern int signgam;
 
@@ -404,7 +413,7 @@ double y0(double);
 double y1(double);
 double yn(int, double);
 
-#define HUGE            3.40282346638528859812e+38F
+#define HUGE 3.40282346638528859812e+38F
 
 double drem(double, double);
 float dremf(float, float);

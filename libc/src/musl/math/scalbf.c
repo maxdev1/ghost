@@ -13,6 +13,7 @@
  * ====================================================
  */
 
+#define _GNU_SOURCE
 #include <math.h>
 
 float scalbf(float x, float fn)
