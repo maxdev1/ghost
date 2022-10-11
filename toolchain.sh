@@ -198,28 +198,40 @@ fi
 # Build tools
 echo "Building 'changes' tool"
 pushd tools/changes
-CC=$HOST_CXX $SH build.sh all		>>ghost-build.log 2>&1
+
+	CC=$HOST_CXX $SH build.sh all		>>ghost-build.log 2>&1
+
 popd
+
 
 echo "Building 'ramdisk-writer' tool"
 pushd tools/ramdisk-writer
-CC=$HOST_CXX $SH build.sh all		>>ghost-build.log 2>&1
+
+	CC=$HOST_CXX $SH build.sh all		>>ghost-build.log 2>&1
+
 popd
+
 
 echo "Installing 'pkg-config' wrapper"
 pushd tools/pkg-config
-$SH build.sh						>>ghost-build.log 2>&1
+
+	$SH build.sh						>>ghost-build.log 2>&1
+
 popd
 
 
 # Install headers
 echo "Installing libc and libapi headers"
 pushd libc
-$SH build.sh install-headers	>>ghost-build.log 2>&1
+
+	$SH build.sh install-headers	>>ghost-build.log 2>&1
+
 popd
 
 pushd libapi
-$SH build.sh install-headers	>>ghost-build.log 2>&1
+
+	$SH build.sh install-headers	>>ghost-build.log 2>&1
+
 popd
 
 
@@ -276,17 +288,21 @@ fi
 
 # Build libc static
 echo "Building libc static"
-pushd libc
-$SH build.sh clean static					>>ghost-build.log 2>&1
-failOnError
+
+	pushd libc
+	$SH build.sh clean static					>>ghost-build.log 2>&1
+	failOnError
+
 popd
 
 
 # Build libapi
 echo "Building libapi static"
-pushd libapi
-$SH build.sh clean static					>>ghost-build.log 2>&1
-failOnError
+
+	pushd libapi
+	$SH build.sh clean static					>>ghost-build.log 2>&1
+	failOnError
+
 popd
 
 
@@ -294,47 +310,51 @@ popd
 echo "Building target GCC libraries"
 pushd temp/build-gcc
 
-echo "    Building target libgcc"
-make all-target-libgcc -j8				>>ghost-build.log 2>&1
-failOnError
+	echo "    Building target libgcc"
+	make all-target-libgcc -j8				>>ghost-build.log 2>&1
+	failOnError
 
-echo "    Installing target libgcc"
-make install-target-libgcc				>>ghost-build.log 2>&1
-failOnError
+	echo "    Installing target libgcc"
+	make install-target-libgcc				>>ghost-build.log 2>&1
+	failOnError
 
-echo "    Copying artifacts to system/lib"
-cp "$TOOLCHAIN_BASE/$TARGET/lib/libgcc_s.so.1" "$SYSROOT/system/lib/libgcc_s.so.1"
-failOnError
+	echo "    Copying artifacts to system/lib"
+	cp "$TOOLCHAIN_BASE/$TARGET/lib/libgcc_s.so.1" "$SYSROOT/system/lib/libgcc_s.so.1"
+	failOnError
 
 popd
 
 
 # Build libc shared
 echo "Building libc shared"
-pushd libc
-$SH build.sh shared					>>ghost-build.log 2>&1
-failOnError
+
+	pushd libc
+	$SH build.sh shared					>>ghost-build.log 2>&1
+	failOnError
+
 popd
+
 
 # Build libapi shared
 echo "Building libapi shared"
-pushd libapi
-$SH build.sh shared					>>ghost-build.log 2>&1
-failOnError
-popd
 
+	pushd libapi
+	$SH build.sh shared					>>ghost-build.log 2>&1
+	failOnError
+
+popd
 
 
 # Build libstdc++-v3
 pushd temp/build-gcc
 
-echo "    Building libstdc++-v3"
-make all-target-libstdc++-v3 -j8		>>ghost-build.log 2>&1
-failOnError
+	echo "    Building libstdc++-v3"
+	make all-target-libstdc++-v3 -j8		>>ghost-build.log 2>&1
+	failOnError
 
-echo "    Installing libstdc++-v3"
-make install-target-libstdc++-v3		>>ghost-build.log 2>&1
-failOnError
+	echo "    Installing libstdc++-v3"
+	make install-target-libstdc++-v3		>>ghost-build.log 2>&1
+	failOnError
 
 popd
 
