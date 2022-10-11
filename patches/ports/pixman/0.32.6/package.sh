@@ -7,8 +7,8 @@ port_unpack() {
 }
 
 port_install() {
-	export PKG_CONFIG=i686-ghost-pkg-config.sh
-	../$UNPACKED_DIR/configure --host=$HOST --prefix=$PREFIX
+	export PKG_CONFIG=$TARGET-pkg-config.sh
+	../$UNPACKED_DIR/configure --host=$TARGET --prefix=$PREFIX
 	make
 	make DESTDIR=$SYSROOT install
 }

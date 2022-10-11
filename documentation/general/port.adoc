@@ -59,7 +59,7 @@ port_unpack() {
 }
 
 port_install() {
-	../$UNPACKED_DIR/configure --host=$HOST --prefix=$PREFIX
+	../$UNPACKED_DIR/configure --host=$TARGET --prefix=$PREFIX
 	make
 	make DESTDIR=$SYSROOT install
 }

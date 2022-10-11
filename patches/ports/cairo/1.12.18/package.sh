@@ -7,8 +7,8 @@ port_unpack() {
 }
 
 port_install() {
-	export PKG_CONFIG=i686-ghost-pkg-config.sh
-	CFLAGS="-DCAIRO_NO_MUTEX=1" ../$UNPACKED_DIR/configure --host=$HOST --prefix=$PREFIX --enable-xlib=no
+	export PKG_CONFIG=$TARGET-pkg-config.sh
+	CFLAGS="-DCAIRO_NO_MUTEX=1" ../$UNPACKED_DIR/configure --host=$TARGET --prefix=$PREFIX --enable-xlib=no
 	make
 	make DESTDIR=$SYSROOT install
 }
