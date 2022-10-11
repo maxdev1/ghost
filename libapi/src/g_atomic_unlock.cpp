@@ -25,5 +25,5 @@ void g_atomic_unlock(g_atom atom)
 {
 	g_syscall_atomic_unlock data;
 	data.atom = atom;
-	g_syscall(G_SYSCALL_ATOMIC_UNLOCK, (uint32_t) &data);
+	g_syscall(G_SYSCALL_ATOMIC_UNLOCK, (g_address) &data);
 }

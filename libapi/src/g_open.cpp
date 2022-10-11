@@ -40,7 +40,7 @@ g_fd g_open_fs(const char *name, g_file_flag_mode flags, g_fs_open_status* out_s
 	g_syscall_fs_open data;
 	data.path = (char*) name;
 	data.flags = flags;
-	g_syscall(G_SYSCALL_FS_OPEN, (uint32_t) &data);
+	g_syscall(G_SYSCALL_FS_OPEN, (g_address) &data);
 	if (out_status) {
 		*out_status = data.status;
 	}

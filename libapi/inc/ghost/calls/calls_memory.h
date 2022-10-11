@@ -93,7 +93,7 @@ typedef struct {
  * @security-level APPLICATION
  */
 typedef struct {
-	uint32_t virtualBase;
+	g_address virtualBase;
 }__attribute__((packed)) g_syscall_unmap;
 
 /**
@@ -136,7 +136,7 @@ typedef struct {
 typedef struct {
 	int32_t amount;
 
-	uint32_t address;
+	g_address address;
 	uint8_t successful;
 }__attribute__((packed)) g_syscall_sbrk;
 

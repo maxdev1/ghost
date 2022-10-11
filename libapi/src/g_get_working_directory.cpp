@@ -33,6 +33,6 @@ g_get_working_directory_status g_get_working_directory_l(char* buffer, size_t ma
 	g_syscall_fs_get_working_directory data;
 	data.buffer = buffer;
 	data.maxlen = maxlen;
-	g_syscall(G_SYSCALL_GET_WORKING_DIRECTORY, (uint32_t) &data);
+	g_syscall(G_SYSCALL_GET_WORKING_DIRECTORY, (g_address) &data);
 	return data.result;
 }

@@ -28,5 +28,5 @@ void g_fs_set_transaction_status(g_fs_transaction_id id, g_fs_transaction_status
 	g_syscall_fs_set_transaction_status data;
 	data.transaction = id;
 	data.status = status;
-	g_syscall(G_SYSCALL_FS_SET_TRANSACTION_STATUS, (uint32_t) &data);
+	g_syscall(G_SYSCALL_FS_SET_TRANSACTION_STATUS, (g_address) &data);
 }

@@ -26,5 +26,5 @@
 void g_set_video_log(uint8_t enabled) {
 	g_syscall_set_video_log data;
 	data.enabled = enabled;
-	g_syscall(G_SYSCALL_SET_VIDEO_LOG, (uint32_t) &data);
+	g_syscall(G_SYSCALL_SET_VIDEO_LOG, (g_address) &data);
 }

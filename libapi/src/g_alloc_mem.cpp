@@ -26,6 +26,6 @@
 void* g_alloc_mem(int32_t size) {
 	g_syscall_alloc_mem data;
 	data.size = size;
-	g_syscall(G_SYSCALL_ALLOCATE_MEMORY, (uint32_t) &data);
+	g_syscall(G_SYSCALL_ALLOCATE_MEMORY, (g_address) &data);
 	return data.virtualResult;
 }

@@ -26,7 +26,7 @@
 uint8_t g_sbrk(int amount, void** out_brk) {
 	g_syscall_sbrk data;
 	data.amount = amount;
-	g_syscall(G_SYSCALL_SBRK, (uint32_t) &data);
+	g_syscall(G_SYSCALL_SBRK, (g_address) &data);
 	*out_brk = (void*) data.address;
 	return data.successful;
 }

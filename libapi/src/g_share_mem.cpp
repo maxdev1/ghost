@@ -28,6 +28,6 @@ void* g_share_mem(void* memory, int32_t size, g_pid processId) {
 	data.memory = memory;
 	data.processId = processId;
 	data.size = size;
-	g_syscall(G_SYSCALL_SHARE_MEMORY, (uint32_t) &data);
+	g_syscall(G_SYSCALL_SHARE_MEMORY, (g_address) &data);
 	return data.virtualAddress;
 }

@@ -27,5 +27,5 @@
 void g_log(const char* message) {
 	g_syscall_log data;
 	data.message = (char*) message;
-	g_syscall(G_SYSCALL_LOG, (uint32_t) &data);
+	g_syscall(G_SYSCALL_LOG, (g_address) &data);
 }

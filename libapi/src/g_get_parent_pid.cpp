@@ -26,6 +26,6 @@
 g_pid g_get_parent_pid(g_pid pid) {
 	g_syscall_get_parent_pid data;
 	data.pid = pid;
-	g_syscall(G_SYSCALL_GET_PARENT_PROCESS_ID, (uint32_t) &data);
+	g_syscall(G_SYSCALL_GET_PARENT_PROCESS_ID, (g_address) &data);
 	return data.parent_pid;
 }

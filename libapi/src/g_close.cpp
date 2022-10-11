@@ -27,6 +27,6 @@ g_fs_close_status g_close(g_fd file) {
 
 	g_syscall_fs_close data;
 	data.fd = file;
-	g_syscall(G_SYSCALL_FS_CLOSE, (uint32_t) &data);
+	g_syscall(G_SYSCALL_FS_CLOSE, (g_address) &data);
 	return data.status;
 }

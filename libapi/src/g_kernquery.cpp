@@ -27,6 +27,6 @@ g_kernquery_status g_kernquery(uint16_t command, uint8_t* buffer) {
 	g_syscall_kernquery data;
 	data.command = command;
 	data.buffer = buffer;
-	g_syscall(G_SYSCALL_KERNQUERY, (uint32_t) &data);
+	g_syscall(G_SYSCALL_KERNQUERY, (g_address) &data);
 	return data.status;
 }

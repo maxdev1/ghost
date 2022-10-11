@@ -20,7 +20,7 @@
 
 #include "ghost/user.h"
 
-void g_syscall(uint32_t call, uint32_t data)
+void g_syscall(uint32_t call, g_address data)
 {
 	asm volatile("int $0x80"
 				 :

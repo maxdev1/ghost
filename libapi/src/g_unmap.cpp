@@ -25,6 +25,6 @@
  */
 void g_unmap(void* area) {
 	g_syscall_unmap data;
-	data.virtualBase = (uint32_t) area;
-	g_syscall(G_SYSCALL_UNMAP, (uint32_t) &data);
+	data.virtualBase = (g_address) area;
+	g_syscall(G_SYSCALL_UNMAP, (g_address) &data);
 }

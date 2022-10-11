@@ -28,7 +28,7 @@ int g_fs_register_as_delegate(const char* name, g_fs_phys_id phys_mountpoint_id,
 	g_syscall_fs_register_as_delegate data;
 	data.name = (char*) name;
 	data.phys_mountpoint_id = phys_mountpoint_id;
-	g_syscall(G_SYSCALL_FS_REGISTER_AS_DELEGATE, (uint32_t) &data);
+	g_syscall(G_SYSCALL_FS_REGISTER_AS_DELEGATE, (g_address) &data);
 	*out_mountpoint_id = data.mountpoint_id;
 	*out_transaction_storage = data.transaction_storage;
 	return data.result;

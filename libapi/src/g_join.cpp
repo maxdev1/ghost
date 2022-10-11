@@ -26,5 +26,5 @@
 void g_join(g_tid taskId) {
 	g_syscall_join data;
 	data.taskId = taskId;
-	g_syscall(G_SYSCALL_JOIN, (uint32_t) &data);
+	g_syscall(G_SYSCALL_JOIN, (g_address) &data);
 }

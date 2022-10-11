@@ -25,6 +25,6 @@
  */
 uint64_t g_millis() {
 	g_syscall_millis data;
-	g_syscall(G_SYSCALL_GET_MILLISECONDS, (uint32_t) &data);
+	g_syscall(G_SYSCALL_GET_MILLISECONDS, (g_address) &data);
 	return data.millis;
 }

@@ -25,6 +25,6 @@
  */
 g_pid g_get_pid() {
 	g_syscall_get_pid data;
-	g_syscall(G_SYSCALL_GET_PROCESS_ID, (uint32_t) &data);
+	g_syscall(G_SYSCALL_GET_PROCESS_ID, (g_address) &data);
 	return data.id;
 }

@@ -26,5 +26,5 @@
 void g_get_executable_path(char* buffer) {
 	g_syscall_fs_get_executable_path data;
 	data.buffer = buffer;
-	g_syscall(G_SYSCALL_GET_EXECUTABLE_PATH, (uint32_t) &data);
+	g_syscall(G_SYSCALL_GET_EXECUTABLE_PATH, (g_address) &data);
 }

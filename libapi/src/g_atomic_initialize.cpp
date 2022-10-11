@@ -24,6 +24,6 @@
 g_atom g_atomic_initialize()
 {
 	g_syscall_atomic_initialize data;
-	g_syscall(G_SYSCALL_ATOMIC_INITIALIZE, (uint32_t) &data);
+	g_syscall(G_SYSCALL_ATOMIC_INITIALIZE, (g_address) &data);
 	return data.atom;
 }

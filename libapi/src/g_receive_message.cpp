@@ -51,6 +51,6 @@ g_message_receive_status g_receive_message_tmb(void* buf, size_t max, g_message_
 	data.mode = mode;
 	data.transaction = tx;
 	data.break_condition = break_condition;
-	g_syscall(G_SYSCALL_MESSAGE_RECEIVE, (uint32_t) &data);
+	g_syscall(G_SYSCALL_MESSAGE_RECEIVE, (g_address) &data);
 	return data.status;
 }

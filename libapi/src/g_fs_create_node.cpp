@@ -30,7 +30,7 @@ g_fs_create_node_status g_fs_create_node(uint32_t parent, char* name, g_fs_node_
 	data.name = (char*) name;
 	data.type = type;
 	data.phys_fs_id = fs_id;
-	g_syscall(G_SYSCALL_FS_CREATE_NODE, (uint32_t) &data);
+	g_syscall(G_SYSCALL_FS_CREATE_NODE, (g_address) &data);
 	*out_created_id = data.created_id;
 	return data.result;
 }

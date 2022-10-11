@@ -32,7 +32,7 @@ g_fs_pipe_status g_pipe_b(g_fd* out_write, g_fd* out_read, g_bool blocking)
 	g_syscall_fs_pipe data;
 	data.blocking = blocking;
 
-	g_syscall(G_SYSCALL_FS_PIPE, (uint32_t) &data);
+	g_syscall(G_SYSCALL_FS_PIPE, (g_address) &data);
 	*out_write = data.write_fd;
 	*out_read = data.read_fd;
 	return data.status;

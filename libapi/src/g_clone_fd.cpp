@@ -46,7 +46,7 @@ g_fd g_clone_fd_ts(g_fd source_fd, g_pid source_process, g_fd target_fd, g_pid t
 	data.source_pid = source_process;
 	data.target_fd = target_fd;
 	data.target_pid = target_process;
-	g_syscall(G_SYSCALL_FS_CLONEFD, (uint32_t) &data);
+	g_syscall(G_SYSCALL_FS_CLONEFD, (g_address) &data);
 	if (out_status) {
 		*out_status = data.status;
 	}

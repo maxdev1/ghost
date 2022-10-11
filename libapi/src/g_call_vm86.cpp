@@ -28,6 +28,6 @@ g_vm86_call_status g_call_vm86(uint32_t interrupt, g_vm86_registers* in, g_vm86_
 	data.interrupt = interrupt;
 	data.in = *in;
 	data.out = out;
-	g_syscall(G_SYSCALL_CALL_VM86, (uint32_t) &data);
+	g_syscall(G_SYSCALL_CALL_VM86, (g_address) &data);
 	return data.status;
 }

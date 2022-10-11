@@ -28,7 +28,7 @@ g_open_irq_device_status g_open_irq_device(uint8_t irq, g_fd* outFd)
 {
 	g_syscall_open_irq_device data;
 	data.irq = irq;
-	g_syscall(G_SYSCALL_OPEN_IRQ_DEVICE, (uint32_t) &data);
+	g_syscall(G_SYSCALL_OPEN_IRQ_DEVICE, (g_address) &data);
 	*outFd = data.fd;
 	return data.status;
 }

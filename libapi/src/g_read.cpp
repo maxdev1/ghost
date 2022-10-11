@@ -35,7 +35,7 @@ int32_t g_read_s(g_fd file, void* buffer, uint64_t length, g_fs_read_status* out
 	data.fd = file;
 	data.buffer = (uint8_t*) buffer;
 	data.length = length;
-	g_syscall(G_SYSCALL_FS_READ, (uint32_t) &data);
+	g_syscall(G_SYSCALL_FS_READ, (g_address) &data);
 	if (out_status) {
 		*out_status = data.status;
 	}

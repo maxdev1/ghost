@@ -26,5 +26,5 @@
 void g_lower_free(void* memory) {
 	g_syscall_lower_free data;
 	data.memory = memory;
-	g_syscall(G_SYSCALL_LOWER_MEMORY_FREE, (uint32_t) &data);
+	g_syscall(G_SYSCALL_LOWER_MEMORY_FREE, (g_address) &data);
 }
