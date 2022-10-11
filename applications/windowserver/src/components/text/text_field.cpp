@@ -110,7 +110,8 @@ void text_field_t::paint()
 		borderColor = RGB(180, 180, 180);
 	}
 	cairo_set_source_rgba(cr, G_COLOR_ARGB_TO_FPARAMS(borderColor));
-	cairo_rectangle(cr, 0, 0, bounds.width, bounds.height);
+	cairo_rectangle(cr, 0.5, 0.5, bounds.width - 1, bounds.height - 1);
+	cairo_set_line_width(cr, 1.0);
 	cairo_stroke(cr);
 
 	// Scroll
