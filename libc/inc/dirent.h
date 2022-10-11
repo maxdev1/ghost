@@ -22,9 +22,10 @@
 #define __GHOST_LIBC_DIRENT__
 
 #include "ghost/common.h"
-#include "dir.h"
 
 __BEGIN_C
+
+typedef struct DIR DIR;
 
 /**
  * Directory entry types
