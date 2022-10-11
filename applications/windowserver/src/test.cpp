@@ -75,7 +75,7 @@ void createTestWindow()
 {
 	window_t* window = new window_t;
 	window->setTitle("Components");
-	window->setBounds(g_rectangle(30, 30, 320, 430));
+	window->setBounds(g_rectangle(30, 30, 320, 530));
 	window->setLayoutManager(new grid_layout_manager_t(1, 1));
 
 	scrollpane_t* scroller = new scrollpane_t;
@@ -132,6 +132,17 @@ void createTestWindow()
 		pass->setSecure(true);
 		pass->setPreferredSize(g_dimension(0, 30));
 		panel->addChild(pass);
+
+		content->addChild(panel);
+	}
+
+	{
+		panel_t* panel = new panel_t();
+		panel->setLayoutManager(new grid_layout_manager_t(1, 0, 10, 10));
+
+		checkbox_t* check = new checkbox_t();
+		check->getLabel().setTitle("Check me");
+		panel->addChild(check);
 
 		content->addChild(panel);
 	}

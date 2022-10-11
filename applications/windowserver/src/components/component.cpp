@@ -312,24 +312,7 @@ component_t* component_t::handleKeyEvent(key_event_t& event)
 
 component_t* component_t::handleFocusEvent(focus_event_t& event)
 {
-	component_t* handledByChild = nullptr;
-
-	g_atomic_lock(children_lock);
-	for(auto it = children.rbegin(); it != children.rend(); ++it)
-	{
-		auto child = (*it).component;
-		if(!child->visible)
-			continue;
-
-		handledByChild = child->handleFocusEvent(event);
-		if(handledByChild)
-		{
-			break;
-		}
-	}
-	g_atomic_unlock(children_lock);
-
-	return handledByChild;
+	return this;
 }
 
 void component_t::setPreferredSize(const g_dimension& size)
