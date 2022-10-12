@@ -23,6 +23,6 @@
 
 #include "shared/setup_information.hpp"
 
-extern g_setup_information loaderSetupInformation;
+extern g_setup_information setupInformation;
 
 #endif
