@@ -86,7 +86,7 @@ g_physical_address bitmapPageAllocatorAllocate(g_bitmap_page_allocator* allocato
 		g_physical_address result = 0;
 		mutexAcquire(&bitmap->lock);
 
-		for(uint32_t i = 0; i < bitmap->entryCount && !result; i++)
+		for(uint32_t i = 0; i < bitmap->entryCount; i++)
 		{
 			if(G_BITMAP_ENTRIES(bitmap)[i] == G_BITMAP_ENTRY_FULL)
 				continue;
@@ -102,6 +102,9 @@ g_physical_address bitmapPageAllocatorAllocate(g_bitmap_page_allocator* allocato
 				result = bitmap->baseAddress + G_BITMAP_TO_OFFSET(i, b);
 				break;
 			}
+
+			if(result)
+				break;
 		}
 
 		mutexRelease(&bitmap->lock);
