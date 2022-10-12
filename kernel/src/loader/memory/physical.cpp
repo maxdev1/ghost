@@ -24,15 +24,16 @@
 #include "shared/multiboot/multiboot.hpp"
 #include "shared/panic.hpp"
 
-uint32_t memoryPhysicalReadMemoryMap(g_address startAfter, g_address bitmapWriteTo)
+uint32_t memoryPhysicalReadMemoryMap(g_address startAfter, g_address bitmapArrayStart)
 {
 	g_multiboot_information* multiboot = setupInformation.multibootInformation;
 
 	if(!(multiboot->flags & G_MULTIBOOT_FLAGS_MMAP))
 		panic("%! no memory map available", "mboot");
 
-	g_bitmap* currentBitmap = (g_bitmap*) bitmapWriteTo;
-	g_bitmap* previousBitmap = nullptr;
+	// Those are only used when target address is given
+	g_bitmap_header* currentBitmap = (g_bitmap_header*) bitmapArrayStart;
+	g_bitmap_header* previousBitmap = nullptr;
 
 	uint32_t totalBitmapsSize = 0;
 
@@ -60,33 +61,32 @@ uint32_t memoryPhysicalReadMemoryMap(g_address startAfter, g_address bitmapWrite
 		start = G_PAGE_ALIGN_UP(start);
 		end = G_PAGE_ALIGN_DOWN(end);
 
-		if(end <= start)
+		if(start >= end)
 			continue;
 
 		// Calculate required size of current bitmap
-		uint32_t entryCount = ((end - start) / G_PAGE_SIZE);
-		uint32_t currentBitmapSize = sizeof(g_bitmap) + (entryCount * sizeof(g_bitmap_entry));
+		uint32_t entryCount = ((end - start) / G_PAGE_SIZE) / G_BITMAP_PAGES_PER_ENTRY;
+		uint32_t currentBitmapSize = sizeof(g_bitmap_header) + (entryCount * sizeof(g_bitmap_entry));
 		totalBitmapsSize += currentBitmapSize;
 
-		// Continue if it's a dry-run only
-		if(!bitmapWriteTo)
-			continue;
-
-		// Write the actual bitmap
-		currentBitmap->baseAddress = start;
-		currentBitmap->entryCount = entryCount;
-		currentBitmap->hasNext = false;
-		g_bitmap_entry* currentBitmapEntries = G_BITMAP_ENTRIES(currentBitmap);
-		for(uint32_t i = 0; i < currentBitmap->entryCount; i++)
+		// Write bitmap if it's not a dry-run
+		if(bitmapArrayStart)
 		{
-			currentBitmapEntries[i] = 0;
+			currentBitmap->baseAddress = start;
+			currentBitmap->entryCount = entryCount;
+			currentBitmap->hasNext = false;
+			g_bitmap_entry* currentBitmapEntries = G_BITMAP_ENTRIES(currentBitmap);
+			for(uint32_t i = 0; i < currentBitmap->entryCount; i++)
+			{
+				currentBitmapEntries[i] = 0;
+			}
+
+			if(previousBitmap)
+				previousBitmap->hasNext = true;
+
+			previousBitmap = currentBitmap;
+			currentBitmap = G_BITMAP_NEXT(currentBitmap);
 		}
-
-		if(previousBitmap)
-			previousBitmap->hasNext = true;
-
-		previousBitmap = currentBitmap;
-		currentBitmap = G_BITMAP_NEXT(currentBitmap);
 	}
 
 	return totalBitmapsSize;

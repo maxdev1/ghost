@@ -33,7 +33,7 @@
  * run, a sufficient physical space was allocated and the bitmaps are written
  * to the given address.
  */
-uint32_t memoryPhysicalReadMemoryMap(g_address startAfter, g_address bitmapWriteTo);
+uint32_t memoryPhysicalReadMemoryMap(g_address startAfter, g_address bitmapArrayStart);
 
 /**
  * Before the bitmap allocator is initialized, this simple allocation function

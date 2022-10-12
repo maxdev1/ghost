@@ -33,7 +33,7 @@ typedef uint8_t g_bitmap_entry;
  * base address. In memory, there are multiple bitmaps following each other,
  * the "hasNext" flag indicating whether there is another one.
  *
- * ...[g_bitmap][g_bitmap_entry][g_bitmap_entry]...g_bitmap][g_bitmap_entry]...
+ * ...[g_bitmap_header][g_bitmap_entry][g_bitmap_entry]...[g_bitmap_header]][g_bitmap_entry]...
  *
  * There can be no pointers within these structures, since the kernel maps the
  * bitmap to its own area in the virtual space before unmapping the setup memory.
@@ -43,7 +43,7 @@ typedef struct
 	g_physical_address baseAddress;
 	uint32_t entryCount;
 	bool hasNext;
-} __attribute__((packed)) g_bitmap;
+} __attribute__((packed)) g_bitmap_header;
 
 /**
  * Number of pages each entry contains.
@@ -55,12 +55,12 @@ typedef struct
  * 		the presence of this bitmap. Offset is calculated by the amount of
  * 		following <g_bitmap_entry>s
  */
-#define G_BITMAP_NEXT(bitmap) (bitmap->hasNext ? ((g_bitmap*) (((g_address) (bitmap)) + sizeof(g_bitmap) + (bitmap->entryCount * sizeof(g_bitmap_entry)))) : nullptr)
+#define G_BITMAP_NEXT(bitmap) (bitmap->hasNext ? ((g_bitmap_header*) (((g_address) (bitmap)) + sizeof(g_bitmap_header) + (bitmap->entryCount * sizeof(g_bitmap_entry)))) : nullptr)
 
 /**
  * @returns a pointer to the entries of this bitmap
  */
-#define G_BITMAP_ENTRIES(bitmap) ((g_bitmap_entry*) (((g_address) bitmap) + sizeof(g_bitmap)))
+#define G_BITMAP_ENTRIES(bitmap) ((g_bitmap_entry*) (((g_address) bitmap) + sizeof(g_bitmap_header)))
 
 /**
  * Calculates the index relative to an offset and vice-versa.

@@ -30,13 +30,12 @@
 #include <ghost/stdint.h>
 
 /**
- * Load entry function, called by GRUB.
  * Initialization function, called from the loader assembly. Checks the
  * multiboot magic number and then passes the multiboot structure to the
  * loader for further initialization.
  *
- * @param multibootStruct	the multiboot structure passed by GRUB
- * @param magicNumber		the magic number passed by GRUB
+ * @param multibootStruct	the multiboot structure passed by bootloader
+ * @param magicNumber		the magic number passed by bootloader
  */
 extern "C" void loaderMain(g_multiboot_information* multibootStruct, uint32_t magicNumber);
 
