@@ -52,6 +52,4 @@ void kernelInitializationThread();
  */
 void kernelRunApplicationCore();
 
-void kernelHalt();
-
 #endif
