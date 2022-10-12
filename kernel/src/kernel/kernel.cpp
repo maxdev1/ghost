@@ -25,18 +25,16 @@
 #include "kernel/ipc/message.hpp"
 #include "kernel/ipc/pipes.hpp"
 #include "kernel/logger/kernel_logger.hpp"
-#include "kernel/memory/gdt.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/system.hpp"
 #include "kernel/tasking/atoms.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking.hpp"
+#include "shared/panic.hpp"
 #include "shared/system/mutex.hpp"
-#include "shared/system/serial_port.hpp"
 #include "shared/video/console_video.hpp"
 #include "shared/video/pretty_boot.hpp"
-#include "shared/panic.hpp"
 
 static g_mutex bootstrapCoreLock;
 static g_mutex applicationCoreLock;
@@ -152,12 +150,4 @@ void kernelInitializationThread()
 	kernelSpawnService("/applications/windowserver.bin", "", G_SECURITY_LEVEL_APPLICATION);
 
 	taskingExit();
-}
-
-void kernelHalt()
-{
-	logInfo("%! execution finished, halting", "postkern");
-	interruptsDisable();
-	for(;;)
-		asm("hlt");
 }
