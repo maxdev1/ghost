@@ -43,7 +43,7 @@ void _memoryRelocatePhysicalBitmap(g_setup_information* setupInformation)
 
 void memoryInitialize(g_setup_information* setupInformation)
 {
-	bitmapPageAllocatorInitialize(&memoryPhysicalAllocator, (g_bitmap*) setupInformation->bitmapArrayStart);
+	bitmapPageAllocatorInitialize(&memoryPhysicalAllocator, (g_bitmap_header*) setupInformation->bitmapArrayStart);
 	logInfo("%! available: %i MiB", "memory", (memoryPhysicalAllocator.freePageCount * G_PAGE_SIZE) / 1024 / 1024);
 
 	heapInitialize(setupInformation->heapStart, setupInformation->heapEnd);

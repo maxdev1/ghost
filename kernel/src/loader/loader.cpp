@@ -57,9 +57,18 @@ g_physical_address loaderSetupGdt()
 
 /**
  * The bootloader has loaded the kernel and the ramdisk as multiboot modules
- * into memory somewhere after 0x00100000. The physical memory map is now
- * interpreted to first determine how much memory is required for the bitmaps
- * used by the physical allocator; then these bitmaps are initialized.
+ * into memory somewhere after 0x00100000. The GDT is allocated in the first
+ * found free physical page. The physical memory map is interpreted to
+ * determine how much space is required for the bitmap array used by the
+ * physical allocator. The bitmap array starts right after the GDT page.
+ * 
+ * The end of the bitmap array is also the end of the "reserved area", which
+ * is identity-mapped so that the kernel can access this data.
+ * 
+ * Since there is often some free space before the multiboot modules,
+ * the memory layout usually looks like this after initializing:
+ * 
+ * [0x0-0x100000]...[gdt][mb-kernel][mb-ramdisk][bitmap-array]...
  */
 void loaderInitializeMemory()
 {
@@ -69,7 +78,7 @@ void loaderInitializeMemory()
 	setupInformation.bitmapArrayStart = memoryPhysicalAllocateInitial(gdtEnd, G_PAGE_ALIGN_UP(bitmapRequiredMemory) / G_PAGE_SIZE);
 	setupInformation.bitmapArrayEnd = G_PAGE_ALIGN_UP(setupInformation.bitmapArrayStart + bitmapRequiredMemory);
 	memoryPhysicalReadMemoryMap(setupInformation.bitmapArrayEnd, setupInformation.bitmapArrayStart);
-	bitmapPageAllocatorInitialize(&memoryPhysicalAllocator, (g_bitmap*) setupInformation.bitmapArrayStart);
+	bitmapPageAllocatorInitialize(&memoryPhysicalAllocator, (g_bitmap_header*) setupInformation.bitmapArrayStart);
 
 	setupInformation.initialPageDirectoryPhysical = pagingInitialize(setupInformation.bitmapArrayEnd);
 }

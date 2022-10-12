@@ -24,13 +24,13 @@
 #include "shared/memory/paging.hpp"
 #include "shared/multiboot/multiboot.hpp"
 
-void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, g_bitmap* bitmapArray)
+void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, g_bitmap_header* bitmapArray)
 {
 	allocator->bitmapArray = bitmapArray;
 	allocator->freePageCount = 0;
 	mutexInitialize(&allocator->lock);
 
-	g_bitmap* bitmap = bitmapArray;
+	g_bitmap_header* bitmap = bitmapArray;
 	while(bitmap)
 	{
 		allocator->freePageCount += bitmap->entryCount * G_BITMAP_PAGES_PER_ENTRY;
@@ -40,7 +40,7 @@ void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, g_bitmap*
 
 void bitmapPageAllocatorRelocate(g_bitmap_page_allocator* allocator, g_virtual_address newBitmapArray)
 {
-	allocator->bitmapArray = (g_bitmap*) newBitmapArray;
+	allocator->bitmapArray = (g_bitmap_header*) newBitmapArray;
 }
 
 void bitmapPageAllocatorMarkFree(g_bitmap_page_allocator* allocator, g_physical_address address)
@@ -48,7 +48,7 @@ void bitmapPageAllocatorMarkFree(g_bitmap_page_allocator* allocator, g_physical_
 	mutexAcquire(&allocator->lock);
 	bool freed = false;
 
-	g_bitmap* bitmap = allocator->bitmapArray;
+	g_bitmap_header* bitmap = allocator->bitmapArray;
 	while(bitmap)
 	{
 		g_address endAddress = bitmap->baseAddress + (bitmap->entryCount * G_BITMAP_PAGES_PER_ENTRY) * G_PAGE_SIZE;
@@ -79,7 +79,7 @@ g_physical_address bitmapPageAllocatorAllocate(g_bitmap_page_allocator* allocato
 {
 	mutexAcquire(&allocator->lock);
 
-	g_bitmap* bitmap = allocator->bitmapArray;
+	g_bitmap_header* bitmap = allocator->bitmapArray;
 	while(bitmap)
 	{
 		for(uint32_t i = 0; i < bitmap->entryCount; i++)
