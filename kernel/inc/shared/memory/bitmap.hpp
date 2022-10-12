@@ -22,6 +22,13 @@
 #define __BITMAP__
 
 #include "shared/memory/paging.hpp"
+#include "shared/system/mutex.hpp"
+
+/**
+ * When creating the bitmap array, this controls how large the maximum physical
+ * memory area can be that a single bitmap maintains.
+ */
+#define G_BITMAP_MAX_RANGE	0x5000000
 
 /**
  * One bitmap entry, each bit representing one page.
@@ -43,6 +50,7 @@ typedef struct
 	g_physical_address baseAddress;
 	uint32_t entryCount;
 	bool hasNext;
+	g_mutex lock;
 } __attribute__((packed)) g_bitmap_header;
 
 /**
@@ -55,7 +63,8 @@ typedef struct
  * 		the presence of this bitmap. Offset is calculated by the amount of
  * 		following <g_bitmap_entry>s
  */
-#define G_BITMAP_NEXT(bitmap) (bitmap->hasNext ? ((g_bitmap_header*) (((g_address) (bitmap)) + sizeof(g_bitmap_header) + (bitmap->entryCount * sizeof(g_bitmap_entry)))) : nullptr)
+#define G_BITMAP_NEXT_UNCHECKED(bitmap) ((g_bitmap_header*) (((g_address) (bitmap)) + sizeof(g_bitmap_header) + (bitmap->entryCount * sizeof(g_bitmap_entry))))
+#define G_BITMAP_NEXT(bitmap) (bitmap->hasNext ? G_BITMAP_NEXT_UNCHECKED(bitmap) : nullptr)
 
 /**
  * @returns a pointer to the entries of this bitmap

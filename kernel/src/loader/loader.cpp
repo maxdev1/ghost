@@ -61,13 +61,13 @@ g_physical_address loaderSetupGdt()
  * found free physical page. The physical memory map is interpreted to
  * determine how much space is required for the bitmap array used by the
  * physical allocator. The bitmap array starts right after the GDT page.
- * 
+ *
  * The end of the bitmap array is also the end of the "reserved area", which
  * is identity-mapped so that the kernel can access this data.
- * 
+ *
  * Since there is often some free space before the multiboot modules,
  * the memory layout usually looks like this after initializing:
- * 
+ *
  * [0x0-0x100000]...[gdt][mb-kernel][mb-ramdisk][bitmap-array]...
  */
 void loaderInitializeMemory()
@@ -94,6 +94,7 @@ void loaderStartKernel()
 
 	G_PRETTY_BOOT_STATUS_P(5);
 	logInfo("%! found kernel binary at %h, loading...", "loader", kernelModule->moduleStart);
+	logInfo("");
 
 	kernelLoaderLoad(kernelModule);
 }

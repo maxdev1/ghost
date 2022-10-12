@@ -25,14 +25,14 @@
 #include "shared/logger/logger.hpp"
 #include "shared/system/spinlock.hpp"
 
-struct g_mutex
+typedef struct
 {
 	volatile int initialized = 0;
 	g_spinlock lock = 0;
 
 	int depth = 0;
 	uint32_t owner = -1;
-};
+} __attribute__((packed)) g_mutex;
 
 /**
  * Initializes the mutex.

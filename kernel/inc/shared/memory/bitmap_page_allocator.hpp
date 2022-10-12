@@ -29,7 +29,6 @@ struct g_bitmap_page_allocator
 {
 	uint32_t freePageCount;
 	g_bitmap_header* bitmapArray;
-	g_mutex lock;
 };
 
 /**

@@ -64,28 +64,41 @@ uint32_t memoryPhysicalReadMemoryMap(g_address startAfter, g_address bitmapArray
 		if(start >= end)
 			continue;
 
-		// Calculate required size of current bitmap
-		uint32_t entryCount = ((end - start) / G_PAGE_SIZE) / G_BITMAP_PAGES_PER_ENTRY;
-		uint32_t currentBitmapSize = sizeof(g_bitmap_header) + (entryCount * sizeof(g_bitmap_entry));
-		totalBitmapsSize += currentBitmapSize;
-
-		// Write bitmap if it's not a dry-run
-		if(bitmapArrayStart)
+		// Artificially split the current range into multiple bitmaps to improve multi-core performance
+		g_address splitStart = start;
+		while(splitStart < end)
 		{
-			currentBitmap->baseAddress = start;
-			currentBitmap->entryCount = entryCount;
-			currentBitmap->hasNext = false;
-			g_bitmap_entry* currentBitmapEntries = G_BITMAP_ENTRIES(currentBitmap);
-			for(uint32_t i = 0; i < currentBitmap->entryCount; i++)
+			g_address splitEnd = splitStart + G_BITMAP_MAX_RANGE;
+			if(splitEnd > end)
+				splitEnd = end;
+
+			// Calculate required size of current bitmap
+			uint32_t entryCount = ((splitEnd - splitStart) / G_PAGE_SIZE) / G_BITMAP_PAGES_PER_ENTRY;
+			uint32_t currentBitmapSize = sizeof(g_bitmap_header) + (entryCount * sizeof(g_bitmap_entry));
+			totalBitmapsSize += currentBitmapSize;
+
+			// Write bitmap if it's not a dry-run
+			if(bitmapArrayStart)
 			{
-				currentBitmapEntries[i] = 0;
+				currentBitmap->baseAddress = splitStart;
+				currentBitmap->entryCount = entryCount;
+				currentBitmap->hasNext = false;
+				g_bitmap_entry* currentBitmapEntries = G_BITMAP_ENTRIES(currentBitmap);
+				for(uint32_t i = 0; i < currentBitmap->entryCount; i++)
+				{
+					currentBitmapEntries[i] = 0;
+				}
+
+				if(previousBitmap)
+					previousBitmap->hasNext = true;
+
+				logDebug("%! bitmap: %x, base: %x, entries: %i", "physical", currentBitmap, currentBitmap->baseAddress, currentBitmap->entryCount);
+
+				previousBitmap = currentBitmap;
+				currentBitmap = G_BITMAP_NEXT_UNCHECKED(currentBitmap);
 			}
 
-			if(previousBitmap)
-				previousBitmap->hasNext = true;
-
-			previousBitmap = currentBitmap;
-			currentBitmap = G_BITMAP_NEXT(currentBitmap);
+			splitStart += G_BITMAP_MAX_RANGE;
 		}
 	}
 
