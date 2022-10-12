@@ -19,26 +19,25 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/filesystem/ramdisk.hpp"
+#include "kernel/memory/heap.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/paging.hpp"
-#include "kernel/kernel.hpp"
-
-#include "shared/utils/string.hpp"
 #include "shared/memory/memory.hpp"
-#include "kernel/memory/heap.hpp"
+#include "shared/panic.hpp"
+#include "shared/utils/string.hpp"
 
 g_ramdisk* ramdiskMain = 0;
 
 void ramdiskLoadFromModule(g_multiboot_module* module)
 {
 	if(ramdiskMain)
-		kernelPanic("%! tried to initialize ramdisk multiple times", "kern");
+		panic("%! tried to initialize ramdisk multiple times", "kern");
 
 	int pages = G_PAGE_ALIGN_UP(module->moduleEnd - module->moduleStart) / G_PAGE_SIZE;
 
 	g_virtual_address newLocation = addressRangePoolAllocate(memoryVirtualRangePool, pages);
 	if(newLocation == 0)
-		kernelPanic("%! not enough virtual space for ramdisk remapping (%x required)", "kern", module->moduleEnd - module->moduleStart);
+		panic("%! not enough virtual space for ramdisk remapping (%x required)", "kern", module->moduleEnd - module->moduleStart);
 
 	for(int i = 0; i < pages; i++)
 	{
@@ -76,7 +75,8 @@ void ramdiskParseContents(g_multiboot_module* module)
 		{
 			ramdiskMain->firstEntry = entry;
 			currentHeader = ramdiskMain->firstEntry;
-		} else
+		}
+		else
 		{
 			currentHeader->next = entry;
 			currentHeader = entry;
@@ -120,7 +120,8 @@ void ramdiskParseContents(g_multiboot_module* module)
 			// Copy data
 			entry->data = (uint8_t*) (data + pos);
 			pos += entry->dataSize;
-		} else
+		}
+		else
 		{
 			entry->dataSize = 0;
 			entry->data = 0;

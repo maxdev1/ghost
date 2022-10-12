@@ -23,10 +23,9 @@
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/filesystem/filesystem_ramdiskdelegate.hpp"
 #include "kernel/ipc/pipes.hpp"
-#include "kernel/kernel.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/tasking.hpp"
-
+#include "shared/panic.hpp"
 #include "shared/system/mutex.hpp"
 #include "shared/utils/string.hpp"
 
@@ -150,14 +149,14 @@ g_fs_delegate* filesystemCreateDelegate()
 g_fs_delegate* filesystemFindDelegate(g_fs_node* node)
 {
 	if(!node)
-		kernelPanic("%! tried to find delegate for null node", "fs");
+		panic("%! tried to find delegate for null node", "fs");
 
 	if(!node->delegate && node->parent)
 		return filesystemFindDelegate(node->parent);
 
 	g_fs_delegate* delegate = node->delegate;
 	if(delegate == 0)
-		kernelPanic("%! failed to find delegate for node %i", "fs", node->id);
+		panic("%! failed to find delegate for node %i", "fs", node->id);
 	return delegate;
 }
 
@@ -335,7 +334,7 @@ g_fs_open_status filesystemOpenNode(g_fs_node* file, g_file_flag_mode flags, g_p
 {
 	g_fs_delegate* delegate = filesystemFindDelegate(file);
 	if(!delegate->open)
-		kernelPanic("%! failed to open file %i, delegate had no implementation", "fs", file->id);
+		panic("%! failed to open file %i, delegate had no implementation", "fs", file->id);
 
 	g_fs_open_status status = delegate->open(file);
 	if(status == G_FS_OPEN_SUCCESSFUL)
@@ -374,7 +373,7 @@ g_fs_read_status filesystemRead(g_task* task, g_fd fd, uint8_t* buffer, uint64_t
 	{
 		g_fs_delegate* delegate = filesystemFindDelegate(node);
 		if(!delegate->waitForRead)
-			kernelPanic("%! task %i tried to wait for file %i but delegate didn't provide wait-for-read implementation", "filesytem", task->id, node->id);
+			panic("%! task %i tried to wait for file %i but delegate didn't provide wait-for-read implementation", "filesytem", task->id, node->id);
 
 		delegate->waitForRead(task->id, node);
 		task->status = G_THREAD_STATUS_WAITING;
@@ -454,7 +453,7 @@ g_fs_write_status filesystemWrite(g_task* task, g_fd fd, uint8_t* buffer, uint64
 	{
 		g_fs_delegate* delegate = filesystemFindDelegate(node);
 		if(!delegate->waitForWrite)
-			kernelPanic("%! task %i tried to wait for file %i but delegate didn't provide wait-for-write implementation", "filesytem", task->id, node->id);
+			panic("%! task %i tried to wait for file %i but delegate didn't provide wait-for-write implementation", "filesytem", task->id, node->id);
 
 		delegate->waitForWrite(task->id, node);
 		task->status = G_THREAD_STATUS_WAITING;
@@ -538,7 +537,7 @@ g_fs_close_status filesystemClose(g_pid pid, g_fd fd, g_bool removeDescriptor)
 
 	g_fs_delegate* delegate = filesystemFindDelegate(file);
 	if(!delegate->close)
-		kernelPanic("%! failed to close file %i, delegate had no implementation", "fs", file->id);
+		panic("%! failed to close file %i, delegate had no implementation", "fs", file->id);
 
 	g_fs_close_status status = delegate->close(file);
 	if(status == G_FS_CLOSE_SUCCESSFUL)
@@ -662,7 +661,7 @@ g_fs_read_directory_status filesystemReadDirectory(g_fs_node* parent, uint32_t i
 {
 	g_fs_delegate* delegate = filesystemFindDelegate(parent);
 	if(!delegate->readDir)
-		kernelPanic("%! failed to read directory %i, delegate had no implementation", "fs", parent->id);
+		panic("%! failed to read directory %i, delegate had no implementation", "fs", parent->id);
 
 	return delegate->readDir(parent, index, outChild);
 }

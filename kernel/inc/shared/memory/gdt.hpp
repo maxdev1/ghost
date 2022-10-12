@@ -22,9 +22,30 @@
 #define __GDT__
 
 #include "ghost/stdint.h"
-#include "shared/memory/gdt_pointer.hpp"
-#include "shared/memory/gdt_entry.hpp"
 #include "shared/memory/gdt_macros.hpp"
+
+/**
+ * Structure of a GDT entry
+ */
+struct g_gdt_entry
+{
+	uint16_t limitLow : 16;
+	uint16_t baseLow : 16;
+	uint8_t baseMiddle : 8;
+	uint8_t access : 8;
+	uint16_t limitHigh : 4;
+	uint8_t granularity : 4;
+	uint8_t baseHigh : 8;
+} __attribute__((packed));
+
+/**
+ * Structure of the GDT pointer
+ */
+struct g_gdt_pointer
+{
+	uint16_t limit;
+	uint32_t base;
+} __attribute__((packed));
 
 /**
  * Fills the given GDTEntry with the given data.
@@ -36,5 +57,15 @@
  * @param granularity	the granularity to write
  */
 void gdtCreateGate(g_gdt_entry* gdtEntry, uint32_t base, uint32_t limit, uint8_t access, uint8_t granularity);
+
+/**
+ * Loads the GDT using the GDT pointer structure at the given address.
+ */
+extern "C" void _loadGdt(uint32_t gdtPointerAddress);
+
+/**
+ * Loads the TSS at the given descriptor index.
+ */
+extern "C" void _loadTss(uint16_t tssDescriptorIndex);
 
 #endif

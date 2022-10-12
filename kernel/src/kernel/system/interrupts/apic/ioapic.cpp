@@ -19,8 +19,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/interrupts/apic/ioapic.hpp"
-#include "kernel/kernel.hpp"
 #include "kernel/memory/memory.hpp"
+#include "shared/panic.hpp"
 
 static g_ioapic* ioapicList = 0;
 
@@ -76,7 +76,7 @@ void ioapicCreateMapping(g_ioapic* io)
 	// Get a virtual range for mapping
 	io->virtualAddress = addressRangePoolAllocate(memoryVirtualRangePool, 2);
 	if(io->virtualAddress == 0)
-		kernelPanic("%! could not get a virtual range for mapping", "ioapic");
+		panic("%! could not get a virtual range for mapping", "ioapic");
 
 	// Add the physical offset to the virtual address
 	io->virtualAddress += io->physicalAddress - G_PAGE_ALIGN_DOWN(io->physicalAddress);

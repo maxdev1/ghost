@@ -32,16 +32,16 @@ bool smpInitialized = false;
 void smpInitialize(g_physical_address initialPageDirectoryPhysical)
 {
 	// Write values to lower memory for use within startup code
-	*((uint32_t*) G_CONST_SMP_STARTUP_AREA_PAGE_DIRECTORY) = initialPageDirectoryPhysical;
-	*((uint32_t*) G_CONST_SMP_STARTUP_AREA_AP_START_ADDRESS) = (g_virtual_address) kernelRunApplicationCore;
-	*((uint32_t*) G_CONST_SMP_STARTUP_AREA_AP_COUNTER) = 0;
+	*((uint32_t*) G_SMP_STARTUP_AREA_PAGEDIR) = initialPageDirectoryPhysical;
+	*((uint32_t*) G_SMP_STARTUP_AREA_AP_ENTRY) = (g_virtual_address) kernelRunApplicationCore;
+	*((uint32_t*) G_SMP_STARTUP_AREA_AP_COUNTER) = 0;
 
-	logDebug("%! initial page directory for APs: %h", "smp", *((uint32_t*) G_CONST_SMP_STARTUP_AREA_PAGE_DIRECTORY));
-	logDebug("%! kernel entry point for APs: %h", "smp", *((uint32_t*) G_CONST_SMP_STARTUP_AREA_AP_START_ADDRESS));
-	logDebug("%! initial AP counter value: %i", "smp", *((uint32_t*) G_CONST_SMP_STARTUP_AREA_AP_COUNTER));
+	logDebug("%! initial page directory for APs: %h", "smp", *((uint32_t*) G_SMP_STARTUP_AREA_PAGEDIR));
+	logDebug("%! kernel entry point for APs: %h", "smp", *((uint32_t*) G_SMP_STARTUP_AREA_AP_ENTRY));
+	logDebug("%! initial AP counter value: %i", "smp", *((uint32_t*) G_SMP_STARTUP_AREA_AP_COUNTER));
 
 	// Create enough stacks for all APs
-	g_physical_address* stackArray = (g_physical_address*) G_CONST_SMP_STARTUP_AREA_AP_STACK_ARRAY;
+	g_physical_address* stackArray = (g_physical_address*) G_SMP_STARTUP_AREA_AP_STACK_ARRAY;
 	for(uint32_t i = 0; i < processorGetNumberOfProcessors(); i++)
 	{
 
@@ -74,7 +74,7 @@ void smpInitialize(g_physical_address initialPageDirectoryPhysical)
 		logInfo("%*%! could not initialize due to missing apstartup object at '%s'", 0x0C, "smp", ap_startup_location);
 		return;
 	}
-	memoryCopy((uint8_t*) G_CONST_SMP_STARTUP_AREA_CODE_START, (uint8_t*) startupObject->data, startupObject->dataSize);
+	memoryCopy((uint8_t*) G_SMP_STARTUP_AREA_CODE_START, (uint8_t*) startupObject->data, startupObject->dataSize);
 
 	smpInitialized = true;
 
@@ -93,7 +93,7 @@ void smpInitialize(g_physical_address initialPageDirectoryPhysical)
 void smpInitializeCore(g_processor* cpu)
 {
 	// Calculate the vector value for the code start
-	uint32_t vectorValue = (G_CONST_SMP_STARTUP_AREA_CODE_START >> 12) & 0xFF;
+	uint32_t vectorValue = (G_SMP_STARTUP_AREA_CODE_START >> 12) & 0xFF;
 
 	// Send INIT
 	lapicWrite(APIC_REGISTER_INT_COMMAND_HIGH, cpu->apicId << 24);

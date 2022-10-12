@@ -20,161 +20,103 @@
 
 #include "loader/loader.hpp"
 #include "loader/kernel_loader.hpp"
-
-#include "shared/runtime/constructors.hpp"
-#include "shared/system/bios_data_area.hpp"
-#include "shared/system/serial_port.hpp"
-
+#include "loader/memory/physical.hpp"
+#include "loader/setup_information.hpp"
 #include "shared/debug/debug_interface.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/panic.hpp"
+#include "shared/system/bios_data_area.hpp"
+#include "shared/system/serial_port.hpp"
 #include "shared/video/console_video.hpp"
 #include "shared/video/pretty_boot.hpp"
 
 // Symbol provided by linker at end of loader binary
 extern "C" void* endAddress;
 
-g_setup_information loaderSetupInformation;
-g_bitmap_page_allocator loaderPhysicalAllocator;
-
-extern "C" void loaderMain(g_multiboot_information* multibootInformation, uint32_t magicNumber)
+extern "C" void loaderMain(g_multiboot_information* multiboot, uint32_t magicNumber)
 {
-    if(magicNumber != G_MULTIBOOT_BOOTLOADER_MAGIC)
-        loaderPanic("%! invalid magic number in multiboot struct", "early");
+	if(magicNumber != G_MULTIBOOT_BOOTLOADER_MAGIC)
+		panic("%! invalid magic number in multiboot struct", "mboot");
 
-    runtimeAbiCallGlobalConstructors();
-    loaderEnableLoggingFeatures();
-    loaderSetupInformation.multibootInformation = multibootInformation;
-    loaderInitializeMemory();
-    loaderStartKernel();
+	if(multiboot->flags & G_MULTIBOOT_FLAGS_BOOTLDNAM)
+		logInfo("%! loaded by: %s", "mboot", multiboot->bootloaderName);
+
+	loaderEnableLoggingFeatures();
+	loaderSetupInformation.multibootInformation = multiboot;
+	loaderInitializeMemory();
+	loaderStartKernel();
 }
 
+g_physical_address loaderSetupGdt()
+{
+	g_address loaderEnd = G_PAGE_ALIGN_UP((g_address) &endAddress);
+	g_address gdtPage = memoryPhysicalAllocateInitial(loaderEnd, 1);
+	gdtInitialize(gdtPage);
+	return gdtPage + G_PAGE_SIZE;
+}
+
+/**
+ * The bootloader has loaded the kernel and the ramdisk as multiboot modules
+ * into memory somewhere after 0x00100000. The physical memory map is now
+ * interpreted to first determine how much memory is required for the bitmaps
+ * used by the physical allocator; then these bitmaps are initialized.
+ */
 void loaderInitializeMemory()
 {
-    g_address gdtEnd = loaderSetupGdt();
-    loaderSetupInformation.bitmapStart = loaderFindNextFreePages(gdtEnd, G_PAGE_ALIGN_UP(G_BITMAP_SIZE) / G_PAGE_SIZE);
-    loaderSetupInformation.bitmapEnd = G_PAGE_ALIGN_UP(loaderSetupInformation.bitmapStart + G_BITMAP_SIZE);
+	g_physical_address gdtEnd = loaderSetupGdt();
 
-    g_address reservedAreaEnd = loaderSetupInformation.bitmapEnd;
-    bitmapPageAllocatorInitialize(&loaderPhysicalAllocator, (g_bitmap_entry*) loaderSetupInformation.bitmapStart);
-    multibootReadMemoryMap(reservedAreaEnd);
+	uint32_t bitmapRequiredMemory = memoryPhysicalReadMemoryMap(gdtEnd, 0);
+	loaderSetupInformation.bitmapArrayStart = memoryPhysicalAllocateInitial(gdtEnd, G_PAGE_ALIGN_UP(bitmapRequiredMemory) / G_PAGE_SIZE);
+	loaderSetupInformation.bitmapArrayEnd = G_PAGE_ALIGN_UP(loaderSetupInformation.bitmapArrayStart + bitmapRequiredMemory);
+	memoryPhysicalReadMemoryMap(loaderSetupInformation.bitmapArrayEnd, loaderSetupInformation.bitmapArrayStart);
+	bitmapPageAllocatorInitialize(&memoryPhysicalAllocator, (g_bitmap*) loaderSetupInformation.bitmapArrayStart);
 
-    pagingInitialize(reservedAreaEnd);
+	loaderSetupInformation.initialPageDirectoryPhysical = pagingInitialize(loaderSetupInformation.bitmapArrayEnd);
 }
 
 void loaderStartKernel()
 {
-    logInfo("%! locating kernel binary...", "loader");
-    g_multiboot_module* kernelModule = multibootFindModule(loaderSetupInformation.multibootInformation, "/boot/kernel");
-    if(!kernelModule)
-    {
-        G_PRETTY_BOOT_FAIL("Kernel module not found");
-        loaderPanic("%! kernel module not found", "loader");
-    }
+	g_multiboot_module* kernelModule = multibootFindModule(loaderSetupInformation.multibootInformation, "/boot/kernel");
+	if(!kernelModule)
+	{
+		G_PRETTY_BOOT_FAIL("Kernel module not found");
+		panic("%! kernel module not found", "loader");
+	}
 
-    G_PRETTY_BOOT_STATUS_P(5);
-    logInfo("%! found kernel binary at %h, loading...", "loader", kernelModule->moduleStart);
+	G_PRETTY_BOOT_STATUS_P(5);
+	logInfo("%! found kernel binary at %h, loading...", "loader", kernelModule->moduleStart);
 
-    kernelLoaderLoad(kernelModule);
-
-    loaderPanic("%! something went wrong during boot process, halting", "loader");
-}
-
-g_address loaderSetupGdt()
-{
-    g_address loaderEndAddress = G_PAGE_ALIGN_UP((uint32_t) &endAddress);
-    g_address gdtPage = loaderFindNextFreePages(loaderEndAddress, 1);
-    gdtInitialize(gdtPage);
-    return gdtPage + G_PAGE_SIZE;
-}
-
-g_address loaderFindNextFreePages(g_address start, int count)
-{
-    logInfo("%! searching for %i free pages (starting at %h)", "loader", count, start);
-    g_physical_address location = start;
-
-    while(location < 0xFFFFFFFF)
-    {
-        bool inModuleRange = false;
-
-        // For each of the required pages, check if it is within a module
-        for(int i = 0; i < count; i++)
-        {
-            g_address pos = location + i * G_PAGE_SIZE;
-
-            // Check one of the modules contains this position
-            for(int i = 0; i < (int) loaderSetupInformation.multibootInformation->modulesCount; i++)
-            {
-                g_multiboot_module* module =
-                    (g_multiboot_module*) (loaderSetupInformation.multibootInformation->modulesAddress + sizeof(g_multiboot_module) * i);
-                g_address moduleStart = G_PAGE_ALIGN_DOWN(module->moduleStart);
-                g_address moduleEnd = G_PAGE_ALIGN_UP(module->moduleEnd);
-
-                if(pos >= moduleStart && pos < moduleEnd)
-                {
-                    inModuleRange = true;
-                    location = moduleEnd;
-                    break;
-                }
-            }
-        }
-
-        if(!inModuleRange)
-        {
-            logInfo("%# found: %h", location);
-            return location;
-        }
-
-        location += G_PAGE_SIZE;
-    }
-
-    loaderPanic("%! could not find free memory chunk", "loader");
-    return 0;
-}
-
-void loaderPanic(const char* msg, ...)
-{
-    asm("cli");
-    logInfo("%! an unrecoverable error has occured. reason:", "lpanic");
-
-    va_list valist;
-    va_start(valist, msg);
-    loggerPrintFormatted(msg, valist);
-    va_end(valist);
-    loggerPrintCharacter('\n');
-
-    for(;;)
-        asm("hlt");
+	kernelLoaderLoad(kernelModule);
 }
 
 void loaderEnableLoggingFeatures()
 {
-    g_com_port_information comPortInfo = biosDataArea->comPortInfo;
-    if(comPortInfo.com1 > 0)
-    {
-        serialPortInitialize(comPortInfo.com1, false); // Initialize in poll mode
-        loggerEnableSerial(true);
-        debugInterfaceInitialize(comPortInfo.com1);
-    }
-    else
-    {
-        logWarn("%! COM1 port not available for serial debug output", "logger");
-    }
+	g_com_port_information comPortInfo = biosDataArea->comPortInfo;
+	if(comPortInfo.com1 > 0)
+	{
+		serialPortInitialize(comPortInfo.com1, false); // Initialize in poll mode
+		loggerEnableSerial(true);
+		debugInterfaceInitialize(comPortInfo.com1);
+	}
+	else
+	{
+		logWarn("%! COM1 port not available for serial debug output", "logger");
+	}
 
-    if(G_PRETTY_BOOT)
-    {
-        prettyBootEnable();
-    }
-    else
-    {
-        consoleVideoClear();
-    }
+	if(G_PRETTY_BOOT)
+	{
+		prettyBootEnable();
+	}
+	else
+	{
+		consoleVideoClear();
+	}
 
-    logInfo("");
-    consoleVideoSetColor(0x90);
-    logInfon("Ghost Loader");
-    consoleVideoSetColor(0x0F);
-    logInfon(" Version 1.1");
-    logInfo("");
-    logInfo("%! checking magic number", "early");
-    G_PRETTY_BOOT_STATUS_P(1);
+	logInfo("");
+	consoleVideoSetColor(0x90);
+	logInfon("Ghost Loader");
+	consoleVideoSetColor(0x0F);
+	logInfo(" Version %i.%i.%i", G_LOADER_VERSION_MAJOR, G_LOADER_VERSION_MINOR, G_LOADER_VERSION_PATCH);
+	logInfo("");
+	G_PRETTY_BOOT_STATUS_P(1);
 }

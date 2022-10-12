@@ -19,11 +19,11 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/memory/lower_heap.hpp"
-#include "kernel/kernel.hpp"
-#include "kernel/memory/paging.hpp"
-#include "kernel/memory/memory.hpp"
 #include "kernel/memory/chunk_allocator.hpp"
+#include "kernel/memory/memory.hpp"
+#include "kernel/memory/paging.hpp"
 #include "shared/memory/bitmap_page_allocator.hpp"
+#include "shared/panic.hpp"
 
 static g_chunk_allocator lowerHeapAllocator;
 static g_virtual_address lowerHeapStart = 0;
@@ -44,11 +44,11 @@ void lowerHeapInitialize(g_virtual_address start, g_virtual_address end)
 void* lowerHeapAllocate(uint32_t size)
 {
 	if(!lowerHeapInitialized)
-		kernelPanic("%! tried to use uninitialized kernel heap", "lowerheap");
+		panic("%! tried to use uninitialized kernel heap", "lowerheap");
 
 	void* ptr = chunkAllocatorAllocate(&lowerHeapAllocator, size);
 	if(!ptr)
-		kernelPanic("%! failed to allocate kernel memory", "lowerheap");
+		panic("%! failed to allocate kernel memory", "lowerheap");
 
 	lowerHeapAmountInUse += size;
 	return ptr;
@@ -57,7 +57,7 @@ void* lowerHeapAllocate(uint32_t size)
 void lowerHeapFree(void* ptr)
 {
 	if(!lowerHeapInitialized)
-		kernelPanic("%! tried to use uninitialized lower heap", "lowerheap");
+		panic("%! tried to use uninitialized lower heap", "lowerheap");
 
 	lowerHeapAmountInUse -= chunkAllocatorFree(&lowerHeapAllocator, ptr);
 }

@@ -19,8 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/interrupts/interrupts.hpp"
-
-#include "kernel/kernel.hpp"
 #include "kernel/memory/gdt.hpp"
 #include "kernel/system/configuration.hpp"
 #include "kernel/system/interrupts/apic/ioapic.hpp"
@@ -32,6 +30,7 @@
 #include "kernel/system/timing/pit.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking.hpp"
+#include "shared/panic.hpp"
 #include "shared/system/mutex.hpp"
 
 void _interruptsSendEndOfInterrupt(uint8_t irq);
@@ -45,7 +44,7 @@ void interruptsInitializeBsp()
 	if(lapicIsAvailable())
 	{
 		if(!ioapicAreAvailable())
-			kernelPanic("%! no I/O APIC controllers found", "system");
+			panic("%! no I/O APIC controllers found", "system");
 
 		picDisable();
 		lapicInitialize();

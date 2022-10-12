@@ -32,45 +32,39 @@
 #include "kernel/tasking/atoms.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "shared/runtime/constructors.hpp"
 #include "shared/system/mutex.hpp"
 #include "shared/system/serial_port.hpp"
 #include "shared/video/console_video.hpp"
 #include "shared/video/pretty_boot.hpp"
+#include "shared/panic.hpp"
 
 static g_mutex bootstrapCoreLock;
 static g_mutex applicationCoreLock;
 
 extern "C" void kernelMain(g_setup_information* setupInformation)
 {
-	runtimeAbiCallGlobalConstructors();
-
 	if(G_PRETTY_BOOT)
 		prettyBootEnable(false);
 	else
 		consoleVideoClear();
 
-	kernelInitialize(setupInformation);
-
-	g_address initialPdPhys = setupInformation->initialPageDirectoryPhysical;
-	memoryUnmapSetupMemory();
-	kernelRunBootstrapCore(initialPdPhys);
-
-	__builtin_unreachable();
-}
-
-void kernelInitialize(g_setup_information* setupInformation)
-{
 	kernelLoggerInitialize(setupInformation);
+
 	memoryInitialize(setupInformation);
 
 	g_multiboot_module* ramdiskModule = multibootFindModule(setupInformation->multibootInformation, "/boot/ramdisk");
 	if(!ramdiskModule)
 	{
 		G_PRETTY_BOOT_FAIL("Ramdisk not found (did you supply enough memory?");
-		kernelPanic("%! ramdisk not found (did you supply enough memory?)", "kern");
+		panic("%! ramdisk not found (did you supply enough memory?)", "kern");
 	}
 	ramdiskLoadFromModule(ramdiskModule);
+
+	g_address initialPdPhys = setupInformation->initialPageDirectoryPhysical;
+	memoryUnmapSetupMemory();
+
+	kernelRunBootstrapCore(initialPdPhys);
+	__builtin_unreachable();
 }
 
 void kernelRunBootstrapCore(g_physical_address initialPdPhys)
@@ -158,21 +152,6 @@ void kernelInitializationThread()
 	kernelSpawnService("/applications/windowserver.bin", "", G_SECURITY_LEVEL_APPLICATION);
 
 	taskingExit();
-}
-
-void kernelPanic(const char* msg, ...)
-{
-	interruptsDisable();
-	logInfo("%*%! unrecoverable error on processor %i", 0x0C, "kernerr", processorGetCurrentId());
-
-	va_list valist;
-	va_start(valist, msg);
-	loggerPrintFormatted(msg, valist);
-	va_end(valist);
-	loggerPrintCharacter('\n');
-
-	for(;;)
-		asm("hlt");
 }
 
 void kernelHalt()

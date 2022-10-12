@@ -40,8 +40,8 @@
  */
 struct g_setup_information
 {
-	g_virtual_address bitmapStart;
-	g_virtual_address bitmapEnd;
+	g_virtual_address bitmapArrayStart;
+	g_virtual_address bitmapArrayEnd;
 	g_multiboot_information *multibootInformation;
 
 	g_virtual_address kernelImageStart;

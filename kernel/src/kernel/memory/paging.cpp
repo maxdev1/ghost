@@ -19,77 +19,21 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/memory/paging.hpp"
-#include "kernel/kernel.hpp"
-#include "kernel/memory/memory.hpp"
 #include "kernel/memory/address_range_pool.hpp"
-
-#include "shared/memory/constants.hpp"
+#include "kernel/memory/memory.hpp"
+#include "loader/setup_information.hpp"
 #include "shared/memory/bitmap_page_allocator.hpp"
-
-bool pagingMapPage(g_virtual_address virt, g_physical_address phys, uint32_t tableFlags, uint32_t pageFlags, bool allowOverride)
-{
-	if((virt & G_PAGE_ALIGN_MASK) || (phys & G_PAGE_ALIGN_MASK))
-		kernelPanic("%! tried to map unaligned addresses: %h -> %h", "paging", virt, phys);
-
-	uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(virt);
-	uint32_t pi = G_PAGE_IN_TABLE_INDEX(virt);
-
-	g_page_directory directory = (g_page_directory) G_CONST_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
-	g_page_table table = ((g_page_table) G_CONST_RECURSIVE_PAGE_DIRECTORY_AREA) + (0x400 * ti);
-
-	if(directory[ti] == 0)
-	{
-		g_physical_address newTablePage = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-		if(!newTablePage)
-			kernelPanic("%! no pages left for mapping", "paging");
-
-		directory[ti] = newTablePage | tableFlags;
-		for(uint32_t i = 0; i < 1024; i++)
-			table[i] = 0;
-
-	} else if((tableFlags & G_PAGE_TABLE_USERSPACE) && ((directory[ti] & G_PAGE_ALIGN_MASK) & G_PAGE_TABLE_USERSPACE) == 0)
-	{
-		kernelPanic("%! tried to map user page in kernel space table, virt %h", "paging", virt);
-	}
-
-	if(table[pi] == 0 || allowOverride)
-	{
-		table[pi] = phys | pageFlags;
-		G_INVLPG(virt);
-		return true;
-	}
-
-#warning "TODO: implement following code"
-	logInfo("%! warning: tried duplicate mapping of page %h", "paging", virt);
-	/*
-	 g_thread* failor = g_tasking::lastThread();
-	 if(failor != 0)
-	 {
-	 const char* ident = failor->getIdentifier();
-	 if(ident)
-	 {
-	 logInfo("%! '%s' (%i) tried duplicate mapping, virt %h -> phys %h, table contains %h", "addrspace", ident, failor->id, virtual_addr,
-	 physical_addr, table[pi]);
-	 } else
-	 {
-	 logInfo("%! %i tried duplicate mapping, virt %h -> phys %h, table contains %h", "addrspace", failor->id, virtual_addr, physical_addr, table[pi]);
-	 }
-	 } else
-	 {
-	 logInfo("%! unknown tried duplicate mapping, virt %h -> phys %h, table contains %h", "addrspace", virtual_addr, physical_addr, table[pi]);
-	 }
-	 */
-	return false;
-}
+#include "shared/memory/constants.hpp"
+#include "shared/panic.hpp"
 
 void pagingMapToTemporaryMappedDirectory(g_physical_address directoryPhys, g_virtual_address virt, g_physical_address phys, uint32_t tableFlags,
-		uint32_t pageFlags, bool allowOverride)
+										 uint32_t pageFlags, bool allowOverride)
 {
 	if(!memoryVirtualRangePool)
-		kernelPanic("%! kernel virtual address range pool used before initialization", "paging");
+		panic("%! kernel virtual address range pool used before initialization", "paging");
 
 	if((virt & G_PAGE_ALIGN_MASK) || (phys & G_PAGE_ALIGN_MASK))
-		kernelPanic("%! tried to map unaligned addresses: %h -> %h", "paging", virt, phys);
+		panic("%! tried to map unaligned addresses: %h -> %h", "paging", virt, phys);
 
 	g_virtual_address directoryTempVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
 	g_page_directory directoryTemp = (g_page_directory) directoryTempVirt;
@@ -132,44 +76,18 @@ void pagingMapToTemporaryMappedDirectory(g_physical_address directoryPhys, g_vir
 
 	logWarn("%! tried to map area to physical pd %h that was already mapped, %h -> %h, table contains %h", "addrspace", directoryPhys, virt, phys,
 			tableTemp[pi]);
-	kernelPanic("%! duplicate mapping", "paging");
-}
-
-void pagingUnmapPage(g_virtual_address virt)
-{
-	uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(virt);
-	uint32_t pi = G_PAGE_IN_TABLE_INDEX(virt);
-
-	g_page_directory directory = (g_page_directory) G_CONST_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
-	g_page_table table = G_CONST_RECURSIVE_PAGE_TABLE(ti);
-
-	if(!directory[ti])
-		return;
-
-	if(!table[pi])
-		return;
-
-	table[pi] = 0;
-	G_INVLPG(virt);
-}
-
-g_physical_address pagingGetCurrentSpace()
-{
-	uint32_t directory;
-	asm volatile("mov %%cr3, %0" : "=r"(directory));
-	return directory;
+	panic("%! duplicate mapping", "paging");
 }
 
 g_physical_address pagingVirtualToPhysical(g_virtual_address addr)
 {
 	uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(addr);
 	uint32_t pi = G_PAGE_IN_TABLE_INDEX(addr);
-	g_page_directory directory = (g_page_directory) G_CONST_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
-	g_page_table table = ((g_page_table) G_CONST_RECURSIVE_PAGE_DIRECTORY_AREA) + (0x400 * ti);
+	g_page_directory directory = (g_page_directory) G_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
+	g_page_table table = ((g_page_table) G_RECURSIVE_PAGE_DIRECTORY_AREA) + (0x400 * ti);
 
 	if(directory[ti] == 0)
 		return 0;
 
 	return table[pi] & ~G_PAGE_ALIGN_MASK;
 }
-

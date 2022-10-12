@@ -32,8 +32,8 @@
 #endif
 
 // pretty boot
-#define G_PRETTY_BOOT true
-#define G_VIDEO_LOG_BOOT false
+#define G_PRETTY_BOOT false
+#define G_VIDEO_LOG_BOOT true
 
 // logging settings
 #define G_LOG_LEVEL G_LOG_LEVEL_INFO
@@ -48,7 +48,11 @@
 
 // version
 #define G_VERSION_MAJOR 0
-#define G_VERSION_MINOR 10
-#define G_VERSION_PATCH 2
+#define G_VERSION_MINOR 14
+#define G_VERSION_PATCH 0
+
+#define G_LOADER_VERSION_MAJOR 1
+#define G_LOADER_VERSION_MINOR 1
+#define G_LOADER_VERSION_PATCH 0
 
 #endif

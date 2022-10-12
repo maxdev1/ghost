@@ -49,7 +49,7 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 
 	// heap expansion is limited
 	bool success = false;
-	if(newBrk >= G_CONST_USER_MAXIMUM_HEAP_BREAK)
+	if(newBrk >= G_USER_MAXIMUM_HEAP_BREAK)
 	{
 		logInfo("%! process %i went out of memory during sbrk", "syscall", process->main->id);
 		*outAddress = -1;
@@ -131,7 +131,7 @@ g_stack taskingMemoryCreateStack(g_address_range_pool* addressRangePool, uint32_
 
 g_physical_address taskingMemoryCreatePageDirectory()
 {
-	g_page_directory directoryCurrent = (g_page_directory) G_CONST_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
+	g_page_directory directoryCurrent = (g_page_directory) G_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
 
 	g_physical_address directoryPhys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
 	g_virtual_address directoryTempVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);

@@ -19,9 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "loader/memory/gdt.hpp"
-
 #include "shared/logger/logger.hpp"
-#include "shared/memory/gdt_mounter.hpp"
 #include "shared/memory/gdt.hpp"
 
 void gdtInitialize(g_address gdtPage)

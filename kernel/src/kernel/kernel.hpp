@@ -22,9 +22,9 @@
 #define __KERNEL__
 
 #include "ghost/types.h"
-#include "shared/setup_information.hpp"
-#include "shared/memory/bitmap_page_allocator.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/memory/bitmap_page_allocator.hpp"
+#include "shared/setup_information.hpp"
 
 extern g_bitmap_page_allocator* kernelPhysicalAllocator;
 
@@ -34,11 +34,6 @@ extern g_bitmap_page_allocator* kernelPhysicalAllocator;
  * about everything that the loader has prepared for the kernel.
  */
 extern "C" void kernelMain(g_setup_information* setupInformation);
-
-/**
- * Initializes the very basic components and then starts the BSP initialization sequence.
- */
-void kernelInitialize(g_setup_information* setupInformation);
 
 /**
  * Bootstrap processor (BSP) initialization sequence.
@@ -56,8 +51,6 @@ void kernelInitializationThread();
  * This function is started by the SMP implementation.
  */
 void kernelRunApplicationCore();
-
-void kernelPanic(const char *msg, ...);
 
 void kernelHalt();
 
