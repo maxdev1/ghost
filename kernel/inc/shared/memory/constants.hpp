@@ -47,7 +47,6 @@
 
 #define G_RECURSIVE_PAGE_DIRECTORY_AREA		        0xFFC00000
 #define G_RECURSIVE_PAGE_DIRECTORY_ADDRESS	        0xFFFFF000
-
 #define G_RECURSIVE_PAGE_TABLE(ti)                  (((g_page_table) G_RECURSIVE_PAGE_DIRECTORY_AREA) + (0x400 * ti))
 
 #endif

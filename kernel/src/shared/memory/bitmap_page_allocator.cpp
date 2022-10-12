@@ -28,11 +28,11 @@ void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, g_bitmap_
 {
 	allocator->bitmapArray = bitmapArray;
 	allocator->freePageCount = 0;
-	mutexInitialize(&allocator->lock);
 
 	g_bitmap_header* bitmap = bitmapArray;
 	while(bitmap)
 	{
+		mutexInitialize(&bitmap->lock);
 		allocator->freePageCount += bitmap->entryCount * G_BITMAP_PAGES_PER_ENTRY;
 		bitmap = G_BITMAP_NEXT(bitmap);
 	}
@@ -45,12 +45,13 @@ void bitmapPageAllocatorRelocate(g_bitmap_page_allocator* allocator, g_virtual_a
 
 void bitmapPageAllocatorMarkFree(g_bitmap_page_allocator* allocator, g_physical_address address)
 {
-	mutexAcquire(&allocator->lock);
 	bool freed = false;
 
 	g_bitmap_header* bitmap = allocator->bitmapArray;
 	while(bitmap)
 	{
+		mutexAcquire(&bitmap->lock);
+
 		g_address endAddress = bitmap->baseAddress + (bitmap->entryCount * G_BITMAP_PAGES_PER_ENTRY) * G_PAGE_SIZE;
 		if(address >= bitmap->baseAddress && address < endAddress)
 		{
@@ -63,26 +64,29 @@ void bitmapPageAllocatorMarkFree(g_bitmap_page_allocator* allocator, g_physical_
 			++allocator->freePageCount;
 
 			freed = true;
-			break;
 		}
+
+		mutexRelease(&bitmap->lock);
+
+		if(freed)
+			break;
 
 		bitmap = G_BITMAP_NEXT(bitmap);
 	}
 
 	if(!freed)
 		logWarn("%! failed to free physical address %x", "bitmap", address);
-
-	mutexRelease(&allocator->lock);
 }
 
 g_physical_address bitmapPageAllocatorAllocate(g_bitmap_page_allocator* allocator)
 {
-	mutexAcquire(&allocator->lock);
-
 	g_bitmap_header* bitmap = allocator->bitmapArray;
 	while(bitmap)
 	{
-		for(uint32_t i = 0; i < bitmap->entryCount; i++)
+		g_physical_address result = 0;
+		mutexAcquire(&bitmap->lock);
+
+		for(uint32_t i = 0; i < bitmap->entryCount && !result; i++)
 		{
 			if(G_BITMAP_ENTRIES(bitmap)[i] == G_BITMAP_ENTRY_FULL)
 				continue;
@@ -95,16 +99,17 @@ g_physical_address bitmapPageAllocatorAllocate(g_bitmap_page_allocator* allocato
 				G_BITMAP_SET(bitmap, i, b);
 				--allocator->freePageCount;
 
-				g_physical_address result = bitmap->baseAddress + G_BITMAP_TO_OFFSET(i, b);
-				mutexRelease(&allocator->lock);
-				return result;
+				result = bitmap->baseAddress + G_BITMAP_TO_OFFSET(i, b);
+				break;
 			}
 		}
 
+		mutexRelease(&bitmap->lock);
+		if(result)
+			return result;
+
 		bitmap = G_BITMAP_NEXT(bitmap);
 	}
-
-	mutexRelease(&allocator->lock);
 
 	logWarn("%! failed to allocate physical page", "bitmap");
 	return 0;

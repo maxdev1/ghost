@@ -21,6 +21,9 @@
 #ifndef __PANIC__
 #define __PANIC__
 
-void panic(const char* msg, ...);
+/**
+ * Panic at the techno disco.
+ */
+void panic(const char* msg, ...) __attribute__((noreturn));
 
 #endif
