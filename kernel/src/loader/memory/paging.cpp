@@ -58,7 +58,7 @@ void pagingEnableGlobalPageFlag()
 
 void pagingRelocateMultibootModules(g_page_directory pageDirectory, g_address startAt)
 {
-	g_multiboot_information* mbInfo = loaderSetupInformation.multibootInformation;
+	g_multiboot_information* mbInfo = setupInformation.multibootInformation;
 	g_address nextModuleLocation = startAt;
 
 	for(int i = 0; i < (int) mbInfo->modulesCount; i++)

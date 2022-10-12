@@ -44,7 +44,7 @@ void kernelLoaderLoad(g_multiboot_module* kernelModule)
 
 	// Initialize rest of kernel space
 	uint32_t* directory = (uint32_t*) G_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
-	for(uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(loaderSetupInformation.kernelImageStart); ti < 1024; ti++)
+	for(uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(setupInformation.kernelImageStart); ti < 1024; ti++)
 	{
 		if(directory[ti] == 0)
 		{
@@ -58,10 +58,10 @@ void kernelLoaderLoad(g_multiboot_module* kernelModule)
 	}
 
 	// Start kernel stack after kernel image
-	loaderSetupInformation.stackStart = loaderSetupInformation.kernelImageEnd;
-	loaderSetupInformation.stackEnd = loaderSetupInformation.stackStart + G_PAGE_SIZE;
+	setupInformation.stackStart = setupInformation.kernelImageEnd;
+	setupInformation.stackEnd = setupInformation.stackStart + G_PAGE_SIZE;
 
-	g_virtual_address stackVirt = loaderSetupInformation.stackEnd - sizeof(uint32_t);
+	g_virtual_address stackVirt = setupInformation.stackEnd - sizeof(uint32_t);
 	g_physical_address stackPhys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
 	if(stackPhys == 0)
 	{
@@ -69,7 +69,7 @@ void kernelLoaderLoad(g_multiboot_module* kernelModule)
 		panic("%! out of pages when trying to create kernel stack", "kernload");
 	}
 
-	pagingMapPage(loaderSetupInformation.stackStart, stackPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+	pagingMapPage(setupInformation.stackStart, stackPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
 
 	G_PRETTY_BOOT_STATUS_P(20);
 	kernelLoaderCreateHeap();
@@ -78,7 +78,7 @@ void kernelLoaderLoad(g_multiboot_module* kernelModule)
 
 void kernelLoaderCreateHeap()
 {
-	uint32_t heapStart = loaderSetupInformation.stackEnd;
+	uint32_t heapStart = setupInformation.stackEnd;
 	uint32_t heapEnd = heapStart + G_KERNEL_HEAP_INIT_SIZE;
 	for(uint32_t virt = heapStart; virt < heapEnd; virt += G_PAGE_SIZE)
 	{
@@ -91,8 +91,8 @@ void kernelLoaderCreateHeap()
 
 		pagingMapPage(virt, phys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
 	}
-	loaderSetupInformation.heapStart = heapStart;
-	loaderSetupInformation.heapEnd = heapEnd;
+	setupInformation.heapStart = heapStart;
+	setupInformation.heapEnd = heapEnd;
 }
 
 void kernelLoaderEnterMain(g_address entryAddress, g_address kernelEsp)
@@ -102,7 +102,7 @@ void kernelLoaderEnterMain(g_address entryAddress, g_address kernelEsp)
 	// Switch to kernel stack & enter kernel
 	asm volatile("mov %0, %%esp\n"
 				 "mov %%esp, %%ebp\n" ::"r"(kernelEsp));
-	kernelMain(&loaderSetupInformation);
+	kernelMain(&setupInformation);
 	__builtin_unreachable();
 }
 
@@ -147,8 +147,8 @@ void kernelLoaderLoadBinary(Elf32_Ehdr* header)
 	}
 
 	logDebug("%! kernel image loaded to space %h - %h", "kernload", imageStart, imageEnd);
-	loaderSetupInformation.kernelImageStart = imageStart;
-	loaderSetupInformation.kernelImageEnd = imageEnd;
+	setupInformation.kernelImageStart = imageStart;
+	setupInformation.kernelImageEnd = imageEnd;
 }
 
 void kernelLoaderCheckHeader(Elf32_Ehdr* header)

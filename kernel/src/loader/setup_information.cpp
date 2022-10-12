@@ -20,4 +20,4 @@
 
 #include "loader/setup_information.hpp"
 
-g_setup_information loaderSetupInformation;
+g_setup_information setupInformation;

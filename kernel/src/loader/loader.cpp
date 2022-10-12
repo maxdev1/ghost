@@ -42,7 +42,7 @@ extern "C" void loaderMain(g_multiboot_information* multiboot, uint32_t magicNum
 		logInfo("%! loaded by: %s", "mboot", multiboot->bootloaderName);
 
 	loaderEnableLoggingFeatures();
-	loaderSetupInformation.multibootInformation = multiboot;
+	setupInformation.multibootInformation = multiboot;
 	loaderInitializeMemory();
 	loaderStartKernel();
 }
@@ -66,17 +66,17 @@ void loaderInitializeMemory()
 	g_physical_address gdtEnd = loaderSetupGdt();
 
 	uint32_t bitmapRequiredMemory = memoryPhysicalReadMemoryMap(gdtEnd, 0);
-	loaderSetupInformation.bitmapArrayStart = memoryPhysicalAllocateInitial(gdtEnd, G_PAGE_ALIGN_UP(bitmapRequiredMemory) / G_PAGE_SIZE);
-	loaderSetupInformation.bitmapArrayEnd = G_PAGE_ALIGN_UP(loaderSetupInformation.bitmapArrayStart + bitmapRequiredMemory);
-	memoryPhysicalReadMemoryMap(loaderSetupInformation.bitmapArrayEnd, loaderSetupInformation.bitmapArrayStart);
-	bitmapPageAllocatorInitialize(&memoryPhysicalAllocator, (g_bitmap*) loaderSetupInformation.bitmapArrayStart);
+	setupInformation.bitmapArrayStart = memoryPhysicalAllocateInitial(gdtEnd, G_PAGE_ALIGN_UP(bitmapRequiredMemory) / G_PAGE_SIZE);
+	setupInformation.bitmapArrayEnd = G_PAGE_ALIGN_UP(setupInformation.bitmapArrayStart + bitmapRequiredMemory);
+	memoryPhysicalReadMemoryMap(setupInformation.bitmapArrayEnd, setupInformation.bitmapArrayStart);
+	bitmapPageAllocatorInitialize(&memoryPhysicalAllocator, (g_bitmap*) setupInformation.bitmapArrayStart);
 
-	loaderSetupInformation.initialPageDirectoryPhysical = pagingInitialize(loaderSetupInformation.bitmapArrayEnd);
+	setupInformation.initialPageDirectoryPhysical = pagingInitialize(setupInformation.bitmapArrayEnd);
 }
 
 void loaderStartKernel()
 {
-	g_multiboot_module* kernelModule = multibootFindModule(loaderSetupInformation.multibootInformation, "/boot/kernel");
+	g_multiboot_module* kernelModule = multibootFindModule(setupInformation.multibootInformation, "/boot/kernel");
 	if(!kernelModule)
 	{
 		G_PRETTY_BOOT_FAIL("Kernel module not found");

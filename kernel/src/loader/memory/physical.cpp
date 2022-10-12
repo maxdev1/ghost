@@ -26,7 +26,7 @@
 
 uint32_t memoryPhysicalReadMemoryMap(g_address startAfter, g_address bitmapWriteTo)
 {
-	g_multiboot_information* multiboot = loaderSetupInformation.multibootInformation;
+	g_multiboot_information* multiboot = setupInformation.multibootInformation;
 
 	if(!(multiboot->flags & G_MULTIBOOT_FLAGS_MMAP))
 		panic("%! no memory map available", "mboot");
@@ -94,7 +94,7 @@ uint32_t memoryPhysicalReadMemoryMap(g_address startAfter, g_address bitmapWrite
 
 g_address memoryPhysicalAllocateInitial(g_address startAfter, int pages)
 {
-	auto multiboot = loaderSetupInformation.multibootInformation;
+	auto multiboot = setupInformation.multibootInformation;
 
 	for(g_address start = startAfter;
 		start < G_ADDRESS_MAX;
