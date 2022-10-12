@@ -22,50 +22,17 @@
 #define __KERNEL_PAGING__
 
 #include "ghost/stdint.h"
-#include "shared/memory/paging.hpp"
 #include "shared/memory/memory.hpp"
-
-/**
- * Maps a page to the current address space.
- *
- * @param virt
- * 		the virtual address to map to
- * @param phys
- * 		the address of the physical page to map
- * @param tableFlags
- * 		the flags to add on the table entry
- * @param pageFlags
- * 		the flags to add on the page entry
- * @param allowOverride
- * 		whether an existing entry may be overriden
- *
- *
- */
-bool pagingMapPage(g_virtual_address virt, g_physical_address phys, uint32_t tableFlags = DEFAULT_KERNEL_TABLE_FLAGS, uint32_t pageFlags =
-DEFAULT_KERNEL_PAGE_FLAGS, bool allowOverride = false);
+#include "shared/memory/paging.hpp"
 
 /**
  * Used to map a page into a page directory that is not the current address space.
  * The directory itself and the required tables are temporarily mapped and then unmapped again.
  */
 void pagingMapToTemporaryMappedDirectory(g_physical_address directory, g_virtual_address virtualAddress, g_physical_address physicalAddress,
-		uint32_t tableFlags =
-		DEFAULT_KERNEL_TABLE_FLAGS, uint32_t pageFlags = DEFAULT_KERNEL_PAGE_FLAGS, bool allowOverride = false);
-
-/**
- * Unmaps the given virtual page in the current address space.
- *
- * @param virt
- * 		the virtual address to unmap
- */
-void pagingUnmapPage(g_virtual_address virt);
-
-/**
- * Returns the currently set page directory.
- *
- * @return the page directory
- */
-g_physical_address pagingGetCurrentSpace();
+										 uint32_t tableFlags =
+											 DEFAULT_KERNEL_TABLE_FLAGS,
+										 uint32_t pageFlags = DEFAULT_KERNEL_PAGE_FLAGS, bool allowOverride = false);
 
 /**
  * Reads for a given virtual address (which must exist in the currently mapped

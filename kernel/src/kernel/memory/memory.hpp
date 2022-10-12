@@ -21,22 +21,16 @@
 #ifndef __KERNEL_MEMORY__
 #define __KERNEL_MEMORY__
 
-#include "ghost/types.h"
-
-#include "shared/setup_information.hpp"
-#include "shared/memory/memory.hpp"
-#include "shared/memory/bitmap_page_allocator.hpp"
-
-#include "kernel/memory/paging.hpp"
-#include "kernel/memory/heap.hpp"
 #include "kernel/memory/address_range_pool.hpp"
+#include "kernel/memory/heap.hpp"
+#include "kernel/memory/paging.hpp"
+#include "shared/memory/memory.hpp"
+#include "shared/setup_information.hpp"
+#include <ghost/types.h>
 
-extern g_bitmap_page_allocator memoryPhysicalAllocator;
 extern g_address_range_pool* memoryVirtualRangePool;
 
 void memoryInitialize(g_setup_information* setupInformation);
-
-void memoryInitializePhysicalAllocator(g_setup_information* setupInformation);
 
 void memoryUnmapSetupMemory();
 

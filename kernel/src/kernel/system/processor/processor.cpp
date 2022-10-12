@@ -19,12 +19,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/processor/processor.hpp"
-#include "kernel/kernel.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/system/interrupts/apic/lapic.hpp"
 #include "kernel/system/system.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/memory/gdt_macros.hpp"
+#include "shared/panic.hpp"
 
 static g_processor* processors = 0;
 static uint32_t processorsAvailable = 0;
@@ -34,13 +34,13 @@ static uint32_t* apicIdToProcessorMapping = 0;
 void processorInitializeBsp()
 {
 	if(!processorSupportsCpuid())
-		kernelPanic("%! processor has no CPUID support", "cpu");
+		panic("%! processor has no CPUID support", "cpu");
 
 	processorPrintInformation();
 	processorEnableSSE();
 
 	if(!processorHasFeature(g_cpuid_standard_edx_feature::APIC))
-		kernelPanic("%! processor has no APIC", "cpu");
+		panic("%! processor has no APIC", "cpu");
 }
 
 void processorInitializeAp()
@@ -62,7 +62,7 @@ void processorApicIdCreateMappingTable()
 	}
 
 	if(highestApicId > 1024)
-		kernelPanic("%! weirdly high apic id detected: %i", "cpu", highestApicId);
+		panic("%! weirdly high apic id detected: %i", "cpu", highestApicId);
 
 	uint32_t mappingSize = sizeof(uint32_t) * (highestApicId + 1);
 	uint32_t* mapping = (uint32_t*) heapAllocate(mappingSize);
@@ -109,7 +109,7 @@ void processorAdd(uint32_t apicId, uint32_t processorHardwareId)
 uint16_t processorGetNumberOfProcessors()
 {
 	if(!processors)
-		kernelPanic("%! tried to retrieve number of cores before initializing system on BSP", "kern");
+		panic("%! tried to retrieve number of cores before initializing system on BSP", "kern");
 	return processorsAvailable;
 }
 
@@ -124,8 +124,8 @@ uint32_t processorGetCurrentId()
 	// GS:0x0 is relative address within <g_kernel_threadlocal>
 	uint32_t processor;
 	asm volatile("mov $" STR(G_GDT_DESCRIPTOR_KERNELTHREADLOCAL) ", %%eax\n"
-				 "mov %%eax, %%gs\n"
-				 "mov %%gs:0x0, %0"
+																 "mov %%eax, %%gs\n"
+																 "mov %%gs:0x0, %0"
 				 : "=r"(processor)::"eax");
 	return processor;
 }

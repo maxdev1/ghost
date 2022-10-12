@@ -30,7 +30,7 @@ g_multiboot_module* multibootFindModule(g_multiboot_information* info, const cha
 
 	for(uint32_t i = 0; i < moduleCount; i++)
 	{
-		g_multiboot_module* module = (g_multiboot_module*) (info->modulesAddress + sizeof(g_multiboot_module) * i);
+		g_multiboot_module* module = &info->modules[i];
 		logDebug("%#  module: %s", module->path);
 
 		// Check modules path
@@ -40,4 +40,3 @@ g_multiboot_module* multibootFindModule(g_multiboot_information* info, const cha
 
 	return 0;
 }
-

@@ -21,19 +21,13 @@
 #ifndef __LOADER__
 #define __LOADER__
 
-#include "ghost/stdint.h"
-
 #include "loader/memory/gdt.hpp"
 #include "loader/memory/paging.hpp"
-#include "loader/multiboot/multiboot.hpp"
-
+#include "shared/memory/bitmap_page_allocator.hpp"
+#include "shared/memory/memory.hpp"
 #include "shared/multiboot/multiboot.hpp"
 #include "shared/setup_information.hpp"
-#include "shared/memory/memory.hpp"
-#include "shared/memory/bitmap_page_allocator.hpp"
-
-extern g_setup_information loaderSetupInformation;
-extern g_bitmap_page_allocator loaderPhysicalAllocator;
+#include <ghost/stdint.h>
 
 /**
  * Load entry function, called by GRUB.
@@ -67,15 +61,6 @@ g_address loaderSetupGdt();
  * multiboot modules.
  */
 g_address loaderFindNextFreePages(g_address start, int pages);
-
-/**
- * Triggers a loader panic, means halting the entire system and displaying the given
- * message/diagnostic information.
- *
- * @param message	the panic message, written in a format that the g_logger class understands
- * @param ...		variable arguments for the message
- */
-void loaderPanic(const char* msg, ...);
 
 void loaderEnableLoggingFeatures();
 

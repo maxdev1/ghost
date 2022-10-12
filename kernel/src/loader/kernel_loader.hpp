@@ -22,14 +22,8 @@
 #define GHOST_LOADER_KERNELLOADER_KERNELLOADER
 
 #include "elf.h"
-
 #include "shared/multiboot/multiboot.hpp"
 #include "shared/setup_information.hpp"
-
-/**
- * The initial kernel heap has a size of 16MiB.
- */
-#define G_KERNEL_HEAP_SIZE	0x1000000
 
 /**
  * Loads the given kernel binary module.

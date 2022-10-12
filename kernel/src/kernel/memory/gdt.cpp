@@ -21,7 +21,6 @@
 #include "kernel/memory/gdt.hpp"
 #include "kernel/memory/heap.hpp"
 #include "kernel/system/processor/processor.hpp"
-#include "shared/memory/gdt_mounter.hpp"
 
 static g_gdt_list_entry** gdtList;
 

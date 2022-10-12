@@ -132,9 +132,9 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 	/* Calculate and check validity */
 	g_virtual_address memory = (g_virtual_address) data->memory;
 	uint32_t pages = G_PAGE_ALIGN_UP(data->size) / G_PAGE_SIZE;
-	if (memory > G_CONST_KERNEL_AREA_START || (memory + pages * G_PAGE_SIZE) > G_CONST_KERNEL_AREA_START)
+	if (memory > G_KERNEL_AREA_START || (memory + pages * G_PAGE_SIZE) > G_KERNEL_AREA_START)
 	{
-		logInfo("%! task %i was unable to share memory because addresses above %h are not allowed", "syscall", task->id, G_CONST_KERNEL_AREA_START);
+		logInfo("%! task %i was unable to share memory because addresses above %h are not allowed", "syscall", task->id, G_KERNEL_AREA_START);
 		return;
 	}
 

@@ -28,13 +28,19 @@
 struct g_bitmap_page_allocator
 {
 	uint32_t freePageCount;
-	g_bitmap_entry* bitmap;
+	g_bitmap* bitmapArray;
 	g_mutex lock;
 };
 
-void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, g_bitmap_entry* bitmap);
+/**
+ * Initializes the allocator in-place; the bitmap array is used as it is.
+ */
+void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, g_bitmap* bitmapArray);
 
-void bitmapPageAllocatorRefresh(g_bitmap_page_allocator* allocator);
+/**
+ * Changes the address of the bitmap array used by the bitmap allocator to the new address.
+ */
+void bitmapPageAllocatorRelocate(g_bitmap_page_allocator* allocator, g_virtual_address newBitmapArray);
 
 void bitmapPageAllocatorMarkFree(g_bitmap_page_allocator* allocator, g_physical_address address);
 

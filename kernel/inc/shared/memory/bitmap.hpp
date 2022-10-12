@@ -24,25 +24,57 @@
 #include "shared/memory/paging.hpp"
 
 /**
- * Bitmap entry type
+ * One bitmap entry, each bit representing one page.
  */
 typedef uint8_t g_bitmap_entry;
 
 /**
- * Constants for bitmap measuring
+ * A bitmap stores information about a number of free pages, starting from the
+ * base address. In memory, there are multiple bitmaps following each other,
+ * the "hasNext" flag indicating whether there is another one.
+ *
+ * ...[g_bitmap][g_bitmap_entry][g_bitmap_entry]...g_bitmap][g_bitmap_entry]...
+ *
+ * There can be no pointers within these structures, since the kernel maps the
+ * bitmap to its own area in the virtual space before unmapping the setup memory.
  */
-#define G_BITMAP_SIZE			(1024 * 1024)
-#define G_BITMAP_BITS_PER_ENTRY	(8)
+typedef struct
+{
+	g_physical_address baseAddress;
+	uint32_t entryCount;
+	bool hasNext;
+} __attribute__((packed)) g_bitmap;
 
 /**
- * Macros for bitmap calculation
+ * Number of pages each entry contains.
  */
-#define G_ADDRESS_TO_BITMAP_INDEX(address)	((address / G_PAGE_SIZE) / G_BITMAP_BITS_PER_ENTRY)
-#define G_ADDRESS_TO_BITMAP_BIT(address)	((address / G_PAGE_SIZE) % G_BITMAP_BITS_PER_ENTRY)
-#define G_BITMAP_TO_ADDRESS(index, bit)		((index * G_BITMAP_BITS_PER_ENTRY * G_PAGE_SIZE) + (bit * G_PAGE_SIZE))
+#define G_BITMAP_PAGES_PER_ENTRY (sizeof(g_bitmap_entry) * 8)
 
-#define G_BITMAP_IS_SET(bitmap, index, bit)	(bitmap[index] & (1 << bit))
-#define G_BITMAP_SET(bitmap, index, bit)	(bitmap[index] |= (1 << bit))
-#define G_BITMAP_UNSET(bitmap, index, bit)	(bitmap[index] &= ~(1 << bit))
+/**
+ * @returns the next bitmap of the given bitmap, if the "hasNext" flag indicates
+ * 		the presence of this bitmap. Offset is calculated by the amount of
+ * 		following <g_bitmap_entry>s
+ */
+#define G_BITMAP_NEXT(bitmap) (bitmap->hasNext ? ((g_bitmap*) (((g_address) (bitmap)) + sizeof(g_bitmap) + (bitmap->entryCount * sizeof(g_bitmap_entry)))) : nullptr)
+
+/**
+ * @returns a pointer to the entries of this bitmap
+ */
+#define G_BITMAP_ENTRIES(bitmap) ((g_bitmap_entry*) (((g_address) bitmap) + sizeof(g_bitmap)))
+
+/**
+ * Calculates the index relative to an offset and vice-versa.
+ */
+#define G_OFFSET_TO_BITMAP_INDEX(address) ((address / G_PAGE_SIZE) / G_BITMAP_PAGES_PER_ENTRY)
+#define G_OFFSET_TO_BITMAP_BIT(address) ((address / G_PAGE_SIZE) % G_BITMAP_PAGES_PER_ENTRY)
+#define G_BITMAP_TO_OFFSET(index, bit) ((index * G_BITMAP_PAGES_PER_ENTRY * G_PAGE_SIZE) + (bit * G_PAGE_SIZE))
+
+/**
+ * Checks whether a bit is set or sets/unsets it.
+ */
+#define G_BITMAP_IS_SET(bitmap, index, bit) (G_BITMAP_ENTRIES(bitmap)[index] & (1 << bit))
+#define G_BITMAP_SET(bitmap, index, bit) (G_BITMAP_ENTRIES(bitmap)[index] |= (1 << bit))
+#define G_BITMAP_UNSET(bitmap, index, bit) (G_BITMAP_ENTRIES(bitmap)[index] &= ~(1 << bit))
+#define G_BITMAP_ENTRY_FULL 0xFFFFFFFF
 
 #endif

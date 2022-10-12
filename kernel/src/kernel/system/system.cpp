@@ -19,12 +19,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/system.hpp"
-#include "kernel/kernel.hpp"
 #include "kernel/memory/gdt.hpp"
 #include "kernel/system/acpi/acpi.hpp"
 #include "kernel/system/interrupts/apic/apic.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/smp.hpp"
+#include "shared/panic.hpp"
 
 static int applicationCoresWaiting;
 static bool bspInitialized = false;
@@ -38,7 +38,7 @@ void systemInitializeBsp(g_physical_address initialPdPhys)
 	apicDetect();
 
 	if(!processorListAvailable())
-		kernelPanic("%! no processors found", "system");
+		panic("%! no processors found", "system");
 
 	gdtPrepare();
 	gdtInitialize();

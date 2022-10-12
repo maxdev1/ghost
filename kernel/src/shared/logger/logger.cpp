@@ -71,8 +71,9 @@ void loggerPrintFormatted(const char* message_const, va_list valist)
 		}
 		else if(*message == 'b')
 		{ // boolean
-			int val = va_arg(valist, int);
-			loggerPrintPlain((const char*) (val ? "true" : "false"));
+			uint32_t val = va_arg(valist, uint32_t);
+			loggerPrintPlain("0b");
+			loggerPrintNumber(val, 2);
 		}
 		else if(*message == 'c')
 		{ // char
@@ -86,7 +87,7 @@ void loggerPrintFormatted(const char* message_const, va_list valist)
 		}
 		else if(*message == '#')
 		{ // indented printing
-			for(uint32_t i = 0; i < LOGGER_HEADER_WIDTH + 2; i++)
+			for(uint32_t i = 0; i < LOGGER_HEADER_WIDTH + 3; i++)
 			{
 				loggerPrintCharacter(' ');
 			}
@@ -107,6 +108,7 @@ void loggerPrintFormatted(const char* message_const, va_list valist)
 			consoleVideoSetColor(headerColor);
 			loggerPrintPlain(val);
 			consoleVideoSetColor(0x0F);
+			loggerPrintCharacter(' ');
 		}
 		else if(*message == '%')
 		{ // escaped %
@@ -142,7 +144,7 @@ void loggerPrintNumber(uint32_t number, uint16_t base)
 	int len = 0;
 	do
 	{
-		*cbufp++ = "0123456789ABCDEF"[number % base];
+		*cbufp++ = "0123456789abcdef"[number % base];
 		++len;
 		number /= base;
 	} while(number);

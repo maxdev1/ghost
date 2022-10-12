@@ -19,46 +19,47 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/memory/memory.hpp"
+#include "kernel/debug/debug_interface.hpp"
+#include "kernel/kernel.hpp"
 #include "kernel/memory/heap.hpp"
 #include "kernel/memory/lower_heap.hpp"
-#include "kernel/memory/paging.hpp"
-#include "kernel/kernel.hpp"
-#include "kernel/debug/debug_interface.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
+#include "kernel/memory/paging.hpp"
 
-g_bitmap_page_allocator memoryPhysicalAllocator;
-static g_bitmap_entry memoryPhysicalBitmap[G_BITMAP_SIZE];
 g_address_range_pool* memoryVirtualRangePool = 0;
+
+void _memoryRelocatePhysicalBitmap(g_setup_information* setupInformation)
+{
+	uint32_t bitmapPages = ((setupInformation->bitmapArrayEnd - setupInformation->bitmapArrayStart) / G_PAGE_SIZE);
+	g_virtual_address bitmapVirtual = addressRangePoolAllocate(memoryVirtualRangePool, bitmapPages);
+
+	for(uint32_t i = 0; i < bitmapPages; i++)
+	{
+		g_offset off = (i * G_PAGE_SIZE);
+		pagingMapPage(bitmapVirtual + off, setupInformation->bitmapArrayStart + off, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+	}
+	bitmapPageAllocatorRelocate(&memoryPhysicalAllocator, bitmapVirtual);
+}
 
 void memoryInitialize(g_setup_information* setupInformation)
 {
-	memoryInitializePhysicalAllocator(setupInformation);
+	bitmapPageAllocatorInitialize(&memoryPhysicalAllocator, (g_bitmap*) setupInformation->bitmapArrayStart);
+	logInfo("%! available: %i MiB", "memory", (memoryPhysicalAllocator.freePageCount * G_PAGE_SIZE) / 1024 / 1024);
+
 	heapInitialize(setupInformation->heapStart, setupInformation->heapEnd);
-	lowerHeapInitialize(G_CONST_LOWER_HEAP_MEMORY_START, G_CONST_LOWER_HEAP_MEMORY_END);
+	lowerHeapInitialize(G_LOWER_HEAP_MEMORY_START, G_LOWER_HEAP_MEMORY_END);
 
 	memoryVirtualRangePool = (g_address_range_pool*) heapAllocate(sizeof(g_address_range_pool));
 	addressRangePoolInitialize(memoryVirtualRangePool);
-	addressRangePoolAddRange(memoryVirtualRangePool, G_CONST_KERNEL_VIRTUAL_RANGES_START, G_CONST_KERNEL_VIRTUAL_RANGES_END);
+	addressRangePoolAddRange(memoryVirtualRangePool, G_KERNEL_VIRTUAL_RANGES_START, G_KERNEL_VIRTUAL_RANGES_END);
 
 	pageReferenceTrackerInitialize();
-}
 
-void memoryInitializePhysicalAllocator(g_setup_information* setupInformation)
-{
-	uint32_t bitmapSize = setupInformation->bitmapEnd - setupInformation->bitmapStart;
-	if(bitmapSize != G_BITMAP_SIZE)
-		kernelPanic("%! bitmap provided by loader has illegal length: %h, expected: %h", "memoryInitializePhysicalAllocator", bitmapSize, G_BITMAP_SIZE);
-
-	bitmapPageAllocatorInitialize(&memoryPhysicalAllocator, memoryPhysicalBitmap);
-	memoryCopy(memoryPhysicalBitmap, (g_bitmap_entry*) setupInformation->bitmapStart, G_BITMAP_SIZE);
-	bitmapPageAllocatorRefresh(&memoryPhysicalAllocator);
-
-	G_DEBUG_INTERFACE_SYSTEM_INFORMATION("memory.freePageCount", memoryPhysicalAllocator.freePageCount);
-	logInfo("%! available memory: %i MB", "memory", (memoryPhysicalAllocator.freePageCount * G_PAGE_SIZE) / 1024 / 1024);
+	_memoryRelocatePhysicalBitmap(setupInformation);
 }
 
 void memoryUnmapSetupMemory()
 {
-	for(g_virtual_address addr = G_CONST_LOWER_MEMORY_END; addr < G_CONST_KERNEL_AREA_START; addr += G_PAGE_SIZE)
+	for(g_virtual_address addr = G_LOWER_MEMORY_END; addr < G_KERNEL_AREA_START; addr += G_PAGE_SIZE)
 		pagingUnmapPage(addr);
 }
