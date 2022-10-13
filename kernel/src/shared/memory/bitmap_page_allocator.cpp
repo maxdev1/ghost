@@ -21,8 +21,6 @@
 #include "shared/memory/bitmap_page_allocator.hpp"
 
 #include "shared/logger/logger.hpp"
-#include "shared/memory/paging.hpp"
-#include "shared/multiboot/multiboot.hpp"
 
 void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, g_bitmap_header* bitmapArray)
 {
