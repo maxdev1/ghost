@@ -21,7 +21,7 @@
 #ifndef __KERNEL_CHUNK_ALLOCATOR__
 #define __KERNEL_CHUNK_ALLOCATOR__
 
-#include "ghost/types.h"
+#include <ghost/types.h>
 #include "shared/logger/logger.hpp"
 #include "shared/system/mutex.hpp"
 
