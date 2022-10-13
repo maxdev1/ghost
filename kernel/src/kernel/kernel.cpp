@@ -82,7 +82,7 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	taskingInitializeBsp();
 	syscallRegisterAll();
 
-	taskingAssign(taskingGetLocal(), taskingCreateThread((g_virtual_address) kernelInitializationThread, taskingCreateProcess(), G_SECURITY_LEVEL_KERNEL));
+	taskingAssign(taskingGetLocal(), taskingCreateTask((g_virtual_address) kernelInitializationThread, taskingCreateProcess(), G_SECURITY_LEVEL_KERNEL));
 
 	logInfo("%! starting on %i cores", "kernel", processorGetNumberOfProcessors());
 	mutexRelease(&bootstrapCoreLock);

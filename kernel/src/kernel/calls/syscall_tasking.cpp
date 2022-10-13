@@ -161,7 +161,7 @@ void syscallCreateThread(g_task* task, g_syscall_create_thread* data)
 {
 	mutexAcquire(&task->process->lock);
 
-	g_task* thread = taskingCreateThread((g_virtual_address) data->initialEntry, task->process, task->process->main->securityLevel);
+	g_task* thread = taskingCreateTask((g_virtual_address) data->initialEntry, task->process, task->process->main->securityLevel);
 	if(thread)
 	{
 		thread->userEntry.function = data->userEntry;

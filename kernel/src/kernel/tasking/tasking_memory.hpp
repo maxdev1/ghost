@@ -44,6 +44,11 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 void taskingMemoryCreateStacks(g_task* task);
 
 /**
+ * Frees the allocated stacks of the task.
+ */
+void taskingMemoryDestroyStacks(g_task* task);
+
+/**
  * Creates a new page directory to use for a new process. Clones the kernel space
  * into the page directory, maps the lower memory and adds recursive mapping.
  *
@@ -52,8 +57,28 @@ void taskingMemoryCreateStacks(g_task* task);
 g_physical_address taskingMemoryCreatePageDirectory();
 
 /**
+ * Destory the page directory of a process.
+ */
+void taskingMemoryDestroyPageDirectory(g_physical_address directory);
+
+/**
  * Creates and maps a stack.
  */
 g_stack taskingMemoryCreateStack(g_address_range_pool* addressRangePool, uint32_t tableFlags, uint32_t pageFlags, int pages);
+
+/**
+ * Destroys and unmaps a stack.
+ */
+void taskingMemoryDestroyStack(g_address_range_pool* addressRangePool, g_stack& stack);
+
+/**
+ * Allocates and copies the tasks thread-local-storage.
+ */
+void taskingPrepareThreadLocalStorage(g_task* task);
+
+/**
+ * Destroys the tasks thread-local-storage.
+ */
+void taskingMemoryDestroyThreadLocalStorage(g_task* task);
 
 #endif

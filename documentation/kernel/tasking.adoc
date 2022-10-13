@@ -29,15 +29,15 @@ The following constants of type `g_thread_type` denote types of threads.
 [options="header"]
 |==========================================================
 | Identifier			| Description
-| G_THREAD_TYPE_DEFAULT	| Normal thread
-| G_THREAD_TYPE_VM86	| Virtual 8086 thread
+| G_TASK_TYPE_DEFAULT	| Normal thread
+| G_TASK_TYPE_VM86		| Virtual 8086 thread
 |==========================================================
 
 
 
 === Kernel-level
 ==== Creating a thread
-In kernel space, a thread can be created by using `taskingCreateThread` and
+In kernel space, a thread can be created by using `taskingCreateTask` and
 assigning it to scheduling with `taskingAssign`.
 
 ==== Considerations

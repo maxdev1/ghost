@@ -81,10 +81,9 @@ typedef struct
  */
 typedef uint8_t g_thread_type;
 
-#define G_THREAD_TYPE_DEFAULT ((g_thread_type) 0)
-#define G_THREAD_TYPE_VM86 ((g_thread_type) 1)
-#define G_THREAD_TYPE_SYSCALL ((g_thread_type) 2)
-#define G_THREAD_TYPE_VITAL ((g_thread_type) 3)
+#define G_TASK_TYPE_DEFAULT ((g_thread_type) 0)
+#define G_TASK_TYPE_VM86 ((g_thread_type) 1)
+#define G_TASK_TYPE_VITAL ((g_thread_type) 2)
 
 /**
  * Task priority

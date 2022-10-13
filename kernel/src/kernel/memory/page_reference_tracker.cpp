@@ -71,5 +71,6 @@ int16_t pageReferenceTrackerDecrement(g_physical_address address)
 
 	int16_t refs = --(directory.tables[ti]->referenceCount[pi]);
 	mutexRelease(&lock);
-	return refs;
+
+	return refs < 0 ? 0 : refs;
 }

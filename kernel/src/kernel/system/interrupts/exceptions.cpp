@@ -21,6 +21,7 @@
 #include "kernel/system/interrupts/exceptions.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/memory/paging.hpp"
+#include "kernel/system/processor/processor.hpp"
 #include "kernel/system/processor/virtual_8086_monitor.hpp"
 #include "kernel/tasking/elf/elf_loader.hpp"
 #include "kernel/tasking/tasking.hpp"
@@ -173,7 +174,7 @@ bool exceptionsHandlePageFault(g_task* task)
 
 	exceptionsDumpTask(task);
 
-	if(task->type == G_THREAD_TYPE_VITAL)
+	if(task->type == G_TASK_TYPE_VITAL)
 	{
 		return false;
 	}
@@ -192,7 +193,7 @@ bool exceptionsHandlePageFault(g_task* task)
 
 bool exceptionsHandleGeneralProtectionFault(g_task* task)
 {
-	if(task->type == G_THREAD_TYPE_VM86)
+	if(task->type == G_TASK_TYPE_VM86)
 	{
 
 		g_virtual_monitor_handling_result result = vm86MonitorHandleGpf(task);

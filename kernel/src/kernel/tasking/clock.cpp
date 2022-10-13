@@ -21,6 +21,7 @@
 #include "kernel/tasking/clock.hpp"
 #include "kernel/memory/heap.hpp"
 #include "kernel/system/configuration.hpp"
+#include "kernel/system/processor/processor.hpp"
 #include "kernel/tasking/tasking.hpp"
 #include "kernel/utils/hashmap.hpp"
 #include "shared/logger/logger.hpp"

@@ -32,7 +32,7 @@ void syscallCallVm86(g_task* task, g_syscall_call_vm86* data)
 
     g_vm86_registers* registerStore = (g_vm86_registers*) heapAllocate(sizeof(g_vm86_registers));
 
-    g_task* vm86task = taskingCreateThreadVm86(task->process, data->interrupt, data->in, registerStore);
+    g_task* vm86task = taskingCreateTaskVm86(task->process, data->interrupt, data->in, registerStore);
     taskingAssign(taskingGetLocal(), vm86task);
 
     for(;;)

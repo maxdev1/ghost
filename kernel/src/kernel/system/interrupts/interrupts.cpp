@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/interrupts/interrupts.hpp"
+#include "kernel/calls/syscall.hpp"
 #include "kernel/memory/gdt.hpp"
 #include "kernel/system/configuration.hpp"
 #include "kernel/system/interrupts/apic/ioapic.hpp"

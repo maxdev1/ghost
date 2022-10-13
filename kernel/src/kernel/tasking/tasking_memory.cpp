@@ -19,8 +19,10 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/tasking/tasking_memory.hpp"
+#include "kernel/memory/lower_heap.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
+#include "kernel/system/processor/processor.hpp"
 #include "shared/logger/logger.hpp"
 
 bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
@@ -73,9 +75,8 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 			g_physical_address phys = pagingVirtualToPhysical(virtAligned);
 			pagingUnmapPage(virtAligned);
 			if(pageReferenceTrackerDecrement(phys) == 0)
-			{
 				bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, phys);
-			}
+
 			--process->heap.pages;
 		}
 
@@ -91,25 +92,32 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 
 void taskingMemoryCreateStacks(g_task* task)
 {
-	// Interrupt stack only for Ring 3 tasks
-	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
+	// Interrupt stack for ring 3 & VM86 tasks
+	if(task->securityLevel != G_SECURITY_LEVEL_KERNEL || task->type == G_TASK_TYPE_VM86)
+	{
+		task->interruptStack = taskingMemoryCreateStack(memoryVirtualRangePool, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS, G_TASKING_MEMORY_INTERRUPT_STACK_PAGES);
+	}
+	else
 	{
 		task->interruptStack.start = 0;
 		task->interruptStack.end = 0;
 	}
-	else
-	{
-		task->interruptStack = taskingMemoryCreateStack(memoryVirtualRangePool, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS, G_TASKING_MEMORY_INTERRUPT_STACK_PAGES);
-	}
 
 	// Create task stack
-	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
+	if(task->type == G_TASK_TYPE_VM86)
+	{
+		uint32_t stackSize = 2 * G_PAGE_SIZE;
+		task->stack.start = (uint32_t) lowerHeapAllocate(stackSize);
+		task->stack.end = task->stack.start + stackSize;
+	}
+	else if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
+	{
 		task->stack = taskingMemoryCreateStack(memoryVirtualRangePool, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS, G_TASKING_MEMORY_KERNEL_STACK_PAGES);
+	}
 	else
+	{
 		task->stack = taskingMemoryCreateStack(task->process->virtualRangePool, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS, G_TASKING_MEMORY_USER_STACK_PAGES);
-
-	// Set entry stack pointer
-	task->state = (g_processor_state*) (task->stack.end - sizeof(g_processor_state));
+	}
 }
 
 g_stack taskingMemoryCreateStack(g_address_range_pool* addressRangePool, uint32_t tableFlags, uint32_t pageFlags, int pages)
@@ -129,6 +137,55 @@ g_stack taskingMemoryCreateStack(g_address_range_pool* addressRangePool, uint32_
 	return stack;
 }
 
+void taskingMemoryDestroyStacks(g_task* task)
+{
+	// Remove interrupt stack
+	if(task->interruptStack.start)
+	{
+		for(g_virtual_address page = task->interruptStack.start; page < task->interruptStack.end; page += G_PAGE_SIZE)
+		{
+			g_physical_address pagePhys = pagingVirtualToPhysical(page);
+			if(pagePhys > 0)
+			{
+				if(pageReferenceTrackerDecrement(pagePhys) == 0)
+					bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, pagePhys);
+				pagingUnmapPage(page);
+			}
+		}
+		addressRangePoolFree(memoryVirtualRangePool, task->interruptStack.start);
+	}
+
+	// Remove task stack
+	if(task->type == G_TASK_TYPE_VM86)
+	{
+		lowerHeapFree((void*) task->stack.start);
+	}
+	else if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
+	{
+		taskingMemoryDestroyStack(memoryVirtualRangePool, task->stack);
+	}
+	else
+	{
+		taskingMemoryDestroyStack(task->process->virtualRangePool, task->stack);
+	}
+}
+
+void taskingMemoryDestroyStack(g_address_range_pool* addressRangePool, g_stack& stack)
+{
+	for(g_virtual_address page = stack.start; page < stack.end; page += G_PAGE_SIZE)
+	{
+		g_physical_address pagePhys = pagingVirtualToPhysical(page);
+		if(!pagePhys)
+			continue;
+
+		if(pageReferenceTrackerDecrement(pagePhys) == 0)
+			bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, pagePhys);
+		pagingUnmapPage(page);
+	}
+
+	addressRangePoolFree(addressRangePool, stack.start);
+}
+
 g_physical_address taskingMemoryCreatePageDirectory()
 {
 	g_page_directory directoryCurrent = (g_page_directory) G_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
@@ -138,21 +195,116 @@ g_physical_address taskingMemoryCreatePageDirectory()
 	g_page_directory directoryTemp = (g_page_directory) directoryTempVirt;
 	pagingMapPage(directoryTempVirt, directoryPhys);
 
-	// clone kernel space mappings
+	// Copy kernel space tables
 	for(uint32_t ti = 0; ti < 1024; ti++)
 	{
-		if(!((directoryCurrent[ti] & G_PAGE_ALIGN_MASK) & G_PAGE_TABLE_USERSPACE))
+		if(!(directoryCurrent[ti] & G_PAGE_TABLE_USERSPACE))
 			directoryTemp[ti] = directoryCurrent[ti];
 		else
 			directoryTemp[ti] = 0;
 	}
 
-	// clone mappings for the lowest 4 MiB
+	// Copy mappings for the lowest 4 MiB
 	directoryTemp[0] = directoryCurrent[0];
 
-	// recursive self-map
+	// Recursive self-map
 	directoryTemp[1023] = directoryPhys | DEFAULT_KERNEL_TABLE_FLAGS;
 
 	pagingUnmapPage(directoryTempVirt);
 	return directoryPhys;
+}
+
+void taskingMemoryDestroyPageDirectory(g_physical_address directory)
+{
+	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(directory);
+
+	// Clear mappings and free physical space above 4 MiB
+	g_page_directory directoryCurrent = (g_page_directory) G_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
+	for(uint32_t ti = 1; ti < 1024; ti++)
+	{
+		if(!(directoryCurrent[ti] & G_PAGE_TABLE_USERSPACE))
+			continue;
+
+		g_page_table table = ((g_page_table) G_RECURSIVE_PAGE_DIRECTORY_AREA) + (0x400 * ti);
+		for(uint32_t pi = 0; pi < 1024; pi++)
+		{
+			if(table[pi] == 0)
+				continue;
+
+			g_physical_address page = G_PAGE_ALIGN_DOWN(table[pi]);
+			if(pageReferenceTrackerDecrement(page) == 0)
+				bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, page);
+		}
+	}
+
+	taskingTemporarySwitchBack(returnDirectory);
+
+	bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, directory);
+}
+
+void taskingPrepareThreadLocalStorage(g_task* task)
+{
+	// Kernel thread-local storage
+	g_kernel_threadlocal* kernelThreadLocal = (g_kernel_threadlocal*) heapAllocate(sizeof(g_kernel_threadlocal));
+	kernelThreadLocal->processor = processorGetCurrentId();
+	task->threadLocal.kernelThreadLocal = kernelThreadLocal;
+
+	// User thread-local storage from binaries
+	g_process* process = task->process;
+	if(process->tlsMaster.location)
+	{
+		// allocate virtual range with required size
+		uint32_t requiredSize = process->tlsMaster.size;
+		uint32_t requiredPages = G_PAGE_ALIGN_UP(requiredSize) / G_PAGE_SIZE;
+		g_virtual_address tlsStart = addressRangePoolAllocate(process->virtualRangePool, requiredPages);
+		g_virtual_address tlsEnd = tlsStart + requiredPages * G_PAGE_SIZE;
+
+		// copy tls contents
+		for(g_virtual_address page = tlsStart; page < tlsEnd; page += G_PAGE_SIZE)
+		{
+			g_physical_address phys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+			pageReferenceTrackerIncrement(phys);
+
+			pagingMapPage(page, phys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+		}
+
+		// zero & copy TLS content
+		if(process->tlsMaster.location)
+		{
+			memorySetBytes((void*) tlsStart, 0, process->tlsMaster.size);
+			memoryCopy((void*) tlsStart, (void*) process->tlsMaster.location, process->tlsMaster.size);
+		}
+
+		// fill user thread
+		g_user_threadlocal* userThreadLocal = (g_user_threadlocal*) (tlsStart + process->tlsMaster.userThreadOffset);
+		userThreadLocal->self = userThreadLocal;
+
+		// set threads TLS location
+		task->threadLocal.userThreadLocal = userThreadLocal;
+		task->threadLocal.start = tlsStart;
+		task->threadLocal.end = tlsEnd;
+
+		logDebug("%! created tls copy in process %i, thread %i at %h", "threadmgr", process->id, task->id, task->threadLocal.start);
+	}
+}
+
+void taskingMemoryDestroyThreadLocalStorage(g_task* task)
+{
+	if(task->threadLocal.start)
+	{
+		for(g_virtual_address page = task->threadLocal.start; page < task->threadLocal.end; page += G_PAGE_SIZE)
+		{
+			g_physical_address pagePhys = pagingVirtualToPhysical(page);
+			if(pagePhys > 0)
+			{
+				if(pageReferenceTrackerDecrement(pagePhys) == 0)
+					bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, pagePhys);
+
+				pagingUnmapPage(page);
+			}
+		}
+		addressRangePoolFree(task->process->virtualRangePool, task->threadLocal.start);
+	}
+
+	heapFree(task->threadLocal.kernelThreadLocal);
 }
