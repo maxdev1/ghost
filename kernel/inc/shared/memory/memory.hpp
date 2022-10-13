@@ -21,11 +21,17 @@
 #ifndef __MEMORY__
 #define __MEMORY__
 
+#include "shared/memory/bitmap_page_allocator.hpp"
+#include <ghost/stdint.h>
+#include <ghost/types.h>
 #include <stddef.h>
-#include "ghost/types.h"
-#include "ghost/stdint.h"
 
 #define G_ALIGN_UP(value, alignment) ((value % alignment) ? (value + (alignment - value % alignment)) : value)
+
+/**
+ * Both the loader and the kernel use a physical allocator.
+ */
+extern g_bitmap_page_allocator memoryPhysicalAllocator;
 
 /**
  * Sets number bytes at target to value.
@@ -52,7 +58,7 @@ void* memorySetWords(void* target, uint16_t value, int32_t number);
  * @param target	pointer to the target memory location
  * @param size		number of bytes to copy
  */
-void* memoryCopy(void* target, const void *source, int32_t size);
-volatile void* memoryCopy(volatile void* target, const volatile void *source, int32_t size);
+void* memoryCopy(void* target, const void* source, int32_t size);
+volatile void* memoryCopy(volatile void* target, const volatile void* source, int32_t size);
 
 #endif

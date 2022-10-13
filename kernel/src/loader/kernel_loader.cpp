@@ -18,16 +18,16 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost/types.h"
-
 #include "loader/kernel_loader.hpp"
-#include "loader/loader.hpp"
+#include "ghost/types.h"
 #include "loader/memory/paging.hpp"
-
+#include "loader/setup_information.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/memory/bitmap_page_allocator.hpp"
+#include "shared/memory/constants.hpp"
 #include "shared/memory/memory.hpp"
 #include "shared/memory/paging.hpp"
+#include "shared/panic.hpp"
 #include "shared/video/pretty_boot.hpp"
 
 /**
@@ -38,140 +38,138 @@ static void (*kernelMain)(g_setup_information*);
 
 void kernelLoaderLoad(g_multiboot_module* kernelModule)
 {
-    Elf32_Ehdr* elfHeader = (Elf32_Ehdr*) kernelModule->moduleStart;
-    kernelLoaderCheckHeader(elfHeader);
-    kernelLoaderLoadBinary(elfHeader);
+	Elf32_Ehdr* elfHeader = (Elf32_Ehdr*) kernelModule->moduleStart;
+	kernelLoaderCheckHeader(elfHeader);
+	kernelLoaderLoadBinary(elfHeader);
 
-    // Initialize rest of kernel space
-    uint32_t* directory = (uint32_t*) 0xFFFFF000;
-    for(uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(loaderSetupInformation.kernelImageStart); ti < 1024; ti++)
-    {
-        if(directory[ti] == 0)
-        {
-            uint32_t tableChunkAddress = (uint32_t) bitmapPageAllocatorAllocate(&loaderPhysicalAllocator);
-            directory[ti] = tableChunkAddress | DEFAULT_KERNEL_TABLE_FLAGS;
+	// Initialize rest of kernel space
+	uint32_t* directory = (uint32_t*) G_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
+	for(uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(setupInformation.kernelImageStart); ti < 1024; ti++)
+	{
+		if(directory[ti] == 0)
+		{
+			uint32_t tableChunkAddress = (uint32_t) bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+			directory[ti] = tableChunkAddress | DEFAULT_KERNEL_TABLE_FLAGS;
 
-            uint32_t* table = ((uint32_t*) 0xFFC00000) + (0x400 * ti);
-            for(uint32_t i = 0; i < 1024; i++)
-                table[i] = 0;
-        }
-    }
+			uint32_t* table = ((uint32_t*) G_RECURSIVE_PAGE_DIRECTORY_AREA) + (0x400 * ti);
+			for(uint32_t i = 0; i < 1024; i++)
+				table[i] = 0;
+		}
+	}
 
-    // Start kernel stack after kernel image
-    loaderSetupInformation.stackStart = loaderSetupInformation.kernelImageEnd;
-    loaderSetupInformation.stackEnd = loaderSetupInformation.stackStart + G_PAGE_SIZE;
+	// Start kernel stack after kernel image
+	setupInformation.stackStart = setupInformation.kernelImageEnd;
+	setupInformation.stackEnd = setupInformation.stackStart + G_PAGE_SIZE;
 
-    g_virtual_address stackVirt = loaderSetupInformation.stackEnd - sizeof(uint32_t);
-    g_physical_address stackPhys = bitmapPageAllocatorAllocate(&loaderPhysicalAllocator);
-    if(stackPhys == 0)
-    {
-        G_PRETTY_BOOT_FAIL("Failed to allocate kernel stack");
-        loaderPanic("%! out of pages when trying to create kernel stack", "kernload");
-    }
+	g_virtual_address stackVirt = setupInformation.stackEnd - sizeof(uint32_t);
+	g_physical_address stackPhys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+	if(stackPhys == 0)
+	{
+		G_PRETTY_BOOT_FAIL("Failed to allocate kernel stack");
+		panic("%! out of pages when trying to create kernel stack", "kernload");
+	}
 
-    pagingMapPageToRecursiveDirectory(loaderSetupInformation.stackStart, stackPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+	pagingMapPage(setupInformation.stackStart, stackPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
 
-    G_PRETTY_BOOT_STATUS_P(20);
-    kernelLoaderCreateHeap();
-    kernelLoaderEnterMain(elfHeader->e_entry, stackVirt);
+	G_PRETTY_BOOT_STATUS_P(20);
+	kernelLoaderCreateHeap();
+	kernelLoaderEnterMain(elfHeader->e_entry, stackVirt);
 }
 
 void kernelLoaderCreateHeap()
 {
-    uint32_t heapStart = loaderSetupInformation.stackEnd;
-    uint32_t heapEnd = heapStart + G_KERNEL_HEAP_SIZE;
-    for(uint32_t virt = heapStart; virt < heapEnd; virt += G_PAGE_SIZE)
-    {
-        uint32_t phys = bitmapPageAllocatorAllocate(&loaderPhysicalAllocator);
-        if(phys == 0)
-        {
-            G_PRETTY_BOOT_FAIL("Failed to allocate kernel heap");
-            loaderPanic("%! out of pages when trying to allocate kernel heap, allocated to %h", "kernload", virt);
-        }
+	uint32_t heapStart = setupInformation.stackEnd;
+	uint32_t heapEnd = heapStart + G_KERNEL_HEAP_INIT_SIZE;
+	for(uint32_t virt = heapStart; virt < heapEnd; virt += G_PAGE_SIZE)
+	{
+		uint32_t phys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+		if(phys == 0)
+		{
+			G_PRETTY_BOOT_FAIL("Failed to allocate kernel heap");
+			panic("%! out of pages when trying to allocate kernel heap, allocated to %h", "kernload", virt);
+		}
 
-        pagingMapPageToRecursiveDirectory(virt, phys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
-    }
-    loaderSetupInformation.heapStart = heapStart;
-    loaderSetupInformation.heapEnd = heapEnd;
+		pagingMapPage(virt, phys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+	}
+	setupInformation.heapStart = heapStart;
+	setupInformation.heapEnd = heapEnd;
 }
 
 void kernelLoaderEnterMain(g_address entryAddress, g_address kernelEsp)
 {
-    kernelMain = (void (*)(g_setup_information*)) entryAddress;
+	kernelMain = (void (*)(g_setup_information*)) entryAddress;
 
-    // Switch to kernel stack & enter kernel
-    asm volatile("mov %0, %%esp\n"
-                 "mov %%esp, %%ebp\n" ::"r"(kernelEsp));
-    kernelMain(&loaderSetupInformation);
-    // Will never reach here, so no need to clean up the stack
-    loaderPanic("%! dropped out of kernel main, this should never happen", "kernload");
+	// Switch to kernel stack & enter kernel
+	asm volatile("mov %0, %%esp\n"
+				 "mov %%esp, %%ebp\n" ::"r"(kernelEsp));
+	kernelMain(&setupInformation);
+	__builtin_unreachable();
 }
 
 void kernelLoaderLoadBinary(Elf32_Ehdr* header)
 {
-    logDebug("%! loading binary to higher memory", "kernload");
-    uint32_t imageStart = UINT32_MAX;
-    uint32_t imageEnd = 0;
+	logDebug("%! loading binary to higher memory", "kernload");
+	uint32_t imageStart = UINT32_MAX;
+	uint32_t imageEnd = 0;
 
-    for(uint32_t i = 0; i < header->e_phnum; i++)
-    {
-        Elf32_Phdr* programHeader = (Elf32_Phdr*) (((uint32_t) header) + header->e_phoff + (header->e_phentsize * i));
+	for(uint32_t i = 0; i < header->e_phnum; i++)
+	{
+		Elf32_Phdr* programHeader = (Elf32_Phdr*) (((uint32_t) header) + header->e_phoff + (header->e_phentsize * i));
 
-        if(programHeader->p_type != PT_LOAD)
-            continue;
+		if(programHeader->p_type != PT_LOAD)
+			continue;
 
-        if(programHeader->p_vaddr < imageStart)
-            imageStart = programHeader->p_vaddr;
+		if(programHeader->p_vaddr < imageStart)
+			imageStart = programHeader->p_vaddr;
 
-        if(programHeader->p_vaddr + programHeader->p_memsz > imageEnd)
-            imageEnd = programHeader->p_vaddr + programHeader->p_memsz;
-    }
+		if(programHeader->p_vaddr + programHeader->p_memsz > imageEnd)
+			imageEnd = programHeader->p_vaddr + programHeader->p_memsz;
+	}
 
-    imageStart = G_PAGE_ALIGN_DOWN(imageStart);
-    imageEnd = G_PAGE_ALIGN_UP(imageEnd);
-    logDebug("%! image spans from %h to %h", "kernload", imageStart, imageEnd);
+	imageStart = G_PAGE_ALIGN_DOWN(imageStart);
+	imageEnd = G_PAGE_ALIGN_UP(imageEnd);
+	logDebug("%! image spans from %h to %h", "kernload", imageStart, imageEnd);
 
-    for(uint32_t virt = imageStart; virt < imageEnd; virt += G_PAGE_SIZE)
-    {
-        uint32_t phys = bitmapPageAllocatorAllocate(&loaderPhysicalAllocator);
-        pagingMapPageToRecursiveDirectory(virt, phys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
-    }
+	for(uint32_t virt = imageStart; virt < imageEnd; virt += G_PAGE_SIZE)
+	{
+		uint32_t phys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+		pagingMapPage(virt, phys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+	}
 
-    for(uint32_t i = 0; i < header->e_phnum; i++)
-    {
-        Elf32_Phdr* programHeader = (Elf32_Phdr*) (((uint32_t) header) + header->e_phoff + (header->e_phentsize * i));
-        if(programHeader->p_type != PT_LOAD)
-            continue;
+	for(uint32_t i = 0; i < header->e_phnum; i++)
+	{
+		Elf32_Phdr* programHeader = (Elf32_Phdr*) (((uint32_t) header) + header->e_phoff + (header->e_phentsize * i));
+		if(programHeader->p_type != PT_LOAD)
+			continue;
 
-        memorySetBytes((void*) programHeader->p_vaddr, 0, programHeader->p_memsz);
-        memoryCopy((void*) programHeader->p_vaddr, (uint8_t*) (((uint32_t) header) + programHeader->p_offset), programHeader->p_filesz);
-    }
+		memorySetBytes((void*) programHeader->p_vaddr, 0, programHeader->p_memsz);
+		memoryCopy((void*) programHeader->p_vaddr, (uint8_t*) (((uint32_t) header) + programHeader->p_offset), programHeader->p_filesz);
+	}
 
-    logDebug("%! kernel image loaded to space %h - %h", "kernload", imageStart, imageEnd);
-    loaderSetupInformation.kernelImageStart = imageStart;
-    loaderSetupInformation.kernelImageEnd = imageEnd;
+	logDebug("%! kernel image loaded to space %h - %h", "kernload", imageStart, imageEnd);
+	setupInformation.kernelImageStart = imageStart;
+	setupInformation.kernelImageEnd = imageEnd;
 }
 
 void kernelLoaderCheckHeader(Elf32_Ehdr* header)
 {
+	if(!(header->e_ident[EI_MAG0] == ELFMAG0 && header->e_ident[EI_MAG1] == ELFMAG1 && header->e_ident[EI_MAG2] == ELFMAG2 && header->e_ident[EI_MAG3] == ELFMAG3))
+		panic("%! binary is not ELF", "kernload");
 
-    if(!(header->e_ident[EI_MAG0] == ELFMAG0 && header->e_ident[EI_MAG1] == ELFMAG1 && header->e_ident[EI_MAG2] == ELFMAG2 && header->e_ident[EI_MAG3] == ELFMAG3))
-        loaderPanic("%! binary is not ELF", "kernload");
+	if(header->e_type != ET_EXEC)
+		panic("%! binary is not executable", "kernload");
 
-    if(header->e_type != ET_EXEC)
-        loaderPanic("%! binary is not executable", "kernload");
+	if(header->e_machine != EM_386)
+		panic("%! binary target architecture not i386", "kernload");
 
-    if(header->e_machine != EM_386)
-        loaderPanic("%! binary target architecture not i386", "kernload");
+	if(header->e_ident[EI_CLASS] != ELFCLASS32)
+		panic("%! binary is not 32bit", "kernload");
 
-    if(header->e_ident[EI_CLASS] != ELFCLASS32)
-        loaderPanic("%! binary is not 32bit", "kernload");
+	if(header->e_ident[EI_DATA] != ELFDATA2LSB)
+		panic("%! binary does not have little endian data encoding", "kernload");
 
-    if(header->e_ident[EI_DATA] != ELFDATA2LSB)
-        loaderPanic("%! binary does not have little endian data encoding", "kernload");
+	if(header->e_version != EV_CURRENT)
+		panic("%! binary is not standard ELF", "kernload");
 
-    if(header->e_version != EV_CURRENT)
-        loaderPanic("%! binary is not standard ELF", "kernload");
-
-    logDebug("%! binary ELF validation successful", "kernload");
+	logDebug("%! binary ELF validation successful", "kernload");
 }

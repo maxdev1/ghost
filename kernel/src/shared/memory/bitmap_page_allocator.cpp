@@ -20,68 +20,98 @@
 
 #include "shared/memory/bitmap_page_allocator.hpp"
 
-#include "shared/multiboot/multiboot.hpp"
-#include "shared/memory/paging.hpp"
 #include "shared/logger/logger.hpp"
 
-void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, g_bitmap_entry* bitmap)
+void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, g_bitmap_header* bitmapArray)
 {
-	allocator->bitmap = bitmap;
+	allocator->bitmapArray = bitmapArray;
 	allocator->freePageCount = 0;
-	mutexInitialize(&allocator->lock);
 
-	for(uint32_t i = 0; i < G_BITMAP_SIZE; i++)
-		allocator->bitmap[i] = 0;
+	g_bitmap_header* bitmap = bitmapArray;
+	while(bitmap)
+	{
+		mutexInitialize(&bitmap->lock);
+		allocator->freePageCount += bitmap->entryCount * G_BITMAP_PAGES_PER_ENTRY;
+		bitmap = G_BITMAP_NEXT(bitmap);
+	}
 }
 
-void bitmapPageAllocatorRefresh(g_bitmap_page_allocator* allocator)
+void bitmapPageAllocatorRelocate(g_bitmap_page_allocator* allocator, g_virtual_address newBitmapArray)
 {
-	for(uint32_t i = 0; i < G_BITMAP_SIZE; i++)
-	{
-		for(uint8_t b = 0; b < G_BITMAP_BITS_PER_ENTRY; b++)
-		{
-			if(G_BITMAP_IS_SET(allocator->bitmap, i, b))
-			{
-				allocator->freePageCount++;
-			}
-		}
-	}
+	allocator->bitmapArray = (g_bitmap_header*) newBitmapArray;
 }
 
 void bitmapPageAllocatorMarkFree(g_bitmap_page_allocator* allocator, g_physical_address address)
 {
-	mutexAcquire(&allocator->lock);
+	bool freed = false;
 
-	uint32_t index = G_ADDRESS_TO_BITMAP_INDEX(address);
-	uint32_t bit = G_ADDRESS_TO_BITMAP_BIT(address);
-	G_BITMAP_SET(allocator->bitmap, index, bit);
-	allocator->freePageCount++;
+	g_bitmap_header* bitmap = allocator->bitmapArray;
+	while(bitmap)
+	{
+		mutexAcquire(&bitmap->lock);
 
-	mutexRelease(&allocator->lock);
+		g_address endAddress = bitmap->baseAddress + (bitmap->entryCount * G_BITMAP_PAGES_PER_ENTRY) * G_PAGE_SIZE;
+		if(address >= bitmap->baseAddress && address < endAddress)
+		{
+			g_offset offset = address - bitmap->baseAddress;
+
+			uint32_t index = G_OFFSET_TO_BITMAP_INDEX(offset);
+			uint32_t bit = G_OFFSET_TO_BITMAP_BIT(offset);
+			G_BITMAP_UNSET(bitmap, index, bit);
+
+			++allocator->freePageCount;
+
+			freed = true;
+		}
+
+		mutexRelease(&bitmap->lock);
+
+		if(freed)
+			break;
+
+		bitmap = G_BITMAP_NEXT(bitmap);
+	}
+
+	if(!freed)
+		logWarn("%! failed to free physical address %x", "bitmap", address);
 }
 
 g_physical_address bitmapPageAllocatorAllocate(g_bitmap_page_allocator* allocator)
 {
-	mutexAcquire(&allocator->lock);
-
-	for(uint32_t i = 0; i < G_BITMAP_SIZE; i++)
+	g_bitmap_header* bitmap = allocator->bitmapArray;
+	while(bitmap)
 	{
-		if(!allocator->bitmap[i])
-			continue;
+		g_physical_address result = 0;
+		mutexAcquire(&bitmap->lock);
 
-		for(uint32_t b = 0; b < G_BITMAP_BITS_PER_ENTRY; b++)
+		for(uint32_t i = 0; i < bitmap->entryCount; i++)
 		{
-			if(G_BITMAP_IS_SET(allocator->bitmap, i, b))
-			{
-				G_BITMAP_UNSET(allocator->bitmap, i, b);
-				allocator->freePageCount--;
+			if(G_BITMAP_ENTRIES(bitmap)[i] == G_BITMAP_ENTRY_FULL)
+				continue;
 
-				mutexRelease(&allocator->lock);
-				return G_BITMAP_TO_ADDRESS(i, b);
+			for(uint32_t b = 0; b < G_BITMAP_PAGES_PER_ENTRY; b++)
+			{
+				if(G_BITMAP_IS_SET(bitmap, i, b))
+					continue;
+
+				G_BITMAP_SET(bitmap, i, b);
+				--allocator->freePageCount;
+
+				result = bitmap->baseAddress + G_BITMAP_TO_OFFSET(i, b);
+				break;
 			}
+
+			if(result)
+				break;
 		}
+
+		mutexRelease(&bitmap->lock);
+		if(result)
+			return result;
+
+		bitmap = G_BITMAP_NEXT(bitmap);
 	}
 
-	mutexRelease(&allocator->lock);
+	logWarn("%! failed to allocate physical page", "bitmap");
 	return 0;
 }

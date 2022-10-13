@@ -1,6 +1,6 @@
 # ABOUT GHOST
 **Ghost** is a hobby operating system for the Intel x86 platform.
-The entire OS is written from scratch in C/C++ and Assembly.
+The OS is written from scratch in C/C++ and Assembly.
 The kernel is not based on any existing kernel, but is partially compatible to Unix.
 
 This is the main development repository.
@@ -19,6 +19,7 @@ A usually up-to-date version of the documentation is provided here: https://ghos
 ## Features
 * Currently x86-based
 * Micro-kernel
+* Multiboot-compliant
 * Multi-processor (SMP) & multi-tasking support
 * IPC; pipes, messages, shared memory
 * libghostapi, kernel API library

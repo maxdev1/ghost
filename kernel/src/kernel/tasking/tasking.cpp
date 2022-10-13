@@ -23,7 +23,6 @@
 #include "ghost/calls/calls.h"
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/ipc/message.hpp"
-#include "kernel/kernel.hpp"
 #include "kernel/memory/gdt.hpp"
 #include "kernel/memory/lower_heap.hpp"
 #include "kernel/memory/memory.hpp"
@@ -39,6 +38,7 @@
 #include "kernel/utils/hashmap.hpp"
 #include "kernel/utils/wait_queue.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/panic.hpp"
 
 static g_tasking_local* taskingLocal = 0;
 static g_mutex taskingIdLock;
@@ -56,7 +56,7 @@ g_tasking_local* taskingGetLocal()
 g_task* taskingGetCurrentTask()
 {
 	if(!systemIsReady())
-		kernelPanic("%! can't access current task before initializing system", "tasking");
+		panic("%! can't access current task before initializing system", "tasking");
 
 	return taskingGetLocal()->scheduling.current;
 }
@@ -90,7 +90,7 @@ void taskingYield()
 		return;
 
 	if(taskingGetLocal()->lockCount)
-		kernelPanic("%! can't yield while %i locks are held", "tasking", taskingGetLocal()->lockCount);
+		panic("%! can't yield while %i locks are held", "tasking", taskingGetLocal()->lockCount);
 
 	g_task* task = taskingGetCurrentTask();
 	task->statistics.timesYielded++;
@@ -359,7 +359,7 @@ void taskingApplySwitch()
 	g_task* task = taskingGetCurrentTask();
 	if(!task)
 	{
-		kernelPanic("%! tried to restore without a current task", "tasking");
+		panic("%! tried to restore without a current task", "tasking");
 	}
 
 	task->active = true;
@@ -405,7 +405,7 @@ g_process* taskingCreateProcess()
 
 	process->virtualRangePool = (g_address_range_pool*) heapAllocate(sizeof(g_address_range_pool));
 	addressRangePoolInitialize(process->virtualRangePool);
-	addressRangePoolAddRange(process->virtualRangePool, G_CONST_USER_VIRTUAL_RANGES_START, G_CONST_USER_VIRTUAL_RANGES_END);
+	addressRangePoolAddRange(process->virtualRangePool, G_USER_VIRTUAL_RANGES_START, G_USER_VIRTUAL_RANGES_END);
 
 	process->heap.brk = 0;
 	process->heap.start = 0;
@@ -524,7 +524,7 @@ void taskingCleanupThread()
 void taskingRemoveThread(g_task* task)
 {
 	if(task->status != G_THREAD_STATUS_DEAD)
-		kernelPanic("%! tried to remove a task %i that is not dead", "tasking", task->id);
+		panic("%! tried to remove a task %i that is not dead", "tasking", task->id);
 
 	// Wake up tasks that joined this task
 	waitQueueWake(&task->waitersJoin);
@@ -669,12 +669,12 @@ void taskingRemoveProcess(g_process* process)
 	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(process->pageDirectory);
 
 	// Clear mappings and free physical space above 4 MiB
-	g_page_directory directoryCurrent = (g_page_directory) G_CONST_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
+	g_page_directory directoryCurrent = (g_page_directory) G_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
 	for(uint32_t ti = 1; ti < 1024; ti++)
 	{
 		if((directoryCurrent[ti] & G_PAGE_ALIGN_MASK) & G_PAGE_TABLE_USERSPACE)
 		{
-			g_page_table table = ((g_page_table) G_CONST_RECURSIVE_PAGE_DIRECTORY_AREA) + (0x400 * ti);
+			g_page_table table = ((g_page_table) G_RECURSIVE_PAGE_DIRECTORY_AREA) + (0x400 * ti);
 			for(uint32_t pi = 0; pi < 1024; pi++)
 			{
 				if(table[pi])
@@ -706,7 +706,7 @@ g_physical_address taskingTemporarySwitchToSpace(g_physical_address pageDirector
 	if(local->scheduling.current)
 	{
 		if(local->scheduling.current->overridePageDirectory != 0)
-			kernelPanic("%! %i tried temporary directory switching twice", "tasking", local->scheduling.current->id);
+			panic("%! %i tried temporary directory switching twice", "tasking", local->scheduling.current->id);
 
 		local->scheduling.current->overridePageDirectory = pageDirectory;
 	}

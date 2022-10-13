@@ -20,11 +20,11 @@
 
 #include "shared/system/mutex.hpp"
 #include "kernel/debug/debug.hpp"
-#include "kernel/kernel.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/system.hpp"
 #include "kernel/tasking/tasking.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/panic.hpp"
 #include "shared/video/console_video.hpp"
 
 g_spinlock mutexInitializerLock = 0;
@@ -36,7 +36,7 @@ g_spinlock mutexInitializerLock = 0;
 
 void mutexErrorUninitialized(g_mutex* mutex)
 {
-	kernelPanic("%! %i: tried to use uninitialized mutex %h", "mutex", processorGetCurrentId(), mutex);
+	panic("%! %i: tried to use uninitialized mutex %h", "mutex", processorGetCurrentId(), mutex);
 }
 
 void _mutexInitialize(g_mutex* mutex)

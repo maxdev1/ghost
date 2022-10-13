@@ -25,6 +25,10 @@
 static g_pp_reference_count_directory directory;
 static g_mutex lock;
 
+#if __x86_64__
+#warning "This class does not support 64 bits"
+#endif
+
 void pageReferenceTrackerInitialize()
 {
 	mutexInitialize(&lock);

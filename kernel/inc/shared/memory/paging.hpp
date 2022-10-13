@@ -21,8 +21,8 @@
 #ifndef __PAGING__
 #define __PAGING__
 
-#include "ghost/types.h"
 #include "ghost/memory.h"
+#include "ghost/types.h"
 
 const uint32_t G_PAGE_TABLE_PRESENT = 1;
 const uint32_t G_PAGE_TABLE_READWRITE = 2;
@@ -50,8 +50,8 @@ typedef volatile uint32_t* g_page_directory;
 typedef volatile uint32_t* g_page_table;
 
 #define G_INVLPG(addr) __asm__ __volatile__("invlpg (%%eax)" \
-                                            :                \
-                                            : "a"(addr));
+											:                \
+											: "a"(addr));
 
 /**
  * Switches to the given page directory.
@@ -60,5 +60,39 @@ typedef volatile uint32_t* g_page_table;
  * 		the directory to switch to
  */
 void pagingSwitchToSpace(g_physical_address dir);
+
+/**
+ * Maps a page to the current address space.
+ *
+ * @param virt
+ * 		the virtual address to map to
+ * @param phys
+ * 		the address of the physical page to map
+ * @param tableFlags
+ * 		the flags to add on the table entry
+ * @param pageFlags
+ * 		the flags to add on the page entry
+ * @param allowOverride
+ * 		whether an existing entry may be overriden
+ *
+ *
+ */
+bool pagingMapPage(g_virtual_address virt, g_physical_address phys,
+				   uint32_t tableFlags = DEFAULT_KERNEL_TABLE_FLAGS, uint32_t pageFlags = DEFAULT_KERNEL_PAGE_FLAGS, bool allowOverride = false);
+
+/**
+ * Unmaps the given virtual page in the current address space.
+ *
+ * @param virt
+ * 		the virtual address to unmap
+ */
+void pagingUnmapPage(g_virtual_address virt);
+
+/**
+ * Returns the currently set page directory.
+ *
+ * @return the page directory
+ */
+g_physical_address pagingGetCurrentSpace();
 
 #endif

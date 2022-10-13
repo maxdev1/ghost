@@ -19,12 +19,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/acpi/acpi.hpp"
-#include "ghost/types.h"
-#include "kernel/kernel.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/panic.hpp"
 #include "shared/utils/string.hpp"
+#include <ghost/types.h>
 
 static g_acpi_table_header* acpiRoot = 0;
 static g_acpi_entry* acpiTables = 0;
@@ -48,7 +48,7 @@ void acpiInitialize()
 {
 	g_rsdp_descriptor* rsdp = rsdpFind();
 	if(!rsdp)
-		kernelPanic("%! failed to find RSDP", "acpi");
+		panic("%! failed to find RSDP", "acpi");
 
 	acpiPrepareRootSDT(rsdp);
 
@@ -112,11 +112,11 @@ void acpiPrepareRootSDT(g_rsdp_descriptor* rsdp)
 	}
 
 	if(!rootTableLocation)
-		kernelPanic("%! failed to find ACPI root table", "acpi");
+		panic("%! failed to find ACPI root table", "acpi");
 
 	g_acpi_table_header* header = acpiMapSDT(rootTableLocation);
 	if(!header)
-		kernelPanic("%! could not map root system descriptor table", "acpi");
+		panic("%! could not map root system descriptor table", "acpi");
 
 	acpiRoot = header;
 }

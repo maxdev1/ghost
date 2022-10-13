@@ -20,10 +20,9 @@
 
 #include "kernel/memory/address_range_pool.hpp"
 #include "kernel/memory/heap.hpp"
-#include "kernel/kernel.hpp"
-
-#include "shared/memory/paging.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/memory/paging.hpp"
+#include "shared/panic.hpp"
 
 void addressRangePoolInitialize(g_address_range_pool* pool)
 {
@@ -47,8 +46,8 @@ void addressRangePoolAddRange(g_address_range_pool* pool, g_address start, g_add
 		// If the pool is empty, add it as first
 		newRange->next = 0;
 		pool->first = newRange;
-
-	} else
+	}
+	else
 	{
 		// Find the last range that has a lower base than this one
 		g_address_range* lastBelow = 0;
@@ -67,8 +66,8 @@ void addressRangePoolAddRange(g_address_range_pool* pool, g_address start, g_add
 			// Place the new range between the lastBelow and the one after it
 			newRange->next = lastBelow->next;
 			lastBelow->next = newRange;
-
-		} else
+		}
+		else
 		{
 			// There was no range found that has a lower base than this,
 			// so add it as first
@@ -100,7 +99,8 @@ void addressRangePoolCloneRanges(g_address_range_pool* pool, g_address_range_poo
 		{
 			last->next = newRange;
 			last = newRange;
-		} else
+		}
+		else
 		{
 			pool->first = newRange;
 			last = newRange;
@@ -119,7 +119,7 @@ g_address_range* addressRangePoolGetRanges(g_address_range_pool* pool)
 g_address addressRangePoolAllocate(g_address_range_pool* pool, uint32_t requestedPages, uint8_t flags)
 {
 	if(pool == 0)
-		kernelPanic("%! tried to access null pool", "addrpool");
+		panic("%! tried to access null pool", "addrpool");
 
 	mutexAcquire(&pool->lock);
 
@@ -217,8 +217,8 @@ void addressRangePoolMerge(g_address_range_pool* pool)
 			g_address_range* nextnext = current->next->next;
 			delete current->next;
 			current->next = nextnext;
-
-		} else
+		}
+		else
 		{
 			current = current->next;
 		}

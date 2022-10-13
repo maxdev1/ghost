@@ -45,14 +45,14 @@ void kernelLoggerPrintHeader(g_setup_information* info)
 	consoleVideoSetColor(0x0F);
 	logInfo(" Version %i.%i.%i", G_VERSION_MAJOR, G_VERSION_MINOR, G_VERSION_PATCH);
 	logInfo("");
-	logInfo("  Copyright (C) 2022, Max Schluessel <lokoxe@gmail.com>");
+	logInfo("  Copyright (C) 2022, Max Schl\x81ssel <lokoxe@gmail.com>");
 	logInfo("");
 	logInfo("%! initializing core services", "kernel");
 
 	logDebug("%! setup information:", "kernel");
 	logDebug("%#   reserved: %h - %h", info->kernelImageStart, info->kernelImageEnd);
 	logDebug("%#   stack:    %h - %h", info->stackStart, info->stackEnd);
-	logDebug("%#   bitmap:   %h - %h", info->bitmapStart, info->bitmapEnd);
+	logDebug("%#   bitmap:   %h - %h", info->bitmapArrayStart, info->bitmapArrayEnd);
 	logDebug("%#   heap:     %h - %h", info->heapStart, info->heapEnd);
 	logDebug("%#   mbstruct: %h", info->multibootInformation);
 	logDebug("%! started", "kern");

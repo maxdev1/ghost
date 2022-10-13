@@ -6,14 +6,8 @@ fi
 . "$ROOT/ghost.sh"
 
 
-# Add ignore cast-error on Mac
-unameOut="$(uname -s)"
-case "${unameOut}" in
-    Darwin*)    CXX_FLAGS=" -fms-extensions";;
-esac
-
 # Flags
-with CXX_FLAGS		""
+with CXX_FLAGS		"-I$SYSROOT/system/include -Isrc -Iinclude -Iinc -fpermissive -w"
 with CXX			g++
 OBJDIR="bin/obj-test"
 
@@ -25,14 +19,14 @@ mkdir $OBJDIR
 for file in $(find "src/test" -iname "*.cpp" -o -iname "*.c"); do
 	out=`sourceToObject $file`
 	list $out
-	$CXX -c $file -o "$OBJDIR/$out" -Isrc -Iinclude -Iinc -fpermissive -w $CXX_FLAGS
+	$CXX -c $file -o "$OBJDIR/$out" $CXX_FLAGS
 	failOnError
 done
 
 # Link
-gcc -o bin/test $OBJDIR/*.o
+g++ -o bin/test $OBJDIR/*.o
 failOnError
 
 # Execute
-./bin/test
+./bin/test $1
 failOnError

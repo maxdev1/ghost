@@ -26,10 +26,10 @@
 #include "kernel/calls/syscall_messaging.hpp"
 #include "kernel/calls/syscall_tasking.hpp"
 #include "kernel/calls/syscall_vm86.hpp"
-#include "kernel/kernel.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/tasking/tasking.hpp"
+#include "shared/panic.hpp"
 
 g_syscall_registration* syscallRegistrations = 0;
 
@@ -79,7 +79,7 @@ void _syscallRegister(int callId, g_syscall_handler handler, bool reentrant)
 {
 	if(callId > G_SYSCALL_MAX)
 	{
-		kernelPanic("%! tried to register syscall with id %i, maximum is %i", "syscall", callId, G_SYSCALL_MAX);
+		panic("%! tried to register syscall with id %i, maximum is %i", "syscall", callId, G_SYSCALL_MAX);
 	}
 
 	syscallRegistrations[callId].handler = handler;

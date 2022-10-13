@@ -19,13 +19,13 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/interrupts/apic/lapic.hpp"
-#include "kernel/kernel.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/system/acpi/acpi.hpp"
 #include "kernel/system/acpi/madt.hpp"
 #include "kernel/system/configuration.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/system/timing/pit.hpp"
+#include "shared/panic.hpp"
 
 static bool available = false;
 
@@ -87,7 +87,7 @@ void lapicCreateMapping()
 	// Map it to virtual space
 	virtualBase = addressRangePoolAllocate(memoryVirtualRangePool, 1);
 	if(!virtualBase)
-		kernelPanic("%! could not get a virtual range for mapping", "apic");
+		panic("%! could not get a virtual range for mapping", "apic");
 
 	// "APIC registers are memory-mapped to a 4-KByte region of the processor’s physical
 	// address space with an initial starting address of FEE00000H." - x86 System Programming Manual, 10.4.1

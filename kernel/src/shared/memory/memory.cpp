@@ -20,6 +20,8 @@
 
 #include "shared/memory/memory.hpp"
 
+g_bitmap_page_allocator memoryPhysicalAllocator;
+
 void* memorySetBytes(void* target, uint8_t value, int32_t length)
 {
 	uint8_t* pos = (uint8_t*) target;
@@ -51,7 +53,7 @@ void* memoryCopy(void* target, const void* source, int32_t size)
 	return target;
 }
 
-volatile void* memoryCopy(volatile void* target, const volatile void *source, int32_t size)
+volatile void* memoryCopy(volatile void* target, const volatile void* source, int32_t size)
 {
 	uint8_t* targetPos = (uint8_t*) target;
 	const uint8_t* sourcePos = (const uint8_t*) source;

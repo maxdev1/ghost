@@ -18,13 +18,27 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __RUNTIME_ABI_CONSTRUCTORS__
-#define __RUNTIME_ABI_CONSTRUCTORS__
+#ifndef __LOADER_PHYSICALALLOCATOR__
+#define __LOADER_PHYSICALALLOCATOR__
+
+#include "ghost/types.h"
+#include "shared/memory/bitmap.hpp"
 
 /**
- * Calls all global constructors in the current binary. This uses link symbols
- * specified in the linker script to identify the constructor location.
+ * Reads the GRUB memory map to find out which memory areas are usable and free.
+ * Everything after "startAfter" is excluded.
+ *
+ * This function is run twice; the first time, the memory map is interpreted to
+ * determine how large all bitmaps in the bitmap array will be. In the second
+ * run, a sufficient physical space was allocated and the bitmaps are written
+ * to the given address.
  */
-void runtimeAbiCallGlobalConstructors();
+uint32_t memoryPhysicalReadMemoryMap(g_address startAfter, g_address bitmapArrayStart);
+
+/**
+ * Before the bitmap allocator is initialized, this simple allocation function
+ * searches and allocates free pages, starting after the given address.
+ */
+g_address memoryPhysicalAllocateInitial(g_address startAfter, int pages);
 
 #endif

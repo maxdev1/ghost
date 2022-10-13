@@ -19,12 +19,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/memory/heap.hpp"
-#include "kernel/kernel.hpp"
 #include "kernel/memory/chunk_allocator.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/paging.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "shared/memory/bitmap_page_allocator.hpp"
+#include "shared/panic.hpp"
 #include "shared/system/mutex.hpp"
 
 static g_chunk_allocator heapAllocator;
@@ -40,7 +40,7 @@ bool _heapExpand();
 void heapInitialize(g_virtual_address start, g_virtual_address end)
 {
 	if(heapInitialized)
-		kernelPanic("%! tried to initialized kernel heap twice", "kernheap");
+		panic("%! tried to initialized kernel heap twice", "kernheap");
 
 	mutexInitialize(&heapLock);
 
@@ -57,7 +57,7 @@ void* heapAllocate(uint32_t size)
 	mutexAcquire(&heapLock);
 
 	if(!heapInitialized)
-		kernelPanic("%! tried to use uninitialized kernel heap", "kernheap");
+		panic("%! tried to use uninitialized kernel heap", "kernheap");
 
 	void* ptr = chunkAllocatorAllocate(&heapAllocator, size);
 	if(!ptr)
@@ -68,7 +68,7 @@ void* heapAllocate(uint32_t size)
 			return heapAllocate(size);
 		}
 
-		kernelPanic("%! failed to allocate kernel memory", "kernheap");
+		panic("%! failed to allocate kernel memory", "kernheap");
 		return 0;
 	}
 
@@ -89,7 +89,7 @@ void* heapAllocateClear(uint32_t size)
 void heapFree(void* ptr)
 {
 	if(!heapInitialized)
-		kernelPanic("%! tried to use uninitialized kernel heap", "kernheap");
+		panic("%! tried to use uninitialized kernel heap", "kernheap");
 
 	mutexAcquire(&heapLock);
 
@@ -125,13 +125,13 @@ void operator delete[](void* m)
 
 bool _heapExpand()
 {
-	if(heapEnd + G_CONST_KERNEL_HEAP_EXPAND_STEP > G_CONST_KERNEL_HEAP_END)
+	if(heapEnd + G_KERNEL_HEAP_EXPAND_STEP > G_KERNEL_HEAP_END)
 	{
 		logDebug("%! out of virtual memory area to map", "kernheap");
 		return false;
 	}
 
-	for(g_virtual_address v = heapEnd; v < heapEnd + G_CONST_KERNEL_HEAP_EXPAND_STEP; v += G_PAGE_SIZE)
+	for(g_virtual_address v = heapEnd; v < heapEnd + G_KERNEL_HEAP_EXPAND_STEP; v += G_PAGE_SIZE)
 	{
 		g_physical_address p = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
 		if(p == 0)
@@ -143,8 +143,8 @@ bool _heapExpand()
 		pagingMapPage(v, p, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
 	}
 
-	chunkAllocatorExpand(&heapAllocator, G_CONST_KERNEL_HEAP_EXPAND_STEP);
-	heapEnd += G_CONST_KERNEL_HEAP_EXPAND_STEP;
+	chunkAllocatorExpand(&heapAllocator, G_KERNEL_HEAP_EXPAND_STEP);
+	heapEnd += G_KERNEL_HEAP_EXPAND_STEP;
 
 	logDebug("%! expanded to end %h (%ikb in use)", "kernheap", heapEnd, heapAmountInUse / 1024);
 

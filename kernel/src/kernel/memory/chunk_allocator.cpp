@@ -38,7 +38,7 @@ void chunkAllocatorExpand(g_chunk_allocator* allocator, uint32_t size)
 	while(last->next)
 		last = last->next;
 
-	g_chunk_header* newChunk = (g_chunk_header*) (((uint32_t) last) + sizeof(g_chunk_header) + last->size);
+	g_chunk_header* newChunk = (g_chunk_header*) (((g_address) last) + sizeof(g_chunk_header) + last->size);
 	newChunk->used = false;
 	newChunk->size = size - sizeof(g_chunk_header);
 	newChunk->next = 0;
@@ -66,7 +66,7 @@ void* chunkAllocatorAllocate(g_chunk_allocator* allocator, uint32_t size)
 	{
 		if(!current->used && (current->size >= (size + sizeof(g_chunk_header) + G_CHUNK_ALLOCATOR_MIN_ALLOC)))
 		{
-			g_chunk_header* splinter = (g_chunk_header*) ((uint32_t) current + sizeof(g_chunk_header) + size);
+			g_chunk_header* splinter = (g_chunk_header*) ((g_address) current + sizeof(g_chunk_header) + size);
 			splinter->size = current->size - size - sizeof(g_chunk_header);
 			splinter->used = false;
 			splinter->next = current->next;
@@ -76,7 +76,7 @@ void* chunkAllocatorAllocate(g_chunk_allocator* allocator, uint32_t size)
 			current->size = size;
 
 			mutexRelease(&allocator->lock);
-			return (void*) (((uint32_t) current) + sizeof(g_chunk_header));
+			return (void*) (((g_address) current) + sizeof(g_chunk_header));
 		}
 		current = current->next;
 	}
@@ -94,7 +94,7 @@ uint32_t chunkAllocatorFree(g_chunk_allocator* allocator, void* mem)
 	}
 	mutexAcquire(&allocator->lock);
 
-	g_chunk_header* blockHeader = (g_chunk_header*) (((uint32_t) mem) - sizeof(g_chunk_header));
+	g_chunk_header* blockHeader = (g_chunk_header*) (((g_address) mem) - sizeof(g_chunk_header));
 	blockHeader->used = false;
 	uint32_t size = blockHeader->size;
 	chunkAllocatorMerge(allocator);
