@@ -28,7 +28,7 @@
  * When creating the bitmap array, this controls how large the maximum physical
  * memory area can be that a single bitmap maintains.
  */
-#define G_BITMAP_MAX_RANGE	0x5000000
+#define G_BITMAP_MAX_RANGE	0x05000000
 
 /**
  * One bitmap entry, each bit representing one page.

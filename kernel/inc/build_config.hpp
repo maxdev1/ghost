@@ -33,7 +33,7 @@
 
 // pretty boot
 #define G_PRETTY_BOOT false
-#define G_VIDEO_LOG_BOOT true
+#define G_VIDEO_LOG_BOOT false
 
 // logging settings
 #define G_LOG_LEVEL G_LOG_LEVEL_INFO

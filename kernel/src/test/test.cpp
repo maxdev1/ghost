@@ -1,6 +1,7 @@
-#include <stdlib.h>
-#include <stdio.h>
 #include "test/test.hpp"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 struct test_t
 {
@@ -20,29 +21,42 @@ void testAdd(const char* name, bool (*func)())
 	tests = n;
 }
 
-int main()
+int main(int argc, const char** argv)
 {
-	test_t* n = tests;
-	while(n)
+	const char* only = nullptr;
+	if(argc == 2)
 	{
-		printf("%s:\n", n->name);
-		if(!n->test())
+		only = argv[1];
+	}
+
+	for(test_t* test = tests; test; test = test->next)
+	{
+		if(only != nullptr && strstr(test->name, only) != test->name)
+			continue;
+
+		printf("%s", test->name);
+		try
 		{
-			printf("  Successful\n");
-		} else
-		{
-			printf("  Failed\n");
+			test->test();
+			printf(" \e[1;92m\u2714\e[0m\n");
 		}
-		n = n->next;
+		catch(const char* e)
+		{
+			printf(" \e[1;31m\u274c\e[0m\n");
+			printf(" %s\n", e);
+		}
 	}
 }
 
-bool assertEquals(int a, int b)
+void _panic(int line, const char* msg, ...)
 {
-	if(a != b)
-	{
-		printf("Test failed! Expected %i but was %i\n", a, b);
-		return false;
-	}
-	return true;
+	char buf1[BUFLEN];
+	va_list valist;
+	va_start(valist, msg);
+	vsnprintf(buf1, BUFLEN, msg, valist);
+	va_end(valist);
+
+	char buf2[BUFLEN];
+	snprintf(buf2, BUFLEN, "\t%i: panic: %s", line, buf1);
+	throw buf2;
 }
