@@ -160,7 +160,8 @@ g_fs_open_status filesystemRamdiskDelegateTruncate(g_fs_node* file)
 	{
 		entry->dataSize = 0;
 		entry->notOnRdBufferLength = 0;
-		heapFree(entry->data);
+		if(entry->data)
+			heapFree(entry->data);
 		entry->data = 0;
 	}
 	return G_FS_OPEN_SUCCESSFUL;
