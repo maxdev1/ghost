@@ -219,6 +219,7 @@ void gui_screen_t::paint()
 {
 	cairo_scaled_font_t* scaled_face = nullptr;
 	cairo_font_options_t* fontOptions = nullptr;
+	cairo_t* fontContext = nullptr;
 
 	bool firstPaint = true;
 	while(true)
@@ -242,6 +243,11 @@ void gui_screen_t::paint()
 			cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
 			cairo_paint(cr);
 			cairo_restore(cr);
+		}
+
+		if(fontContext != cr)
+		{
+			fontContext = cr;
 
 			// prepare font
 			if(scaled_face)
@@ -255,6 +261,7 @@ void gui_screen_t::paint()
 			fontOptions = cairo_font_options_create();
 			cairo_font_options_set_antialias(fontOptions, CAIRO_ANTIALIAS_NONE);
 		}
+
 		cairo_set_font_options(cr, fontOptions);
 
 		raster->lockBuffer();
