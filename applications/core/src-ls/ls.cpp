@@ -18,26 +18,32 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <stdio.h>
 #include <ghost.h>
+#include <stdio.h>
 #include <string.h>
 
 /**
  *
  */
-int main(int argc, char** argv) {
-
+int main(int argc, char** argv)
+{
 	// decide which directory to read
 	char* directory;
-	if (argc > 1) {
+	if(argc > 1)
+	{
 		char* argument = argv[1];
-		if (strlen(argument) < G_PATH_MAX) {
+		if(strlen(argument) < G_PATH_MAX)
+		{
 			directory = argument;
-		} else {
+		}
+		else
+		{
 			fprintf(stderr, "given argument is not a valid path name\n");
 			return 1;
 		}
-	} else {
+	}
+	else
+	{
 		directory = new char[G_PATH_MAX];
 		g_get_working_directory(directory);
 	}
@@ -47,39 +53,49 @@ int main(int argc, char** argv) {
 	auto* iter = g_open_directory_s(directory, &stat);
 
 	// check for errors
-	if (stat != G_FS_OPEN_DIRECTORY_SUCCESSFUL) {
+	if(stat != G_FS_OPEN_DIRECTORY_SUCCESSFUL)
+	{
 		fprintf(stderr, "failed to read directory\n");
 		return 1;
 	}
 
 	g_fs_directory_entry* entry;
-	while (true) {
+	while(true)
+	{
 		g_fs_read_directory_status rstat;
 		entry = g_read_directory_s(iter, &rstat);
 
-		if (rstat == G_FS_READ_DIRECTORY_SUCCESSFUL) {
-			if (entry == 0) {
+		if(rstat == G_FS_READ_DIRECTORY_SUCCESSFUL)
+		{
+			if(entry == 0)
+			{
 				break;
 			}
 
-			if (entry->type == G_FS_NODE_TYPE_FILE) {
+			if(entry->type == G_FS_NODE_TYPE_FILE)
+			{
 				printf("   ");
-			} else if (entry->type == G_FS_NODE_TYPE_FOLDER) {
+			}
+			else if(entry->type == G_FS_NODE_TYPE_FOLDER)
+			{
 				printf(" + ");
-			} else {
+			}
+			else
+			{
 				printf(" ~ ");
 			}
 			printf("%s\n", entry->name);
-
-		} else if (rstat == G_FS_READ_DIRECTORY_EOD) {
+		}
+		else if(rstat == G_FS_READ_DIRECTORY_EOD)
+		{
 			break;
-
-		} else {
+		}
+		else
+		{
 			fprintf(stderr, "failed to read directory\n");
 			break;
 		}
 	}
 
 	g_close_directory(iter);
-
 }

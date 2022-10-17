@@ -80,9 +80,9 @@ void g_canvas::acknowledgeNewBuffer(g_address address)
 	g_atomic_lock(currentBufferLock);
 	if(address == currentBuffer)
 		return;
-	g_atomic_unlock(currentBufferLock);
 
 	nextBuffer = address;
+	g_atomic_unlock(currentBufferLock);
 
 	if(userListener)
 		userListener->handle_buffer_changed();

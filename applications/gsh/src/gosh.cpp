@@ -30,6 +30,53 @@
 
 char* cwdbuf = 0;
 
+std::vector<std::string> gshAutocomplete(std::string toComplete)
+{
+	std::string cwd(cwdbuf);
+	std::string startDir = cwd;
+
+	auto firstSlash = toComplete.find_first_of('/');
+	auto lastSlash = toComplete.find_last_of('/');
+	std::string prepend;
+	if(firstSlash == 0)
+	{
+		startDir = toComplete.substr(0, lastSlash);
+		prepend = startDir + "/";
+		toComplete = toComplete.substr(lastSlash + 1);
+	}
+	else if(lastSlash != std::string::npos)
+	{
+		startDir += "/" + toComplete.substr(0, lastSlash);
+		prepend = toComplete.substr(0, lastSlash) + "/";
+		toComplete = toComplete.substr(lastSlash + 1);
+	}
+
+	std::vector<std::string> completions;
+	DIR* dir = opendir(startDir.c_str());
+	if(dir)
+	{
+		dirent* ent;
+		while(ent = readdir(dir))
+		{
+			std::string entname(ent->d_name);
+			if(entname.rfind(toComplete, 0) == 0)
+			{
+				DIR* subdir = opendir((startDir + "/" + entname).c_str());
+				bool isdir = false;
+				if(subdir)
+				{
+					isdir = true;
+					closedir(subdir);
+				}
+
+				completions.push_back(prepend + entname + (isdir ? "/" : ""));
+			}
+		}
+		closedir(dir);
+	}
+	return completions;
+}
+
 bool gshReadInputLine(std::string& line)
 {
 	g_terminal::setMode(G_TERMINAL_MODE_RAW);
@@ -80,41 +127,26 @@ bool gshReadInputLine(std::string& line)
 			auto beforeCaret = line.substr(0, caret);
 			auto afterCaret = line.substr(caret);
 
-			std::string searchChild = beforeCaret;
-			auto space = searchChild.find_last_of(' ');
+			std::string toComplete = beforeCaret;
+			auto space = toComplete.find_last_of(' ');
 			if(space != std::string::npos)
 			{
-				searchChild = searchChild.substr(space + 1);
+				toComplete = toComplete.substr(space + 1);
 			}
 
-			std::string completion = "";
-			std::vector<std::string> multiple;
-			DIR* dir = opendir(cwdbuf);
-			if(dir)
-			{
-				dirent* ent;
-				while(ent = readdir(dir))
-				{
-					std::string entname(ent->d_name);
-					if(entname.rfind(searchChild, 0) == 0)
-					{
-						completion = entname.substr(searchChild.size());
-						multiple.push_back(entname);
-					}
-				}
-				closedir(dir);
-			}
-
-			if(multiple.size() > 1)
+			std::vector<std::string> completions = gshAutocomplete(toComplete);
+			if(completions.size() > 1)
 			{
 				// TODO
-				klog("Found multiple results");
 			}
-			else if(completion.size() > 0)
+			else if(completions.size() > 0)
 			{
-				line = beforeCaret + completion + afterCaret;
-				auto pos = g_terminal::getCursor();
+				auto completion = completions.at(0);
+				caret = caret - toComplete.size();
+				line = line.substr(0, caret) + completion + afterCaret;
+				g_terminal::moveCursorBack(toComplete.size());
 
+				auto pos = g_terminal::getCursor();
 				caret += completion.size();
 				pos.x += completion.size();
 
@@ -241,7 +273,10 @@ bool gshHandleBuiltin(program_call_t* call)
 		if(call->arguments.size() == 1)
 		{
 			std::string newdir = call->arguments.at(0);
-			newdir = cwd + "/" + newdir;
+			if(newdir.find_first_of("/") != 0)
+			{
+				newdir = cwd + "/" + newdir;
+			}
 
 			DIR* dir = opendir(newdir.c_str());
 			if(dir)

@@ -175,6 +175,10 @@ void canvas_t::clientHasAcknowledgedCurrentBuffer()
 	g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer.localMapping;
 	header->ready = false;
 
+	uint8_t* bufferContent = (uint8_t*) (currentBuffer.localMapping + G_UI_CANVAS_SHARED_MEMORY_HEADER_SIZE);
+	currentBuffer.surface = cairo_image_surface_create_for_data(bufferContent, CAIRO_FORMAT_ARGB32, header->paintable_width,
+																header->paintable_height, cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, header->paintable_width));
+
 	g_atomic_unlock(currentBufferLock);
 }
 
@@ -191,22 +195,12 @@ void canvas_t::paint()
 	}
 
 	g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer.localMapping;
-	if(!header->ready)
-	{
-		g_atomic_unlock(currentBufferLock);
-		return;
-	}
-
-	header->ready = false;
 
 	// make background empty
 	clearSurface();
 
 	// create a cairo surface from the buffer
-	uint8_t* bufferContent = (uint8_t*) (currentBuffer.localMapping + G_UI_CANVAS_SHARED_MEMORY_HEADER_SIZE);
-	cairo_surface_t* bufferSurface = cairo_image_surface_create_for_data(bufferContent, CAIRO_FORMAT_ARGB32, header->paintable_width,
-																		 header->paintable_height, cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, header->paintable_width));
-	cairo_set_source_surface(cr, bufferSurface, 0, 0);
+	cairo_set_source_surface(cr, currentBuffer.surface, 0, 0);
 	cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
 	cairo_paint(cr);
 

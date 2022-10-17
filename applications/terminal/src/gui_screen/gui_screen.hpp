@@ -83,10 +83,11 @@ class gui_screen_t : public screen_t
 	int cursor_x = 0;
 	int cursor_y = 0;
 	g_rectangle canvasBounds;
+	int cursorWidth = 1;
 
 	int char_width = 8;
 	int char_height = 18;
-	uint8_t font_size = 14;
+	uint8_t font_size = 14.5;
 	int padding = 3;
 
 	std::map<char, char_layout_t*> char_layout_cache;
@@ -141,7 +142,7 @@ class gui_screen_t : public screen_t
 	void repaint();
 	void set_focused(bool focused);
 
-	void update_visible_buffer_size();
+	bool update_visible_buffer_size();
 	virtual int getWidth();
 	virtual int getHeight();
 
@@ -152,4 +153,5 @@ class gui_screen_t : public screen_t
 	void setCursorVisible(bool visible);
 
 	void setCanvasBounds(g_rectangle& bounds);
+	void flush();
 };

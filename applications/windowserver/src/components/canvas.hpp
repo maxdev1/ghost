@@ -29,6 +29,7 @@ struct buffer_info_t
 	uint8_t* remoteMapping;
 	uint16_t pages;
 	bool acknowledged;
+	cairo_surface_t* surface;
 };
 
 class canvas_t;

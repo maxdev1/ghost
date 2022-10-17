@@ -306,6 +306,7 @@ void terminal_t::input_routine()
 				}
 			}
 		}
+		screen->flush();
 	}
 }
 
@@ -327,15 +328,16 @@ void terminal_t::output_routine(output_routine_startinfo_t* info)
 		if(stat == G_FS_READ_SUCCESSFUL)
 		{
 			buf[r] = 0;
+			g_atomic_lock(info->terminal->screen_lock);
 			for(int i = 0; i < r; i++)
 			{
 				char c = buf[i];
 
 				// Lock screen and set error color if required
-				g_atomic_lock(info->terminal->screen_lock);
 				info->terminal->process_output_character(&status, info->error_output, c);
-				g_atomic_unlock(info->terminal->screen_lock);
 			}
+			info->terminal->screen->flush();
+			g_atomic_unlock(info->terminal->screen_lock);
 		}
 		else
 		{
