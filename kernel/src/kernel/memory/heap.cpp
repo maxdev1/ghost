@@ -90,6 +90,12 @@ void heapFree(void* ptr)
 	if(!heapInitialized)
 		panic("%! tried to use uninitialized kernel heap", "kernheap");
 
+	if(!ptr)
+	{
+		logWarn("%! tried to free nullptr", "kernheap");
+		return;
+	}
+
 	mutexAcquire(&heapLock);
 
 	heapAmountInUse -= chunkAllocatorFree(&heapAllocator, ptr);
