@@ -120,6 +120,7 @@ void canvas_t::createNewBuffer(uint16_t requiredPages)
 		klog("warning: failed to allocate a buffer of size %i for a canvas", bufferSize);
 		return;
 	}
+	memset((void*) nextBuffer.localMapping, 0, bufferSize);
 
 	// share buffer with target process
 	nextBuffer.remoteMapping = (uint8_t*) g_share_mem(nextBuffer.localMapping, requiredPages * G_PAGE_SIZE, partnerProcess);
