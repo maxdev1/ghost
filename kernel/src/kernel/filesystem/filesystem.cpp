@@ -344,7 +344,10 @@ g_fs_open_status filesystemOpenNode(g_fs_node* file, g_file_flag_mode flags, g_p
 {
 	g_fs_delegate* delegate = filesystemFindDelegate(file);
 	if(!delegate->open)
-		panic("%! failed to open file %i, delegate had no implementation", "fs", file->id);
+	{
+		logInfo("%! failed to open file %i, delegate had no implementation", "fs", file->id);
+		return G_FS_OPEN_ERROR;
+	}
 
 	g_fs_open_status status = delegate->open(file);
 	if(status == G_FS_OPEN_SUCCESSFUL)
@@ -547,7 +550,10 @@ g_fs_close_status filesystemClose(g_pid pid, g_fd fd, g_bool removeDescriptor)
 
 	g_fs_delegate* delegate = filesystemFindDelegate(file);
 	if(!delegate->close)
-		panic("%! failed to close file %i, delegate had no implementation", "fs", file->id);
+	{
+		logInfo("%! failed to close file %i, delegate had no implementation", "fs", file->id);
+		return G_FS_CLOSE_ERROR;
+	}
 
 	g_fs_close_status status = delegate->close(file);
 	if(status == G_FS_CLOSE_SUCCESSFUL)
@@ -674,7 +680,10 @@ g_fs_open_directory_status filesystemOpenDirectory(g_fs_node* dir)
 
 	g_fs_delegate* delegate = filesystemFindDelegate(dir);
 	if(!delegate->refreshDir)
-		panic("%! failed to open directory %i, delegate had no implementation", "fs", dir->id);
+	{
+		logInfo("%! failed to open directory %i, delegate had no implementation", "fs", dir->id);
+		return G_FS_OPEN_DIRECTORY_ERROR;
+	}
 
 	auto refreshStatus = delegate->refreshDir(dir);
 	if(refreshStatus == G_FS_DIRECTORY_REFRESH_SUCCESSFUL)
