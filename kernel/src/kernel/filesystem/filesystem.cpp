@@ -67,6 +67,7 @@ void filesystemCreateRoot()
 	filesystemRoot->delegate = ramdiskDelegate;
 
 	mountFolder = filesystemCreateNode(G_FS_NODE_TYPE_FOLDER, "mount");
+	mountFolder->delegate = filesystemCreateDelegate();
 	filesystemAddChild(filesystemRoot, mountFolder);
 
 	g_fs_node* ramdiskMountpoint = filesystemCreateNode(G_FS_NODE_TYPE_MOUNTPOINT, "ramdisk");
@@ -85,7 +86,7 @@ void filesystemCreateRoot()
 	pipeDelegate->waitForWrite = filesystemPipeDelegateWaitForWrite;
 	pipeDelegate->close = filesystemPipeDelegateClose;
 
-	pipesFolder = filesystemCreateNode(G_FS_NODE_TYPE_FOLDER, "pipes");
+	pipesFolder = filesystemCreateNode(G_FS_NODE_TYPE_MOUNTPOINT, "pipes");
 	pipesFolder->delegate = pipeDelegate;
 	filesystemAddChild(mountFolder, pipesFolder);
 }
@@ -681,8 +682,8 @@ g_fs_open_directory_status filesystemOpenDirectory(g_fs_node* dir)
 	g_fs_delegate* delegate = filesystemFindDelegate(dir);
 	if(!delegate->refreshDir)
 	{
-		logInfo("%! failed to open directory %i, delegate had no implementation", "fs", dir->id);
-		return G_FS_OPEN_DIRECTORY_ERROR;
+		logDebug("%! failed to open directory %i, delegate had no implementation", "fs", dir->id);
+		return G_FS_OPEN_DIRECTORY_SUCCESSFUL;
 	}
 
 	auto refreshStatus = delegate->refreshDir(dir);
