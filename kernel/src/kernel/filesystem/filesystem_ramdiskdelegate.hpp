@@ -41,6 +41,6 @@ g_fs_open_status filesystemRamdiskDelegateCreate(g_fs_node* parent, const char* 
 
 g_fs_open_status filesystemRamdiskDelegateTruncate(g_fs_node* file);
 
-g_fs_read_directory_status filesystemRamdiskDelegateReadDir(g_fs_node* dir, uint32_t index, g_fs_node** outNode);
+g_fs_directory_refresh_status filesystemRamdiskDelegateRefreshDir(g_fs_node* dir);
 
 #endif

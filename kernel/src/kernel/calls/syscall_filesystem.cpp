@@ -182,9 +182,13 @@ void syscallFsOpenDirectory(g_task* task, g_syscall_fs_open_directory* data)
 	g_fs_node* directory;
 	if(filesystemFind(nullptr, data->path, &directory) == G_FS_OPEN_SUCCESSFUL)
 	{
-		data->iterator->node_id = directory->id;
-		data->iterator->position = 0;
-		data->status = G_FS_OPEN_DIRECTORY_SUCCESSFUL;
+		data->status = filesystemOpenDirectory(directory);
+
+		if(data->status == G_FS_OPEN_DIRECTORY_SUCCESSFUL)
+		{
+			data->iterator->node_id = directory->id;
+			data->iterator->position = 0;
+		}
 	}
 	else
 	{

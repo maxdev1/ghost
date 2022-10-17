@@ -38,6 +38,7 @@ struct g_fs_node
 	g_fs_virt_id id;
 	g_fs_phys_id physicalId;
 	g_fs_node_type type;
+	g_mutex lock;
 
 	char* name;
 	g_fs_node* parent;
@@ -73,7 +74,7 @@ struct g_fs_delegate
 	g_fs_open_status (*create)(g_fs_node* parent, const char* name, g_fs_node** outFile);
 	g_fs_open_status (*truncate)(g_fs_node* file);
 	g_fs_close_status (*close)(g_fs_node* node);
-	g_fs_read_directory_status (*readDir)(g_fs_node* node, uint32_t index, g_fs_node** outNode);
+	g_fs_directory_refresh_status (*refreshDir)(g_fs_node* node);
 
 	void (*waitForRead)(g_tid task, g_fs_node* node);
 	void (*waitForWrite)(g_tid task, g_fs_node* node);
@@ -106,11 +107,17 @@ g_fs_node* filesystemCreateNode(g_fs_node_type type, const char* name);
 g_fs_open_status filesystemFindChild(g_fs_node* parent, const char* name, g_fs_node** outChild);
 
 /**
- * Searches for a node by a path relative to the parent node. Uses filesystemFindChild
+ * Searches for an existing node in the parent.
+ */
+bool filesystemFindExistingChild(g_fs_node* parent, const char* name, g_fs_node** outChild = nullptr);
+
+/**
+ * Searches for a node by a path relative to the parent node. Uses <filesystemFindChild>
  * to search for a child.
  */
-g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node** outChild, bool* outFoundAllButLast = 0, g_fs_node** outLastFoundNode = 0,
-								const char** outFileNameStart = 0);
+g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node** outChild,
+								bool* outFoundAllButLast = nullptr, g_fs_node** outLastFoundNode = nullptr,
+								const char** outFileNameStart = nullptr);
 
 /**
  * Retrieves a node by its virtual id.
@@ -202,6 +209,11 @@ int filesystemGetAbsolutePath(g_fs_node* node, char* buffer);
  * @return the path length
  */
 int filesystemGetAbsolutePathLength(g_fs_node* node);
+
+/**
+ * Opens a directory.
+ */
+g_fs_open_directory_status filesystemOpenDirectory(g_fs_node* parent);
 
 /**
  * Reads a directory.

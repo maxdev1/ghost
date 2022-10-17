@@ -61,7 +61,7 @@ void filesystemCreateRoot()
 	ramdiskDelegate->create = filesystemRamdiskDelegateCreate;
 	ramdiskDelegate->getLength = filesystemRamdiskDelegateGetLength;
 	ramdiskDelegate->close = filesystemRamdiskDelegateClose;
-	ramdiskDelegate->readDir = filesystemRamdiskDelegateReadDir;
+	ramdiskDelegate->refreshDir = filesystemRamdiskDelegateRefreshDir;
 
 	filesystemRoot = filesystemCreateNode(G_FS_NODE_TYPE_ROOT, "root");
 	filesystemRoot->delegate = ramdiskDelegate;
@@ -101,6 +101,7 @@ g_fs_node* filesystemCreateNode(g_fs_node_type type, const char* name)
 	node->delegate = 0;
 	node->blocking = false;
 	node->upToDate = false;
+	mutexInitialize(&node->lock);
 
 	hashmapPut<g_fs_virt_id, g_fs_node*>(filesystemNodes, node->id, node);
 	return node;
@@ -108,17 +109,18 @@ g_fs_node* filesystemCreateNode(g_fs_node_type type, const char* name)
 
 void filesystemAddChild(g_fs_node* parent, g_fs_node* child)
 {
-	g_fs_delegate* delegate = filesystemFindDelegate(parent);
-	mutexAcquire(&delegate->lock);
+	mutexAcquire(&parent->lock);
 
 	child->parent = parent;
+	if(!child->delegate)
+		child->delegate = parent->delegate;
 
 	g_fs_node_entry* entry = (g_fs_node_entry*) heapAllocate(sizeof(g_fs_node_entry));
 	entry->node = child;
-	entry->next = child->children;
-	child->children = entry;
+	entry->next = parent->children;
+	parent->children = entry;
 
-	mutexRelease(&delegate->lock);
+	mutexRelease(&parent->lock);
 }
 
 g_fs_virt_id filesystemGetNextNodeId()
@@ -160,57 +162,67 @@ g_fs_delegate* filesystemFindDelegate(g_fs_node* node)
 	return delegate;
 }
 
-g_fs_open_status filesystemFindChild(g_fs_node* parent, const char* name, g_fs_node** outChild)
+bool filesystemFindExistingChild(g_fs_node* parent, const char* name, g_fs_node** outChild)
 {
+	mutexAcquire(&parent->lock);
+
+	g_fs_node* child = nullptr;
+
 	if(stringEquals(name, ".."))
 	{
-		*outChild = parent->parent;
-		return G_FS_OPEN_SUCCESSFUL;
+		child = parent->parent;
 	}
-
-	if(stringEquals(name, "."))
+	else if(stringEquals(name, "."))
 	{
-		*outChild = parent;
-		return G_FS_OPEN_SUCCESSFUL;
+		child = parent;
 	}
-
-	g_fs_node_entry* child = parent->children;
-	g_fs_node* lastKnown = parent;
-	while(child)
+	else
 	{
-		if(stringEquals(name, child->node->name))
+		g_fs_node_entry* childEntry = parent->children;
+		while(childEntry)
 		{
-			*outChild = child->node;
-			return G_FS_OPEN_SUCCESSFUL;
+			if(stringEquals(name, childEntry->node->name))
+			{
+				child = childEntry->node;
+				break;
+			}
+			childEntry = childEntry->next;
 		}
-		lastKnown = child->node;
-		child = child->next;
 	}
 
-	g_fs_delegate* delegate = filesystemFindDelegate(lastKnown);
+	mutexRelease(&parent->lock);
+
+	if(outChild)
+		*outChild = child;
+	return child != nullptr;
+}
+
+g_fs_open_status filesystemFindChild(g_fs_node* parent, const char* name, g_fs_node** outChild)
+{
+	if(filesystemFindExistingChild(parent, name, outChild))
+		return G_FS_OPEN_SUCCESSFUL;
+
+	g_fs_delegate* delegate = filesystemFindDelegate(parent);
 	if(!delegate->discover)
 	{
 		*outChild = 0;
 		return G_FS_OPEN_ERROR;
 	}
-	return delegate->discover(lastKnown, name, outChild);
+	return delegate->discover(parent, name, outChild);
 }
 
-g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node** outChild, bool* outFoundAllButLast, g_fs_node** outLastFoundParent,
-								const char** outFileNameStart)
+g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node** outChild, bool* outFoundAllButLast, g_fs_node** outLastFoundParent, const char** outFileNameStart)
 {
-	if(parent == 0)
-	{
+	if(parent == nullptr)
 		parent = filesystemRoot;
-	}
-	char* nameBuf = (char*) heapAllocate(sizeof(char) * (G_FILENAME_MAX + 1));
 
-	const char* nameStart = path;
-	const char* nameEnd = nameStart;
 	g_fs_node* node = parent;
 	g_fs_node* lastFoundParent = node;
 	g_fs_open_status status = G_FS_OPEN_SUCCESSFUL;
 
+	char* nameBuf = (char*) heapAllocate(sizeof(char) * (G_FILENAME_MAX + 1));
+	const char* nameStart = path;
+	const char* nameEnd = nameStart;
 	while(nameStart)
 	{
 		// Find where next name starts and ends
@@ -222,20 +234,20 @@ g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node**
 			++nameEnd;
 
 		// Nothing left to resolve, we found the node
-		int nameLen = nameEnd - nameStart;
-		if(nameLen == 0)
+		int remaining = nameEnd - nameStart;
+		if(remaining == 0)
 			break;
 
-		if(nameLen > G_FILENAME_MAX)
+		if(remaining > G_FILENAME_MAX)
 		{
-			logInfo("%! tried to resolve path with filename (%i) longer than max (%i): %s", "fs", nameLen, G_FILENAME_MAX, path);
-			heapFree(nameBuf);
-			return 0;
+			status = G_FS_OPEN_ERROR;
+			logInfo("%! tried to resolve path with filename (%i) longer than max (%i): %s", "fs", remaining, G_FILENAME_MAX, path);
+			break;
 		}
 
 		// Copy name into temporary buffer
-		memoryCopy(nameBuf, nameStart, nameLen);
-		nameBuf[nameLen] = 0;
+		memoryCopy(nameBuf, nameStart, remaining);
+		nameBuf[remaining] = 0;
 
 		// Find child with this name
 		lastFoundParent = node;
@@ -262,16 +274,14 @@ g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node**
 g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task* task, g_fd* outFd)
 {
 	// Decide for relative path origin
-	g_fs_node* relative = 0;
+	g_fs_node* relative = nullptr;
 	if(path[0] != '/')
 	{
-		const char* workingDirectoryPath = task->process->environment.workingDirectory;
-		if(workingDirectoryPath == 0)
-		{
-			workingDirectoryPath = "/";
-		}
+		const char* cwd = task->process->environment.workingDirectory;
+		if(cwd == nullptr)
+			cwd = "/";
 
-		filesystemFind(0, workingDirectoryPath, &relative);
+		filesystemFind(0, cwd, &relative);
 	}
 	if(!relative)
 		relative = filesystemGetRoot();
@@ -288,7 +298,7 @@ g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task
 	{
 		if(file->type == G_FS_NODE_TYPE_FOLDER)
 		{
-			logInfo("tried to open folder");
+			logInfo("%! tried to open folder", "fs");
 			return G_FS_OPEN_ERROR;
 		}
 
@@ -657,11 +667,38 @@ int filesystemGetAbsolutePath(g_fs_node* node, char* buffer)
 	return length + copied;
 }
 
-g_fs_read_directory_status filesystemReadDirectory(g_fs_node* parent, uint32_t index, g_fs_node** outChild)
+g_fs_open_directory_status filesystemOpenDirectory(g_fs_node* dir)
 {
-	g_fs_delegate* delegate = filesystemFindDelegate(parent);
-	if(!delegate->readDir)
-		panic("%! failed to read directory %i, delegate had no implementation", "fs", parent->id);
+	if(dir->upToDate)
+		return G_FS_OPEN_DIRECTORY_SUCCESSFUL;
 
-	return delegate->readDir(parent, index, outChild);
+	g_fs_delegate* delegate = filesystemFindDelegate(dir);
+	if(!delegate->refreshDir)
+		panic("%! failed to open directory %i, delegate had no implementation", "fs", dir->id);
+
+	auto refreshStatus = delegate->refreshDir(dir);
+	if(refreshStatus == G_FS_DIRECTORY_REFRESH_SUCCESSFUL)
+	{
+		dir->upToDate = true;
+		return G_FS_OPEN_DIRECTORY_SUCCESSFUL;
+	}
+
+	return G_FS_OPEN_DIRECTORY_ERROR;
+}
+
+g_fs_read_directory_status filesystemReadDirectory(g_fs_node* dir, uint32_t index, g_fs_node** outChild)
+{
+	auto entry = dir->children;
+	while(entry)
+	{
+		if(!index)
+		{
+			*outChild = entry->node;
+			return G_FS_READ_DIRECTORY_SUCCESSFUL;
+		}
+
+		--index;
+		entry = entry->next;
+	}
+	return G_FS_READ_DIRECTORY_EOD;
 }

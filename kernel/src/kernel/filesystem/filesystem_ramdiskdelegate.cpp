@@ -166,25 +166,26 @@ g_fs_open_status filesystemRamdiskDelegateTruncate(g_fs_node* file)
 	return G_FS_OPEN_SUCCESSFUL;
 }
 
-g_fs_read_directory_status filesystemRamdiskDelegateReadDir(g_fs_node* dir, uint32_t index, g_fs_node** outNode)
+g_fs_directory_refresh_status filesystemRamdiskDelegateRefreshDir(g_fs_node* dir)
 {
 	g_ramdisk_entry* dirEntry = ramdiskFindById(dir->physicalId);
 	if(!dirEntry)
-		return G_FS_READ_DIRECTORY_ERROR;
+		return G_FS_DIRECTORY_REFRESH_ERROR;
 
-	if(index >= ramdiskGetChildCount(dirEntry->id))
+	auto childCount = ramdiskGetChildCount(dirEntry->id);
+
+	for(g_size i = 0; i < childCount; i++)
 	{
-		return G_FS_READ_DIRECTORY_EOD;
+		auto childEntry = ramdiskGetChildAt(dirEntry->id, i);
+
+		if(!filesystemFindExistingChild(dir, childEntry->name))
+		{
+			g_fs_node_type nodeType = childEntry->type == G_RAMDISK_ENTRY_TYPE_FILE ? G_FS_NODE_TYPE_FILE : G_FS_NODE_TYPE_FOLDER;
+			g_fs_node* newNode = filesystemCreateNode(nodeType, childEntry->name);
+			newNode->physicalId = childEntry->id;
+			filesystemAddChild(dir, newNode);
+		}
 	}
 
-	auto childEntry = ramdiskGetChildAt(dirEntry->id, index);
-
-	// TODO this creates duplicate nodes
-	g_fs_node_type nodeType = childEntry->type == G_RAMDISK_ENTRY_TYPE_FILE ? G_FS_NODE_TYPE_FILE : G_FS_NODE_TYPE_FOLDER;
-	g_fs_node* newNode = filesystemCreateNode(nodeType, childEntry->name);
-	newNode->physicalId = childEntry->id;
-	filesystemAddChild(dir, newNode);
-
-	*outNode = newNode;
-	return G_FS_READ_DIRECTORY_SUCCESSFUL;
+	return G_FS_DIRECTORY_REFRESH_SUCCESSFUL;
 }
