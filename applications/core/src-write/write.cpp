@@ -18,43 +18,52 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <stdio.h>
 #include <ghost.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 /**
  *
  */
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
 
-	if (argc >= 2) {
+	if(argc >= 2)
+	{
 		bool append = false;
-		if (argc == 3 && strcmp(argv[2], "-a") == 0) {
+		if(argc == 3 && strcmp(argv[2], "-a") == 0)
+		{
 			append = true;
 		}
 
 		char* filepath = argv[1];
 		FILE* file = fopen(filepath, append ? "a" : "w");
 
-		if (file == NULL) {
+		if(file == NULL)
+		{
 			fprintf(stderr, "file could not be opened\n");
-		} else {
+		}
+		else
+		{
 			uint32_t bufsize = 4096;
 			uint8_t* buf = new uint8_t[bufsize];
 
 			ssize_t len;
-			while ((len = fread(buf, 1, bufsize, stdin)) > 0) {
+			while((len = fread(buf, 1, bufsize, stdin)) > 0)
+			{
 				// TODO write buffered
-				for (ssize_t pos = 0; pos < len; pos++) {
+				for(ssize_t pos = 0; pos < len; pos++)
+				{
 					putc(buf[pos], file);
 				}
 			}
 
 			fclose(file);
 		}
-
-	} else {
+	}
+	else
+	{
 		fprintf(stderr, "usage: write <filename>");
 	}
 }
