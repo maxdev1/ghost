@@ -161,7 +161,7 @@ void gui_screen_t::paint_entry(gui_screen_t* screen)
 	screen->paint();
 }
 
-char_layout_t* gui_screen_t::get_char_layout(cairo_scaled_font_t* scaled_face, char c)
+char_layout_t* gui_screen_t::get_char_layout(cairo_scaled_font_t* scaledFont, char c)
 {
 	// Take char from layout cache
 	auto entry = char_layout_cache.find(c);
@@ -177,7 +177,7 @@ char_layout_t* gui_screen_t::get_char_layout(cairo_scaled_font_t* scaled_face, c
 
 	char_layout_t* layout = new char_layout_t();
 	cairo_text_cluster_flags_t cluster_flags;
-	cairo_status_t stat = cairo_scaled_font_text_to_glyphs(scaled_face, 0, 0, cbuf, 1, &layout->glyph_buffer, &layout->glyph_count, &layout->cluster_buffer,
+	cairo_status_t stat = cairo_scaled_font_text_to_glyphs(scaledFont, 0, 0, cbuf, 1, &layout->glyph_buffer, &layout->glyph_count, &layout->cluster_buffer,
 														   &layout->cluster_count, &cluster_flags);
 
 	if(stat == CAIRO_STATUS_SUCCESS)
@@ -188,12 +188,12 @@ char_layout_t* gui_screen_t::get_char_layout(cairo_scaled_font_t* scaled_face, c
 	return 0;
 }
 
-void gui_screen_t::printGlyph(cairo_t* cr, cairo_scaled_font_t* scaled_face, int x, int y, uint8_t c, bool blink_on)
+void gui_screen_t::printGlyph(cairo_t* cr, cairo_scaled_font_t* scaledFont, int x, int y, uint8_t c, bool blink_on)
 {
 
-	char_layout_t* char_layout = get_char_layout(scaled_face, c);
+	char_layout_t* char_layout = get_char_layout(scaledFont, c);
 	cairo_text_extents_t char_extents;
-	cairo_scaled_font_glyph_extents(scaled_face, char_layout->glyph_buffer, 1, &char_extents);
+	cairo_scaled_font_glyph_extents(scaledFont, char_layout->glyph_buffer, 1, &char_extents);
 
 	if(!char_layout)
 		return;
@@ -217,14 +217,14 @@ void gui_screen_t::printGlyph(cairo_t* cr, cairo_scaled_font_t* scaled_face, int
 
 void gui_screen_t::paint()
 {
-	cairo_scaled_font_t* scaled_face = nullptr;
+	cairo_scaled_font_t* scaledFont = nullptr;
 	cairo_font_options_t* fontOptions = nullptr;
 	cairo_t* fontContext = nullptr;
 
 	bool firstPaint = true;
 	while(true)
 	{
-		bool clear = update_visible_buffer_size();
+		update_visible_buffer_size();
 
 		auto cr = getGraphics();
 		if(!cr)
@@ -243,24 +243,15 @@ void gui_screen_t::paint()
 			cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
 			cairo_paint(cr);
 			cairo_restore(cr);
-		}
 
-		if(fontContext != cr)
-		{
-			fontContext = cr;
-
-			// prepare font
-			if(scaled_face)
-				cairo_scaled_font_destroy(scaled_face);
-			cairo_set_font_face(cr, font->getFace());
-			cairo_set_font_size(cr, font_size);
-			scaled_face = cairo_get_scaled_font(cr);
-
-			if(fontOptions)
-				cairo_font_options_destroy(fontOptions);
 			fontOptions = cairo_font_options_create();
 			cairo_font_options_set_antialias(fontOptions, CAIRO_ANTIALIAS_NONE);
 		}
+
+		// prepare font
+		cairo_set_font_face(cr, font->getFace());
+		cairo_set_font_size(cr, font_size);
+		scaledFont = cairo_get_scaled_font(cr);
 
 		cairo_set_font_options(cr, fontOptions);
 
@@ -328,12 +319,9 @@ void gui_screen_t::paint()
 			{
 				uint8_t c = raster->getUnlocked(x, y);
 				if(c)
-					printGlyph(cr, scaled_face, x, y, c, blink_on);
+					printGlyph(cr, scaledFont, x, y, c, blink_on);
 			}
 		}
-		uint8_t underCursorC = raster->getUnlocked(cursor_x, cursor_y);
-		if(underCursorC)
-			printGlyph(cr, scaled_face, cursor_x, cursor_y, underCursorC, blink_on);
 
 		raster->unlockBuffer();
 
