@@ -23,7 +23,6 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/paging.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
-#include "shared/memory/bitmap_page_allocator.hpp"
 #include "shared/panic.hpp"
 #include "shared/system/mutex.hpp"
 
@@ -131,16 +130,16 @@ bool _heapExpand()
 		return false;
 	}
 
-	for(g_virtual_address v = heapEnd; v < heapEnd + G_KERNEL_HEAP_EXPAND_STEP; v += G_PAGE_SIZE)
+	for(g_virtual_address virt = heapEnd; virt < heapEnd + G_KERNEL_HEAP_EXPAND_STEP; virt += G_PAGE_SIZE)
 	{
-		g_physical_address p = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-		if(p == 0)
+		g_physical_address phys = memoryPhysicalAllocate(true);
+		if(phys == 0)
 		{
 			logWarn("%! failed to expand kernel heap, out of physical memory", "kernheap");
 			return false;
 		}
 
-		pagingMapPage(v, p, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+		pagingMapPage(virt, phys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
 	}
 
 	chunkAllocatorExpand(&heapAllocator, G_KERNEL_HEAP_EXPAND_STEP);

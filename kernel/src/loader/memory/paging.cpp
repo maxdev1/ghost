@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "loader/memory/paging.hpp"
+#include "loader/memory/physical.hpp"
 #include "loader/setup_information.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/memory/bitmap_page_allocator.hpp"

@@ -22,6 +22,7 @@
 #define __GHOST_LIBC_DIRENT__
 
 #include "ghost/common.h"
+#include "stdio.h"
 
 __BEGIN_C
 

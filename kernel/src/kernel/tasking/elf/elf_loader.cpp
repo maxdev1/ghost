@@ -24,6 +24,8 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
 
+#include "kernel/tasking/clock.hpp"
+
 g_spawn_status elfLoadExecutable(g_task* caller, g_fd fd, g_security_level securityLevel, g_process** outProcess, g_spawn_validation_details* outDetails)
 {
 	/* Create process and load binary */
@@ -91,9 +93,7 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* exe
 	uint32_t pages = G_PAGE_ALIGN_UP(totalRequired) / G_PAGE_SIZE;
 	for(uint32_t i = 0; i < pages; i++)
 	{
-		g_physical_address page = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-		pageReferenceTrackerIncrement(page);
-
+		g_physical_address page = memoryPhysicalAllocate();
 		pagingMapPage(areaStart + i * G_PAGE_SIZE, page, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
 	}
 
@@ -170,8 +170,7 @@ g_spawn_status elfLoadLoadSegment(g_task* caller, g_fd file, Elf32_Phdr* phdr, g
 
 		for(uint32_t i = 0; i < areaPages; i++)
 		{
-			g_physical_address page = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-			pageReferenceTrackerIncrement(page);
+			g_physical_address page = memoryPhysicalAllocate();
 			pagingMapPage(areaStart + i * G_PAGE_SIZE, page, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
 		}
 

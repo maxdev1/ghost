@@ -26,15 +26,6 @@
 #include "shared/memory/paging.hpp"
 
 /**
- * Used to map a page into a page directory that is not the current address space.
- * The directory itself and the required tables are temporarily mapped and then unmapped again.
- */
-void pagingMapToTemporaryMappedDirectory(g_physical_address directory, g_virtual_address virtualAddress, g_physical_address physicalAddress,
-										 uint32_t tableFlags =
-											 DEFAULT_KERNEL_TABLE_FLAGS,
-										 uint32_t pageFlags = DEFAULT_KERNEL_PAGE_FLAGS, bool allowOverride = false);
-
-/**
  * Reads for a given virtual address (which must exist in the currently mapped
  * address space) the underlying physical address.
  *

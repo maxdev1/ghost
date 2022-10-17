@@ -34,4 +34,14 @@ void memoryInitialize(g_setup_information* setupInformation);
 
 void memoryUnmapSetupMemory();
 
+/**
+ * Allocates a physical memory page.
+ */
+g_physical_address memoryPhysicalAllocate(bool untracked = false);
+
+/**
+ * Frees a physical memory page.
+ */
+void memoryPhysicalFree(g_physical_address page);
+
 #endif

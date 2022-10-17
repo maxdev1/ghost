@@ -51,6 +51,7 @@ typedef struct
 	uint32_t entryCount;
 	bool hasNext;
 	g_mutex lock;
+	uint32_t firstFree;
 } __attribute__((packed)) g_bitmap_header;
 
 /**

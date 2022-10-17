@@ -83,6 +83,7 @@ uint32_t memoryPhysicalReadMemoryMap(g_address startAfter, g_address bitmapArray
 				currentBitmap->baseAddress = splitStart;
 				currentBitmap->entryCount = entryCount;
 				currentBitmap->hasNext = false;
+				currentBitmap->firstFree = 0;
 				g_bitmap_entry* currentBitmapEntries = G_BITMAP_ENTRIES(currentBitmap);
 				for(uint32_t i = 0; i < currentBitmap->entryCount; i++)
 				{

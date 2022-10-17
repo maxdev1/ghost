@@ -45,7 +45,7 @@ void smpInitialize(g_physical_address initialPageDirectoryPhysical)
 	for(uint32_t i = 0; i < processorGetNumberOfProcessors(); i++)
 	{
 
-		g_physical_address stackPhysical = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+		g_physical_address stackPhysical = memoryPhysicalAllocate();
 		if(stackPhysical == 0)
 		{
 			logInfo("%*%! could not allocate physical page for AP stack", 0x0C, "smp");

@@ -155,8 +155,7 @@ bool exceptionsHandleStackOverflow(g_task* task, g_virtual_address accessedVirtP
 		pageFlags = DEFAULT_USER_PAGE_FLAGS;
 	}
 
-	g_physical_address extendedStackPage = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-	pageReferenceTrackerIncrement(extendedStackPage);
+	g_physical_address extendedStackPage = memoryPhysicalAllocate();
 	pagingMapPage(accessedVirtPage, extendedStackPage, tableFlags, pageFlags);
 	return true;
 }

@@ -36,9 +36,8 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 	{
 		g_virtual_address heapStart = process->image.end;
 
-		g_physical_address phys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+		g_physical_address phys = memoryPhysicalAllocate();
 		pagingMapPage(heapStart, phys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
-		pageReferenceTrackerIncrement(phys);
 
 		process->heap.brk = heapStart;
 		process->heap.start = heapStart;
@@ -62,9 +61,8 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 		g_virtual_address virt_above;
 		while(newBrk > (virt_above = process->heap.start + process->heap.pages * G_PAGE_SIZE))
 		{
-			g_physical_address phys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+			g_physical_address phys = memoryPhysicalAllocate();
 			pagingMapPage(virt_above, phys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
-			pageReferenceTrackerIncrement(phys);
 			++process->heap.pages;
 		}
 
@@ -74,8 +72,7 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 		{
 			g_physical_address phys = pagingVirtualToPhysical(virtAligned);
 			pagingUnmapPage(virtAligned);
-			if(pageReferenceTrackerDecrement(phys) == 0)
-				bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, phys);
+			memoryPhysicalFree(phys);
 
 			--process->heap.pages;
 		}
@@ -126,8 +123,7 @@ g_stack taskingMemoryCreateStack(g_address_range_pool* addressRangePool, uint32_
 
 	// Only allocate and map the last page of the stack; when the process faults, lazy-allocate more physical space.
 	// The first page of the allocated virtual range is used as a "guard page" and makes the process fault when accessed.
-	g_physical_address pagePhys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-	pageReferenceTrackerIncrement(pagePhys);
+	g_physical_address pagePhys = memoryPhysicalAllocate();
 	uint32_t stackEnd = stackVirt + pages * G_PAGE_SIZE;
 	pagingMapPage(stackEnd - G_PAGE_SIZE, pagePhys, tableFlags, pageFlags);
 
@@ -142,14 +138,13 @@ void taskingMemoryDestroyStacks(g_task* task)
 	// Remove interrupt stack
 	if(task->interruptStack.start)
 	{
-		for(g_virtual_address page = task->interruptStack.start; page < task->interruptStack.end; page += G_PAGE_SIZE)
+		for(g_virtual_address virt = task->interruptStack.start; virt < task->interruptStack.end; virt += G_PAGE_SIZE)
 		{
-			g_physical_address pagePhys = pagingVirtualToPhysical(page);
-			if(pagePhys > 0)
+			g_physical_address phys = pagingVirtualToPhysical(virt);
+			if(phys > 0)
 			{
-				if(pageReferenceTrackerDecrement(pagePhys) == 0)
-					bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, pagePhys);
-				pagingUnmapPage(page);
+				memoryPhysicalFree(phys);
+				pagingUnmapPage(virt);
 			}
 		}
 		addressRangePoolFree(memoryVirtualRangePool, task->interruptStack.start);
@@ -178,8 +173,7 @@ void taskingMemoryDestroyStack(g_address_range_pool* addressRangePool, g_stack& 
 		if(!pagePhys)
 			continue;
 
-		if(pageReferenceTrackerDecrement(pagePhys) == 0)
-			bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, pagePhys);
+		memoryPhysicalFree(pagePhys);
 		pagingUnmapPage(page);
 	}
 
@@ -190,7 +184,7 @@ g_physical_address taskingMemoryCreatePageDirectory()
 {
 	g_page_directory directoryCurrent = (g_page_directory) G_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
 
-	g_physical_address directoryPhys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+	g_physical_address directoryPhys = memoryPhysicalAllocate();
 	g_virtual_address directoryTempVirt = addressRangePoolAllocate(memoryVirtualRangePool, 1);
 	g_page_directory directoryTemp = (g_page_directory) directoryTempVirt;
 	pagingMapPage(directoryTempVirt, directoryPhys);
@@ -232,14 +226,13 @@ void taskingMemoryDestroyPageDirectory(g_physical_address directory)
 				continue;
 
 			g_physical_address page = G_PAGE_ALIGN_DOWN(table[pi]);
-			if(pageReferenceTrackerDecrement(page) == 0)
-				bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, page);
+			memoryPhysicalFree(page);
 		}
 	}
 
 	taskingTemporarySwitchBack(returnDirectory);
 
-	bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, directory);
+	memoryPhysicalFree(directory);
 }
 
 void taskingPrepareThreadLocalStorage(g_task* task)
@@ -262,9 +255,7 @@ void taskingPrepareThreadLocalStorage(g_task* task)
 		// copy tls contents
 		for(g_virtual_address page = tlsStart; page < tlsEnd; page += G_PAGE_SIZE)
 		{
-			g_physical_address phys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-			pageReferenceTrackerIncrement(phys);
-
+			g_physical_address phys = memoryPhysicalAllocate();
 			pagingMapPage(page, phys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
 		}
 
@@ -297,9 +288,7 @@ void taskingMemoryDestroyThreadLocalStorage(g_task* task)
 			g_physical_address pagePhys = pagingVirtualToPhysical(page);
 			if(pagePhys > 0)
 			{
-				if(pageReferenceTrackerDecrement(pagePhys) == 0)
-					bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, pagePhys);
-
+				memoryPhysicalFree(pagePhys);
 				pagingUnmapPage(page);
 			}
 		}

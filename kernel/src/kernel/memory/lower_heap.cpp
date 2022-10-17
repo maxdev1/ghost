@@ -20,9 +20,6 @@
 
 #include "kernel/memory/lower_heap.hpp"
 #include "kernel/memory/chunk_allocator.hpp"
-#include "kernel/memory/memory.hpp"
-#include "kernel/memory/paging.hpp"
-#include "shared/memory/bitmap_page_allocator.hpp"
 #include "shared/panic.hpp"
 
 static g_chunk_allocator lowerHeapAllocator;

@@ -63,3 +63,19 @@ void memoryUnmapSetupMemory()
 	for(g_virtual_address addr = G_LOWER_MEMORY_END; addr < G_KERNEL_AREA_START; addr += G_PAGE_SIZE)
 		pagingUnmapPage(addr);
 }
+
+g_physical_address memoryPhysicalAllocate(bool untracked)
+{
+	g_physical_address page = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+	if(!untracked && page)
+		pageReferenceTrackerIncrement(page);
+	return page;
+}
+
+void memoryPhysicalFree(g_physical_address page)
+{
+	if(!page)
+		return;
+	if(pageReferenceTrackerDecrement(page) == 0)
+		bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, page);
+}

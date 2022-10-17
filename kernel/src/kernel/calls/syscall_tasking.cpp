@@ -108,6 +108,7 @@ void syscallJoin(g_task* task, g_syscall_join* data)
 {
 	taskingWaitForExit(data->taskId, task->id);
 	task->status = G_THREAD_STATUS_WAITING;
+	taskingYield();
 }
 
 void syscallSpawn(g_task* task, g_syscall_spawn* data)

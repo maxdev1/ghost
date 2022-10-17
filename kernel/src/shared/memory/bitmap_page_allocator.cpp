@@ -59,6 +59,9 @@ void bitmapPageAllocatorMarkFree(g_bitmap_page_allocator* allocator, g_physical_
 			uint32_t bit = G_OFFSET_TO_BITMAP_BIT(offset);
 			G_BITMAP_UNSET(bitmap, index, bit);
 
+			if(index < bitmap->firstFree)
+				bitmap->firstFree = index;
+
 			++allocator->freePageCount;
 
 			freed = true;
@@ -84,7 +87,7 @@ g_physical_address bitmapPageAllocatorAllocate(g_bitmap_page_allocator* allocato
 		g_physical_address result = 0;
 		mutexAcquire(&bitmap->lock);
 
-		for(uint32_t i = 0; i < bitmap->entryCount; i++)
+		for(uint32_t i = bitmap->firstFree; i < bitmap->entryCount; i++)
 		{
 			if(G_BITMAP_ENTRIES(bitmap)[i] == G_BITMAP_ENTRY_FULL)
 				continue;
