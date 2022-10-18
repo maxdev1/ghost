@@ -215,7 +215,7 @@ void taskingTemporarySwitchBack(g_physical_address pageDirectory);
 
 /**
  * Spawns an executable. This calls the correct binary loader in the background and creates a new
- * process, loading the executable object and necessary libraries and executing it.
+ * process, loading the executable object and necessary libraries. The created main thread is waiting.
  *
  * @param spawner
  * 		task calling the execution

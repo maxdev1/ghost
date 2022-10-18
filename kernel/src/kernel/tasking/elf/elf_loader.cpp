@@ -65,6 +65,7 @@ g_spawn_status elfLoadExecutable(g_task* caller, g_fd fd, g_security_level secur
 		logInfo("%! failed to create main thread to spawn ELF binary from ramdisk", "elf");
 		return G_SPAWN_STATUS_TASKING_ERROR;
 	}
+	thread->status = G_THREAD_STATUS_WAITING;
 	taskingAssign(taskingGetLocal(), thread);
 
 	if(outProcess)

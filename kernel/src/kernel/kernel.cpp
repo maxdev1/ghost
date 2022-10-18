@@ -127,10 +127,12 @@ void kernelSpawnService(const char* path, const char* args, g_security_level sec
 		g_process* outProcess;
 		g_spawn_status spawn = taskingSpawn(currentTask, fd, securityLevel, &outProcess);
 		outProcess->environment.arguments = args;
-		if(spawn == G_SPAWN_STATUS_SUCCESSFUL)
+		if(spawn == G_SPAWN_STATUS_SUCCESSFUL) {
 			logInfo("%! loaded binary: %s (task: %i)", "kernel", path, outProcess->main->id);
-		else
+			outProcess->main->status = G_THREAD_STATUS_RUNNING;
+		}else{
 			logInfo("%! failed to spawn %s with status %i", "kernel", path, spawn);
+		}
 	}
 	else
 	{

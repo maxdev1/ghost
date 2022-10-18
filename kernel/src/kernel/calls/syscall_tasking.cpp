@@ -129,6 +129,8 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 				targetProcess->environment.arguments = stringDuplicate(data->args);
 			if(data->workdir)
 				targetProcess->environment.workingDirectory = stringDuplicate(data->workdir);
+
+			targetProcess->main->status = G_THREAD_STATUS_RUNNING;
 		}
 	}
 	else
