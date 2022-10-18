@@ -148,10 +148,10 @@ build_apps() {
 build_kernel() {
 	print_name kernel
 	pushd kernel
-	if [ $KERNEL_REPACK_ONLY = 1 ]; then
-		build_target repack
-	elif [ $KERNEL_BUILD_WITH_APPS = 1 ]; then
+	if [ $KERNEL_BUILD_WITH_APPS = 1 ]; then
 		build_target all
+	elif [ $KERNEL_REPACK_ONLY = 1 ]; then
+		build_target repack
 	else
 		build_target clean && build_target all
 	fi
