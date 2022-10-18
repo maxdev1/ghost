@@ -350,7 +350,7 @@ g_fs_open_status filesystemOpenNode(g_fs_node* file, g_file_flag_mode flags, g_p
 		return G_FS_OPEN_ERROR;
 	}
 
-	g_fs_open_status status = delegate->open(file);
+	g_fs_open_status status = delegate->open(file, flags);
 	if(status == G_FS_OPEN_SUCCESSFUL)
 	{
 		status = filesystemProcessCreateDescriptor(process, file->id, flags, outDescriptor, optionalTargetFd);
@@ -556,7 +556,7 @@ g_fs_close_status filesystemClose(g_pid pid, g_fd fd, g_bool removeDescriptor)
 		return G_FS_CLOSE_ERROR;
 	}
 
-	g_fs_close_status status = delegate->close(file);
+	g_fs_close_status status = delegate->close(file, descriptor->openFlags);
 	if(status == G_FS_CLOSE_SUCCESSFUL)
 	{
 		logDebug("%! closed file descriptor %i in process %i", "fs", fd, pid);

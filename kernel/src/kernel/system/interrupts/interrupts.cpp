@@ -41,6 +41,7 @@ void interruptsInitializeBsp()
 	idtPrepare();
 	idtLoad();
 	interruptsInstallRoutines();
+	requestsInitialize();
 
 	if(lapicIsAvailable())
 	{

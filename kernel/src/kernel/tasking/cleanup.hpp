@@ -18,40 +18,12 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_MEMORY__
-#define __KERNEL_MEMORY__
-
-#include "kernel/memory/address_range_pool.hpp"
-#include "kernel/memory/heap.hpp"
-#include "kernel/memory/paging.hpp"
-#include "shared/memory/memory.hpp"
-#include "shared/setup_information.hpp"
-#include <ghost/types.h>
-
-extern g_address_range_pool* memoryVirtualRangePool;
-
-void memoryInitialize(g_setup_information* setupInformation);
-
-void memoryUnmapSetupMemory();
+#ifndef __KERNEL_TASKING_CLEANUP__
+#define __KERNEL_TASKING_CLEANUP__
 
 /**
- * Allocates a physical memory page.
+ * Kernel thread, cleaning up dead tasks.
  */
-g_physical_address memoryPhysicalAllocate(bool untracked = false);
-
-/**
- * Frees a physical memory page.
- */
-void memoryPhysicalFree(g_physical_address page);
-
-/**
- * Allocates and maps a memory range with the given number of pages.
- */
-g_virtual_address memoryAllocateKernelRange(int32_t pages);
-
-/**
- * Frees a memory range allocated with <memoryAllocateKernelRange>.
- */
-void memoryFreeKernelRange(g_virtual_address address);
+void taskingCleanupThread();
 
 #endif

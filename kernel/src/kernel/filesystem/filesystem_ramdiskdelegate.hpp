@@ -25,9 +25,9 @@
 #include "kernel/filesystem/filesystem.hpp"
 #include "shared/system/mutex.hpp"
 
-g_fs_open_status filesystemRamdiskDelegateOpen(g_fs_node* node);
+g_fs_open_status filesystemRamdiskDelegateOpen(g_fs_node* node, g_file_flag_mode flags);
 
-g_fs_close_status filesystemRamdiskDelegateClose(g_fs_node* node);
+g_fs_close_status filesystemRamdiskDelegateClose(g_fs_node* node, g_file_flag_mode openFlags);
 
 g_fs_open_status filesystemRamdiskDelegateDiscover(g_fs_node* parent, const char* name, g_fs_node** outNode);
 

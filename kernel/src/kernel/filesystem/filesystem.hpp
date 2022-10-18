@@ -66,14 +66,14 @@ struct g_fs_delegate
 {
 	g_mutex lock;
 
-	g_fs_open_status (*open)(g_fs_node* node);
+	g_fs_open_status (*open)(g_fs_node* node, g_file_flag_mode flags);
 	g_fs_open_status (*discover)(g_fs_node* parent, const char* name, g_fs_node** outNode);
 	g_fs_read_status (*read)(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
 	g_fs_write_status (*write)(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote);
 	g_fs_length_status (*getLength)(g_fs_node* node, uint64_t* outLength);
 	g_fs_open_status (*create)(g_fs_node* parent, const char* name, g_fs_node** outFile);
 	g_fs_open_status (*truncate)(g_fs_node* file);
-	g_fs_close_status (*close)(g_fs_node* node);
+	g_fs_close_status (*close)(g_fs_node* node, g_file_flag_mode openFlags);
 	g_fs_directory_refresh_status (*refreshDir)(g_fs_node* node);
 
 	void (*waitForRead)(g_tid task, g_fs_node* node);

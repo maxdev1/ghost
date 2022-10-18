@@ -18,40 +18,56 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_MEMORY__
-#define __KERNEL_MEMORY__
-
-#include "kernel/memory/address_range_pool.hpp"
 #include "kernel/memory/heap.hpp"
-#include "kernel/memory/paging.hpp"
-#include "shared/memory/memory.hpp"
-#include "shared/setup_information.hpp"
-#include <ghost/types.h>
+#include "kernel/tasking/clock.hpp"
+#include "kernel/tasking/tasking.hpp"
 
-extern g_address_range_pool* memoryVirtualRangePool;
+void taskingCleanupThread()
+{
+	g_tasking_local* local = taskingGetLocal();
+	g_task* task = taskingGetCurrentTask();
+	for(;;)
+	{
+		// Find and remove dead tasks from local scheduling list
+		mutexAcquire(&local->lock);
 
-void memoryInitialize(g_setup_information* setupInformation);
+		g_schedule_entry* deadList = 0;
+		g_schedule_entry* entry = local->scheduling.list;
+		g_schedule_entry* previous = 0;
+		while(entry)
+		{
+			g_schedule_entry* next = entry->next;
+			if(entry->task->status == G_THREAD_STATUS_DEAD)
+			{
+				if(previous)
+					previous->next = next;
+				else
+					local->scheduling.list = next;
 
-void memoryUnmapSetupMemory();
+				entry->next = deadList;
+				deadList = entry;
+			}
+			else
+			{
+				previous = entry;
+			}
+			entry = next;
+		}
 
-/**
- * Allocates a physical memory page.
- */
-g_physical_address memoryPhysicalAllocate(bool untracked = false);
+		mutexRelease(&local->lock);
 
-/**
- * Frees a physical memory page.
- */
-void memoryPhysicalFree(g_physical_address page);
+		// Remove each task
+		while(deadList)
+		{
+			g_schedule_entry* next = deadList->next;
+			taskingRemoveThread(deadList->task);
+			heapFree(deadList);
+			deadList = next;
+		}
 
-/**
- * Allocates and maps a memory range with the given number of pages.
- */
-g_virtual_address memoryAllocateKernelRange(int32_t pages);
-
-/**
- * Frees a memory range allocated with <memoryAllocateKernelRange>.
- */
-void memoryFreeKernelRange(g_virtual_address address);
-
-#endif
+		// Sleep for some time
+		clockWaitForTime(task->id, clockGetLocal()->time + 3000);
+		task->status = G_THREAD_STATUS_WAITING;
+		taskingYield();
+	}
+}

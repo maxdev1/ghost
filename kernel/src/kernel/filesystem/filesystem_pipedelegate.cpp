@@ -26,15 +26,15 @@
 #include "shared/system/mutex.hpp"
 #include "shared/utils/string.hpp"
 
-g_fs_open_status filesystemPipeDelegateOpen(g_fs_node* node)
+g_fs_open_status filesystemPipeDelegateOpen(g_fs_node* node, g_file_flag_mode flags)
 {
-	pipeAddReference(node->physicalId);
+	pipeAddReference(node->physicalId, flags);
 	return G_FS_OPEN_SUCCESSFUL;
 }
 
-g_fs_close_status filesystemPipeDelegateClose(g_fs_node* node)
+g_fs_close_status filesystemPipeDelegateClose(g_fs_node* node, g_file_flag_mode openFlags)
 {
-	pipeRemoveReference(node->physicalId);
+	pipeRemoveReference(node->physicalId, openFlags);
 	return G_FS_CLOSE_SUCCESSFUL;
 }
 

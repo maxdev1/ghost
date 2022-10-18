@@ -192,11 +192,6 @@ void taskingYield();
 void taskingExit();
 
 /**
- * Kernel thread, cleaning up dead tasks.
- */
-void taskingCleanupThread();
-
-/**
  * Kernel thread, used by the scheduler when it should idle.
  */
 void taskingIdleThread();

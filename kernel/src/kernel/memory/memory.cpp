@@ -79,3 +79,34 @@ void memoryPhysicalFree(g_physical_address page)
 	if(pageReferenceTrackerDecrement(page) == 0)
 		bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, page);
 }
+
+g_virtual_address memoryAllocateKernelRange(int32_t pages)
+{
+	g_virtual_address virt = addressRangePoolAllocate(memoryVirtualRangePool, pages);
+	for(int32_t i = 0; i < pages; i++)
+	{
+		g_physical_address phys = memoryPhysicalAllocate();
+		pagingMapPage(virt + (i * G_PAGE_SIZE), phys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+	}
+	return virt;
+}
+
+void memoryFreeKernelRange(g_virtual_address address)
+{
+	auto range = addressRangePoolFind(memoryVirtualRangePool, address);
+	if(!range)
+	{
+		logWarn("%! tried to free unallocated kernel range at %x", "memory", address);
+		return;
+	}
+
+	for(int32_t i = 0; i < range->pages; i++)
+	{
+		g_virtual_address virt = range->base + (i * G_PAGE_SIZE);
+		g_physical_address phys = pagingVirtualToPhysical(virt);
+		pagingUnmapPage(virt);
+		memoryPhysicalFree(phys);
+	}
+
+	addressRangePoolFree(memoryVirtualRangePool, address);
+}

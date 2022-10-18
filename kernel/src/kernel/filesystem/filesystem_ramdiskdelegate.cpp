@@ -26,12 +26,12 @@
 #include "shared/system/mutex.hpp"
 #include "shared/utils/string.hpp"
 
-g_fs_open_status filesystemRamdiskDelegateOpen(g_fs_node* node)
+g_fs_open_status filesystemRamdiskDelegateOpen(g_fs_node* node, g_file_flag_mode flags)
 {
 	return G_FS_OPEN_SUCCESSFUL;
 }
 
-g_fs_close_status filesystemRamdiskDelegateClose(g_fs_node* node)
+g_fs_close_status filesystemRamdiskDelegateClose(g_fs_node* node, g_file_flag_mode openFlags)
 {
 	return G_FS_CLOSE_SUCCESSFUL;
 }
@@ -175,7 +175,7 @@ g_fs_directory_refresh_status filesystemRamdiskDelegateRefreshDir(g_fs_node* dir
 
 	auto childCount = ramdiskGetChildCount(dirEntry->id);
 
-	for(g_size i = 0; i < childCount; i++)
+	for(uint32_t i = 0; i < childCount; i++)
 	{
 		auto childEntry = ramdiskGetChildAt(dirEntry->id, i);
 

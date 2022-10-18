@@ -21,10 +21,10 @@
 #ifndef __KERNEL__
 #define __KERNEL__
 
-#include "ghost/types.h"
-#include "shared/logger/logger.hpp"
-#include "shared/memory/bitmap_page_allocator.hpp"
-#include "shared/setup_information.hpp"
+#include <ghost/types.h>
+
+struct g_bitmap_page_allocator;
+struct g_setup_information;
 
 extern g_bitmap_page_allocator* kernelPhysicalAllocator;
 

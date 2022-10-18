@@ -33,8 +33,6 @@
 
 g_syscall_registration* syscallRegistrations = 0;
 
-void _syscallRegister(int call, g_syscall_handler handler, bool reentrant);
-
 void syscallHandle(g_task* task)
 {
 	uint32_t callId = task->state->eax;
@@ -88,11 +86,7 @@ void _syscallRegister(int callId, g_syscall_handler handler, bool reentrant)
 
 void syscallRegisterAll()
 {
-	syscallRegistrations = (g_syscall_registration*) heapAllocate(sizeof(g_syscall_registration) * G_SYSCALL_MAX);
-	for(int i = 0; i < G_SYSCALL_MAX; i++)
-	{
-		syscallRegistrations[i].handler = 0;
-	}
+	syscallRegistrations = (g_syscall_registration*) heapAllocateClear(sizeof(g_syscall_registration) * G_SYSCALL_MAX);
 
 	_syscallRegister(G_SYSCALL_EXIT, (g_syscall_handler) syscallExit, false);
 	_syscallRegister(G_SYSCALL_YIELD, (g_syscall_handler) syscallYield, false);

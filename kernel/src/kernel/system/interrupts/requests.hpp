@@ -30,6 +30,8 @@ struct g_irq_device
 	g_tid task;
 };
 
+void requestsInitialize();
+
 /**
  * Calls the user-space handler for an IRQ if there is one registered
  * on the given task.

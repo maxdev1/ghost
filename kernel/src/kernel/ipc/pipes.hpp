@@ -47,7 +47,8 @@ struct g_pipeline
 	uint32_t size;
 	uint32_t capacity;
 
-	uint16_t references;
+	uint16_t referencesRead;
+	uint16_t referencesWrite;
 
 	g_wait_queue_entry* waitersRead;
 	g_wait_queue_entry* waitersWrite;
@@ -74,14 +75,14 @@ g_pipeline* pipeGetById(g_fs_phys_id pipeId);
 g_fs_pipe_status pipeCreate(g_fs_phys_id* outPipeId);
 
 /**
- * Adds a reference to the pipe.
+ * Adds a read or write reference to the pipe.
  */
-void pipeAddReference(g_fs_phys_id pipeId);
+void pipeAddReference(g_fs_phys_id pipeId, g_file_flag_mode flags);
 
 /**
  * Removes a reference from the pipe. If all references are gone, the pipe is removed.
  */
-void pipeRemoveReference(g_fs_phys_id pipeId);
+void pipeRemoveReference(g_fs_phys_id pipeId, g_file_flag_mode openFlags);
 
 g_fs_read_status pipeRead(g_fs_phys_id pipeId, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
 

@@ -26,9 +26,9 @@
 #include "kernel/tasking/tasking.hpp"
 #include "shared/system/mutex.hpp"
 
-g_fs_open_status filesystemPipeDelegateOpen(g_fs_node* node);
+g_fs_open_status filesystemPipeDelegateOpen(g_fs_node* node, g_file_flag_mode flags);
 
-g_fs_close_status filesystemPipeDelegateClose(g_fs_node* node);
+g_fs_close_status filesystemPipeDelegateClose(g_fs_node* node, g_file_flag_mode openFlags);
 
 g_fs_read_status filesystemPipeDelegateRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
 

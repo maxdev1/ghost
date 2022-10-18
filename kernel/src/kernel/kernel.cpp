@@ -32,6 +32,7 @@
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking.hpp"
 #include "shared/panic.hpp"
+#include "shared/setup_information.hpp"
 #include "shared/system/mutex.hpp"
 #include "shared/video/console_video.hpp"
 #include "shared/video/pretty_boot.hpp"
@@ -118,7 +119,6 @@ void kernelRunApplicationCore()
 
 void kernelSpawnService(const char* path, const char* args, g_security_level securityLevel)
 {
-
 	g_task* currentTask = taskingGetCurrentTask();
 	g_fd fd;
 	g_fs_open_status open = filesystemOpen(path, G_FILE_FLAG_MODE_READ, currentTask, &fd);

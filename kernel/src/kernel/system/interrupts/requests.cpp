@@ -29,14 +29,26 @@
 #include "kernel/tasking/tasking_memory.hpp"
 #include "shared/logger/logger.hpp"
 
-g_irq_device* devices[256] = {0};
+static g_irq_device* devices[256] = {0};
+static g_mutex devicesLock;
+
+void requestsInitialize()
+{
+	mutexInitialize(&devicesLock);
+}
 
 g_irq_device* requestsGetIrqDevice(uint8_t irq)
 {
+	mutexAcquire(&devicesLock);
 	g_irq_device* device = devices[irq];
-	if(device)
-		return device;
 
+	if(device)
+	{
+		mutexRelease(&devicesLock);
+		return device;
+	}
+
+	// Create a pipe if it doesn't exist yet
 	g_fs_node* node;
 	if(filesystemCreatePipe(true, &node) != G_FS_PIPE_SUCCESSFUL)
 	{
@@ -44,9 +56,19 @@ g_irq_device* requestsGetIrqDevice(uint8_t irq)
 		return nullptr;
 	}
 
+	// Kernel holds write-end of the pipe
+	g_fd writeFd;
+	g_fs_open_status openStatus = filesystemOpenNodeFd(node, G_FILE_FLAG_MODE_WRITE, G_PID_NONE, &writeFd);
+	if(openStatus != G_FS_OPEN_SUCCESSFUL)
+	{
+		logWarn("%! failed to open IO pipe write end in kernel for IRQ %i", "requests", irq);
+	}
+
 	device = (g_irq_device*) heapAllocate(sizeof(g_irq_device));
 	device->node = node;
 	devices[irq] = device;
+
+	mutexRelease(&devicesLock);
 	return device;
 }
 
@@ -60,6 +82,5 @@ void requestsWriteToIrqDevice(g_task* task, uint8_t irq)
 	buf[0] = irq;
 	int64_t len;
 
-	// TODO Check status? Wake target task?
 	filesystemWrite(device->node, buf, 0, 1, &len);
 }

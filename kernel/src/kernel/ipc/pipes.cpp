@@ -27,14 +27,11 @@
 static g_fs_phys_id pipeNextId;
 static g_mutex pipeNextIdLock;
 static g_hashmap<g_fs_phys_id, g_pipeline*>* pipeMap;
-static g_mutex pipeReferenceLock;
 
 void pipeInitialize()
 {
 	mutexInitialize(&pipeNextIdLock);
 	pipeNextId = 0;
-
-	mutexInitialize(&pipeReferenceLock);
 
 	pipeMap = hashmapCreateNumeric<g_fs_phys_id, g_pipeline*>(128);
 }
@@ -45,18 +42,24 @@ g_fs_pipe_status pipeCreate(g_fs_phys_id* outPipeId)
 
 	mutexInitialize(&pipe->lock);
 	pipe->capacity = G_PIPE_DEFAULT_CAPACITY;
-	pipe->size = 0;
-	pipe->buffer = (uint8_t*) heapAllocate(pipe->capacity);
+	pipe->buffer = (uint8_t*) memoryAllocateKernelRange(G_PAGE_ALIGN_UP(pipe->capacity) / G_PAGE_SIZE);
 	pipe->readPosition = pipe->buffer;
 	pipe->writePosition = pipe->buffer;
-	pipe->waitersRead = nullptr;
-	pipe->waitersWrite = nullptr;
 
 	g_fs_phys_id pipeId = pipeGetNextId();
 	hashmapPut<g_fs_phys_id, g_pipeline*>(pipeMap, pipeId, pipe);
 	*outPipeId = pipeId;
 
 	return G_FS_PIPE_SUCCESSFUL;
+}
+
+void pipeDeleteInternal(g_fs_phys_id pipeId, g_pipeline* pipe)
+{
+	memoryFreeKernelRange((g_virtual_address) pipe->buffer);
+	heapFree(pipe);
+	hashmapRemove(pipeMap, pipeId);
+
+	logDebug("%! deleted pipe %i", "pipe", pipeId);
 }
 
 g_fs_phys_id pipeGetNextId()
@@ -72,55 +75,57 @@ g_pipeline* pipeGetById(g_fs_phys_id pipeId)
 	return hashmapGet<g_fs_phys_id, g_pipeline*>(pipeMap, pipeId, 0);
 }
 
-void pipeAddReference(g_fs_phys_id pipeId)
+void pipeAddReference(g_fs_phys_id pipeId, g_file_flag_mode flags)
 {
-	mutexAcquire(&pipeReferenceLock);
 	g_pipeline* pipe = pipeGetById(pipeId);
-
-	if(pipe)
-	{
-		mutexAcquire(&pipe->lock);
-		pipe->references++;
-		mutexRelease(&pipe->lock);
-	}
-	else
+	if(!pipe)
 	{
 		logInfo("%! tried to add reference to non-existing pipe %i", "pipe", pipeId);
+		return;
 	}
 
-	mutexRelease(&pipeReferenceLock);
-}
+	mutexAcquire(&pipe->lock);
 
-void pipeRemoveReference(g_fs_phys_id pipeId)
-{
-	mutexAcquire(&pipeReferenceLock);
-	g_pipeline* pipe = pipeGetById(pipeId);
-
-	if(pipe)
+	if(flags & G_FILE_FLAG_MODE_WRITE)
 	{
-		mutexAcquire(&pipe->lock);
-		pipe->references--;
-		mutexRelease(&pipe->lock);
-
-		if(pipe->references == 0)
-		{
-			pipeDeleteInternal(pipeId, pipe);
-		}
+		pipe->referencesWrite++;
 	}
 	else
 	{
-		logInfo("%! tried to remove reference from non-existing pipe %i", "pipe", pipeId);
+		pipe->referencesRead++;
 	}
 
-	mutexRelease(&pipeReferenceLock);
+	mutexRelease(&pipe->lock);
 }
 
-void pipeDeleteInternal(g_fs_phys_id pipeId, g_pipeline* pipe)
+void pipeRemoveReference(g_fs_phys_id pipeId, g_file_flag_mode flags)
 {
-	heapFree(pipe);
-	hashmapRemove(pipeMap, pipeId);
+	g_pipeline* pipe = pipeGetById(pipeId);
+	if(!pipe)
+	{
+		logInfo("%! tried to remove reference from non-existing pipe %i", "pipe", pipeId);
+		return;
+	}
 
-	logDebug("%! deleted pipe %i", "pipe", pipeId);
+	mutexAcquire(&pipe->lock);
+
+	if(flags & G_FILE_FLAG_MODE_WRITE)
+	{
+		pipe->referencesWrite--;
+		waitQueueWake(&pipe->waitersRead);
+	}
+	else
+	{
+		pipe->referencesRead--;
+		waitQueueWake(&pipe->waitersWrite);
+	}
+
+	mutexRelease(&pipe->lock);
+
+	if(pipe->referencesRead == 0 && pipe->referencesWrite == 0)
+	{
+		pipeDeleteInternal(pipeId, pipe);
+	}
 }
 
 g_fs_read_status pipeRead(g_fs_phys_id pipeId, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead)
@@ -134,48 +139,33 @@ g_fs_read_status pipeRead(g_fs_phys_id pipeId, uint8_t* buffer, uint64_t offset,
 
 	mutexAcquire(&pipe->lock);
 
-	// find out what size can be read at maximum
 	length = (pipe->size >= length) ? length : pipe->size;
 
-	// calculate how much space remains until the end of the pipe
-	uint32_t spaceToEnd = ((uint32_t) pipe->buffer + pipe->capacity) - (uint32_t) pipe->readPosition;
-
-	// if we want to read more than remaining
-	if(length > spaceToEnd)
+	uint32_t lengthToEnd = ((uint32_t) pipe->buffer + pipe->capacity) - (uint32_t) pipe->readPosition;
+	if(length > lengthToEnd)
 	{
-		// copy bytes from the location of the read pointer
-		memoryCopy(buffer, pipe->readPosition, spaceToEnd);
+		memoryCopy(buffer, pipe->readPosition, lengthToEnd);
 
-		// copy remaining data
-		uint32_t remaining = length - spaceToEnd;
-		memoryCopy(&buffer[spaceToEnd], pipe->buffer, remaining);
+		uint32_t remaining = length - lengthToEnd;
+		memoryCopy(&buffer[lengthToEnd], pipe->buffer, remaining);
 
-		// set the read pointer to it's new location
 		pipe->readPosition = (uint8_t*) ((uint32_t) pipe->buffer + remaining);
 	}
 	else
 	{
-		// there are enough bytes left from read pointer, copy it to buffer
 		memoryCopy(buffer, pipe->readPosition, length);
 
-		// set the read pointer to it's new location
 		pipe->readPosition = (uint8_t*) ((uint32_t) pipe->readPosition + length);
 	}
 
-	// reset read pointer if end reached
 	if(pipe->readPosition == pipe->buffer + pipe->capacity)
-	{
 		pipe->readPosition = pipe->buffer;
-	}
 
 	g_fs_read_status status;
-	// if any bytes could be copied
 	if(length > 0)
 	{
-		// decrease pipes remaining bytes
 		pipe->size -= length;
 
-		// finish with success
 		*outRead = length;
 		status = G_FS_READ_SUCCESSFUL;
 		waitQueueWake(&pipe->waitersWrite);
@@ -183,7 +173,7 @@ g_fs_read_status pipeRead(g_fs_phys_id pipeId, uint8_t* buffer, uint64_t offset,
 	else
 	{
 		*outRead = 0;
-		status = G_FS_READ_BUSY;
+		status = pipe->referencesWrite > 0 ? G_FS_READ_BUSY : G_FS_READ_SUCCESSFUL;
 	}
 
 	mutexRelease(&pipe->lock);
@@ -203,41 +193,31 @@ g_fs_write_status pipeWrite(g_fs_phys_id pipeId, uint8_t* buffer, uint64_t offse
 	g_fs_write_status status;
 	if(space > 0)
 	{
-		// check how many bytes can be written
 		length = (space >= length) ? length : space;
 
-		// check how many bytes can be written at the write pointer
-		uint32_t spaceToEnd = ((uint32_t) pipe->buffer + pipe->capacity) - (uint32_t) pipe->writePosition;
-
-		if(length > spaceToEnd)
+		uint32_t lengthToEnd = ((uint32_t) pipe->buffer + pipe->capacity) - (uint32_t) pipe->writePosition;
+		if(length > lengthToEnd)
 		{
-			// write bytes at the write pointer
-			memoryCopy(pipe->writePosition, buffer, spaceToEnd);
+			memoryCopy(pipe->writePosition, buffer, lengthToEnd);
 
-			// write remaining bytes to the start of the pipe
-			uint32_t remain = length - spaceToEnd;
-			memoryCopy(pipe->buffer, &buffer[spaceToEnd], remain);
+			uint32_t remaining = length - lengthToEnd;
+			memoryCopy(pipe->buffer, &buffer[lengthToEnd], remaining);
 
-			// set the write pointer to the new location
-			pipe->writePosition = (uint8_t*) ((uint32_t) pipe->buffer + remain);
+			pipe->writePosition = (uint8_t*) ((uint32_t) pipe->buffer + remaining);
 		}
 		else
 		{
-			// just write bytes at write pointer
 			memoryCopy(pipe->writePosition, buffer, length);
 
-			// set the write pointer to the new location
 			pipe->writePosition = (uint8_t*) ((uint32_t) pipe->writePosition + length);
 		}
 
-		// reset write pointer if end reached
 		if(pipe->writePosition == pipe->buffer + pipe->capacity)
-		{
 			pipe->writePosition = pipe->buffer;
-		}
 
 		pipe->size += length;
 		*outWrote = length;
+
 		status = G_FS_WRITE_SUCCESSFUL;
 		waitQueueWake(&pipe->waitersRead);
 	}
