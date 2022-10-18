@@ -46,17 +46,14 @@ void __init_stdio()
 	__open_file_list_initialize();
 
 	memset(stdin, 0, sizeof(FILE));
-	memset(_stdin_buf, 0, _DEFAULT_BUFSIZE);
 	__fdopen_static(STDIN_FILENO, "r", stdin);
 	setvbuf(stdin, _stdin_buf, _IOLBF, _DEFAULT_BUFSIZE);
 
 	memset(stdout, 0, sizeof(FILE));
-	memset(_stdout_buf, 0, _DEFAULT_BUFSIZE);
 	__fdopen_static(STDOUT_FILENO, "w", stdout);
 	setvbuf(stdout, _stdout_buf, _IOLBF, _DEFAULT_BUFSIZE);
 
 	memset(stderr, 0, sizeof(FILE));
-	memset(_stderr_buf, 0, _DEFAULT_BUFSIZE);
 	__fdopen_static(STDERR_FILENO, "w", stderr);
 	setvbuf(stderr, _stderr_buf, _IONBF, _DEFAULT_BUFSIZE);
 }

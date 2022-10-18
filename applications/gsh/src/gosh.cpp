@@ -357,11 +357,11 @@ void gshProcessExpression(pipe_expression_t* pipeexpr)
 		}
 
 		// create out pipe if necessary
-		g_fd currentPipeWrite = G_FD_NONE;
-		g_fd out_pipe_r = G_FD_NONE;
+		g_fd pipeWrite = G_FD_NONE;
+		g_fd pipeRead = G_FD_NONE;
 		if(calls > 1 && callIndex < calls - 1)
 		{
-			g_fs_pipe_status pipe_stat = g_pipe(&currentPipeWrite, &out_pipe_r);
+			g_fs_pipe_status pipe_stat = g_pipe(&pipeWrite, &pipeRead);
 
 			if(pipe_stat != G_FS_PIPE_SUCCESSFUL)
 			{
@@ -382,7 +382,7 @@ void gshProcessExpression(pipe_expression_t* pipeexpr)
 		if((calls == 1 && callIndex == 0) || callIndex == calls - 1)
 			stdioIn[STDOUT_FILENO] = STDOUT_FILENO;
 		else
-			stdioIn[STDOUT_FILENO] = currentPipeWrite;
+			stdioIn[STDOUT_FILENO] = pipeWrite;
 
 		// do spawning
 		g_pid pidCurrent;
@@ -400,14 +400,14 @@ void gshProcessExpression(pipe_expression_t* pipeexpr)
 			success = true;
 
 			// close write end in this process
-			if(currentPipeWrite != G_FD_NONE)
-				g_close(currentPipeWrite);
+			if(pipeWrite != G_FD_NONE)
+				g_close(pipeWrite);
 
 			if(lastPipeRead != G_FD_NONE)
 				g_close(lastPipeRead);
 
 			// remember for next process
-			lastPipeRead = out_pipe_r;
+			lastPipeRead = pipeRead;
 		}
 		else
 		{

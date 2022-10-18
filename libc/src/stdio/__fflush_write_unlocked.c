@@ -75,8 +75,8 @@ int __fflush_write_unlocked(FILE* stream) {
 	// stream has no direction anymore
 	stream->flags &= ~G_FILE_FLAG_BUFFER_DIRECTION_WRITE;
 
-	// all buffered bytes are written
-	stream->buffered_bytes_write = 0;
+	// track how many buffered bytes are written
+	stream->buffered_bytes_write = total - done;
 
 	return res;
 }
