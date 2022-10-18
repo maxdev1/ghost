@@ -676,6 +676,9 @@ int filesystemGetAbsolutePath(g_fs_node* node, char* buffer)
 
 g_fs_open_directory_status filesystemOpenDirectory(g_fs_node* dir)
 {
+	if(!(dir->type == G_FS_NODE_TYPE_FOLDER || dir->type == G_FS_NODE_TYPE_MOUNTPOINT || dir->type == G_FS_NODE_TYPE_ROOT))
+		return G_FS_OPEN_DIRECTORY_ERROR;
+
 	if(dir->upToDate)
 		return G_FS_OPEN_DIRECTORY_SUCCESSFUL;
 
