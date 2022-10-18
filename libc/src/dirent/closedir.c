@@ -19,7 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost.h"
-#include "dirent.h"
+#include "dir.h"
 #include "errno.h"
 #include "malloc.h"
 

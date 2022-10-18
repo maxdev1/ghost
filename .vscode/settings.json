@@ -99,7 +99,8 @@
         "stdlib.h": "c",
         "stdio.h": "c",
         "locale": "cpp",
-        "typeindex": "cpp"
+        "typeindex": "cpp",
+        "dirent.h": "c"
     },
     "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: LLVM, SpaceBeforeParens: Never, UseTab: Always, BreakBeforeBraces: Allman, SpaceAfterCStyleCast: true, ColumnLimit: 0, IndentWidth: 4, TabWidth: 4, PointerAlignment: Left, DerivePointerAlignment: false }"
 }
