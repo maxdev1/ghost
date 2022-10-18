@@ -18,6 +18,21 @@
             "cStandard": "c17",
             "cppStandard": "c++17",
             "intelliSenseMode": "windows-gcc-x86"
+        },
+        {
+            "name": "ghost-mac",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/kernel/inc/**",
+                "${workspaceFolder}/libapi/inc/**",
+                "${workspaceFolder}/libc/inc/**"
+            ],
+            "defines": [],
+            "macFrameworkPath": [],
+            "compilerPath": "/usr/local/bin/gcc-12",
+            "cStandard": "gnu17",
+            "cppStandard": "gnu++14",
+            "intelliSenseMode": "macos-gcc-x64"
         }
     ],
     "version": 4
