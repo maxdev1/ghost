@@ -45,7 +45,7 @@ static g_tasking_local* taskingLocal = 0;
 static g_mutex taskingIdLock;
 static g_tid taskingIdNext = 0;
 
-static g_hashmap<g_tid, g_task*>* taskGlobalMap;
+g_hashmap<g_tid, g_task*>* taskGlobalMap;
 
 void _taskingInitializeTask(g_task* task, g_process* process, g_security_level level);
 

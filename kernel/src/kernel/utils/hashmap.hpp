@@ -21,10 +21,10 @@
 #ifndef __UTILS_HASHMAP__
 #define __UTILS_HASHMAP__
 
-#include "shared/system/mutex.hpp"
 #include "kernel/memory/memory.hpp"
+#include "shared/system/mutex.hpp"
 
-template<typename K, typename V>
+template <typename K, typename V>
 struct g_hashmap_entry
 {
 	K key;
@@ -32,7 +32,7 @@ struct g_hashmap_entry
 	g_hashmap_entry* next;
 };
 
-template<typename K, typename V>
+template <typename K, typename V>
 struct g_hashmap
 {
 	g_mutex lock;
@@ -40,17 +40,18 @@ struct g_hashmap
 	g_hashmap_entry<K, V>** buckets;
 	int bucketCount;
 
-	K (*keyCopy)(K k);
+	K (*keyCopy)
+	(K k);
 	int (*keyHash)(K k);
 	void (*keyFree)(K k);
 	bool (*keyEquals)(K k1, K k2);
 };
 
-template<typename K, typename V>
+template <typename K, typename V>
 g_hashmap<K, V>* hashmapInternalCreate(int bucketCount)
 {
 
-	g_hashmap<K, V>* map = (g_hashmap<K, V>*) heapAllocate(sizeof(g_hashmap<K, V> ));
+	g_hashmap<K, V>* map = (g_hashmap<K, V>*) heapAllocate(sizeof(g_hashmap<K, V>));
 	map->bucketCount = bucketCount;
 	map->buckets = (g_hashmap_entry<K, V>**) heapAllocate(sizeof(g_hashmap_entry<K, V>*) * bucketCount);
 
@@ -63,7 +64,7 @@ g_hashmap<K, V>* hashmapInternalCreate(int bucketCount)
 	return map;
 }
 
-template<typename K, typename V>
+template <typename K, typename V>
 void hashmapPut(g_hashmap<K, V>* map, K key, V value)
 {
 
@@ -73,10 +74,11 @@ void hashmapPut(g_hashmap<K, V>* map, K key, V value)
 	if(entry)
 	{
 		entry->value = value;
-	} else
+	}
+	else
 	{
 		int bucket = map->keyHash(key) % map->bucketCount;
-		auto* newEntry = (g_hashmap_entry<K, V>*) heapAllocate(sizeof(g_hashmap_entry<K, V> ));
+		auto* newEntry = (g_hashmap_entry<K, V>*) heapAllocate(sizeof(g_hashmap_entry<K, V>));
 		newEntry->key = map->keyCopy(key);
 		newEntry->value = value;
 		newEntry->next = map->buckets[bucket];
@@ -86,7 +88,7 @@ void hashmapPut(g_hashmap<K, V>* map, K key, V value)
 	mutexRelease(&map->lock);
 }
 
-template<typename K, typename V>
+template <typename K, typename V>
 g_hashmap_entry<K, V>* hashmapGetEntry(g_hashmap<K, V>* map, K key)
 {
 
@@ -107,7 +109,7 @@ g_hashmap_entry<K, V>* hashmapGetEntry(g_hashmap<K, V>* map, K key)
 	return entry;
 }
 
-template<typename K, typename V>
+template <typename K, typename V>
 V hashmapGet(g_hashmap<K, V>* map, K key, V def)
 {
 
@@ -118,7 +120,8 @@ V hashmapGet(g_hashmap<K, V>* map, K key, V def)
 	if(entry)
 	{
 		value = entry->value;
-	} else
+	}
+	else
 	{
 		value = def;
 	}
@@ -126,7 +129,28 @@ V hashmapGet(g_hashmap<K, V>* map, K key, V def)
 	return value;
 }
 
-template<typename K, typename V>
+template <typename K, typename V>
+uint32_t hashmapSize(g_hashmap<K, V>* map)
+{
+	uint32_t count = 0;
+	mutexAcquire(&map->lock);
+
+	// TODO this is slow, keep a count on put/remove
+	for(int i = 0; i < map->bucketCount; i++)
+	{
+		auto entry = map->buckets[i];
+		while(entry)
+		{
+			++count;
+			entry = entry->next;
+		}
+	}
+
+	mutexRelease(&map->lock);
+	return count;
+}
+
+template <typename K, typename V>
 void hashmapRemove(g_hashmap<K, V>* map, K key)
 {
 
@@ -142,7 +166,8 @@ void hashmapRemove(g_hashmap<K, V>* map, K key)
 			if(previous)
 			{
 				previous->next = entry->next;
-			} else
+			}
+			else
 			{
 				map->buckets[bucket] = entry->next;
 			}
@@ -157,7 +182,7 @@ void hashmapRemove(g_hashmap<K, V>* map, K key)
 	mutexRelease(&map->lock);
 }
 
-template<typename K, typename V>
+template <typename K, typename V>
 struct g_hashmap_iterator
 {
 	int bucket;
@@ -165,7 +190,7 @@ struct g_hashmap_iterator
 	g_hashmap<K, V>* map;
 };
 
-template<typename K, typename V>
+template <typename K, typename V>
 g_hashmap_iterator<K, V> hashmapIteratorStart(g_hashmap<K, V>* map)
 {
 	mutexAcquire(&map->lock);
@@ -177,14 +202,14 @@ g_hashmap_iterator<K, V> hashmapIteratorStart(g_hashmap<K, V>* map)
 	return iter;
 }
 
-template<typename K, typename V>
+template <typename K, typename V>
 bool hashmapIteratorHasNext(g_hashmap_iterator<K, V>* iter)
 {
 	if(iter->current && iter->current->next)
 	{
 		return true;
-
-	} else
+	}
+	else
 	{
 		int startBucket = iter->current ? iter->bucket + 1 : iter->bucket;
 		for(int i = startBucket; i < iter->map->bucketCount; i++)
@@ -198,15 +223,15 @@ bool hashmapIteratorHasNext(g_hashmap_iterator<K, V>* iter)
 	return false;
 }
 
-template<typename K, typename V>
+template <typename K, typename V>
 g_hashmap_entry<K, V>* hashmapIteratorNext(g_hashmap_iterator<K, V>* iter)
 {
 	if(iter->current && iter->current->next)
 	{
 		iter->current = iter->current->next;
 		return iter->current;
-
-	} else
+	}
+	else
 	{
 		int startBucket = iter->current ? iter->bucket + 1 : iter->bucket;
 		for(int i = startBucket; i < iter->map->bucketCount; i++)
@@ -222,7 +247,7 @@ g_hashmap_entry<K, V>* hashmapIteratorNext(g_hashmap_iterator<K, V>* iter)
 	return 0;
 }
 
-template<typename K, typename V>
+template <typename K, typename V>
 void hashmapIteratorEnd(g_hashmap_iterator<K, V>* iter)
 {
 	mutexRelease(&iter->map->lock);
@@ -231,30 +256,30 @@ void hashmapIteratorEnd(g_hashmap_iterator<K, V>* iter)
 // Implementation for primitive key types
 #include <type_traits>
 
-template<typename K, typename = typename std::enable_if<std::is_arithmetic<K>::value, K>::type>
+template <typename K, typename = typename std::enable_if<std::is_arithmetic<K>::value, K>::type>
 K hashmapKeyCopyNumeric(K key)
 {
 	return key;
 }
 
-template<typename K, typename = typename std::enable_if<std::is_arithmetic<K>::value, K>::type>
+template <typename K, typename = typename std::enable_if<std::is_arithmetic<K>::value, K>::type>
 int hashmapKeyHashNumeric(K key)
 {
 	return key < 0 ? -key : key;
 }
 
-template<typename K, typename = typename std::enable_if<std::is_arithmetic<K>::value, K>::type>
+template <typename K, typename = typename std::enable_if<std::is_arithmetic<K>::value, K>::type>
 void hashmapKeyFreeNumeric(K key)
 {
 }
 
-template<typename K, typename = typename std::enable_if<std::is_arithmetic<K>::value, K>::type>
+template <typename K, typename = typename std::enable_if<std::is_arithmetic<K>::value, K>::type>
 bool hashmapKeyEqualsNumeric(K k1, K k2)
 {
 	return k1 == k2;
 }
 
-template<typename K, typename V, typename = typename std::enable_if<std::is_arithmetic<K>::value, K>::type>
+template <typename K, typename V, typename = typename std::enable_if<std::is_arithmetic<K>::value, K>::type>
 g_hashmap<K, V>* hashmapCreateNumeric(int bucketCount)
 {
 	g_hashmap<K, V>* map = hashmapInternalCreate<K, V>(bucketCount);
