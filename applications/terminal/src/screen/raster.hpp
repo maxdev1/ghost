@@ -24,6 +24,13 @@
 #include <ghost.h>
 #include <libwindow/metrics/rectangle.hpp>
 
+struct raster_entry_t
+{
+	uint8_t c;
+	uint8_t foreground;
+	uint8_t background;
+};
+
 /**
  *
  */
@@ -31,7 +38,7 @@ class raster_t
 {
   private:
 	g_atom lock = g_atomic_initialize();
-	uint8_t* buffer = 0;
+	raster_entry_t* buffer = 0;
 
 	int width = 0;
 	int height = 0;
@@ -50,11 +57,11 @@ class raster_t
 	void scrollBy(int y);
 	bool resizeTo(int width, int height);
 	void clean();
-	void put(int x, int y, uint8_t c);
+	void put(int x, int y, uint8_t c, uint8_t foreground, uint8_t background);
 	void dirty(int x, int y);
 
 	void lockBuffer();
-	uint8_t getUnlocked(int x, int y);
+	raster_entry_t getUnlocked(int x, int y);
 	void unlockBuffer();
 
 	g_rectangle popChanges();

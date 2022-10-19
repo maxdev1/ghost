@@ -18,13 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __GHOST_TERMINAL__
-#define __GHOST_TERMINAL__
+#ifndef __TERMINAL__
+#define __TERMINAL__
 
-#include <ghost.h>
-#include <libterminal/terminal.hpp>
-#include <screen.hpp>
-#include <stream_status.hpp>
+#include "screen/screen.hpp"
+#include "stream_status.hpp"
 
 class terminal_t;
 
@@ -33,90 +31,37 @@ class terminal_t;
  */
 struct output_routine_startinfo_t
 {
-	bool error_output;
-	terminal_t* terminal;
+	bool isStderr;
 };
 
 /**
- *
+ * Initializes the terminals screen. If successful, the terminals screen property
+ * is set to the new screen, otherwise it remains null.
  */
-class terminal_t
-{
-  private:
-	g_fd shell_in;
-	g_fd shell_out;
-	g_fd shell_err;
+void terminalInitializeScreen();
 
-	/**
-	 * Screen that is the visual interface to the user.
-	 */
-	screen_t* screen;
-	g_atom screen_lock = g_atomic_initialize();
+/**
+ * Starts the shell process, mapping the in/out/error pipes to this thread.
+ */
+bool terminalStartShell();
 
-	/**
-	 * Mode flags
-	 */
-	bool echo;
-	g_terminal_mode input_mode;
+void terminalWriteToShell(std::string line);
+void terminalWriteTermkeyToShell(int termkey);
 
-	/**
-	 * ID of the currently controlled process
-	 */
-	g_pid current_process;
+/**
+ * Thread that continuously reads the keyboard input, processes and redirects
+ * it to the shell.
+ */
+void terminalInputRoutine();
 
-  public:
-	/**
-	 *
-	 */
-	terminal_t() : screen(0), shell_in(G_FD_NONE), shell_out(G_FD_NONE), shell_err(G_FD_NONE),
-				   echo(true), input_mode(G_TERMINAL_MODE_DEFAULT), current_process(-1)
-	{
-	}
+/**
+ * Thread that reads the output of the executing program and processes it.
+ */
+void terminalOutputRoutine(output_routine_startinfo_t* info);
 
-	/**
-	 * Starts the terminal application.
-	 */
-	void execute();
-
-	/**
-	 * Initializes the terminals screen. If successful, the terminals screen property
-	 * is set to the new screen, otherwise it remains null.
-	 */
-	void initializeScreen();
-
-	/**
-	 * Starts the shell process, mapping the in/out/error pipes to this thread.
-	 */
-	void start_shell();
-
-	/**
-	 *
-	 */
-	void write_string_to_shell(std::string line);
-
-	/**
-	 *
-	 */
-	void write_termkey_to_shell(int termkey);
-
-	/**
-	 * Thread that continuously reads the keyboard input, processes and redirects
-	 * it to the shell.
-	 */
-	void input_routine();
-
-	/**
-	 * Thread that reads the output of the executing program and processes it.
-	 */
-	static void output_routine(output_routine_startinfo_t* info);
-
-	/**
-	 *
-	 */
-	void process_output_character(stream_control_status_t* status, bool error_stream, char c);
-	void process_vt100_sequence(stream_control_status_t* status);
-	static screen_color_t convert_vt100_to_screen_color(int color);
-	void process_ghostterm_sequence(stream_control_status_t* status);
-};
+void terminalProcessOutput(stream_control_status_t* status, bool error_stream, char c);
+void terminalProcessSequenceVt100(stream_control_status_t* status);
+static screen_color_t terminalColorFromVt100(int color);
+void terminalProcessSequenceGhostterm(stream_control_status_t* status);
 
 #endif

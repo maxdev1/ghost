@@ -21,287 +21,252 @@
 #include <libterminal/terminal.hpp>
 #include <unistd.h>
 
-#include "gui_screen/gui_screen.hpp"
+#include "screen/gui_screen.hpp"
 #include "terminal.hpp"
 
-g_pid shell_pid;
+static std::string defaultKeyboardLayout = "de-DE";
+
+static g_pid shellProcess;
+static g_fd shellStdin = G_FD_NONE;
+static g_fd shellStdout = G_FD_NONE;
+static g_fd shellStderr = G_FD_NONE;
+static g_pid controlProcess = G_PID_NONE;
+
+static screen_t* screen = nullptr;
+static g_atom screenLock = g_atomic_initialize();
+
+static g_terminal_mode inputMode = G_TERMINAL_MODE_DEFAULT;
+static bool inputEcho = true;
 
 int main(int argc, char* argv[])
 {
-	terminal_t term;
-	term.execute();
-}
-
-/**
- * Executes the terminal instance. This initializes the screen, laods the
- * keyboard layout for this process and then starts the actual shell process.
- * Then control is given to the routines that process user input and program
- * output.
- */
-void terminal_t::execute()
-{
-	initializeScreen();
+	terminalInitializeScreen();
 	if(!screen)
 	{
-		klog("Terminal: Failed to initialize screen");
-		return;
+		klog("terminal: failed to initialize screen");
+		return -1;
 	}
 	screen->clean();
 
-	// load keyboard layout
-	std::string initialLayout = "de-DE";
-	if(!g_keyboard::loadLayout(initialLayout))
+	if(!g_keyboard::loadLayout(defaultKeyboardLayout))
 	{
-		klog("Terminal: Failed to load keyboard layout: %s", initialLayout.c_str());
-		return;
+		klog("terminal: failed to load keyboard layout: %s", defaultKeyboardLayout.c_str());
+		return -1;
 	}
 
-	// disable video logging
-	g_set_video_log(false);
+	if(!terminalStartShell())
+		return -1;
 
-	// start shell
-	start_shell();
-	if(shell_in == G_FD_NONE || shell_out == G_FD_NONE || shell_err == G_FD_NONE)
-	{
-		return;
-	}
+	output_routine_startinfo_t* outInfo = new output_routine_startinfo_t();
+	outInfo->isStderr = false;
+	g_create_thread_d((void*) &terminalOutputRoutine, outInfo);
 
-	// start in/out routines
-	output_routine_startinfo_t* out_info = new output_routine_startinfo_t();
-	out_info->error_output = false;
-	out_info->terminal = this;
-	g_create_thread_d((void*) &output_routine, out_info);
+	output_routine_startinfo_t* errInfo = new output_routine_startinfo_t();
+	errInfo->isStderr = true;
+	g_create_thread_d((void*) &terminalOutputRoutine, errInfo);
 
-	output_routine_startinfo_t* err_info = new output_routine_startinfo_t();
-	err_info->error_output = true;
-	err_info->terminal = this;
-	g_create_thread_d((void*) &output_routine, err_info);
-
-	input_routine();
+	terminalInputRoutine();
+	return 0;
 }
 
-void terminal_t::initializeScreen()
+void terminalInitializeScreen()
 {
-	gui_screen_t* gui_screen = new gui_screen_t();
-	if(gui_screen->initialize())
+	gui_screen_t* guiScreen = new gui_screen_t();
+	if(guiScreen->initialize())
 	{
-		screen = gui_screen;
+		screen = guiScreen;
 	}
 	else
 	{
-		fprintf(stderr, "Terminal: Failed to initialize the graphical screen");
+		fprintf(stderr, "terminal: failed to initialize the graphical screen");
 	}
 }
 
-/**
- * Starts the shell executable and passes pipes for their input, output and
- * error streams.
- */
-void terminal_t::start_shell()
+bool terminalStartShell()
 {
-	// create input & output pipes
-	g_fs_pipe_status stdin_stat;
-	g_fd shellin_w;
-	g_fd shellin_r;
-	stdin_stat = g_pipe(&shellin_w, &shellin_r);
-	if(stdin_stat != G_FS_PIPE_SUCCESSFUL)
+	g_fd shellStdinW;
+	g_fd shellStdinR;
+	if(g_pipe(&shellStdinW, &shellStdinR) != G_FS_PIPE_SUCCESSFUL)
 	{
-		klog("Terminal: Failed to setup stdin pipe for shell");
-		return;
+		klog("terminal: failed to setup stdin pipe for shell");
+		return false;
 	}
 
-	g_fd shellout_w;
-	g_fd shellout_r;
-	g_fs_pipe_status stdout_stat = g_pipe(&shellout_w, &shellout_r);
-	if(stdout_stat != G_FS_PIPE_SUCCESSFUL)
+	g_fd shellStdoutW;
+	g_fd shellStdoutR;
+	if(g_pipe(&shellStdoutW, &shellStdoutR) != G_FS_PIPE_SUCCESSFUL)
 	{
-		klog("Terminal: Failed to setup stdout pipe for shell");
-		return;
+		klog("terminal: failed to setup stdout pipe for shell");
+		return false;
 	}
 
-	g_fd shellerr_w;
-	g_fd shellerr_r;
-	g_fs_pipe_status stderr_stat = g_pipe(&shellerr_w, &shellerr_r);
-	if(stderr_stat != G_FS_PIPE_SUCCESSFUL)
+	g_fd shellStderrW;
+	g_fd shellStderrR;
+	if(g_pipe(&shellStderrW, &shellStderrR) != G_FS_PIPE_SUCCESSFUL)
 	{
-		klog("Terminal: Failed to setup stderr pipe for shell");
-		return;
+		klog("terminal: failed to setup stderr pipe for shell");
+		return false;
 	}
 
-	// spawn binary
-	g_fd stdio_in[3];
-	stdio_in[0] = shellin_r;
-	stdio_in[1] = shellout_w;
-	stdio_in[2] = shellerr_w;
-	g_fd stdio_target[3];
-	g_spawn_status status = g_spawn_poi("/applications/gsh.bin", "", "/", G_SECURITY_LEVEL_APPLICATION, &shell_pid, stdio_target, stdio_in);
+	g_fd stdioIn[3];
+	stdioIn[0] = shellStdinR;
+	stdioIn[1] = shellStdoutW;
+	stdioIn[2] = shellStderrW;
 
-	klog("shell process %i", shell_pid);
-	if(status != G_SPAWN_STATUS_SUCCESSFUL)
+	auto shellStatus = g_spawn_poi("/applications/gsh.bin", "", "/", G_SECURITY_LEVEL_APPLICATION, &shellProcess, nullptr, stdioIn);
+	if(shellStatus != G_SPAWN_STATUS_SUCCESSFUL)
 	{
-		klog("Terminal: Failed to spawn shell process");
-		return;
+		klog("terminal: failed to spawn shell process");
+		return false;
 	}
 
-	shell_in = shellin_w;
-	shell_out = shellout_r;
-	shell_err = shellerr_r;
+	shellStdin = shellStdinW;
+	shellStdout = shellStdoutR;
+	shellStderr = shellStderrR;
+	return true;
 }
 
-/**
- * Simple utility function to write a C++ string to the shell executables input.
- */
-void terminal_t::write_string_to_shell(std::string line)
+void terminalWriteToShell(std::string line)
 {
 	const char* lineContent = line.c_str();
 	int lineLength = strlen(lineContent);
 
-	int written = 0;
+	int done = 0;
 	int len = 0;
-	while(written < lineLength)
+	while(done < lineLength)
 	{
-		len = write(shell_in, &lineContent[written], lineLength - written);
+		len = write(shellStdin, &lineContent[done], lineLength - done);
 		if(len <= 0)
 		{
 			break;
 		}
-		written += len;
+		done += len;
 	}
 }
 
-/**
- * Sends a terminal key to the shell. These keys are encoded in a specific way
- * so that the programs can receive more than simple text characters.
- */
-void terminal_t::write_termkey_to_shell(int termkey)
+void terminalWriteTermkeyToShell(int termkey)
 {
-
 	char buf[3];
 	buf[0] = G_TERMKEY_SUB;
 	buf[1] = termkey & 0xFF;
 	buf[2] = (termkey >> 8) & 0xFF;
-	write(shell_in, &buf, 3);
+	write(shellStdin, &buf, 3);
 }
 
-/**
- * Main input routine that receives typed keys by the user and sends them to the
- * shell executable respectively.
- */
-void terminal_t::input_routine()
+void terminalInputRoutine()
 {
 	std::string buffer = "";
 	while(true)
 	{
-		g_key_info readInput = screen->readInput();
+		g_key_info input = screen->readInput();
 
 		// Default line-buffered input
-		if(input_mode == G_TERMINAL_MODE_DEFAULT)
+		if(inputMode == G_TERMINAL_MODE_DEFAULT)
 		{
 
-			if(readInput.key == "KEY_ENTER" && readInput.pressed)
+			if(input.key == "KEY_ENTER" && input.pressed)
 			{
-				if(echo)
+				if(inputEcho)
 				{
-					g_atomic_lock(screen_lock);
-					screen->writeChar('\n');
-					g_atomic_unlock(screen_lock);
+					g_atomic_lock(screenLock);
+					screen->write('\n');
+					g_atomic_unlock(screenLock);
 				}
 
 				buffer += '\n';
-				write_string_to_shell(buffer);
+				terminalWriteToShell(buffer);
 
 				buffer = "";
 			}
-			else if((readInput.ctrl && readInput.key == "KEY_C") || (readInput.key == "KEY_ESC"))
+			else if((input.ctrl && input.key == "KEY_C") || (input.key == "KEY_ESC"))
 			{
-				if(current_process && current_process != shell_pid)
+				if(controlProcess && controlProcess != shellProcess)
 				{
-					klog("kill %i", current_process);
-					g_kill(current_process);
+					g_kill(controlProcess);
 				}
 			}
-			else if(readInput.key == "KEY_BACKSPACE" && readInput.pressed)
+			else if(input.key == "KEY_BACKSPACE" && input.pressed)
 			{
 				buffer = buffer.size() > 0 ? buffer.substr(0, buffer.size() - 1) : buffer;
 				screen->backspace();
 			}
 			else
 			{
-				char chr = g_keyboard::charForKey(readInput);
+				char chr = g_keyboard::charForKey(input);
 				if(chr != -1)
 				{
 					buffer += chr;
 
-					if(echo)
+					if(inputEcho)
 					{
-						g_atomic_lock(screen_lock);
-						screen->writeChar(chr);
-						g_atomic_unlock(screen_lock);
+						g_atomic_lock(screenLock);
+						screen->write(chr);
+						g_atomic_unlock(screenLock);
 					}
 				}
 			}
 		}
-		else if(input_mode == G_TERMINAL_MODE_RAW)
+		else if(inputMode == G_TERMINAL_MODE_RAW)
 		{
 
-			if(readInput.key == "KEY_ENTER" && readInput.pressed)
+			if(input.key == "KEY_ENTER" && input.pressed)
 			{
-				write_termkey_to_shell(G_TERMKEY_ENTER);
+				terminalWriteTermkeyToShell(G_TERMKEY_ENTER);
 
-				if(echo)
+				if(inputEcho)
 				{
-					g_atomic_lock(screen_lock);
-					screen->writeChar('\n');
-					g_atomic_unlock(screen_lock);
+					g_atomic_lock(screenLock);
+					screen->write('\n');
+					g_atomic_unlock(screenLock);
 				}
 			}
-			else if(readInput.key == "KEY_BACKSPACE" && readInput.pressed)
+			else if(input.key == "KEY_BACKSPACE" && input.pressed)
 			{
-				write_termkey_to_shell(G_TERMKEY_BACKSPACE);
+				terminalWriteTermkeyToShell(G_TERMKEY_BACKSPACE);
 
-				if(echo)
+				if(inputEcho)
 				{
-					g_atomic_lock(screen_lock);
+					g_atomic_lock(screenLock);
 					screen->backspace();
-					g_atomic_unlock(screen_lock);
+					g_atomic_unlock(screenLock);
 				}
 			}
-			else if(readInput.key == "KEY_ARROW_LEFT" && readInput.pressed)
+			else if(input.key == "KEY_ARROW_LEFT" && input.pressed)
 			{
-				write_termkey_to_shell(G_TERMKEY_LEFT);
+				terminalWriteTermkeyToShell(G_TERMKEY_LEFT);
 			}
-			else if(readInput.key == "KEY_ARROW_RIGHT" && readInput.pressed)
+			else if(input.key == "KEY_ARROW_RIGHT" && input.pressed)
 			{
-				write_termkey_to_shell(G_TERMKEY_RIGHT);
+				terminalWriteTermkeyToShell(G_TERMKEY_RIGHT);
 			}
-			else if(readInput.key == "KEY_ARROW_UP" && readInput.pressed)
+			else if(input.key == "KEY_ARROW_UP" && input.pressed)
 			{
-				write_termkey_to_shell(G_TERMKEY_UP);
+				terminalWriteTermkeyToShell(G_TERMKEY_UP);
 			}
-			else if(readInput.key == "KEY_ARROW_DOWN" && readInput.pressed)
+			else if(input.key == "KEY_ARROW_DOWN" && input.pressed)
 			{
-				write_termkey_to_shell(G_TERMKEY_DOWN);
+				terminalWriteTermkeyToShell(G_TERMKEY_DOWN);
 			}
-			else if(readInput.key == "KEY_TAB" && readInput.pressed && readInput.shift)
+			else if(input.key == "KEY_TAB" && input.pressed && input.shift)
 			{
-				write_string_to_shell("\t");
+				terminalWriteToShell("\t");
 			}
-			else if(readInput.key == "KEY_TAB" && readInput.pressed)
+			else if(input.key == "KEY_TAB" && input.pressed)
 			{
-				write_termkey_to_shell(G_TERMKEY_STAB);
+				terminalWriteTermkeyToShell(G_TERMKEY_STAB);
 			}
 			else
 			{
-				char chr = g_keyboard::charForKey(readInput);
+				char chr = g_keyboard::charForKey(input);
 				if(chr != -1)
 				{
-					write(shell_in, &chr, 1);
+					write(shellStdin, &chr, 1);
 
-					if(echo)
+					if(inputEcho)
 					{
-						g_atomic_lock(screen_lock);
-						screen->writeChar(chr);
-						g_atomic_unlock(screen_lock);
+						g_atomic_lock(screenLock);
+						screen->write(chr);
+						g_atomic_unlock(screenLock);
 					}
 				}
 			}
@@ -310,34 +275,29 @@ void terminal_t::input_routine()
 	}
 }
 
-/**
- *
- */
-void terminal_t::output_routine(output_routine_startinfo_t* info)
+void terminalOutputRoutine(output_routine_startinfo_t* data)
 {
-	int buflen = 1024;
-	char* buf = new char[buflen];
+	size_t bufSize = 1024;
+	uint8_t* buf = new uint8_t[bufSize];
 
 	stream_control_status_t status;
 
 	while(true)
 	{
 		g_fs_read_status stat;
-		int r = g_read_s(info->error_output ? info->terminal->shell_err : info->terminal->shell_out, buf, buflen, &stat);
+		int r = g_read_s(data->isStderr ? shellStderr : shellStdout, buf, bufSize, &stat);
 
 		if(stat == G_FS_READ_SUCCESSFUL)
 		{
-			buf[r] = 0;
-			g_atomic_lock(info->terminal->screen_lock);
+			g_atomic_lock(screenLock);
+
 			for(int i = 0; i < r; i++)
 			{
-				char c = buf[i];
-
-				// Lock screen and set error color if required
-				info->terminal->process_output_character(&status, info->error_output, c);
+				terminalProcessOutput(&status, data->isStderr, buf[i]);
 			}
-			info->terminal->screen->flush();
-			g_atomic_unlock(info->terminal->screen_lock);
+
+			screen->flush();
+			g_atomic_unlock(screenLock);
 		}
 		else
 		{
@@ -345,31 +305,25 @@ void terminal_t::output_routine(output_routine_startinfo_t* info)
 		}
 	}
 
-	// clean up
 	delete buf;
-	delete info;
+	delete data;
 }
 
-/**
- *
- */
-void terminal_t::process_output_character(stream_control_status_t* status, bool error_stream, char c)
+void terminalProcessOutput(stream_control_status_t* status, bool isStderr, char c)
 {
-
+	// Simple textual output
 	if(status->status == TERMINAL_STREAM_STATUS_TEXT)
 	{
-
-		// Simple textual output
 		if(c == '\r')
 		{
 			return;
 		}
 		else if(c == '\t')
 		{
-			screen->writeChar(' ');
-			screen->writeChar(' ');
-			screen->writeChar(' ');
-			screen->writeChar(' ');
+			screen->write(' ');
+			screen->write(' ');
+			screen->write(' ');
+			screen->write(' ');
 		}
 		else if(c == 27 /* ESC */)
 		{
@@ -378,46 +332,37 @@ void terminal_t::process_output_character(stream_control_status_t* status, bool 
 		else
 		{
 			int fg = screen->getColorForeground();
-			if(error_stream)
+			if(isStderr)
 			{
 				screen->setColorForeground(SC_RED);
 			}
-			screen->writeChar(c);
-			if(error_stream)
+			screen->write(c);
+			if(isStderr)
 			{
 				screen->setColorForeground(fg);
 			}
 		}
-
-		// ESC was sent
 	}
-	else if(status->status == TERMINAL_STREAM_STATUS_LAST_WAS_ESC)
+	else if(status->status == TERMINAL_STREAM_STATUS_LAST_WAS_ESC) // Starting an escape sequence
 	{
-		// must be followed by [ for VT100 sequence
-		if(c == '[')
+
+		if(c == '[') // must be followed by [ for VT100 sequence
 		{
 			status->status = TERMINAL_STREAM_STATUS_WITHIN_VT100;
-
-			// or a Ghost terminal sequence
 		}
-		else if(c == '{')
+		else if(c == '{') // or a Ghost terminal sequence
 		{
 			status->status = TERMINAL_STREAM_STATUS_WITHIN_GHOSTTERM;
-
-			// otherwise reset
 		}
-		else
+		else // otherwise reset
 		{
 			status->status = TERMINAL_STREAM_STATUS_TEXT;
 		}
-
-		// Handle sequence parameters
 	}
-	else if(status->status == TERMINAL_STREAM_STATUS_WITHIN_VT100 || status->status == TERMINAL_STREAM_STATUS_WITHIN_GHOSTTERM)
+	else if(status->status == TERMINAL_STREAM_STATUS_WITHIN_VT100 ||
+			status->status == TERMINAL_STREAM_STATUS_WITHIN_GHOSTTERM) // Within an escape sequence
 	{
-
-		// Parameter value
-		if(c >= '0' && c <= '9')
+		if(c >= '0' && c <= '9') // Parameter value
 		{
 			if(status->parameterCount == 0)
 			{
@@ -431,26 +376,22 @@ void terminal_t::process_output_character(stream_control_status_t* status, bool 
 
 				// Illegal number of parameters is skipped
 			}
-
-			// Parameter seperator
 		}
-		else if(c == ';')
+		else if(c == ';') // Parameter seperator
 		{
 			status->parameterCount++;
-
-			// Finish character
 		}
-		else
+		else // Finish character
 		{
 			status->controlCharacter = c;
 
 			if(status->status == TERMINAL_STREAM_STATUS_WITHIN_VT100)
 			{
-				process_vt100_sequence(status);
+				terminalProcessSequenceVt100(status);
 			}
 			else if(status->status == TERMINAL_STREAM_STATUS_WITHIN_GHOSTTERM)
 			{
-				process_ghostterm_sequence(status);
+				terminalProcessSequenceGhostterm(status);
 			}
 
 			// reset status
@@ -464,64 +405,49 @@ void terminal_t::process_output_character(stream_control_status_t* status, bool 
 	}
 }
 
-/**
- *
- */
-void terminal_t::process_vt100_sequence(stream_control_status_t* status)
+void terminalProcessSequenceVt100(stream_control_status_t* status)
 {
-
 	switch(status->controlCharacter)
 	{
-	// Cursor up
-	case 'A':
-		screen->moveCursor(screen->getCursorX(), screen->getCursorY() - status->parameters[0]);
+	case 'A': // Cursor up
+		screen->setCursor(screen->getCursorX(), screen->getCursorY() - status->parameters[0]);
 		break;
 
-		// Cursor down
-	case 'B':
-		screen->moveCursor(screen->getCursorX(), screen->getCursorY() + status->parameters[0]);
+	case 'B': // Cursor down
+		screen->setCursor(screen->getCursorX(), screen->getCursorY() + status->parameters[0]);
 		break;
 
-		// Cursor forward
-	case 'C':
-		screen->moveCursor(screen->getCursorX() + status->parameters[0], screen->getCursorY());
+	case 'C': // Cursor forward
+		screen->setCursor(screen->getCursorX() + status->parameters[0], screen->getCursorY());
 		break;
 
-		// Cursor back
-	case 'D':
-		screen->moveCursor(screen->getCursorX() - status->parameters[0], screen->getCursorY());
+	case 'D': // Cursor back
+		screen->setCursor(screen->getCursorX() - status->parameters[0], screen->getCursorY());
 		break;
 
-		// Mode setting
-	case 'm':
+	case 'm': // Mode setting
 		for(int i = 0; i < status->parameterCount; i++)
 		{
 			int param = status->parameters[i];
 
-			// Reset
-			if(param == 0)
+			if(param == 0) // Reset
 			{
 				screen->setColorBackground(SC_BLACK);
 				screen->setColorForeground(SC_WHITE);
-
-				// Foreground color
 			}
-			else if(param >= 30 && param < 40)
+			else if(param >= 30 && param < 40) // Foreground color
 			{
-				screen->setColorForeground(convert_vt100_to_screen_color(param - 30));
-
-				// Background color
+				screen->setColorForeground(terminalColorFromVt100(param - 30));
 			}
-			else if(param >= 40 && param < 50)
+			else if(param >= 40 && param < 50) // Background color
 			{
-				screen->setColorBackground(convert_vt100_to_screen_color(param - 40));
+				screen->setColorBackground(terminalColorFromVt100(param - 40));
 			}
 		}
 
 		break;
 
-		// Clearing
-	case 'J':
+	case 'J': // Clearing
 		if(status->parameterCount == 1)
 		{
 			// Clear the entire screen
@@ -532,25 +458,23 @@ void terminal_t::process_vt100_sequence(stream_control_status_t* status)
 		}
 		break;
 
-		// Reposition cursor
-	case 'f':
-		screen->moveCursor(status->parameters[1], status->parameters[0]);
+	case 'f': // Reposition cursor
+		screen->setCursor(status->parameters[1], status->parameters[0]);
 		break;
 
 		// Cursor queries
-	case 'n':
-		// Query position
+	case 'n': // Query position
+
 		if(status->parameters[0] == 6)
 		{
 			std::stringstream response;
 			response << (char) G_TERMKEY_ESC << "[" << screen->getCursorY() << ";" << screen->getCursorX() << "R";
 			auto responseStr = response.str();
-			write(shell_in, responseStr.c_str(), responseStr.size());
+			write(shellStdin, responseStr.c_str(), responseStr.size());
 		}
 		break;
 
-		// Set scroll area
-	case 'r':
+	case 'r': // Set scroll area
 		if(status->parameterCount == 0)
 		{
 			screen->setScrollAreaScreen();
@@ -561,54 +485,42 @@ void terminal_t::process_vt100_sequence(stream_control_status_t* status)
 		}
 		break;
 
-		// Scroll Scrolling Region Up
-	case 'S':
+	case 'S': // Scroll Scrolling Region Up
 		screen->scroll(status->parameters[0]);
 		break;
 
-		// Scroll Scrolling Region Down
-	case 'T':
+	case 'T': // Scroll Scrolling Region Down
 		screen->scroll(-status->parameters[0]);
 		break;
 	}
 }
 
-/**
- *
- */
-void terminal_t::process_ghostterm_sequence(stream_control_status_t* status)
+void terminalProcessSequenceGhostterm(stream_control_status_t* status)
 {
-
 	switch(status->controlCharacter)
 	{
-
-	// Change mode
-	case 'm':
-		this->input_mode = (g_terminal_mode) status->parameters[0];
+	case 'm': // Change mode
+		inputMode = (g_terminal_mode) status->parameters[0];
 		break;
 
-		// Change echo
-	case 'e':
-		this->echo = (status->parameters[0] == 1);
+	case 'e': // Change echo
+		inputEcho = (status->parameters[0] == 1);
 		break;
 
-		// Screen info
-	case 'i':
+	case 'i': // Screen info
 	{
 		std::stringstream response;
 		response << (char) G_TERMKEY_ESC << "{" << screen->getWidth() << ";" << screen->getHeight() << "i";
-		write_string_to_shell(response.str().c_str());
+		terminalWriteToShell(response.str().c_str());
 		break;
 	}
 
-		// Put char
-	case 'p':
-		screen->writeChar(status->parameters[0]);
+	case 'p': // Put char
+		screen->write(status->parameters[0]);
 		break;
 
-		// Process control
-	case 'c':
-		current_process = status->parameters[0];
+	case 'c': // Process control
+		controlProcess = status->parameters[0];
 		break;
 
 		// Various other controls
@@ -622,12 +534,8 @@ void terminal_t::process_ghostterm_sequence(stream_control_status_t* status)
 	}
 }
 
-/**
- *
- */
-screen_color_t terminal_t::convert_vt100_to_screen_color(int color)
+screen_color_t terminalColorFromVt100(int color)
 {
-
 	switch(color)
 	{
 	case VT100_COLOR_BLACK:

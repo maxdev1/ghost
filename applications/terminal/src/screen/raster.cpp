@@ -27,13 +27,13 @@ void raster_t::scrollBy(int y)
 	g_atomic_lock(lock);
 
 	// TODO optimize
-	int len = width * height;
+	int len = width * height * sizeof(raster_entry_t);
 	while(y--)
 	{
-		memcpy(buffer, &buffer[width], len - width);
+		memcpy(buffer, &buffer[width], len - width * sizeof(raster_entry_t));
 		for(uint32_t i = 0; i < width; i++)
 		{
-			buffer[len - width + i] = ' ';
+			buffer[width * height - width + i] = {c : ' '};
 		}
 	}
 
@@ -55,14 +55,14 @@ bool raster_t::resizeTo(int newWidth, int newHeight)
 		return false;
 	}
 
-	uint8_t* oldBuffer = buffer;
+	raster_entry_t* oldBuffer = buffer;
 	int oldWidth = width;
 	int oldHeight = height;
 
-	buffer = new uint8_t[newWidth * newHeight];
+	buffer = new raster_entry_t[newWidth * newHeight];
 	width = newWidth;
 	height = newHeight;
-	memset(buffer, 0, width * height);
+	memset(buffer, 0, width * height * sizeof(raster_entry_t));
 
 	if(oldBuffer)
 	{
@@ -86,10 +86,8 @@ bool raster_t::resizeTo(int newWidth, int newHeight)
 	return true;
 }
 
-uint8_t raster_t::getUnlocked(int x, int y)
+raster_entry_t raster_t::getUnlocked(int x, int y)
 {
-	uint8_t val;
-
 	if(y >= height)
 		y = height - 1;
 	if(y < 0)
@@ -99,9 +97,7 @@ uint8_t raster_t::getUnlocked(int x, int y)
 	if(x < 0)
 		x = 0;
 
-	val = buffer[y * width + x];
-
-	return val;
+	return buffer[y * width + x];
 }
 
 void raster_t::lockBuffer()
@@ -118,7 +114,7 @@ void raster_t::clean()
 {
 	g_atomic_lock(lock);
 
-	memset(buffer, 0, height * width);
+	memset(buffer, 0, height * width * sizeof(raster_entry_t));
 
 	changed.x = 0;
 	changed.y = 0;
@@ -164,7 +160,7 @@ void raster_t::dirty(int x, int y)
 	g_atomic_unlock(lock);
 }
 
-void raster_t::put(int x, int y, uint8_t c)
+void raster_t::put(int x, int y, uint8_t c, uint8_t foreground, uint8_t background)
 {
 	g_atomic_lock(lock);
 
@@ -177,7 +173,11 @@ void raster_t::put(int x, int y, uint8_t c)
 	if(x < 0)
 		x = 0;
 
-	buffer[y * width + x] = c;
+	buffer[y * width + x] = {
+		c : c,
+		foreground : foreground,
+		background : background
+	};
 
 	g_atomic_unlock(lock);
 
