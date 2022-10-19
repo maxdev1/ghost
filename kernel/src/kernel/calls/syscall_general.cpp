@@ -120,6 +120,8 @@ void syscallSetWorkingDirectory(g_task* task, g_syscall_fs_set_working_directory
 
 void syscallKernQuery(g_task* task, g_syscall_kernquery* data)
 {
+	uint64_t start = clockGetLocal()->time;
+
 	if(data->command == G_KERNQUERY_TASK_LIST)
 	{
 		g_kernquery_task_list_data* kdata = (g_kernquery_task_list_data*) data->buffer;
@@ -130,8 +132,7 @@ void syscallKernQuery(g_task* task, g_syscall_kernquery* data)
 		while(rem-- && hashmapIteratorHasNext(&iter))
 		{
 			auto next = hashmapIteratorNext(&iter)->value;
-			kdata->id_buffer[rem] = next->id;
-			kdata->filled_ids++;
+			kdata->id_buffer[kdata->filled_ids++] = next->id;
 		}
 		data->status = G_KERNQUERY_STATUS_SUCCESSFUL;
 		hashmapIteratorEnd(&iter);
@@ -151,6 +152,7 @@ void syscallKernQuery(g_task* task, g_syscall_kernquery* data)
 		if(!ktask || ktask->status == G_THREAD_STATUS_DEAD)
 		{
 			data->status = G_KERNQUERY_STATUS_UNKNOWN_ID;
+			kdata->id = -1;
 		}
 		else
 		{
