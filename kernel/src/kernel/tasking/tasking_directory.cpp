@@ -21,17 +21,20 @@
 #include "kernel/tasking/tasking_directory.hpp"
 #include "kernel/utils/hashmap_string.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/utils/string.hpp"
 
-static g_hashmap<const char*, g_task_directory_entry>* taskDirectory = 0;
+static g_hashmap<const char*, g_task_directory_entry>* tasksByIdentifier = 0;
+static g_hashmap<g_tid, const char*>* identifiersByTask = 0;
 
 void taskingDirectoryInitialize()
 {
-	taskDirectory = hashmapCreateString<g_task_directory_entry>(64);
+	tasksByIdentifier = hashmapCreateString<g_task_directory_entry>(64);
+	identifiersByTask = hashmapCreateNumeric<g_tid, const char*>(64);
 }
 
 bool taskingDirectoryRegister(const char* name, g_tid tid, g_security_level priority)
 {
-	auto entry = hashmapGetEntry(taskDirectory, name);
+	auto entry = hashmapGetEntry(tasksByIdentifier, name);
 	if(entry && entry->value.priority > priority)
 	{
 		logInfo("%! tried to override task %s with weaker security level", "taskdir", name);
@@ -41,7 +44,12 @@ bool taskingDirectoryRegister(const char* name, g_tid tid, g_security_level prio
 	g_task_directory_entry dirEntry;
 	dirEntry.task = tid;
 	dirEntry.priority = priority;
-	hashmapPut(taskDirectory, name, dirEntry);
+	hashmapPut(tasksByIdentifier, name, dirEntry);
+
+	auto existingMappedName = hashmapGet(identifiersByTask, tid, (const char*) nullptr);
+	if(existingMappedName)
+		heapFree((void*) existingMappedName);
+	hashmapPut(identifiersByTask, tid, (const char*) stringDuplicate(name));
 
 	logDebug("%! task %i known as %s", "taskdir", tid, name);
 
@@ -50,10 +58,13 @@ bool taskingDirectoryRegister(const char* name, g_tid tid, g_security_level prio
 
 g_tid taskingDirectoryGet(const char* name)
 {
-	auto entry = hashmapGetEntry(taskDirectory, name);
+	auto entry = hashmapGetEntry(tasksByIdentifier, name);
 	if(entry)
-	{
 		return entry->value.task;
-	}
 	return G_TID_NONE;
+}
+
+const char* taskingDirectoryGetIdentifier(g_tid tid)
+{
+	return hashmapGet(identifiersByTask, tid, (const char*) nullptr);
 }

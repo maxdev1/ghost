@@ -25,8 +25,8 @@
 
 struct g_task_directory_entry
 {
-    g_tid task;
-    g_security_level priority;
+	g_tid task;
+	g_security_level priority;
 };
 
 /**
@@ -45,5 +45,10 @@ bool taskingDirectoryRegister(const char* name, g_tid tid, g_security_level prio
  * @return task for the name or G_TID_NONE
  */
 g_tid taskingDirectoryGet(const char* name);
+
+/**
+ * @return name for the task or nullptr
+ */
+const char* taskingDirectoryGetIdentifier(g_tid tid);
 
 #endif

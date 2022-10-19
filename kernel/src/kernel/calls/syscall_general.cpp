@@ -22,6 +22,7 @@
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/memory/heap.hpp"
 #include "kernel/tasking/clock.hpp"
+#include "kernel/tasking/tasking_directory.hpp"
 #include "kernel/utils/hashmap.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/utils/string.hpp"
@@ -159,7 +160,15 @@ void syscallKernQuery(g_task* task, g_syscall_kernquery* data)
 			data->status = G_KERNQUERY_STATUS_SUCCESSFUL;
 			kdata->found = true;
 			kdata->id = ktask->id;
+			kdata->parent = ktask->process->id;
 			kdata->type = ktask->type;
+
+			if(ktask->process->environment.executablePath)
+				stringCopy(kdata->source_path, ktask->process->environment.executablePath);
+
+			const char* identifier = taskingDirectoryGetIdentifier(ktask->id);
+			if(identifier)
+				stringCopy(kdata->identifier, identifier);
 		}
 	}
 	else
