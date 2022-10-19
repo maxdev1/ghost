@@ -22,12 +22,9 @@
 #include <stdint.h>
 #include <string>
 
-#ifndef SCREEN_HPP_
-#define SCREEN_HPP_
+#ifndef __TERMINAL_SCREEN_SCREEN__
+#define __TERMINAL_SCREEN_SCREEN__
 
-/**
- *
- */
 typedef uint8_t screen_color_t;
 
 #define SC_BLACK 0x0
@@ -64,9 +61,6 @@ typedef uint8_t screen_color_t;
  */
 #define OEMUS_CHAR_UE ((char) 0x81) /*�*/
 
-/**
- *
- */
 class screen_t
 {
   public:
@@ -81,11 +75,20 @@ class screen_t
 	virtual g_key_info readInput() = 0;
 	virtual void clean() = 0;
 	virtual void backspace() = 0;
-	virtual void writeChar(char c) = 0;
-	virtual void moveCursor(int x, int y) = 0;
+	virtual void write(char c) = 0;
+	virtual void flush() = 0;
+
+	virtual void setCursor(int x, int y) = 0;
 	virtual int getCursorX() = 0;
 	virtual int getCursorY() = 0;
-	virtual void flush() = 0;
+	virtual void setCursorVisible(bool visible) = 0;
+
+	virtual void setScrollAreaScreen() = 0;
+	virtual void setScrollArea(int start, int end) = 0;
+	virtual void scroll(int value) = 0;
+
+	virtual int getWidth() = 0;
+	virtual int getHeight() = 0;
 
 	virtual void setColorForeground(int c)
 	{
@@ -103,10 +106,6 @@ class screen_t
 	{
 		return colorBackground;
 	}
-
-	virtual int getWidth() = 0;
-	virtual int getHeight() = 0;
-
 	virtual void lock()
 	{
 		g_atomic_lock(_lock);
@@ -115,12 +114,6 @@ class screen_t
 	{
 		g_atomic_unlock(_lock);
 	}
-
-	virtual void setScrollAreaScreen() = 0;
-	virtual void setScrollArea(int start, int end) = 0;
-	virtual void scroll(int value) = 0;
-
-	virtual void setCursorVisible(bool visible) = 0;
 };
 
 #endif

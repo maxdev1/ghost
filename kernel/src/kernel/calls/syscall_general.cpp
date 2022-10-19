@@ -22,6 +22,7 @@
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/memory/heap.hpp"
 #include "kernel/tasking/clock.hpp"
+#include "kernel/utils/hashmap.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/utils/string.hpp"
 
@@ -117,9 +118,52 @@ void syscallSetWorkingDirectory(g_task* task, g_syscall_fs_set_working_directory
 	}
 }
 
-void syscallKernQuery(g_task* task, g_syscall_fs_set_working_directory* data)
+void syscallKernQuery(g_task* task, g_syscall_kernquery* data)
 {
-	logInfo("syscall not implemented: syscallKernQuery");
-	for(;;)
-		;
+	uint64_t start = clockGetLocal()->time;
+
+	if(data->command == G_KERNQUERY_TASK_LIST)
+	{
+		g_kernquery_task_list_data* kdata = (g_kernquery_task_list_data*) data->buffer;
+
+		uint32_t rem = kdata->id_buffer_size;
+		kdata->filled_ids = 0;
+		auto iter = hashmapIteratorStart(taskGlobalMap);
+		while(rem-- && hashmapIteratorHasNext(&iter))
+		{
+			auto next = hashmapIteratorNext(&iter)->value;
+			kdata->id_buffer[kdata->filled_ids++] = next->id;
+		}
+		data->status = G_KERNQUERY_STATUS_SUCCESSFUL;
+		hashmapIteratorEnd(&iter);
+	}
+	else if(data->command == G_KERNQUERY_TASK_COUNT)
+	{
+		g_kernquery_task_count_data* kdata = (g_kernquery_task_count_data*) data->buffer;
+
+		data->status = G_KERNQUERY_STATUS_SUCCESSFUL;
+		kdata->count = hashmapSize(taskGlobalMap);
+	}
+	else if(data->command == G_KERNQUERY_TASK_GET_BY_ID)
+	{
+		g_kernquery_task_get_data* kdata = (g_kernquery_task_get_data*) data->buffer;
+
+		g_task* ktask = taskingGetById(kdata->id);
+		if(!ktask || ktask->status == G_THREAD_STATUS_DEAD)
+		{
+			data->status = G_KERNQUERY_STATUS_UNKNOWN_ID;
+			kdata->id = -1;
+		}
+		else
+		{
+			data->status = G_KERNQUERY_STATUS_SUCCESSFUL;
+			kdata->found = true;
+			kdata->id = ktask->id;
+			kdata->type = ktask->type;
+		}
+	}
+	else
+	{
+		data->status = G_KERNQUERY_STATUS_ERROR;
+	}
 }

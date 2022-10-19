@@ -40,6 +40,6 @@ void syscallGetWorkingDirectory(g_task* task, g_syscall_fs_get_working_directory
 
 void syscallSetWorkingDirectory(g_task* task, g_syscall_fs_set_working_directory* data);
 
-void syscallKernQuery(g_task* task, g_syscall_fs_set_working_directory* data);
+void syscallKernQuery(g_task* task, g_syscall_kernquery* data);
 
 #endif

@@ -22,8 +22,11 @@
 #define __KERNEL_TASKING__
 
 #include "kernel/tasking/task.hpp"
+#include "kernel/utils/hashmap.hpp"
 #include <ghost/kernel.h>
 #include <ghost/system.h>
+
+extern g_hashmap<g_tid, g_task*>* taskGlobalMap;
 
 struct g_schedule_entry
 {

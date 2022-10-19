@@ -82,7 +82,7 @@ void windowserver_t::launch()
 
 	createInterface();
 
-	test_t::createTestComponents();
+	// test_t::createTestComponents();
 	// g_spawn("/applications/terminal.bin", "", "", G_SECURITY_LEVEL_APPLICATION);
 
 	renderLoop(screenBounds);

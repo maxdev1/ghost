@@ -33,25 +33,28 @@ __BEGIN_C
 typedef int g_kernquery_status;
 #define G_KERNQUERY_STATUS_SUCCESSFUL ((g_kernquery_status) 0)
 #define G_KERNQUERY_STATUS_UNKNOWN_ID ((g_kernquery_status) 1)
+#define G_KERNQUERY_STATUS_ERROR ((g_kernquery_status) 2)
 
 /**
  * Command IDs
  */
-#define G_KERNQUERY_PCI_COUNT			0x500
-#define G_KERNQUERY_PCI_GET				0x501
+#define G_KERNQUERY_PCI_COUNT 0x500
+#define G_KERNQUERY_PCI_GET 0x501
 
-#define G_KERNQUERY_TASK_COUNT			0x600
-#define G_KERNQUERY_TASK_LIST			0x601
-#define G_KERNQUERY_TASK_GET_BY_ID		0x602
+#define G_KERNQUERY_TASK_COUNT 0x600
+#define G_KERNQUERY_TASK_LIST 0x601
+#define G_KERNQUERY_TASK_GET_BY_ID 0x602
 
 /**
  * PCI
  */
-typedef struct {
+typedef struct
+{
 	uint32_t count;
-}__attribute__((packed)) g_kernquery_pci_count_data;
+} __attribute__((packed)) g_kernquery_pci_count_data;
 
-typedef struct {
+typedef struct
+{
 	uint32_t position;
 
 	uint8_t found;
@@ -66,33 +69,35 @@ typedef struct {
 	uint8_t classCode;
 	uint8_t subclassCode;
 	uint8_t progIf;
-}__attribute__((packed)) g_kernquery_pci_get_data;
-
+} __attribute__((packed)) g_kernquery_pci_get_data;
 
 /**
  * Used in the {G_KERNQUERY_TASK_COUNT} query to retrieve the number
  * of existing tasks.
  */
-typedef struct {
+typedef struct
+{
 	uint32_t count;
-}__attribute__((packed)) g_kernquery_task_count_data;
+} __attribute__((packed)) g_kernquery_task_count_data;
 
 /**
  * Used in the {G_KERNQUERY_TASK_LIST} query to retrieve a list that
  * contains the id of each existing task.
  */
-typedef struct {
+typedef struct
+{
 	g_tid* id_buffer;
 	uint32_t id_buffer_size;
 
 	uint32_t filled_ids;
-}__attribute__((packed)) g_kernquery_task_list_data;
+} __attribute__((packed)) g_kernquery_task_list_data;
 
 /**
  * Used in the {G_KERNQUERY_TASK_GET_BY_ID} query to retrieve
  * information about a specific task.
  */
-typedef struct {
+typedef struct
+{
 	g_tid id;
 	uint8_t found;
 
@@ -102,7 +107,7 @@ typedef struct {
 	char source_path[G_PATH_MAX];
 
 	g_virtual_address memory_used;
-}__attribute__((packed)) g_kernquery_task_get_data;
+} __attribute__((packed)) g_kernquery_task_get_data;
 
 __END_C
 

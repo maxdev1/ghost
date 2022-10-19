@@ -18,41 +18,14 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __BUILD_CONFIG__
-#define __BUILD_CONFIG__
+#include <stdio.h>
 
-#include "shared/debug/debug_interface_mode.hpp"
-#include "shared/logger/logger_level.hpp"
+#ifndef __PROC_LIST__
+#define __PROC_LIST__
 
-#define STR_(x) #x
-#define STR(x) STR_(x)
-
-#if !(defined(__i386__) || defined(__x86_64__))
-#error "Build architecture not recognized."
-#endif
-
-// pretty boot
-#define G_PRETTY_BOOT true
-#define G_VIDEO_LOG_BOOT false
-
-// logging settings
-#define G_LOG_LEVEL G_LOG_LEVEL_INFO
-
-// fine-grained debugging options
-#define G_DEBUG_WHOS_WAITING false
-#define G_DEBUG_MUTEXES false
-#define G_DEBUG_THREAD_DUMPING false
-
-// mode for the debug interface
-#define G_DEBUG_INTERFACE_MODE G_DEBUG_INTERFACE_MODE_PLAIN_LOG
-
-// version
-#define G_VERSION_MAJOR 0
-#define G_VERSION_MINOR 14
-#define G_VERSION_PATCH 1
-
-#define G_LOADER_VERSION_MAJOR 1
-#define G_LOADER_VERSION_MINOR 1
-#define G_LOADER_VERSION_PATCH 0
+/**
+ *
+ */
+int proc_list(int argc, char** argv);
 
 #endif

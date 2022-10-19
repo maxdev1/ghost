@@ -18,104 +18,57 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "gui_screen/gui_screen.hpp"
+#include "gui_screen.hpp"
 #include <ghost.h>
 #include <libfont/font_loader.hpp>
 #include <libinput/keyboard/keyboard.hpp>
 #include <list>
+#include <stdio.h>
 #include <string.h>
 
-class canvas_resize_bounds_listener_t : public g_bounds_listener
+static std::string defaultFont = "consolas";
+
+void canvas_resize_bounds_listener_t::handle_bounds_changed(g_rectangle bounds)
 {
-  public:
-	gui_screen_t* screen;
+	screen->setCanvasBounds(bounds);
+	screen->updateRasterSize();
+	screen->repaint();
+}
 
-	canvas_resize_bounds_listener_t(gui_screen_t* screen) : screen(screen)
-	{
-	}
-
-	virtual void handle_bounds_changed(g_rectangle bounds)
-	{
-		screen->setCanvasBounds(bounds);
-		screen->update_visible_buffer_size();
-		screen->repaint();
-	}
-};
-
-class input_key_listener_t : public g_key_listener
+void input_key_listener_t::handle_key_event(g_key_event& e)
 {
-  private:
-	gui_screen_t* screen;
+	screen->bufferInput(g_keyboard::fullKeyInfo(e.info));
+}
 
-  public:
-	input_key_listener_t(gui_screen_t* screen) : screen(screen)
-	{
-	}
-
-	virtual void handle_key_event(g_key_event& e)
-	{
-		screen->buffer_input(g_keyboard::fullKeyInfo(e.info));
-	}
-};
-
-class canvas_buffer_listener_t : public g_canvas_buffer_listener
+void canvas_buffer_listener_t::handle_buffer_changed()
 {
-  private:
-	gui_screen_t* screen;
+	screen->updateRasterSize();
+	screen->repaint();
+}
 
-  public:
-	canvas_buffer_listener_t(gui_screen_t* screen) : screen(screen)
-	{
-	}
-
-	virtual void handle_buffer_changed()
-	{
-		screen->update_visible_buffer_size();
-		screen->repaint();
-	}
-};
-
-class terminal_focus_listener_t : public g_focus_listener
+void terminal_focus_listener_t::handle_focus_changed(bool now_focused)
 {
-  private:
-	gui_screen_t* screen;
-
-  public:
-	/**
-	 *
-	 */
-	terminal_focus_listener_t(gui_screen_t* screen) : screen(screen)
-	{
-	}
-
-	/**
-	 *
-	 */
-	virtual void handle_focus_changed(bool now_focused)
-	{
-		screen->set_focused(now_focused);
-		screen->repaint();
-	}
-};
+	screen->setFocused(now_focused);
+	screen->repaint();
+}
 
 bool gui_screen_t::initialize()
 {
 	raster = new raster_t();
 
-	input_buffer_lock = g_atomic_initialize();
-	input_buffer_empty = g_atomic_initialize();
-	g_atomic_lock(input_buffer_empty);
+	inputBufferLock = g_atomic_initialize();
+	inputBufferEmpty = g_atomic_initialize();
+	g_atomic_lock(inputBufferEmpty);
 
 	auto status = g_ui::open();
 	if(status != G_UI_OPEN_STATUS_SUCCESSFUL)
 	{
-		klog("Terminal: Failed to initialize g_ui with status %i", status);
+		klog("terminal: failed to initialize g_ui with status %i", status);
 		return false;
 	}
-
 	window = g_window::create();
 	window->setTitle("Terminal");
-	window->setBackground(ARGB(253, 0, 0, 2));
+	window->setBackground(ARGB(250, 0, 0, 2));
 
 	canvas = g_canvas::create();
 	canvas->setBufferListener(new canvas_buffer_listener_t(this));
@@ -123,7 +76,7 @@ bool gui_screen_t::initialize()
 	window->setLayout(G_UI_LAYOUT_MANAGER_GRID);
 	window->addChild(canvas);
 
-	g_rectangle windowBounds = g_rectangle(80, 80, 500, 300);
+	g_rectangle windowBounds = g_rectangle(80, 80, 700, 500);
 	window->setBounds(windowBounds);
 	window->setVisible(true);
 
@@ -134,38 +87,37 @@ bool gui_screen_t::initialize()
 	window->onClose([]()
 					{ g_exit(0); });
 
-	font = g_font_loader::get("consolas");
+	font = g_font_loader::get(defaultFont);
 
-	g_create_thread_d((void*) paint_entry, this);
-	g_create_thread_d((void*) blink_cursor_entry, this);
+	g_create_thread_d((void*) paintEntry, this);
+	g_create_thread_d((void*) blinkCursorEntry, this);
 	return true;
 }
 
-void gui_screen_t::blink_cursor_entry(gui_screen_t* screen)
+void gui_screen_t::blinkCursorEntry(gui_screen_t* screen)
 {
 	while(true)
 	{
-		screen->blink_cursor();
+		screen->blinkCursor();
 		g_sleep(500);
 	}
 }
 
-void gui_screen_t::blink_cursor()
+void gui_screen_t::blinkCursor()
 {
 	cursorBlink = !cursorBlink;
 	repaint();
 }
 
-void gui_screen_t::paint_entry(gui_screen_t* screen)
+void gui_screen_t::paintEntry(gui_screen_t* screen)
 {
 	screen->paint();
 }
 
-char_layout_t* gui_screen_t::get_char_layout(cairo_scaled_font_t* scaledFont, char c)
+char_layout_t* gui_screen_t::getCharLayout(cairo_scaled_font_t* scaledFont, char c)
 {
-	// Take char from layout cache
-	auto entry = char_layout_cache.find(c);
-	if(entry != char_layout_cache.end())
+	auto entry = charLayoutCache.find(c);
+	if(entry != charLayoutCache.end())
 	{
 		return (*entry).second;
 	}
@@ -182,16 +134,16 @@ char_layout_t* gui_screen_t::get_char_layout(cairo_scaled_font_t* scaledFont, ch
 
 	if(stat == CAIRO_STATUS_SUCCESS)
 	{
-		char_layout_cache[c] = layout;
+		charLayoutCache[c] = layout;
 		return layout;
 	}
 	return 0;
 }
 
-void gui_screen_t::printGlyph(cairo_t* cr, cairo_scaled_font_t* scaledFont, int x, int y, uint8_t c, bool blink_on)
+void gui_screen_t::printChar(cairo_t* cr, cairo_scaled_font_t* scaledFont, int x, int y, raster_entry_t& value, bool blink_on)
 {
 
-	char_layout_t* char_layout = get_char_layout(scaledFont, c);
+	char_layout_t* char_layout = getCharLayout(scaledFont, value.c);
 	cairo_text_extents_t char_extents;
 	cairo_scaled_font_glyph_extents(scaledFont, char_layout->glyph_buffer, 1, &char_extents);
 
@@ -199,17 +151,26 @@ void gui_screen_t::printGlyph(cairo_t* cr, cairo_scaled_font_t* scaledFont, int 
 		return;
 
 	cairo_save(cr);
-	if(cursor_x == x && cursor_y == y && blink_on && false /* TODO use for selection cursor */)
+	if(cursorX == x && cursorY == y && blink_on && false /* TODO use for selection cursor */)
 	{
 		cairo_set_source_rgba(cr, 0, 0, 0, 1);
 	}
 	else
 	{
-		cairo_set_source_rgba(cr, 0.8, 0.8, 0.8, 1);
+		switch(value.foreground)
+		{
+		case SC_RED:
+			cairo_set_source_rgba(cr, 0.8, 0.2, 0.2, 1);
+			break;
+		case SC_WHITE:
+		default:
+			cairo_set_source_rgba(cr, 0.8, 0.8, 0.8, 1);
+			break;
+		}
 	}
 	cairo_translate(cr,
-					x * char_width + padding,
-					y * char_height + char_height - 3 + padding);
+					x * charWidth + viewPadding,
+					y * charHeight + charHeight - 3 + viewPadding);
 	cairo_glyph_path(cr, char_layout->glyph_buffer, char_layout->cluster_buffer[0].num_glyphs);
 	cairo_fill(cr);
 	cairo_restore(cr);
@@ -224,7 +185,7 @@ void gui_screen_t::paint()
 	bool firstPaint = true;
 	while(true)
 	{
-		update_visible_buffer_size();
+		updateRasterSize();
 
 		auto cr = getGraphics();
 		if(!cr)
@@ -250,7 +211,7 @@ void gui_screen_t::paint()
 
 		// prepare font
 		cairo_set_font_face(cr, font->getFace());
-		cairo_set_font_size(cr, font_size);
+		cairo_set_font_size(cr, fontSize);
 		scaledFont = cairo_get_scaled_font(cr);
 
 		cairo_set_font_options(cr, fontOptions);
@@ -263,10 +224,10 @@ void gui_screen_t::paint()
 		cairo_set_source_rgba(cr, 0, 0, 0, 0);
 		cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
 		cairo_rectangle(cr,
-						changed.x * char_width + padding,
-						changed.y * char_height + padding,
-						changed.width * char_width,
-						changed.height * char_height);
+						changed.x * charWidth + viewPadding,
+						changed.y * charHeight + viewPadding,
+						changed.width * charWidth,
+						changed.height * charHeight);
 		cairo_fill(cr);
 		cairo_restore(cr);
 
@@ -274,10 +235,10 @@ void gui_screen_t::paint()
 		cairo_save(cr);
 		cairo_set_source_rgba(cr, 0, 0, 0, 0);
 		cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-		cairo_rectangle(cr, 0, 0, canvasBounds.width, padding);
-		cairo_rectangle(cr, canvasBounds.width - padding, 0, padding, canvasBounds.height);
-		cairo_rectangle(cr, 0, canvasBounds.height - padding, canvasBounds.width, padding);
-		cairo_rectangle(cr, 0, 0, padding, canvasBounds.height);
+		cairo_rectangle(cr, 0, 0, canvasBounds.width, viewPadding);
+		cairo_rectangle(cr, canvasBounds.width - viewPadding, 0, viewPadding, canvasBounds.height);
+		cairo_rectangle(cr, 0, canvasBounds.height - viewPadding, canvasBounds.width, viewPadding);
+		cairo_rectangle(cr, 0, 0, viewPadding, canvasBounds.height);
 		cairo_fill(cr);
 		cairo_restore(cr);
 
@@ -286,10 +247,10 @@ void gui_screen_t::paint()
 		cairo_set_source_rgba(cr, 0, 0, 0, 0);
 		cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
 		cairo_rectangle(cr,
-						1 + cursor_x * char_width + padding,
-						cursor_y * char_height + padding,
+						1 + cursorX * charWidth + viewPadding,
+						cursorY * charHeight + viewPadding,
 						cursorWidth,
-						char_height);
+						charHeight);
 		cairo_fill(cr);
 		cairo_restore(cr);
 
@@ -297,17 +258,17 @@ void gui_screen_t::paint()
 		bool blink_on = false;
 		if(focused)
 		{
-			blink_on = (g_millis() - last_input_time < 300) || cursorBlink;
+			blink_on = (g_millis() - lastInputTime < 300) || cursorBlink;
 
 			if(blink_on)
 			{
 				cairo_save(cr);
 				cairo_set_source_rgba(cr, 0.8, 0.8, 0.8, 1);
 				cairo_rectangle(cr,
-								1 + cursor_x * char_width + padding,
-								cursor_y * char_height + padding,
+								1 + cursorX * charWidth + viewPadding,
+								cursorY * charHeight + viewPadding,
 								cursorWidth,
-								char_height);
+								charHeight);
 				cairo_fill(cr);
 				cairo_restore(cr);
 			}
@@ -317,21 +278,21 @@ void gui_screen_t::paint()
 		{
 			for(int x = changed.x; x < changed.x + changed.width; x++)
 			{
-				uint8_t c = raster->getUnlocked(x, y);
-				if(c)
-					printGlyph(cr, scaledFont, x, y, c, blink_on);
+				raster_entry_t c = raster->getUnlocked(x, y);
+				if(c.c)
+					printChar(cr, scaledFont, x, y, c, blink_on);
 			}
 		}
 
 		raster->unlockBuffer();
 
 		canvas->blit(g_rectangle(
-			changed.x * char_width,
-			changed.y * char_height,
-			changed.width * char_width + 2 * padding,
-			changed.height * char_height + 2 * padding));
+			changed.x * charWidth,
+			changed.y * charHeight,
+			changed.width * charWidth + 2 * viewPadding,
+			changed.height * charHeight + 2 * viewPadding));
 
-		g_atomic_lock(paint_uptodate);
+		g_atomic_lock(upToDate);
 	}
 }
 
@@ -378,24 +339,24 @@ void gui_screen_t::clean()
 
 void gui_screen_t::backspace()
 {
-	moveCursor(cursor_x - 1, cursor_y);
-	writeChar(' ');
-	moveCursor(cursor_x - 1, cursor_y);
+	setCursor(cursorX - 1, cursorY);
+	write(' ');
+	setCursor(cursorX - 1, cursorY);
 }
 
-void gui_screen_t::writeChar(char c)
+void gui_screen_t::write(char c)
 {
 	if(!charIsUtf8(c))
 		return;
 
 	if(c == '\n')
 	{
-		moveCursor(0, cursor_y + 1);
+		setCursor(0, cursorY + 1);
 	}
 	else
 	{
-		raster->put(cursor_x, cursor_y, c);
-		moveCursor(cursor_x + 1, cursor_y);
+		raster->put(cursorX, cursorY, c, colorForeground, colorBackground);
+		setCursor(cursorX + 1, cursorY);
 	}
 }
 
@@ -405,17 +366,17 @@ g_key_info gui_screen_t::readInput()
 
 	for(;;)
 	{
-		g_atomic_lock(input_buffer_lock);
-		if(input_buffer.size() == 0)
+		g_atomic_lock(inputBufferLock);
+		if(inputBuffer.size() == 0)
 		{
-			g_atomic_unlock(input_buffer_lock);
-			g_atomic_lock(input_buffer_empty);
+			g_atomic_unlock(inputBufferLock);
+			g_atomic_lock(inputBufferEmpty);
 		}
 		else
 		{
-			result = input_buffer.front();
-			input_buffer.pop_front();
-			g_atomic_unlock(input_buffer_lock);
+			result = inputBuffer.front();
+			inputBuffer.pop_front();
+			g_atomic_unlock(inputBufferLock);
 			break;
 		}
 	}
@@ -423,94 +384,94 @@ g_key_info gui_screen_t::readInput()
 	return result;
 }
 
-void gui_screen_t::moveCursor(int x, int y)
+void gui_screen_t::setCursor(int x, int y)
 {
-	raster->dirty(cursor_x, cursor_y);
-	cursor_x = x;
-	cursor_y = y;
+	raster->dirty(cursorX, cursorY);
+	cursorX = x;
+	cursorY = y;
 
 	// Break line when cursor is at end of screen
-	g_rectangle canvas_bounds = canvas->getBounds();
-	canvas_bounds.width -= padding * 2;
-	canvas_bounds.height -= padding * 2;
+	g_rectangle bounds = canvasBounds;
+	bounds.width -= viewPadding * 2;
+	bounds.height -= viewPadding * 2;
 
-	if(cursor_x >= canvas_bounds.width / char_width)
+	if(cursorX >= bounds.width / charWidth)
 	{
-		cursor_x = 0;
-		cursor_y++;
+		cursorX = 0;
+		cursorY++;
 	}
-	if(cursor_x < 0)
+	if(cursorX < 0)
 	{
-		cursor_x = raster->getWidth() - 1;
-		cursor_y--;
+		cursorX = raster->getWidth() - 1;
+		cursorY--;
 	}
 
 	// Scroll screen if required
-	int yscroll = (cursor_y >= canvas_bounds.height / char_height);
+	int yscroll = (cursorY >= bounds.height / charHeight);
 	if(yscroll > 0)
 	{
 		raster->scrollBy(yscroll);
-		cursor_y -= yscroll;
+		cursorY -= yscroll;
 	}
 
-	raster->dirty(cursor_x, cursor_y);
+	raster->dirty(cursorX, cursorY);
 }
 
 int gui_screen_t::getCursorX()
 {
-	return cursor_x;
+	return cursorX;
 }
 
 int gui_screen_t::getCursorY()
 {
-	return cursor_y;
+	return cursorY;
 }
 
-void gui_screen_t::buffer_input(const g_key_info& info)
+void gui_screen_t::bufferInput(const g_key_info& info)
 {
-	g_atomic_lock(input_buffer_lock);
-	input_buffer.push_back(info);
-	last_input_time = g_millis();
-	g_atomic_unlock(input_buffer_empty);
-	g_atomic_unlock(input_buffer_lock);
+	g_atomic_lock(inputBufferLock);
+	inputBuffer.push_back(info);
+	lastInputTime = g_millis();
+	g_atomic_unlock(inputBufferEmpty);
+	g_atomic_unlock(inputBufferLock);
 }
 
 void gui_screen_t::flush()
 {
-	this->repaint();
+	repaint();
 }
 
 void gui_screen_t::repaint()
 {
-	g_atomic_unlock(paint_uptodate);
+	g_atomic_unlock(upToDate);
 }
 
-void gui_screen_t::set_focused(bool _focused)
+void gui_screen_t::setFocused(bool _focused)
 {
-	last_input_time = g_millis();
+	lastInputTime = g_millis();
 	focused = _focused;
 }
 
-bool gui_screen_t::update_visible_buffer_size()
+bool gui_screen_t::updateRasterSize()
 {
-	int newWidth = (this->canvasBounds.width - 2 * padding) / char_width;
-	int newHeight = (this->canvasBounds.height - 2 * padding) / char_height;
+	int newWidth = (canvasBounds.width - 2 * viewPadding) / charWidth;
+	int newHeight = (canvasBounds.height - 2 * viewPadding) / charHeight;
 
-	if(newWidth < char_width)
-		newWidth = char_width;
+	if(newWidth < charWidth)
+		newWidth = charWidth;
 
-	if(newHeight < char_height)
-		newHeight = char_height;
+	if(newHeight < charHeight)
+		newHeight = charHeight;
 
 	if(!raster->resizeTo(newWidth, newHeight))
 		return false;
 
 	// Ensure cursor is in bounds
-	if(cursor_x > newWidth)
-		cursor_x = newWidth - 1;
+	if(cursorX > newWidth)
+		cursorX = newWidth - 1;
 
-	if(cursor_y > newHeight)
-		cursor_y = newHeight - 1;
+	if(cursorY > newHeight)
+		cursorY = newHeight - 1;
 
 	return true;
 }
@@ -547,5 +508,5 @@ int gui_screen_t::getHeight()
 
 void gui_screen_t::setCanvasBounds(g_rectangle& bounds)
 {
-	this->canvasBounds = bounds;
+	canvasBounds = bounds;
 }

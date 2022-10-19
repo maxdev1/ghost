@@ -6,7 +6,9 @@
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/kernel/inc/**",
                 "${workspaceFolder}/libapi/inc/**",
-                "${workspaceFolder}/libc/inc/**"
+                "${workspaceFolder}/libc/inc/**",
+                "C:/Code/ghost-headers",
+                "C:/Code/ghost-headers/freetype2"
             ],
             "defines": [
                 "_DEBUG",

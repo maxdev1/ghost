@@ -18,41 +18,60 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __BUILD_CONFIG__
-#define __BUILD_CONFIG__
+#include <stdio.h>
+#include <string.h>
+#include <sstream>
 
-#include "shared/debug/debug_interface_mode.hpp"
-#include "shared/logger/logger_level.hpp"
+#define MAJOR	0
+#define MINOR	2
+#define PATCH	1
 
-#define STR_(x) #x
-#define STR(x) STR_(x)
+#include "list/list.hpp"
 
-#if !(defined(__i386__) || defined(__x86_64__))
-#error "Build architecture not recognized."
-#endif
+/**
+ *
+ */
+int main(int argc, char** argv) {
 
-// pretty boot
-#define G_PRETTY_BOOT true
-#define G_VIDEO_LOG_BOOT false
+	if (argc > 1) {
+		char* command = argv[1];
 
-// logging settings
-#define G_LOG_LEVEL G_LOG_LEVEL_INFO
+		if (strcmp(command, "list") == 0) {
+			return proc_list(argc, argv);
 
-// fine-grained debugging options
-#define G_DEBUG_WHOS_WAITING false
-#define G_DEBUG_MUTEXES false
-#define G_DEBUG_THREAD_DUMPING false
+		} else if (strcmp(command, "kill") == 0) {
+			if (argc > 2) {
+				std::stringstream conv;
+				conv << argv[2];
+				g_tid target;
+				if (conv >> target) {
+					g_kill_status status = g_kill(target);
+					if (status == G_KILL_STATUS_SUCCESSFUL) {
+						println("task %i successfully killed", target);
+					} else if (status == G_KILL_STATUS_NOT_FOUND) {
+						println("task %i does not exist", target);
+					} else {
+						println("failed to kill task %i with status %i", target, status);
+					}
+				} else {
+					fprintf(stderr, "Please supply a valid task id.\n");
+				}
+			}
 
-// mode for the debug interface
-#define G_DEBUG_INTERFACE_MODE G_DEBUG_INTERFACE_MODE_PLAIN_LOG
+		} else if (strcmp(command, "--help") == 0) {
+			println("proc, v%i.%i.%i", MAJOR, MINOR, PATCH);
+			println("Task management utility");
+			println("");
+			println("The following commands are available:");
+			println("");
+			println("\tlist\t\tlists information about the running tasks");
+			println("\tkill <id>\tkills the task with the given id");
+			println("");
 
-// version
-#define G_VERSION_MAJOR 0
-#define G_VERSION_MINOR 14
-#define G_VERSION_PATCH 1
-
-#define G_LOADER_VERSION_MAJOR 1
-#define G_LOADER_VERSION_MINOR 1
-#define G_LOADER_VERSION_PATCH 0
-
-#endif
+		} else {
+			fprintf(stderr, "unknown command: %s\n", command);
+		}
+	} else {
+		return proc_list(argc, argv);
+	}
+}

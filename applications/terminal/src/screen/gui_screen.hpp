@@ -36,9 +36,6 @@
 #include <libwindow/ui.hpp>
 #include <libwindow/window.hpp>
 
-/**
- * Used to cache information about the layout of a specific character.
- */
 struct char_layout_t
 {
 	cairo_glyph_t* glyph_buffer = nullptr;
@@ -47,15 +44,14 @@ struct char_layout_t
 	int cluster_count;
 };
 
-/**
- *
- */
+class canvas_resize_bounds_listener_t;
+class input_key_listener_t;
+class canvas_buffer_listener_t;
+class terminal_focus_listener_t;
+
 class gui_screen_t : public screen_t
 {
   private:
-	/**
-	 * UI related properties
-	 */
 	g_window* window;
 	g_canvas* canvas;
 
@@ -66,61 +62,49 @@ class gui_screen_t : public screen_t
 	g_dimension bufferSize;
 	cairo_t* existingContext = 0;
 
-	g_atom paint_uptodate = g_atomic_initialize();
-	bool cursorBlink = false;
+	std::list<g_key_info> inputBuffer;
+	g_atom inputBufferEmpty;
+	g_atom inputBufferLock;
+	void bufferInput(const g_key_info& info);
 
-	std::list<g_key_info> input_buffer;
-	g_atom input_buffer_empty;
-	g_atom input_buffer_lock;
-
+	g_atom upToDate = g_atomic_initialize();
 	bool focused = false;
-	uint64_t last_input_time = 0;
+	uint64_t lastInputTime = 0;
 
-	/**
-	 * Screen buffer
-	 */
 	raster_t* raster;
-	int cursor_x = 0;
-	int cursor_y = 0;
-	g_rectangle canvasBounds;
+	int viewPadding = 3;
+	bool cursorBlink = false;
+	int cursorX = 0;
+	int cursorY = 0;
 	int cursorWidth = 1;
 
-	int char_width = 8;
-	int char_height = 18;
-	uint8_t font_size = 14.5;
-	int padding = 3;
+	g_rectangle canvasBounds;
+	void setCanvasBounds(g_rectangle& bounds);
 
-	std::map<char, char_layout_t*> char_layout_cache;
+	int charWidth = 8;
+	int charHeight = 18;
+	uint8_t fontSize = 14.5;
+	std::map<char, char_layout_t*> charLayoutCache;
+	char_layout_t* getCharLayout(cairo_scaled_font_t* scaledFont, char c);
+	void printChar(cairo_t* cr, cairo_scaled_font_t* scaledFont, int x, int y, raster_entry_t& value, bool blinkOn);
 
-	/**
-	 * Prepares the canvas buffer for painting.
-	 *
-	 * @return the cairo instance to paint with
-	 */
 	cairo_t* getGraphics();
 
-	/**
-	 * Thread that is responsible for making the cursor
-	 * blink in specific intervals.
-	 *
-	 * @param screen
-	 * 		instance of the screen
-	 */
-	static void blink_cursor_entry(gui_screen_t* screen);
-	void blink_cursor();
+	static void blinkCursorEntry(gui_screen_t* screen);
+	void blinkCursor();
 
-	/**
-	 *
-	 */
-	static void paint_entry(gui_screen_t* screen);
+	static void paintEntry(gui_screen_t* screen);
 	void paint();
 
-	/**
-	 *
-	 */
-	char_layout_t* get_char_layout(cairo_scaled_font_t* scaled_face, char c);
+	void repaint();
+	void setFocused(bool focused);
 
-	void printGlyph(cairo_t* cr, cairo_scaled_font_t* scaled_face, int x, int y, uint8_t c, bool blink_on);
+	bool updateRasterSize();
+
+	friend class canvas_resize_bounds_listener_t;
+	friend class input_key_listener_t;
+	friend class canvas_buffer_listener_t;
+	friend class terminal_focus_listener_t;
 
   public:
 	/**
@@ -130,28 +114,70 @@ class gui_screen_t : public screen_t
 	 */
 	bool initialize();
 
-	g_key_info readInput();
-	void clean();
-	void writeChar(char c);
-	void moveCursor(int x, int y);
-	int getCursorX();
-	int getCursorY();
-	void backspace();
+	virtual g_key_info readInput();
+	virtual void clean();
+	virtual void backspace();
+	virtual void write(char c);
+	virtual void flush();
 
-	void buffer_input(const g_key_info& info);
-	void repaint();
-	void set_focused(bool focused);
+	virtual void setCursor(int x, int y);
+	virtual int getCursorX();
+	virtual int getCursorY();
+	virtual void setCursorVisible(bool visible);
 
-	bool update_visible_buffer_size();
+	virtual void setScrollAreaScreen();
+	virtual void setScrollArea(int start, int end);
+	virtual void scroll(int value);
+
 	virtual int getWidth();
 	virtual int getHeight();
+};
 
-	void setScrollAreaScreen();
-	void setScrollArea(int start, int end);
-	void scroll(int value);
+class canvas_resize_bounds_listener_t : public g_bounds_listener
+{
+  private:
+	gui_screen_t* screen;
 
-	void setCursorVisible(bool visible);
+  public:
+	canvas_resize_bounds_listener_t(gui_screen_t* screen) : screen(screen)
+	{
+	}
 
-	void setCanvasBounds(g_rectangle& bounds);
-	void flush();
+	virtual void handle_bounds_changed(g_rectangle bounds);
+};
+
+class input_key_listener_t : public g_key_listener
+{
+  private:
+	gui_screen_t* screen;
+
+  public:
+	input_key_listener_t(gui_screen_t* screen) : screen(screen)
+	{
+	}
+	virtual void handle_key_event(g_key_event& e);
+};
+
+class canvas_buffer_listener_t : public g_canvas_buffer_listener
+{
+  private:
+	gui_screen_t* screen;
+
+  public:
+	canvas_buffer_listener_t(gui_screen_t* screen) : screen(screen)
+	{
+	}
+	virtual void handle_buffer_changed();
+};
+
+class terminal_focus_listener_t : public g_focus_listener
+{
+  private:
+	gui_screen_t* screen;
+
+  public:
+	terminal_focus_listener_t(gui_screen_t* screen) : screen(screen)
+	{
+	}
+	virtual void handle_focus_changed(bool now_focused);
 };
