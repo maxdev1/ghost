@@ -23,10 +23,8 @@
 #include <ghost/kernquery.h>
 #include <ghost/user.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-/**
- *
- */
 int countTasks()
 {
 	g_kernquery_task_count_data out;
@@ -39,9 +37,6 @@ int countTasks()
 	return out.count;
 }
 
-/**
- *
- */
 bool getTaskIds(uint32_t initialBufSize, g_tid** out_ids, uint32_t* out_count)
 {
 
@@ -60,6 +55,20 @@ bool getTaskIds(uint32_t initialBufSize, g_tid** out_ids, uint32_t* out_count)
 	return true;
 }
 
+int procListCompareByParent(const void* a, const void* b)
+{
+	g_kernquery_task_get_data* dataA = ((g_kernquery_task_get_data*) a);
+	g_kernquery_task_get_data* dataB = ((g_kernquery_task_get_data*) b);
+	klog("comp %x %i and %x %i", dataA, dataA->parent, dataB, dataB->parent);
+
+	if(dataA->parent == dataB->parent)
+		return 0;
+	else if(dataA->parent < dataB->parent)
+		return -1;
+	else
+		return 1;
+}
+
 /**
  *
  */
@@ -70,35 +79,37 @@ int proc_list(int argc, char** argv)
 		return -1;
 
 	// get list of task ids
-	int initialBufSize = numTasks + 10;
 	g_tid* ids;
-	uint32_t tasksFound;
-	getTaskIds(initialBufSize, &ids, &tasksFound);
+	uint32_t taskCount;
+	if(!getTaskIds(numTasks + 16, &ids, &taskCount))
+		return -1;
 
 	// get detail information for each task
-	g_kernquery_task_get_data* infos = new g_kernquery_task_get_data[tasksFound];
-	for(uint32_t i = 0; i < tasksFound; i++)
+	g_kernquery_task_get_data* taskData = new g_kernquery_task_get_data[taskCount];
+	for(uint32_t i = 0; i < taskCount; i++)
 	{
-		infos[i].id = ids[i];
-		g_kernquery_status getstatus = g_kernquery(G_KERNQUERY_TASK_GET_BY_ID, (uint8_t*) &infos[i]);
+		taskData[i].id = ids[i];
+		g_kernquery_status getstatus = g_kernquery(G_KERNQUERY_TASK_GET_BY_ID, (uint8_t*) &taskData[i]);
 		if(getstatus != G_KERNQUERY_STATUS_SUCCESSFUL)
 		{
-			printf("failed to query the kernel for task %i (code %i)\n", ids[i], getstatus);
+			fprintf(stderr, "failed to query the kernel for task %i (code %i)\n", ids[i], getstatus);
 			continue;
 		}
 	}
 
+	qsort(taskData, taskCount, sizeof(g_kernquery_task_get_data), procListCompareByParent);
+
 	// print information
-	println("%5s %5s %6s %-20s %-38s", "TID", "PID", "MEM", "NAME", "PATH");
-	for(uint32_t pos = 0; pos < tasksFound; pos++)
+	println("%5s %5s %6s %-20s %-38s", "pid", "tid", "mem", "id", "path");
+	for(uint32_t pos = 0; pos < taskCount; pos++)
 	{
-		g_kernquery_task_get_data* entry = &infos[pos];
+		g_kernquery_task_get_data* entry = &taskData[pos];
 
 		// print processes and vm86
 		if(entry->id != -1 && (entry->type == G_TASK_TYPE_DEFAULT || entry->type == G_TASK_TYPE_VM86))
 		{
 			// print foot line
-			println("%5i %5i %6i %-20s %-38s", entry->id, entry->parent, entry->memory_used / 1024, entry->identifier, entry->source_path);
+			println("%5i %5i %6i %-20s %-38s", entry->parent, entry->id, entry->memory_used / 1024, entry->identifier, entry->source_path);
 		}
 	}
 

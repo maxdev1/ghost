@@ -18,47 +18,61 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <sstream>
 #include <stdio.h>
 #include <string.h>
-#include <sstream>
 
-#define MAJOR	0
-#define MINOR	2
-#define PATCH	1
+#define MAJOR 0
+#define MINOR 2
+#define PATCH 1
 
 #include "list/list.hpp"
 
 /**
  *
  */
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
 
-	if (argc > 1) {
+	if(argc > 1)
+	{
 		char* command = argv[1];
 
-		if (strcmp(command, "list") == 0) {
+		if(strcmp(command, "-l") == 0 || strcmp(command, "--list") == 0)
+		{
 			return proc_list(argc, argv);
-
-		} else if (strcmp(command, "kill") == 0) {
-			if (argc > 2) {
+		}
+		else if(strcmp(command, "-k") == 0 || strcmp(command, "--kill") == 0)
+		{
+			if(argc > 2)
+			{
 				std::stringstream conv;
 				conv << argv[2];
 				g_tid target;
-				if (conv >> target) {
+				if(conv >> target)
+				{
 					g_kill_status status = g_kill(target);
-					if (status == G_KILL_STATUS_SUCCESSFUL) {
+					if(status == G_KILL_STATUS_SUCCESSFUL)
+					{
 						println("task %i successfully killed", target);
-					} else if (status == G_KILL_STATUS_NOT_FOUND) {
+					}
+					else if(status == G_KILL_STATUS_NOT_FOUND)
+					{
 						println("task %i does not exist", target);
-					} else {
+					}
+					else
+					{
 						println("failed to kill task %i with status %i", target, status);
 					}
-				} else {
+				}
+				else
+				{
 					fprintf(stderr, "Please supply a valid task id.\n");
 				}
 			}
-
-		} else if (strcmp(command, "--help") == 0) {
+		}
+		else if(strcmp(command, "--help") == 0)
+		{
 			println("proc, v%i.%i.%i", MAJOR, MINOR, PATCH);
 			println("Task management utility");
 			println("");
@@ -67,11 +81,14 @@ int main(int argc, char** argv) {
 			println("\tlist\t\tlists information about the running tasks");
 			println("\tkill <id>\tkills the task with the given id");
 			println("");
-
-		} else {
+		}
+		else
+		{
 			fprintf(stderr, "unknown command: %s\n", command);
 		}
-	} else {
+	}
+	else
+	{
 		return proc_list(argc, argv);
 	}
 }
