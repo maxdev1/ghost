@@ -319,6 +319,11 @@ bool gshHandleBuiltin(program_call_t* call)
 		return true;
 	}
 
+	if(call->program == "exit")
+	{
+		exit(0);
+	}
+
 	return false;
 }
 
