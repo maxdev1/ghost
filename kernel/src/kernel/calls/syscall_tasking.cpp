@@ -155,8 +155,13 @@ void syscallKill(g_task* task, g_syscall_kill* data)
 	g_task* target = taskingGetById(data->pid);
 	if(target)
 	{
+		data->status = G_KILL_STATUS_SUCCESSFUL;
 		target->process->main->status = G_THREAD_STATUS_DEAD;
 		taskingYield();
+	}
+	else
+	{
+		data->status = G_KILL_STATUS_NOT_FOUND;
 	}
 }
 

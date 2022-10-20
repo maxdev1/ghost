@@ -80,6 +80,16 @@ struct g_fs_delegate
 	void (*waitForWrite)(g_tid task, g_fs_node* node);
 };
 
+struct g_filesystem_find_result
+{
+	g_fs_open_status status;
+	g_fs_node* file;
+
+	bool foundAllButLast;
+	g_fs_node* lastFoundNode;
+	const char* fileNameStart;
+};
+
 /**
  * Initializes the basic file system structures.
  */
@@ -115,9 +125,7 @@ bool filesystemFindExistingChild(g_fs_node* parent, const char* name, g_fs_node*
  * Searches for a node by a path relative to the parent node. Uses <filesystemFindChild>
  * to search for a child.
  */
-g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node** outChild,
-								bool* outFoundAllButLast = nullptr, g_fs_node** outLastFoundNode = nullptr,
-								const char** outFileNameStart = nullptr);
+g_filesystem_find_result filesystemFind(g_fs_node* parent, const char* path);
 
 /**
  * Retrieves a node by its virtual id.

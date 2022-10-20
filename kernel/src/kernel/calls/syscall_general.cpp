@@ -88,20 +88,19 @@ void syscallGetWorkingDirectory(g_task* task, g_syscall_fs_get_working_directory
 
 void syscallSetWorkingDirectory(g_task* task, g_syscall_fs_set_working_directory* data)
 {
-	g_fs_node* child;
-	g_fs_open_status openStatus = filesystemFind(0, data->path, &child);
-	if(openStatus == G_FS_OPEN_SUCCESSFUL)
+	auto findRes = filesystemFind(nullptr, data->path);
+	if(findRes.status == G_FS_OPEN_SUCCESSFUL)
 	{
-		if(child->type == G_FS_NODE_TYPE_FOLDER || child->type == G_FS_NODE_TYPE_MOUNTPOINT || child->type == G_FS_NODE_TYPE_ROOT)
+		if(findRes.file->type == G_FS_NODE_TYPE_FOLDER || findRes.file->type == G_FS_NODE_TYPE_MOUNTPOINT || findRes.file->type == G_FS_NODE_TYPE_ROOT)
 		{
 			if(task->process->environment.workingDirectory)
 			{
 				heapFree(task->process->environment.workingDirectory);
 			}
 
-			int length = filesystemGetAbsolutePathLength(child);
+			int length = filesystemGetAbsolutePathLength(findRes.file);
 			task->process->environment.workingDirectory = (char*) heapAllocate(length + 1);
-			filesystemGetAbsolutePath(child, task->process->environment.workingDirectory);
+			filesystemGetAbsolutePath(findRes.file, task->process->environment.workingDirectory);
 			data->result = G_SET_WORKING_DIRECTORY_SUCCESSFUL;
 		}
 		else
@@ -109,7 +108,7 @@ void syscallSetWorkingDirectory(g_task* task, g_syscall_fs_set_working_directory
 			data->result = G_SET_WORKING_DIRECTORY_NOT_A_FOLDER;
 		}
 	}
-	else if(openStatus == G_FS_OPEN_NOT_FOUND)
+	else if(findRes.status == G_FS_OPEN_NOT_FOUND)
 	{
 		data->result = G_SET_WORKING_DIRECTORY_NOT_FOUND;
 	}

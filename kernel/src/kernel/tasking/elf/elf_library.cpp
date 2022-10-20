@@ -84,17 +84,16 @@ g_fd elfLibraryOpen(g_task* caller, const char* name)
 	char* absolutePath = (char*) heapAllocate(stringLength(prefix) + stringLength(name) + 1);
 	stringConcat(prefix, name, absolutePath);
 
-	g_fs_node* file;
-	g_fs_open_status findStatus = filesystemFind(0, absolutePath, &file);
-	if(findStatus != G_FS_OPEN_SUCCESSFUL)
+	auto findRes = filesystemFind(0, absolutePath);
+	if(findRes.status != G_FS_OPEN_SUCCESSFUL)
 	{
-		logInfo("%! unable to resolve dependency %s (status %i)", "elf", absolutePath, findStatus);
+		logInfo("%! unable to resolve dependency %s (status %i)", "elf", absolutePath, findRes.status);
 		heapFree(absolutePath);
 		return G_FD_NONE;
 	}
 
 	g_fd fd;
-	g_fs_open_status openStatus = filesystemOpenNodeFd(file, G_FILE_FLAG_MODE_BINARY | G_FILE_FLAG_MODE_READ, caller->process->id, &fd);
+	g_fs_open_status openStatus = filesystemOpenNodeFd(findRes.file, G_FILE_FLAG_MODE_BINARY | G_FILE_FLAG_MODE_READ, caller->process->id, &fd);
 	if(openStatus != G_FS_OPEN_SUCCESSFUL)
 	{
 		logInfo("%! unable to open dependency %s", "elf", absolutePath);

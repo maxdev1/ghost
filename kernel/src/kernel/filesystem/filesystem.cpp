@@ -212,7 +212,7 @@ g_fs_open_status filesystemFindChild(g_fs_node* parent, const char* name, g_fs_n
 	return delegate->discover(parent, name, outChild);
 }
 
-g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node** outChild, bool* outFoundAllButLast, g_fs_node** outLastFoundParent, const char** outFileNameStart)
+g_filesystem_find_result filesystemFind(g_fs_node* parent, const char* path)
 {
 	if(parent == nullptr)
 		parent = filesystemRoot;
@@ -221,9 +221,9 @@ g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node**
 	g_fs_node* lastFoundParent = node;
 	g_fs_open_status status = G_FS_OPEN_SUCCESSFUL;
 
-	char* nameBuf = (char*) heapAllocate(sizeof(char) * (G_FILENAME_MAX + 1));
-	const char* nameStart = path;
-	const char* nameEnd = nameStart;
+	char* nameStart = (char*) path;
+	char* nameEnd = nameStart;
+
 	while(nameStart)
 	{
 		// Find where next name starts and ends
@@ -246,58 +246,59 @@ g_fs_open_status filesystemFind(g_fs_node* parent, const char* path, g_fs_node**
 			break;
 		}
 
-		// Copy name into temporary buffer
-		memoryCopy(nameBuf, nameStart, remaining);
-		nameBuf[remaining] = 0;
+		// Temporary modify our path buffer
+		char clobberedChar = nameStart[remaining];
+		nameStart[remaining] = 0;
 
 		// Find child with this name
 		lastFoundParent = node;
-		status = filesystemFindChild(node, nameBuf, &node);
+		status = filesystemFindChild(node, nameStart, &node);
+
+		// Unclobber
+		nameStart[remaining] = clobberedChar;
+
 		if(status != G_FS_OPEN_SUCCESSFUL)
 			break;
 
 		nameStart = nameEnd;
 	}
 
-	// Provide output values if requested
-	if(outFoundAllButLast)
-		*outFoundAllButLast = ((nameEnd - nameStart) > 0);
-	if(outLastFoundParent)
-		*outLastFoundParent = lastFoundParent;
-	if(outFileNameStart)
-		*outFileNameStart = nameStart;
-
-	heapFree(nameBuf);
-	*outChild = node;
-	return status;
+	return {
+		status : status,
+		file : node,
+		foundAllButLast : ((nameEnd - nameStart) > 0),
+		lastFoundNode : lastFoundParent,
+		fileNameStart : nameStart
+	};
 }
 
 g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task* task, g_fd* outFd)
 {
 	// Decide for relative path origin
-	g_fs_node* relative = nullptr;
+	g_fs_node* origin = nullptr;
 	if(path[0] != '/')
 	{
 		const char* cwd = task->process->environment.workingDirectory;
 		if(cwd == nullptr)
 			cwd = "/";
 
-		filesystemFind(0, cwd, &relative);
+		auto findCwdRes = filesystemFind(0, cwd);
+		if(findCwdRes.status == G_FS_OPEN_SUCCESSFUL)
+			origin = findCwdRes.file;
+		else
+			return findCwdRes.status;
 	}
-	if(!relative)
-		relative = filesystemGetRoot();
+
+	if(!origin)
+		origin = filesystemGetRoot();
 
 	// Try to find existing node
-	g_fs_node* file;
-	bool foundAllButLast;
-	g_fs_node* lastFoundParent;
-	const char* filenameStart;
-	g_fs_open_status status = filesystemFind(relative, path, &file, &foundAllButLast, &lastFoundParent, &filenameStart);
+	auto findRes = filesystemFind(origin, path);
 
 	// Handle different open cases
-	if(status == G_FS_OPEN_SUCCESSFUL)
+	if(findRes.status == G_FS_OPEN_SUCCESSFUL)
 	{
-		if(file->type == G_FS_NODE_TYPE_FOLDER)
+		if(findRes.file->type == G_FS_NODE_TYPE_FOLDER)
 		{
 			logInfo("%! tried to open folder", "fs");
 			return G_FS_OPEN_ERROR;
@@ -305,25 +306,25 @@ g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task
 
 		if(flags & G_FILE_FLAG_MODE_TRUNCATE)
 		{
-			if(filesystemTruncate(file) != G_FS_OPEN_SUCCESSFUL)
+			if(filesystemTruncate(findRes.file) != G_FS_OPEN_SUCCESSFUL)
 			{
-				logInfo("%! failed to truncate file %i", "fs", file->id);
+				logInfo("%! failed to truncate file %i", "fs", findRes.file->id);
 				return G_FS_OPEN_ERROR;
 			}
 		}
 	}
-	else if(status == G_FS_OPEN_NOT_FOUND)
+	else if(findRes.status == G_FS_OPEN_NOT_FOUND)
 	{
 		if(flags & G_FILE_FLAG_MODE_CREATE)
 		{
-			if(!foundAllButLast)
+			if(!findRes.foundAllButLast)
 			{
-				logInfo("%! failed to create file '%s' in parent %i because folders do not exist", "fs", path, relative->id);
+				logInfo("%! failed to create file '%s' in parent %i because folders do not exist", "fs", path, origin->id);
 				return G_FS_OPEN_ERROR;
 			}
-			else if(filesystemCreateFile(lastFoundParent, filenameStart, &file) != G_FS_OPEN_SUCCESSFUL)
+			else if(filesystemCreateFile(findRes.lastFoundNode, findRes.fileNameStart, &findRes.file) != G_FS_OPEN_SUCCESSFUL)
 			{
-				logInfo("%! failed to create file '%s' in parent %i", "fs", path, relative->id);
+				logInfo("%! failed to create file '%s' in parent %i", "fs", path, origin->id);
 				return G_FS_OPEN_ERROR;
 			}
 		}
@@ -334,11 +335,11 @@ g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task
 	}
 	else
 	{
-		return status;
+		return findRes.status;
 	}
 
 	// Actually open the file
-	return filesystemOpenNodeFd(file, flags, task->process->id, outFd);
+	return filesystemOpenNodeFd(findRes.file, flags, task->process->id, outFd);
 }
 
 g_fs_open_status filesystemOpenNode(g_fs_node* file, g_file_flag_mode flags, g_pid process, g_file_descriptor** outDescriptor, g_fd optionalTargetFd)

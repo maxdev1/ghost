@@ -179,14 +179,14 @@ void syscallOpenIrqDevice(g_task* task, g_syscall_open_irq_device* data)
 
 void syscallFsOpenDirectory(g_task* task, g_syscall_fs_open_directory* data)
 {
-	g_fs_node* directory;
-	if(filesystemFind(nullptr, data->path, &directory) == G_FS_OPEN_SUCCESSFUL)
+	auto findRes = filesystemFind(nullptr, data->path);
+	if(findRes.status == G_FS_OPEN_SUCCESSFUL)
 	{
-		data->status = filesystemOpenDirectory(directory);
+		data->status = filesystemOpenDirectory(findRes.file);
 
 		if(data->status == G_FS_OPEN_DIRECTORY_SUCCESSFUL)
 		{
-			data->iterator->node_id = directory->id;
+			data->iterator->node_id = findRes.file->id;
 			data->iterator->position = 0;
 		}
 	}
