@@ -18,62 +18,48 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "stdlib.h"
-#include "stdio.h"
 #include "stdint.h"
+#include "stdlib.h"
 
-/**
- *
- */
-static void swap(uint8_t* x, uint8_t* y, size_t element_size) {
+static inline void swapElement(uint8_t* array, int a, int b, size_t size)
+{
+	if(a == b)
+		return;
 
-	char* a = (char*) x;
-	char* b = (char*) y;
-	char c;
-	while (element_size--) {
-		c = *a;
-		*a++ = *b;
-		*b++ = c;
+	uint8_t* va = array + a * size;
+	uint8_t* vb = array + b * size;
+	uint8_t temp;
+	for(size_t i = 0; i < size; i++)
+	{
+		temp = va[i];
+		va[i] = vb[i];
+		vb[i] = temp;
 	}
 }
 
-/**
- *
- */
-static void sort(uint8_t* arr, size_t el_sz,
-		int (*comparator)(const void*, const void*), int begin, int end) {
+static void qsortr(uint8_t* array, size_t size, int (*comparator)(const void*, const void*), int low, int high)
+{
+	if(low >= high)
+		return;
 
-	if (end > begin) {
-		uint8_t* pivot = arr + begin;
+	int p = high;
+	int g = (low - 1);
 
-		int loff = begin + el_sz;
-		int roff = end;
-
-		while (loff < roff) {
-			if (comparator(arr + loff, pivot) <= 0) {
-				loff += el_sz;
-
-			} else if (comparator(arr + roff, pivot) > 0) {
-				roff -= el_sz;
-
-			} else if (loff < roff) {
-				swap(arr + loff, arr + roff, el_sz);
-			}
+	for(int s = low; s < high; s++)
+	{
+		if(comparator(array + s * size, array + p * size) <= 0)
+		{
+			++g;
+			swapElement(array, g, s, size);
 		}
-
-		loff -= el_sz;
-
-		swap(arr + begin, arr + loff, el_sz);
-		sort(arr, el_sz, comparator, begin, loff);
-		sort(arr, el_sz, comparator, roff, end);
 	}
+
+	swapElement(array, g + 1, high, size);
+	qsortr(array, size, comparator, low, g);
+	qsortr(array, size, comparator, g + 1, high);
 }
 
-/**
- *
- */
-void qsort(void* array, size_t num_elements, size_t element_size,
-		int (*comparator)(const void*, const void*)) {
-	sort((uint8_t*) array, element_size, comparator, 0,
-			num_elements * element_size);
+void qsort(void* array, size_t elements, size_t size, int (*comparator)(const void*, const void*))
+{
+	qsortr((uint8_t*) array, size, comparator, 0, elements - 1);
 }
