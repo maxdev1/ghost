@@ -26,42 +26,42 @@
 
 g_graphics::g_graphics(uint16_t width, uint16_t height) : width(width), height(height)
 {
-    resize(width, height);
+	resize(width, height);
 }
 
-void g_graphics::resize(int newWidth, int newHeight, bool averaged)
+void g_graphics::resize(int newWidth, int newHeight, bool averaged, bool force)
 {
-    if(newWidth <= 0 || newHeight <= 0)
-        return;
+	if(newWidth <= 0 || newHeight <= 0)
+		return;
 
-    if(averaged)
-    {
-        newWidth = newWidth + (averageFactor - newWidth % averageFactor);
-        newHeight = newHeight + (averageFactor - newHeight % averageFactor);
-    }
+	if(averaged)
+	{
+		newWidth = newWidth + (averageFactor - newWidth % averageFactor);
+		newHeight = newHeight + (averageFactor - newHeight % averageFactor);
+	}
 
-    // TODO: Like this, buffers never downscale. Check if we want this:
-    if(newWidth <= width && newHeight <= height)
-        return;
+	// TODO: Like this, buffers never downscale. Check if we want this:
+	if(newWidth <= width && newHeight <= height && !force)
+		return;
 
-    if(surface)
-        cairo_surface_destroy(surface);
-    if(context)
-        cairo_destroy(context);
+	if(surface)
+		cairo_surface_destroy(surface);
+	if(context)
+		cairo_destroy(context);
 
-    width = newWidth;
-    height = newHeight;
-    surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
-    context = cairo_create(surface);
+	width = newWidth;
+	height = newHeight;
+	surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
+	context = cairo_create(surface);
 }
 
 void g_graphics::blitTo(g_graphics* graphics, g_rectangle absoluteClip, g_point position)
 {
-    auto cr = graphics->context;
-    cairo_save(cr);
-    cairo_set_source_surface(cr, this->surface, position.x, position.y);
-    cairo_rectangle(cr, absoluteClip.x, absoluteClip.y, absoluteClip.width, absoluteClip.height);
-    cairo_clip(cr);
-    cairo_paint(cr);
-    cairo_restore(cr);
+	auto cr = graphics->context;
+	cairo_save(cr);
+	cairo_set_source_surface(cr, this->surface, position.x, position.y);
+	cairo_rectangle(cr, absoluteClip.x, absoluteClip.y, absoluteClip.width, absoluteClip.height);
+	cairo_clip(cr);
+	cairo_paint(cr);
+	cairo_restore(cr);
 }

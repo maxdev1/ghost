@@ -30,51 +30,51 @@
 class g_graphics
 {
   private:
-    int width;
-    int height;
-    cairo_t* context = 0;
-    cairo_surface_t* surface = 0;
-    int averageFactor = 10;
+	int width;
+	int height;
+	cairo_t* context = 0;
+	cairo_surface_t* surface = 0;
+	int averageFactor = 10;
 
   public:
-    /**
-     * Creates a graphics object. This is a class that holds a surface.
-     * If an <code>externalBuffer</code> is provided, no internal buffer will be
-     * automatically created.
-     *
-     * @param width of the externalBuffer
-     * @param height of the externalBuffer
-     */
-    g_graphics(uint16_t width = 0, uint16_t height = 0);
+	/**
+	 * Creates a graphics object. This is a class that holds a surface.
+	 * If an <code>externalBuffer</code> is provided, no internal buffer will be
+	 * automatically created.
+	 *
+	 * @param width of the externalBuffer
+	 * @param height of the externalBuffer
+	 */
+	g_graphics(uint16_t width = 0, uint16_t height = 0);
 
-    void resize(int width, int height, bool averaged = true);
+	void resize(int width, int height, bool averaged = true, bool force = false);
 
-    void setAverageFactor(int factor)
-    {
-        this->averageFactor = factor;
-    }
+	void setAverageFactor(int factor)
+	{
+		this->averageFactor = factor;
+	}
 
-    cairo_t* getContext()
-    {
-        return context;
-    }
+	cairo_t* getContext()
+	{
+		return context;
+	}
 
-    cairo_surface_t* getSurface()
-    {
-        return surface;
-    }
+	cairo_surface_t* getSurface()
+	{
+		return surface;
+	}
 
-    int getWidth()
-    {
-        return width;
-    }
+	int getWidth()
+	{
+		return width;
+	}
 
-    int getHeight()
-    {
-        return height;
-    }
+	int getHeight()
+	{
+		return height;
+	}
 
-    void blitTo(g_graphics* graphics, g_rectangle absoluteClip, g_point position);
+	void blitTo(g_graphics* graphics, g_rectangle absoluteClip, g_point position);
 };
 
 #endif
