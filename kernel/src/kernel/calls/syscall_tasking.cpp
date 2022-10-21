@@ -23,6 +23,7 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/atoms.hpp"
 #include "kernel/tasking/clock.hpp"
+#include "kernel/utils/wait_queue.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/utils/string.hpp"
 
@@ -157,6 +158,7 @@ void syscallKill(g_task* task, g_syscall_kill* data)
 	{
 		data->status = G_KILL_STATUS_SUCCESSFUL;
 		target->process->main->status = G_THREAD_STATUS_DEAD;
+		waitQueueWake(&target->waitersJoin);
 		taskingYield();
 	}
 	else
