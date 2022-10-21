@@ -457,6 +457,7 @@ void gshProcessExpression(pipe_expression_t* pipeexpr)
 int main(int argc, char* argv[])
 {
 	cwdbuf = new char[G_PATH_MAX];
+	g_terminal::clear();
 	g_terminal::setCursor(g_term_cursor_position(0, 0));
 
 	while(true)
