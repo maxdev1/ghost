@@ -36,7 +36,8 @@
 #define __G_HAS_STDC11	(defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L)
 
 // not implemented warning
-#define __G_NOT_IMPLEMENTED(name)		g_log("'" #name "' is not implemented"); g_exit(0);
+#define __G_NOT_IMPLEMENTED_WARN(name)		g_log("'" #name "' is not implemented");
+#define __G_NOT_IMPLEMENTED(name)		    __G_NOT_IMPLEMENTED_WARN(name) g_exit(0);
 
 // debug tracing
 #define __G_DEBUG_TRACE_ENABLED			0

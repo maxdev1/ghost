@@ -18,15 +18,50 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost.h"
-#include "stdint.h"
-#include "sys/time.h"
+#include "malloc.h"
+#include "stdio.h"
+#include "stdio_internal.h"
 
 /**
  *
  */
-int gettimeofday(struct timeval* tp, void* tzp)
+uint8_t* ftostr(const char* filename)
 {
-	__G_NOT_IMPLEMENTED_WARN(gettimeofday)
-	return 0;
+	FILE* file = fopen(filename, "r");
+	if(!file)
+		return NULL;
+
+	fseek(file, 0L, SEEK_END);
+	off_t total = ftell(file);
+	if(total < 0)
+	{
+		fclose(file);
+		return NULL;
+	}
+
+	fseek(file, 0L, SEEK_SET);
+
+	uint8_t* buf = malloc(total + 1);
+	if(!buf)
+	{
+		fclose(file);
+		return NULL;
+	}
+
+	off_t done = 0;
+	off_t read;
+	while((read = fread(&buf[done], 1, total - done, file)) > 0)
+	{
+		done += read;
+	}
+	fclose(file);
+
+	if(done != total)
+	{
+		free(buf);
+		return NULL;
+	}
+
+	buf[total] = 0;
+	return buf;
 }

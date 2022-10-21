@@ -650,6 +650,16 @@ FILE* popen(const char* command, const char* mode);
  */
 int pclose(FILE* stream);
 
+/**
+ * Reads a file to a null-terminated memory buffer. The buffer must be deallocated using <free>.
+ *
+ * @param filename
+ * 		name of the file to open
+ * @return
+ * 		pointer to a buffer containing the file contents
+ */
+uint8_t* ftostr(const char* filename);
+
 __END_C
 
 #endif
