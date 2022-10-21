@@ -25,7 +25,7 @@ popd() {
 }
 
 build_target() {
-	$SH build.sh $@ >build.log 2>&1
+	$SH build.sh $@ >ghost-build.log 2>&1
 }
 
 print_status() {
@@ -34,7 +34,7 @@ print_status() {
 	else
 		printf "\e[1;31m\u274c\e[0m log: "
 		printf "\n\n"
-		tail -n 100 build.log | awk '$0="   "$0'
+		tail -n 100 ghost-build.log | awk '$0="   "$0'
 		printf "\n"
 	fi
 }
@@ -109,7 +109,7 @@ build_app() {
 		printf $name_back
 		printf "\e[1;31m$name\e[0m \u274c log: "
 		printf "\n\n"
-		tail -n 100 build.log | awk '$0="   "$0'
+		tail -n 100 ghost-build.log | awk '$0="   "$0'
 		printf "\n"
 	fi
 	((apps_total = apps_total + 1))
