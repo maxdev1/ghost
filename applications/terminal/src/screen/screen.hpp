@@ -72,6 +72,8 @@ class screen_t
 	{
 	}
 
+	virtual bool initialize() = 0;
+
 	virtual g_key_info readInput() = 0;
 	virtual void clean() = 0;
 	virtual void backspace() = 0;

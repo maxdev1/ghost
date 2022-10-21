@@ -18,50 +18,42 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __TERMINAL__
-#define __TERMINAL__
+#ifndef __TERMINAL_SCREEN_HEADLESSSCREEN__
+#define __TERMINAL_SCREEN_HEADLESSSCREEN__
 
-#include "screen/screen.hpp"
-#include "stream_status.hpp"
+#include "screen.hpp"
 
-class terminal_t;
-
-/**
- * Information struct used to pass information to the output thread.
- */
-struct output_routine_startinfo_t
+class headless_screen_t : public screen_t
 {
-	bool isStderr;
+  private:
+	uint32_t offset;
+
+	g_atom lock;
+	void normalize();
+	void updateCursor();
+
+  public:
+	headless_screen_t();
+
+	virtual bool initialize();
+
+	virtual g_key_info readInput();
+	virtual void clean();
+	virtual void backspace();
+	virtual void write(char c);
+	virtual void flush() {}
+
+	virtual void setCursor(int x, int y);
+	virtual int getCursorX();
+	virtual int getCursorY();
+	virtual void setCursorVisible(bool visible) {}
+
+	virtual void setScrollAreaScreen() {}
+	virtual void setScrollArea(int start, int end) {}
+	virtual void scroll(int value) {}
+
+	virtual int getWidth();
+	virtual int getHeight();
 };
-
-/**
- * Initializes the terminals screen. If successful, the terminals screen property
- * is set to the new screen, otherwise it remains null.
- */
-void terminalInitializeScreen(bool headless);
-
-/**
- * Starts the shell process, mapping the in/out/error pipes to this thread.
- */
-bool terminalStartShell();
-
-void terminalWriteToShell(std::string line);
-void terminalWriteTermkeyToShell(int termkey);
-
-/**
- * Thread that continuously reads the keyboard input, processes and redirects
- * it to the shell.
- */
-void terminalInputRoutine();
-
-/**
- * Thread that reads the output of the executing program and processes it.
- */
-void terminalOutputRoutine(output_routine_startinfo_t* info);
-
-void terminalProcessOutput(stream_control_status_t* status, bool error_stream, char c);
-void terminalProcessSequenceVt100(stream_control_status_t* status);
-static screen_color_t terminalColorFromVt100(int color);
-void terminalProcessSequenceGhostterm(stream_control_status_t* status);
 
 #endif

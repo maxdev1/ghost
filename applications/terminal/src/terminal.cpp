@@ -22,6 +22,7 @@
 #include <unistd.h>
 
 #include "screen/gui_screen.hpp"
+#include "screen/headless_screen.hpp"
 #include "terminal.hpp"
 
 static std::string defaultKeyboardLayout = "de-DE";
@@ -40,7 +41,7 @@ static bool inputEcho = true;
 
 int main(int argc, char* argv[])
 {
-	terminalInitializeScreen();
+	terminalInitializeScreen(argc == 2 && strcmp(argv[1], "--headless") == 0);
 	if(!screen)
 	{
 		klog("terminal: failed to initialize screen");
@@ -69,17 +70,20 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
-void terminalInitializeScreen()
+void terminalInitializeScreen(bool headless)
 {
-	gui_screen_t* guiScreen = new gui_screen_t();
-	if(guiScreen->initialize())
+	if(headless)
 	{
-		screen = guiScreen;
+		screen = new headless_screen_t();
+		klog("headless terminal");
 	}
 	else
 	{
-		fprintf(stderr, "terminal: failed to initialize the graphical screen");
+		screen = new gui_screen_t();
 	}
+
+	if(!screen->initialize())
+		fprintf(stderr, "terminal: failed to initialize the graphical screen");
 }
 
 bool terminalStartShell()

@@ -18,6 +18,9 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#ifndef __TERMINAL_SCREEN_GUISCREEN__
+#define __TERMINAL_SCREEN_GUISCREEN__
+
 #include "raster.hpp"
 #include "screen.hpp"
 
@@ -112,7 +115,7 @@ class gui_screen_t : public screen_t
 	 *
 	 * @return whether initialization was successful
 	 */
-	bool initialize();
+	virtual bool initialize();
 
 	virtual g_key_info readInput();
 	virtual void clean();
@@ -181,3 +184,5 @@ class terminal_focus_listener_t : public g_focus_listener
 	}
 	virtual void handle_focus_changed(bool now_focused);
 };
+
+#endif
