@@ -30,6 +30,17 @@ void addressRangePoolInitialize(g_address_range_pool* pool)
 	mutexInitialize(&pool->lock);
 }
 
+void addressRangePoolDestroy(g_address_range_pool* pool)
+{
+	auto entry = pool->first;
+	while(entry)
+	{
+		auto next = entry->next;
+		heapFree(entry);
+		entry = next;
+	}
+}
+
 void addressRangePoolAddRange(g_address_range_pool* pool, g_address start, g_address end)
 {
 	mutexAcquire(&pool->lock);

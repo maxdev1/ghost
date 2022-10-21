@@ -39,8 +39,9 @@ struct g_hashmap
 
 	g_hashmap_entry<K, V>** buckets;
 	int bucketCount;
+	int itemCount;
 
-	K (*keyCopy)
+	K(*keyCopy)
 	(K k);
 	int (*keyHash)(K k);
 	void (*keyFree)(K k);
@@ -50,9 +51,9 @@ struct g_hashmap
 template <typename K, typename V>
 g_hashmap<K, V>* hashmapInternalCreate(int bucketCount)
 {
-
 	g_hashmap<K, V>* map = (g_hashmap<K, V>*) heapAllocate(sizeof(g_hashmap<K, V>));
 	map->bucketCount = bucketCount;
+	map->itemCount = 0;
 	map->buckets = (g_hashmap_entry<K, V>**) heapAllocate(sizeof(g_hashmap_entry<K, V>*) * bucketCount);
 
 	mutexInitialize(&map->lock);
@@ -62,6 +63,22 @@ g_hashmap<K, V>* hashmapInternalCreate(int bucketCount)
 		map->buckets[i] = 0;
 	}
 	return map;
+}
+
+template <typename K, typename V>
+void hashmapDestroy(g_hashmap<K, V>* map)
+{
+	for(int i = 0; i < map->bucketCount; i++)
+	{
+		auto entry = map->buckets[i];
+		while(entry)
+		{
+			auto next = entry->next;
+			heapFree(entry);
+			entry = next;
+		}
+	}
+	heapFree(map);
 }
 
 template <typename K, typename V>
@@ -83,6 +100,8 @@ void hashmapPut(g_hashmap<K, V>* map, K key, V value)
 		newEntry->value = value;
 		newEntry->next = map->buckets[bucket];
 		map->buckets[bucket] = newEntry;
+
+		map->itemCount++;
 	}
 
 	mutexRelease(&map->lock);
@@ -132,28 +151,12 @@ V hashmapGet(g_hashmap<K, V>* map, K key, V def)
 template <typename K, typename V>
 uint32_t hashmapSize(g_hashmap<K, V>* map)
 {
-	uint32_t count = 0;
-	mutexAcquire(&map->lock);
-
-	// TODO this is slow, keep a count on put/remove
-	for(int i = 0; i < map->bucketCount; i++)
-	{
-		auto entry = map->buckets[i];
-		while(entry)
-		{
-			++count;
-			entry = entry->next;
-		}
-	}
-
-	mutexRelease(&map->lock);
-	return count;
+	return map->itemCount;
 }
 
 template <typename K, typename V>
 void hashmapRemove(g_hashmap<K, V>* map, K key)
 {
-
 	mutexAcquire(&map->lock);
 
 	int bucket = map->keyHash(key) % map->bucketCount;
@@ -173,6 +176,9 @@ void hashmapRemove(g_hashmap<K, V>* map, K key)
 			}
 			map->keyFree(entry->key);
 			heapFree(entry);
+
+			map->itemCount--;
+
 			break;
 		}
 		previous = entry;
@@ -190,6 +196,10 @@ struct g_hashmap_iterator
 	g_hashmap<K, V>* map;
 };
 
+/**
+ * Starts an iterator on the hashmap. This acquires the lock on the map, so it is necessary
+ * to call <hashmapIteratorEnd> to unlock the map again, once iteration is finished.
+ */
 template <typename K, typename V>
 g_hashmap_iterator<K, V> hashmapIteratorStart(g_hashmap<K, V>* map)
 {

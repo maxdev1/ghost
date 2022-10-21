@@ -47,7 +47,7 @@ static g_tid taskingIdNext = 0;
 
 g_hashmap<g_tid, g_task*>* taskGlobalMap;
 
-void _taskingInitializeTask(g_task* task, g_process* process, g_security_level level);
+void taskingInitializeTask(g_task* task, g_process* process, g_security_level level);
 
 g_tasking_local* taskingGetLocal()
 {
@@ -100,6 +100,14 @@ void taskingYield()
 	asm volatile("int $0x81" ::
 					 : "cc", "memory");
 	task->state = previousState;
+}
+
+void taskingIdleThread()
+{
+	for(;;)
+	{
+		asm volatile("hlt");
+	}
 }
 
 void taskingExit()
@@ -305,6 +313,8 @@ void taskingSchedule()
 
 g_process* taskingCreateProcess()
 {
+	// logInfo("heap used before process creation: %i", heapGetUsedAmount());
+
 	g_process* process = (g_process*) heapAllocate(sizeof(g_process));
 	process->id = taskingGetNextId();
 	process->main = 0;
@@ -333,10 +343,28 @@ g_process* taskingCreateProcess()
 	return process;
 }
 
+void taskingDestroyProcess(g_process* process)
+{
+	if(process->object)
+		elfObjectDestroy(process->object);
+
+	filesystemProcessRemove(process->id);
+
+	taskingMemoryDestroyPageDirectory(process->pageDirectory);
+
+	addressRangePoolDestroy(process->virtualRangePool);
+	heapFree(process->virtualRangePool);
+
+	heapFree(process);
+
+	// TODO there is still some heap wasting
+	// logInfo("heap used after process destruction: %i", heapGetUsedAmount());
+}
+
 g_task* taskingCreateTask(g_virtual_address eip, g_process* process, g_security_level level)
 {
 	g_task* task = (g_task*) heapAllocateClear(sizeof(g_task));
-	_taskingInitializeTask(task, process, level);
+	taskingInitializeTask(task, process, level);
 	task->type = G_TASK_TYPE_DEFAULT;
 
 	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(task->process->pageDirectory);
@@ -349,13 +377,14 @@ g_task* taskingCreateTask(g_virtual_address eip, g_process* process, g_security_
 
 	taskingProcessAddToTaskList(process, task);
 	hashmapPut(taskGlobalMap, task->id, task);
+
 	return task;
 }
 
 g_task* taskingCreateTaskVm86(g_process* process, uint32_t intr, g_vm86_registers in, g_vm86_registers* out)
 {
 	g_task* task = (g_task*) heapAllocateClear(sizeof(g_task));
-	_taskingInitializeTask(task, process, G_SECURITY_LEVEL_KERNEL);
+	taskingInitializeTask(task, process, G_SECURITY_LEVEL_KERNEL);
 	task->type = G_TASK_TYPE_VM86;
 
 	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(task->process->pageDirectory);
@@ -373,28 +402,7 @@ g_task* taskingCreateTaskVm86(g_process* process, uint32_t intr, g_vm86_register
 	return task;
 }
 
-void _taskingInitializeTask(g_task* task, g_process* process, g_security_level level)
-{
-	if(process->main == 0)
-		task->id = process->id;
-	else
-		task->id = taskingGetNextId();
-	task->process = process;
-	task->securityLevel = level;
-	task->status = G_THREAD_STATUS_RUNNING;
-	task->active = false;
-	task->waitersJoin = nullptr;
-}
-
-void taskingIdleThread()
-{
-	for(;;)
-	{
-		asm volatile("hlt");
-	}
-}
-
-void taskingRemoveThread(g_task* task)
+void taskingDestroyTask(g_task* task)
 {
 	if(task->status != G_THREAD_STATUS_DEAD)
 		panic("%! tried to remove a task %i that is not dead", "tasking", task->id);
@@ -417,7 +425,7 @@ void taskingRemoveThread(g_task* task)
 
 	// Remove or kill process if necessary
 	if(task->process->tasks == 0)
-		taskingProcessRemove(task->process);
+		taskingDestroyProcess(task->process);
 	else if(task->process->main == task)
 		taskingProcessKillAllTasks(task->process->id);
 
@@ -426,6 +434,19 @@ void taskingRemoveThread(g_task* task)
 	if(task->vm86Data)
 		heapFree(task->vm86Data);
 	heapFree(task);
+}
+
+void taskingInitializeTask(g_task* task, g_process* process, g_security_level level)
+{
+	if(process->main == 0)
+		task->id = process->id;
+	else
+		task->id = taskingGetNextId();
+	task->process = process;
+	task->securityLevel = level;
+	task->status = G_THREAD_STATUS_RUNNING;
+	task->active = false;
+	task->waitersJoin = nullptr;
 }
 
 void taskingProcessKillAllTasks(g_pid pid)
@@ -447,14 +468,6 @@ void taskingProcessKillAllTasks(g_pid pid)
 	}
 
 	mutexRelease(&task->process->lock);
-}
-
-void taskingProcessRemove(g_process* process)
-{
-	filesystemProcessRemove(process->id);
-	taskingMemoryDestroyPageDirectory(process->pageDirectory);
-	heapFree(process->virtualRangePool);
-	heapFree(process);
 }
 
 g_physical_address taskingTemporarySwitchToSpace(g_physical_address pageDirectory)

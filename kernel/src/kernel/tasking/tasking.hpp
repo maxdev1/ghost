@@ -140,12 +140,12 @@ g_task* taskingCreateTaskVm86(g_process* process, uint32_t intr, g_vm86_register
 /**
  * Removes a thread. Cleaning up all allocated data where possible.
  */
-void taskingRemoveThread(g_task* task);
+void taskingDestroyTask(g_task* task);
 
 /**
  * Removes a process. Cleaning up all allocated data where possible.
  */
-void taskingProcessRemove(g_process* process);
+void taskingDestroyProcess(g_process* process);
 
 /**
  * Kills all tasks of a process.

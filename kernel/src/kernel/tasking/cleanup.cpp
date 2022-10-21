@@ -60,7 +60,7 @@ void taskingCleanupThread()
 		while(deadList)
 		{
 			g_schedule_entry* next = deadList->next;
-			taskingRemoveThread(deadList->task);
+			taskingDestroyTask(deadList->task);
 			heapFree(deadList);
 			deadList = next;
 		}

@@ -27,8 +27,8 @@
 #include "kernel/tasking/tasking.hpp"
 #include "kernel/utils/hashmap.hpp"
 #include "kernel/utils/hashmap_string.hpp"
-#include "shared/utils/string.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/utils/string.hpp"
 
 /**
  * ELF loader has detailed logging that can be enabled by hand
@@ -50,12 +50,14 @@
  * Dependency structure.
  */
 struct g_elf_object;
-struct g_elf_dependency {
+struct g_elf_dependency
+{
 	char* name;
 	g_elf_dependency* next;
 };
 
-struct g_elf_symbol_info {
+struct g_elf_symbol_info
+{
 	g_elf_object* object;
 	g_virtual_address absolute;
 	g_virtual_address value;
@@ -64,7 +66,8 @@ struct g_elf_symbol_info {
 /**
  * Structure of an ELF32 object in memory.
  */
-struct g_elf_object {
+struct g_elf_object
+{
 	g_elf_object* parent;
 	char* name;
 	bool executable;
@@ -73,8 +76,8 @@ struct g_elf_object {
 	Elf32_Ehdr header;
 	g_elf_dependency* dependencies;
 
-    g_virtual_address startAddress;
-    g_virtual_address endAddress;
+	g_virtual_address startAddress;
+	g_virtual_address endAddress;
 	g_virtual_address baseAddress;
 
 	struct
@@ -122,10 +125,10 @@ struct g_elf_object {
 
 /**
  * Loads an ELF binary and creates a process for it.
- * 
+ *
  * @param caller
  * 		task starting this executable
- * @param securityLevel	
+ * @param securityLevel
  * 		security level to apply
  * @param outProcess
  * 		out parameter for created process
@@ -134,12 +137,12 @@ struct g_elf_object {
  * @return the spawn status
  */
 g_spawn_status elfLoadExecutable(g_task* caller, g_fd file, g_security_level securityLevel,
-	g_process** outProcess = 0, g_spawn_validation_details* outDetails = 0);
+								 g_process** outProcess = 0, g_spawn_validation_details* outDetails = 0);
 
 /**
  * When an executable is loaded, a user process information structure must be created in the process
  * address space.
- * 
+ *
  * @param process
  * 		target process
  * @param executableObject
@@ -147,11 +150,11 @@ g_spawn_status elfLoadExecutable(g_task* caller, g_fd file, g_security_level sec
  * @return address of the created structure
  */
 g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* executableObject,
-	g_virtual_address executableImageEnd, g_security_level securityLevel);
+										   g_virtual_address executableImageEnd, g_security_level securityLevel);
 
 /**
  * Loads a PT_LOAD segment to memory, must be called while within the target process address space.
- * 
+ *
  * @param caller
  * 		calling task
  * @param file
@@ -165,11 +168,11 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* exe
  * @return status of segment loading
  */
 g_spawn_status elfLoadLoadSegment(g_task* caller, g_fd file, Elf32_Phdr* phdr,
-	g_virtual_address baseAddress, g_elf_object* object);
+								  g_virtual_address baseAddress, g_elf_object* object);
 
 /**
  * Reads and validates an ELF header from a file.
- * 
+ *
  * @param caller
  * 		calling task
  * @param file
@@ -184,7 +187,7 @@ g_spawn_validation_details elfReadAndValidateHeader(g_task* caller, g_fd file, E
 
 /**
  * Validates the given ELF header.
- * 
+ *
  * @param header
  * 		to validate
  * @param executable
@@ -195,7 +198,7 @@ g_spawn_validation_details elfValidate(Elf32_Ehdr* header, bool executable);
 
 /**
  * Reads a number of bytes from a file into a buffer.
- * 
+ *
  * @param caller
  * 		calling task
  * @param file
@@ -210,13 +213,12 @@ g_spawn_validation_details elfValidate(Elf32_Ehdr* header, bool executable);
  */
 bool elfReadToMemory(g_task* caller, g_fd file, size_t offset, uint8_t* buffer, uint64_t length);
 
-
 /**
  * Loads an object to the current address space.
  */
 g_spawn_status elfObjectLoad(g_task* caller, g_elf_object* parentObject, const char* name,
-	g_fd file, g_virtual_address baseAddress, g_address_range_pool* rangeAllocator,
-	g_virtual_address* outNextBase, g_elf_object** outObject, g_spawn_validation_details* outValidationDetails = 0);
+							 g_fd file, g_virtual_address baseAddress, g_address_range_pool* rangeAllocator,
+							 g_virtual_address* outNextBase, g_elf_object** outObject, g_spawn_validation_details* outValidationDetails = 0);
 
 /**
  * Applies relocations on the given object.
@@ -224,19 +226,18 @@ g_spawn_status elfObjectLoad(g_task* caller, g_elf_object* parentObject, const c
 void elfObjectApplyRelocations(g_task* caller, g_fd file, g_elf_object* object);
 
 /**
- * Allocates an empty ELF object structure.
- */
-g_elf_object* elfObjectAllocate();
-
-/**
  * Reads information provided in the ELF object.
  */
 void elfObjectInspect(g_elf_object* elfObject);
 
+/**
+ * Destroys the ELF object structure.
+ */
+void elfObjectDestroy(g_elf_object* elfObject);
 
 /**
  * Loads a shared library.
- * 
+ *
  * @param caller
  * 		task performing the loading
  * @param parentObject
@@ -249,8 +250,8 @@ void elfObjectInspect(g_elf_object* elfObject);
  * 		out parameter for next address after this library and all of its dependencies
  */
 g_spawn_status elfLibraryLoad(g_task* caller, g_elf_object* parentObject, const char* name,
-	g_virtual_address baseAddress, g_address_range_pool* rangeAllocator,
-	g_virtual_address* outNextBase, g_elf_object** outObject);
+							  g_virtual_address baseAddress, g_address_range_pool* rangeAllocator,
+							  g_virtual_address* outNextBase, g_elf_object** outObject);
 
 /**
  * Searches for a library file and opens it.
@@ -262,7 +263,6 @@ g_fd elfLibraryOpen(g_task* caller, const char* name);
  */
 g_virtual_address elfLibraryLoadDependencies(g_task* caller, g_elf_object* parentObject, g_address_range_pool* rangeAllocator);
 
-
 /**
  * Loads the TLS master for this object into a buffer. Then, the offset where this TLS data
  * will be loaded into the TLS master image is calculated and put into the object.
@@ -273,9 +273,9 @@ g_spawn_status elfTlsLoadData(g_task* caller, g_fd file, Elf32_Phdr* header, g_e
  * Creates the TLS master image. The positions for each part of this image where already specified
  * when the TLS data is being loaded from each binary. The in-memory representation of our master
  * image looks like this:
- * 
+ *
  * [Executable TLS content|g_user_threadlocal|Shared lib TLS content|Shared lib TLS content|...]
- * 
+ *
  * When a new thread is created, a copy of this master image is created. The address of g_user_threadlocal
  * is then put into the GDT entry.
  */

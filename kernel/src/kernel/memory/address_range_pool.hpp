@@ -41,6 +41,8 @@ struct g_address_range_pool
 
 void addressRangePoolInitialize(g_address_range_pool* pool);
 
+void addressRangePoolDestroy(g_address_range_pool* pool);
+
 void addressRangePoolAddRange(g_address_range_pool* pool, g_address start, g_address end);
 
 void addressRangePoolCloneRanges(g_address_range_pool* pool, g_address_range_pool* other);

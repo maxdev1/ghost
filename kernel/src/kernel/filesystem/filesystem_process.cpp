@@ -97,8 +97,8 @@ void filesystemProcessRemove(g_pid pid)
 	}
 	hashmapIteratorEnd<g_fd, g_file_descriptor*>(&iter);
 
-	heapFree(info);
 	hashmapRemove<g_pid, g_filesystem_process*>(filesystemProcessInfo, pid);
+	heapFree(info);
 }
 
 void filesystemProcessRemoveDescriptor(g_pid pid, g_fd fd)

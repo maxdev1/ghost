@@ -189,10 +189,10 @@ g_physical_address taskingMemoryCreatePageDirectory()
 	g_page_directory directoryTemp = (g_page_directory) directoryTempVirt;
 	pagingMapPage(directoryTempVirt, directoryPhys);
 
-	// Copy kernel space tables
+	// Copy kernel table mappings
 	for(uint32_t ti = 0; ti < 1024; ti++)
 	{
-		if(!(directoryCurrent[ti] & G_PAGE_TABLE_USERSPACE))
+		if((directoryCurrent[ti] & G_PAGE_TABLE_USERSPACE) == 0)
 			directoryTemp[ti] = directoryCurrent[ti];
 		else
 			directoryTemp[ti] = 0;
@@ -219,15 +219,18 @@ void taskingMemoryDestroyPageDirectory(g_physical_address directory)
 		if(!(directoryCurrent[ti] & G_PAGE_TABLE_USERSPACE))
 			continue;
 
-		g_page_table table = ((g_page_table) G_RECURSIVE_PAGE_DIRECTORY_AREA) + (0x400 * ti);
+		g_page_table tableMapped = ((g_page_table) G_RECURSIVE_PAGE_DIRECTORY_AREA) + (0x400 * ti);
 		for(uint32_t pi = 0; pi < 1024; pi++)
 		{
-			if(table[pi] == 0)
+			if(tableMapped[pi] == 0)
 				continue;
 
-			g_physical_address page = G_PAGE_ALIGN_DOWN(table[pi]);
+			g_physical_address page = G_PAGE_ALIGN_DOWN(tableMapped[pi]);
 			memoryPhysicalFree(page);
 		}
+
+		g_physical_address table = G_PAGE_ALIGN_DOWN(directoryCurrent[ti]);
+		memoryPhysicalFree(table);
 	}
 
 	taskingTemporarySwitchBack(returnDirectory);

@@ -18,19 +18,18 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "kernel/tasking/elf/elf_loader.hpp"
-#include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/memory/memory.hpp"
-
+#include "kernel/memory/page_reference_tracker.hpp"
+#include "kernel/tasking/elf/elf_loader.hpp"
 
 g_spawn_status elfObjectLoad(g_task* caller, g_elf_object* parentObject, const char* name, g_fd file, g_virtual_address baseAddress,
-	g_address_range_pool* rangeAllocator, g_virtual_address* outNextBase, g_elf_object** outObject, g_spawn_validation_details* outValidationDetails)
+							 g_address_range_pool* rangeAllocator, g_virtual_address* outNextBase, g_elf_object** outObject, g_spawn_validation_details* outValidationDetails)
 {
 	g_spawn_status status = G_SPAWN_STATUS_SUCCESSFUL;
 
 	/* Create ELF object */
-	g_elf_object* object = elfObjectAllocate();
+	g_elf_object* object = (g_elf_object*) heapAllocateClear(sizeof(g_elf_object));
 	object->name = stringDuplicate(name);
 	object->parent = parentObject;
 	object->baseAddress = baseAddress;
@@ -57,7 +56,7 @@ g_spawn_status elfObjectLoad(g_task* caller, g_elf_object* parentObject, const c
 	/* Put in relocate order list */
 	object->relocateOrderNext = executableObject->relocateOrderFirst;
 	executableObject->relocateOrderFirst = object;
-	
+
 	logDebug("%! loading object '%s' (%i) to %h", "elf", name, object->id, baseAddress);
 
 	/* Read and validate the ELF header */
@@ -95,8 +94,8 @@ g_spawn_status elfObjectLoad(g_task* caller, g_elf_object* parentObject, const c
 				logInfo("%! unable to load PT_LOAD segment from file", "elf");
 				break;
 			}
-
-		} else if(phdr->p_type == PT_TLS)
+		}
+		else if(phdr->p_type == PT_TLS)
 		{
 			status = elfTlsLoadData(caller, file, phdr, object, rangeAllocator);
 			if(status != G_SPAWN_STATUS_SUCCESSFUL)
@@ -104,16 +103,17 @@ g_spawn_status elfObjectLoad(g_task* caller, g_elf_object* parentObject, const c
 				logInfo("%! unable to load PT_TLS segment from file", "elf");
 				break;
 			}
-
-		} else if(phdr->p_type == PT_DYNAMIC)
-		{ 
+		}
+		else if(phdr->p_type == PT_DYNAMIC)
+		{
 			object->dynamicSection = (Elf32_Dyn*) (baseAddress + phdr->p_vaddr);
 			logDebug("%!   object has dynamic information %h", "elf", object->dynamicSection);
 		}
 	}
 
 	/* Do analyzation and linking */
-	if(status == G_SPAWN_STATUS_SUCCESSFUL) {
+	if(status == G_SPAWN_STATUS_SUCCESSFUL)
+	{
 		elfObjectInspect(object);
 		*outNextBase = elfLibraryLoadDependencies(caller, object, rangeAllocator);
 		elfObjectApplyRelocations(caller, file, object);
@@ -122,51 +122,55 @@ g_spawn_status elfObjectLoad(g_task* caller, g_elf_object* parentObject, const c
 	return status;
 }
 
-void elfObjectInspect(g_elf_object* object) {
+void elfObjectInspect(g_elf_object* object)
+{
 
-	if(object->dynamicSection) {
+	if(object->dynamicSection)
+	{
 		/* Find tables that we need */
 		Elf32_Dyn* it = object->dynamicSection;
-		while(it->d_tag) {
-			switch(it->d_tag) {
-				case DT_STRTAB:
-					object->dynamicStringTable = (char*) (object->baseAddress + it->d_un.d_ptr);
-					break;
-				case DT_STRSZ:
-					object->dynamicStringTableSize = it->d_un.d_val;
-					break;
-				case DT_HASH:
-					object->dynamicSymbolHashTable = (Elf32_Word*) (object->baseAddress + it->d_un.d_ptr);
-					/*  The number of symbol table entries should equal nchain; so symbol table indexes also select chain table entries. */
-					object->dynamicSymbolTableSize = object->dynamicSymbolHashTable[1]; 
-					break;
-				case DT_SYMTAB:
-					object->dynamicSymbolTable = (Elf32_Sym*) (object->baseAddress + it->d_un.d_ptr);
-					break;
-				case DT_INIT:
-					object->init = (void(*)()) (object->baseAddress + it->d_un.d_ptr);
-					break;
-				case DT_FINI:
-					object->fini = (void(*)()) (object->baseAddress + it->d_un.d_ptr);
-					break;
-				case DT_PREINIT_ARRAY:
-					object->preinitArray = (void(**)()) (object->baseAddress + it->d_un.d_ptr);
-					break;
-				case DT_PREINIT_ARRAYSZ:
-					object->preinitArraySize = it->d_un.d_val / sizeof(uintptr_t);
-					break;
-				case DT_INIT_ARRAY:
-					object->initArray = (void(**)()) (object->baseAddress + it->d_un.d_ptr);
-					break;
-				case DT_INIT_ARRAYSZ:
-					object->initArraySize = it->d_un.d_val / sizeof(uintptr_t);
-					break;
-				case DT_FINI_ARRAY:
-					object->finiArray = (void(**)()) (object->baseAddress + it->d_un.d_ptr);
-					break;
-				case DT_FINI_ARRAYSZ:
-					object->finiArraySize = it->d_un.d_val / sizeof(uintptr_t);
-					break;
+		while(it->d_tag)
+		{
+			switch(it->d_tag)
+			{
+			case DT_STRTAB:
+				object->dynamicStringTable = (char*) (object->baseAddress + it->d_un.d_ptr);
+				break;
+			case DT_STRSZ:
+				object->dynamicStringTableSize = it->d_un.d_val;
+				break;
+			case DT_HASH:
+				object->dynamicSymbolHashTable = (Elf32_Word*) (object->baseAddress + it->d_un.d_ptr);
+				/*  The number of symbol table entries should equal nchain; so symbol table indexes also select chain table entries. */
+				object->dynamicSymbolTableSize = object->dynamicSymbolHashTable[1];
+				break;
+			case DT_SYMTAB:
+				object->dynamicSymbolTable = (Elf32_Sym*) (object->baseAddress + it->d_un.d_ptr);
+				break;
+			case DT_INIT:
+				object->init = (void (*)())(object->baseAddress + it->d_un.d_ptr);
+				break;
+			case DT_FINI:
+				object->fini = (void (*)())(object->baseAddress + it->d_un.d_ptr);
+				break;
+			case DT_PREINIT_ARRAY:
+				object->preinitArray = (void (**)())(object->baseAddress + it->d_un.d_ptr);
+				break;
+			case DT_PREINIT_ARRAYSZ:
+				object->preinitArraySize = it->d_un.d_val / sizeof(uintptr_t);
+				break;
+			case DT_INIT_ARRAY:
+				object->initArray = (void (**)())(object->baseAddress + it->d_un.d_ptr);
+				break;
+			case DT_INIT_ARRAYSZ:
+				object->initArraySize = it->d_un.d_val / sizeof(uintptr_t);
+				break;
+			case DT_FINI_ARRAY:
+				object->finiArray = (void (**)())(object->baseAddress + it->d_un.d_ptr);
+				break;
+			case DT_FINI_ARRAYSZ:
+				object->finiArraySize = it->d_un.d_val / sizeof(uintptr_t);
+				break;
 			}
 			it++;
 		}
@@ -174,8 +178,10 @@ void elfObjectInspect(g_elf_object* object) {
 		/* Read dependencies */
 		object->dependencies = 0;
 		it = object->dynamicSection;
-		while(it->d_tag) {
-			if(it->d_tag == DT_NEEDED) {
+		while(it->d_tag)
+		{
+			if(it->d_tag == DT_NEEDED)
+			{
 				g_elf_dependency* dep = (g_elf_dependency*) heapAllocate(sizeof(g_elf_dependency));
 				dep->name = stringDuplicate(object->dynamicStringTable + it->d_un.d_val);
 				dep->next = object->dependencies;
@@ -185,7 +191,8 @@ void elfObjectInspect(g_elf_object* object) {
 		}
 
 		/* Put symbols into executables dynamic symbol table. This happens in load order. */
-		if(object->dynamicSymbolTable) {
+		if(object->dynamicSymbolTable)
+		{
 			g_elf_object* executableObject = object;
 			while(executableObject->parent)
 			{
@@ -206,9 +213,7 @@ void elfObjectInspect(g_elf_object* object) {
 					hashmapPut<const char*, g_elf_symbol_info>(object->localSymbols, symbol, symbolInfo);
 
 					if(hashmapGetEntry<const char*, g_elf_symbol_info>(executableObject->globalSymbols, symbol) == 0)
-					{
 						hashmapPut<const char*, g_elf_symbol_info>(executableObject->globalSymbols, symbol, symbolInfo);
-					}
 				}
 
 				it++;
@@ -218,9 +223,27 @@ void elfObjectInspect(g_elf_object* object) {
 	}
 }
 
-g_elf_object* elfObjectAllocate()
+void elfObjectDestroy(g_elf_object* elfObject)
 {
-	g_elf_object* object = (g_elf_object*) heapAllocate(sizeof(g_elf_object));
-	memorySetBytes((void*) object, 0, sizeof(g_elf_object));
-	return object;
+	if(elfObject->loadedObjects)
+	{
+		auto loadedIter = hashmapIteratorStart(elfObject->loadedObjects);
+		while(hashmapIteratorHasNext(&loadedIter))
+		{
+			auto loadedObject = hashmapIteratorNext(&loadedIter);
+
+			if(loadedObject->value != elfObject)
+				elfObjectDestroy(loadedObject->value);
+		}
+		hashmapIteratorEnd(&loadedIter);
+
+		hashmapDestroy(elfObject->loadedObjects);
+	}
+
+	hashmapDestroy(elfObject->localSymbols);
+
+	if(elfObject->globalSymbols)
+		hashmapDestroy(elfObject->globalSymbols);
+
+	heapFree(elfObject);
 }
