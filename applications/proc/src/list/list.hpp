@@ -26,6 +26,6 @@
 /**
  *
  */
-int proc_list(int argc, char** argv);
+int procList(int argc, char** argv);
 
 #endif

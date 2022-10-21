@@ -24,6 +24,7 @@
 #include <ghost/user.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 int countTasks()
 {
@@ -59,7 +60,6 @@ int procListCompareByParent(const void* a, const void* b)
 {
 	g_kernquery_task_get_data* dataA = ((g_kernquery_task_get_data*) a);
 	g_kernquery_task_get_data* dataB = ((g_kernquery_task_get_data*) b);
-	klog("comp %x %i and %x %i", dataA, dataA->parent, dataB, dataB->parent);
 
 	if(dataA->parent == dataB->parent)
 		return 0;
@@ -72,8 +72,15 @@ int procListCompareByParent(const void* a, const void* b)
 /**
  *
  */
-int proc_list(int argc, char** argv)
+int procList(int argc, char** argv)
 {
+	bool threads = false;
+	for(int i = 0; i < argc; i++)
+	{
+		if(strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--threads") == 0)
+			threads = true;
+	}
+
 	int numTasks = countTasks();
 	if(numTasks == -1)
 		return -1;
@@ -105,10 +112,8 @@ int proc_list(int argc, char** argv)
 	{
 		g_kernquery_task_get_data* entry = &taskData[pos];
 
-		// print processes and vm86
-		if(entry->id != -1 && (entry->type == G_TASK_TYPE_DEFAULT || entry->type == G_TASK_TYPE_VM86))
+		if(entry->id != -1 && (entry->type == G_TASK_TYPE_DEFAULT || entry->type == G_TASK_TYPE_VM86) && (threads || entry->id == entry->parent))
 		{
-			// print foot line
 			println("%5i %5i %6i %-20s %-38s", entry->parent, entry->id, entry->memory_used / 1024, entry->identifier, entry->source_path);
 		}
 	}

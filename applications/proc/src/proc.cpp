@@ -40,34 +40,38 @@ int main(int argc, char** argv)
 
 		if(strcmp(command, "-l") == 0 || strcmp(command, "--list") == 0)
 		{
-			return proc_list(argc, argv);
+			return procList(argc, argv);
 		}
 		else if(strcmp(command, "-k") == 0 || strcmp(command, "--kill") == 0)
 		{
 			if(argc > 2)
 			{
-				std::stringstream conv;
-				conv << argv[2];
-				g_tid target;
-				if(conv >> target)
+
+				for(int arg = 2; arg < argc; arg++)
 				{
-					g_kill_status status = g_kill(target);
-					if(status == G_KILL_STATUS_SUCCESSFUL)
+					std::stringstream conv;
+					conv << argv[arg];
+					g_tid target;
+					if(conv >> target)
 					{
-						println("task %i successfully killed", target);
-					}
-					else if(status == G_KILL_STATUS_NOT_FOUND)
-					{
-						println("task %i does not exist", target);
+						g_kill_status status = g_kill(target);
+						if(status == G_KILL_STATUS_SUCCESSFUL)
+						{
+							println("task %i successfully killed", target);
+						}
+						else if(status == G_KILL_STATUS_NOT_FOUND)
+						{
+							println("task %i does not exist", target);
+						}
+						else
+						{
+							println("failed to kill task %i with status %i", target, status);
+						}
 					}
 					else
 					{
-						println("failed to kill task %i with status %i", target, status);
+						fprintf(stderr, "invalid task id %s\n", argv[arg]);
 					}
-				}
-				else
-				{
-					fprintf(stderr, "Please supply a valid task id.\n");
 				}
 			}
 		}
@@ -78,8 +82,8 @@ int main(int argc, char** argv)
 			println("");
 			println("The following commands are available:");
 			println("");
-			println("\tlist\t\tlists information about the running tasks");
-			println("\tkill <id>\tkills the task with the given id");
+			println("\t-l\t\tlists running tasks");
+			println("\t-k <id>\tkills a process");
 			println("");
 		}
 		else
@@ -89,6 +93,6 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		return proc_list(argc, argv);
+		return procList(argc, argv);
 	}
 }
