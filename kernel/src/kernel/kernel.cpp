@@ -127,10 +127,13 @@ void kernelSpawnService(const char* path, const char* args, g_security_level sec
 		g_process* outProcess;
 		g_spawn_status spawn = taskingSpawn(currentTask, fd, securityLevel, &outProcess);
 		outProcess->environment.arguments = args;
-		if(spawn == G_SPAWN_STATUS_SUCCESSFUL) {
+		if(spawn == G_SPAWN_STATUS_SUCCESSFUL)
+		{
 			logInfo("%! loaded binary: %s (task: %i)", "kernel", path, outProcess->main->id);
 			outProcess->main->status = G_THREAD_STATUS_RUNNING;
-		}else{
+		}
+		else
+		{
 			logInfo("%! failed to spawn %s with status %i", "kernel", path, spawn);
 		}
 	}
@@ -148,7 +151,9 @@ void kernelInitializationThread()
 	kernelSpawnService("/applications/ps2driver.bin", "", G_SECURITY_LEVEL_DRIVER);
 	G_PRETTY_BOOT_STATUS_P(60);
 	kernelSpawnService("/applications/vbedriver.bin", "", G_SECURITY_LEVEL_DRIVER);
+
 	G_PRETTY_BOOT_STATUS_P(80);
+	// kernelSpawnService("/applications/terminal.bin", "--headless", G_SECURITY_LEVEL_DRIVER);
 	kernelSpawnService("/applications/windowserver.bin", "", G_SECURITY_LEVEL_APPLICATION);
 
 	taskingExit();
