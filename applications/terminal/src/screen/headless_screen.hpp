@@ -30,6 +30,8 @@ class headless_screen_t : public screen_t
 
 	g_atom lock;
 	void normalize();
+
+	void enableCursor();
 	void updateCursor();
 
   public:

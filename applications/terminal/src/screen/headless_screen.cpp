@@ -40,6 +40,8 @@ headless_screen_t::headless_screen_t()
 bool headless_screen_t::initialize()
 {
 	lock = g_atomic_initialize();
+
+	enableCursor();
 	clean();
 
 	return ps2DriverInitialize(&keyboardIn, &mouseIn);
@@ -55,6 +57,14 @@ void headless_screen_t::clean()
 	}
 	offset = 0;
 	g_atomic_unlock(lock);
+}
+
+void headless_screen_t::enableCursor()
+{
+	ioOutportByte(0x3D4, 0x0A);
+	ioOutportByte(0x3D5, (ioInportByte(0x3D5) & 0xC0) | 0);
+	ioOutportByte(0x3D4, 0x0B);
+	ioOutportByte(0x3D5, (ioInportByte(0x3D5) & 0xE0) | SCREEN_HEIGHT);
 }
 
 void headless_screen_t::updateCursor()
@@ -102,9 +112,9 @@ void headless_screen_t::write(char c)
 		output[offset++] = (uint8_t) SC_COLOR(colorBackground,
 											  colorForeground);
 	}
+	normalize();
 	g_atomic_unlock(lock);
 
-	normalize();
 	updateCursor();
 }
 
@@ -122,8 +132,6 @@ void headless_screen_t::backspace()
 
 void headless_screen_t::normalize()
 {
-	g_atomic_lock(lock);
-
 	if(offset >= SCREEN_WIDTH * SCREEN_HEIGHT * 2)
 	{
 		offset -= SCREEN_WIDTH * 2;
@@ -137,11 +145,9 @@ void headless_screen_t::normalize()
 		for(uint32_t i = 0; i < SCREEN_WIDTH * 2; i += 2)
 		{
 			output[screenSize - lineBytes + i] = ' ';
-			output[screenSize - lineBytes + i + 1] = SC_BLACK;
+			output[screenSize - lineBytes + i + 1] = SC_COLOR(SC_BLACK, SC_WHITE);
 		}
 	}
-
-	g_atomic_unlock(lock);
 }
 
 g_key_info headless_screen_t::readInput()
