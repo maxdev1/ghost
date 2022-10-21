@@ -164,10 +164,16 @@ void syscallKernQuery(g_task* task, g_syscall_kernquery* data)
 
 			if(ktask->process->environment.executablePath)
 				stringCopy(kdata->source_path, ktask->process->environment.executablePath);
+			else
+				kdata->source_path[0] = 0;
 
 			const char* identifier = taskingDirectoryGetIdentifier(ktask->id);
 			if(identifier)
 				stringCopy(kdata->identifier, identifier);
+			else
+				kdata->identifier[0] = 0;
+
+			kdata->memory_used = 0; // TODO
 		}
 	}
 	else
