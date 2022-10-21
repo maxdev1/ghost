@@ -52,11 +52,7 @@ int main(int argc, char** argv)
 			ssize_t len;
 			while((len = fread(buf, 1, bufsize, stdin)) > 0)
 			{
-				// TODO write buffered
-				for(ssize_t pos = 0; pos < len; pos++)
-				{
-					putc(buf[pos], file);
-				}
+				fwrite(buf, 1, len, stdout);
 			}
 
 			fclose(file);
