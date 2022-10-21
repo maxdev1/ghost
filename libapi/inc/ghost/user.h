@@ -247,26 +247,6 @@ g_fs_directory_entry* g_read_directory_s(g_fs_directory_iterator* iterator, g_fs
 void g_close_directory(g_fs_directory_iterator* iterator);
 
 /**
- * Retrieves the length of a file in bytes.
- *
- * @param path
- * 		path of the file
- *
- * @param follow_symlinks
- * 		whether to follow symbolic links or not
- *
- * @param-opt out_status
- * 		is filled with the status code
- *
- * @return the length in bytes
- *
- * @security-level APPLICATION
- */
-int64_t g_flength(const char* path);
-int64_t g_flength_s(const char* path, uint8_t follow_symlinks);
-int64_t g_flength_ss(const char* path, uint8_t follow_symlinks, g_fs_length_status* out_status);
-
-/**
  * Repositions the offset within a file.
  *
  * @param fd

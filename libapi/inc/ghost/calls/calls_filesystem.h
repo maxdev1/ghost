@@ -222,17 +222,7 @@ typedef struct {
  *
  * @security-level APPLICATION
  */
-typedef int g_syscall_fs_length_mode;
-#define		G_SYSCALL_FS_LENGTH_MODE_BY_MASK			1
-#define	 	G_SYSCALL_FS_LENGTH_BY_PATH					((g_syscall_fs_length_mode) 0x0)
-#define 	G_SYSCALL_FS_LENGTH_BY_FD					((g_syscall_fs_length_mode) 0x1)
-#define 	G_SYSCALL_FS_LENGTH_MODE_SYMLINK_MASK		2
-#define 	G_SYSCALL_FS_LENGTH_FOLLOW_SYMLINKS			((g_syscall_fs_length_mode) 0x0)
-#define 	G_SYSCALL_FS_LENGTH_NOT_FOLLOW_SYMLINKS		((g_syscall_fs_length_mode) 0x2)
-
 typedef struct {
-	g_syscall_fs_length_mode mode;
-	char* path;
 	g_fd fd;
 
 	g_fs_length_status status;

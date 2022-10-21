@@ -31,7 +31,6 @@ int64_t g_length(g_fd fd) {
 int64_t g_length_s(g_fd fd, g_fs_length_status* out_status) {
 
 	g_syscall_fs_length data;
-	data.mode = G_SYSCALL_FS_LENGTH_BY_FD;
 	data.fd = fd;
 	g_syscall(G_SYSCALL_FS_LENGTH, (g_address) &data);
 	if (out_status) {
@@ -39,32 +38,3 @@ int64_t g_length_s(g_fd fd, g_fs_length_status* out_status) {
 	}
 	return data.length;
 }
-
-// redirect
-int64_t g_flength(const char* path) {
-
-	return g_flength_ss(path, true, 0);
-}
-
-// redirect
-int64_t g_flength_s(const char* path, uint8_t follow_symlinks) {
-
-	return g_flength_ss(path, follow_symlinks, 0);
-}
-
-/**
- *
- */
-int64_t g_flength_ss(const char* path, uint8_t follow_symlinks, g_fs_length_status* out_status) {
-
-	g_syscall_fs_length data;
-	int symlink_flag = (follow_symlinks ? G_SYSCALL_FS_LENGTH_FOLLOW_SYMLINKS : G_SYSCALL_FS_LENGTH_NOT_FOLLOW_SYMLINKS);
-	data.mode = symlink_flag | G_SYSCALL_FS_LENGTH_BY_PATH;
-	data.path = (char*) path;
-	g_syscall(G_SYSCALL_FS_LENGTH, (g_address) &data);
-	if (out_status) {
-		*out_status = data.status;
-	}
-	return data.length;
-}
-
