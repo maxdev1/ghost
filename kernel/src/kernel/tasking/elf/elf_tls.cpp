@@ -20,54 +20,54 @@
 
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/memory/memory.hpp"
-#include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/tasking/elf/elf_loader.hpp"
 
-g_spawn_status elfTlsLoadData(g_task* caller, g_fd file, Elf32_Phdr* phdr, g_elf_object* object, g_address_range_pool* rangeAllocator)
+g_spawn_status elfTlsLoadData(g_task* caller, g_fd file, Elf32_Phdr phdr, g_elf_object* object, g_address_range_pool* rangeAllocator)
 {
-	uint32_t bytesToCopy = phdr->p_filesz;
+	uint32_t bytesToCopy = phdr.p_filesz;
 
-	/* Read TLS content to a buffer */
+	// Read TLS content to a buffer
 	uint8_t* tlsContentBuffer = (uint8_t*) heapAllocate(bytesToCopy);
-	if(!elfReadToMemory(caller, file, phdr->p_offset, (uint8_t*) tlsContentBuffer, bytesToCopy))
+	if(!elfReadToMemory(caller, file, phdr.p_offset, (uint8_t*) tlsContentBuffer, bytesToCopy))
 	{
 		logInfo("%! unable to read TLS segment from file", "elf");
 		heapFree(tlsContentBuffer);
 		return G_SPAWN_STATUS_IO_ERROR;
 	}
 
-	/* Write object information */
-	object->tlsMaster.content = tlsContentBuffer;
-	object->tlsMaster.alignment = phdr->p_align;
-	object->tlsMaster.copysize = phdr->p_filesz;
-	object->tlsMaster.totalsize = phdr->p_memsz;
+	// Write object information
+	object->tlsPart.content = tlsContentBuffer;
+	object->tlsPart.alignment = phdr.p_align;
+	object->tlsPart.copysize = phdr.p_filesz;
+	object->tlsPart.totalsize = phdr.p_memsz;
 
-	/* Calculate offset in TLS master image */
-	if(object->executable)
+	// Calculate offset in TLS master image
+	if(object->root)
 	{
-		/* Executable gets offset 0 and is followed with the g_user_threadlocal */
-		object->tlsMaster.offset = 0;
-		uint32_t size = G_ALIGN_UP(object->tlsMaster.totalsize, object->tlsMaster.alignment);
-		object->tlsMasterTotalSize = size + sizeof(g_user_threadlocal);
-		object->tlsMasterUserThreadOffset = size;
+		// Executable gets offset 0 and is followed with the g_user_threadlocal
+		object->tlsPart.offset = 0;
+		uint32_t size = G_ALIGN_UP(object->tlsPart.totalsize, object->tlsPart.alignment);
+		object->tlsMaster.totalSize = size + sizeof(g_user_threadlocal);
+		object->tlsMaster.userThreadOffset = size;
 	}
 	else
 	{
-		/* Shared libraries just get the next free position */
-		g_elf_object* executableObject = object;
-		while(executableObject->parent)
-			executableObject = executableObject->parent;
-		object->tlsMaster.offset = executableObject->tlsMasterTotalSize;
-		executableObject->tlsMasterTotalSize += G_ALIGN_UP(object->tlsMaster.totalsize, object->tlsMaster.alignment);
+		// Shared libraries just get the next free position
+		g_elf_object* rootObject = object;
+		while(rootObject->parent)
+			rootObject = rootObject->parent;
+
+		object->tlsPart.offset = rootObject->tlsMaster.totalSize;
+		rootObject->tlsMaster.totalSize += G_ALIGN_UP(object->tlsPart.totalsize, object->tlsPart.alignment);
 	}
 
 	return G_SPAWN_STATUS_SUCCESSFUL;
 }
 
-void elf32TlsCreateMasterImage(g_task* caller, g_fd file, g_process* process, g_elf_object* executableObject)
+void elfTlsCreateMasterImage(g_task* caller, g_fd file, g_process* process, g_elf_object* rootObject)
 {
-	/* Allocate memory */
-	uint32_t size = G_PAGE_ALIGN_UP(executableObject->tlsMasterTotalSize);
+	// Allocate memory
+	uint32_t size = G_PAGE_ALIGN_UP(rootObject->tlsMaster.totalSize);
 	uint32_t requiredPages = size / G_PAGE_SIZE;
 	g_virtual_address tlsStart = addressRangePoolAllocate(process->virtualRangePool, requiredPages);
 	for(uint32_t i = 0; i < requiredPages; i++)
@@ -76,25 +76,21 @@ void elf32TlsCreateMasterImage(g_task* caller, g_fd file, g_process* process, g_
 		pagingMapPage(tlsStart + i * G_PAGE_SIZE, page, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
 	}
 
-	/* Copy all contents */
-	memorySetBytes((uint8_t*) tlsStart, 0, executableObject->tlsMasterTotalSize);
+	// Load contents from all loaded objects to memory
+	memorySetBytes((uint8_t*) tlsStart, 0, rootObject->tlsMaster.totalSize);
 
-	logDebug("%!   write TLS master image", "elf");
-	auto it = hashmapIteratorStart(executableObject->loadedObjects);
+	auto it = hashmapIteratorStart(rootObject->loadedObjects);
 	while(hashmapIteratorHasNext(&it))
 	{
 		g_elf_object* object = hashmapIteratorNext(&it)->value;
-		if(object->tlsMaster.content)
-		{
-			memoryCopy((uint8_t*) (tlsStart + object->tlsMaster.offset), object->tlsMaster.content, object->tlsMaster.copysize);
-			logDebug("%!    [%h, size %h, binary %s]", "elf", tlsStart + object->tlsMaster.offset, object->tlsMaster.totalsize, object->name);
-		}
+		if(object->tlsPart.content)
+			memoryCopy((uint8_t*) (tlsStart + object->tlsPart.offset), object->tlsPart.content, object->tlsPart.copysize);
 	}
 	hashmapIteratorEnd(&it);
 
 	/* Update process */
 	process->tlsMaster.location = tlsStart;
 	process->tlsMaster.size = size;
-	process->tlsMaster.userThreadOffset = executableObject->tlsMasterUserThreadOffset;
+	process->tlsMaster.userThreadOffset = rootObject->tlsMaster.userThreadOffset;
 	logDebug("%!   created TLS master: %h, size: %h", "elf", process->tlsMaster.location, process->tlsMaster.size);
 }

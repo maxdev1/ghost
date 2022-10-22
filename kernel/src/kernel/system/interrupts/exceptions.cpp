@@ -93,7 +93,7 @@ void exceptionsDumpTask(g_task* task)
 	logInfo("%#   task stack: %h - %h", task->stack.start, task->stack.end);
 	logInfo("%#   intr stack: %h - %h", task->interruptStack.start, task->interruptStack.end);
 
-	g_elf_object* object = task->process->object->relocateOrderFirst;
+	g_elf_object* object = task->process->object->symbolLookupOrderList;
 	while(object)
 	{
 		if(state->eip >= object->baseAddress && state->eip < object->endAddress)
@@ -108,7 +108,7 @@ void exceptionsDumpTask(g_task* task)
 			}
 			break;
 		}
-		object = object->relocateOrderNext;
+		object = object->symbolLookupOrderListNext;
 	}
 
 #if DEBUG_PRINT_STACK_TRACE

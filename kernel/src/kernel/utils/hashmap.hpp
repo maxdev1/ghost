@@ -54,14 +54,10 @@ g_hashmap<K, V>* hashmapInternalCreate(int bucketCount)
 	g_hashmap<K, V>* map = (g_hashmap<K, V>*) heapAllocate(sizeof(g_hashmap<K, V>));
 	map->bucketCount = bucketCount;
 	map->itemCount = 0;
-	map->buckets = (g_hashmap_entry<K, V>**) heapAllocate(sizeof(g_hashmap_entry<K, V>*) * bucketCount);
+	map->buckets = (g_hashmap_entry<K, V>**) heapAllocateClear(sizeof(g_hashmap_entry<K, V>*) * bucketCount);
 
 	mutexInitialize(&map->lock);
 
-	for(int i = 0; i < bucketCount; i++)
-	{
-		map->buckets[i] = 0;
-	}
 	return map;
 }
 

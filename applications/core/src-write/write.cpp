@@ -52,7 +52,7 @@ int main(int argc, char** argv)
 			ssize_t len;
 			while((len = fread(buf, 1, bufsize, stdin)) > 0)
 			{
-				fwrite(buf, 1, len, stdout);
+				fwrite(buf, 1, len, file);
 			}
 
 			fclose(file);

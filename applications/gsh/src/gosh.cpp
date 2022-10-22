@@ -425,6 +425,11 @@ void gshProcessExpression(pipe_expression_t* pipeexpr)
 				std::cout << call->program << ": invalid binary format"
 						  << std::endl;
 			}
+			else if(status == G_SPAWN_STATUS_DEPENDENCY_ERROR)
+			{
+				std::cout << call->program << ": failed to load a dependency"
+						  << std::endl;
+			}
 			else if(status == G_SPAWN_STATUS_IO_ERROR)
 			{
 				std::cout << call->program << ": command not found"

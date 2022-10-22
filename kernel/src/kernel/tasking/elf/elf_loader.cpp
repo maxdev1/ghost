@@ -22,47 +22,46 @@
 #include "kernel/calls/syscall.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/memory/memory.hpp"
-#include "kernel/memory/page_reference_tracker.hpp"
-
-#include "kernel/tasking/clock.hpp"
+#include "kernel/tasking/elf/elf_tls.hpp"
+#include "shared/utils/string.hpp"
 
 g_spawn_status elfLoadExecutable(g_task* caller, g_fd fd, g_security_level securityLevel, g_process** outProcess, g_spawn_validation_details* outDetails)
 {
-	/* Create process and load binary */
+	// Create process and load binary to memory
 	g_process* targetProcess = taskingCreateProcess();
 	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(targetProcess->pageDirectory);
 
-	g_elf_object* executableObject;
-	g_virtual_address executableImageEnd;
-	g_spawn_validation_details validationDetails;
-	g_spawn_status spawnStatus = elfObjectLoad(caller, 0, "main", fd, 0, targetProcess->virtualRangePool, &executableImageEnd, &executableObject, &validationDetails);
-	if(spawnStatus == G_SPAWN_STATUS_SUCCESSFUL)
+	auto rootData = elfObjectLoad(caller, 0, "main", fd, 0, targetProcess->virtualRangePool);
+
+	g_address imageEnd = rootData.nextFreeBase;
+	if(rootData.status == G_SPAWN_STATUS_SUCCESSFUL)
 	{
-		elf32TlsCreateMasterImage(caller, fd, targetProcess, executableObject);
-		executableImageEnd = elfUserProcessCreateInfo(targetProcess, executableObject, executableImageEnd, securityLevel);
+		elfTlsCreateMasterImage(caller, fd, targetProcess, rootData.object);
+		imageEnd = elfUserProcessCreateInfo(targetProcess, rootData.object, imageEnd, securityLevel);
 	}
+
 	taskingTemporarySwitchBack(returnDirectory);
 
-	/* Cancel if validation has failed */
+	// Cancel if loading was not successful
 	if(outDetails)
-		*outDetails = validationDetails;
-	if(spawnStatus != G_SPAWN_STATUS_SUCCESSFUL)
+		*outDetails = rootData.validation;
+
+	if(rootData.status != G_SPAWN_STATUS_SUCCESSFUL)
 	{
 		logInfo("%! failed to load binary to current address space", "elf");
-		return spawnStatus;
+		return rootData.status;
 	}
 
-	/* Update process */
-	targetProcess->object = executableObject;
-	targetProcess->image.start = executableObject->startAddress;
-	targetProcess->image.end = executableImageEnd;
-	logDebug("%! process loaded to %h - %h", "elf", targetProcess->image.start, targetProcess->image.end);
+	// Update created process
+	targetProcess->object = rootData.object;
+	targetProcess->image.start = rootData.object->startAddress;
+	targetProcess->image.end = imageEnd;
 
-	/* Create main thread */
-	g_task* thread = taskingCreateTask(executableObject->header.e_entry, targetProcess, securityLevel);
+	// Create main thread
+	g_task* thread = taskingCreateTask(rootData.object->header.e_entry, targetProcess, securityLevel);
 	if(thread == 0)
 	{
-		logInfo("%! failed to create main thread to spawn ELF binary from ramdisk", "elf");
+		logInfo("%! failed to create main thread to spawn binary", "elf");
 		return G_SPAWN_STATUS_TASKING_ERROR;
 	}
 	thread->status = G_THREAD_STATUS_WAITING;
@@ -75,7 +74,7 @@ g_spawn_status elfLoadExecutable(g_task* caller, g_fd fd, g_security_level secur
 
 g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* executableObject, g_virtual_address executableImageEnd, g_security_level securityLevel)
 {
-	/* Calculate required space */
+	// Calculate required space
 	int objectCount = 0;
 	uint32_t stringTableSize = 0;
 
@@ -89,7 +88,7 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* exe
 	hashmapIteratorEnd(&it);
 	uint32_t totalRequired = sizeof(g_process_info) + sizeof(g_object_info) * objectCount + stringTableSize;
 
-	/* Preserve memory after executable */
+	// Map required memory all loaded objects
 	uint32_t areaStart = executableImageEnd;
 	uint32_t pages = G_PAGE_ALIGN_UP(totalRequired) / G_PAGE_SIZE;
 	for(uint32_t i = 0; i < pages; i++)
@@ -98,7 +97,7 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* exe
 		pagingMapPage(areaStart + i * G_PAGE_SIZE, page, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
 	}
 
-	/* Fill with data */
+	// Fill with data
 	g_process_info* info = (g_process_info*) areaStart;
 	g_object_info* objectInfo = (g_object_info*) (areaStart + sizeof(g_process_info));
 	char* stringTable = (char*) ((g_virtual_address) objectInfo + (sizeof(g_object_info) * objectCount));
@@ -137,102 +136,6 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* exe
 	return executableImageEnd + G_PAGE_ALIGN_UP(totalRequired);
 }
 
-g_spawn_status elfLoadLoadSegment(g_task* caller, g_fd file, Elf32_Phdr* phdr, g_virtual_address baseAddress, g_elf_object* object)
-{
-	/* Calculate addresses where segment is loaded */
-	g_virtual_address loadBase = baseAddress + phdr->p_vaddr;
-	g_virtual_address loadEnd = loadBase + phdr->p_filesz;
-	g_virtual_address memoryStart = loadBase & ~G_PAGE_ALIGN_MASK;
-	g_virtual_address memoryEnd = ((loadBase + phdr->p_memsz) & ~G_PAGE_ALIGN_MASK) + G_PAGE_SIZE;
-
-	if(object->startAddress == 0 || memoryStart < object->startAddress)
-	{
-		object->startAddress = memoryStart;
-	}
-	if(memoryEnd > object->endAddress)
-	{
-		object->endAddress = memoryEnd;
-	}
-
-	uint32_t pagesTotal = (memoryEnd - memoryStart) / G_PAGE_SIZE;
-	uint32_t pagesLoaded = 0;
-
-	uint32_t loadPosition = loadBase;
-	uint32_t readOffset = phdr->p_offset;
-	while(pagesLoaded < pagesTotal)
-	{
-		/* Allocate memory */
-		uint32_t areaPages = (pagesTotal - pagesLoaded);
-		if(areaPages > ELF_MAXIMUM_LOAD_PAGES_AT_ONCE)
-			areaPages = ELF_MAXIMUM_LOAD_PAGES_AT_ONCE;
-
-		g_virtual_address areaStart = memoryStart + pagesLoaded * G_PAGE_SIZE;
-		g_virtual_address areaEnd = (areaStart + areaPages * G_PAGE_SIZE);
-
-		for(uint32_t i = 0; i < areaPages; i++)
-		{
-			g_physical_address page = memoryPhysicalAllocate();
-			pagingMapPage(areaStart + i * G_PAGE_SIZE, page, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
-		}
-
-		if(loadPosition < loadEnd)
-		{
-			uint32_t copyBytes = 0;
-			if(loadEnd < areaEnd)
-			{
-				copyBytes = loadEnd - loadPosition;
-			}
-			else
-			{
-				copyBytes = areaEnd - loadPosition;
-			}
-
-			/* Zero area before content in memory (if we are at the start) */
-			uint32_t sizeBefore = loadPosition - areaStart;
-			if(sizeBefore > 0)
-			{
-				memorySetBytes((void*) areaStart, 0, sizeBefore);
-
-				logDebug("%!   [%h-%h] zero %h bytes before code", "elf", areaStart, areaStart + sizeBefore, sizeBefore);
-			}
-
-			/* Copy data to memory */
-			if(!elfReadToMemory(caller, file, readOffset, (uint8_t*) loadPosition, copyBytes))
-			{
-				logInfo("%! unable to read data for PT_LOAD header", "elf");
-				return G_SPAWN_STATUS_IO_ERROR;
-			}
-			logDebug("%!   [%h-%h] read %h bytes from file %h", "elf", loadPosition, loadPosition + copyBytes, copyBytes, readOffset);
-
-			/* Zero memory after content in memory */
-			uint32_t loadEnd = loadPosition + copyBytes;
-			uint32_t sizeAfter = areaEnd - loadEnd;
-			if(sizeAfter > 0)
-			{
-				memorySetBytes((void*) loadEnd, 0, sizeAfter);
-
-				logDebug("%!   [%h-%h] zero %h bytes after code", "elf", loadEnd, loadEnd + sizeAfter, sizeAfter);
-			}
-
-			loadPosition += copyBytes;
-			readOffset += copyBytes;
-		}
-		else
-		{
-			/* Zero area without any content */
-			uint32_t areaSize = areaPages * G_PAGE_SIZE;
-			memorySetBytes((void*) areaStart, 0, areaSize);
-			loadPosition += areaSize;
-
-			logDebug("%!   [%h-%h] zero %h bytes of blank", "elf", areaStart, areaEnd, areaSize);
-		}
-
-		pagesLoaded += areaPages;
-	}
-
-	return G_SPAWN_STATUS_SUCCESSFUL;
-}
-
 bool elfReadToMemory(g_task* caller, g_fd fd, size_t offset, uint8_t* buffer, uint64_t len)
 {
 	int64_t seeked;
@@ -242,17 +145,19 @@ bool elfReadToMemory(g_task* caller, g_fd fd, size_t offset, uint8_t* buffer, ui
 		logInfo("%! failed to seek to %i binary from fd %i", "elf", offset, fd);
 		return false;
 	}
+
 	if(seeked != offset)
 	{
 		logInfo("%! tried to seek in file to position %i but only got to %i", "elf", (uint32_t) offset, (uint32_t) seeked);
+		return false;
 	}
 
 	uint64_t remain = len;
 	while(remain)
 	{
 		int64_t read;
-		g_fs_read_status readStatus = filesystemRead(caller, fd, &buffer[len - remain], remain, &read);
-		if(readStatus != G_FS_READ_SUCCESSFUL)
+		if(filesystemRead(caller, fd, &buffer[len - remain], remain, &read) != G_FS_READ_SUCCESSFUL ||
+		   read == 0)
 		{
 			logInfo("%! failed to read binary from fd %i", "elf", fd);
 			return false;
@@ -262,51 +167,51 @@ bool elfReadToMemory(g_task* caller, g_fd fd, size_t offset, uint8_t* buffer, ui
 	return true;
 }
 
-g_spawn_validation_details elfReadAndValidateHeader(g_task* caller, g_fd file, Elf32_Ehdr* headerBuffer, bool executable)
+g_spawn_validation_details elfReadAndValidateHeader(g_task* caller, g_fd file, Elf32_Ehdr* headerBuffer, bool root)
 {
 	if(!elfReadToMemory(caller, file, 0, (uint8_t*) headerBuffer, sizeof(Elf32_Ehdr)))
 	{
 		logInfo("%! failed to spawn file %i due to io error", "elf", file);
 		return G_SPAWN_VALIDATION_ELF32_IO_ERROR;
 	}
-	return elfValidate(headerBuffer, executable);
+	return elfValidateHeader(headerBuffer, root);
 }
 
-g_spawn_validation_details elfValidate(Elf32_Ehdr* header, bool executable)
+g_spawn_validation_details elfValidateHeader(Elf32_Ehdr* header, bool root)
 {
-	if(/* */ (header->e_ident[EI_MAG0] != ELFMAG0) || // 0x7F
-	   (header->e_ident[EI_MAG1] != ELFMAG1) ||		  // E
-	   (header->e_ident[EI_MAG2] != ELFMAG2) ||		  // L
-	   (header->e_ident[EI_MAG3] != ELFMAG3))		  // F
+	if((header->e_ident[EI_MAG0] != ELFMAG0) || // 0x7F
+	   (header->e_ident[EI_MAG1] != ELFMAG1) || // E
+	   (header->e_ident[EI_MAG2] != ELFMAG2) || // L
+	   (header->e_ident[EI_MAG3] != ELFMAG3))	// F
 	{
 		return G_SPAWN_VALIDATION_ELF32_NOT_ELF;
 	}
 
-	/* Check executable flag */
-	if(executable && header->e_type != ET_EXEC)
+	// Check executable flag
+	if(root && header->e_type != ET_EXEC)
 	{
 		return G_SPAWN_VALIDATION_ELF32_NOT_EXECUTABLE;
 	}
 
-	/* Must be i386 architecture compatible */
+	// Must be i386 architecture compatible
 	if(header->e_machine != EM_386)
 	{
 		return G_SPAWN_VALIDATION_ELF32_NOT_I386;
 	}
 
-	/* Must be 32 bit */
+	// Must be 32 bit
 	if(header->e_ident[EI_CLASS] != ELFCLASS32)
 	{
 		return G_SPAWN_VALIDATION_ELF32_NOT_32BIT;
 	}
 
-	/* Must be little endian */
+	// Must be little endian
 	if(header->e_ident[EI_DATA] != ELFDATA2LSB)
 	{
 		return G_SPAWN_VALIDATION_ELF32_NOT_LITTLE_ENDIAN;
 	}
 
-	/* Must comply to current ELF standard */
+	// Must comply to current ELF standard
 	if(header->e_version != EV_CURRENT)
 	{
 		return G_SPAWN_VALIDATION_ELF32_NOT_STANDARD_ELF;
