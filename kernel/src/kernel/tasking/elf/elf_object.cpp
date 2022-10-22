@@ -24,8 +24,7 @@
 #include "kernel/tasking/elf/elf_tls.hpp"
 #include "shared/utils/string.hpp"
 
-g_elf_object_load_result elfObjectLoad(g_task* caller, g_elf_object* parentObject, const char* name,
-									   g_fd file, g_virtual_address base, g_address_range_pool* rangeAllocator)
+g_elf_object_load_result elfObjectLoad(g_task* caller, g_elf_object* parentObject, const char* name, g_fd file, g_virtual_address base)
 {
 	g_elf_object_load_result res;
 	res.status = G_SPAWN_STATUS_SUCCESSFUL;
@@ -102,7 +101,7 @@ g_elf_object_load_result elfObjectLoad(g_task* caller, g_elf_object* parentObjec
 		}
 		else if(phdr.p_type == PT_TLS)
 		{
-			res.status = elfTlsLoadData(caller, file, phdr, object, rangeAllocator);
+			res.status = elfTlsLoadData(caller, file, phdr, object);
 			if(res.status != G_SPAWN_STATUS_SUCCESSFUL)
 			{
 				logInfo("%! unable to load PT_TLS segment from file", "elf");
@@ -121,7 +120,7 @@ g_elf_object_load_result elfObjectLoad(g_task* caller, g_elf_object* parentObjec
 	{
 		elfObjectInspect(object);
 
-		auto depRes = elfObjectLoadDependencies(caller, object, rangeAllocator);
+		auto depRes = elfObjectLoadDependencies(caller, object);
 		if(depRes.status == G_SPAWN_STATUS_SUCCESSFUL)
 		{
 			res.nextFreeBase = depRes.nextFreeBase;
@@ -275,7 +274,7 @@ void elfObjectInspect(g_elf_object* object)
 	}
 }
 
-g_elf_object_load_result elfObjectLoadDependencies(g_task* caller, g_elf_object* object, g_address_range_pool* rangeAllocator)
+g_elf_object_load_result elfObjectLoadDependencies(g_task* caller, g_elf_object* object)
 {
 	g_elf_object_load_result res;
 	res.status = G_SPAWN_STATUS_SUCCESSFUL;
@@ -288,7 +287,7 @@ g_elf_object_load_result elfObjectLoadDependencies(g_task* caller, g_elf_object*
 		if(elfObjectIsDependencyLoaded(object, dependency->name))
 			continue;
 
-		auto depRes = elfObjectLoadDependency(caller, object, dependency->name, res.nextFreeBase, rangeAllocator);
+		auto depRes = elfObjectLoadDependency(caller, object, dependency->name, res.nextFreeBase);
 		res.nextFreeBase = depRes.nextFreeBase;
 
 		if(depRes.status != G_SPAWN_STATUS_SUCCESSFUL)
@@ -479,14 +478,13 @@ bool elfObjectIsDependencyLoaded(g_elf_object* object, const char* name)
 	return hashmapGet(rootObject->loadedObjects, name, (g_elf_object*) nullptr) != nullptr;
 }
 
-g_elf_object_load_result elfObjectLoadDependency(g_task* caller, g_elf_object* parentObject, const char* name,
-												 g_virtual_address baseAddress, g_address_range_pool* rangeAllocator)
+g_elf_object_load_result elfObjectLoadDependency(g_task* caller, g_elf_object* parentObject, const char* name, g_virtual_address base)
 {
 	g_fd fd = elfObjectOpenDependency(caller, name);
 	if(fd == G_FD_NONE)
 		return {status : G_SPAWN_STATUS_IO_ERROR};
 
-	auto dependencyData = elfObjectLoad(caller, parentObject, name, fd, baseAddress, rangeAllocator);
+	auto dependencyData = elfObjectLoad(caller, parentObject, name, fd, base);
 	filesystemClose(caller->process->id, fd, true);
 	return dependencyData;
 }

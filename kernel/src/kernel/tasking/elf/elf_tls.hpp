@@ -28,7 +28,7 @@
  * Loads the TLS master for this object into a buffer. Then, the offset where this TLS data
  * will be loaded into the TLS master image is calculated and put into the object.
  */
-g_spawn_status elfTlsLoadData(g_task* caller, g_fd file, Elf32_Phdr header, g_elf_object* object, g_address_range_pool* rangeAllocator);
+g_spawn_status elfTlsLoadData(g_task* caller, g_fd file, Elf32_Phdr header, g_elf_object* object);
 
 /**
  * Creates the TLS master image. The positions for each part of this image where already specified

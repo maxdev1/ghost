@@ -22,7 +22,7 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/elf/elf_loader.hpp"
 
-g_spawn_status elfTlsLoadData(g_task* caller, g_fd file, Elf32_Phdr phdr, g_elf_object* object, g_address_range_pool* rangeAllocator)
+g_spawn_status elfTlsLoadData(g_task* caller, g_fd file, Elf32_Phdr phdr, g_elf_object* object)
 {
 	uint32_t bytesToCopy = phdr.p_filesz;
 

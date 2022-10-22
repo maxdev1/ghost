@@ -30,7 +30,7 @@ g_load_executable_result elfLoadExecutable(g_task* caller, g_fd fd, g_security_l
 {
 	g_load_executable_result res;
 
-	auto rootRes = elfObjectLoad(caller, nullptr, "root", fd, 0, process->virtualRangePool);
+	auto rootRes = elfObjectLoad(caller, nullptr, "root", fd, 0);
 	res.status = rootRes.status;
 	res.validationDetails = rootRes.validation;
 

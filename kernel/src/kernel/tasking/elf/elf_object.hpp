@@ -125,9 +125,7 @@ struct g_elf_object_load_result
 /**
  * Loads an object to the current address space.
  */
-g_elf_object_load_result elfObjectLoad(g_task* caller, g_elf_object* parentObject, const char* name,
-									 g_fd file, g_virtual_address baseAddress, g_address_range_pool* rangeAllocator);
-
+g_elf_object_load_result elfObjectLoad(g_task* caller, g_elf_object* parentObject, const char* name, g_fd file, g_virtual_address base);
 
 struct g_elf_object_load_segment_result
 {
@@ -139,7 +137,7 @@ struct g_elf_object_load_segment_result
 /**
  * Loads a PT_LOAD segment using the header information, relative to the base address.
  */
-g_elf_object_load_segment_result elfObjectLoadLoadSegment(g_task* caller, g_fd file, Elf32_Phdr phdr, g_virtual_address baseAddress);
+g_elf_object_load_segment_result elfObjectLoadLoadSegment(g_task* caller, g_fd file, Elf32_Phdr phdr, g_virtual_address base);
 
 /**
  * Applies relocations on the given object.
@@ -159,7 +157,7 @@ void elfObjectDestroy(g_elf_object* elfObject);
 /**
  * Loads all dependencies of an object.
  */
-g_elf_object_load_result elfObjectLoadDependencies(g_task* caller, g_elf_object* parentObject, g_address_range_pool* rangeAllocator);
+g_elf_object_load_result elfObjectLoadDependencies(g_task* caller, g_elf_object* parentObject);
 
 /**
  * Checks whether a dependency is already loaded in this context.
@@ -169,8 +167,7 @@ bool elfObjectIsDependencyLoaded(g_elf_object* object, const char* name);
 /**
  * Loads a shared library.
  */
-g_elf_object_load_result elfObjectLoadDependency(g_task* caller, g_elf_object* parentObject, const char* name,
-											   g_virtual_address baseAddress, g_address_range_pool* rangeAllocator);
+g_elf_object_load_result elfObjectLoadDependency(g_task* caller, g_elf_object* parentObject, const char* name, g_virtual_address base);
 
 /**
  * Searches for a library file and opens it.
