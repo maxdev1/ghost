@@ -117,9 +117,9 @@ struct g_elf_object
 struct g_elf_object_load_result
 {
 	g_spawn_status status;
+	g_spawn_validation_details validation;
 	g_elf_object* object;
 	g_virtual_address nextFreeBase;
-	g_spawn_validation_details validation;
 };
 
 /**

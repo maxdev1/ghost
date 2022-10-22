@@ -118,25 +118,27 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 	g_fs_open_status open = filesystemOpen(data->path, G_FILE_FLAG_MODE_READ, task, &fd);
 	if(open == G_FS_OPEN_SUCCESSFUL)
 	{
-		g_process* targetProcess;
-		data->spawnStatus = taskingSpawn(task, fd, G_SECURITY_LEVEL_APPLICATION, &targetProcess, &data->validationDetails);
-		if(data->spawnStatus == G_SPAWN_STATUS_SUCCESSFUL)
+		auto spawned = taskingSpawn(task, fd, G_SECURITY_LEVEL_APPLICATION);
+		data->status = spawned.status;
+		data->validationDetails = spawned.validation;
+
+		if(data->status == G_SPAWN_STATUS_SUCCESSFUL)
 		{
-			data->pid = targetProcess->id;
-			filesystemProcessCreateStdio(task->process->id, data->inStdio, targetProcess->id, data->outStdio);
+			data->pid = spawned.process->id;
+			filesystemProcessCreateStdio(task->process->id, data->inStdio, spawned.process->id, data->outStdio);
 
-			targetProcess->environment.executablePath = stringDuplicate(data->path);
+			spawned.process->environment.executablePath = stringDuplicate(data->path);
 			if(data->args)
-				targetProcess->environment.arguments = stringDuplicate(data->args);
+				spawned.process->environment.arguments = stringDuplicate(data->args);
 			if(data->workdir)
-				targetProcess->environment.workingDirectory = stringDuplicate(data->workdir);
+				spawned.process->environment.workingDirectory = stringDuplicate(data->workdir);
 
-			targetProcess->main->status = G_THREAD_STATUS_RUNNING;
+			spawned.process->main->status = G_THREAD_STATUS_RUNNING;
 		}
 	}
 	else
 	{
-		data->spawnStatus = G_SPAWN_STATUS_IO_ERROR;
+		data->status = G_SPAWN_STATUS_IO_ERROR;
 		logInfo("%! failed to find binary '%s'", "kernel", data->path);
 	}
 }

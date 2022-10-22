@@ -24,11 +24,17 @@
 #include "elf.h"
 #include "kernel/tasking/elf/elf_object.hpp"
 
+struct g_load_executable_result
+{
+	g_spawn_status status;
+	g_spawn_validation_details validationDetails;
+	g_address entry;
+};
+
 /**
  * Loads an ELF binary and creates a process/task for it.
  */
-g_spawn_status elfLoadExecutable(g_task* caller, g_fd file, g_security_level securityLevel,
-								 g_process** outProcess = 0, g_spawn_validation_details* outDetails = 0);
+g_load_executable_result elfLoadExecutable(g_task* caller, g_fd file, g_security_level securityLevel, g_process* process);
 
 /**
  * When an executable is loaded, a user process information structure

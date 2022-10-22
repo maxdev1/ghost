@@ -26,51 +26,28 @@
 #include "kernel/tasking/tasking_memory.hpp"
 #include "shared/utils/string.hpp"
 
-g_spawn_status elfLoadExecutable(g_task* caller, g_fd fd, g_security_level securityLevel, g_process** outProcess, g_spawn_validation_details* outDetails)
+g_load_executable_result elfLoadExecutable(g_task* caller, g_fd fd, g_security_level securityLevel, g_process* process)
 {
-	// Create process and load binary to memory
-	g_process* targetProcess = taskingCreateProcess();
-	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(targetProcess->pageDirectory);
+	g_load_executable_result res;
 
-	auto rootData = elfObjectLoad(caller, 0, "main", fd, 0, targetProcess->virtualRangePool);
+	auto rootRes = elfObjectLoad(caller, nullptr, "root", fd, 0, process->virtualRangePool);
+	res.status = rootRes.status;
+	res.validationDetails = rootRes.validation;
 
-	g_address imageEnd = rootData.nextFreeBase;
-	if(rootData.status == G_SPAWN_STATUS_SUCCESSFUL)
+	g_address imageEnd = rootRes.nextFreeBase;
+	if(rootRes.status == G_SPAWN_STATUS_SUCCESSFUL)
 	{
-		elfTlsCreateMasterImage(caller, fd, targetProcess, rootData.object);
-		imageEnd = elfUserProcessCreateInfo(targetProcess, rootData.object, imageEnd, securityLevel);
+		elfTlsCreateMasterImage(caller, fd, process, rootRes.object);
+		imageEnd = elfUserProcessCreateInfo(process, rootRes.object, imageEnd, securityLevel);
+
+		process->object = rootRes.object;
+		process->image.start = rootRes.object->startAddress;
+		process->image.end = imageEnd;
+
+		res.entry = rootRes.object->header.e_entry;
 	}
 
-	taskingMemoryTemporarySwitchBack(returnDirectory);
-
-	// Cancel if loading was not successful
-	if(outDetails)
-		*outDetails = rootData.validation;
-
-	if(rootData.status != G_SPAWN_STATUS_SUCCESSFUL)
-	{
-		logInfo("%! failed to load binary to current address space", "elf");
-		return rootData.status;
-	}
-
-	// Update created process
-	targetProcess->object = rootData.object;
-	targetProcess->image.start = rootData.object->startAddress;
-	targetProcess->image.end = imageEnd;
-
-	// Create main thread
-	g_task* thread = taskingCreateTask(rootData.object->header.e_entry, targetProcess, securityLevel);
-	if(thread == 0)
-	{
-		logInfo("%! failed to create main thread to spawn binary", "elf");
-		return G_SPAWN_STATUS_TASKING_ERROR;
-	}
-	thread->status = G_THREAD_STATUS_WAITING;
-	taskingAssign(taskingGetLocal(), thread);
-
-	if(outProcess)
-		*outProcess = targetProcess;
-	return G_SPAWN_STATUS_SUCCESSFUL;
+	return res;
 }
 
 g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* executableObject, g_virtual_address executableImageEnd, g_security_level securityLevel)

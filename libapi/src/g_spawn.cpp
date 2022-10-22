@@ -73,6 +73,6 @@ g_spawn_status g_spawn_poid(const char* path, const char* args, const char* work
 		*pid = data.pid;
 	if(outValidationDetails)
 		*outValidationDetails = data.validationDetails;
-	return data.spawnStatus;
+	return data.status;
 }
 

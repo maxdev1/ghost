@@ -64,6 +64,13 @@ struct g_tasking_local
 	} scheduling;
 };
 
+struct g_spawn_result
+{
+	g_spawn_status status;
+	g_process* process;
+	g_spawn_validation_details validation;
+};
+
 /**
  * @return the processor-local tasking structure
  */
@@ -208,8 +215,7 @@ g_task* taskingGetById(g_tid id);
  * Spawns an executable. This calls the correct binary loader in the background and creates a new
  * process, loading the executable object and necessary libraries. The created main thread is waiting.
  */
-g_spawn_status taskingSpawn(g_task* spawner, g_fd file, g_security_level securityLevel,
-							g_process** outProcess, g_spawn_validation_details* outValidationDetails = 0);
+g_spawn_result taskingSpawn(g_task* spawner, g_fd file, g_security_level securityLevel);
 
 /**
  * Waits until the task exits and then wakes the waiting task.

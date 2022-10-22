@@ -470,10 +470,39 @@ void taskingProcessKillAllTasks(g_pid pid)
 	mutexRelease(&task->process->lock);
 }
 
-g_spawn_status taskingSpawn(g_task* spawner, g_fd file, g_security_level securityLevel,
-							g_process** outProcess, g_spawn_validation_details* outValidationDetails)
+g_spawn_result taskingSpawn(g_task* spawner, g_fd file, g_security_level securityLevel)
 {
-	return elfLoadExecutable(spawner, file, securityLevel, outProcess, outValidationDetails);
+	g_spawn_result res;
+
+	// Create process and load binary to memory
+	res.process = taskingCreateProcess();
+
+	g_physical_address ret = taskingMemoryTemporarySwitchTo(res.process->pageDirectory);
+	auto loadRes = elfLoadExecutable(spawner, file, securityLevel, res.process);
+	taskingMemoryTemporarySwitchBack(ret);
+	res.status = loadRes.status;
+	res.validation = loadRes.validationDetails;
+
+	if(loadRes.status != G_SPAWN_STATUS_SUCCESSFUL)
+	{
+		logInfo("%! failed to load binary to current address space", "elf");
+		return res;
+	}
+
+	// Create main thread
+	g_task* thread = taskingCreateTask(loadRes.entry, res.process, securityLevel);
+	if(!thread)
+	{
+		logInfo("%! failed to create main thread to spawn binary", "elf");
+		res.status = G_SPAWN_STATUS_TASKING_ERROR;
+		return res;
+	}
+
+	// Put created task to waiting state
+	thread->status = G_THREAD_STATUS_WAITING;
+	taskingAssign(taskingGetLocal(), thread);
+
+	return res;
 }
 
 void taskingWaitForExit(g_tid joinedTid, g_tid waiter)

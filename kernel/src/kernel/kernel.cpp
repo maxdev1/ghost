@@ -124,17 +124,15 @@ void kernelSpawnService(const char* path, const char* args, g_security_level sec
 	g_fs_open_status open = filesystemOpen(path, G_FILE_FLAG_MODE_READ, currentTask, &fd);
 	if(open == G_FS_OPEN_SUCCESSFUL)
 	{
-		g_process* outProcess;
-		g_spawn_status spawn = taskingSpawn(currentTask, fd, securityLevel, &outProcess);
-		outProcess->environment.arguments = args;
-		if(spawn == G_SPAWN_STATUS_SUCCESSFUL)
+		auto spawnRes = taskingSpawn(currentTask, fd, securityLevel);
+		if(spawnRes.status == G_SPAWN_STATUS_SUCCESSFUL)
 		{
-			logInfo("%! loaded binary: %s (task: %i)", "kernel", path, outProcess->main->id);
-			outProcess->main->status = G_THREAD_STATUS_RUNNING;
+			spawnRes.process->environment.arguments = args;
+			spawnRes.process->main->status = G_THREAD_STATUS_RUNNING;
 		}
 		else
 		{
-			logInfo("%! failed to spawn %s with status %i", "kernel", path, spawn);
+			logInfo("%! failed to spawn %s with status %i", "kernel", path, spawnRes.status);
 		}
 	}
 	else
