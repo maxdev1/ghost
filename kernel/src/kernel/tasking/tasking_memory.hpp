@@ -81,4 +81,16 @@ void taskingPrepareThreadLocalStorage(g_task* task);
  */
 void taskingMemoryDestroyThreadLocalStorage(g_task* task);
 
+/**
+ * When a task needs to do work within the address space of another task, it can temporarily
+ * switch to that tasks directory. This overrides the tasks address space until it is reset
+ * using <taskingMemoryTemporarySwitchBack>.
+ */
+g_physical_address taskingMemoryTemporarySwitchTo(g_physical_address pageDirectory);
+
+/**
+ * Switches back from a temporary address space switch.
+ */
+void taskingMemoryTemporarySwitchBack(g_physical_address pageDirectory);
+
 #endif

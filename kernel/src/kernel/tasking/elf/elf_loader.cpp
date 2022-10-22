@@ -23,13 +23,14 @@
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/elf/elf_tls.hpp"
+#include "kernel/tasking/tasking_memory.hpp"
 #include "shared/utils/string.hpp"
 
 g_spawn_status elfLoadExecutable(g_task* caller, g_fd fd, g_security_level securityLevel, g_process** outProcess, g_spawn_validation_details* outDetails)
 {
 	// Create process and load binary to memory
 	g_process* targetProcess = taskingCreateProcess();
-	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(targetProcess->pageDirectory);
+	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(targetProcess->pageDirectory);
 
 	auto rootData = elfObjectLoad(caller, 0, "main", fd, 0, targetProcess->virtualRangePool);
 
@@ -40,7 +41,7 @@ g_spawn_status elfLoadExecutable(g_task* caller, g_fd fd, g_security_level secur
 		imageEnd = elfUserProcessCreateInfo(targetProcess, rootData.object, imageEnd, securityLevel);
 	}
 
-	taskingTemporarySwitchBack(returnDirectory);
+	taskingMemoryTemporarySwitchBack(returnDirectory);
 
 	// Cancel if loading was not successful
 	if(outDetails)

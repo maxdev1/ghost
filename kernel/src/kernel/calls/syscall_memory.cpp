@@ -155,9 +155,9 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 		g_physical_address physicalAddr = pagingVirtualToPhysical(memory + i * G_PAGE_SIZE);
 
 		/* Switch into target space to map */
-		g_physical_address back = taskingTemporarySwitchToSpace(targetProcess->pageDirectory);
+		g_physical_address back = taskingMemoryTemporarySwitchTo(targetProcess->pageDirectory);
 		pagingMapPage(virtualRangeBase + i * G_PAGE_SIZE, physicalAddr, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
-		taskingTemporarySwitchBack(back);
+		taskingMemoryTemporarySwitchBack(back);
 
 		pageReferenceTrackerIncrement(physicalAddr);
 	}

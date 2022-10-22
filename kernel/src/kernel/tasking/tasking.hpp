@@ -205,31 +205,8 @@ void taskingIdleThread();
 g_task* taskingGetById(g_tid id);
 
 /**
- * When a task needs to do work within the address space of another task, it can temporarily
- * switch to that tasks directory. The override page directory of the currently executing task
- * is set to the temporary directory until using <taskingTemporarySwitchBack>.
- */
-g_physical_address taskingTemporarySwitchToSpace(g_physical_address pageDirectory);
-
-/**
- * Switches back from temporary space switch.
- */
-void taskingTemporarySwitchBack(g_physical_address pageDirectory);
-
-/**
  * Spawns an executable. This calls the correct binary loader in the background and creates a new
  * process, loading the executable object and necessary libraries. The created main thread is waiting.
- *
- * @param spawner
- * 		task calling the execution
- * @param file
- * 		executable file descriptor
- * @param securityLevel
- * 		security level of the created process
- * @param outProcess
- * 		out parameter for created process
- * @param outValidationDetails
- * 		out parameter for executable validation details
  */
 g_spawn_status taskingSpawn(g_task* spawner, g_fd file, g_security_level securityLevel,
 							g_process** outProcess, g_spawn_validation_details* outValidationDetails = 0);

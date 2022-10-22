@@ -88,7 +88,7 @@ void elfTlsCreateMasterImage(g_task* caller, g_fd file, g_process* process, g_el
 	}
 	hashmapIteratorEnd(&it);
 
-	/* Update process */
+	// Update process
 	process->tlsMaster.location = tlsStart;
 	process->tlsMaster.size = size;
 	process->tlsMaster.userThreadOffset = rootObject->tlsMaster.userThreadOffset;

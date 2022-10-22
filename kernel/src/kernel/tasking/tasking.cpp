@@ -367,13 +367,13 @@ g_task* taskingCreateTask(g_virtual_address eip, g_process* process, g_security_
 	taskingInitializeTask(task, process, level);
 	task->type = G_TASK_TYPE_DEFAULT;
 
-	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(task->process->pageDirectory);
+	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(task->process->pageDirectory);
 
 	taskingMemoryCreateStacks(task);
 	taskingStateReset(task, eip);
 	taskingPrepareThreadLocalStorage(task);
 
-	taskingTemporarySwitchBack(returnDirectory);
+	taskingMemoryTemporarySwitchBack(returnDirectory);
 
 	taskingProcessAddToTaskList(process, task);
 	hashmapPut(taskGlobalMap, task->id, task);
@@ -387,7 +387,7 @@ g_task* taskingCreateTaskVm86(g_process* process, uint32_t intr, g_vm86_register
 	taskingInitializeTask(task, process, G_SECURITY_LEVEL_KERNEL);
 	task->type = G_TASK_TYPE_VM86;
 
-	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(task->process->pageDirectory);
+	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(task->process->pageDirectory);
 
 	taskingMemoryCreateStacks(task);
 	taskingStateResetVm86(task, in, intr);
@@ -395,7 +395,7 @@ g_task* taskingCreateTaskVm86(g_process* process, uint32_t intr, g_vm86_register
 	task->vm86Data->out = out;
 	taskingPrepareThreadLocalStorage(task);
 
-	taskingTemporarySwitchBack(returnDirectory);
+	taskingMemoryTemporarySwitchBack(returnDirectory);
 
 	taskingProcessAddToTaskList(process, task);
 	hashmapPut(taskGlobalMap, task->id, task);
@@ -411,14 +411,14 @@ void taskingDestroyTask(g_task* task)
 	waitQueueWake(&task->waitersJoin);
 
 	// Switch to task space
-	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(task->process->pageDirectory);
+	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(task->process->pageDirectory);
 
 	messageTaskRemoved(task->id);
 	// TODO cleanup other misc memory
 	taskingMemoryDestroyStacks(task);
 	taskingMemoryDestroyThreadLocalStorage(task);
 
-	taskingTemporarySwitchBack(returnDirectory);
+	taskingMemoryTemporarySwitchBack(returnDirectory);
 
 	// Remove from process
 	taskingProcessRemoveFromTaskList(task);
@@ -468,29 +468,6 @@ void taskingProcessKillAllTasks(g_pid pid)
 	}
 
 	mutexRelease(&task->process->lock);
-}
-
-g_physical_address taskingTemporarySwitchToSpace(g_physical_address pageDirectory)
-{
-	g_physical_address back = pagingGetCurrentSpace();
-	g_tasking_local* local = taskingGetLocal();
-	if(local->scheduling.current)
-	{
-		if(local->scheduling.current->overridePageDirectory != 0)
-			panic("%! %i tried temporary directory switching twice", "tasking", local->scheduling.current->id);
-
-		local->scheduling.current->overridePageDirectory = pageDirectory;
-	}
-	pagingSwitchToSpace(pageDirectory);
-	return back;
-}
-
-void taskingTemporarySwitchBack(g_physical_address back)
-{
-	g_tasking_local* local = taskingGetLocal();
-	if(local->scheduling.current)
-		local->scheduling.current->overridePageDirectory = 0;
-	pagingSwitchToSpace(back);
 }
 
 g_spawn_status taskingSpawn(g_task* spawner, g_fd file, g_security_level securityLevel,

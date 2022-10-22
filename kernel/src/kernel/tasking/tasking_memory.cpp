@@ -24,14 +24,15 @@
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/panic.hpp"
 
 bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 {
 	g_process* process = task->process;
 	mutexAcquire(&process->lock);
-	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(task->process->pageDirectory);
+	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(task->process->pageDirectory);
 
-	// initialize the heap if necessary
+	// Initialize the heap if necessary
 	if(process->heap.brk == 0)
 	{
 		g_virtual_address heapStart = process->image.end;
@@ -44,11 +45,11 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 		process->heap.pages = 1;
 	}
 
-	// calculate new address
+	// Calculate new address
 	g_virtual_address oldBrk = process->heap.brk;
 	g_virtual_address newBrk = oldBrk + amount;
 
-	// heap expansion is limited
+	// Heap expansion is limited
 	bool success = false;
 	if(newBrk >= G_USER_MAXIMUM_HEAP_BREAK)
 	{
@@ -57,7 +58,7 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 	}
 	else
 	{
-		// expand if necessary
+		// Expand if necessary
 		g_virtual_address virt_above;
 		while(newBrk > (virt_above = process->heap.start + process->heap.pages * G_PAGE_SIZE))
 		{
@@ -66,7 +67,7 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 			++process->heap.pages;
 		}
 
-		// shrink if possible
+		// Shrink if possible
 		g_virtual_address virtAligned;
 		while(newBrk < (virtAligned = process->heap.start + process->heap.pages * G_PAGE_SIZE - G_PAGE_SIZE))
 		{
@@ -82,7 +83,7 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 		success = true;
 	}
 
-	taskingTemporarySwitchBack(returnDirectory);
+	taskingMemoryTemporarySwitchBack(returnDirectory);
 	mutexRelease(&process->lock);
 	return success;
 }
@@ -210,7 +211,7 @@ g_physical_address taskingMemoryCreatePageDirectory()
 
 void taskingMemoryDestroyPageDirectory(g_physical_address directory)
 {
-	g_physical_address returnDirectory = taskingTemporarySwitchToSpace(directory);
+	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(directory);
 
 	// Clear mappings and free physical space above 4 MiB
 	g_page_directory directoryCurrent = (g_page_directory) G_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
@@ -233,7 +234,7 @@ void taskingMemoryDestroyPageDirectory(g_physical_address directory)
 		memoryPhysicalFree(table);
 	}
 
-	taskingTemporarySwitchBack(returnDirectory);
+	taskingMemoryTemporarySwitchBack(returnDirectory);
 
 	memoryPhysicalFree(directory);
 }
@@ -299,4 +300,27 @@ void taskingMemoryDestroyThreadLocalStorage(g_task* task)
 	}
 
 	heapFree(task->threadLocal.kernelThreadLocal);
+}
+
+g_physical_address taskingMemoryTemporarySwitchTo(g_physical_address pageDirectory)
+{
+	g_physical_address back = pagingGetCurrentSpace();
+	g_tasking_local* local = taskingGetLocal();
+	if(local->scheduling.current)
+	{
+		if(local->scheduling.current->overridePageDirectory != 0)
+			panic("%! %i tried temporary directory switching twice", "tasking", local->scheduling.current->id);
+
+		local->scheduling.current->overridePageDirectory = pageDirectory;
+	}
+	pagingSwitchToSpace(pageDirectory);
+	return back;
+}
+
+void taskingMemoryTemporarySwitchBack(g_physical_address back)
+{
+	g_tasking_local* local = taskingGetLocal();
+	if(local->scheduling.current)
+		local->scheduling.current->overridePageDirectory = 0;
+	pagingSwitchToSpace(back);
 }
