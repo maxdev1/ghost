@@ -22,13 +22,13 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/elf/elf_loader.hpp"
 
-g_spawn_status elfTlsLoadData(g_task* caller, g_fd file, Elf32_Phdr phdr, g_elf_object* object)
+g_spawn_status elfTlsLoadData(g_fd file, Elf32_Phdr phdr, g_elf_object* object)
 {
 	uint32_t bytesToCopy = phdr.p_filesz;
 
 	// Read TLS content to a buffer
 	uint8_t* tlsContentBuffer = (uint8_t*) heapAllocate(bytesToCopy);
-	if(!elfReadToMemory(caller, file, phdr.p_offset, (uint8_t*) tlsContentBuffer, bytesToCopy))
+	if(!elfReadToMemory(file, phdr.p_offset, (uint8_t*) tlsContentBuffer, bytesToCopy))
 	{
 		logInfo("%! unable to read TLS segment from file", "elf");
 		heapFree(tlsContentBuffer);
@@ -64,7 +64,7 @@ g_spawn_status elfTlsLoadData(g_task* caller, g_fd file, Elf32_Phdr phdr, g_elf_
 	return G_SPAWN_STATUS_SUCCESSFUL;
 }
 
-void elfTlsCreateMasterImage(g_task* caller, g_fd file, g_process* process, g_elf_object* rootObject)
+void elfTlsCreateMasterImage(g_fd file, g_process* process, g_elf_object* rootObject)
 {
 	// Allocate memory
 	uint32_t size = G_PAGE_ALIGN_UP(rootObject->tlsMaster.totalSize);

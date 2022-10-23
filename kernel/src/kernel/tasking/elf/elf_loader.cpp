@@ -26,19 +26,26 @@
 #include "kernel/tasking/tasking_memory.hpp"
 #include "shared/utils/string.hpp"
 
-g_load_executable_result elfLoadExecutable(g_task* caller, g_fd fd, g_security_level securityLevel, g_process* process)
+g_load_executable_result elfLoadExecutable(g_fd fd, g_security_level securityLevel)
 {
 	g_load_executable_result res;
 
-	auto rootRes = elfObjectLoad(caller, nullptr, "root", fd, 0);
+	g_process* process = taskingGetCurrentTask()->process;
+	if(process->object)
+	{
+		logInfo("%! attempted to load two executables in the same address space", "elf");
+		res.status = G_SPAWN_STATUS_MEMORY_ERROR;
+		return res;
+	}
+
+	auto rootRes = elfObjectLoad(nullptr, "root", fd, 0);
 	res.status = rootRes.status;
 	res.validationDetails = rootRes.validation;
 
-	g_address imageEnd = rootRes.nextFreeBase;
 	if(rootRes.status == G_SPAWN_STATUS_SUCCESSFUL)
 	{
-		elfTlsCreateMasterImage(caller, fd, process, rootRes.object);
-		imageEnd = elfUserProcessCreateInfo(process, rootRes.object, imageEnd, securityLevel);
+		elfTlsCreateMasterImage(fd, process, rootRes.object);
+		g_address imageEnd = elfUserProcessCreateInfo(process, rootRes.object, rootRes.nextFreeBase, securityLevel);
 
 		process->object = rootRes.object;
 		process->image.start = rootRes.object->startAddress;
@@ -50,13 +57,13 @@ g_load_executable_result elfLoadExecutable(g_task* caller, g_fd fd, g_security_l
 	return res;
 }
 
-g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* executableObject, g_virtual_address executableImageEnd, g_security_level securityLevel)
+g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* rootObject, g_virtual_address imageEnd, g_security_level securityLevel)
 {
 	// Calculate required space
 	int objectCount = 0;
 	uint32_t stringTableSize = 0;
 
-	auto it = hashmapIteratorStart(executableObject->loadedObjects);
+	auto it = hashmapIteratorStart(rootObject->loadedObjects);
 	while(hashmapIteratorHasNext(&it))
 	{
 		auto object = hashmapIteratorNext(&it)->value;
@@ -67,7 +74,7 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* exe
 	uint32_t totalRequired = sizeof(g_process_info) + sizeof(g_object_info) * objectCount + stringTableSize;
 
 	// Map required memory all loaded objects
-	uint32_t areaStart = executableImageEnd;
+	uint32_t areaStart = imageEnd;
 	uint32_t pages = G_PAGE_ALIGN_UP(totalRequired) / G_PAGE_SIZE;
 	for(uint32_t i = 0; i < pages; i++)
 	{
@@ -84,7 +91,7 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* exe
 	info->objectInfosSize = objectCount;
 	info->objectInfos = objectInfo;
 
-	it = hashmapIteratorStart(executableObject->loadedObjects);
+	it = hashmapIteratorStart(rootObject->loadedObjects);
 	while(hashmapIteratorHasNext(&it))
 	{
 		g_elf_object* object = hashmapIteratorNext(&it)->value;
@@ -111,13 +118,13 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* exe
 	info->syscallKernelEntry = syscall;
 	process->userProcessInfo = info;
 
-	return executableImageEnd + G_PAGE_ALIGN_UP(totalRequired);
+	return imageEnd + G_PAGE_ALIGN_UP(totalRequired);
 }
 
-bool elfReadToMemory(g_task* caller, g_fd fd, size_t offset, uint8_t* buffer, uint64_t len)
+bool elfReadToMemory(g_fd fd, size_t offset, uint8_t* buffer, uint64_t len)
 {
 	int64_t seeked;
-	g_fs_seek_status seekStatus = filesystemSeek(caller, fd, G_FS_SEEK_SET, offset, &seeked);
+	g_fs_seek_status seekStatus = filesystemSeek(taskingGetCurrentTask(), fd, G_FS_SEEK_SET, offset, &seeked);
 	if(seekStatus != G_FS_SEEK_SUCCESSFUL)
 	{
 		logInfo("%! failed to seek to %i binary from fd %i", "elf", offset, fd);
@@ -134,7 +141,7 @@ bool elfReadToMemory(g_task* caller, g_fd fd, size_t offset, uint8_t* buffer, ui
 	while(remain)
 	{
 		int64_t read;
-		if(filesystemRead(caller, fd, &buffer[len - remain], remain, &read) != G_FS_READ_SUCCESSFUL ||
+		if(filesystemRead(taskingGetCurrentTask(), fd, &buffer[len - remain], remain, &read) != G_FS_READ_SUCCESSFUL ||
 		   read == 0)
 		{
 			logInfo("%! failed to read binary from fd %i", "elf", fd);
@@ -145,9 +152,9 @@ bool elfReadToMemory(g_task* caller, g_fd fd, size_t offset, uint8_t* buffer, ui
 	return true;
 }
 
-g_spawn_validation_details elfReadAndValidateHeader(g_task* caller, g_fd file, Elf32_Ehdr* headerBuffer, bool root)
+g_spawn_validation_details elfReadAndValidateHeader(g_fd file, Elf32_Ehdr* headerBuffer, bool root)
 {
-	if(!elfReadToMemory(caller, file, 0, (uint8_t*) headerBuffer, sizeof(Elf32_Ehdr)))
+	if(!elfReadToMemory(file, 0, (uint8_t*) headerBuffer, sizeof(Elf32_Ehdr)))
 	{
 		logInfo("%! failed to spawn file %i due to io error", "elf", file);
 		return G_SPAWN_VALIDATION_ELF32_IO_ERROR;

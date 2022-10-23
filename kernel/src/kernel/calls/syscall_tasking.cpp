@@ -118,9 +118,11 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 	g_fs_open_status open = filesystemOpen(data->path, G_FILE_FLAG_MODE_READ, task, &fd);
 	if(open == G_FS_OPEN_SUCCESSFUL)
 	{
-		auto spawned = taskingSpawn(task, fd, G_SECURITY_LEVEL_APPLICATION);
+		auto spawned = taskingSpawn(fd, G_SECURITY_LEVEL_APPLICATION);
 		data->status = spawned.status;
 		data->validationDetails = spawned.validation;
+
+		filesystemClose(task->process->id, fd, true);
 
 		if(data->status == G_SPAWN_STATUS_SUCCESSFUL)
 		{
@@ -199,13 +201,9 @@ void syscallGetThreadEntry(g_task* task, g_syscall_get_thread_entry* data)
 void syscallFork(g_task* task, g_syscall_fork* data)
 {
 	logInfo("syscall not implemented: fork");
-	for(;;)
-		;
 }
 
 void syscallGetParentProcessId(g_task* task, g_syscall_get_parent_pid* data)
 {
 	logInfo("syscall not implemented: syscallGetParentProcessId");
-	for(;;)
-		;
 }

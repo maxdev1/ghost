@@ -93,10 +93,14 @@ void exceptionsDumpTask(g_task* task)
 	logInfo("%#   task stack: %h - %h", task->stack.start, task->stack.end);
 	logInfo("%#   intr stack: %h - %h", task->interruptStack.start, task->interruptStack.end);
 
-	g_elf_object* object = task->process->object->symbolLookupOrderList;
-	while(object)
+	auto iter = hashmapIteratorStart(task->process->object->loadedObjects);
+	while(hashmapIteratorHasNext(&iter))
 	{
-		if(state->eip >= object->baseAddress && state->eip < object->endAddress)
+		auto object = hashmapIteratorNext(&iter)->value;
+
+		logInfo("%# obj %x-%x: %s", object->startAddress, object->endAddress, object->name);
+
+		if(state->eip >= object->startAddress && state->eip < object->endAddress)
 		{
 			if(object == task->process->object)
 			{
@@ -108,8 +112,8 @@ void exceptionsDumpTask(g_task* task)
 			}
 			break;
 		}
-		object = object->symbolLookupOrderListNext;
 	}
+	hashmapIteratorEnd(&iter);
 
 #if DEBUG_PRINT_STACK_TRACE
 	g_address* ebp = reinterpret_cast<g_address*>(state->ebp);

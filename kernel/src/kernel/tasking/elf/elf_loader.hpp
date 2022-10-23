@@ -34,7 +34,7 @@ struct g_load_executable_result
 /**
  * Loads an ELF binary and creates a process/task for it.
  */
-g_load_executable_result elfLoadExecutable(g_task* caller, g_fd file, g_security_level securityLevel, g_process* process);
+g_load_executable_result elfLoadExecutable(g_fd file, g_security_level securityLevel);
 
 /**
  * When an executable is loaded, a user process information structure
@@ -46,7 +46,7 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* exe
 /**
  * Reads and validates an ELF header from a file.
  */
-g_spawn_validation_details elfReadAndValidateHeader(g_task* caller, g_fd file, Elf32_Ehdr* headerBuffer, bool executable);
+g_spawn_validation_details elfReadAndValidateHeader(g_fd file, Elf32_Ehdr* headerBuffer, bool executable);
 
 /**
  * Validates the given ELF header.
@@ -56,6 +56,6 @@ g_spawn_validation_details elfValidateHeader(Elf32_Ehdr* header, bool executable
 /**
  * Reads a number of bytes from a file into a buffer.
  */
-bool elfReadToMemory(g_task* caller, g_fd file, size_t offset, uint8_t* buffer, uint64_t length);
+bool elfReadToMemory(g_fd file, size_t offset, uint8_t* buffer, uint64_t length);
 
 #endif

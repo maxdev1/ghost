@@ -239,47 +239,47 @@ void taskingMemoryDestroyPageDirectory(g_physical_address directory)
 	memoryPhysicalFree(directory);
 }
 
-void taskingPrepareThreadLocalStorage(g_task* task)
+void taskingMemoryInitializeTls(g_task* task)
 {
 	// Kernel thread-local storage
-	g_kernel_threadlocal* kernelThreadLocal = (g_kernel_threadlocal*) heapAllocate(sizeof(g_kernel_threadlocal));
-	kernelThreadLocal->processor = processorGetCurrentId();
-	task->threadLocal.kernelThreadLocal = kernelThreadLocal;
+	if(!task->threadLocal.kernelThreadLocal)
+	{
+		g_kernel_threadlocal* kernelThreadLocal = (g_kernel_threadlocal*) heapAllocate(sizeof(g_kernel_threadlocal));
+		kernelThreadLocal->processor = processorGetCurrentId();
+		task->threadLocal.kernelThreadLocal = kernelThreadLocal;
+	}
 
 	// User thread-local storage from binaries
-	g_process* process = task->process;
-	if(process->tlsMaster.location)
+	if(!task->threadLocal.userThreadLocal)
 	{
-		// allocate virtual range with required size
-		uint32_t requiredSize = process->tlsMaster.size;
-		uint32_t requiredPages = G_PAGE_ALIGN_UP(requiredSize) / G_PAGE_SIZE;
-		g_virtual_address tlsStart = addressRangePoolAllocate(process->virtualRangePool, requiredPages);
-		g_virtual_address tlsEnd = tlsStart + requiredPages * G_PAGE_SIZE;
-
-		// copy tls contents
-		for(g_virtual_address page = tlsStart; page < tlsEnd; page += G_PAGE_SIZE)
-		{
-			g_physical_address phys = memoryPhysicalAllocate();
-			pagingMapPage(page, phys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
-		}
-
-		// zero & copy TLS content
+		g_process* process = task->process;
 		if(process->tlsMaster.location)
 		{
+			// Allocate required virtual range
+			uint32_t requiredSize = process->tlsMaster.size;
+			uint32_t requiredPages = G_PAGE_ALIGN_UP(requiredSize) / G_PAGE_SIZE;
+
+			g_virtual_address tlsStart = addressRangePoolAllocate(process->virtualRangePool, requiredPages);
+			g_virtual_address tlsEnd = tlsStart + requiredPages * G_PAGE_SIZE;
+
+			for(g_virtual_address page = tlsStart; page < tlsEnd; page += G_PAGE_SIZE)
+			{
+				g_physical_address phys = memoryPhysicalAllocate();
+				pagingMapPage(page, phys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+			}
+
+			// Copy TLS contents
 			memorySetBytes((void*) tlsStart, 0, process->tlsMaster.size);
 			memoryCopy((void*) tlsStart, (void*) process->tlsMaster.location, process->tlsMaster.size);
+
+			// Store information
+			task->threadLocal.userThreadLocal = (g_user_threadlocal*) (tlsStart + process->tlsMaster.userThreadOffset);
+			task->threadLocal.userThreadLocal->self = task->threadLocal.userThreadLocal;
+			task->threadLocal.start = tlsStart;
+			task->threadLocal.end = tlsEnd;
+
+			logDebug("%! created tls copy in process %i, thread %i at %h", "threadmgr", process->id, task->id, task->threadLocal.start);
 		}
-
-		// fill user thread
-		g_user_threadlocal* userThreadLocal = (g_user_threadlocal*) (tlsStart + process->tlsMaster.userThreadOffset);
-		userThreadLocal->self = userThreadLocal;
-
-		// set threads TLS location
-		task->threadLocal.userThreadLocal = userThreadLocal;
-		task->threadLocal.start = tlsStart;
-		task->threadLocal.end = tlsEnd;
-
-		logDebug("%! created tls copy in process %i, thread %i at %h", "threadmgr", process->id, task->id, task->threadLocal.start);
 	}
 }
 

@@ -43,9 +43,6 @@ void _mutexInitialize(g_mutex* mutex)
 {
 	G_SPINLOCK_ACQUIRE(mutexInitializerLock);
 
-	if(mutex->initialized == G_MUTEX_INITIALIZED)
-		logWarn("%! initializing mutex %x twice", "mutex", mutex);
-
 	mutex->initialized = G_MUTEX_INITIALIZED;
 	mutex->lock = 0;
 	mutex->depth = 0;

@@ -164,6 +164,16 @@ struct g_task_entry
 /* Weak flag signals that the physical memory mapped behind the virtual range is not managed by the kernel (for example MMIO). */
 #define G_PROC_VIRTUAL_RANGE_FLAG_WEAK 1
 
+struct g_process_spawn_arguments
+{
+	g_fd fd;
+	g_security_level securityLevel;
+	g_address entry;
+
+	g_spawn_status status;
+	g_spawn_validation_details validation;
+};
+
 /**
  * A process groups multiple tasks.
  */
@@ -208,6 +218,16 @@ struct g_process
 	} environment;
 
 	g_process_info* userProcessInfo;
+
+	/**
+	 * Arguments for the spawning of this process.
+	 */
+	g_process_spawn_arguments* spawnArgs;
+
+	/**
+	 * List of tasks that wait for the result of spawning.
+	 */
+	g_wait_queue_entry* waitersSpawn;
 };
 
 #endif

@@ -28,7 +28,7 @@
  * Loads the TLS master for this object into a buffer. Then, the offset where this TLS data
  * will be loaded into the TLS master image is calculated and put into the object.
  */
-g_spawn_status elfTlsLoadData(g_task* caller, g_fd file, Elf32_Phdr header, g_elf_object* object);
+g_spawn_status elfTlsLoadData(g_fd file, Elf32_Phdr header, g_elf_object* object);
 
 /**
  * Creates the TLS master image. The positions for each part of this image where already specified
@@ -40,6 +40,6 @@ g_spawn_status elfTlsLoadData(g_task* caller, g_fd file, Elf32_Phdr header, g_el
  * When a new thread is created, a copy of this master image is created. The address of g_user_threadlocal
  * is then put into the GDT entry.
  */
-void elfTlsCreateMasterImage(g_task* caller, g_fd file, g_process* process, g_elf_object* executableObject);
+void elfTlsCreateMasterImage(g_fd file, g_process* process, g_elf_object* executableObject);
 
 #endif

@@ -24,7 +24,7 @@
 #include "kernel/tasking/elf/elf_tls.hpp"
 #include "shared/utils/string.hpp"
 
-g_elf_object_load_result elfObjectLoad(g_task* caller, g_elf_object* parentObject, const char* name, g_fd file, g_virtual_address base)
+g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* name, g_fd file, g_virtual_address base)
 {
 	g_elf_object_load_result res;
 	res.status = G_SPAWN_STATUS_SUCCESSFUL;
@@ -48,7 +48,7 @@ g_elf_object_load_result elfObjectLoad(g_task* caller, g_elf_object* parentObjec
 	logDebug("%! loading object '%s' (%i) to %h", "elf", name, object->id, base);
 
 	// Check ELF header
-	res.validation = elfReadAndValidateHeader(caller, file, &object->header, object->root);
+	res.validation = elfReadAndValidateHeader(file, &object->header, object->root);
 	if(res.validation != G_SPAWN_VALIDATION_SUCCESSFUL)
 	{
 		logInfo("%! validation failed with status %i when loading object %s", "elf", res.validation, name);
@@ -74,7 +74,7 @@ g_elf_object_load_result elfObjectLoad(g_task* caller, g_elf_object* parentObjec
 		Elf32_Phdr phdr;
 		uint32_t phdrOffset = object->header.e_phoff + object->header.e_phentsize * p;
 
-		if(!elfReadToMemory(caller, file, phdrOffset, (uint8_t*) &phdr, sizeof(Elf32_Phdr)))
+		if(!elfReadToMemory(file, phdrOffset, (uint8_t*) &phdr, sizeof(Elf32_Phdr)))
 		{
 			logInfo("%! failed to read segment header from file %i", "elf", file);
 			res.status = G_SPAWN_STATUS_IO_ERROR;
@@ -83,7 +83,14 @@ g_elf_object_load_result elfObjectLoad(g_task* caller, g_elf_object* parentObjec
 
 		if(phdr.p_type == PT_LOAD)
 		{
-			auto loadResult = elfObjectLoadLoadSegment(caller, file, phdr, base);
+			// TODO: Only load it immediately if it is the root binary or a dynamic section.
+			// Otherwise, create an on-demand mapping for this content.
+			//
+			// if(object->root || (object->dynamicSection &&
+			//					((g_address) object->dynamicSection) >= base + phdr.p_vaddr &&
+			// 					((g_address) object->dynamicSection) < base + phdr.p_vaddr + phdr.p_memsz))
+
+			auto loadResult = elfObjectLoadLoadSegment(file, phdr, base);
 			if(loadResult.status == G_SPAWN_STATUS_SUCCESSFUL)
 			{
 				if(object->startAddress == 0 || loadResult.alignedStart < object->startAddress)
@@ -101,7 +108,7 @@ g_elf_object_load_result elfObjectLoad(g_task* caller, g_elf_object* parentObjec
 		}
 		else if(phdr.p_type == PT_TLS)
 		{
-			res.status = elfTlsLoadData(caller, file, phdr, object);
+			res.status = elfTlsLoadData(file, phdr, object);
 			if(res.status != G_SPAWN_STATUS_SUCCESSFUL)
 			{
 				logInfo("%! unable to load PT_TLS segment from file", "elf");
@@ -120,7 +127,7 @@ g_elf_object_load_result elfObjectLoad(g_task* caller, g_elf_object* parentObjec
 	{
 		elfObjectInspect(object);
 
-		auto depRes = elfObjectLoadDependencies(caller, object);
+		auto depRes = elfObjectLoadDependencies(object);
 		if(depRes.status == G_SPAWN_STATUS_SUCCESSFUL)
 		{
 			res.nextFreeBase = depRes.nextFreeBase;
@@ -131,13 +138,13 @@ g_elf_object_load_result elfObjectLoad(g_task* caller, g_elf_object* parentObjec
 			return res;
 		}
 
-		elfObjectApplyRelocations(caller, file, object);
+		elfObjectApplyRelocations(file, object);
 	}
 
 	return res;
 }
 
-g_elf_object_load_segment_result elfObjectLoadLoadSegment(g_task* caller, g_fd file, Elf32_Phdr phdr, g_virtual_address base)
+g_elf_object_load_segment_result elfObjectLoadLoadSegment(g_fd file, Elf32_Phdr phdr, g_virtual_address base)
 {
 	g_address fileStart = base + phdr.p_vaddr;
 	g_offset fileSize = phdr.p_filesz;
@@ -161,7 +168,7 @@ g_elf_object_load_segment_result elfObjectLoadLoadSegment(g_task* caller, g_fd f
 		memorySetBytes((void*) res.alignedStart, 0, spaceBefore);
 
 	// Read data to memory
-	if(!elfReadToMemory(caller, file, phdr.p_offset, (uint8_t*) fileStart, fileSize))
+	if(!elfReadToMemory(file, phdr.p_offset, (uint8_t*) fileStart, fileSize))
 	{
 		res.status = G_SPAWN_STATUS_IO_ERROR;
 		return res;
@@ -274,7 +281,7 @@ void elfObjectInspect(g_elf_object* object)
 	}
 }
 
-g_elf_object_load_result elfObjectLoadDependencies(g_task* caller, g_elf_object* object)
+g_elf_object_load_result elfObjectLoadDependencies(g_elf_object* object)
 {
 	g_elf_object_load_result res;
 	res.status = G_SPAWN_STATUS_SUCCESSFUL;
@@ -287,7 +294,7 @@ g_elf_object_load_result elfObjectLoadDependencies(g_task* caller, g_elf_object*
 		if(elfObjectIsDependencyLoaded(object, dependency->name))
 			continue;
 
-		auto depRes = elfObjectLoadDependency(caller, object, dependency->name, res.nextFreeBase);
+		auto depRes = elfObjectLoadDependency(object, dependency->name, res.nextFreeBase);
 		res.nextFreeBase = depRes.nextFreeBase;
 
 		if(depRes.status != G_SPAWN_STATUS_SUCCESSFUL)
@@ -301,7 +308,7 @@ g_elf_object_load_result elfObjectLoadDependencies(g_task* caller, g_elf_object*
 	return res;
 }
 
-void elfObjectApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
+void elfObjectApplyRelocations(g_fd file, g_elf_object* object)
 {
 	g_elf_object* rootObject = object;
 	while(rootObject->parent)
@@ -310,7 +317,7 @@ void elfObjectApplyRelocations(g_task* caller, g_fd file, g_elf_object* object)
 	for(uint32_t p = 0; p < object->header.e_shnum * object->header.e_shentsize; p += object->header.e_shentsize)
 	{
 		Elf32_Shdr shdr;
-		if(!elfReadToMemory(caller, file, object->header.e_shoff + p, (uint8_t*) &shdr, object->header.e_shentsize))
+		if(!elfReadToMemory(file, object->header.e_shoff + p, (uint8_t*) &shdr, object->header.e_shentsize))
 		{
 			logInfo("%! failed to read section header from file", "elf");
 			break;
@@ -478,18 +485,18 @@ bool elfObjectIsDependencyLoaded(g_elf_object* object, const char* name)
 	return hashmapGet(rootObject->loadedObjects, name, (g_elf_object*) nullptr) != nullptr;
 }
 
-g_elf_object_load_result elfObjectLoadDependency(g_task* caller, g_elf_object* parentObject, const char* name, g_virtual_address base)
+g_elf_object_load_result elfObjectLoadDependency(g_elf_object* parentObject, const char* name, g_virtual_address base)
 {
-	g_fd fd = elfObjectOpenDependency(caller, name);
+	g_fd fd = elfObjectOpenDependency(name);
 	if(fd == G_FD_NONE)
 		return {status : G_SPAWN_STATUS_IO_ERROR};
 
-	auto dependencyData = elfObjectLoad(caller, parentObject, name, fd, base);
-	filesystemClose(caller->process->id, fd, true);
+	auto dependencyData = elfObjectLoad(parentObject, name, fd, base);
+	filesystemClose(taskingGetCurrentTask()->process->id, fd, true);
 	return dependencyData;
 }
 
-g_fd elfObjectOpenDependency(g_task* caller, const char* name)
+g_fd elfObjectOpenDependency(const char* name)
 {
 	const char* prefix = "/system/lib/";
 	char* absolutePath = (char*) heapAllocate(stringLength(prefix) + stringLength(name) + 1);
@@ -504,7 +511,7 @@ g_fd elfObjectOpenDependency(g_task* caller, const char* name)
 	}
 
 	g_fd fd;
-	g_fs_open_status openStatus = filesystemOpenNodeFd(findRes.file, G_FILE_FLAG_MODE_BINARY | G_FILE_FLAG_MODE_READ, caller->process->id, &fd);
+	g_fs_open_status openStatus = filesystemOpenNodeFd(findRes.file, G_FILE_FLAG_MODE_BINARY | G_FILE_FLAG_MODE_READ, taskingGetCurrentTask()->process->id, &fd);
 	if(openStatus != G_FS_OPEN_SUCCESSFUL)
 	{
 		logInfo("%! unable to open dependency %s", "elf", absolutePath);

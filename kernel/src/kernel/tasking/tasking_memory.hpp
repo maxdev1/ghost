@@ -72,9 +72,9 @@ g_stack taskingMemoryCreateStack(g_address_range_pool* addressRangePool, uint32_
 void taskingMemoryDestroyStack(g_address_range_pool* addressRangePool, g_stack& stack);
 
 /**
- * Allocates and copies the tasks thread-local-storage.
+ * Initializes the tasks thread-local-storage. Creates a copy of the master TLS for this task.
  */
-void taskingPrepareThreadLocalStorage(g_task* task);
+void taskingMemoryInitializeTls(g_task* task);
 
 /**
  * Destroys the tasks thread-local-storage.

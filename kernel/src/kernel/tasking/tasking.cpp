@@ -26,6 +26,7 @@
 #include "kernel/memory/gdt.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
+#include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/interrupts/ivt.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/system/system.hpp"
@@ -315,7 +316,7 @@ g_process* taskingCreateProcess()
 {
 	// logInfo("heap used before process creation: %i", heapGetUsedAmount());
 
-	g_process* process = (g_process*) heapAllocate(sizeof(g_process));
+	g_process* process = (g_process*) heapAllocateClear(sizeof(g_process));
 	process->id = taskingGetNextId();
 	process->main = 0;
 	process->tasks = 0;
@@ -370,8 +371,8 @@ g_task* taskingCreateTask(g_virtual_address eip, g_process* process, g_security_
 	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(task->process->pageDirectory);
 
 	taskingMemoryCreateStacks(task);
-	taskingStateReset(task, eip);
-	taskingPrepareThreadLocalStorage(task);
+	taskingStateReset(task, eip, level);
+	taskingMemoryInitializeTls(task);
 
 	taskingMemoryTemporarySwitchBack(returnDirectory);
 
@@ -393,7 +394,7 @@ g_task* taskingCreateTaskVm86(g_process* process, uint32_t intr, g_vm86_register
 	taskingStateResetVm86(task, in, intr);
 	task->vm86Data = (g_task_information_vm86*) heapAllocateClear(sizeof(g_task_information_vm86));
 	task->vm86Data->out = out;
-	taskingPrepareThreadLocalStorage(task);
+	taskingMemoryInitializeTls(task);
 
 	taskingMemoryTemporarySwitchBack(returnDirectory);
 
@@ -470,39 +471,81 @@ void taskingProcessKillAllTasks(g_pid pid)
 	mutexRelease(&task->process->lock);
 }
 
-g_spawn_result taskingSpawn(g_task* spawner, g_fd file, g_security_level securityLevel)
+g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel)
 {
+	g_task* caller = taskingGetCurrentTask();
+
+	// Create target process & task
 	g_spawn_result res;
-
-	// Create process and load binary to memory
 	res.process = taskingCreateProcess();
-
-	g_physical_address ret = taskingMemoryTemporarySwitchTo(res.process->pageDirectory);
-	auto loadRes = elfLoadExecutable(spawner, file, securityLevel, res.process);
-	taskingMemoryTemporarySwitchBack(ret);
-	res.status = loadRes.status;
-	res.validation = loadRes.validationDetails;
-
-	if(loadRes.status != G_SPAWN_STATUS_SUCCESSFUL)
-	{
-		logInfo("%! failed to load binary to current address space", "elf");
-		return res;
-	}
-
-	// Create main thread
-	g_task* thread = taskingCreateTask(loadRes.entry, res.process, securityLevel);
-	if(!thread)
+	g_task* task = taskingCreateTask(0, res.process, securityLevel);
+	if(!task)
 	{
 		logInfo("%! failed to create main thread to spawn binary", "elf");
 		res.status = G_SPAWN_STATUS_TASKING_ERROR;
 		return res;
 	}
 
-	// Put created task to waiting state
-	thread->status = G_THREAD_STATUS_WAITING;
-	taskingAssign(taskingGetLocal(), thread);
+	// Clone FD to target process
+	g_fd targetFd;
+	auto cloneStat = filesystemProcessCloneDescriptor(caller->process->id, fd, res.process->id, G_FD_NONE, &targetFd);
+	if(cloneStat != G_FS_CLONEFD_SUCCESSFUL)
+	{
+		logInfo("%! failed to clone executable FD to target process", "elf");
+		res.status = G_SPAWN_STATUS_IO_ERROR;
+		return res;
+	}
+
+	// Provide spawn arguments
+	res.process->spawnArgs = (g_process_spawn_arguments*) heapAllocateClear(sizeof(g_process_spawn_arguments));
+	res.process->spawnArgs->fd = targetFd;
+	res.process->spawnArgs->securityLevel = securityLevel;
+
+	// Set kernel-level entry
+	taskingStateReset(task, (g_address) &taskingSpawnEntry, G_SECURITY_LEVEL_KERNEL);
+
+	// Start thread & wait for spawn to finish
+	waitQueueAdd(&res.process->waitersSpawn, caller->id);
+	taskingAssignBalanced(task);
+	caller->status = G_THREAD_STATUS_WAITING;
+	taskingYield();
+
+	// Take result
+	res.status = res.process->spawnArgs->status;
+	res.validation = res.process->spawnArgs->validation;
+
+	heapFree(res.process->spawnArgs);
+	res.process->spawnArgs = nullptr;
 
 	return res;
+}
+
+void taskingSpawnEntry()
+{
+	auto task = taskingGetCurrentTask();
+	auto process = task->process;
+	auto args = process->spawnArgs;
+
+	// Load binary
+	auto loadRes = elfLoadExecutable(args->fd, args->securityLevel);
+	args->status = loadRes.status;
+	args->validation = loadRes.validationDetails;
+
+	if(loadRes.status != G_SPAWN_STATUS_SUCCESSFUL)
+	{
+		logInfo("%! failed to load binary to current address space", "elf");
+		waitQueueWake(&process->waitersSpawn);
+		taskingExit();
+	}
+
+	// Finalize task setup & leave to lower privileges
+	interruptsDisable();
+
+	taskingMemoryInitializeTls(task);
+	args->entry = loadRes.entry;
+
+	asm volatile("int $0x82" ::
+					 : "cc", "memory");
 }
 
 void taskingWaitForExit(g_tid joinedTid, g_tid waiter)

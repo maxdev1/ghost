@@ -47,16 +47,21 @@ void taskingStateResetVm86(g_task* task, g_vm86_registers in, uint32_t intr)
 	state->ds = in.ds;
 }
 
-void taskingStateReset(g_task* task, g_address eip)
+void taskingStateReset(g_task* task, g_address eip, g_security_level entryLevel)
 {
-	g_processor_state* state = (g_processor_state*) (task->stack.end - sizeof(g_processor_state));
+	g_processor_state* state;
+	if(entryLevel == G_SECURITY_LEVEL_KERNEL && task->securityLevel > G_SECURITY_LEVEL_KERNEL)
+		state = (g_processor_state*) (task->interruptStack.end - sizeof(g_processor_state));
+	else
+		state = (g_processor_state*) (task->stack.end - sizeof(g_processor_state));
+
 	task->state = state;
 
 	memorySetBytes((void*) task->state, 0, sizeof(g_processor_state));
 	state->eflags = 0x200;
 	state->esp = (g_virtual_address) task->state;
 
-	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
+	if(entryLevel == G_SECURITY_LEVEL_KERNEL)
 	{
 		state->cs = G_GDT_DESCRIPTOR_KERNEL_CODE | G_SEGMENT_SELECTOR_RING0;
 		state->ss = G_GDT_DESCRIPTOR_KERNEL_DATA | G_SEGMENT_SELECTOR_RING0;
@@ -74,7 +79,7 @@ void taskingStateReset(g_task* task, g_address eip)
 		state->gs = G_GDT_DESCRIPTOR_USERTHREADLOCAL;
 	}
 
-	if(task->securityLevel <= G_SECURITY_LEVEL_DRIVER)
+	if(entryLevel <= G_SECURITY_LEVEL_DRIVER)
 	{
 		state->eflags |= 0x3000; // IOPL 3
 	}

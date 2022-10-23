@@ -119,12 +119,11 @@ void kernelRunApplicationCore()
 
 void kernelSpawnService(const char* path, const char* args, g_security_level securityLevel)
 {
-	g_task* currentTask = taskingGetCurrentTask();
 	g_fd fd;
-	g_fs_open_status open = filesystemOpen(path, G_FILE_FLAG_MODE_READ, currentTask, &fd);
+	g_fs_open_status open = filesystemOpen(path, G_FILE_FLAG_MODE_READ, taskingGetCurrentTask(), &fd);
 	if(open == G_FS_OPEN_SUCCESSFUL)
 	{
-		auto spawnRes = taskingSpawn(currentTask, fd, securityLevel);
+		auto spawnRes = taskingSpawn(fd, securityLevel);
 		if(spawnRes.status == G_SPAWN_STATUS_SUCCESSFUL)
 		{
 			spawnRes.process->environment.arguments = args;

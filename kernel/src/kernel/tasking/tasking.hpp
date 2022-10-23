@@ -212,10 +212,16 @@ void taskingIdleThread();
 g_task* taskingGetById(g_tid id);
 
 /**
- * Spawns an executable. This calls the correct binary loader in the background and creates a new
- * process, loading the executable object and necessary libraries. The created main thread is waiting.
+ * Spawns an executable. This creates a task entering <taskingSpawnEntry> where the actual
+ * binary loading happens. Makes the executing task wait for the spawn to complete.
  */
-g_spawn_result taskingSpawn(g_task* spawner, g_fd file, g_security_level securityLevel);
+g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel);
+
+/**
+ * Entry function for a newly spawned task. Loads the executable binary and then executes a
+ * privilege downgrade to enter the user-level task execution.
+ */
+void taskingSpawnEntry();
 
 /**
  * Waits until the task exits and then wakes the waiting task.
