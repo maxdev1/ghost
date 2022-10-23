@@ -121,40 +121,9 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* roo
 	return imageEnd + G_PAGE_ALIGN_UP(totalRequired);
 }
 
-bool elfReadToMemory(g_fd fd, size_t offset, uint8_t* buffer, uint64_t len)
-{
-	int64_t seeked;
-	g_fs_seek_status seekStatus = filesystemSeek(taskingGetCurrentTask(), fd, G_FS_SEEK_SET, offset, &seeked);
-	if(seekStatus != G_FS_SEEK_SUCCESSFUL)
-	{
-		logInfo("%! failed to seek to %i binary from fd %i", "elf", offset, fd);
-		return false;
-	}
-
-	if(seeked != offset)
-	{
-		logInfo("%! tried to seek in file to position %i but only got to %i", "elf", (uint32_t) offset, (uint32_t) seeked);
-		return false;
-	}
-
-	uint64_t remain = len;
-	while(remain)
-	{
-		int64_t read;
-		if(filesystemRead(taskingGetCurrentTask(), fd, &buffer[len - remain], remain, &read) != G_FS_READ_SUCCESSFUL ||
-		   read == 0)
-		{
-			logInfo("%! failed to read binary from fd %i", "elf", fd);
-			return false;
-		}
-		remain -= read;
-	}
-	return true;
-}
-
 g_spawn_validation_details elfReadAndValidateHeader(g_fd file, Elf32_Ehdr* headerBuffer, bool root)
 {
-	if(!elfReadToMemory(file, 0, (uint8_t*) headerBuffer, sizeof(Elf32_Ehdr)))
+	if(!filesystemReadToMemory(file, 0, (uint8_t*) headerBuffer, sizeof(Elf32_Ehdr)))
 	{
 		logInfo("%! failed to spawn file %i due to io error", "elf", file);
 		return G_SPAWN_VALIDATION_ELF32_IO_ERROR;

@@ -21,7 +21,7 @@
 #ifndef __UTILS_HASHMAP__
 #define __UTILS_HASHMAP__
 
-#include "kernel/memory/memory.hpp"
+#include "kernel/memory/heap.hpp"
 #include "shared/system/mutex.hpp"
 
 template <typename K, typename V>

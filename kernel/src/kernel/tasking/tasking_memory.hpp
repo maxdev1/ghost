@@ -93,4 +93,11 @@ g_physical_address taskingMemoryTemporarySwitchTo(g_physical_address pageDirecto
  */
 void taskingMemoryTemporarySwitchBack(g_physical_address pageDirectory);
 
+/**
+ * Attempts to handle a stack-overflow by mapping the required pages.
+ *
+ * @returns whether extending the stack was successful
+ */
+bool taskingMemoryHandleStackOverflow(g_task* task, g_virtual_address accessedPage);
+
 #endif

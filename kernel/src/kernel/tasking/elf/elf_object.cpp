@@ -45,7 +45,7 @@ g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* n
 	}
 	res.object = object;
 
-	logDebug("%! loading object '%s' (%i) to %h", "elf", name, object->id, base);
+	logDebug("%! loading object '%s' (%i) to %h (fd %i)", "elf", name, object->id, base, file);
 
 	// Check ELF header
 	res.validation = elfReadAndValidateHeader(file, &object->header, object->root);
@@ -74,7 +74,7 @@ g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* n
 		Elf32_Phdr phdr;
 		uint32_t phdrOffset = object->header.e_phoff + object->header.e_phentsize * p;
 
-		if(!elfReadToMemory(file, phdrOffset, (uint8_t*) &phdr, sizeof(Elf32_Phdr)))
+		if(!filesystemReadToMemory(file, phdrOffset, (uint8_t*) &phdr, sizeof(Elf32_Phdr)))
 		{
 			logInfo("%! failed to read segment header from file %i", "elf", file);
 			res.status = G_SPAWN_STATUS_IO_ERROR;
@@ -83,28 +83,30 @@ g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* n
 
 		if(phdr.p_type == PT_LOAD)
 		{
-			// TODO: Only load it immediately if it is the root binary or a dynamic section.
-			// Otherwise, create an on-demand mapping for this content.
-			//
-			// if(object->root || (object->dynamicSection &&
-			//					((g_address) object->dynamicSection) >= base + phdr.p_vaddr &&
-			// 					((g_address) object->dynamicSection) < base + phdr.p_vaddr + phdr.p_memsz))
+			auto fileStart = base + phdr.p_vaddr;
+			auto alignedStart = G_PAGE_ALIGN_DOWN(fileStart);
+			auto alignedEnd = G_PAGE_ALIGN_UP(fileStart + phdr.p_memsz);
 
-			auto loadResult = elfObjectLoadLoadSegment(file, phdr, base);
-			if(loadResult.status == G_SPAWN_STATUS_SUCCESSFUL)
+			if(object->root)
 			{
-				if(object->startAddress == 0 || loadResult.alignedStart < object->startAddress)
-					object->startAddress = loadResult.alignedStart;
-
-				if(loadResult.alignedEnd > object->endAddress)
-					object->endAddress = loadResult.alignedEnd;
+				auto loadResult = elfObjectLoadLoadSegment(file, phdr, base);
+				if(loadResult != G_SPAWN_STATUS_SUCCESSFUL)
+				{
+					res.status = loadResult;
+					logInfo("%! unable to load PT_LOAD segment from file", "elf");
+					break;
+				}
 			}
 			else
 			{
-				res.status = loadResult.status;
-				logInfo("%! unable to load PT_LOAD segment from file", "elf");
-				break;
+				memoryOnDemandMapFile(taskingGetCurrentTask()->process, file, phdr.p_offset, fileStart, phdr.p_filesz, phdr.p_memsz);
 			}
+
+			if(object->startAddress == 0 || alignedStart < object->startAddress)
+				object->startAddress = alignedStart;
+
+			if(alignedEnd > object->endAddress)
+				object->endAddress = alignedEnd;
 		}
 		else if(phdr.p_type == PT_TLS)
 		{
@@ -144,43 +146,40 @@ g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* n
 	return res;
 }
 
-g_elf_object_load_segment_result elfObjectLoadLoadSegment(g_fd file, Elf32_Phdr phdr, g_virtual_address base)
+g_spawn_status elfObjectLoadLoadSegment(g_fd file, Elf32_Phdr phdr, g_virtual_address base)
 {
 	g_address fileStart = base + phdr.p_vaddr;
 	g_offset fileSize = phdr.p_filesz;
 	g_address fileEnd = fileStart + fileSize;
 
-	g_elf_object_load_segment_result res;
-	res.alignedStart = G_PAGE_ALIGN_DOWN(fileStart);
-	res.alignedEnd = G_PAGE_ALIGN_UP(fileStart + phdr.p_memsz);
+	g_address alignedStart = G_PAGE_ALIGN_DOWN(fileStart);
+	g_address alignedEnd = G_PAGE_ALIGN_UP(fileStart + phdr.p_memsz);
 
 	// Allocate required memory
-	uint32_t pages = (res.alignedEnd - res.alignedStart) / G_PAGE_SIZE;
+	uint32_t pages = (alignedEnd - alignedStart) / G_PAGE_SIZE;
 	for(uint32_t i = 0; i < pages; i++)
 	{
 		g_physical_address page = memoryPhysicalAllocate();
-		pagingMapPage(res.alignedStart + i * G_PAGE_SIZE, page, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+		pagingMapPage(alignedStart + i * G_PAGE_SIZE, page, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
 	}
 
 	// Zero everything before content
-	uint32_t spaceBefore = fileStart - res.alignedStart;
+	uint32_t spaceBefore = fileStart - alignedStart;
 	if(spaceBefore > 0)
-		memorySetBytes((void*) res.alignedStart, 0, spaceBefore);
+		memorySetBytes((void*) alignedStart, 0, spaceBefore);
 
 	// Read data to memory
-	if(!elfReadToMemory(file, phdr.p_offset, (uint8_t*) fileStart, fileSize))
+	if(!filesystemReadToMemory(file, phdr.p_offset, (uint8_t*) fileStart, fileSize))
 	{
-		res.status = G_SPAWN_STATUS_IO_ERROR;
-		return res;
+		return G_SPAWN_STATUS_IO_ERROR;
 	}
 
 	// Zero everything after content
-	uint32_t spaceAfter = res.alignedEnd - fileEnd;
+	uint32_t spaceAfter = alignedEnd - fileEnd;
 	if(spaceAfter > 0)
 		memorySetBytes((void*) fileEnd, 0, spaceAfter);
 
-	res.status = G_SPAWN_STATUS_SUCCESSFUL;
-	return res;
+	return G_SPAWN_STATUS_SUCCESSFUL;
 }
 
 void elfObjectInspect(g_elf_object* object)
@@ -317,7 +316,7 @@ void elfObjectApplyRelocations(g_fd file, g_elf_object* object)
 	for(uint32_t p = 0; p < object->header.e_shnum * object->header.e_shentsize; p += object->header.e_shentsize)
 	{
 		Elf32_Shdr shdr;
-		if(!elfReadToMemory(file, object->header.e_shoff + p, (uint8_t*) &shdr, object->header.e_shentsize))
+		if(!filesystemReadToMemory(file, object->header.e_shoff + p, (uint8_t*) &shdr, object->header.e_shentsize))
 		{
 			logInfo("%! failed to read section header from file", "elf");
 			break;
@@ -491,9 +490,7 @@ g_elf_object_load_result elfObjectLoadDependency(g_elf_object* parentObject, con
 	if(fd == G_FD_NONE)
 		return {status : G_SPAWN_STATUS_IO_ERROR};
 
-	auto dependencyData = elfObjectLoad(parentObject, name, fd, base);
-	filesystemClose(taskingGetCurrentTask()->process->id, fd, true);
-	return dependencyData;
+	return elfObjectLoad(parentObject, name, fd, base);
 }
 
 g_fd elfObjectOpenDependency(const char* name)

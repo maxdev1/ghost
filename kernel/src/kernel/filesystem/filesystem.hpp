@@ -228,4 +228,9 @@ g_fs_open_directory_status filesystemOpenDirectory(g_fs_node* parent);
  */
 g_fs_read_directory_status filesystemReadDirectory(g_fs_node* parent, uint32_t index, g_fs_node** outChild);
 
+/**
+ * Reads bytes from a file to a buffer in memory.
+ */
+bool filesystemReadToMemory(g_fd fd, size_t offset, uint8_t* buffer, uint64_t len);
+
 #endif

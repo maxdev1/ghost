@@ -28,7 +28,7 @@ g_spawn_status elfTlsLoadData(g_fd file, Elf32_Phdr phdr, g_elf_object* object)
 
 	// Read TLS content to a buffer
 	uint8_t* tlsContentBuffer = (uint8_t*) heapAllocate(bytesToCopy);
-	if(!elfReadToMemory(file, phdr.p_offset, (uint8_t*) tlsContentBuffer, bytesToCopy))
+	if(!filesystemReadToMemory(file, phdr.p_offset, (uint8_t*) tlsContentBuffer, bytesToCopy))
 	{
 		logInfo("%! unable to read TLS segment from file", "elf");
 		heapFree(tlsContentBuffer);

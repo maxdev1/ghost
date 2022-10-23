@@ -20,11 +20,13 @@
 
 #include "kernel/memory/memory.hpp"
 #include "kernel/debug/debug_interface.hpp"
+#include "kernel/filesystem/filesystem.hpp"
 #include "kernel/kernel.hpp"
 #include "kernel/memory/heap.hpp"
 #include "kernel/memory/lower_heap.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/memory/paging.hpp"
+#include "kernel/tasking/task.hpp"
 
 g_address_range_pool* memoryVirtualRangePool = 0;
 
@@ -109,4 +111,71 @@ void memoryFreeKernelRange(g_virtual_address address)
 	}
 
 	addressRangePoolFree(memoryVirtualRangePool, address);
+}
+
+void memoryOnDemandMapFile(g_process* process, g_fd file, g_offset fileOffset, g_address fileStart, g_ptrsize fileSize, g_ptrsize memorySize)
+{
+	g_memory_file_ondemand* mapping = (g_memory_file_ondemand*) heapAllocate(sizeof(g_memory_file_ondemand));
+	mapping->fd = file;
+	mapping->fileStart = fileStart;
+	mapping->fileOffset = fileOffset;
+	mapping->fileSize = fileSize;
+	mapping->memSize = memorySize;
+
+	mapping->next = process->onDemandMappings;
+	process->onDemandMappings = mapping;
+}
+
+g_memory_file_ondemand* memoryOnDemandFindMapping(g_task* task, g_address address)
+{
+	auto mapping = task->process->onDemandMappings;
+	while(mapping)
+	{
+		if(address >= G_PAGE_ALIGN_DOWN(mapping->fileStart) &&
+		   address < G_PAGE_ALIGN_UP(mapping->fileStart + mapping->memSize))
+		{
+			return mapping;
+		}
+		mapping = mapping->next;
+	}
+
+	return nullptr;
+}
+
+bool memoryOnDemandHandlePageFault(g_task* task, g_address accessed)
+{
+	auto mapping = memoryOnDemandFindMapping(task, accessed);
+	if(!mapping)
+		return false;
+
+	auto accessedLeft = G_PAGE_ALIGN_DOWN(accessed);
+	auto accessedRight = accessedLeft + G_PAGE_SIZE;
+	auto fileEnd = mapping->fileStart + mapping->fileSize;
+
+	// Allocate requested page
+	pagingMapPage(accessedLeft, memoryPhysicalAllocate(), DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+
+	// Zero everything before content
+	g_address zeroLeft = accessedLeft;
+	g_address zeroRight = mapping->fileStart > accessedRight ? accessedRight : mapping->fileStart;
+	if(zeroLeft < zeroRight)
+		memorySetBytes((void*) zeroLeft, 0, zeroRight - zeroLeft);
+
+	// Read data to memory
+	g_address copyLeft = mapping->fileStart > accessedLeft ? mapping->fileStart : accessedLeft;
+	g_address copyRight = fileEnd > accessedRight ? accessedRight : fileEnd;
+	if(copyLeft < copyRight)
+	{
+		g_offset fileOffset = mapping->fileOffset + (copyLeft - mapping->fileStart);
+		if(!filesystemReadToMemory(mapping->fd, fileOffset, (uint8_t*) copyLeft, copyRight - copyLeft))
+			return false;
+	}
+
+	// Zero everything after content
+	g_address rzeroLeft = fileEnd > accessedLeft ? fileEnd : accessedLeft;
+	g_address rzeroRight = accessedRight;
+	if(rzeroLeft < rzeroRight)
+		memorySetBytes((void*) rzeroLeft, 0, rzeroRight - rzeroLeft);
+
+	return true;
 }

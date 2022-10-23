@@ -716,3 +716,35 @@ g_fs_read_directory_status filesystemReadDirectory(g_fs_node* dir, uint32_t inde
 	}
 	return G_FS_READ_DIRECTORY_EOD;
 }
+
+bool filesystemReadToMemory(g_fd fd, size_t offset, uint8_t* buffer, uint64_t len)
+{
+	int64_t seeked;
+	g_fs_seek_status seekStatus = filesystemSeek(taskingGetCurrentTask(), fd, G_FS_SEEK_SET, offset, &seeked);
+	if(seekStatus != G_FS_SEEK_SUCCESSFUL)
+	{
+		logInfo("%! failed to seek to %i in file %i (status %i)", "fs", offset, fd, seekStatus);
+		return false;
+	}
+
+	if(seeked != offset)
+	{
+		logInfo("%! tried to seek in file to position %i but highest offset is %i", "fs", (uint32_t) offset, (uint32_t) seeked);
+		return false;
+	}
+
+	uint64_t remain = len;
+	while(remain)
+	{
+		int64_t read;
+		auto stat = filesystemRead(taskingGetCurrentTask(), fd, &buffer[len - remain], remain, &read);
+		if(stat != G_FS_READ_SUCCESSFUL ||
+		   read == 0)
+		{
+			logInfo("%! failed to read file from fd %i (status %i), remaining: %i", "fs", fd, stat, (uint32_t) remain);
+			return false;
+		}
+		remain -= read;
+	}
+	return true;
+}

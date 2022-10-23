@@ -324,3 +324,37 @@ void taskingMemoryTemporarySwitchBack(g_physical_address back)
 		local->scheduling.current->overridePageDirectory = 0;
 	pagingSwitchToSpace(back);
 }
+
+bool taskingMemoryHandleStackOverflow(g_task* task, g_virtual_address accessed)
+{
+	g_virtual_address accessedPage = G_PAGE_ALIGN_DOWN(accessed);
+
+	// Is within range of the stack?
+	if(accessedPage < task->stack.start || accessedPage > task->stack.end)
+	{
+		return false;
+	}
+
+	// If guard page was accessed, let the task fault
+	if(accessedPage < task->stack.start + G_PAGE_SIZE)
+	{
+		logInfo("%! task %i page-faulted due to overflowing into stack guard page", "pagefault", task->id);
+		return false;
+	}
+
+	// Extend the stack
+	uint32_t tableFlags, pageFlags;
+	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
+	{
+		tableFlags = DEFAULT_KERNEL_TABLE_FLAGS;
+		pageFlags = DEFAULT_KERNEL_PAGE_FLAGS;
+	}
+	else
+	{
+		tableFlags = DEFAULT_USER_TABLE_FLAGS;
+		pageFlags = DEFAULT_USER_PAGE_FLAGS;
+	}
+
+	pagingMapPage(accessedPage, memoryPhysicalAllocate(), tableFlags, pageFlags);
+	return true;
+}

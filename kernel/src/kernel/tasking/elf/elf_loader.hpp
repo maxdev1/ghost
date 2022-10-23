@@ -53,9 +53,4 @@ g_spawn_validation_details elfReadAndValidateHeader(g_fd file, Elf32_Ehdr* heade
  */
 g_spawn_validation_details elfValidateHeader(Elf32_Ehdr* header, bool executable);
 
-/**
- * Reads a number of bytes from a file into a buffer.
- */
-bool elfReadToMemory(g_fd file, size_t offset, uint8_t* buffer, uint64_t length);
-
 #endif

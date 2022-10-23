@@ -127,17 +127,10 @@ struct g_elf_object_load_result
  */
 g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* name, g_fd file, g_virtual_address base);
 
-struct g_elf_object_load_segment_result
-{
-	g_spawn_status status;
-	g_virtual_address alignedStart;
-	g_virtual_address alignedEnd;
-};
-
 /**
  * Loads a PT_LOAD segment using the header information, relative to the base address.
  */
-g_elf_object_load_segment_result elfObjectLoadLoadSegment(g_fd file, Elf32_Phdr phdr, g_virtual_address base);
+g_spawn_status elfObjectLoadLoadSegment(g_fd file, Elf32_Phdr phdr, g_virtual_address base);
 
 /**
  * Applies relocations on the given object.

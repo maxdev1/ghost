@@ -175,6 +175,33 @@ struct g_process_spawn_arguments
 };
 
 /**
+ * On-demand mapping for a file in memory.
+ */
+struct g_memory_file_ondemand
+{
+	/**
+	 * Source file descriptor and offset
+	 */
+	g_fd fd;
+	g_offset fileOffset;
+
+	/**
+	 * Target address of the content in memory
+	 */
+	g_address fileStart;
+	/**
+	 * Size of content to be loaded from the file
+	 */
+	g_ptrsize fileSize;
+	/**
+	 * Total size of the allocated memory, content is followed by 0
+	 */
+	g_ptrsize memSize;
+
+	g_memory_file_ondemand* next;
+};
+
+/**
  * A process groups multiple tasks.
  */
 struct g_process
@@ -228,6 +255,11 @@ struct g_process
 	 * List of tasks that wait for the result of spawning.
 	 */
 	g_wait_queue_entry* waitersSpawn;
+
+	/**
+	 * List of on-demand file-to-memory mappings.
+	 */
+	g_memory_file_ondemand* onDemandMappings;
 };
 
 #endif

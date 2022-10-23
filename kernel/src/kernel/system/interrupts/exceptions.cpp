@@ -19,12 +19,14 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/interrupts/exceptions.hpp"
+#include "kernel/memory/memory.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/memory/paging.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/system/processor/virtual_8086_monitor.hpp"
 #include "kernel/tasking/elf/elf_loader.hpp"
 #include "kernel/tasking/tasking.hpp"
+#include "kernel/tasking/tasking_memory.hpp"
 #include "shared/logger/logger.hpp"
 
 #define DEBUG_PRINT_STACK_TRACE 1
@@ -131,48 +133,17 @@ void exceptionsDumpTask(g_task* task)
 #endif
 }
 
-bool exceptionsHandleStackOverflow(g_task* task, g_virtual_address accessedVirtPage)
-{
-	// Is within range of the stack?
-	if(accessedVirtPage < task->stack.start || accessedVirtPage > task->stack.end)
-	{
-		return false;
-	}
-
-	// If guard page was accessed, let the task fault
-	if(accessedVirtPage < task->stack.start + G_PAGE_SIZE)
-	{
-		logInfo("%! task %i page-faulted due to overflowing into stack guard page", "pagefault", task->id);
-		return false;
-	}
-
-	// Extend the stack
-	uint32_t tableFlags, pageFlags;
-	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
-	{
-		tableFlags = DEFAULT_KERNEL_TABLE_FLAGS;
-		pageFlags = DEFAULT_KERNEL_PAGE_FLAGS;
-	}
-	else
-	{
-		tableFlags = DEFAULT_USER_TABLE_FLAGS;
-		pageFlags = DEFAULT_USER_PAGE_FLAGS;
-	}
-
-	g_physical_address extendedStackPage = memoryPhysicalAllocate();
-	pagingMapPage(accessedVirtPage, extendedStackPage, tableFlags, pageFlags);
-	return true;
-}
-
 bool exceptionsHandlePageFault(g_task* task)
 {
 	g_virtual_address accessed = exceptionsGetCR2();
-	g_virtual_address virtPage = G_PAGE_ALIGN_DOWN(accessed);
-	g_physical_address physPage = pagingVirtualToPhysical(virtPage);
 
-	if(exceptionsHandleStackOverflow(task, virtPage))
+	if(taskingMemoryHandleStackOverflow(task, accessed))
 		return true;
 
+	if(memoryOnDemandHandlePageFault(task, accessed))
+		return true;
+
+	g_physical_address physPage = pagingVirtualToPhysical(G_PAGE_ALIGN_DOWN(accessed));
 	logInfo("%! task %i (core %i) EIP: %x (accessed %h, mapped page %h)", "pagefault", task->id, processorGetCurrentId(), task->state->eip, accessed, physPage);
 
 	exceptionsDumpTask(task);
