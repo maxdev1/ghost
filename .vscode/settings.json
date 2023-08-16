@@ -3,6 +3,7 @@
         "*.def": "cpp",
         "*.x": "cpp",
         "*.tcc": "cpp",
+        "*.h": "c",
         "cmath": "cpp",
         "chrono": "cpp",
         "charconv": "cpp",
@@ -90,18 +91,14 @@
         "dynamic_bitset": "cpp",
         "set": "cpp",
         "ratio": "cpp",
-        "ghost.h": "c",
         "stdio_internal.h": "c",
         "STDIO_INTERNAL.H": "cpp",
         "source_location": "cpp",
         "slist": "cpp",
         "valarray": "cpp",
-        "stdlib.h": "c",
-        "stdio.h": "c",
         "locale": "cpp",
         "typeindex": "cpp",
-        "dirent.h": "c",
-        "stdarg.h": "c"
+        "socket": "cpp"
     },
     "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: LLVM, SpaceBeforeParens: Never, UseTab: Always, BreakBeforeBraces: Allman, SpaceAfterCStyleCast: true, ColumnLimit: 0, IndentWidth: 4, TabWidth: 4, PointerAlignment: Left, DerivePointerAlignment: false }"
 }
