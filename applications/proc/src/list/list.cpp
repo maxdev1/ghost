@@ -99,7 +99,6 @@ int procList(int argc, char** argv)
 		g_kernquery_status getstatus = g_kernquery(G_KERNQUERY_TASK_GET_BY_ID, (uint8_t*) &taskData[i]);
 		if(getstatus != G_KERNQUERY_STATUS_SUCCESSFUL)
 		{
-			fprintf(stderr, "failed to query the kernel for task %i (code %i)\n", ids[i], getstatus);
 			continue;
 		}
 	}
