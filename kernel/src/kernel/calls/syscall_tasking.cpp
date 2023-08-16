@@ -79,6 +79,12 @@ void syscallYield(g_task* task)
 
 void syscallExit(g_task* task, g_syscall_exit* data)
 {
+	taskingProcessKillAllTasks(task->process->id);
+	taskingExit();
+}
+
+void syscallExitThread(g_task* task)
+{
 	taskingExit();
 }
 

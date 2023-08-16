@@ -34,6 +34,8 @@ void syscallAtomicDestroy(g_task* task, g_syscall_atomic_destroy* data);
 
 void syscallExit(g_task* task, g_syscall_exit* data);
 
+void syscallExitThread(g_task* task);
+
 void syscallYield(g_task* task);
 
 void syscallGetProcessId(g_task* task, g_syscall_get_pid* data);

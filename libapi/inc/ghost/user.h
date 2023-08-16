@@ -500,6 +500,13 @@ g_tid g_create_thread_d(void* function, void* userData);
 g_tid g_create_thread_ds(void* function, void* userData, g_create_thread_status* out_status);
 
 /**
+ * Exits a thread.
+ * 
+ * @security-level APPLICATION
+ */
+void g_exit_thread();
+
+/**
  * Sends a message to the given task. This means that <len> bytes from the
  * buffer <buf> are copied to a message that is then sent to the <target> task.
  * The message may be no longer than {G_MESSAGE_MAXIMUM_LENGTH}.
