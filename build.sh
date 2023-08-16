@@ -6,14 +6,19 @@ fi
 . "$ROOT/ghost.sh"
 
 # Flags
-BUILD_LIBC_CLEAN=1
-BUILD_LIBC=0
-BUILD_LIBAPI=1
-BUILD_PORTS=0
-KERNEL_REPACK_ONLY=0
-KERNEL_BUILD_WITH_APPS=0
+PORTS_ALL=0
+LIBC_CLEAN=0
+LIBC_ALL=0
+LIBAPI_CLEAN=0
+LIBAPI_ALL=0
+APPS_ALL=0
+KERNEL_CLEAN=0
+KERNEL_ALL=0
 APPS=()
 APPS_CLEAN=0
+APPS_ALL=0
+
+EVERYTHING=1
 
 # Define some helpers
 pushd() {
@@ -25,6 +30,7 @@ popd() {
 }
 
 build_target() {
+	print_gray "$@ "
 	$SH build.sh $@ >ghost-build.log 2>&1
 }
 
@@ -39,8 +45,12 @@ print_status() {
 	fi
 }
 
+print_gray() {
+	printf "\e[1;90m$1\e[0m"
+}
+
 print_skipped() {
-	printf "\e[1;90mskipped\e[0m\n"
+	print_gray "skipped\n"
 }
 
 print_name() {
@@ -53,58 +63,68 @@ backspace_len() {
 
 # Targets
 build_ports() {
+	pushd patches/ports
+
 	print_name ports
-	if [[ $BUILD_PORTS = 0 && -f $SYSROOT/system/lib/libcairo.a ]]; then
+	if [[ $PORTS_ALL == 0 && -f $SYSROOT/system/lib/libcairo.a ]]; then
 		print_skipped
 	else
 		printf "\n"
-		pushd patches/ports
 		$SH port.sh zlib/1.2.8 | awk '$0="   "$0'
 		$SH port.sh pixman/0.32.6 | awk '$0="   "$0'
 		$SH port.sh libpng/1.6.18 | awk '$0="   "$0'
 		$SH port.sh freetype/2.5.3 | awk '$0="   "$0'
 		$SH port.sh cairo/1.12.18 | awk '$0="   "$0'
-		popd
 	fi
+
+	popd
 }
 
 build_libapi() {
 	pushd libapi
-	print_name libapi
-	if [ $BUILD_LIBAPI = 1 ]; then
-		build_target clean && build_target all
-		print_status
-	else
-		print_skipped
-	fi
-	popd
-}
 
-build_libc() {
-	pushd libc
-	print_name libc
-	if [ $BUILD_LIBC_CLEAN = 1 ]; then
-		build_target clean && build_target all
+	print_name libapi
+	if [[ $EVERYTHING == 1 || $LIBAPI_CLEAN == 1 ]]; then
+		build_target clean all
 		print_status
-	elif [ $BUILD_LIBC = 1 ]; then
+	elif [[ $LIBAPI_ALL == 1 ]]; then
 		build_target all
 		print_status
 	else
 		print_skipped
 	fi
+
+	popd
+}
+
+build_libc() {
+	pushd libc
+
+	print_name libc
+	if [[ $EVERYTHING == 1 || $LIBC_CLEAN == 1 ]]; then
+		build_target clean all
+		print_status
+	elif [[ $LIBC_ALL == 1 ]]; then
+		build_target all
+		print_status
+	else
+		print_skipped
+	fi
+
 	popd
 }
 
 build_app() {
 	pushd $1
-	name="${1%/}"
+
+	name="${1%/} "
 	printf "  $name"
 	name_back=$(backspace_len ${#name})
 
 	build_target $2 $3
 	if [ $? -eq 0 ]; then
 		((apps_success = apps_success + 1))
-		printf " \u2714\n"
+		printf "\u2714\n"
 	else
 		printf $name_back
 		printf "\e[1;31m$name\e[0m \u274c log: "
@@ -113,60 +133,77 @@ build_app() {
 		printf "\n"
 	fi
 	((apps_total = apps_total + 1))
+
 	popd
 }
 
 build_apps() {
 	pushd applications
+
 	print_name applications
 	apps_success=0
 	apps_total=0
-
 	printf "\n"
-	NUM_APPS=${#APPS[@]}
-	if [ $NUM_APPS -gt "0" ]; then
-		for var in ${APPS[@]}; do
-			if [ -d $var ]; then
-				if [ $APPS_CLEAN = 1 ]; then
-					build_app $var clean all
+
+	if [[ $EVERYTHING = 1 || $APPS_CLEAN = 1 || $APPS_ALL = 1 ]]; then
+		NUM_APPS=${#APPS[@]}
+		if [ $NUM_APPS -gt "0" ]; then
+			for var in ${APPS[@]}; do
+				if [ -d $var ]; then
+					if [ $APPS_CLEAN = 1 ]; then
+						build_app $var clean all
+					else
+						build_app $var all
+					fi
 				else
-					build_app $var all
+					printf "\e[1;31m$var (?)\e[0m "
 				fi
-			else
-				printf "\e[1;31m$var (?)\e[0m "
-			fi
-		done
+			done
+		else
+			for dir in */; do
+				build_app $dir clean all
+			done
+		fi
+		echo "  ($apps_success/$apps_total successful)"
 	else
-		for dir in */; do
-			build_app $dir clean all
-		done
+		print_skipped
 	fi
-	echo "  ($apps_success/$apps_total successful)"
+
 	popd
 }
 
 build_kernel() {
-	print_name kernel
 	pushd kernel
-	if [ $KERNEL_BUILD_WITH_APPS = 1 ]; then
+
+	print_name kernel
+	if [[ $KERNEL_CLEAN == 1 ]]; then
+		build_target clean all
+	elif [[ $KERNEL_ALL == 1 ]]; then
 		build_target all
-	elif [ $KERNEL_REPACK_ONLY = 1 ]; then
-		build_target repack
 	else
-		build_target clean && build_target all
+		build_target repack
 	fi
 	print_status
-	popd
 	echo ""
+
+	popd
 }
 
 print_help() {
 	echo "Usage: $0"
-	echo "  --apps                  build all apps clean and repack the image"
-	echo "  --apps windowserver     build only specific apps and repack the image"
-	echo "  --apps-clean terminal   build only specific apps clean and repack the image"
-	echo "  --kernel                build kernel and not repack only"
-	echo "  --ports                 enables building all ports, even if not necessary"
+	echo ""
+	echo "  --libc             build libc"
+	echo "  --libapi           build libapi"
+	echo "  --kernel           build kernel"
+	echo "  --ports            build ports, even if not necessary"
+	echo "  --apps             build all apps"
+	echo "  --apps terminal    build only listed apps (last argument)"
+	echo "  --repack           only repack image"
+	echo ""
+	echo "By default, everything is built clean. When specifying one of the flags above,"
+	echo "then only the selected modules are built and the image is repacked."
+	echo ""
+	echo "Adding \"-clean\" to a flag builds the target clean, like \"--libc-clean\"."
 	echo ""
 }
 
@@ -175,27 +212,40 @@ echo ""
 printf "\e[44mGhost Build\e[0m\n"
 echo ""
 
-COLLECT_APPS=0
+NEXT_ARGS_APPS=0
 for var in "$@"; do
-	if [ $COLLECT_APPS = 1 ]; then
+	if [ $NEXT_ARGS_APPS = 1 ]; then
 		APPS+=($var)
-	elif [[ "$var" = "--apps" ]]; then
-		BUILD_LIBC_CLEAN=0
-		BUILD_LIBAPI=0
-		KERNEL_REPACK_ONLY=1
-		COLLECT_APPS=1
-	elif [[ "$var" = "--apps-clean" ]]; then
-		BUILD_LIBC_CLEAN=0
-		BUILD_LIBAPI=0
-		KERNEL_REPACK_ONLY=1
-		COLLECT_APPS=1
-		APPS_CLEAN=1
 	elif [[ "$var" = "--ports" ]]; then
-		BUILD_PORTS=1
-	elif [[ "$var" = "--kernel" ]]; then
-		KERNEL_BUILD_WITH_APPS=1
+		PORTS_ALL=1
+	elif [[ "$var" = "--apps" ]]; then
+		EVERYTHING=0
+		NEXT_ARGS_APPS=1
+		APPS_ALL=1
+	elif [[ "$var" = "--apps-clean" ]]; then
+		EVERYTHING=0
+		NEXT_ARGS_APPS=1
+		APPS_CLEAN=1
+	elif [[ "$var" = "--libapi" ]]; then
+		EVERYTHING=0
+		LIBAPI_ALL=1
+	elif [[ "$var" = "--libapi-clean" ]]; then
+		EVERYTHING=0
+		LIBAPI_CLEAN=1
 	elif [[ "$var" = "--libc" ]]; then
-		BUILD_LIBC=1
+		EVERYTHING=0
+		LIBC_ALL=1
+	elif [[ "$var" = "--libc-clean" ]]; then
+		EVERYTHING=0
+		LIBC_CLEAN=1
+	elif [[ "$var" = "--kernel" ]]; then
+		EVERYTHING=0
+		KERNEL_ALL=1
+	elif [[ "$var" = "--kernel-clean" ]]; then
+		EVERYTHING=0
+		KERNEL_CLEAN=1
+	elif [[ "$var" = "--repack" ]]; then
+		EVERYTHING=0
 	elif [[ "$var" = "--help" || "$var" = "-h" || "$var" = "?" ]]; then
 		print_help
 		exit 0
