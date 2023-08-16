@@ -19,9 +19,35 @@ When cross-compiling libraries and applications on your host system, the headers
 libraries from within this directory are used. This is required to seperate the host
 from our target.
 
+Building the toolchain on your host system, depending on some factors, a long and sometimes
+tedious process. If you want to do it, skip to the <<Toolchain on host>> section, otherwise
+continue with <<Toolchain via Docker>>.
 
-Cloning
--------
+
+Toolchain via Docker
+--------------------
+If you want to avoid the hassle, follow these steps to setup the toolchain in Docker:
+
+1. Check out the link:https://github.com/maxdev1/ghost[*ghost*] and link:https://github.com/maxdev1/ghost-sysroot[*ghost-sysroot*] repositories anywhere on your system.
+
+2. Download the link:https://ghostkernel.org/repository/ghost-docker.tar.gz[toolchain Docker image] from here: 
+
+3. Load the image to your local Docker registry:
+
+	docker load --input ghost-docker.tar.gz
+
+3. Run a container from the image, replacing the paths to the respective repositories:
+  
+  docker run -it --name ghost-toolchain -v C:/Code/ghost:/ghost/source -v C:/Code/ghost-sysroot:/ghost/sysroot ghost-toolchain:1.1
+
+You will now be presented with a shell. Run `cd /ghost/source` and skip to the <<Building>> section below.
+
+
+Toolchain on host
+-----------------
+
+Clone repositories
+~~~~~~~~~~~~~~~~~~
 . Clone ghost-sysroot to `/ghost/sysroot`
 . Clone main repository anywhere (for example `/ghost/source`)
 
@@ -29,7 +55,7 @@ If you want to use a different folder, see the "Tips" section below.
 
 
 Installing prerequisites
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 There are some pre-requisites that you need to install on your host system. Install the following dependencies:
 
 * `apt-get update`
@@ -48,45 +74,33 @@ On Mac OS
 ~~~~~~~~~
 There are quite some prerequisites, so probably setting up a Linux VM is easier.
 The least that has to be done to get it working on OS X is to install GCC, build `libmpfr`,
-`libgmp` and `libmpc` from source and prepare the environment properly.
+`libgmp` and `libmpc` from source and prepare the environment properly. If you don't like
+pain, reconsider Docker.
 
 
-Toolchain setup
----------------
+Build toolchain
+~~~~~~~~~~~~~~~
 Run the toolchain setup script `toolchain.sh`. It will attempt to do everything that is
 necessary to create the toolchain. Once the toolchain was built, add it to your PATH.
 
 
 Building
 --------
-Usually all folders contain a `build.sh` which is a simple bash script that builds this
-specific part. Multiple targets can be specified:
+To build the system, use the root `build.sh` and its various flags (see `--help`).
 
------
-./build.sh clean all
------
+After setting up the toolchain, simply run `./build.sh` and let it execute all targets. The first
+build will take some time, because the ported libraries (like cairo) need to be built.
+
+Done? *Congratulations!* In the main folder you will now find the bootable ISO image `ghost.iso`.
 
 NOTE: On some systems while running `build.sh`, the configure scripts of some ports
 	might hang at either "checking for suffix of executables" or "checking whether
 	we are crosscompiling". Run `killall conftest` to get it running again.
 
-The `build.sh` in the root directory will attempt to build all components in the correct order.
-For building yourself, the dependency order is:
-
-* `./libapi/build.sh`
-* `./libc/build.sh`
-* Build the required ports
-* `./applications/*/build.sh`
-* `./kernel/build.sh`
-
-The ISO image is generated to the main folder as `ghost.iso`.
-
-
 Library dependency
 ------------------
-libapi is the lowest layer library that provides wrapping of system calls. On top of this
-is the libc that utilizes libapi. libuser builds on top of these and provides high-level
-functionalities.
+To give a small overview on the dependencies, libapi is the lowest layer library that provides
+wrapping of system calls. On top of this is the libc that utilizes libapi.
 
 image::../diagrams/Library-Dependencies.png[]
 

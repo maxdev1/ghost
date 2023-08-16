@@ -98,6 +98,17 @@ build_libapi() {
 	popd
 }
 
+build_libapi_target() {
+	pushd libapi
+
+	print_name libapi
+	build_target $@
+	print_status
+
+	popd
+}
+
+
 build_libc() {
 	pushd libc
 
@@ -114,6 +125,17 @@ build_libc() {
 
 	popd
 }
+
+build_libc_target() {
+	pushd libc
+
+	print_name libc
+	build_target $@
+	print_status
+
+	popd
+}
+
 
 build_app() {
 	pushd $1
@@ -213,6 +235,23 @@ echo ""
 printf "\e[44mGhost Build\e[0m\n"
 echo ""
 
+# When running the very first time
+if [ ! -f "$SYSROOT/system/lib/libgcc_s.so.1" ]; then
+	echo "Running for the first time, finalize setup..."
+
+	cp "$TOOLCHAIN_BASE/$TARGET/lib/libgcc_s.so.1" "$SYSROOT/system/lib/libgcc_s.so.1"
+
+	mkdir "$SYSROOT/system/include"
+
+	build_libapi_target install-headers
+	build_libc_target install-headers
+	build_libapi_target clean static
+	build_libc_target clean static
+	build_libapi_target shared
+	build_libc_target shared
+fi
+
+# Parse arguments
 NEXT_ARGS_APPS=0
 for var in "$@"; do
 	if [ $NEXT_ARGS_APPS = 1 ]; then
