@@ -11,7 +11,6 @@ LIBC_CLEAN=0
 LIBC_ALL=0
 LIBAPI_CLEAN=0
 LIBAPI_ALL=0
-APPS_ALL=0
 KERNEL_CLEAN=0
 KERNEL_ALL=0
 APPS=()
@@ -184,7 +183,11 @@ build_apps() {
 			done
 		else
 			for dir in */; do
-				build_app $dir clean all
+				if [ $APPS_CLEAN = 1 ]; then
+					build_app $dir clean all
+				else
+					build_app $dir all
+				fi
 			done
 		fi
 		echo "  ($apps_success/$apps_total successful)"
@@ -261,6 +264,7 @@ for var in "$@"; do
 	elif [[ "$var" = "--apps" ]]; then
 		EVERYTHING=0
 		NEXT_ARGS_APPS=1
+		APPS_CLEAN=0
 		APPS_ALL=1
 	elif [[ "$var" = "--apps-clean" ]]; then
 		EVERYTHING=0
