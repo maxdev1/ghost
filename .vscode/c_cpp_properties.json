@@ -7,8 +7,8 @@
                 "${workspaceFolder}/kernel/inc/**",
                 "${workspaceFolder}/libapi/inc/**",
                 "${workspaceFolder}/libc/inc/**",
-                "C:/Code/ghost-headers",
-                "C:/Code/ghost-headers/freetype2"
+                "C:/Code/ghost",
+                "C:/Code/ghost-sysroot/system/include/freetype2"
             ],
             "defines": [
                 "_DEBUG",
@@ -16,7 +16,7 @@
                 "_UNICODE"
             ],
             "windowsSdkVersion": "10.0.19041.0",
-            "compilerPath": "C:\\Program Files\\mingw64\\bin\\gcc.exe",
+            "compilerPath": "C:/Program Files/mingw64/bin/gcc.exe",
             "cStandard": "c17",
             "cppStandard": "c++17",
             "intelliSenseMode": "windows-gcc-x86"
