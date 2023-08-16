@@ -30,7 +30,8 @@ popd() {
 }
 
 build_target() {
-	print_gray "$@ "
+	all_name="$@"
+	print_gray "$all_name "
 	$SH build.sh $@ >ghost-build.log 2>&1
 }
 
@@ -176,7 +177,7 @@ build_kernel() {
 	pushd kernel
 
 	print_name kernel
-	if [[ $KERNEL_CLEAN == 1 ]]; then
+	if [[ $EVERYTHING == 1 || $KERNEL_CLEAN == 1 ]]; then
 		build_target clean all
 	elif [[ $KERNEL_ALL == 1 ]]; then
 		build_target all
