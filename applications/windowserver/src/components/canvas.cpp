@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "components/canvas.hpp"
+#include "windowserver.hpp"
 #include <ghost/memory.h>
 #include <string.h>
 
@@ -217,4 +218,5 @@ void canvas_t::paint()
 void canvas_t::blit()
 {
 	markFor(COMPONENT_REQUIREMENT_PAINT);
+	windowserver_t::instance()->triggerRender();
 }

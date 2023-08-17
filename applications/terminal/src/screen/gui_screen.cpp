@@ -286,11 +286,14 @@ void gui_screen_t::paint()
 
 		raster->unlockBuffer();
 
-		canvas->blit(g_rectangle(
-			changed.x * charWidth,
-			changed.y * charHeight,
-			changed.width * charWidth + 2 * viewPadding,
-			changed.height * charHeight + 2 * viewPadding));
+		if(changed.width && changed.height)
+		{
+			canvas->blit(g_rectangle(
+				changed.x * charWidth,
+				changed.y * charHeight,
+				changed.width * charWidth + 2 * viewPadding,
+				changed.height * charHeight + 2 * viewPadding));
+		}
 
 		g_atomic_lock(upToDate);
 	}
