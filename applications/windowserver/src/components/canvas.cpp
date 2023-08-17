@@ -107,7 +107,10 @@ void canvas_t::createNewBuffer(uint16_t requiredPages)
 {
 	g_rectangle bounds = getBounds();
 
-	// TODO this is leaking memory when creating a buffer before the current "nextBuffer" was acknowledged
+	// TODO
+	if(nextBuffer.localMapping != 0) {
+		return;
+	}
 
 	// create a new buffer
 	uint32_t bufferSize = requiredPages * G_PAGE_SIZE;
