@@ -26,9 +26,9 @@
 #include "windowserver.hpp"
 
 #include <cairo/cairo.h>
+#include <libfont/font_manager.hpp>
 #include <libproperties/parser.hpp>
 #include <libwindow/properties.hpp>
-#include <libfont/font_manager.hpp>
 #include <math.h>
 
 window_t::window_t() : backgroundColor(RGB(240, 240, 240)), borderWidth(DEFAULT_BORDER_WIDTH), cornerSize(DEFAULT_CORNER_SIZE)

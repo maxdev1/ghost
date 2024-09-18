@@ -231,17 +231,6 @@ void gui_screen_t::paint()
 		cairo_fill(cr);
 		cairo_restore(cr);
 
-		// clear outer padding rect
-		cairo_save(cr);
-		cairo_set_source_rgba(cr, 0, 0, 0, 0);
-		cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-		cairo_rectangle(cr, 0, 0, canvasBounds.width, viewPadding);
-		cairo_rectangle(cr, canvasBounds.width - viewPadding, 0, viewPadding, canvasBounds.height);
-		cairo_rectangle(cr, 0, canvasBounds.height - viewPadding, canvasBounds.width, viewPadding);
-		cairo_rectangle(cr, 0, 0, viewPadding, canvasBounds.height);
-		cairo_fill(cr);
-		cairo_restore(cr);
-
 		// clear cursor
 		cairo_save(cr);
 		cairo_set_source_rgba(cr, 0, 0, 0, 0);
@@ -274,11 +263,13 @@ void gui_screen_t::paint()
 			}
 		}
 
+		raster_entry_t* buffer = raster->getUnlocked();
+		auto width = raster->getWidth();
 		for(int y = changed.y; y < changed.y + changed.height; y++)
 		{
 			for(int x = changed.x; x < changed.x + changed.width; x++)
 			{
-				raster_entry_t c = raster->getUnlocked(x, y);
+				auto c = buffer[y * width + x];
 				if(c.c)
 					printChar(cr, scaledFont, x, y, c, blink_on);
 			}

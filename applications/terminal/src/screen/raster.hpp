@@ -61,7 +61,7 @@ class raster_t
 	void dirty(int x, int y);
 
 	void lockBuffer();
-	raster_entry_t getUnlocked(int x, int y);
+	raster_entry_t* getUnlocked();
 	void unlockBuffer();
 
 	g_rectangle popChanges();

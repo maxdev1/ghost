@@ -60,7 +60,7 @@ class windowserver_t
 	/**
 	 * Blits the component state.
 	 */
-	void blit(g_graphics* graphics);
+	void output(g_graphics* graphics);
 
 	/**
 	 * Dispatches the given event to the component.

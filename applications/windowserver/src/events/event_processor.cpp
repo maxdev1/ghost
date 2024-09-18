@@ -214,31 +214,6 @@ void event_processor_t::processMouseState()
 	}
 	else if(cursor_t::position != previousPosition)
 	{
-		// Post enter or leave events
-		component_t* hovered = screen->getComponentAt(cursor_t::position);
-		if((hovered != cursor_t::hoveredComponent) &&
-		   (cursor_t::draggedComponent == 0 || cursor_t::draggedComponent != cursor_t::hoveredComponent))
-		{
-
-			// Leave
-			if(cursor_t::hoveredComponent)
-			{
-				mouse_event_t leaveEvent = baseEvent;
-				leaveEvent.type = G_MOUSE_EVENT_LEAVE;
-				instance->dispatchUpwards(cursor_t::hoveredComponent, leaveEvent);
-				cursor_t::hoveredComponent = 0;
-			}
-
-			if(hovered)
-			{
-				// Enter
-				mouse_event_t enterEvent = baseEvent;
-				enterEvent.type = G_MOUSE_EVENT_ENTER;
-				cursor_t::hoveredComponent = hovered;
-				instance->dispatchUpwards(cursor_t::hoveredComponent, enterEvent);
-			}
-		}
-
 		if(cursor_t::draggedComponent != 0)
 		{ // Dragging
 			mouse_event_t dragEvent = baseEvent;
@@ -249,7 +224,30 @@ void event_processor_t::processMouseState()
 		{ // Moving
 			mouse_event_t moveEvent = baseEvent;
 			moveEvent.type = G_MOUSE_EVENT_MOVE;
-			instance->dispatch(screen, moveEvent);
+			component_t* hovered = instance->dispatch(screen, moveEvent);
+
+			// Post enter or leave events
+			if((hovered != cursor_t::hoveredComponent) &&
+			   (cursor_t::draggedComponent == 0 || cursor_t::draggedComponent != cursor_t::hoveredComponent))
+			{
+				// Leave
+				if(cursor_t::hoveredComponent)
+				{
+					mouse_event_t leaveEvent = baseEvent;
+					leaveEvent.type = G_MOUSE_EVENT_LEAVE;
+					instance->dispatchUpwards(cursor_t::hoveredComponent, leaveEvent);
+					cursor_t::hoveredComponent = 0;
+				}
+
+				if(hovered)
+				{
+					// Enter
+					mouse_event_t enterEvent = baseEvent;
+					enterEvent.type = G_MOUSE_EVENT_ENTER;
+					cursor_t::hoveredComponent = hovered;
+					instance->dispatchUpwards(cursor_t::hoveredComponent, enterEvent);
+				}
+			}
 		}
 	}
 }

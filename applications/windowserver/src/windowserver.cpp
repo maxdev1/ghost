@@ -143,10 +143,10 @@ void windowserver_t::renderLoop(g_rectangle screenBounds)
 		screen->blit(&global, screenBounds, g_point(0, 0));
 		cursor_t::paint(&global);
 
-		blit(&global);
+		output(&global);
 
 		framesTotal++;
-		g_atomic_lock_to(render_atom, 100);
+		g_atomic_lock_to(render_atom, 1000);
 	}
 }
 
@@ -155,7 +155,7 @@ void windowserver_t::triggerRender()
 	g_atomic_unlock(render_atom);
 }
 
-void windowserver_t::blit(g_graphics* graphics)
+void windowserver_t::output(g_graphics* graphics)
 {
 	g_rectangle invalid = screen->grabInvalid();
 	if(invalid.width == 0 && invalid.height == 0)

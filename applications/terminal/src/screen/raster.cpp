@@ -86,18 +86,9 @@ bool raster_t::resizeTo(int newWidth, int newHeight)
 	return true;
 }
 
-raster_entry_t raster_t::getUnlocked(int x, int y)
+raster_entry_t* raster_t::getUnlocked()
 {
-	if(y >= height)
-		y = height - 1;
-	if(y < 0)
-		y = 0;
-	if(x >= width)
-		x = width - 1;
-	if(x < 0)
-		x = 0;
-
-	return buffer[y * width + x];
+	return buffer;
 }
 
 void raster_t::lockBuffer()
