@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2024, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,48 +18,17 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "kernel/memory/lower_heap.hpp"
-#include "kernel/memory/allocator.hpp"
-#include "shared/panic.hpp"
+#include "kernel/utils/math.hpp"
 
-static g_allocator lowerHeapAllocator;
-static g_virtual_address lowerHeapStart = 0;
-static g_virtual_address lowerHeapEnd = 0;
-static uint32_t lowerHeapAmountInUse = 0;
-static bool lowerHeapInitialized = false;
-
-void lowerHeapInitialize(g_virtual_address start, g_virtual_address end)
+uint32_t mathCeilToPowerOf2(uint32_t n)
 {
-	memoryAllocatorInitialize(&lowerHeapAllocator, G_ALLOCATOR_TYPE_LOWERMEM, start, end);
-	lowerHeapStart = start;
-	lowerHeapEnd = end;
-
-	logDebug("%! initialized with area: %h - %h", "lowerheap", start, end);
-	lowerHeapInitialized = true;
-}
-
-void* lowerHeapAllocate(uint32_t size)
-{
-	if(!lowerHeapInitialized)
-		panic("%! tried to use uninitialized kernel heap", "lowerheap");
-
-	void* ptr = memoryAllocatorAllocate(&lowerHeapAllocator, size);
-	if(!ptr)
-		panic("%! failed to allocate kernel memory", "lowerheap");
-
-	lowerHeapAmountInUse += size;
-	return ptr;
-}
-
-void lowerHeapFree(void* ptr)
-{
-	if(!lowerHeapInitialized)
-		panic("%! tried to use uninitialized lower heap", "lowerheap");
-
-	lowerHeapAmountInUse -= memoryAllocatorFree(&lowerHeapAllocator, ptr);
-}
-
-uint32_t lowerHeapGetUsedAmount()
-{
-	return lowerHeapAmountInUse;
+	if(n <= 1)
+		return 1;
+	n--;
+	n |= n >> 1;
+	n |= n >> 2;
+	n |= n >> 4;
+	n |= n >> 8;
+	n |= n >> 16;
+	return n + 1;
 }

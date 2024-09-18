@@ -64,7 +64,8 @@ The `g_address_range_pool` is an allocator for ranges of addresses. The kernel
 has one main allocator for virtual ranges in the kernel space. Each process has an
 allocator assigned to manage ranges in the user space.
 
-Chunk allocator
----------------
-The `g_chunk_allocator` a simple allocator that is used by the kernel heap.
-It keeps a list of all free chunks and merges them when possibly.
+Memory allocator
+----------------
+The `g_allocator` is an in-place memory allocator that is used for the kernel heap
+and lower memory. It uses buckets for small chunks of memory and a linked-list
+for large chunks.

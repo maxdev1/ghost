@@ -39,6 +39,7 @@ typedef g_address g_virtual_address;
 typedef g_address g_offset;
 typedef uint32_t g_far_pointer;
 typedef g_address g_ptrsize;
+typedef g_address g_size;
 
 // extracts parts from far pointers
 #define G_FP_SEG(fp)        			(((g_far_pointer) fp) >> 16)

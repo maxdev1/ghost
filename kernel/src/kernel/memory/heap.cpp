@@ -19,14 +19,14 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/memory/heap.hpp"
-#include "kernel/memory/chunk_allocator.hpp"
+#include "kernel/memory/allocator.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/paging.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "shared/panic.hpp"
 #include "shared/system/mutex.hpp"
 
-static g_chunk_allocator heapAllocator;
+static g_allocator heapAllocator;
 static g_virtual_address heapStart = 0;
 static g_virtual_address heapEnd = 0;
 static uint32_t heapAmountInUse = 0;
@@ -43,7 +43,7 @@ void heapInitialize(g_virtual_address start, g_virtual_address end)
 
 	mutexInitialize(&heapLock);
 
-	chunkAllocatorInitialize(&heapAllocator, start, end);
+	memoryAllocatorInitialize(&heapAllocator, G_ALLOCATOR_TYPE_HEAP, start, end);
 	heapStart = start;
 	heapEnd = end;
 
@@ -58,7 +58,7 @@ void* heapAllocate(uint32_t size)
 	if(!heapInitialized)
 		panic("%! tried to use uninitialized kernel heap", "kernheap");
 
-	void* ptr = chunkAllocatorAllocate(&heapAllocator, size);
+	void* ptr = memoryAllocatorAllocate(&heapAllocator, size);
 	if(!ptr)
 	{
 		if(_heapExpand())
@@ -98,7 +98,7 @@ void heapFree(void* ptr)
 
 	mutexAcquire(&heapLock);
 
-	heapAmountInUse -= chunkAllocatorFree(&heapAllocator, ptr);
+	heapAmountInUse -= memoryAllocatorFree(&heapAllocator, ptr);
 
 	mutexRelease(&heapLock);
 }
@@ -148,7 +148,7 @@ bool _heapExpand()
 		pagingMapPage(virt, phys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
 	}
 
-	chunkAllocatorExpand(&heapAllocator, G_KERNEL_HEAP_EXPAND_STEP);
+	memoryAllocatorExpand(&heapAllocator, G_KERNEL_HEAP_EXPAND_STEP);
 	heapEnd += G_KERNEL_HEAP_EXPAND_STEP;
 
 	logDebug("%! expanded to end %h (%ikb in use)", "kernheap", heapEnd, heapAmountInUse / 1024);

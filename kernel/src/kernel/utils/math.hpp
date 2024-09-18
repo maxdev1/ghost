@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2024, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,42 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_CHUNK_ALLOCATOR__
-#define __KERNEL_CHUNK_ALLOCATOR__
+#ifndef __UTILS_MATH__
+#define __UTILS_MATH__
 
-#include <ghost/types.h>
-#include "shared/logger/logger.hpp"
-#include "shared/system/mutex.hpp"
+#include "ghost/types.h"
 
-#define G_CHUNK_ALLOCATOR_MIN_ALLOC	8
-
-struct g_chunk_header
-{
-	g_chunk_header* next;
-	uint8_t used :1;
-	uint32_t size :31;
-};
-
-struct g_chunk_allocator
-{
-	g_mutex lock;
-	g_chunk_header* first;
-};
-
-/**
- * Initializes a chunk allocator in the given range.
- */
-void chunkAllocatorInitialize(g_chunk_allocator* allocator, g_virtual_address start, g_virtual_address end);
-
-/**
- * Expands the range that the allocator uses by the given amount of bytes.
- */
-void chunkAllocatorExpand(g_chunk_allocator* allocator, uint32_t size);
-
-void* chunkAllocatorAllocate(g_chunk_allocator* allocator, uint32_t size);
-
-uint32_t chunkAllocatorFree(g_chunk_allocator* allocator, void* memory);
-
-void chunkAllocatorMerge(g_chunk_allocator* allocator);
+uint32_t mathCeilToPowerOf2(uint32_t n);
 
 #endif
