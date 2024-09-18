@@ -5,6 +5,9 @@ if [ -f "$ROOT/variables.sh" ]; then
 fi
 . "$ROOT/ghost.sh"
 
+# Prioritized applications that need to be built first
+APPLICATION_PRIORITY=("libproperties" "libfont" "libinput" "libps2" "libps2driver" "libwindow")
+
 # Flags
 PORTS_ALL=0
 LIBC_CLEAN=0
@@ -26,6 +29,19 @@ pushd() {
 
 popd() {
 	command popd "$@" >/dev/null
+}
+
+move_to_front() {
+	local array_name=$1
+	local item=$2
+	local new_array=("$item")
+	local i
+	eval "for i in \"\${$array_name[@]}\"; do
+		if [[ \"\$i\" != \"$item\" ]]; then
+			new_array+=(\"\$i\")
+		fi
+	done"
+	eval "$array_name=(\"\${new_array[@]}\")"
 }
 
 build_target() {
@@ -182,7 +198,14 @@ build_apps() {
 				fi
 			done
 		else
-			for dir in */; do
+			# When building everything, we need to sort by priority first
+			mapfile -t app_dirs < <(find . -maxdepth 1 -type d -not -name "." | sed 's|^\./||')
+
+			for ((i=${#APPLICATION_PRIORITY[@]}-1; i>=0; i--)); do
+				move_to_front app_dirs "${APPLICATION_PRIORITY[i]}"
+			done
+
+			for dir in ${app_dirs[@]}; do
 				if [ $APPS_CLEAN = 1 ]; then
 					build_app $dir clean all
 				else
