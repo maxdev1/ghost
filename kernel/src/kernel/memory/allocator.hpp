@@ -73,7 +73,6 @@ struct g_allocator_section_bucket
 struct g_allocator
 {
 	g_mutex lock;
-	const char* name;
 	g_allocator_type type;
 	g_allocator_section_header* sections;
 };
