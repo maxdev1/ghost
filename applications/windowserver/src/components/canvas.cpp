@@ -23,7 +23,7 @@
 #include <ghost/memory.h>
 #include <string.h>
 
-#define ALIGN_UP(value) (value + value % 50)
+#define ALIGN_UP(value) (value + value % 100)
 
 canvas_t::canvas_t(g_tid partnerThread) : partnerThread(partnerThread)
 {
@@ -96,7 +96,7 @@ void canvas_t::checkBuffer()
 	} // if current buffer is acknowledged but too small, create a new one
 	else if(currentBuffer.acknowledged)
 	{
-		g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer.localMapping;
+		auto* header = (g_ui_canvas_shared_memory_header*) currentBuffer.localMapping;
 		if(header->paintable_width < bounds.width || header->paintable_height < bounds.height)
 		{
 			createNewBuffer(requiredPages);
@@ -200,9 +200,6 @@ void canvas_t::paint()
 	}
 
 	g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer.localMapping;
-
-	// make background empty
-	clearSurface();
 
 	// create a cairo surface from the buffer
 	cairo_set_source_surface(cr, currentBuffer.surface, 0, 0);

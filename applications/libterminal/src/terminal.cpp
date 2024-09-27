@@ -318,6 +318,15 @@ void g_terminal::moveCursorBack(int n)
 /**
  *
  */
+void g_terminal::remove()
+{
+	std::cout << (char) G_TERMKEY_ESC << "{x";
+	std::flush(std::cout);
+}
+
+/**
+ *
+ */
 void g_terminal::setControlProcess(g_pid pid)
 {
 	std::cout << (char) G_TERMKEY_ESC << "{" << pid << "c";

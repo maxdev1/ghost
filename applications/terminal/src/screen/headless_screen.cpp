@@ -118,6 +118,17 @@ void headless_screen_t::write(char c)
 	updateCursor();
 }
 
+void headless_screen_t::remove()
+{
+	g_atomic_lock(lock);
+	output[offset++] = ' ';
+	++offset; // keep color
+	offset -= 2;
+	g_atomic_unlock(lock);
+
+	updateCursor();
+}
+
 void headless_screen_t::backspace()
 {
 	g_atomic_lock(lock);
@@ -165,12 +176,12 @@ int headless_screen_t::getCursorY()
 	return offset / (SCREEN_WIDTH * 2);
 }
 
-int headless_screen_t::getWidth()
+int headless_screen_t::getColumns()
 {
 	return SCREEN_WIDTH;
 }
 
-int headless_screen_t::getHeight()
+int headless_screen_t::getRows()
 {
 	return SCREEN_HEIGHT;
 }

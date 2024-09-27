@@ -23,39 +23,62 @@
 
 #include "screen.hpp"
 
-class headless_screen_t : public screen_t
-{
-  private:
+class headless_screen_t : public screen_t {
+private:
 	uint32_t offset;
 
 	g_atom lock;
+
 	void normalize();
 
 	void enableCursor();
+
 	void updateCursor();
 
-  public:
+public:
 	headless_screen_t();
 
-	virtual bool initialize();
+	bool initialize() override;
 
-	virtual g_key_info readInput();
-	virtual void clean();
-	virtual void backspace();
-	virtual void write(char c);
-	virtual void flush() {}
+	g_key_info readInput() override;
 
-	virtual void setCursor(int x, int y);
-	virtual int getCursorX();
-	virtual int getCursorY();
-	virtual void setCursorVisible(bool visible) {}
+	void clean() override;
 
-	virtual void setScrollAreaScreen() {}
-	virtual void setScrollArea(int start, int end) {}
-	virtual void scroll(int value) {}
+	void backspace() override;
 
-	virtual int getWidth();
-	virtual int getHeight();
+	void write(char c) override;
+
+	void flush() override
+	{
+	}
+
+	void remove() override;
+
+	void setCursor(int x, int y) override;
+
+	int getCursorX() override;
+
+	int getCursorY() override;
+
+	void setCursorVisible(bool visible) override
+	{
+	}
+
+	void setScrollAreaScreen() override
+	{
+	}
+
+	void setScrollArea(int start, int end) override
+	{
+	}
+
+	void scroll(int value) override
+	{
+	}
+
+	int getColumns() override;
+
+	int getRows() override;
 };
 
 #endif

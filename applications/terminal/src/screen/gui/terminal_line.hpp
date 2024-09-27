@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2024, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,53 +18,24 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __TERMINAL_GUISCREEN_RASTER__
-#define __TERMINAL_GUISCREEN_RASTER__
+#ifndef __TERMINAL_LINE__
+#define __TERMINAL_LINE__
 
-#include <ghost.h>
-#include <libwindow/metrics/rectangle.hpp>
 
-struct raster_entry_t
-{
-	uint8_t c;
-	uint8_t foreground;
-	uint8_t background;
+class terminal_line {
+public:
+	~terminal_line();
+
+	char *buffer = nullptr;
+	int length = 0;
+
+	terminal_line *previous = nullptr;
+	terminal_line *next = nullptr;
+
+	void insert(int position, char c);
+
+	void remove(int position);
 };
 
-/**
- *
- */
-class raster_t
-{
-  private:
-	g_atom lock = g_atomic_initialize();
-	raster_entry_t* buffer = 0;
-
-	int width = 0;
-	int height = 0;
-	g_rectangle changed;
-
-  public:
-	int getWidth() const
-	{
-		return width;
-	}
-	int getHeight() const
-	{
-		return height;
-	}
-
-	void scrollBy(int y);
-	bool resizeTo(int width, int height);
-	void clean();
-	void put(int x, int y, uint8_t c, uint8_t foreground, uint8_t background);
-	void dirty(int x, int y);
-
-	void lockBuffer();
-	raster_entry_t* getUnlocked();
-	void unlockBuffer();
-
-	g_rectangle popChanges();
-};
 
 #endif

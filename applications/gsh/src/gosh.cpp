@@ -28,7 +28,7 @@
 #include <string.h>
 #include <string>
 
-char* cwdbuf = 0;
+char *cwdbuf = 0;
 
 std::vector<std::string> gshAutocomplete(std::string toComplete)
 {
@@ -38,13 +38,12 @@ std::vector<std::string> gshAutocomplete(std::string toComplete)
 	auto firstSlash = toComplete.find_first_of('/');
 	auto lastSlash = toComplete.find_last_of('/');
 	std::string prepend;
-	if(firstSlash == 0)
+	if (firstSlash == 0)
 	{
 		startDir = toComplete.substr(0, lastSlash);
 		prepend = startDir + "/";
 		toComplete = toComplete.substr(lastSlash + 1);
-	}
-	else if(lastSlash != std::string::npos)
+	} else if (lastSlash != std::string::npos)
 	{
 		startDir += "/" + toComplete.substr(0, lastSlash);
 		prepend = toComplete.substr(0, lastSlash) + "/";
@@ -52,18 +51,18 @@ std::vector<std::string> gshAutocomplete(std::string toComplete)
 	}
 
 	std::vector<std::string> completions;
-	DIR* dir = opendir(startDir.c_str());
-	if(dir)
+	DIR *dir = opendir(startDir.c_str());
+	if (dir)
 	{
-		dirent* ent;
-		while(ent = readdir(dir))
+		dirent *ent;
+		while (ent = readdir(dir))
 		{
 			std::string entname(ent->d_name);
-			if(entname.rfind(toComplete, 0) == 0)
+			if (entname.rfind(toComplete, 0) == 0)
 			{
-				DIR* subdir = opendir((startDir + "/" + entname).c_str());
+				DIR *subdir = opendir((startDir + "/" + entname).c_str());
 				bool isdir = false;
-				if(subdir)
+				if (subdir)
 				{
 					isdir = true;
 					closedir(subdir);
@@ -77,25 +76,25 @@ std::vector<std::string> gshAutocomplete(std::string toComplete)
 	return completions;
 }
 
-bool gshReadInputLine(std::string& line)
+bool gshReadInputLine(std::string &line)
 {
 	g_terminal::setMode(G_TERMINAL_MODE_RAW);
 	g_terminal::setEcho(false);
 
 	int caret = 0;
 
-	while(true)
+	while (true)
 	{
 		int c = g_terminal::getChar();
-		if(c == -1)
+		if (c == -1)
 		{
 			klog("getc returned -1");
 			return false;
 		}
 
-		if(c == G_TERMKEY_BACKSPACE)
+		if (c == G_TERMKEY_BACKSPACE)
 		{
-			if(line.size() > 0 && caret > 0)
+			if (line.size() > 0 && caret > 0)
 			{
 				char deleted = line.at(caret - 1);
 
@@ -104,42 +103,39 @@ bool gshReadInputLine(std::string& line)
 				line = line.substr(0, caret - 1) + afterCaret;
 				caret--;
 
-				if(deleted == '\t')
+				int removes;
+				if (deleted == '\t')
 				{
 					pos.x -= 4;
-					afterCaret += "    ";
-				}
-				else
+					removes = 4;
+				} else
 				{
 					pos.x--;
-					afterCaret += ' ';
+					removes = 1;
 				}
+
 				g_terminal::setCursor(pos);
-				for(char c : afterCaret)
-				{
-					std::cout << c;
-				}
+				for (char ac: afterCaret) std::cout << ac;
+				while (removes--) g_terminal::remove();
 				g_terminal::setCursor(pos);
 			}
-		}
-		else if(c == '\t' || c == G_TERMKEY_STAB /* TODO implement completion */)
+		} else if (c == '\t' || c == G_TERMKEY_STAB /* TODO improve completion */)
 		{
 			auto beforeCaret = line.substr(0, caret);
 			auto afterCaret = line.substr(caret);
 
 			std::string toComplete = beforeCaret;
 			auto space = toComplete.find_last_of(' ');
-			if(space != std::string::npos)
+			if (space != std::string::npos)
 			{
 				toComplete = toComplete.substr(space + 1);
 			}
 
 			std::vector<std::string> completions = gshAutocomplete(toComplete);
-			if(completions.size() > 1)
+			if (completions.size() > 1)
 			{
 				// TODO
-			}
-			else if(completions.size() > 0)
+			} else if (completions.size() > 0)
 			{
 				auto completion = completions.at(0);
 				caret = caret - toComplete.size();
@@ -153,46 +149,40 @@ bool gshReadInputLine(std::string& line)
 				std::cout << completion << afterCaret;
 				g_terminal::setCursor(pos);
 			}
-		}
-		else if(c == G_TERMKEY_ENTER)
+		} else if (c == G_TERMKEY_ENTER)
 		{
 			std::cout << '\n';
 			break;
-		}
-		else if(c == G_TERMKEY_LEFT)
+		} else if (c == G_TERMKEY_LEFT)
 		{
-			if(caret > 0)
+			if (caret > 0)
 			{
 				char beforeCaret = line.at(caret - 1);
 
 				caret--;
-				if(beforeCaret == '\t')
+				if (beforeCaret == '\t')
 				{
 					g_terminal::moveCursorBack(4);
-				}
-				else
+				} else
 				{
 					g_terminal::moveCursorBack(1);
 				}
 			}
-		}
-		else if(c == G_TERMKEY_RIGHT)
+		} else if (c == G_TERMKEY_RIGHT)
 		{
-			if(caret < line.size())
+			if (caret < line.size())
 			{
 				char atCaret = line.at(caret);
 				caret++;
-				if(atCaret == '\t')
+				if (atCaret == '\t')
 				{
 					g_terminal::moveCursorForward(4);
-				}
-				else
+				} else
 				{
 					g_terminal::moveCursorForward(1);
 				}
 			}
-		}
-		else if(c < 0x100)
+		} else if (c < 0x100)
 		{
 			auto pos = g_terminal::getCursor();
 			std::cout << (char) c;
@@ -203,7 +193,7 @@ bool gshReadInputLine(std::string& line)
 
 			pos.x++;
 			g_terminal::setCursor(pos);
-			for(char c : afterCaret)
+			for (char c: afterCaret)
 			{
 				std::cout << c;
 			}
@@ -219,9 +209,8 @@ bool gshReadInputLine(std::string& line)
  */
 bool gshFileExists(std::string path)
 {
-
-	FILE* f;
-	if((f = fopen(path.c_str(), "r")) != NULL)
+	FILE *f;
+	if ((f = fopen(path.c_str(), "r")) != NULL)
 	{
 		fclose(f);
 		return true;
@@ -236,26 +225,26 @@ std::string gshFindProgram(std::string cwd, std::string name)
 {
 	// check for match with cwd
 	std::string path = cwd + "/" + name;
-	if(gshFileExists(path))
+	if (gshFileExists(path))
 	{
 		return path;
 	}
 
 	// check for full path
-	if(gshFileExists(name))
+	if (gshFileExists(name))
 	{
 		return name;
 	}
 
 	// check for /applications folder
 	path = "/applications/" + name;
-	if(gshFileExists(path))
+	if (gshFileExists(path))
 	{
 		return path;
 	}
 
 	// last chance - check for .bin extension
-	if(name.length() < 4 || name.substr(name.length() - 4) != ".bin")
+	if (name.length() < 4 || name.substr(name.length() - 4) != ".bin")
 	{
 		return gshFindProgram(cwd, name + ".bin");
 	}
@@ -264,39 +253,37 @@ std::string gshFindProgram(std::string cwd, std::string name)
 	return name;
 }
 
-bool gshHandleBuiltin(program_call_t* call)
+bool gshHandleBuiltin(program_call_t *call)
 {
 	std::string cwd(cwdbuf);
 
-	if(call->program == "cd")
+	if (call->program == "cd")
 	{
-		if(call->arguments.size() == 1)
+		if (call->arguments.size() == 1)
 		{
 			std::string newdir = call->arguments.at(0);
-			if(newdir.find_first_of("/") != 0)
+			if (newdir.find_first_of("/") != 0)
 			{
 				newdir = cwd + "/" + newdir;
 			}
 
-			DIR* dir = opendir(newdir.c_str());
-			if(dir)
+			DIR *dir = opendir(newdir.c_str());
+			if (dir)
 			{
 				closedir(dir);
 				g_set_working_directory(newdir.c_str());
-			}
-			else
+			} else
 			{
 				std::cerr << "Directory not found" << std::endl;
 			}
-		}
-		else
+		} else
 		{
 			std::cerr << "Usage:\tcd /path/to/target" << std::endl;
 		}
 		return true;
 	}
 
-	if(call->program == "clear" || call->program == "cls")
+	if (call->program == "clear" || call->program == "cls")
 	{
 		g_terminal::clear();
 		g_term_cursor_position pos;
@@ -306,20 +293,19 @@ bool gshHandleBuiltin(program_call_t* call)
 		return true;
 	}
 
-	if(call->program == "which")
+	if (call->program == "which")
 	{
-		if(call->arguments.size() == 1)
+		if (call->arguments.size() == 1)
 		{
 			std::cout << gshFindProgram(cwd, call->arguments.at(0)) << std::endl;
-		}
-		else
+		} else
 		{
 			std::cerr << "Usage:\twhich command" << std::endl;
 		}
 		return true;
 	}
 
-	if(call->program == "exit")
+	if (call->program == "exit")
 	{
 		exit(0);
 	}
@@ -327,7 +313,7 @@ bool gshHandleBuiltin(program_call_t* call)
 	return false;
 }
 
-void gshProcessExpression(pipe_expression_t* pipeexpr)
+void gshProcessExpression(pipe_expression_t *pipeexpr)
 {
 	g_fd lastPipeRead = G_FD_NONE;
 	g_pid headProcessId = G_PID_NONE;
@@ -335,12 +321,12 @@ void gshProcessExpression(pipe_expression_t* pipeexpr)
 	bool success = false;
 
 	auto calls = pipeexpr->calls.size();
-	for(int callIndex = 0; callIndex < calls; callIndex++)
+	for (int callIndex = 0; callIndex < calls; callIndex++)
 	{
-		program_call_t* call = pipeexpr->calls[callIndex];
+		program_call_t *call = pipeexpr->calls[callIndex];
 
 		// builtin calls (only allowed as single call)
-		if(calls == 1 && callIndex == 0 && gshHandleBuiltin(call))
+		if (calls == 1 && callIndex == 0 && gshHandleBuiltin(call))
 		{
 			break;
 		}
@@ -348,13 +334,12 @@ void gshProcessExpression(pipe_expression_t* pipeexpr)
 		// concatenate arguments to one argument string
 		std::stringstream argstream;
 		bool first = true;
-		for(auto arg : call->arguments)
+		for (auto arg: call->arguments)
 		{
-			if(first)
+			if (first)
 			{
 				first = false;
-			}
-			else
+			} else
 			{
 				argstream << (char) G_CLIARGS_SEPARATOR;
 			}
@@ -364,11 +349,11 @@ void gshProcessExpression(pipe_expression_t* pipeexpr)
 		// create out pipe if necessary
 		g_fd pipeWrite = G_FD_NONE;
 		g_fd pipeRead = G_FD_NONE;
-		if(calls > 1 && callIndex < calls - 1)
+		if (calls > 1 && callIndex < calls - 1)
 		{
 			g_fs_pipe_status pipe_stat = g_pipe(&pipeWrite, &pipeRead);
 
-			if(pipe_stat != G_FS_PIPE_SUCCESSFUL)
+			if (pipe_stat != G_FS_PIPE_SUCCESSFUL)
 			{
 				std::cerr << "failed to create output pipe when spawning '" << call->program << "'" << std::endl;
 				// TODO clean up pipes?
@@ -380,11 +365,11 @@ void gshProcessExpression(pipe_expression_t* pipeexpr)
 		// decide how to set in/out/err file descriptors
 		g_fd stdioIn[3];
 		stdioIn[STDERR_FILENO] = STDERR_FILENO;
-		if(callIndex == 0)
+		if (callIndex == 0)
 			stdioIn[STDIN_FILENO] = STDIN_FILENO;
 		else
 			stdioIn[STDIN_FILENO] = lastPipeRead;
-		if((calls == 1 && callIndex == 0) || callIndex == calls - 1)
+		if ((calls == 1 && callIndex == 0) || callIndex == calls - 1)
 			stdioIn[STDOUT_FILENO] = STDOUT_FILENO;
 		else
 			stdioIn[STDOUT_FILENO] = pipeWrite;
@@ -397,49 +382,45 @@ void gshProcessExpression(pipe_expression_t* pipeexpr)
 			argstream.str().c_str(), cwdbuf, G_SECURITY_LEVEL_APPLICATION, &pidCurrent, stdioOut, stdioIn);
 
 		// check result
-		if(status == G_SPAWN_STATUS_SUCCESSFUL)
+		if (status == G_SPAWN_STATUS_SUCCESSFUL)
 		{
-			if(headProcessId == G_TID_NONE)
+			if (headProcessId == G_TID_NONE)
 				headProcessId = pidCurrent;
 			tailProcessId = pidCurrent;
 			success = true;
 
 			// close write end in this process
-			if(pipeWrite != G_FD_NONE)
+			if (pipeWrite != G_FD_NONE)
 				g_close(pipeWrite);
 
-			if(lastPipeRead != G_FD_NONE)
+			if (lastPipeRead != G_FD_NONE)
 				g_close(lastPipeRead);
 
 			// remember for next process
 			lastPipeRead = pipeRead;
-		}
-		else
+		} else
 		{
 			success = false;
 			// error during one spawn
 			// TODO clean up pipes
 			std::cout << (char) 27 << "[31m";
-			if(status == G_SPAWN_STATUS_FORMAT_ERROR)
+			if (status == G_SPAWN_STATUS_FORMAT_ERROR)
 			{
 				std::cout << call->program << ": invalid binary format"
-						  << std::endl;
-			}
-			else if(status == G_SPAWN_STATUS_DEPENDENCY_ERROR)
+						<< std::endl;
+			} else if (status == G_SPAWN_STATUS_DEPENDENCY_ERROR)
 			{
 				std::cout << call->program << ": failed to load a dependency"
-						  << std::endl;
-			}
-			else if(status == G_SPAWN_STATUS_IO_ERROR)
+						<< std::endl;
+			} else if (status == G_SPAWN_STATUS_IO_ERROR)
 			{
 				std::cout << call->program << ": command not found"
-						  << std::endl;
-			}
-			else
+						<< std::endl;
+			} else
 			{
 				std::cout << call->program
-						  << ": unknown error during program execution"
-						  << std::endl;
+						<< ": unknown error during program execution"
+						<< std::endl;
 			}
 			std::cout << (char) 27 << "[0m";
 			std::flush(std::cout);
@@ -447,7 +428,7 @@ void gshProcessExpression(pipe_expression_t* pipeexpr)
 		}
 	}
 
-	if(success)
+	if (success)
 	{
 		// join into the last process
 		g_terminal::setControlProcess(tailProcessId);
@@ -459,22 +440,20 @@ void gshProcessExpression(pipe_expression_t* pipeexpr)
 /**
  *
  */
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
 	cwdbuf = new char[G_PATH_MAX];
 	g_terminal::clear();
 	g_terminal::setCursor(g_term_cursor_position(0, 0));
 
-	while(true)
+	while (true)
 	{
-
 		// print cwd
 		std::cout << (char) 27 << "[38m";
-		if(g_get_working_directory(cwdbuf) == G_GET_WORKING_DIRECTORY_SUCCESSFUL)
+		if (g_get_working_directory(cwdbuf) == G_GET_WORKING_DIRECTORY_SUCCESSFUL)
 		{
 			std::cout << cwdbuf;
-		}
-		else
+		} else
 		{
 			std::cout << "?";
 		}
@@ -485,7 +464,7 @@ int main(int argc, char* argv[])
 		g_terminal::setCursor(g_terminal::getCursor());
 
 		std::string line;
-		if(!gshReadInputLine(line))
+		if (!gshReadInputLine(line))
 			break;
 
 		// switch to normal input mode
@@ -493,8 +472,8 @@ int main(int argc, char* argv[])
 		g_terminal::setEcho(true);
 
 		parser_t cmdparser(line);
-		pipe_expression_t* pipeexpr;
-		if(!cmdparser.pipe_expression(&pipeexpr))
+		pipe_expression_t *pipeexpr;
+		if (!cmdparser.pipe_expression(&pipeexpr))
 		{
 			continue;
 		}

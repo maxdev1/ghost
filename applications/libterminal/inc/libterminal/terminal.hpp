@@ -203,6 +203,7 @@ class g_terminal
 	static void moveCursorDown(int n);
 	static void moveCursorForward(int n);
 	static void moveCursorBack(int n);
+    static void remove();
 
 	static g_term_dimension getSize();
 	static void setControlProcess(g_pid pid);
