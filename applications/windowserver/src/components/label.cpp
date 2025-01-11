@@ -53,6 +53,8 @@ void label_t::update()
 
     // get text bounds
     auto cr = graphics.getContext();
+    if(!cr) return;
+
     cairo_set_font_face(cr, font->getFace());
     cairo_set_font_size(cr, fontSize);
     cairo_text_extents(cr, this->text.c_str(), &lastExtents);
@@ -72,6 +74,8 @@ void label_t::paint()
     clearSurface();
 
     auto cr = graphics.getContext();
+    if(!cr) return;
+
     auto bounds = getBounds();
 
     cairo_set_source_rgb(cr, ARGB_FR_FROM(color), ARGB_FB_FROM(color), ARGB_FG_FROM(color));

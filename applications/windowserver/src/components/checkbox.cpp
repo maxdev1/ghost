@@ -48,6 +48,7 @@ void checkbox_t::layout()
 void checkbox_t::paint()
 {
 	auto cr = graphics.getContext();
+    if(!cr) return;
 
 	auto background = (pressed ? RGB(240, 240, 240) : (hovered ? RGB(245, 245, 255) : RGB(255, 255, 255)));
 	cairo_set_source_rgba(cr, G_COLOR_ARGB_TO_FPARAMS(background));

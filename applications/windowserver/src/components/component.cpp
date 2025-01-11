@@ -465,6 +465,8 @@ bool component_t::getListener(g_ui_component_event_type eventType, event_listene
 void component_t::clearSurface()
 {
 	auto cr = graphics.getContext();
+    if(!cr) return;
+
 	cairo_save(cr);
 	cairo_set_source_rgba(cr, 0, 0, 0, 0);
 	cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);

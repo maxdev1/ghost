@@ -26,8 +26,9 @@
 
 void scrollbar_t::paint()
 {
-    g_rectangle bounds = getBounds();
     auto cr = graphics.getContext();
+    if(!cr) return;
+
     clearSurface();
 
     g_rectangle knob = calculateKnob();

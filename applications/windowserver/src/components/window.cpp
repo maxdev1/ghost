@@ -87,6 +87,8 @@ void window_t::paint()
 {
 	g_rectangle bounds = getBounds();
 	cairo_t* cr = graphics.getContext();
+    if(!cr) return;
+
 	clearSurface();
 
 	// draw shadow

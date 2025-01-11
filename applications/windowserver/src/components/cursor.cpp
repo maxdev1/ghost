@@ -133,6 +133,8 @@ bool cursor_t::load(std::string cursorPath)
 void cursor_t::paint(g_graphics* global)
 {
     auto cr = global->getContext();
+    if(!cr) return;
+
     cairo_reset_clip(cr);
 
     if(currentConfiguration)

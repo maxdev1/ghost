@@ -189,8 +189,8 @@ void canvas_t::clientHasAcknowledgedCurrentBuffer()
 
 void canvas_t::paint()
 {
-	auto bounds = getBounds();
 	auto cr = graphics.getContext();
+    if(!cr) return;
 
 	g_atomic_lock(currentBufferLock);
 	if(currentBuffer.localMapping == 0 || !currentBuffer.acknowledged)
