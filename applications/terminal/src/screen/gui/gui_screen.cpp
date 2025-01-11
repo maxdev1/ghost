@@ -414,6 +414,19 @@ void gui_screen_t::paint()
 		{
 			blink_on = (g_millis() - lastInputTime < 300) || cursorBlink;
 
+			// clear cursor location
+			cairo_save(cr);
+			cairo_set_source_rgba(cr, 0, 0, 0, 0);
+			cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+			cairo_rectangle(cr,
+			                cursorViewX * charWidth + viewPadding,
+			                cursorViewY * charHeight + viewPadding,
+			                cursorWidth,
+			                charHeight);
+			cairo_fill(cr);
+			cairo_restore(cr);
+
+			// paint cursor
 			if (blink_on)
 			{
 				cairo_save(cr);

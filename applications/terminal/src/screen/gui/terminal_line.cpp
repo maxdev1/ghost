@@ -44,6 +44,9 @@ void terminal_line::insert(int position, char c)
 
 void terminal_line::remove(int position)
 {
-	memcpy(&buffer[position], &buffer[position + 1], length - position - 1);
-	length--;
+	if (length > 0)
+	{
+		memcpy(&buffer[position], &buffer[position + 1], length - position - 1);
+		length--;
+	}
 }

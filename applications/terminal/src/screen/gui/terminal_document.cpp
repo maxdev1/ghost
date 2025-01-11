@@ -158,7 +158,7 @@ int terminal_document::get_total_rows(int columns)
 	auto current = this->line;
 	while (current)
 	{
-		rows += current->length / columns + (current->length % columns == 0 ? 0 : 1);
+		rows += current->length / columns + (current->length != 0 && current->length % columns == 0 ? 0 : 1);
 		current = current->previous;
 	}
 	return rows;
