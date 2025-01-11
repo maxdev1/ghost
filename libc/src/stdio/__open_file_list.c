@@ -34,8 +34,11 @@ void __open_file_list_add(FILE* file)
 {
 	__open_file_list_lock();
 
-	__open_file_list->prev = file;
-	file->next = __open_file_list;
+	if (__open_file_list)
+	{
+		__open_file_list->prev = file;
+		file->next = __open_file_list;
+	}
 	__open_file_list = file;
 
 	__open_file_list_unlock();
