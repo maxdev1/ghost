@@ -88,6 +88,8 @@ void text_field_t::paint()
 	}
 
 	auto cr = graphics.getContext();
+    if(!cr) return;
+
 	g_rectangle bounds = getBounds();
 
 	// background

@@ -39,6 +39,8 @@ void background_t::load(const char* path)
 void background_t::paint()
 {
 	cairo_t* cr = graphics.getContext();
+    if(!cr) return;
+
 	auto bounds = getBounds();
 
 	// Background pattern

@@ -62,6 +62,8 @@ void desktop_item_t::layout()
 void desktop_item_t::paint()
 {
 	cairo_t* cr = graphics.getContext();
+    if(!cr) return;
+
 	auto bounds = getBounds();
 
 	cairo_save(cr);
