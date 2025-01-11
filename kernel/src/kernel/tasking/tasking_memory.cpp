@@ -205,7 +205,10 @@ g_physical_address taskingMemoryCreatePageDirectory()
 	// Recursive self-map
 	directoryTemp[1023] = directoryPhys | DEFAULT_KERNEL_TABLE_FLAGS;
 
+	// Unmap locally and free temporary range
 	pagingUnmapPage(directoryTempVirt);
+	addressRangePoolFree(memoryVirtualRangePool, directoryTempVirt);
+
 	return directoryPhys;
 }
 

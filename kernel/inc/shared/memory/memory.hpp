@@ -29,7 +29,7 @@
 #define G_ALIGN_UP(value, alignment) ((value % alignment) ? (value + (alignment - value % alignment)) : value)
 
 /**
- * Both the loader and the kernel use a physical allocator.
+ * Reference to the loaders or kernels physical page allocator.
  */
 extern g_bitmap_page_allocator memoryPhysicalAllocator;
 
