@@ -83,7 +83,9 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	taskingInitializeBsp();
 	syscallRegisterAll();
 
-	taskingAssign(taskingGetLocal(), taskingCreateTask((g_virtual_address) kernelInitializationThread, taskingCreateProcess(), G_SECURITY_LEVEL_KERNEL));
+	auto initializationProcess = taskingCreateProcess(G_SECURITY_LEVEL_KERNEL);
+	auto initializationTask = taskingCreateTask((g_virtual_address) kernelInitializationThread, initializationProcess, G_SECURITY_LEVEL_KERNEL);
+	taskingAssign(taskingGetLocal(), initializationTask);
 
 	logInfo("%! starting on %i cores", "kernel", processorGetNumberOfProcessors());
 	mutexRelease(&bootstrapCoreLock);
@@ -128,6 +130,7 @@ void kernelSpawnService(const char* path, const char* args, g_security_level sec
 		{
 			spawnRes.process->environment.arguments = args;
 			spawnRes.process->main->status = G_THREAD_STATUS_RUNNING;
+			logInfo("%! %s started in process %i", "service", path, spawnRes.process->id);
 		}
 		else
 		{
