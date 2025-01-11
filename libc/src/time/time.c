@@ -28,7 +28,7 @@ time_t time(time_t* out) {
 
 	// TODO g_millis must be reworked to return an actual time
 	uint64_t millis = g_millis();
-	*out = millis;
+	if(out) *out = millis;
 	return millis;
 }
 
