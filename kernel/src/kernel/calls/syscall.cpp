@@ -57,23 +57,10 @@ void syscall(uint32_t callId, void* syscallData)
 		return;
 	}
 
-	volatile g_processor_state* state;
-	if(reg->reentrant)
-	{
-		state = task->state;
-		interruptsEnable();
-	}
-
 	reg->handler(task, syscallData);
-
-	if(reg->reentrant)
-	{
-		interruptsDisable();
-		task->state = state;
-	}
 }
 
-void _syscallRegister(int callId, g_syscall_handler handler, bool reentrant)
+void _syscallRegister(int callId, g_syscall_handler handler)
 {
 	if(callId > G_SYSCALL_MAX)
 	{
@@ -81,72 +68,71 @@ void _syscallRegister(int callId, g_syscall_handler handler, bool reentrant)
 	}
 
 	syscallRegistrations[callId].handler = handler;
-	syscallRegistrations[callId].reentrant = reentrant;
 }
 
 void syscallRegisterAll()
 {
 	syscallRegistrations = (g_syscall_registration*) heapAllocateClear(sizeof(g_syscall_registration) * G_SYSCALL_MAX);
 
-	_syscallRegister(G_SYSCALL_EXIT, (g_syscall_handler) syscallExit, false);
-	_syscallRegister(G_SYSCALL_YIELD, (g_syscall_handler) syscallYield, false);
-	_syscallRegister(G_SYSCALL_GET_PROCESS_ID, (g_syscall_handler) syscallGetProcessId, false);
-	_syscallRegister(G_SYSCALL_GET_TASK_ID, (g_syscall_handler) syscallGetTaskId, false);
-	_syscallRegister(G_SYSCALL_GET_PROCESS_ID_FOR_TASK_ID, (g_syscall_handler) syscallGetProcessIdForTaskId, false);
-	_syscallRegister(G_SYSCALL_FORK, (g_syscall_handler) syscallFork, false);
-	_syscallRegister(G_SYSCALL_JOIN, (g_syscall_handler) syscallJoin, false);
-	_syscallRegister(G_SYSCALL_SLEEP, (g_syscall_handler) syscallSleep, false);
-	_syscallRegister(G_SYSCALL_ATOMIC_INITIALIZE, (g_syscall_handler) syscallAtomicInitialize, false);
-	_syscallRegister(G_SYSCALL_ATOMIC_LOCK, (g_syscall_handler) syscallAtomicLock, false);
-	_syscallRegister(G_SYSCALL_ATOMIC_UNLOCK, (g_syscall_handler) syscallAtomicUnlock, false);
-	_syscallRegister(G_SYSCALL_ATOMIC_DESTROY, (g_syscall_handler) syscallAtomicDestroy, false);
-	_syscallRegister(G_SYSCALL_LOG, (g_syscall_handler) syscallLog, false);
-	_syscallRegister(G_SYSCALL_SET_VIDEO_LOG, (g_syscall_handler) syscallSetVideoLog, false);
-	_syscallRegister(G_SYSCALL_TEST, (g_syscall_handler) syscallTest, false);
-	_syscallRegister(G_SYSCALL_RELEASE_CLI_ARGUMENTS, (g_syscall_handler) syscallReleaseCliArguments, false);
-	_syscallRegister(G_SYSCALL_GET_WORKING_DIRECTORY, (g_syscall_handler) syscallGetWorkingDirectory, false);
-	_syscallRegister(G_SYSCALL_SET_WORKING_DIRECTORY, (g_syscall_handler) syscallSetWorkingDirectory, false);
-	_syscallRegister(G_SYSCALL_KILL, (g_syscall_handler) syscallKill, false);
-	_syscallRegister(G_SYSCALL_OPEN_IRQ_DEVICE, (g_syscall_handler) syscallOpenIrqDevice, false);
-	_syscallRegister(G_SYSCALL_KERNQUERY, (g_syscall_handler) syscallKernQuery, true);
-	_syscallRegister(G_SYSCALL_GET_EXECUTABLE_PATH, (g_syscall_handler) syscallGetExecutablePath, false);
-	_syscallRegister(G_SYSCALL_GET_PARENT_PROCESS_ID, (g_syscall_handler) syscallGetParentProcessId, false);
-	_syscallRegister(G_SYSCALL_TASK_GET_TLS, (g_syscall_handler) syscallTaskGetTls, false);
-	_syscallRegister(G_SYSCALL_PROCESS_GET_INFO, (g_syscall_handler) syscallProcessGetInfo, false);
+	_syscallRegister(G_SYSCALL_EXIT, (g_syscall_handler) syscallExit);
+	_syscallRegister(G_SYSCALL_YIELD, (g_syscall_handler) syscallYield);
+	_syscallRegister(G_SYSCALL_GET_PROCESS_ID, (g_syscall_handler) syscallGetProcessId);
+	_syscallRegister(G_SYSCALL_GET_TASK_ID, (g_syscall_handler) syscallGetTaskId);
+	_syscallRegister(G_SYSCALL_GET_PROCESS_ID_FOR_TASK_ID, (g_syscall_handler) syscallGetProcessIdForTaskId);
+	_syscallRegister(G_SYSCALL_FORK, (g_syscall_handler) syscallFork);
+	_syscallRegister(G_SYSCALL_JOIN, (g_syscall_handler) syscallJoin);
+	_syscallRegister(G_SYSCALL_SLEEP, (g_syscall_handler) syscallSleep);
+	_syscallRegister(G_SYSCALL_ATOMIC_INITIALIZE, (g_syscall_handler) syscallAtomicInitialize);
+	_syscallRegister(G_SYSCALL_ATOMIC_LOCK, (g_syscall_handler) syscallAtomicLock);
+	_syscallRegister(G_SYSCALL_ATOMIC_UNLOCK, (g_syscall_handler) syscallAtomicUnlock);
+	_syscallRegister(G_SYSCALL_ATOMIC_DESTROY, (g_syscall_handler) syscallAtomicDestroy);
+	_syscallRegister(G_SYSCALL_LOG, (g_syscall_handler) syscallLog);
+	_syscallRegister(G_SYSCALL_SET_VIDEO_LOG, (g_syscall_handler) syscallSetVideoLog);
+	_syscallRegister(G_SYSCALL_TEST, (g_syscall_handler) syscallTest);
+	_syscallRegister(G_SYSCALL_RELEASE_CLI_ARGUMENTS, (g_syscall_handler) syscallReleaseCliArguments);
+	_syscallRegister(G_SYSCALL_GET_WORKING_DIRECTORY, (g_syscall_handler) syscallGetWorkingDirectory);
+	_syscallRegister(G_SYSCALL_SET_WORKING_DIRECTORY, (g_syscall_handler) syscallSetWorkingDirectory);
+	_syscallRegister(G_SYSCALL_KILL, (g_syscall_handler) syscallKill);
+	_syscallRegister(G_SYSCALL_OPEN_IRQ_DEVICE, (g_syscall_handler) syscallOpenIrqDevice);
+	_syscallRegister(G_SYSCALL_KERNQUERY, (g_syscall_handler) syscallKernQuery);
+	_syscallRegister(G_SYSCALL_GET_EXECUTABLE_PATH, (g_syscall_handler) syscallGetExecutablePath);
+	_syscallRegister(G_SYSCALL_GET_PARENT_PROCESS_ID, (g_syscall_handler) syscallGetParentProcessId);
+	_syscallRegister(G_SYSCALL_TASK_GET_TLS, (g_syscall_handler) syscallTaskGetTls);
+	_syscallRegister(G_SYSCALL_PROCESS_GET_INFO, (g_syscall_handler) syscallProcessGetInfo);
 
-	_syscallRegister(G_SYSCALL_CALL_VM86, (g_syscall_handler) syscallCallVm86, false);
-	_syscallRegister(G_SYSCALL_LOWER_MEMORY_ALLOCATE, (g_syscall_handler) syscallLowerMemoryAllocate, true);
-	_syscallRegister(G_SYSCALL_LOWER_MEMORY_FREE, (g_syscall_handler) syscallLowerMemoryFree, true);
-	_syscallRegister(G_SYSCALL_ALLOCATE_MEMORY, (g_syscall_handler) syscallAllocateMemory, true);
-	_syscallRegister(G_SYSCALL_UNMAP, (g_syscall_handler) syscallUnmap, true);
-	_syscallRegister(G_SYSCALL_SHARE_MEMORY, (g_syscall_handler) syscallShareMemory, true);
-	_syscallRegister(G_SYSCALL_MAP_MMIO_AREA, (g_syscall_handler) syscallMapMmioArea, true);
-	_syscallRegister(G_SYSCALL_SBRK, (g_syscall_handler) syscallSbrk, true);
+	_syscallRegister(G_SYSCALL_CALL_VM86, (g_syscall_handler) syscallCallVm86);
+	_syscallRegister(G_SYSCALL_LOWER_MEMORY_ALLOCATE, (g_syscall_handler) syscallLowerMemoryAllocate);
+	_syscallRegister(G_SYSCALL_LOWER_MEMORY_FREE, (g_syscall_handler) syscallLowerMemoryFree);
+	_syscallRegister(G_SYSCALL_ALLOCATE_MEMORY, (g_syscall_handler) syscallAllocateMemory);
+	_syscallRegister(G_SYSCALL_UNMAP, (g_syscall_handler) syscallUnmap);
+	_syscallRegister(G_SYSCALL_SHARE_MEMORY, (g_syscall_handler) syscallShareMemory);
+	_syscallRegister(G_SYSCALL_MAP_MMIO_AREA, (g_syscall_handler) syscallMapMmioArea);
+	_syscallRegister(G_SYSCALL_SBRK, (g_syscall_handler) syscallSbrk);
 
-	_syscallRegister(G_SYSCALL_SPAWN, (g_syscall_handler) syscallSpawn, true);
-	_syscallRegister(G_SYSCALL_CREATE_THREAD, (g_syscall_handler) syscallCreateThread, false);
-	_syscallRegister(G_SYSCALL_GET_THREAD_ENTRY, (g_syscall_handler) syscallGetThreadEntry, false);
-	_syscallRegister(G_SYSCALL_EXIT_THREAD, (g_syscall_handler) syscallExitThread, false);
+	_syscallRegister(G_SYSCALL_SPAWN, (g_syscall_handler) syscallSpawn);
+	_syscallRegister(G_SYSCALL_CREATE_THREAD, (g_syscall_handler) syscallCreateThread);
+	_syscallRegister(G_SYSCALL_GET_THREAD_ENTRY, (g_syscall_handler) syscallGetThreadEntry);
+	_syscallRegister(G_SYSCALL_EXIT_THREAD, (g_syscall_handler) syscallExitThread);
 
-	_syscallRegister(G_SYSCALL_REGISTER_TASK_IDENTIFIER, (g_syscall_handler) syscallRegisterTaskIdentifier, false);
-	_syscallRegister(G_SYSCALL_GET_TASK_FOR_IDENTIFIER, (g_syscall_handler) syscallGetTaskForIdentifier, false);
-	_syscallRegister(G_SYSCALL_MESSAGE_SEND, (g_syscall_handler) syscallMessageSend, false);
-	_syscallRegister(G_SYSCALL_MESSAGE_RECEIVE, (g_syscall_handler) syscallMessageReceive, false);
+	_syscallRegister(G_SYSCALL_REGISTER_TASK_IDENTIFIER, (g_syscall_handler) syscallRegisterTaskIdentifier);
+	_syscallRegister(G_SYSCALL_GET_TASK_FOR_IDENTIFIER, (g_syscall_handler) syscallGetTaskForIdentifier);
+	_syscallRegister(G_SYSCALL_MESSAGE_SEND, (g_syscall_handler) syscallMessageSend);
+	_syscallRegister(G_SYSCALL_MESSAGE_RECEIVE, (g_syscall_handler) syscallMessageReceive);
 
-	_syscallRegister(G_SYSCALL_GET_MILLISECONDS, (g_syscall_handler) syscallGetMilliseconds, false);
+	_syscallRegister(G_SYSCALL_GET_MILLISECONDS, (g_syscall_handler) syscallGetMilliseconds);
 
-	_syscallRegister(G_SYSCALL_FS_OPEN, (g_syscall_handler) syscallFsOpen, false);
-	_syscallRegister(G_SYSCALL_FS_SEEK, (g_syscall_handler) syscallFsSeek, false);
-	_syscallRegister(G_SYSCALL_FS_READ, (g_syscall_handler) syscallFsRead, false);
-	_syscallRegister(G_SYSCALL_FS_WRITE, (g_syscall_handler) syscallFsWrite, false);
-	_syscallRegister(G_SYSCALL_FS_CLOSE, (g_syscall_handler) syscallFsClose, false);
-	_syscallRegister(G_SYSCALL_FS_CLONEFD, (g_syscall_handler) syscallFsCloneFd, false);
-	_syscallRegister(G_SYSCALL_FS_LENGTH, (g_syscall_handler) syscallFsLength, false);
-	_syscallRegister(G_SYSCALL_FS_TELL, (g_syscall_handler) syscallFsTell, false);
-	_syscallRegister(G_SYSCALL_FS_STAT, (g_syscall_handler) syscallFsStat, false);
-	_syscallRegister(G_SYSCALL_FS_FSTAT, (g_syscall_handler) syscallFsFstat, false);
-	_syscallRegister(G_SYSCALL_FS_PIPE, (g_syscall_handler) syscallFsPipe, false);
-	_syscallRegister(G_SYSCALL_FS_OPEN_DIRECTORY, (g_syscall_handler) syscallFsOpenDirectory, false);
-	_syscallRegister(G_SYSCALL_FS_READ_DIRECTORY, (g_syscall_handler) syscallFsReadDirectory, false);
-	_syscallRegister(G_SYSCALL_FS_CLOSE_DIRECTORY, (g_syscall_handler) syscallFsCloseDirectory, false);
+	_syscallRegister(G_SYSCALL_FS_OPEN, (g_syscall_handler) syscallFsOpen);
+	_syscallRegister(G_SYSCALL_FS_SEEK, (g_syscall_handler) syscallFsSeek);
+	_syscallRegister(G_SYSCALL_FS_READ, (g_syscall_handler) syscallFsRead);
+	_syscallRegister(G_SYSCALL_FS_WRITE, (g_syscall_handler) syscallFsWrite);
+	_syscallRegister(G_SYSCALL_FS_CLOSE, (g_syscall_handler) syscallFsClose);
+	_syscallRegister(G_SYSCALL_FS_CLONEFD, (g_syscall_handler) syscallFsCloneFd);
+	_syscallRegister(G_SYSCALL_FS_LENGTH, (g_syscall_handler) syscallFsLength);
+	_syscallRegister(G_SYSCALL_FS_TELL, (g_syscall_handler) syscallFsTell);
+	_syscallRegister(G_SYSCALL_FS_STAT, (g_syscall_handler) syscallFsStat);
+	_syscallRegister(G_SYSCALL_FS_FSTAT, (g_syscall_handler) syscallFsFstat);
+	_syscallRegister(G_SYSCALL_FS_PIPE, (g_syscall_handler) syscallFsPipe);
+	_syscallRegister(G_SYSCALL_FS_OPEN_DIRECTORY, (g_syscall_handler) syscallFsOpenDirectory);
+	_syscallRegister(G_SYSCALL_FS_READ_DIRECTORY, (g_syscall_handler) syscallFsReadDirectory);
+	_syscallRegister(G_SYSCALL_FS_CLOSE_DIRECTORY, (g_syscall_handler) syscallFsCloseDirectory);
 }
