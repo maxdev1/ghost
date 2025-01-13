@@ -149,7 +149,7 @@ void taskingInitializeLocal()
 
 	mutexInitialize(&local->lock);
 
-	g_process* idle = taskingCreateProcess();
+	g_process* idle = taskingCreateProcess(G_SECURITY_LEVEL_KERNEL);
 	local->scheduling.idleTask = taskingCreateTask((g_virtual_address) taskingIdleThread, idle, G_SECURITY_LEVEL_KERNEL);
 	local->scheduling.idleTask->type = G_TASK_TYPE_VITAL;
 	logInfo("%! core: %i idle task: %i", "tasking", processorGetCurrentId(), idle->main->id);
@@ -158,7 +158,7 @@ void taskingInitializeLocal()
 	// an initial state for accessing kernel thread-local storage
 	gdtSetTlsAddresses(nullptr, local->scheduling.idleTask->threadLocal.kernelThreadLocal);
 
-	g_process* cleanup = taskingCreateProcess();
+	g_process* cleanup = taskingCreateProcess(G_SECURITY_LEVEL_KERNEL);
 	g_task* cleanupTask = taskingCreateTask((g_virtual_address) taskingCleanupThread, cleanup, G_SECURITY_LEVEL_KERNEL);
 	cleanupTask->type = G_TASK_TYPE_VITAL;
 	taskingAssign(taskingGetLocal(), cleanupTask);
@@ -312,7 +312,7 @@ void taskingSchedule()
 	taskingApplySwitch();
 }
 
-g_process* taskingCreateProcess()
+g_process* taskingCreateProcess(g_security_level securityLevel)
 {
 	// logInfo("heap used before process creation: %i", heapGetUsedAmount());
 
@@ -327,7 +327,7 @@ g_process* taskingCreateProcess()
 	process->tlsMaster.location = 0;
 	process->tlsMaster.userThreadOffset = 0;
 
-	process->pageDirectory = taskingMemoryCreatePageDirectory();
+	process->pageDirectory = taskingMemoryCreatePageDirectory(securityLevel);
 
 	process->virtualRangePool = (g_address_range_pool*) heapAllocate(sizeof(g_address_range_pool));
 	addressRangePoolInitialize(process->virtualRangePool);
@@ -477,7 +477,7 @@ g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel)
 
 	// Create target process & task
 	g_spawn_result res;
-	res.process = taskingCreateProcess();
+	res.process = taskingCreateProcess(securityLevel);
 	g_task* task = taskingCreateTask(0, res.process, securityLevel);
 	if(!task)
 	{

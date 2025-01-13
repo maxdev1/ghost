@@ -21,7 +21,6 @@
 #include "components/window.hpp"
 #include "components/cursor.hpp"
 #include "events/focus_event.hpp"
-#include "events/key_event.hpp"
 #include "events/mouse_event.hpp"
 #include "windowserver.hpp"
 
@@ -118,7 +117,7 @@ void window_t::paint()
 						  ARGB_FR_FROM(backgroundColor),
 						  ARGB_FG_FROM(backgroundColor),
 						  ARGB_FB_FROM(backgroundColor),
-						  ARGB_FA_FROM(backgroundColor) * (focused ? 1.0 : 0.95));
+						  ARGB_FA_FROM(backgroundColor) * (focused ? 1.0 : 0.9));
 	cairo_fill(cr);
 
 	// draw cross

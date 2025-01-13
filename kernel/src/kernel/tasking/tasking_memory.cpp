@@ -181,7 +181,7 @@ void taskingMemoryDestroyStack(g_address_range_pool* addressRangePool, g_stack& 
 	addressRangePoolFree(addressRangePool, stack.start);
 }
 
-g_physical_address taskingMemoryCreatePageDirectory()
+g_physical_address taskingMemoryCreatePageDirectory(g_security_level securityLevel)
 {
 	g_page_directory directoryCurrent = (g_page_directory) G_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
 
@@ -200,7 +200,10 @@ g_physical_address taskingMemoryCreatePageDirectory()
 	}
 
 	// Copy mappings for the lowest 4 MiB
-	directoryTemp[0] = directoryCurrent[0];
+	if(securityLevel < G_SECURITY_LEVEL_APPLICATION)
+		directoryTemp[0] = directoryCurrent[0];
+	else
+		directoryTemp[0] = 0;
 
 	// Recursive self-map
 	directoryTemp[1023] = directoryPhys | DEFAULT_KERNEL_TABLE_FLAGS;

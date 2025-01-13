@@ -52,9 +52,12 @@ void taskingMemoryDestroyStacks(g_task* task);
  * Creates a new page directory to use for a new process. Clones the kernel space
  * into the page directory, maps the lower memory and adds recursive mapping.
  *
+ * @param securityLevel
+ *   security level to apply to the process address space
+ *
  * @return the physical address of the directory
  */
-g_physical_address taskingMemoryCreatePageDirectory();
+g_physical_address taskingMemoryCreatePageDirectory(g_security_level securityLevel);
 
 /**
  * Destory the page directory of a process.

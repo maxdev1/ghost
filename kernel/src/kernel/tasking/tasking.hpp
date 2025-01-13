@@ -122,8 +122,11 @@ void taskingAssignBalanced(g_task* task);
  * correctly mapped and instantiates a virtual range allocator.
  *
  * Doesn't create a thread.
+ *
+ * @param securityLevel
+ *   security level to apply for the process
  */
-g_process* taskingCreateProcess();
+g_process* taskingCreateProcess(g_security_level securityLevel);
 
 /**
  * Creates a task that starts execution on the given entry. The task is added to the

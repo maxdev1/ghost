@@ -19,12 +19,28 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "locale.h"
+#include "string.h"
+
+char locale[32];
+char initialized = 0;
 
 /**
  *
  */
-char* setlocale(int category, const char* locale) {
-
+char *setlocale(int category, const char *newLocale)
+{
 	// TODO
-	return NULL;
+	if (!initialized)
+	{
+		locale[0] = 0;
+		initialized = 1;
+	}
+
+	if (newLocale == NULL)
+	{
+		return locale;
+	}
+
+	strcpy(locale, newLocale);
+	return locale;
 }
