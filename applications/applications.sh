@@ -20,9 +20,12 @@ requireTool changes
 # Variables
 TARGET=$@
 
-with TARGET "all"
-with SRC "src"
-with OBJ "obj"
+with TARGET     "all"
+with SRC        "src"
+with OBJ        "obj"
+with LDFLAGS    ""
+with CFLAGS_ADD ""
+with CFLAGS     "-std=c++11 -I$SRC $CFLAGS_ADD"
 
 with ARTIFACT_LOCAL "$OBJ/$ARTIFACT_NAME"
 with ARTIFACT_LOCAL_STATIC "$OBJ/$ARTIFACT_NAME_STATIC"

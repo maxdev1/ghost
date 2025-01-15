@@ -6,9 +6,7 @@ fi
 . "$ROOT/ghost.sh"
 
 # Build configuration
-SRC="src"
 ARTIFACT_NAME="tester.bin"
-CFLAGS="-std=c++11 -I$SRC"
 LDFLAGS="-lvbedriver -lps2driver"
 
 # Include application build tasks

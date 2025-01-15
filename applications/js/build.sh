@@ -6,10 +6,8 @@ fi
 . "$ROOT/ghost.sh"
 
 # Build configuration
-SRC="src"
 ARTIFACT_NAME="js.bin"
-CFLAGS="-std=c++11 -I$SRC -DDUK_F_GHOST"
-LDFLAGS=""
+CFLAGS_ADD="-DDUK_F_GHOST"
 
 # Include application build tasks
 . "../applications.sh"

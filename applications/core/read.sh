@@ -7,11 +7,9 @@ fi
 
 
 # Define build setup
-SRC=src-read
-OBJ=obj-read
-ARTIFACT_NAME=read.bin
-CFLAGS="-std=c++11 -I$SRC"
-LDFLAGS=""
+SRC="src-read"
+OBJ="obj-read"
+ARTIFACT_NAME="read.bin"
 
 # Include application build tasks
 . "../applications.sh"
