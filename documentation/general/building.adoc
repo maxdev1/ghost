@@ -11,22 +11,19 @@ The project consists of two repositories:
 * link:https://github.com/maxdev1/ghost[*ghost*], main repository containing the source code
 * link:https://github.com/maxdev1/ghost-sysroot[*ghost-sysroot*], a blueprint for the system root directory
 
-The system root directory (sysroot) is a concept used in cross-compiling. Everything in this
-directory is written to the ramdisk, which is mounted as the root folder of the filesystem
-when the OS has started.
+The system root directory (sysroot) is a concept used in cross-compiling. It reflects the filesystem of the target
+system. All libraries and applications are installed into this directory which is then packed into the ramdisk during
+the build process. This ramdisk is what is mounted as the root of the running system.
 
-When cross-compiling libraries and applications on your host system, the headers and
-libraries from within this directory are used. This is required to seperate the host
-from our target.
-
-Building the toolchain on your host system, depending on some factors, a long and sometimes
-tedious process. If you want to do it, skip to the <<Toolchain on host>> section, otherwise
-continue with <<Toolchain via Docker>>.
+Building the toolchain on your host system is - depending on some factors - a slow and sometimes
+tedious process. It is recommended to simply use the <<Toolchain via Docker>>. To build it yourself, check the
+<<Toolchain on host>> section.
 
 
 Toolchain via Docker
 --------------------
-If you want to avoid the hassle, follow these steps to setup the toolchain in Docker:
+The toolchain is provided as a pre-built image which is simply a small system with the required tools pre-installed
+and the toolchain setup script has already been executed. To set it up on your host system:
 
 1. Check out the link:https://github.com/maxdev1/ghost[*ghost*] and link:https://github.com/maxdev1/ghost-sysroot[*ghost-sysroot*] repositories anywhere on your system.
 
@@ -42,6 +39,9 @@ If you want to avoid the hassle, follow these steps to setup the toolchain in Do
 
 You will now be presented with a shell. Run `cd /ghost/source` and skip to the <<Building>> section below.
 
+To reconnect to the container when it is already running:
+  docker exec -it ghost-toolchain bash
+
 
 Toolchain on host
 -----------------
@@ -56,7 +56,7 @@ If you want to use a different folder, see the "Tips" section below.
 
 Installing prerequisites
 ~~~~~~~~~~~~~~~~~~~~~~~~
-There are some pre-requisites that you need to install on your host system. Install the following dependencies:
+The following dependencies are requirements for the toolchain and need to be installed beforehand or else the script will fail:
 
 * `apt-get update`
 * `apt-get install libmpfr-dev libgmp-dev libmpc-dev`
@@ -64,7 +64,7 @@ There are some pre-requisites that you need to install on your host system. Inst
 * `apt-get install make texinfo flex bison gcc g++ nasm`
 * `apt-get install asciidoc asciidoctor`
 
-You may need to `export AUTOCONF=autoconf2.69` depending on your installation.
+You may need to `export AUTOCONF=autoconf2.69` depending on your host system.
 
 On Windows
 ~~~~~~~~~~
@@ -72,10 +72,8 @@ The recommended way of building on Windows is using WSL (link:https://learn.micr
 
 On Mac OS
 ~~~~~~~~~
-There are quite some prerequisites, so probably setting up a Linux VM is easier.
-The least that has to be done to get it working on OS X is to install GCC, build `libmpfr`,
-`libgmp` and `libmpc` from source and prepare the environment properly. If you don't like
-pain, reconsider Docker.
+The setup on Mac OS is painful due to the complicated compiler setup and installation of prerequisites. It's advised
+to use Docker or a Linux VM.
 
 
 Build toolchain
@@ -84,14 +82,14 @@ Run the toolchain setup script `toolchain.sh`. It will attempt to do everything 
 necessary to create the toolchain. Once the toolchain was built, add it to your PATH.
 
 
-Building
---------
+Build targets
+-------------
 To build the system, use the root `build.sh` and its various flags (see `--help`).
 
 After setting up the toolchain, simply run `./build.sh` and let it execute all targets. The first
 build will take some time, because the ported libraries (like cairo) need to be built.
 
-Done? *Congratulations!* In the main folder you will now find the bootable ISO image `ghost.iso`.
+Done? *Congratulations!* In the `target` folder you will now find the bootable ISO image `ghost.iso`.
 
 NOTE: On some systems while running `build.sh`, the configure scripts of some ports
 	might hang at either "checking for suffix of executables" or "checking whether

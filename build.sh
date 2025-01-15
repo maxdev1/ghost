@@ -65,10 +65,6 @@ print_gray() {
 	printf "\e[1;90m$1\e[0m"
 }
 
-print_skipped() {
-	print_gray "skipped\n"
-}
-
 print_name() {
 	printf "\e[0;7m$1\e[0m "
 }
@@ -81,10 +77,8 @@ backspace_len() {
 build_ports() {
 	pushd patches/ports
 
-	print_name ports
-	if [[ $PORTS_ALL == 0 && -f $SYSROOT/system/lib/libcairo.a ]]; then
-		print_skipped
-	else
+	if [[ $PORTS_ALL != 0 || ! -f $SYSROOT/system/lib/libcairo.a ]]; then
+	  print_name ports
 		printf "\n"
 		$SH port.sh zlib/1.2.8 | awk '$0="   "$0'
 		$SH port.sh pixman/0.32.6 | awk '$0="   "$0'
@@ -99,15 +93,14 @@ build_ports() {
 build_libapi() {
 	pushd libapi
 
-	print_name libapi
 	if [[ $EVERYTHING == 1 || $LIBAPI_CLEAN == 1 ]]; then
+	  print_name libapi
 		build_target clean all
 		print_status
 	elif [[ $LIBAPI_ALL == 1 ]]; then
+	  print_name libapi
 		build_target all
 		print_status
-	else
-		print_skipped
 	fi
 
 	popd
@@ -127,15 +120,14 @@ build_libapi_target() {
 build_libc() {
 	pushd libc
 
-	print_name libc
 	if [[ $EVERYTHING == 1 || $LIBC_CLEAN == 1 ]]; then
+	  print_name libc
 		build_target clean all
 		print_status
 	elif [[ $LIBC_ALL == 1 ]]; then
+	  print_name libc
 		build_target all
 		print_status
-	else
-		print_skipped
 	fi
 
 	popd
@@ -154,6 +146,12 @@ build_libc_target() {
 
 build_app() {
 	pushd $1
+
+	if [[ $apps_header_printed != 1 ]]; then
+	  apps_header_printed=1
+	  print_name applications
+	  printf "\n"
+	fi
 
 	name="${1%/} "
 	printf "  $name"
@@ -178,10 +176,8 @@ build_app() {
 build_apps() {
 	pushd applications
 
-	print_name applications
 	apps_success=0
 	apps_total=0
-	printf "\n"
 
 	if [[ $EVERYTHING = 1 || $APPS_CLEAN = 1 || $APPS_ALL = 1 ]]; then
 		NUM_APPS=${#APPS[@]}
@@ -214,8 +210,6 @@ build_apps() {
 			done
 		fi
 		echo "  ($apps_success/$apps_total successful)"
-	else
-		print_skipped
 	fi
 
 	popd
@@ -224,18 +218,26 @@ build_apps() {
 build_kernel() {
 	pushd kernel
 
-	print_name kernel
 	if [[ $EVERYTHING == 1 || $KERNEL_CLEAN == 1 ]]; then
+	  print_name kernel
 		build_target clean all
+	  print_status
 	elif [[ $KERNEL_ALL == 1 ]]; then
+	  print_name kernel
 		build_target all
-	else
-		build_target repack
+	  print_status
 	fi
-	print_status
-	echo ""
 
 	popd
+}
+
+build_pack() {
+  pushd target
+
+	print_name pack
+  build_target pack
+
+  popd
 }
 
 print_help() {
@@ -247,10 +249,10 @@ print_help() {
 	echo "  --ports            build ports, even if not necessary"
 	echo "  --apps             build all apps"
 	echo "  --apps terminal    build only listed apps (last argument)"
-	echo "  --repack           only repack image"
+	echo "  --pack             pack & build image"
 	echo ""
 	echo "By default, everything is built clean. When specifying one of the flags above,"
-	echo "then only the selected modules are built and the image is repacked."
+	echo "then only the selected modules are built and the image is packed."
 	echo ""
 	echo "Adding \"-clean\" to a flag builds the target clean, like \"--libc-clean\"."
 	echo ""
@@ -311,7 +313,7 @@ for var in "$@"; do
 	elif [[ "$var" = "--kernel-clean" ]]; then
 		EVERYTHING=0
 		KERNEL_CLEAN=1
-	elif [[ "$var" = "--repack" ]]; then
+	elif [[ "$var" = "--pack" ]]; then
 		EVERYTHING=0
 	elif [[ "$var" = "--help" || "$var" = "-h" || "$var" = "?" ]]; then
 		print_help
@@ -319,8 +321,11 @@ for var in "$@"; do
 	fi
 done
 
+# Run build steps
 build_ports
 build_libapi
 build_libc
 build_apps
 build_kernel
+build_pack
+printf "\n"

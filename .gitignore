@@ -36,8 +36,10 @@ documentation/out/*
 
 kernel/bin/*
 kernel/serial.log
-kernel/iso/boot/kernel
-kernel/iso/boot/loader
-kernel/iso/boot/ramdisk
+kernel/kernel
+kernel/loader
+target/iso/boot/kernel
+target/iso/boot/loader
+target/iso/boot/ramdisk
 
 ghost.iso

@@ -32,26 +32,15 @@ OBJ_SHARED=$BIN/obj-shared
 OBJ_LOADER=$BIN/obj-loader
 OBJ_KERNEL=$BIN/obj-kernel
 
-#
-# ISO file generation
-#
-ISO_SRC=iso
-ISO_TGT=../ghost.iso
-GRUB_MKRESCUE=grub-mkrescue
 
 #
 # Generated artifacts & linker scripts
 #
-ARTIFACT_LOADER=$ISO_SRC/boot/loader
-ARTIFACT_KERNEL=$ISO_SRC/boot/kernel
+ARTIFACT_LOADER=loader
+ARTIFACT_KERNEL=kernel
 LINKSCRIPT_LOADER=extra/link-loader.ld
 LINKSCRIPT_KERNEL=extra/link-kernel.ld
 
-#
-# Ramdisk build
-#
-RAMDISK=$ISO_SRC/boot/ramdisk
-RAMDISK_WRITER=ramdisk-writer
 
 #
 # Application processor startup object
@@ -72,8 +61,6 @@ target_clean() {
 	headline "cleaning"
 	remove $ARTIFACT_LOADER
 	remove $ARTIFACT_KERNEL
-	remove $RAMDISK
-	remove $ISO_TGT
 	cleanDirectory $BIN
 	cleanDirectory $OBJ_SHARED
 	cleanDirectory $OBJ_LOADER
@@ -157,56 +144,6 @@ target_link() {
 }
 
 #
-# Generate the ramdisk file
-#
-target_ramdisk() {
-	headline "building ramdisk"
-	$RAMDISK_WRITER "$SYSROOT" "$RAMDISK"
-	failOnError
-}
-
-#
-# Build an ISO file using GRUB's mkrescue tool
-#
-target_make_iso() {
-	headline "making iso"
-	rm $ISO_TGT
-	$GRUB_MKRESCUE --output=$ISO_TGT $ISO_SRC
-	failOnError
-}
-
-#
-# Run in QEMU
-#
-target_qemu() {
-	if [ -e serial.log ]; then
-		rm -f serial.log
-	fi
-	
-	echo "Debug interface mode: Make sure the debug application is running!"
-	qemu-system-i386 -cdrom $ISO_TGT -s -m 1024 -serial tcp::25000
-	
-	if [ $? == 1 ]; then
-		echo "WARNING: Failed to connect to debug application! Redirecting output to file"
-		qemu-system-i386 -cdrom $ISO_TGT -s -m 1024 -serial file:serial.log
-	fi
-}
-
-#
-# Run in lingemu
-#
-target_lingemu() {
-	lingemu runvirt -m 1024 --diskcontroller type=ahci,name=ahcibus1 --disk $ISO_TGT,disktype=cdrom,controller=ahcibus1
-}
-
-#
-# Run in QEMU and call debugger
-#
-target_qemu_debug_gdb() {
-	qemu-system-i386 -cdrom $ISO_TGT -s -S -m 1024 -serial tcp::1234,server
-}
-
-#
 # Performs everything necessary to build the OS image
 #
 target_all() {
@@ -216,16 +153,6 @@ target_all() {
 	target_compile $SRC_KERNEL $OBJ_KERNEL "-I$INC -I$SRC"
 	target_link $ARTIFACT_LOADER $LINKSCRIPT_LOADER "$OBJ_LOADER/* $OBJ_SHARED/*"
 	target_link $ARTIFACT_KERNEL $LINKSCRIPT_KERNEL "$OBJ_KERNEL/* $OBJ_SHARED/*"
-	target_ramdisk
-	target_make_iso
-}
-
-#
-# Only rebuilds the ramdisk and ISO file
-#
-target_repack() {
-	target_ramdisk
-	target_make_iso
 }
 
 
@@ -234,25 +161,6 @@ for var in $TARGET; do
 	if [[ "$var" == "all" ]]; then
 		target_all
 
-	elif [[ "$var" == "repack" ]]; then
-		target_repack
-
-	elif [[ "$var" == "repack-run" ]]; then
-		target_repack
-		target_qemu
-		
-	elif [[ "$var" == "ramdisk" ]]; then
-		target_ramdisk
-		
-	elif [[ "$var" == "qemu" ]]; then
-		target_qemu
-		
-	elif [[ $TARGET == "lingemu" ]]; then
-		target_lingemu
-    
-	elif [[ "$var" == "qemu-debug-gdb" ]]; then
-		target_qemu_debug_gdb
-		
 	elif [[ "$var" == "clean" ]]; then
 		target_clean
 		

@@ -17,7 +17,6 @@ tries to explain most of the important folders and their meaning.
 	** `/extra` Contains linker scripts
 * `/libapi` System call library
 * `/libc` Standard C library
-* `/libuser` Higher-level userspace library
 * `/applications` Contains userspace applications
 * `/patches`
 	** `<<port#,/ports>>` Small build tool and patches for various libraries that are portable
