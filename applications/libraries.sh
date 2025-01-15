@@ -6,6 +6,13 @@ fi
 . "$ROOT/ghost.sh"
 . "$ROOT/applications/shared.sh"
 
+#
+# LIBRARY BUILD
+#
+# This is a preset build script for a library. It defines a set of targets to build the library,
+# install it to the system target and also install the headers respectively.
+#
+
 # Requirements
 requireVar "ARTIFACT_NAME"
 requireVar "ARTIFACT_NAME_SHARED"

@@ -47,7 +47,7 @@ void prettyBootEnable(bool clearScreen)
                           0x09);
 
     prettyBootPrintCentered("Version " STR(G_VERSION_MAJOR) "." STR(G_VERSION_MINOR) "." STR(G_VERSION_PATCH), 17, 0x07);
-    prettyBootPrintCentered("(c) 2012-2022 Max Schl\x81ssel", 23, 0x07);
+    prettyBootPrintCentered("(c) 2015-2025 Max Schl\x81ssel", 23, 0x07);
 
     consoleVideoSetVisualCursor(-1, -1);
 }

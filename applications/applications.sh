@@ -6,6 +6,13 @@ fi
 . "$ROOT/ghost.sh" 2 &>/dev/null
 . "$ROOT/applications/shared.sh"
 
+#
+# APPLICATION BUILD
+#
+# This is a preset build script for a simple application. It defines a set of targets to clean, compile and link
+# a single artifact and install it to the system target.
+#
+
 # Requirements
 requireVar "ARTIFACT_NAME"
 requireTool changes
@@ -17,10 +24,10 @@ with TARGET "all"
 with SRC "src"
 with OBJ "obj"
 
-ARTIFACT_LOCAL=$OBJ/$ARTIFACT_NAME
-ARTIFACT_LOCAL_STATIC=$OBJ/$ARTIFACT_NAME_STATIC
-ARTIFACT_TARGET=$SYSROOT_APPLICATIONS/$ARTIFACT_NAME
-ARTIFACT_TARGET_STATIC=$SYSROOT_APPLICATIONS/$ARTIFACT_NAME_STATIC
+with ARTIFACT_LOCAL "$OBJ/$ARTIFACT_NAME"
+with ARTIFACT_LOCAL_STATIC "$OBJ/$ARTIFACT_NAME_STATIC"
+with ARTIFACT_TARGET "$SYSROOT_APPLICATIONS/$ARTIFACT_NAME"
+with ARTIFACT_TARGET_STATIC "$SYSROOT_APPLICATIONS/$ARTIFACT_NAME_STATIC"
 
 # Targets
 target_headline $TARGET
