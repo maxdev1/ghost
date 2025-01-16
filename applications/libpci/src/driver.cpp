@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *                                                                           *
+*                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,45 +18,34 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_SYSCALLS__
-#define __KERNEL_SYSCALLS__
+#include "libpci/driver.hpp"
+#include <cstring>
 
-#include "ghost/stdint.h"
-
-struct g_task;
-
-/**
- * Type of a system call handler
- */
-typedef void (*g_syscall_handler)(g_task*, void*);
-
-/**
- * Registration structure
- */
-struct g_syscall_registration
+bool pciDriverIdentifyAhciController(g_pci_identify_ahci_controller_entry** out)
 {
-	g_syscall_handler handler;
-};
+	g_tid driverTid = g_task_get_id(G_PCI_DRIVER_IDENTIFIER);
+	if(driverTid == -1)
+	{
+		return false;
+	}
 
-/**
- * Table of system call registrations with a size of G_SYSCALL_MAX.
- */
-extern g_syscall_registration* syscallRegistrations;
+	g_message_transaction transaction = g_get_message_tx_id();
 
-/**
- * Handles a system call for the given task. Reads EAX and EBX from the caller task
- * to find the issued system call and data.
- *
- * Depending on the call registration, it is then processed either synchronously by
- * calling the respective handler or a thread is created and the source task is put
- * to waiting state.
- */
-void syscallHandle(g_task* task);
-void syscall(uint32_t callId, void* data);
+	g_pci_identify_ahci_controller_request request{};
+	request.header.command = G_PCI_IDENTIFY_AHCI_CONTROLLER;
+	g_send_message_t(driverTid, &request, sizeof(g_pci_identify_ahci_controller_request), transaction);
 
-/**
- * Creates the system call table.
- */
-void syscallRegisterAll();
+	size_t buflen = sizeof(g_message_header) + sizeof(g_pci_identify_ahci_controller_response);
+	uint8_t buf[buflen];
+	auto status = g_receive_message_t(buf, buflen, transaction);
+	auto response = (g_pci_identify_ahci_controller_response*) G_MESSAGE_CONTENT(buf);
 
-#endif
+	if(status == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	{
+		memcpy(out, response->entries,
+		       sizeof(g_pci_identify_ahci_controller_entry) * G_PCI_IDENTIFY_AHCI_CONTROLLER_ENTRIES);
+		return true;
+	}
+
+	return false;
+}

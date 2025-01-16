@@ -21,7 +21,6 @@
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/calls/syscall.hpp"
 #include "kernel/memory/gdt.hpp"
-#include "kernel/system/configuration.hpp"
 #include "kernel/system/interrupts/apic/ioapic.hpp"
 #include "kernel/system/interrupts/apic/lapic.hpp"
 #include "kernel/system/interrupts/exceptions.hpp"
@@ -31,11 +30,9 @@
 #include "kernel/system/timing/pit.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "kernel/tasking/tasking_memory.hpp"
 #include "kernel/tasking/tasking_state.hpp"
 #include "kernel/utils/wait_queue.hpp"
 #include "shared/panic.hpp"
-#include "shared/system/mutex.hpp"
 
 void _interruptsSendEndOfInterrupt(uint8_t irq);
 
@@ -56,8 +53,8 @@ void interruptsInitializeBsp()
 		ioapicInitializeAll();
 
 		// Redirect keyboard (1) and mouse (12) IRQs
-		ioapicCreateIsaRedirectionEntry(1, 1, 0);
-		ioapicCreateIsaRedirectionEntry(12, 12, 0);
+		ioapicCreateRedirectionEntry(1, 1, 0);
+		ioapicCreateRedirectionEntry(12, 12, 0);
 	}
 	else
 	{
@@ -123,7 +120,11 @@ extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_st
 			}
 			else
 			{
+				// TODO task->active?
+				// I think this might currently accidentally be marking a task as not active
+				// when simply an interrupt must be written to the irq pipe (see above)
 				requestsWriteToIrqDevice(task, irq);
+				// logInfo("Intr: %x", irq);
 			}
 
 			_interruptsSendEndOfInterrupt(irq);

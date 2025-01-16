@@ -141,7 +141,7 @@ void ioapicUnmask(g_ioapic* io, uint32_t source)
 
 bool ioapicAreAvailable()
 {
-	return ioapicList != 0;
+	return ioapicList != nullptr;
 }
 
 g_ioapic* ioapicGetResponsibleFor(uint32_t source)
@@ -158,7 +158,7 @@ g_ioapic* ioapicGetResponsibleFor(uint32_t source)
 	return io;
 }
 
-bool ioapicCreateIsaRedirectionEntry(uint32_t source, uint32_t irq, uint32_t destinationApic)
+bool ioapicCreateRedirectionEntry(uint32_t source, uint32_t irq, uint32_t destinationApic)
 {
 	g_ioapic* io = ioapicGetResponsibleFor(source);
 	if(!io)

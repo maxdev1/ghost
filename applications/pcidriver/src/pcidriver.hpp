@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *                                                                           *
+*                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,45 +18,45 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_SYSCALLS__
-#define __KERNEL_SYSCALLS__
+#ifndef __PCIDRIVER__
+#define __PCIDRIVER__
 
-#include "ghost/stdint.h"
-
-struct g_task;
-
-/**
- * Type of a system call handler
- */
-typedef void (*g_syscall_handler)(g_task*, void*);
-
-/**
- * Registration structure
- */
-struct g_syscall_registration
+struct g_pci_device
 {
-	g_syscall_handler handler;
+    uint8_t bus;
+    uint8_t device;
+    uint8_t function;
+
+    uint8_t classCode;
+    uint8_t subclassCode;
+    uint8_t progIf;
+
+    g_pci_device* next;
 };
 
 /**
- * Table of system call registrations with a size of G_SYSCALL_MAX.
+ * Enumerates all devices found on the PCI bus and stores them.
  */
-extern g_syscall_registration* syscallRegistrations;
+void pciDriverScanBus();
 
 /**
- * Handles a system call for the given task. Reads EAX and EBX from the caller task
- * to find the issued system call and data.
- *
- * Depending on the call registration, it is then processed either synchronously by
- * calling the respective handler or a thread is created and the source task is put
- * to waiting state.
+ * Reads a dword from the PCI configuration space.
  */
-void syscallHandle(g_task* task);
-void syscall(uint32_t callId, void* data);
+uint32_t pciReadConfigInt(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset);
 
 /**
- * Creates the system call table.
+ * Reads a byte from the PCI configuration space.
  */
-void syscallRegisterAll();
+uint8_t pciReadConfigByte(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset);
+
+/**
+ * Receives incoming messages.
+ */
+void pciDriverReceiveMessages();
+
+/**
+ * Identifies AHCI controllers and responds accordingly.
+ */
+void pciDriverIdentifyAhciController(g_tid sender, g_message_transaction transaction);
 
 #endif

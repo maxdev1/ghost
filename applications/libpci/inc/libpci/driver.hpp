@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *                                                                           *
+*                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,45 +18,46 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_SYSCALLS__
-#define __KERNEL_SYSCALLS__
+#ifndef __LIBPCI_PCIDRIVER__
+#define __LIBPCI_PCIDRIVER__
 
-#include "ghost/stdint.h"
+#include <ghost.h>
+#define G_PCI_DRIVER_IDENTIFIER		"pcidriver"
 
-struct g_task;
+typedef int g_pci_command;
+#define G_PCI_IDENTIFY_AHCI_CONTROLLER	((g_pci_command) 0)
 
-/**
- * Type of a system call handler
- */
-typedef void (*g_syscall_handler)(g_task*, void*);
-
-/**
- * Registration structure
- */
-struct g_syscall_registration
+struct g_pci_request_header
 {
-	g_syscall_handler handler;
-};
+    g_pci_command command;
+}__attribute__((packed));
+
+struct g_pci_identify_ahci_controller_request
+{
+    g_pci_request_header header;
+}__attribute__((packed));
+
+struct g_pci_identify_ahci_controller_entry
+{
+    g_physical_address baseAddress;
+    uint8_t interruptLine;
+}__attribute__((packed));
+
+#define G_PCI_IDENTIFY_AHCI_CONTROLLER_ENTRIES 16
+
+struct g_pci_identify_ahci_controller_response
+{
+    uint8_t count;
+    g_pci_identify_ahci_controller_entry entries[G_PCI_IDENTIFY_AHCI_CONTROLLER_ENTRIES];
+}__attribute__((packed));
 
 /**
- * Table of system call registrations with a size of G_SYSCALL_MAX.
- */
-extern g_syscall_registration* syscallRegistrations;
-
-/**
- * Handles a system call for the given task. Reads EAX and EBX from the caller task
- * to find the issued system call and data.
+ * Requests the PCI driver to identify AHCI controllers and return information about them.
  *
- * Depending on the call registration, it is then processed either synchronously by
- * calling the respective handler or a thread is created and the source task is put
- * to waiting state.
+ * @param out
+ *      must point to 16 entries space
+ * @return whether the request was successful
  */
-void syscallHandle(g_task* task);
-void syscall(uint32_t callId, void* data);
-
-/**
- * Creates the system call table.
- */
-void syscallRegisterAll();
+bool pciDriverIdentifyAhciController(g_pci_identify_ahci_controller_entry** out);
 
 #endif

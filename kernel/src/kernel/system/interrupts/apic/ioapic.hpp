@@ -89,16 +89,16 @@
 
 struct g_ioapic
 {
-	uint32_t id;
+    uint32_t id;
 
-	g_physical_address physicalAddress;
-	g_virtual_address virtualAddress;
+    g_physical_address physicalAddress;
+    g_virtual_address virtualAddress;
 
-	uint32_t globalSystemInterruptBase;
-	uint32_t redirectEntryCount;
+    uint32_t globalSystemInterruptBase;
+    uint32_t redirectEntryCount;
 
-	// Stored by the manager in a singly linked list
-	g_ioapic* next;
+    // Stored by the manager in a singly linked list
+    g_ioapic* next;
 };
 
 /**
@@ -174,11 +174,6 @@ void ioapicUnmask(g_ioapic* io, uint32_t source);
 /**
  *
  */
-g_ioapic* ioapicGetResponsibleFor(uint32_t source);
-
-/**
- *
- */
 g_ioapic* ioapicGetEntries();
 
 /**
@@ -194,12 +189,7 @@ void ioapicCreate(uint32_t id, g_physical_address physicalAddress, uint32_t glob
 /**
  *
  */
-bool ioapicAreAvailable();
-
-/**
- *
- */
-bool ioapicCreateIsaRedirectionEntry(uint32_t source, uint32_t irq, uint32_t destinationApic);
+bool ioapicCreateRedirectionEntry(uint32_t source, uint32_t irq, uint32_t destinationApic);
 
 /**
  *
