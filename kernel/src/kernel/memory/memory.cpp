@@ -38,7 +38,7 @@ void _memoryRelocatePhysicalBitmap(g_setup_information* setupInformation)
 	for(uint32_t i = 0; i < bitmapPages; i++)
 	{
 		g_offset off = (i * G_PAGE_SIZE);
-		pagingMapPage(bitmapVirtual + off, setupInformation->bitmapArrayStart + off, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+		pagingMapPage(bitmapVirtual + off, setupInformation->bitmapArrayStart + off, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
 	}
 	bitmapPageAllocatorRelocate(&memoryPhysicalAllocator, bitmapVirtual);
 }
@@ -88,7 +88,7 @@ g_virtual_address memoryAllocateKernelRange(int32_t pages)
 	for(int32_t i = 0; i < pages; i++)
 	{
 		g_physical_address phys = memoryPhysicalAllocate();
-		pagingMapPage(virt + (i * G_PAGE_SIZE), phys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+		pagingMapPage(virt + (i * G_PAGE_SIZE), phys, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
 	}
 	return virt;
 }
@@ -153,7 +153,7 @@ bool memoryOnDemandHandlePageFault(g_task* task, g_address accessed)
 	auto fileEnd = mapping->fileStart + mapping->fileSize;
 
 	// Allocate requested page
-	pagingMapPage(accessedLeft, memoryPhysicalAllocate(), DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+	pagingMapPage(accessedLeft, memoryPhysicalAllocate(), G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 
 	// Zero everything before content
 	g_address zeroLeft = accessedLeft;

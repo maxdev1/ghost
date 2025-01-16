@@ -58,7 +58,7 @@ void smpInitialize(g_physical_address initialPageDirectoryPhysical)
 			return;
 		}
 
-		pagingMapPage(stackVirtual, stackPhysical, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+		pagingMapPage(stackVirtual, stackPhysical, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
 
 		g_virtual_address stackTop = (stackVirtual + G_PAGE_SIZE);
 		stackArray[i] = stackTop;

@@ -73,7 +73,7 @@ void elfTlsCreateMasterImage(g_fd file, g_process* process, g_elf_object* rootOb
 	for(uint32_t i = 0; i < requiredPages; i++)
 	{
 		g_physical_address page = memoryPhysicalAllocate();
-		pagingMapPage(tlsStart + i * G_PAGE_SIZE, page, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+		pagingMapPage(tlsStart + i * G_PAGE_SIZE, page, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 	}
 
 	// Load contents from all loaded objects to memory

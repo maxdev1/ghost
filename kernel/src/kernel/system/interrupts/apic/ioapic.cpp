@@ -83,8 +83,8 @@ void ioapicCreateMapping(g_ioapic* io)
 
 	// Map the two pages
 	logDebug("%! mapped at %h (phys %h)", "ioapic", io->virtualAddress, io->physicalAddress);
-	pagingMapPage(G_PAGE_ALIGN_DOWN(io->virtualAddress), G_PAGE_ALIGN_DOWN(io->physicalAddress), DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
-	pagingMapPage(G_PAGE_ALIGN_DOWN(io->virtualAddress) + G_PAGE_SIZE, G_PAGE_ALIGN_DOWN(io->physicalAddress) + G_PAGE_SIZE, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+	pagingMapPage(G_PAGE_ALIGN_DOWN(io->virtualAddress), G_PAGE_ALIGN_DOWN(io->physicalAddress), G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
+	pagingMapPage(G_PAGE_ALIGN_DOWN(io->virtualAddress) + G_PAGE_SIZE, G_PAGE_ALIGN_DOWN(io->physicalAddress) + G_PAGE_SIZE, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
 }
 
 uint32_t ioapicRead(g_ioapic* io, uint32_t reg)

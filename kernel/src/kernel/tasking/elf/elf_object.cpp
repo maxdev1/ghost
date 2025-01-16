@@ -160,7 +160,7 @@ g_spawn_status elfObjectLoadLoadSegment(g_fd file, Elf32_Phdr phdr, g_virtual_ad
 	for(uint32_t i = 0; i < pages; i++)
 	{
 		g_physical_address page = memoryPhysicalAllocate();
-		pagingMapPage(alignedStart + i * G_PAGE_SIZE, page, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+		pagingMapPage(alignedStart + i * G_PAGE_SIZE, page, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 	}
 
 	// Zero everything before content

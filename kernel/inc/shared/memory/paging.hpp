@@ -24,34 +24,38 @@
 #include "ghost/memory.h"
 #include "ghost/types.h"
 
-const uint32_t G_PAGE_TABLE_PRESENT = 1;
-const uint32_t G_PAGE_TABLE_READWRITE = 2;
-const uint32_t G_PAGE_TABLE_USERSPACE = 4;
-const uint32_t G_PAGE_TABLE_WRITETHROUGH = 8;
-const uint32_t G_PAGE_TABLE_CACHE_DISABLED = 16;
-const uint32_t G_PAGE_TABLE_ACCESSED = 32;
-const uint32_t G_PAGE_TABLE_SIZE = 64;
+#define G_PAGE_TABLE_PRESENT        (1)
+#define G_PAGE_TABLE_READWRITE      (1 << 1)
+#define G_PAGE_TABLE_USERSPACE      (1 << 2)
+#define G_PAGE_TABLE_WRITETHROUGH   (1 << 3)
+#define G_PAGE_TABLE_CACHE_DISABLED (1 << 4)
+#define G_PAGE_TABLE_ACCESSED       (1 << 5)
+#define G_PAGE_TABLE_SIZE           (1 << 6)
 
-const uint32_t G_PAGE_PRESENT = 1;
-const uint32_t G_PAGE_READWRITE = 2;
-const uint32_t G_PAGE_USERSPACE = 4;
-const uint32_t G_PAGE_WRITETHROUGH = 8;
-const uint32_t G_PAGE_CACHE_DISABLED = 16;
-const uint32_t G_PAGE_ACCESSED = 32;
-const uint32_t G_PAGE_DIRTY = 64;
-const uint32_t G_PAGE_GLOBAL = 128;
+#define G_PAGE_PRESENT              (1)
+#define G_PAGE_READWRITE            (1 << 1)
+#define G_PAGE_USERSPACE            (1 << 2)
+#define G_PAGE_WRITETHROUGH         (1 << 3)
+#define G_PAGE_CACHE_DISABLED       (1 << 4)
+#define G_PAGE_ACCESSED             (1 << 5)
+#define G_PAGE_DIRTY                (1 << 6)
+#define G_PAGE_GLOBAL               (1 << 7)
 
-#define DEFAULT_KERNEL_TABLE_FLAGS (G_PAGE_TABLE_PRESENT | G_PAGE_TABLE_READWRITE)
-#define DEFAULT_KERNEL_PAGE_FLAGS (G_PAGE_PRESENT | G_PAGE_READWRITE | G_PAGE_GLOBAL)
-#define DEFAULT_USER_TABLE_FLAGS (G_PAGE_TABLE_PRESENT | G_PAGE_TABLE_READWRITE | G_PAGE_TABLE_USERSPACE)
-#define DEFAULT_USER_PAGE_FLAGS (G_PAGE_PRESENT | G_PAGE_READWRITE | G_PAGE_USERSPACE)
+/**
+ * Default flag definitions
+ */
+#define G_PAGE_TABLE_KERNEL_DEFAULT (G_PAGE_TABLE_PRESENT | G_PAGE_TABLE_READWRITE)
+#define G_PAGE_TABLE_USER_DEFAULT   (G_PAGE_TABLE_PRESENT | G_PAGE_TABLE_READWRITE | G_PAGE_TABLE_USERSPACE)
 
+#define G_PAGE_KERNEL_DEFAULT       (G_PAGE_PRESENT | G_PAGE_READWRITE | G_PAGE_GLOBAL)
+#define G_PAGE_KERNEL_UNCACHED      (G_PAGE_KERNEL_DEFAULT | G_PAGE_CACHE_DISABLED)
+#define G_PAGE_USER_DEFAULT         (G_PAGE_PRESENT | G_PAGE_READWRITE | G_PAGE_USERSPACE)
+
+/**
+ * Type definitions for pointers to a directory or table
+ */
 typedef volatile uint32_t* g_page_directory;
 typedef volatile uint32_t* g_page_table;
-
-#define G_INVLPG(addr) __asm__ __volatile__("invlpg (%%eax)" \
-											:                \
-											: "a"(addr));
 
 /**
  * Switches to the given page directory.
@@ -78,7 +82,8 @@ void pagingSwitchToSpace(g_physical_address dir);
  *
  */
 bool pagingMapPage(g_virtual_address virt, g_physical_address phys,
-				   uint32_t tableFlags = DEFAULT_KERNEL_TABLE_FLAGS, uint32_t pageFlags = DEFAULT_KERNEL_PAGE_FLAGS, bool allowOverride = false);
+                   uint32_t tableFlags = G_PAGE_TABLE_KERNEL_DEFAULT,
+                   uint32_t pageFlags = G_PAGE_KERNEL_DEFAULT, bool allowOverride = false);
 
 /**
  * Unmaps the given virtual page in the current address space.
@@ -94,5 +99,13 @@ void pagingUnmapPage(g_virtual_address virt);
  * @return the page directory
  */
 g_physical_address pagingGetCurrentSpace();
+
+/**
+ * Invalidates the translation lookaside buffer (TLB) entries for a given page.
+ */
+static inline void pagingInvalidatePage(uint32_t addr)
+{
+    __asm__ __volatile__("invlpg (%0)" : : "r"(addr) : "memory");
+}
 
 #endif

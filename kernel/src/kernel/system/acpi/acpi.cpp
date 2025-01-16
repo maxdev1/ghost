@@ -138,15 +138,15 @@ uint32_t acpiGetLengthOfUnmappedSDT(g_physical_address tableLocation)
 	g_virtual_address virtualBase = addressRangePoolAllocate(
 		memoryVirtualRangePool, 2);
 
-	if(!pagingMapPage(virtualBase, physStart, DEFAULT_KERNEL_TABLE_FLAGS,
-					  DEFAULT_KERNEL_PAGE_FLAGS))
+	if(!pagingMapPage(virtualBase, physStart, G_PAGE_TABLE_KERNEL_DEFAULT,
+					  G_PAGE_KERNEL_DEFAULT))
 	{
 		logWarn("%! could not create virtual mapping (1) for SDT %h", "acpi",
 				tableLocation);
 		return 0;
 	}
 	if(!pagingMapPage(virtualBase + G_PAGE_SIZE, physStart + G_PAGE_SIZE,
-					  DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS))
+					  G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT))
 	{
 		logWarn("%! could not create virtual mapping (2) for SDT %h", "acpi",
 				tableLocation);
@@ -208,7 +208,7 @@ g_acpi_table_header* acpiMapSDT(g_physical_address tableLocation)
 																G_PAGE_SIZE)
 	{
 		pagingMapPage(virtualBase + off, physStart + off,
-					  DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+					  G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
 	}
 
 	// Get the header pointer

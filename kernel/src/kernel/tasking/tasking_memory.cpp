@@ -38,7 +38,7 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 		g_virtual_address heapStart = process->image.end;
 
 		g_physical_address phys = memoryPhysicalAllocate();
-		pagingMapPage(heapStart, phys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+		pagingMapPage(heapStart, phys, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 
 		process->heap.brk = heapStart;
 		process->heap.start = heapStart;
@@ -63,7 +63,7 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 		while(newBrk > (virt_above = process->heap.start + process->heap.pages * G_PAGE_SIZE))
 		{
 			g_physical_address phys = memoryPhysicalAllocate();
-			pagingMapPage(virt_above, phys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+			pagingMapPage(virt_above, phys, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 			++process->heap.pages;
 		}
 
@@ -93,7 +93,7 @@ void taskingMemoryCreateStacks(g_task* task)
 	// Interrupt stack for ring 3 & VM86 tasks
 	if(task->securityLevel != G_SECURITY_LEVEL_KERNEL || task->type == G_TASK_TYPE_VM86)
 	{
-		task->interruptStack = taskingMemoryCreateStack(memoryVirtualRangePool, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS, G_TASKING_MEMORY_INTERRUPT_STACK_PAGES);
+		task->interruptStack = taskingMemoryCreateStack(memoryVirtualRangePool, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT, G_TASKING_MEMORY_INTERRUPT_STACK_PAGES);
 	}
 	else
 	{
@@ -110,11 +110,11 @@ void taskingMemoryCreateStacks(g_task* task)
 	}
 	else if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
 	{
-		task->stack = taskingMemoryCreateStack(memoryVirtualRangePool, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS, G_TASKING_MEMORY_KERNEL_STACK_PAGES);
+		task->stack = taskingMemoryCreateStack(memoryVirtualRangePool, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT, G_TASKING_MEMORY_KERNEL_STACK_PAGES);
 	}
 	else
 	{
-		task->stack = taskingMemoryCreateStack(task->process->virtualRangePool, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS, G_TASKING_MEMORY_USER_STACK_PAGES);
+		task->stack = taskingMemoryCreateStack(task->process->virtualRangePool, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT, G_TASKING_MEMORY_USER_STACK_PAGES);
 	}
 }
 
@@ -206,7 +206,7 @@ g_physical_address taskingMemoryCreatePageDirectory(g_security_level securityLev
 		directoryTemp[0] = 0;
 
 	// Recursive self-map
-	directoryTemp[1023] = directoryPhys | DEFAULT_KERNEL_TABLE_FLAGS;
+	directoryTemp[1023] = directoryPhys | G_PAGE_TABLE_KERNEL_DEFAULT;
 
 	// Unmap locally and free temporary range
 	pagingUnmapPage(directoryTempVirt);
@@ -271,7 +271,7 @@ void taskingMemoryInitializeTls(g_task* task)
 			for(g_virtual_address page = tlsStart; page < tlsEnd; page += G_PAGE_SIZE)
 			{
 				g_physical_address phys = memoryPhysicalAllocate();
-				pagingMapPage(page, phys, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+				pagingMapPage(page, phys, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 			}
 
 			// Copy TLS contents
@@ -352,13 +352,13 @@ bool taskingMemoryHandleStackOverflow(g_task* task, g_virtual_address accessed)
 	uint32_t tableFlags, pageFlags;
 	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
 	{
-		tableFlags = DEFAULT_KERNEL_TABLE_FLAGS;
-		pageFlags = DEFAULT_KERNEL_PAGE_FLAGS;
+		tableFlags = G_PAGE_TABLE_KERNEL_DEFAULT;
+		pageFlags = G_PAGE_KERNEL_DEFAULT;
 	}
 	else
 	{
-		tableFlags = DEFAULT_USER_TABLE_FLAGS;
-		pageFlags = DEFAULT_USER_PAGE_FLAGS;
+		tableFlags = G_PAGE_TABLE_USER_DEFAULT;
+		pageFlags = G_PAGE_USER_DEFAULT;
 	}
 
 	pagingMapPage(accessedPage, memoryPhysicalAllocate(), tableFlags, pageFlags);

@@ -145,7 +145,7 @@ bool _heapExpand()
 			return false;
 		}
 
-		pagingMapPage(virt, phys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+		pagingMapPage(virt, phys, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
 	}
 
 	memoryAllocatorExpand(&heapAllocator, G_KERNEL_HEAP_EXPAND_STEP);

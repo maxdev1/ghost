@@ -57,7 +57,7 @@ bool pagingMapPage(g_virtual_address virt, g_physical_address phys, uint32_t tab
 	if(table[pi] == 0 || allowOverride)
 	{
 		table[pi] = phys | pageFlags;
-		G_INVLPG(virt);
+		pagingInvalidatePage(virt);
 		return true;
 	}
 
@@ -80,7 +80,7 @@ void pagingUnmapPage(g_virtual_address virt)
 		return;
 
 	table[pi] = 0;
-	G_INVLPG(virt);
+	pagingInvalidatePage(virt);
 }
 
 g_physical_address pagingGetCurrentSpace()

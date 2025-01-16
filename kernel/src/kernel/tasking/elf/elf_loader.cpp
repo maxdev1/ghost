@@ -79,7 +79,7 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* roo
 	for(uint32_t i = 0; i < pages; i++)
 	{
 		g_physical_address page = memoryPhysicalAllocate();
-		pagingMapPage(areaStart + i * G_PAGE_SIZE, page, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+		pagingMapPage(areaStart + i * G_PAGE_SIZE, page, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 	}
 
 	// Fill with data

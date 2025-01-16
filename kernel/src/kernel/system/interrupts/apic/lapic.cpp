@@ -91,7 +91,7 @@ void lapicCreateMapping()
 
 	// "APIC registers are memory-mapped to a 4-KByte region of the processor’s physical
 	// address space with an initial starting address of FEE00000H." - x86 System Programming Manual, 10.4.1
-	pagingMapPage(virtualBase, physicalBase, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS | G_PAGE_CACHE_DISABLED);
+	pagingMapPage(virtualBase, physicalBase, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT | G_PAGE_CACHE_DISABLED);
 }
 
 uint32_t lapicReadId()

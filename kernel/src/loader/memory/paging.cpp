@@ -38,9 +38,9 @@ g_physical_address pagingInitialize(g_virtual_address reservedAreaEnd)
 
 	for(uint32_t i = 0; i < 1024; i++)
 		pageDirectory[i] = 0;
-	pageDirectory[1023] = pageDirPhys | DEFAULT_KERNEL_TABLE_FLAGS;
+	pageDirectory[1023] = pageDirPhys | G_PAGE_TABLE_KERNEL_DEFAULT;
 
-	pagingIdentityMap(pageDirectory, 0, reservedAreaEnd, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+	pagingIdentityMap(pageDirectory, 0, reservedAreaEnd, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 	pagingRelocateMultibootModules(pageDirectory, reservedAreaEnd);
 	pagingEnableGlobalPageFlag();
 	pagingSwitchToSpace(pageDirPhys);
@@ -75,7 +75,7 @@ void pagingRelocateMultibootModules(g_page_directory pageDirectory, g_address st
 
 		for(uint32_t off = 0; off < modPhysEndAligned - modPhysStartAligned; off += G_PAGE_SIZE)
 			pagingMapPageToDirectory(pageDirectory, modVirtStartAligned + off, modPhysStartAligned + off,
-									 DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+									 G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 
 		// Finish relocation by updating multiboot structure
 		logDebugn("%! relocated, mapped phys %h-%h", "mmodule", module->moduleStart, module->moduleEnd);
@@ -121,7 +121,7 @@ void pagingMapPageToDirectory(g_page_directory directory, g_address virtualAddre
 		panic("pagingMapPage: duplicate mapping to address %h -> %h, table value: %h", virtualAddress, physicalAddress, table[pi]);
 
 	table[pi] = physicalAddress | pageFlags;
-	G_INVLPG(virtualAddress);
+	pagingInvalidatePage(virtualAddress);
 }
 
 void pagingEnable()

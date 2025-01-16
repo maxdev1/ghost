@@ -73,7 +73,7 @@ void syscallAllocateMemory(g_task* task, g_syscall_alloc_mem* data)
 			failedPhysical = true;
 			break;
 		}
-		pagingMapPage(mapped + i * G_PAGE_SIZE, page, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+		pagingMapPage(mapped + i * G_PAGE_SIZE, page, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 	}
 
 	/* If physical mapping fails, clean up allocated memory */
@@ -156,7 +156,7 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 
 		/* Switch into target space to map */
 		g_physical_address back = taskingMemoryTemporarySwitchTo(targetProcess->pageDirectory);
-		pagingMapPage(virtualRangeBase + i * G_PAGE_SIZE, physicalAddr, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+		pagingMapPage(virtualRangeBase + i * G_PAGE_SIZE, physicalAddr, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 		taskingMemoryTemporarySwitchBack(back);
 
 		pageReferenceTrackerIncrement(physicalAddr);
@@ -183,7 +183,7 @@ void syscallMapMmioArea(g_task* task, g_syscall_map_mmio* data)
 	/* Map to physical memory */
 	for(uint32_t i = 0; i < pages; i++)
 	{
-		pagingMapPage(virtualRangeBase + i * G_PAGE_SIZE, data->physicalAddress + i * G_PAGE_SIZE, DEFAULT_USER_TABLE_FLAGS, DEFAULT_USER_PAGE_FLAGS);
+		pagingMapPage(virtualRangeBase + i * G_PAGE_SIZE, data->physicalAddress + i * G_PAGE_SIZE, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 	}
 
 	data->virtualAddress = (void*) virtualRangeBase;

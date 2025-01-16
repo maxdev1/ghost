@@ -43,7 +43,7 @@ void ramdiskLoadFromModule(g_multiboot_module* module)
 	{
 		g_virtual_address virt = newLocation + i * G_PAGE_SIZE;
 		g_physical_address phys = pagingVirtualToPhysical(module->moduleStart + i * G_PAGE_SIZE);
-		pagingMapPage(virt, phys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+		pagingMapPage(virt, phys, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
 	}
 	module->moduleEnd = newLocation + (module->moduleEnd - module->moduleStart);
 	module->moduleStart = newLocation;

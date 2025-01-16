@@ -49,7 +49,7 @@ void kernelLoaderLoad(g_multiboot_module* kernelModule)
 		if(directory[ti] == 0)
 		{
 			uint32_t tableChunkAddress = (uint32_t) bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-			directory[ti] = tableChunkAddress | DEFAULT_KERNEL_TABLE_FLAGS;
+			directory[ti] = tableChunkAddress | G_PAGE_TABLE_KERNEL_DEFAULT;
 
 			uint32_t* table = ((uint32_t*) G_RECURSIVE_PAGE_DIRECTORY_AREA) + (0x400 * ti);
 			for(uint32_t i = 0; i < 1024; i++)
@@ -69,7 +69,7 @@ void kernelLoaderLoad(g_multiboot_module* kernelModule)
 		panic("%! out of pages when trying to create kernel stack", "kernload");
 	}
 
-	pagingMapPage(setupInformation.stackStart, stackPhys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+	pagingMapPage(setupInformation.stackStart, stackPhys, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
 
 	G_PRETTY_BOOT_STATUS_P(20);
 	kernelLoaderCreateHeap();
@@ -89,7 +89,7 @@ void kernelLoaderCreateHeap()
 			panic("%! out of pages when trying to allocate kernel heap, allocated to %h", "kernload", virt);
 		}
 
-		pagingMapPage(virt, phys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+		pagingMapPage(virt, phys, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
 	}
 	setupInformation.heapStart = heapStart;
 	setupInformation.heapEnd = heapEnd;
@@ -133,7 +133,7 @@ void kernelLoaderLoadBinary(Elf32_Ehdr* header)
 	for(uint32_t virt = imageStart; virt < imageEnd; virt += G_PAGE_SIZE)
 	{
 		uint32_t phys = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-		pagingMapPage(virt, phys, DEFAULT_KERNEL_TABLE_FLAGS, DEFAULT_KERNEL_PAGE_FLAGS);
+		pagingMapPage(virt, phys, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
 	}
 
 	for(uint32_t i = 0; i < header->e_phnum; i++)
