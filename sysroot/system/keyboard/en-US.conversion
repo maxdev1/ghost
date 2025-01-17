@@ -1,0 +1,91 @@
+KEY_A    : a
+KEY_A s  : A
+KEY_B    : b
+KEY_B s  : B
+KEY_C    : c
+KEY_C s  : C
+KEY_D    : d
+KEY_D s  : D
+KEY_E    : e
+KEY_E s  : E
+KEY_E ca : €
+KEY_F    : f
+KEY_F s  : F
+KEY_G    : g
+KEY_G s  : G
+KEY_H    : h
+KEY_H s  : H
+KEY_I    : i
+KEY_I s  : I
+KEY_J    : j
+KEY_J s  : J
+KEY_K    : k
+KEY_K s  : K
+KEY_L    : l
+KEY_L s  : L
+KEY_M    : m
+KEY_M s  : M
+KEY_N    : n
+KEY_N s  : N
+KEY_O    : o
+KEY_O s  : O
+KEY_P    : p
+KEY_P s  : P
+KEY_Q    : q
+KEY_Q s  : Q
+KEY_R    : r
+KEY_R s  : R
+KEY_S    : s
+KEY_S s  : S
+KEY_T    : t
+KEY_T s  : T
+KEY_U    : u
+KEY_U s  : U
+KEY_V    : v
+KEY_V s  : V
+KEY_W    : w
+KEY_W s  : W
+KEY_X    : x
+KEY_X s  : X
+KEY_Y    : y
+KEY_Y s  : Y
+KEY_Z    : z
+KEY_Z s  : Z
+
+KEY_SPACE: " "
+KEY_SPACE s: " "
+
+KEY_1    : 1
+KEY_1 s  : !
+KEY_2    : 2
+KEY_2 s  : "
+KEY_3    : 3
+KEY_3 s  : §
+KEY_4    : 4
+KEY_4 s  : $
+KEY_5    : 5
+KEY_5 s  : %
+KEY_6    : 6
+KEY_6 s  : &
+KEY_7    : 7
+KEY_7 s  : /
+KEY_7 ac : {
+KEY_8    : 8
+KEY_8 s  : (
+KEY_8 ac : [
+KEY_9    : 9
+KEY_9 s  : )
+KEY_9 ac : ]
+KEY_0    : 0
+KEY_0 s  : =
+KEY_0 ac : }
+KEY_SHARP_S: ß
+KEY_SHARP_S s: ?
+KEY_SHARP_S ac: \
+
+KEY_COMMA		: ,
+KEY_COMMA s		: ;
+KEY_DOT  		: .
+KEY_DOT s		: :
+KEY_MINUS		: -
+KEY_MINUS s		: _

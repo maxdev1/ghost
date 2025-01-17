@@ -184,7 +184,7 @@ includeInBuild() {
 
 # Toolchain specifics
 with TOOLCHAIN_BASE		"/ghost"
-with SYSROOT			$TOOLCHAIN_BASE"/sysroot"
+with SYSROOT			    $TOOLCHAIN_BASE"/source/sysroot"
 
 with NASM				nasm
 with SH					bash

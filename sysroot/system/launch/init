@@ -1,0 +1,15 @@
+print:"launching drivers"
+	driver:"/applications/ps2driver.bin"
+	driver:"/applications/vbedriver.bin"
+
+# The headless terminal must be executed as a driver
+print:"launching headless terminal"
+	driver:"/applications/terminal.bin" args:"--headless"
+
+# Start the visual environment
+#print:"launching window server"
+#	application:"/applications/windowserver.bin"
+#	print:"window server launched"
+#	wait:"windowserver/registration"
+#	application:"/applications/desktop.bin"
+#	application:"/applications/terminal.bin"

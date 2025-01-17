@@ -1,0 +1,14 @@
+Welcome to the Ghost OS!
+
+This is the terminal. It allows you to navigate through the filesystem and
+execute programs and commands. Typing 'help' will give you the list of built-in
+terminal commands.
+
+The '/applications' folder contains some programs to try out.
+
+Tip: The ramdisk filesystem is writable. To write stuff into a file,
+pipe it into the 'write' program.
+'echo Hello! | write test.txt'
+
+Have fun! :-)
+Max

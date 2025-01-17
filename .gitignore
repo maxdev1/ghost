@@ -17,12 +17,14 @@ language.settings.xml
 tools/changes/changes*
 tools/ramdisk-writer/ramdisk-writer*
 
-libc/libc.a
-libc/libc.so
+kernel/bin/*
+kernel/serial.log
+kernel/kernel
+kernel/loader
 libapi/libghostapi.a
 libapi/libghostapi.so
-libuser/libghostuser.a
-libuser/libghostuser.so
+libc/libc.a
+libc/libc.so
 
 applications/**/*.bin
 applications/**/obj/*.o
@@ -34,12 +36,16 @@ patches/ports/build/*
 
 documentation/out/*
 
-kernel/bin/*
-kernel/serial.log
-kernel/kernel
-kernel/loader
 target/iso/boot/kernel
 target/iso/boot/loader
 target/iso/boot/ramdisk
+
+sysroot/system/include
+sysroot/system/lib
+!sysroot/system/lib/empty.txt
+sysroot/system/apstartup.o
+sysroot/system/bin
+sysroot/system/share
+sysroot/applications/*
 
 ghost.iso

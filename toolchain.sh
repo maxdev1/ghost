@@ -114,16 +114,6 @@ requireTool curl
 requireTool $AUTOCONF
 
 
-# Additional build config
-BUILD_GCC_ADDITIONAL_FLAGS=""
-case "$(uname -s)" in
-	CYGWIN*|MINGW32*|MSYS*)
-		echo "Preparing for build on Cygwin"
-		BUILD_GCC_ADDITIONAL_FLAGS="--with-gmp=/usr/local --with-mpc=/usr/local --with-mpfr=/usr/local"
-		;;
-esac
-
-
 
 # Check version of autoconf
 echo "    $REQUIRED_AUTOCONF"
@@ -133,9 +123,6 @@ if [[ $? != 0 ]]; then
 	echo "       $($AUTOCONF --version | sed -n 1p)"
 	exit
 fi
-
-
-
 
 
 # Clean if necessary
