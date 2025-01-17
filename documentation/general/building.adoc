@@ -6,40 +6,28 @@ Getting started
 ---------------
 This document contains an explanation on how to build entire operating system from source.
 
-The project consists of two repositories:
+**The recommended build environment is Linux**. On Windows, install link:https://learn.microsoft.com/en-us/windows/wsl/install[WSL] and continue from there. On Mac OS, it is recommended to use the Docker setup.
 
-* link:https://github.com/maxdev1/ghost[*ghost*], main repository containing the source code
-* link:https://github.com/maxdev1/ghost-sysroot[*ghost-sysroot*], a blueprint for the system root directory
+The operating system requires its own compiler and toolchain, which must be set up once. It is strongly recommended to use the <<Toolchain via Docker>> since it simplifies the setup a lot. If you want to install the toolchain on your host system, check the <<Toolchain on host>> section.
 
-The system root directory (sysroot) is a concept used in cross-compiling. It reflects the filesystem of the target
-system. All libraries and applications are installed into this directory which is then packed into the ramdisk during
-the build process. This ramdisk is what is mounted as the root of the running system.
-
-Building the toolchain on your host system is - depending on some factors - a slow and sometimes
-tedious process. It is recommended to simply use the <<Toolchain via Docker>>. To build it yourself, check the
-<<Toolchain on host>> section.
-
+NOTE: The system root directory `sysroot` is reflects the filesystem of the target system. All libraries and applications are installed into this directory, which is then packed into the ramdisk during the build process. This ramdisk is what is mounted as the root of the running system.
 
 Toolchain via Docker
 --------------------
-The toolchain is provided as a pre-built image which is simply a small system with the required tools pre-installed
-and the toolchain setup script has already been executed. To set it up on your host system:
 
-1. Check out the link:https://github.com/maxdev1/ghost[*ghost*] and link:https://github.com/maxdev1/ghost-sysroot[*ghost-sysroot*] repositories anywhere on your system.
+1. To get started, clone the repository:
 
-2. Download the link:https://ghostkernel.org/repository/ghost-docker.tar.gz[toolchain Docker image] from here: 
+	git clone https://github.com/maxdev1/ghost
 
-3. Load the image to your local Docker registry:
+2. Within it, execute the following script. This will build the Docker image `ghost-toolchain` which includes everything required to build the operating system. Check the `/ghost-build.log` for outputs. This script will take a while.
 
-	docker load --input ghost-docker.tar.gz
+	./docker-build-toolchain-image.sh
 
-3. Run a container from the image, replacing the paths to the respective repositories:
-  
-  docker run -it --name ghost-toolchain -v C:/Code/ghost:/ghost/source -v C:/Code/ghost-sysroot:/ghost/sysroot ghost-toolchain:1.1
 
-You will now be presented with a shell. Run `cd /ghost/source` and skip to the <<Building>> section below.
+3. Once the image was built, a container will automatically be started. You can now skip to the <<Build targets>> section below.
 
-To reconnect to the container when it is already running:
+To reconnect to the container after exiting it:
+
   docker exec -it ghost-toolchain bash
 
 
@@ -48,46 +36,35 @@ Toolchain on host
 
 Clone repositories
 ~~~~~~~~~~~~~~~~~~
-. Clone ghost-sysroot to `/ghost/sysroot`
-. Clone main repository anywhere (for example `/ghost/source`)
+To get started, clone the repository to `/ghost/source`:
+
+	git clone https://github.com/maxdev1/ghost /ghost/source
 
 If you want to use a different folder, see the "Tips" section below.
 
 
 Installing prerequisites
 ~~~~~~~~~~~~~~~~~~~~~~~~
+
 The following dependencies are requirements for the toolchain and need to be installed beforehand or else the script will fail:
 
 * `apt-get update`
-* `apt-get install libmpfr-dev libgmp-dev libmpc-dev`
-* `apt-get install autoconf2.69 pkg-config xorriso grub-pc-bin`
-* `apt-get install make texinfo flex bison gcc g++ nasm`
-* `apt-get install asciidoc asciidoctor`
+* `apt-get install libmpfr-dev libgmp-dev libmpc-dev autoconf2.69 pkg-config xorriso grub-pc-bin make texinfo flex bison gcc g++ nasm asciidoc asciidoctor`
 
 You may need to `export AUTOCONF=autoconf2.69` depending on your host system.
-
-On Windows
-~~~~~~~~~~
-The recommended way of building on Windows is using WSL (link:https://learn.microsoft.com/en-us/windows/wsl/install[Windows Subsystem for Linux]).
-
-On Mac OS
-~~~~~~~~~
-The setup on Mac OS is painful due to the complicated compiler setup and installation of prerequisites. It's advised
-to use Docker or a Linux VM.
 
 
 Build toolchain
 ~~~~~~~~~~~~~~~
 Run the toolchain setup script `toolchain.sh`. It will attempt to do everything that is
-necessary to create the toolchain. Once the toolchain was built, add it to your PATH.
+necessary to create the toolchain. Once the toolchain was built, add it to your `PATH`.
 
 
 Build targets
 -------------
 To build the system, use the root `build.sh` and its various flags (see `--help`).
 
-After setting up the toolchain, simply run `./build.sh` and let it execute all targets. The first
-build will take some time, because the ported libraries (like cairo) need to be built.
+After setting up the toolchain, simply run `./build.sh` and let it execute all targets. The first build will take some time, because the ported libraries (like cairo) need to be built.
 
 Done? *Congratulations!* In the `target` folder you will now find the bootable ISO image `ghost.iso`.
 
@@ -141,8 +118,5 @@ You can create a bootable USB stick with the following steps.
 
 Tips
 ----
-* To specify a different toolchain base directory, modify `TOOLCHAIN_BASE`, copy the
-	`variables.sh.template` to `variables.sh` and specify the variable with an export.
-* While binutils and gcc are being built, the log output is redirected to a file named
-	`ghost-build.log` in the respective build directory in the temporary folder. If the
-	build fails for some reason, you should check this log file.
+* To specify a different toolchain base directory, modify `TOOLCHAIN_BASE`, copy the `variables.sh.template` to `variables.sh` and specify the variable with an export.
+* While binutils and gcc are being built, the log output is redirected to a file named `ghost-build.log` in the respective build directory in the temporary folder. If the build fails for some reason, you should check this log file.
