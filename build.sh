@@ -6,7 +6,7 @@ fi
 . "$ROOT/ghost.sh"
 
 # Prioritized applications that need to be built first
-APPLICATION_PRIORITY=("libproperties" "libfont" "libinput" "libps2" "libps2driver" "libwindow" "libterminal" "libvbedriver" "libpci")
+APPLICATION_PRIORITY=("libproperties" "libps2" "libps2driver" "libinput" "libwindow" "libfont" "libterminal" "libvbedriver" "libpci")
 
 # Flags
 PORTS_ALL=0
@@ -202,7 +202,7 @@ build_apps() {
 			done
 
 			for dir in ${app_dirs[@]}; do
-				if [ $APPS_CLEAN = 1 ]; then
+				if [[ $APPS_CLEAN = 1 || $EVERYTHING = 1 ]]; then
 					build_app $dir clean all
 				else
 					build_app $dir all
