@@ -147,9 +147,9 @@ popd () {
 # Global variables
 with TARGET				"i686-ghost"
 with CROSS_CC			$TARGET"-gcc"
-with CROSS_CXX			$TARGET"-g++"
+with CROSS_CXX		$TARGET"-g++"
 with CROSS_LD			$TARGET"-ld"
-with CROSS_GAS			$TARGET"-as"
+with CROSS_GAS		$TARGET"-as"
 with CROSS_AR			$TARGET"-ar"
 
 

@@ -47,5 +47,6 @@ sysroot/system/apstartup.o
 sysroot/system/bin
 sysroot/system/share
 sysroot/applications/*
+!sysroot/applications/empty.txt
 
 ghost.iso
