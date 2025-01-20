@@ -41,7 +41,7 @@ target/iso/boot/loader
 target/iso/boot/ramdisk
 
 sysroot/system/include
-sysroot/system/lib
+sysroot/system/lib/*
 !sysroot/system/lib/empty.txt
 sysroot/system/apstartup.o
 sysroot/system/bin
