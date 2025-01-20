@@ -21,4 +21,20 @@ jobs:
           docker run \
             -v ${{ github.workspace }}:/ghost/source \
             ghcr.io/maxdev1/ghost-toolchain:1.0 \
-            /bin/bash -c "cd /ghost/source && ./build.sh"
+            /bin/bash -c "cd /ghost/source && ./build.sh --ci"
+          if [ $? -ne 0 ]; then
+            echo "Build failed"
+            exit 1
+          fi
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            target/ghost.iso
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false

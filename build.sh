@@ -9,6 +9,9 @@ fi
 APPLICATION_PRIORITY=("libproperties" "libps2" "libps2driver" "libinput" "libwindow" "libfont" "libterminal" "libvbedriver" "libpci")
 
 # Flags
+FIRST_RUN=0
+FAIL_ON_ERROR=0
+
 PORTS_ALL=0
 LIBC_CLEAN=0
 LIBC_ALL=0
@@ -48,6 +51,7 @@ build_target() {
 	all_name="$@"
 	print_gray "$all_name "
 	$SH build.sh $@ >ghost-build.log 2>&1
+	failOnError
 }
 
 print_status() {
@@ -265,18 +269,7 @@ echo ""
 
 # When running the very first time
 if [ ! -f "$SYSROOT/system/lib/libgcc_s.so.1" ]; then
-	echo "Running for the first time, finalize setup..."
-
-	cp "$TOOLCHAIN_BASE/$TARGET/lib/libgcc_s.so.1" "$SYSROOT/system/lib/libgcc_s.so.1"
-
-	mkdir "$SYSROOT/system/include"
-
-	build_libapi_target install-headers
-	build_libc_target install-headers
-	build_libapi_target clean static
-	build_libc_target clean static
-	build_libapi_target shared
-	build_libc_target shared
+  FIRST_RUN=1
 fi
 
 # Parse arguments
@@ -315,11 +308,30 @@ for var in "$@"; do
 		KERNEL_CLEAN=1
 	elif [[ "$var" = "--pack" ]]; then
 		EVERYTHING=0
+	elif [[ "$var" = "--ci" ]]; then
+	  FAIL_ON_ERROR=1
+	  echo "CI build!"
 	elif [[ "$var" = "--help" || "$var" = "-h" || "$var" = "?" ]]; then
 		print_help
 		exit 0
 	fi
 done
+
+# On first run
+if [[ $FIRST_RUN = 1 ]]; then
+	echo "Running for the first time, finalize setup..."
+
+	cp "$TOOLCHAIN_BASE/$TARGET/lib/libgcc_s.so.1" "$SYSROOT/system/lib/libgcc_s.so.1"
+
+	mkdir "$SYSROOT/system/include"
+
+	build_libapi_target install-headers
+	build_libc_target install-headers
+	build_libapi_target clean static
+	build_libc_target clean static
+	build_libapi_target shared
+	build_libc_target shared
+fi
 
 # Run build steps
 build_ports

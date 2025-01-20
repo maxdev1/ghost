@@ -96,6 +96,7 @@ target_clean_target() {
 target_install_headers() {
 	echo "installing api headers"
 	cp -r $INC/* $SYSROOT_SYSTEM_INCLUDE/
+	failOnError
 }
 
 target_install() {
