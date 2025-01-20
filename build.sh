@@ -10,7 +10,7 @@ APPLICATION_PRIORITY=("libproperties" "libps2" "libps2driver" "libinput" "libwin
 
 # Flags
 FIRST_RUN=0
-FAIL_ON_ERROR=0
+CI_BUILD=0
 
 PORTS_ALL=0
 LIBC_CLEAN=0
@@ -51,17 +51,25 @@ build_target() {
 	all_name="$@"
 	print_gray "$all_name "
 	$SH build.sh $@ >ghost-build.log 2>&1
-	failOnError
 }
 
 print_status() {
 	if [ $? -eq 0 ]; then
-		printf "\e[1;92m\u2714\e[0m\n"
+		printf "\e[1;92m\u2714\e[0m "
+    if [[ $CI_BUILD == 1 ]]; then
+      printf "\n\n"
+      tail -n 10 ghost-build.log | awk '$0="   "$0'
+    fi
+    printf "\n"
 	else
-		printf "\e[1;31m\u274c\e[0m log: "
+		printf "\e[1;31m\u274c\e[0m "
 		printf "\n\n"
 		tail -n 100 ghost-build.log | awk '$0="   "$0'
 		printf "\n"
+
+    if [[ $CI_BUILD == 1 ]]; then
+      exit 1
+    fi
 	fi
 }
 
@@ -309,8 +317,7 @@ for var in "$@"; do
 	elif [[ "$var" = "--pack" ]]; then
 		EVERYTHING=0
 	elif [[ "$var" = "--ci" ]]; then
-	  FAIL_ON_ERROR=1
-	  echo "CI build!"
+	  CI_BUILD=1
 	elif [[ "$var" = "--help" || "$var" = "-h" || "$var" = "?" ]]; then
 		print_help
 		exit 0

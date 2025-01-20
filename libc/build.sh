@@ -129,9 +129,11 @@ target_archive() {
 	echo "archiving:"
 	if [ $LINK_STATIC = 1 ]; then
 		$CROSS_AR -r $ARTIFACT_LOCAL $OBJ/*.o
+		failOnError
 	fi
 	if [ $LINK_SHARED = 1 ]; then
 		$CROSS_CC $LDFLAGS -o $ARTIFACT_LOCAL_SHARED $OBJ/*.o
+		failOnError
 	fi
 }
 
@@ -139,9 +141,11 @@ target_install_headers() {
 	
 	echo "creating header installation directory"
 	mkdir -p $SYSROOT_SYSTEM_INCLUDE
+	failOnError
 	
 	echo "installing headers"
 	cp -r $INC/* $SYSROOT_SYSTEM_INCLUDE/
+	failOnError
 	
 }
 	
