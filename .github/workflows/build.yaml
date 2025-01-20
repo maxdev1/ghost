@@ -1,0 +1,24 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build in Docker container
+        run: |
+          docker run \
+            -v ${{ github.workspace }}:/ghost/source \
+            ghcr.io/maxdev1/ghost-toolchain:1.0 \
+            /bin/bash -c "cd /ghost/source && ./build.sh"
