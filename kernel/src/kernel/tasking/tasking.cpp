@@ -146,6 +146,7 @@ void taskingInitializeLocal()
 	local->scheduling.current = nullptr;
 	local->scheduling.list = nullptr;
 	local->scheduling.idleTask = nullptr;
+	local->scheduling.preferredNext = -1;
 
 	mutexInitialize(&local->lock);
 

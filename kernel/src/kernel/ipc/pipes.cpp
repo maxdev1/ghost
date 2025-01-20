@@ -19,6 +19,9 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/ipc/pipes.hpp"
+
+#include <kernel/tasking/scheduler/scheduler.hpp>
+
 #include "kernel/memory/memory.hpp"
 #include "kernel/utils/hashmap.hpp"
 
@@ -220,6 +223,11 @@ g_fs_write_status pipeWrite(g_fs_phys_id pipeId, uint8_t* buffer, uint64_t offse
 
 		status = G_FS_WRITE_SUCCESSFUL;
 		waitQueueWake(&pipe->waitersRead);
+
+		if(pipe->waitersRead)
+		{
+			schedulerPrefer(taskingGetLocal(), pipe->waitersRead->task);
+		}
 	}
 	else
 	{

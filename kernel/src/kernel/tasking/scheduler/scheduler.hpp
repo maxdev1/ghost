@@ -43,4 +43,6 @@ void schedulerSchedule(g_tasking_local* local);
  */
 void schedulerDump();
 
+void schedulerPrefer(g_tasking_local* local, g_tid task);
+
 #endif

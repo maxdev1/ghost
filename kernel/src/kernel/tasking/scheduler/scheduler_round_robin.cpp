@@ -38,12 +38,30 @@ void schedulerPrepareEntry(g_schedule_entry* entry)
 {
 }
 
+void schedulerPrefer(g_tasking_local* local, g_tid task)
+{
+	local->scheduling.preferredNext = task;
+}
+
 g_schedule_entry* schedulerGetNextTask(g_tasking_local* local)
 {
 	g_schedule_entry* entry = local->scheduling.list;
 	if(local->scheduling.current == local->scheduling.idleTask)
 	{
 		return entry;
+	}
+
+	if(local->scheduling.preferredNext != -1)
+	{
+		while(entry)
+		{
+			if(entry->task->id == local->scheduling.preferredNext)
+			{
+				local->scheduling.preferredNext = -1;
+				return entry;
+			}
+			entry = entry->next;
+		}
 	}
 
 	while(entry)

@@ -61,6 +61,8 @@ struct g_tasking_local
 		g_task* current;
 
 		g_task* idleTask;
+
+	    g_tid preferredNext;
 	} scheduling;
 };
 
