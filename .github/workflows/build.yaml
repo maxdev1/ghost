@@ -37,6 +37,6 @@ jobs:
         with:
           files: |
             target/ghost.iso
-          name: Release ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           draft: false
           prerelease: false

@@ -138,4 +138,5 @@ for var in $TARGET; do
 	fi
 done
 
+target_successful
 exit 0
