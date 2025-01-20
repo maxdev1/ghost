@@ -50,6 +50,7 @@ target_clean() {
 target_link() {
 	echo "linking:"
 	$CROSS_CXX -o $ARTIFACT_LOCAL $OBJ/*.o $LDFLAGS
+	failOnError
 	list $ARTIFACT_LOCAL
 
 	if [ "$MAKE_STATIC" == 1 ]; then
@@ -75,10 +76,12 @@ target_install() {
 
 	echo "installing artifact"
 	cp $ARTIFACT_LOCAL $ARTIFACT_TARGET
+	failOnError
 
 	if [ "$MAKE_STATIC" == 1 ]; then
 		echo "installing static artifact"
 		cp $ARTIFACT_LOCAL_STATIC $ARTIFACT_TARGET_STATIC
+	  failOnError
 	fi
 }
 

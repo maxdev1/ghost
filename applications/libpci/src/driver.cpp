@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-*                                                                           *
+ *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
  *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
@@ -19,9 +19,10 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "libpci/driver.hpp"
+#include <cstdio>
 #include <cstring>
 
-bool pciDriverIdentifyAhciController(g_pci_identify_ahci_controller_entry** out)
+bool pciDriverIdentifyAhciController(g_pci_identify_ahci_controller_entry** outEntries, int* outCount)
 {
 	g_tid driverTid = g_task_get_id(G_PCI_DRIVER_IDENTIFIER);
 	if(driverTid == -1)
@@ -42,8 +43,10 @@ bool pciDriverIdentifyAhciController(g_pci_identify_ahci_controller_entry** out)
 
 	if(status == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		memcpy(out, response->entries,
-		       sizeof(g_pci_identify_ahci_controller_entry) * G_PCI_IDENTIFY_AHCI_CONTROLLER_ENTRIES);
+		*outCount = response->count;
+		*outEntries = new g_pci_identify_ahci_controller_entry[response->count];
+		memcpy(*outEntries, response->entries,
+			   sizeof(g_pci_identify_ahci_controller_entry) * G_PCI_IDENTIFY_AHCI_CONTROLLER_ENTRIES);
 		return true;
 	}
 

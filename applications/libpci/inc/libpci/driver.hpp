@@ -54,10 +54,12 @@ struct g_pci_identify_ahci_controller_response
 /**
  * Requests the PCI driver to identify AHCI controllers and return information about them.
  *
- * @param out
- *      must point to 16 entries space
+ * @param outEntries
+ *      filled with the resulting entries
+ * @param outCount
+ *      filled with the number of entries
  * @return whether the request was successful
  */
-bool pciDriverIdentifyAhciController(g_pci_identify_ahci_controller_entry** out);
+bool pciDriverIdentifyAhciController(g_pci_identify_ahci_controller_entry** outEntries, int* outCount);
 
 #endif
