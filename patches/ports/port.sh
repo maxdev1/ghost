@@ -41,7 +41,7 @@ elif [ "$PACKAGE" = "" ]; then
 	fail "please supply a package to install"
 fi
 
-echo "> building package \"$PACKAGE\""
+echo "building package \"$PACKAGE\""
 
 # checks if a tool is available
 requireTool() {
@@ -60,7 +60,7 @@ requireTool curl
 
 # make sure working directory exists
 if [ ! -d "$BUILD_ROOT" ]; then
-	echo "> creating empty build directory at '$BUILD_ROOT'"
+	echo "creating target build directory: $BUILD_ROOT"
 	mkdir "$BUILD_ROOT"
 fi
 
@@ -71,7 +71,7 @@ fi
 
 # set & clear working directory for build
 BUILD_DIR="$BUILD_ROOT/$PACKAGE"
-echo "> cleaning build directory '$BUILD_DIR'"
+echo "cleaning build directory: $BUILD_DIR"
 if [ -d "$BUILD_DIR" ]; then
 	rm -rf "$BUILD_DIR"	
 fi
@@ -98,7 +98,7 @@ if [ -z "$UNPACKED_DIR" ]; then
 fi
 
 # attempt to download source archive
-echo "> downloading source from '$REMOTE_ARCHIVE'..."
+echo "downloading source from '$REMOTE_ARCHIVE'..."
 curl "$REMOTE_ARCHIVE" -k -o $BUILD_DIR/$ARCHIVE
 if [ $? != 0 ]; then
 	fail "unable to download remote archive"
@@ -114,14 +114,12 @@ fi
 
 # patch it
 if [ -f "$PACKAGE/patch.diff" ]; then
-	echo "> applying patch"
+	echo "applying patch"
 	((cd "$BUILD_DIR/$UNPACKED_DIR" && patch -p1) < $PACKAGE/patch.diff) | sed 's/^/    /'
-else
-	echo "> no patch in port"
 fi
 
 # run port install task
-echo "> installing port"
+echo "installing port"
 BACK=$(pwd)
 if [ $REQUIRES_INSTALL_IN_SOURCE_DIR == 1 ]; then
 	cd "$BUILD_DIR/$UNPACKED_DIR"
@@ -130,7 +128,8 @@ else
 	mkdir "build"
 	cd "build"
 fi
-port_install | sed 's/^/    /'
+port_install | sed 's/^/    /' >ghost-build.log 2>&1
+failOnError
 cd $BACK
 
 # clean up
@@ -141,4 +140,5 @@ else
 fi
 
 # finish successfully
+target_successful
 exit 0
