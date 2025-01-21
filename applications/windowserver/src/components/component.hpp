@@ -23,7 +23,6 @@
 
 #include "components/bounds_event_component.hpp"
 #include "components/event_listener_info.hpp"
-#include "events/event.hpp"
 #include "events/focus_event.hpp"
 #include "events/key_event.hpp"
 #include "events/mouse_event.hpp"
@@ -32,8 +31,6 @@
 
 #include <libwindow/interface.hpp>
 #include <libwindow/metrics/rectangle.hpp>
-#include <map>
-#include <stdio.h>
 #include <vector>
 
 // forward declarations
@@ -89,7 +86,7 @@ class component_t : public bounds_event_component_t
 	g_rectangle bounds;
 	component_t* parent;
 	std::vector<component_child_reference_t> children;
-	g_atom children_lock = g_atomic_initialize();
+	g_atom children_lock = g_atomic_initialize_r(true);
 
 	g_dimension minimumSize;
 	g_dimension preferredSize;

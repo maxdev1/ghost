@@ -19,14 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "components/desktop/background.hpp"
-#include "components/desktop/desktop_item.hpp"
-
-background_t::background_t()
-{
-	selection = new selection_t();
-	selection->setVisible(false);
-	addChild(selection);
-}
 
 void background_t::load(const char* path)
 {
@@ -39,7 +31,8 @@ void background_t::load(const char* path)
 void background_t::paint()
 {
 	cairo_t* cr = graphics.getContext();
-    if(!cr) return;
+	if(!cr)
+		return;
 
 	auto bounds = getBounds();
 
@@ -64,53 +57,4 @@ void background_t::paint()
 		cairo_rectangle(cr, bgx, bgy, bounds.width, bounds.height);
 		cairo_fill(cr);
 	}
-}
-
-void background_t::showSelection(g_rectangle& newSelection)
-{
-	if(newSelection.width != 0 || newSelection.height != 0)
-	{
-		selection->setBounds(newSelection.asNormalized());
-		selection->setVisible(true);
-	}
-	else
-	{
-		selection->setVisible(false);
-	}
-
-	if(this->selectedItem)
-	{
-		auto previouslySelected = this->selectedItem;
-		this->selectedItem = nullptr;
-		previouslySelected->markFor(COMPONENT_REQUIREMENT_PAINT);
-	}
-}
-
-void background_t::hideSelection()
-{
-	selection->setVisible(false);
-}
-
-void background_t::startLoadDesktopItems()
-{
-	desktop_item_t* terminal = new desktop_item_t(this, "Terminal", "/applications/terminal.bin", "/system/graphics/app-icons/terminal.png");
-	terminal->setBounds(g_rectangle(gridScale, gridScale, gridScale, gridScale));
-	this->addChild(terminal);
-
-	desktop_item_t* calculator = new desktop_item_t(this, "Calculator", "/applications/calculator.bin", "/system/graphics/app-icons/calculator.png");
-	calculator->setBounds(g_rectangle(gridScale, gridScale * 2, gridScale, gridScale));
-	this->addChild(calculator);
-}
-
-void background_t::setSelectedItem(desktop_item_t* item)
-{
-	auto previouslySelected = this->selectedItem;
-	this->selectedItem = item;
-	if(previouslySelected)
-		previouslySelected->markFor(COMPONENT_REQUIREMENT_PAINT);
-}
-
-desktop_item_t* background_t::getSelectedItem()
-{
-	return this->selectedItem;
 }

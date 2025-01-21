@@ -25,37 +25,41 @@
 #include "components/label.hpp"
 #include <cairo/cairo.h>
 #include <libwindow/metrics/point.hpp>
-#include <libwindow/metrics/rectangle.hpp>
+#include <string>
 
-class background_t;
+class item_container_t;
 
-class desktop_item_t : public component_t
+class item_t : public component_t
 {
-  private:
-	background_t* background;
+    item_container_t* container;
 
-	label_t* label;
-	bool hovered = false;
-	cairo_surface_t* surface = 0;
+    label_t* label;
+    bool hovered = false;
+    bool selected = false;
+    cairo_surface_t* surface = 0;
 
-	g_point pressLocation;
-	g_point pressOffset;
+    g_point pressLocation;
+    g_point pressOffset;
 
-	std::string title;
-	std::string icon;
+    std::string title;
+    std::string icon;
 
-  public:
-	desktop_item_t(background_t* background, std::string title, std::string program, std::string icon);
+public:
+    item_t(item_container_t* container, std::string title, std::string program, std::string icon);
 
-	std::string program;
+    std::string program;
 
-	virtual ~desktop_item_t()
-	{
-	}
+    ~item_t() override = default;
 
-	virtual component_t* handleMouseEvent(mouse_event_t& e);
-	virtual void layout();
-	virtual void paint();
+    component_t* handleMouseEvent(mouse_event_t& e) override;
+    void layout() override;
+    void paint() override;
+
+    virtual void setSelected(bool selected);
+    virtual void onContainerItemPressed(const g_point& screenPosition);
+    virtual void onContainerItemDragged(const g_point& screenPosition);
+    virtual bool isSelected() const { return selected; }
+    virtual void tidyPosition();
 };
 
 #endif

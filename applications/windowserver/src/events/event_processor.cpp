@@ -83,7 +83,7 @@ void event_processor_t::processMouseState()
 	g_point previousPosition = cursor_t::position;
 	g_mouse_button previousPressedButtons = cursor_t::pressedButtons;
 
-	g_dimension resolution = windowserver_t::instance()->video_output->getResolution();
+	g_dimension resolution = windowserver_t::instance()->videoOutput->getResolution();
 	windowserver_t* instance = windowserver_t::instance();
 	screen_t* screen = instance->screen;
 

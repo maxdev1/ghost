@@ -18,8 +18,8 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "components/desktop/desktop_item.hpp"
-#include "components/desktop/background.hpp"
+#include "components/desktop/item.hpp"
+#include "components/desktop/item_container.hpp"
 #include <cairo/cairo.h>
 #include <math.h>
 
@@ -34,15 +34,15 @@ static void roundedRectangle(cairo_t* cr, double x, double y, double width, doub
 	cairo_close_path(cr);
 }
 
-desktop_item_t::desktop_item_t(background_t* background, std::string title, std::string program, std::string icon)
+item_t::item_t(item_container_t* container, std::string title, std::string program, std::string icon)
 {
-	this->background = background;
+	this->container = container;
 	this->title = title;
 	this->program = program;
 	this->icon = icon;
 
 	label = new label_t();
-	this->addChild(label);
+	component_t::addChild(label);
 
 	label->setTitle(title);
 	label->setColor(ARGB(255, 255, 255, 255));
@@ -50,7 +50,7 @@ desktop_item_t::desktop_item_t(background_t* background, std::string title, std:
 	surface = cairo_image_surface_create_from_png(this->icon.c_str());
 }
 
-void desktop_item_t::layout()
+void item_t::layout()
 {
 	g_rectangle bounds = getBounds();
 	int padding = 10;
@@ -59,10 +59,11 @@ void desktop_item_t::layout()
 	label->setAlignment(g_text_alignment::CENTER);
 }
 
-void desktop_item_t::paint()
+void item_t::paint()
 {
 	cairo_t* cr = graphics.getContext();
-    if(!cr) return;
+	if(!cr)
+		return;
 
 	auto bounds = getBounds();
 
@@ -72,7 +73,6 @@ void desktop_item_t::paint()
 	cairo_paint(cr);
 	cairo_restore(cr);
 
-	auto selected = (background->getSelectedItem() == this);
 	if(hovered || selected)
 	{
 		roundedRectangle(cr, 3, 3, bounds.width - 6, bounds.height - 6, 5);
@@ -82,22 +82,27 @@ void desktop_item_t::paint()
 
 	if(surface)
 	{
-		int imgwidth = cairo_image_surface_get_width(surface);
-		int imgheight = cairo_image_surface_get_height(surface);
-		int imgx = bounds.width / 2 - imgwidth / 2;
-		int imgy = 10;
-		cairo_set_source_surface(cr, surface, imgx, imgy);
-		cairo_rectangle(cr, imgx, imgy, bounds.width, bounds.height);
+		int iconWidth = cairo_image_surface_get_width(surface);
+		int iconX = bounds.width / 2 - iconWidth / 2;
+		int iconY = 10;
+		cairo_set_source_surface(cr, surface, iconX, iconY);
+		cairo_rectangle(cr, iconX, iconY, bounds.width, bounds.height);
 		cairo_fill(cr);
 	}
 }
 
-void spawnerThread(desktop_item_t* item)
+void spawnerThread(item_t* item)
 {
 	g_spawn(item->program.c_str(), "", "", G_SECURITY_LEVEL_APPLICATION);
 }
 
-component_t* desktop_item_t::handleMouseEvent(mouse_event_t& e)
+void item_t::setSelected(bool selected)
+{
+	this->selected = selected;
+	markFor(COMPONENT_REQUIREMENT_PAINT);
+}
+
+component_t* item_t::handleMouseEvent(mouse_event_t& e)
 {
 	if(e.type == G_MOUSE_EVENT_ENTER)
 	{
@@ -111,35 +116,64 @@ component_t* desktop_item_t::handleMouseEvent(mouse_event_t& e)
 	}
 	else if(e.type == G_MOUSE_EVENT_PRESS)
 	{
-		background->setSelectedItem(this);
-		markFor(COMPONENT_REQUIREMENT_PAINT);
-
-		pressOffset = e.position;
-		pressLocation = this->getBounds().getStart();
-
 		if(e.clickCount == 2)
 		{
-			// TODO
+			// TODO This doesn't belong here
 			g_create_thread_d((void*) &spawnerThread, this);
+		}
+		else
+		{
+			if(!this->selected)
+				container->unselectItems();
+			container->pressDesktopItems(e.screenPosition);
+			this->setSelected(true);
 		}
 	}
 	else if(e.type == G_MOUSE_EVENT_DRAG)
 	{
-		auto bounds = this->getBounds();
-		bounds.x += e.position.x - pressOffset.x;
-		bounds.y += e.position.y - pressOffset.y;
-		this->setBounds(bounds);
+		container->dragDesktopItems(e.screenPosition);
 	}
 	else if(e.type == G_MOUSE_EVENT_DRAG_RELEASE)
 	{
-		auto bounds = this->getBounds();
-		int gridScale = this->background->gridScale;
-		bounds.x += gridScale / 2;
-		bounds.x = bounds.x - bounds.x % gridScale;
-		bounds.y += gridScale / 2;
-		bounds.y = bounds.y - bounds.y % gridScale;
-		this->setBounds(bounds);
+		container->tidyDesktopItems();
 	}
 
 	return this;
+}
+
+void item_t::onContainerItemPressed(const g_point& screenPosition)
+{
+	pressOffset = screenPosition - this->getBounds().getStart();
+	pressLocation = this->getBounds().getStart();
+}
+
+void item_t::onContainerItemDragged(const g_point& screenPosition)
+{
+	auto bounds = this->getBounds();
+	bounds.x = screenPosition.x - pressOffset.x;
+	bounds.y = screenPosition.y - pressOffset.y;
+	this->setBounds(bounds);
+}
+
+void item_t::tidyPosition()
+{
+	auto bounds = this->getBounds();
+	auto bgBounds = container->getBounds();
+
+	int gridScale = container->getGridScale();
+	bounds.x += gridScale / 2;
+	bounds.x = bounds.x - bounds.x % gridScale;
+	if(bounds.x < 0)
+		bounds.x = 0;
+	else if(bounds.x > bgBounds.width - bounds.width)
+		bounds.x = bgBounds.width - bounds.width;
+
+	bounds.y += gridScale / 2;
+	bounds.y = bounds.y - bounds.y % gridScale;
+	if(bounds.y < 0)
+		bounds.y = 0;
+	else if(bounds.y > bgBounds.height - bounds.height)
+		bounds.y = bgBounds.height - bounds.height;
+
+	this->setBounds(bounds);
 }

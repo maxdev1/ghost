@@ -22,27 +22,23 @@
 #include "components/button.hpp"
 #include "components/cursor.hpp"
 #include "components/desktop/background.hpp"
-#include "components/window.hpp"
+#include "components/desktop/item_container.hpp"
 #include "events/event.hpp"
 #include "events/locatable.hpp"
 #include "input/input_receiver.hpp"
 #include "interface/interface_responder.hpp"
 #include "interface/registration_thread.hpp"
-#include "test.hpp"
 #include "video/vbe_video_output.hpp"
 
-#include <algorithm>
 #include <cairo/cairo.h>
 #include <iostream>
-#include <libproperties/parser.hpp>
-#include <stdio.h>
-#include <typeinfo>
+#include <cstdio>
 
 static windowserver_t* server;
-static g_atom dispatch_lock = g_atomic_initialize();
+static g_atom dispatchLock = g_atomic_initialize();
 static int framesTotal = 0;
 
-int main(int argc, char** argv)
+int main()
 {
 	server = new windowserver_t();
 	server->launch();
@@ -70,20 +66,17 @@ void windowserver_t::initializeInput()
 
 void windowserver_t::launch()
 {
-	event_processor = new event_processor_t();
+	eventProcessor = new event_processor_t();
 
 	g_task_register_id("windowserver");
 	initializeGraphics();
 	g_create_thread((void*) &windowserver_t::initializeInput);
 
-	g_dimension resolution = video_output->getResolution();
+	g_dimension resolution = videoOutput->getResolution();
 	g_rectangle screenBounds(0, 0, resolution.width, resolution.height);
 	createVitalComponents(screenBounds);
 
-	createInterface();
-
-	// test_t::createTestComponents();
-	// g_spawn("/applications/terminal.bin", "", "", G_SECURITY_LEVEL_APPLICATION);
+	startInterface();
 
 	renderLoop(screenBounds);
 }
@@ -97,7 +90,11 @@ void windowserver_t::createVitalComponents(g_rectangle screenBounds)
 	background->setBounds(screenBounds);
 	screen->addChild(background);
 	cursor_t::focusedComponent = screen;
-	background->startLoadDesktopItems();
+
+	desktopContainer = new item_container_t();
+	desktopContainer->setBounds(screenBounds);
+	screen->addChild(desktopContainer);
+	desktopContainer->startLoadDesktopItems();
 
 	stateLabel = new label_t();
 	stateLabel->setTitle("");
@@ -112,8 +109,8 @@ void windowserver_t::initializeGraphics()
 {
 	g_set_video_log(false);
 
-	video_output = new g_vbe_video_output();
-	if(!video_output->initialize())
+	videoOutput = new g_vbe_video_output();
+	if(!videoOutput->initialize())
 	{
 		std::cerr << "failed to initialize video mode" << std::endl;
 		klog("failed to initialize video mode");
@@ -131,10 +128,10 @@ void windowserver_t::renderLoop(g_rectangle screenBounds)
 
 	cursor_t::nextPosition = g_point(screenBounds.width / 2, screenBounds.height / 2);
 
-	g_atomic_lock(render_atom);
+	g_atomic_lock(renderAtom);
 	while(true)
 	{
-		event_processor->process();
+		eventProcessor->process();
 
 		screen->resolveRequirement(COMPONENT_REQUIREMENT_UPDATE);
 		screen->resolveRequirement(COMPONENT_REQUIREMENT_LAYOUT);
@@ -146,13 +143,13 @@ void windowserver_t::renderLoop(g_rectangle screenBounds)
 		output(&global);
 
 		framesTotal++;
-		g_atomic_lock_to(render_atom, 1000);
+		g_atomic_lock_to(renderAtom, 1000);
 	}
 }
 
 void windowserver_t::triggerRender()
 {
-	g_atomic_unlock(render_atom);
+	g_atomic_unlock(renderAtom);
 }
 
 void windowserver_t::output(g_graphics* graphics)
@@ -161,10 +158,10 @@ void windowserver_t::output(g_graphics* graphics)
 	if(invalid.width == 0 && invalid.height == 0)
 		return;
 
-	g_dimension resolution = video_output->getResolution();
+	g_dimension resolution = videoOutput->getResolution();
 	g_rectangle screenBounds(0, 0, resolution.width, resolution.height);
 	g_color_argb* buffer = (g_color_argb*) cairo_image_surface_get_data(graphics->getSurface());
-	video_output->blit(invalid, screenBounds, buffer);
+	videoOutput->blit(invalid, screenBounds, buffer);
 }
 
 void windowserver_t::loadCursor()
@@ -221,9 +218,9 @@ component_t* windowserver_t::dispatch(component_t* component, event_t& event)
 			locatable->position.y -= locationOnScreen.y;
 		}
 
-		g_atomic_lock(dispatch_lock);
+		g_atomic_lock(dispatchLock);
 		handledBy = event.visit(component);
-		g_atomic_unlock(dispatch_lock);
+		g_atomic_unlock(dispatchLock);
 	}
 
 	return handledBy;
@@ -241,13 +238,13 @@ void windowserver_t::fpsCounter()
 		seconds++;
 		std::stringstream s;
 		s << "FPS: " << framesTotal << ", Time: " << renders++ << "s";
-		windowserver_t::instance()->stateLabel->setTitle(s.str());
-		windowserver_t::instance()->triggerRender();
+		instance()->stateLabel->setTitle(s.str());
+		instance()->triggerRender();
 		framesTotal = 0;
 	}
 }
 
-void windowserver_t::createInterface()
+void windowserver_t::startInterface()
 {
 	g_create_thread((void*) &interfaceRegistrationThread);
 	g_create_thread((void*) &interfaceResponderThread);

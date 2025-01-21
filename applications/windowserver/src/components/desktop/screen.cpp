@@ -19,12 +19,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "components/desktop/screen.hpp"
+#include "components/desktop/item_container.hpp"
 #include "components/cursor.hpp"
 #include "windowserver.hpp"
 
 void screen_t::markDirty(g_rectangle rect)
 {
-
 	// Mark area as invalid
 	if(invalid.x == 0 && invalid.y == 0 && invalid.width == 0 && invalid.height == 0)
 	{
@@ -68,7 +68,7 @@ component_t* screen_t::handleMouseEvent(mouse_event_t& e)
 		if(pressing)
 		{
 			g_rectangle selection(pressPoint.x, pressPoint.y, e.position.x - pressPoint.x, e.position.y - pressPoint.y);
-			windowserver_t::instance()->background->showSelection(selection);
+			windowserver_t::instance()->desktopContainer->showSelection(selection);
 		}
 		return this;
 	}
@@ -77,7 +77,7 @@ component_t* screen_t::handleMouseEvent(mouse_event_t& e)
 		if(pressing)
 		{
 			pressing = false;
-			windowserver_t::instance()->background->hideSelection();
+			windowserver_t::instance()->desktopContainer->hideSelection();
 			return this;
 		}
 	}
@@ -92,7 +92,7 @@ component_t* screen_t::handleMouseEvent(mouse_event_t& e)
 		pressPoint = e.position;
 
 		g_rectangle empty(0, 0, 0, 0);
-		windowserver_t::instance()->background->showSelection(empty);
+		windowserver_t::instance()->desktopContainer->showSelection(empty);
 	}
 
 	cursor_t::set("default");

@@ -28,63 +28,66 @@
 #include "events/event_processor.hpp"
 #include "video/video_output.hpp"
 
+class item_container_t;
+
 /**
  *
  */
 class windowserver_t
 {
-  public:
-	g_video_output* video_output;
-	event_processor_t* event_processor;
-	screen_t* screen;
-	background_t* background;
-	label_t* stateLabel;
-	g_atom render_atom = g_atomic_initialize();
+public:
+    g_video_output* videoOutput;
+    event_processor_t* eventProcessor;
+    screen_t* screen;
+    background_t* background;
+    item_container_t* desktopContainer;
+    label_t* stateLabel;
+    g_atom renderAtom = g_atomic_initialize();
 
-	/**
-	 * Sets up the windowing system by configuring a video output, setting up the
-	 * event processor and running the main loop. Each step of the main loop includes
-	 * a event handling and rendering sequence.
-	 */
-	void launch();
+    /**
+     * Sets up the windowing system by configuring a video output, setting up the
+     * event processor and running the main loop. Each step of the main loop includes
+     * a event handling and rendering sequence.
+     */
+    void launch();
 
-	void initializeGraphics();
-	void createVitalComponents(g_rectangle screenBounds);
-	void loadCursor();
+    void initializeGraphics();
+    void createVitalComponents(g_rectangle screenBounds);
+    void loadCursor();
 
-	void renderLoop(g_rectangle screenBounds);
-	void triggerRender();
-	static void initializeInput();
-	static void fpsCounter();
+    void renderLoop(g_rectangle screenBounds);
+    void triggerRender();
+    static void initializeInput();
+    static void fpsCounter();
 
-	/**
-	 * Blits the component state.
-	 */
-	void output(g_graphics* graphics);
+    /**
+     * Blits the component state.
+     */
+    void output(g_graphics* graphics);
 
-	/**
-	 * Dispatches the given event to the component.
-	 *
-	 * @return the component that has handled the event or NULL
-	 */
-	component_t* dispatch(component_t* component, event_t& event);
+    /**
+     * Dispatches the given event to the component.
+     *
+     * @return the component that has handled the event or NULL
+     */
+    component_t* dispatch(component_t* component, event_t& event);
 
-	/**
-	 * Dispatches the given event upwards the component tree.
-	 */
-	component_t* dispatchUpwards(component_t* component, event_t& event);
+    /**
+     * Dispatches the given event upwards the component tree.
+     */
+    component_t* dispatchUpwards(component_t* component, event_t& event);
 
-	/**
-	 * Creates the command receiver interface.
-	 */
-	void createInterface();
+    /**
+     * Creates the command receiver interface.
+     */
+    void startInterface();
 
-	/**
-	 * Returns the singleton instance of the window server.
-	 *
-	 * @return the instance
-	 */
-	static windowserver_t* instance();
+    /**
+     * Returns the singleton instance of the window server.
+     *
+     * @return the instance
+     */
+    static windowserver_t* instance();
 };
 
 #endif
