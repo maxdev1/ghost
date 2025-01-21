@@ -38,11 +38,11 @@ int main(int argc, const char** argv)
 		try
 		{
 			test->test();
-			printf(" \e[1;92m\u2714\e[0m\n");
+			printf(" \e[1;92m✓\e[0m\n");
 		}
 		catch(const char* e)
 		{
-			printf(" \e[1;31m\u274c\e[0m\n");
+			printf(" \e[1;31m❌\e[0m\n");
 			printf(" %s\n", e);
 		}
 	}

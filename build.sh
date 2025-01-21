@@ -55,14 +55,14 @@ build_target() {
 
 print_status() {
 	if [ $? -eq 0 ]; then
-		printf "\e[1;92m\u2714\e[0m "
+		printf "\e[1;92m✓\e[0m "
     if [[ $CI_BUILD == 1 ]]; then
       printf "\n\n"
       tail -n 10 ghost-build.log | awk '$0="   "$0'
     fi
     printf "\n"
 	else
-		printf "\e[1;31m\u274c\e[0m "
+		printf "\e[1;31m❌\e[0m "
 		printf "\n\n"
 		tail -n 100 ghost-build.log | awk '$0="   "$0'
 		printf "\n"
@@ -172,10 +172,10 @@ build_app() {
 	build_target $2 $3
 	if [ $? -eq 0 ]; then
 		((apps_success = apps_success + 1))
-		printf "\u2714\n"
+		printf "✓\n"
 	else
 		printf $name_back
-		printf "\e[1;31m$name\e[0m \u274c log: "
+		printf "\e[1;31m$name\e[0m ❌ log: "
 		printf "\n\n"
 		tail -n 100 ghost-build.log | awk '$0="   "$0'
 		printf "\n"
@@ -248,6 +248,7 @@ build_pack() {
 
 	print_name pack
   build_target pack
+  print_status
 
   popd
 }
