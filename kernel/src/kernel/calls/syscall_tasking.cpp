@@ -36,30 +36,14 @@ void syscallSleep(g_task* task, g_syscall_sleep* data)
 
 void syscallAtomicInitialize(g_task* task, g_syscall_atomic_initialize* data)
 {
-	data->atom = atomicCreate();
+	data->atom = atomicCreate(data->reentrant);
 }
 
 void syscallAtomicLock(g_task* task, g_syscall_atomic_lock* data)
 {
-	bool useTimeout = (data->timeout > 0);
-	if(useTimeout)
-		clockWaitForTime(task->id, clockGetLocal()->time + data->timeout);
-
-	while(
-		(!useTimeout || !(data->has_timeout = clockHasTimedOut(task->id))) &&
-		!(data->was_set = atomicLock(task, data->atom, data->is_try, data->set_on_finish)))
-	{
-		if(data->is_try)
-			break;
-
-		atomicWaitForLock(data->atom, task->id);
-		task->status = G_THREAD_STATUS_WAITING;
-		taskingYield();
-	}
-
-	if(useTimeout)
-		clockUnwaitForTime(task->id);
-	atomicUnwaitForLock(data->atom, task->id);
+	auto status = atomicLock(task, data->atom, data->timeout, data->trying);
+	data->wasSet = status == G_ATOM_LOCK_STATUS_SET;
+	data->hasTimedOut = status == G_ATOM_LOCK_STATUS_TIMEOUT;
 }
 
 void syscallAtomicUnlock(g_task* task, g_syscall_atomic_unlock* data)
@@ -181,7 +165,8 @@ void syscallCreateThread(g_task* task, g_syscall_create_thread* data)
 {
 	mutexAcquire(&task->process->lock);
 
-	g_task* thread = taskingCreateTask((g_virtual_address) data->initialEntry, task->process, task->process->main->securityLevel);
+	g_task* thread = taskingCreateTask((g_virtual_address) data->initialEntry, task->process,
+	                                   task->process->main->securityLevel);
 	if(thread)
 	{
 		thread->userEntry.function = data->userEntry;

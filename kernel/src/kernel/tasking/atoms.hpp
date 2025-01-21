@@ -35,8 +35,17 @@ struct g_atom_entry
 {
 	g_mutex lock;
 	int value;
+
+    bool reentrant;
+    g_tid owner;
+
 	g_atom_waiter* waiters;
 };
+
+typedef uint32_t g_atom_lock_status;
+#define G_ATOM_LOCK_STATUS_SET      ((g_atom_lock_status) 1)
+#define G_ATOM_LOCK_STATUS_TIMEOUT  ((g_atom_lock_status) 2)
+#define G_ATOM_LOCK_STATUS_NOT_SET  ((g_atom_lock_status) 3)
 
 /**
  * Initializes the atoms.
@@ -46,7 +55,7 @@ void atomicInitialize();
 /**
  * Creates a new atom that can then be locked with the other functions.
  */
-g_atom atomicCreate();
+g_atom atomicCreate(bool reentrant);
 
 /**
  * Destroys an atom.
@@ -54,10 +63,14 @@ g_atom atomicCreate();
 void atomicDestroy(g_atom atom);
 
 /**
- * Attempts to lock the atom and returns whether locking was successful. If it is not a try
- * and the lock is already set, the task is put to sleep.
+ *
  */
-bool atomicLock(g_task* task, g_atom atom, bool isTry, bool setOnFinish);
+g_atom_lock_status atomicLock(g_task* task, g_atom atom, uint64_t timeout, bool trying);
+
+/**
+ *
+ */
+g_atom_lock_status atomicTryLock(g_task* task, g_atom atom);
 
 /**
  * Unlocks the atom and wakes the next waiting task.

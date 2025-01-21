@@ -24,18 +24,14 @@
 /**
  *
  */
-g_bool __g_atomic_lock(g_atom atom, bool set_on_finish, bool is_try, g_bool has_timeout, uint64_t timeout)
+g_bool __g_atomic_lock(g_atom atom, bool trying, uint64_t timeout)
 {
 	g_syscall_atomic_lock data;
 	data.atom = atom;
-	data.set_on_finish = set_on_finish;
-	data.is_try = is_try;
-	data.has_timeout = has_timeout;
+	data.trying = trying;
 	data.timeout = timeout;
 
-	data.was_set = false;
-
+	data.wasSet = false;
 	g_syscall(G_SYSCALL_ATOMIC_LOCK, (g_address) &data);
-
-	return data.was_set;
+	return data.wasSet;
 }

@@ -43,6 +43,7 @@ __BEGIN_C
  * @security-level APPLICATION
  */
 g_atom g_atomic_initialize();
+g_atom g_atomic_initialize_r(g_bool reentrant);
 
 /**
  * Performs an atomic wait. If the atom is true, the executing task must
@@ -70,19 +71,6 @@ g_bool g_atomic_lock_to(g_atom atom, uint64_t timeout);
  */
 g_bool g_atomic_try_lock(g_atom atom);
 g_bool g_atomic_try_lock_to(g_atom atom, uint64_t timeout);
-
-/**
- * Performs an atomic block. If the atom is true, the executing task must
- * wait until the task that owns the atom has finished its work and sets
- * it to false. Different from the {g_atomic_lock}, the atom is not changed.
- *
- * @param atom
- * 		the atom to use
- *
- * @security-level APPLICATION
- */
-void g_atomic_block(g_atom atom);
-g_bool g_atomic_block_to(g_atom atom, uint64_t timeout);
 
 /**
  * Unlocks the atom.

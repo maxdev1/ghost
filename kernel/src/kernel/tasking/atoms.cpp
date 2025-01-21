@@ -21,6 +21,7 @@
 #include "kernel/tasking/atoms.hpp"
 #include "kernel/memory/heap.hpp"
 #include "kernel/utils/hashmap.hpp"
+#include "kernel/tasking/clock.hpp"
 #include "shared/logger/logger.hpp"
 
 static g_atom nextAtom;
@@ -37,13 +38,14 @@ void atomicInitialize()
 	atomMap = hashmapCreateNumeric<g_atom, g_atom_entry*>(128);
 }
 
-g_atom atomicCreate()
+g_atom atomicCreate(bool reentrant)
 {
-
 	g_atom_entry* entry = (g_atom_entry*) heapAllocate(sizeof(g_atom_entry));
 	mutexInitialize(&entry->lock);
 	entry->value = 0;
 	entry->waiters = nullptr;
+	entry->reentrant = reentrant;
+	entry->owner = -1;
 
 	mutexAcquire(&fullLock);
 	g_atom atom = ++nextAtom;
@@ -53,7 +55,7 @@ g_atom atomicCreate()
 	return atom;
 }
 
-bool atomicLock(g_task* task, g_atom atom, bool isTry, bool setOnFinish)
+g_atom_lock_status atomicTryLock(g_task* task, g_atom atom)
 {
 	g_atom_entry* entry = hashmapGet<g_atom, g_atom_entry*>(atomMap, atom, nullptr);
 	if(!entry)
@@ -62,20 +64,65 @@ bool atomicLock(g_task* task, g_atom atom, bool isTry, bool setOnFinish)
 		return false;
 	}
 
-	bool ret;
+	g_atom_lock_status status;
 	mutexAcquire(&entry->lock);
 	if(entry->value)
 	{
-		ret = false;
+		if(entry->reentrant && task->id == entry->owner)
+		{
+			entry->value++;
+			status = G_ATOM_LOCK_STATUS_SET;
+		}
+		else
+			status = G_ATOM_LOCK_STATUS_NOT_SET;
 	}
 	else
 	{
-		ret = true;
-		if(setOnFinish)
-			entry->value = 1;
+		status = G_ATOM_LOCK_STATUS_SET;
+		entry->value = 1;
+		if(entry->reentrant)
+		{
+			entry->owner = task->id;
+		}
+		else
+			entry->owner = -1;
 	}
 	mutexRelease(&entry->lock);
-	return ret;
+	return status;
+}
+
+g_atom_lock_status atomicLock(g_task* task, g_atom atom, uint64_t timeout, bool trying)
+{
+	bool wasSet = false;
+	bool hasTimeout = false;
+
+	bool useTimeout = (timeout > 0);
+	if(useTimeout)
+		clockWaitForTime(task->id, clockGetLocal()->time + timeout);
+
+	while(true)
+	{
+		if(useTimeout && (hasTimeout = clockHasTimedOut(task->id)))
+			break;
+
+		g_atom_lock_status lockStatus = atomicTryLock(task, atom);
+		if(wasSet = (lockStatus == G_ATOM_LOCK_STATUS_SET))
+			break;
+
+		if(trying)
+			break;
+
+		atomicWaitForLock(atom, task->id);
+		task->status = G_THREAD_STATUS_WAITING;
+		taskingYield();
+	}
+
+	if(useTimeout)
+		clockUnwaitForTime(task->id);
+
+	atomicUnwaitForLock(atom, task->id);
+
+	return hasTimeout ? G_ATOM_LOCK_STATUS_TIMEOUT : (wasSet ? G_ATOM_LOCK_STATUS_SET : G_ATOM_LOCK_STATUS_NOT_SET);
 }
 
 void atomicUnlock(g_atom atom)
@@ -88,8 +135,21 @@ void atomicUnlock(g_atom atom)
 	}
 
 	mutexAcquire(&entry->lock);
-	entry->value = 0;
-	_atomicWakeWaitingTasks(entry);
+	if(entry->reentrant)
+	{
+		entry->value--;
+		if(entry->value <= 0)
+		{
+			entry->value = 0;
+			entry->owner = -1;
+			_atomicWakeWaitingTasks(entry);
+		}
+	}
+	else
+	{
+		entry->value = 0;
+		_atomicWakeWaitingTasks(entry);
+	}
 	mutexRelease(&entry->lock);
 }
 
@@ -118,7 +178,7 @@ void atomicWaitForLock(g_atom atom, g_tid task)
 
 	mutexAcquire(&entry->lock);
 
-	g_atom_waiter* waiter = (g_atom_waiter*) heapAllocate(sizeof(g_atom_waiter));
+	auto waiter = (g_atom_waiter*) heapAllocate(sizeof(g_atom_waiter));
 	waiter->task = task;
 	waiter->next = entry->waiters;
 	entry->waiters = waiter;

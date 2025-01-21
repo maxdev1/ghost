@@ -23,10 +23,10 @@
 
 g_bool g_atomic_try_lock(g_atom atom)
 {
-	return __g_atomic_lock(atom, true, true, false, 0);
+	return __g_atomic_lock(atom, true, 0);
 }
 
 g_bool g_atomic_try_lock_to(g_atom atom, uint64_t timeout)
 {
-	return __g_atomic_lock(atom, true, true, true, timeout);
+	return __g_atomic_lock(atom, true, timeout);
 }

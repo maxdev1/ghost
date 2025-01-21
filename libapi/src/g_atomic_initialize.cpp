@@ -23,7 +23,13 @@
 
 g_atom g_atomic_initialize()
 {
+	return g_atomic_initialize_r(false);
+}
+
+g_atom g_atomic_initialize_r(g_bool reentrant)
+{
 	g_syscall_atomic_initialize data;
+	data.reentrant = reentrant;
 	g_syscall(G_SYSCALL_ATOMIC_INITIALIZE, (g_address) &data);
 	return data.atom;
 }

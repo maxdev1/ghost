@@ -109,6 +109,7 @@ typedef struct
 typedef struct
 {
 	g_atom atom;
+    uint8_t reentrant : 1;
 } __attribute__((packed)) g_syscall_atomic_initialize;
 
 /**
@@ -122,23 +123,17 @@ typedef struct
 
 /**
  * @field atom
- * 		the atom
- *
- * @field try_only
- * 		whether or not to only try locking the atom
- *
- * @field was_set
- * 		whether the atom was set
+ *      the atom
+ * @property isTry
  */
 typedef struct
 {
-	g_atom atom;
-	uint8_t set_on_finish : 1;
-	uint8_t is_try : 1;
-	uint8_t has_timeout : 1;
-	uint64_t timeout;
+    g_atom atom;
+    uint8_t trying : 1;
+    uint64_t timeout;
 
-	uint8_t was_set : 1;
+    uint8_t hasTimedOut : 1;
+    uint8_t wasSet : 1;
 } __attribute__((packed)) g_syscall_atomic_lock;
 
 /**
