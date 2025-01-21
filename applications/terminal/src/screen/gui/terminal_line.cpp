@@ -21,12 +21,12 @@
 #include <cstring>
 #include "terminal_line.hpp"
 
-terminal_line::~terminal_line()
+terminal_line_t::~terminal_line_t()
 {
 	if (buffer) delete[] buffer;
 }
 
-void terminal_line::insert(int position, char c)
+void terminal_line_t::insert(int position, char c)
 {
 	if (position >= length)
 	{
@@ -42,7 +42,7 @@ void terminal_line::insert(int position, char c)
 	buffer[position] = c;
 }
 
-void terminal_line::remove(int position)
+void terminal_line_t::remove(int position)
 {
 	if (length > 0)
 	{

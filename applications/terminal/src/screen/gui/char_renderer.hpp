@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2024, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,24 +18,39 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __TERMINAL_LINE__
-#define __TERMINAL_LINE__
+#ifndef __TERMINAL_CHAR_RENDERER__
+#define __TERMINAL_CHAR_RENDERER__
 
+#include <cairo/cairo.h>
+#include <map>
+#include <libfont/font.hpp>
 
-class terminal_line_t {
-public:
-	~terminal_line_t();
+#define CHAR_RENDERER_DEFAULT_FONT "consolas"
 
-	char *buffer = nullptr;
-	int length = 0;
-
-	terminal_line_t *previous = nullptr;
-	terminal_line_t *next = nullptr;
-
-	void insert(int position, char c);
-
-	void remove(int position);
+struct char_layout_t
+{
+	cairo_glyph_t* glyph_buffer = nullptr;
+	int glyph_count = 0;
+	cairo_text_cluster_t* cluster_buffer = nullptr;
+	int cluster_count = 0;
 };
 
 
-#endif
+class char_renderer_t
+{
+	g_font* font;
+	cairo_scaled_font_t* scaledFont = nullptr;
+	cairo_font_options_t* fontOptions = nullptr;
+
+	std::map<char, char_layout_t*> charLayoutCache{};
+	char_layout_t* layoutChar(cairo_scaled_font_t* scaledFont, char c);
+
+public:
+	char_renderer_t();
+
+	void prepareContext(cairo_t* cr, double fontSize);
+	void printChar(cairo_t* cr, int x, int y, char c);
+};
+
+
+#endif //CHAR_RENDERER_HPP

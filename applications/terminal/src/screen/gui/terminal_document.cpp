@@ -20,64 +20,78 @@
 
 #include "terminal_document.hpp"
 
-terminal_document::terminal_document()
+terminal_document_t::terminal_document_t()
 {
-	this->line = new terminal_line();
+	this->lines = new terminal_line_t();
 }
 
-void terminal_document::insert(int x, int offsetY, char c)
+void terminal_document_t::insert(int x, int offsetY, char c)
 {
-	auto current = this->line;
-	while (offsetY-- && current)
+	g_atomic_lock(this->linesLock);
+
+	auto current = this->lines;
+	while(offsetY-- && current)
 	{
 		current = current->previous;
 	}
 
-	if (current)
+	if(current)
 	{
-		if (c == '\n')
+		if(c == '\n')
 		{
-			auto new_line = new terminal_line();
+			auto new_line = new terminal_line_t();
 
 			new_line->previous = current;
-			if (current->next)
+			if(current->next)
 			{
 				current->next->previous = new_line;
 				new_line->next = current->next;
-			} else
+			}
+			else
 			{
-				this->line = new_line;
+				this->lines = new_line;
 			}
 			current->next = new_line;
-		} else
+		}
+		else
 		{
 			current->insert(x, c);
 		}
 	}
+
+	g_atomic_unlock(this->linesLock);
 }
 
-void terminal_document::remove(int x, int offsetY)
+void terminal_document_t::remove(int x, int offsetY)
 {
-	auto current = this->line;
-	while (offsetY-- && current)
+	g_atomic_lock(this->linesLock);
+
+	auto current = this->lines;
+	while(offsetY-- && current)
 	{
 		current = current->previous;
 	}
 
-	if (current)
+	if(current)
 	{
 		current->remove(x);
 	}
+
+	g_atomic_unlock(this->linesLock);
 }
 
 
-terminal_line *terminal_document::get_line(int offset)
+terminal_line_t* terminal_document_t::getLine(int offset)
 {
-	auto current = this->line;
-	while (offset-- && current)
+	g_atomic_lock(this->linesLock);
+
+	auto current = this->lines;
+	while(offset-- && current)
 	{
 		current = current->previous;
 	}
+
+	g_atomic_unlock(this->linesLock);
 	return current;
 }
 
@@ -94,83 +108,102 @@ terminal_line *terminal_document::get_line(int offset)
 	1		1111			25
 	0		000				3
 
+ * Keeps the document locked until it is explicitly unlocked.
  */
-terminal_row terminal_document::get_row(int offsetY, int columns)
+terminal_row_t terminal_document_t::acquireRow(int offsetY, int columns)
 {
-	auto line = this->line;
+	g_atomic_lock(this->linesLock);
+
+	auto line = this->lines;
 	int rem = line->length;
 
-	while (offsetY-- && line)
+	while(offsetY-- && line)
 	{
-		if (rem == 0)
+		if(rem == 0)
 		{
 			rem = line->length;
 		}
 
-		if (rem > columns)
+		if(rem > columns)
 		{
-			if (rem % columns == 0)
+			if(rem % columns == 0)
 			{
 				rem -= columns;
-			} else
+			}
+			else
 			{
 				rem -= rem % columns;
 			}
-		} else
+		}
+		else
 		{
 			line = line->previous;
-			if (line) rem = line->length;
+			if(line)
+				rem = line->length;
 		}
 	}
 
-	if (!line)
+	if(!line)
+	{
 		return {
-			nullptr,
-			0
+				nullptr,
+				0
 		};
+	}
 
 	int start = 0;
 	int len = 0;
-	if (rem > 0)
+	if(rem > 0)
 	{
-		if (rem % columns == 0)
+		if(rem % columns == 0)
 		{
 			start = rem - columns;
 			len = columns;
-		} else
+		}
+		else
 		{
 			start = rem - rem % columns;
 			len = rem % columns;
 		}
 	}
+
 	return {
-		&line->buffer[start],
-		len
+			&line->buffer[start],
+			len
 	};
 }
 
-
-int terminal_document::get_total_rows(int columns)
+void terminal_document_t::releaseRow() const
 {
-	if (columns == 0) return 0;
+	g_atomic_unlock(this->linesLock);
+}
+
+int terminal_document_t::getRowCount(int columns)
+{
+	if(columns == 0)
+		return 0;
 
 	int rows = 0;
-	auto current = this->line;
-	while (current)
+	g_atomic_lock(this->linesLock);
+	auto current = this->lines;
+	while(current)
 	{
 		rows += current->length / columns + (current->length != 0 && current->length % columns == 0 ? 0 : 1);
 		current = current->previous;
 	}
+	g_atomic_unlock(this->linesLock);
 	return rows;
 }
 
-void terminal_document::clear()
+void terminal_document_t::clear()
 {
-	auto old = this->line;
-	this->line = new terminal_line();
+	g_atomic_lock(this->linesLock);
+	auto old = this->lines;
+	this->lines = new terminal_line_t();
+	g_atomic_unlock(this->linesLock);
 
 	auto current = old;
-	while (current)
+	while(current)
 	{
 		auto prev = current->previous;
 		delete current;

@@ -21,30 +21,36 @@
 #ifndef __TERMINAL_DOCUMENT__
 #define __TERMINAL_DOCUMENT__
 
+#include <ghost/user.h>
+
 #include "terminal_line.hpp"
 
-struct terminal_row {
-	char *start;
+struct terminal_row_t
+{
+	char* start;
 	int length;
 };
 
-class terminal_document {
-private:
-	terminal_line *line = nullptr;
+/**
+ * Document of the terminal that manages character insertion and removal. It performs the translation
+ * from lines to "rows" by breaking lines based on parameters.
+ */
+class terminal_document_t
+{
+	g_atom linesLock = g_atomic_initialize_r(true);
+	terminal_line_t* lines = nullptr;
 
 public:
-	terminal_document();
+	terminal_document_t();
 
 	void insert(int x, int offsetY, char c);
-
 	void remove(int x, int offsetY);
+	terminal_line_t* getLine(int offset);
 
-	terminal_line *get_line(int offset);
+	terminal_row_t acquireRow(int offsetY, int columns);
+	void releaseRow() const;
 
-	terminal_row get_row(int offsetY, int columns);
-
-	int get_total_rows(int columns);
-
+	int getRowCount(int columns);
 	void clear();
 };
 
