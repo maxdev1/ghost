@@ -27,7 +27,7 @@
 void fseterr(FILE* stream)
 {
 
-	g_atomic_lock(stream->lock);
+	g_mutex_acquire(stream->lock);
 	if(stream->impl_seterr)
 	{
 		stream->impl_seterr(stream);
@@ -36,5 +36,5 @@ void fseterr(FILE* stream)
 	{
 		errno = ENOTSUP;
 	}
-	g_atomic_unlock(stream->lock);
+	g_mutex_release(stream->lock);
 }

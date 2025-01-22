@@ -35,7 +35,7 @@
 #include <cstdio>
 
 static windowserver_t* server;
-static g_atom dispatchLock = g_atomic_initialize();
+static g_user_mutex dispatchLock = g_mutex_initialize();
 static int framesTotal = 0;
 
 int main()
@@ -128,7 +128,7 @@ void windowserver_t::renderLoop(g_rectangle screenBounds)
 
 	cursor_t::nextPosition = g_point(screenBounds.width / 2, screenBounds.height / 2);
 
-	g_atomic_lock(renderAtom);
+	g_mutex_acquire(renderAtom);
 	while(true)
 	{
 		eventProcessor->process();
@@ -143,13 +143,13 @@ void windowserver_t::renderLoop(g_rectangle screenBounds)
 		output(&global);
 
 		framesTotal++;
-		g_atomic_lock_to(renderAtom, 1000);
+		g_mutex_acquire_to(renderAtom, 1000);
 	}
 }
 
 void windowserver_t::triggerRender()
 {
-	g_atomic_unlock(renderAtom);
+	g_mutex_release(renderAtom);
 }
 
 void windowserver_t::output(g_graphics* graphics)
@@ -218,9 +218,9 @@ component_t* windowserver_t::dispatch(component_t* component, event_t& event)
 			locatable->position.y -= locationOnScreen.y;
 		}
 
-		g_atomic_lock(dispatchLock);
+		g_mutex_acquire(dispatchLock);
 		handledBy = event.visit(component);
-		g_atomic_unlock(dispatchLock);
+		g_mutex_release(dispatchLock);
 	}
 
 	return handledBy;

@@ -30,9 +30,9 @@
  */
 int __fclose_static(FILE* stream)
 {
-	g_atom lock = stream->lock;
-	g_atomic_lock(lock);
+	g_user_mutex lock = stream->lock;
+	g_mutex_acquire(lock);
 	int res = __fclose_static_unlocked(stream);
-	g_atomic_destroy(lock);
+	g_mutex_destroy(lock);
 	return res;
 }

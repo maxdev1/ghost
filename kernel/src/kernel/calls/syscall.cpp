@@ -82,10 +82,10 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_FORK, (g_syscall_handler) syscallFork);
 	_syscallRegister(G_SYSCALL_JOIN, (g_syscall_handler) syscallJoin);
 	_syscallRegister(G_SYSCALL_SLEEP, (g_syscall_handler) syscallSleep);
-	_syscallRegister(G_SYSCALL_ATOMIC_INITIALIZE, (g_syscall_handler) syscallAtomicInitialize);
-	_syscallRegister(G_SYSCALL_ATOMIC_LOCK, (g_syscall_handler) syscallAtomicLock);
-	_syscallRegister(G_SYSCALL_ATOMIC_UNLOCK, (g_syscall_handler) syscallAtomicUnlock);
-	_syscallRegister(G_SYSCALL_ATOMIC_DESTROY, (g_syscall_handler) syscallAtomicDestroy);
+	_syscallRegister(G_SYSCALL_USER_MUTEX_INITIALIZE, (g_syscall_handler) syscallMutexInitialize);
+	_syscallRegister(G_SYSCALL_USER_MUTEX_ACQUIRE, (g_syscall_handler) sycallMutexAcquire);
+	_syscallRegister(G_SYSCALL_USER_MUTEX_RELEASE, (g_syscall_handler) syscallMutexRelease);
+	_syscallRegister(G_SYSCALL_USER_MUTEX_DESTROY, (g_syscall_handler) syscallMutexDestroy);
 	_syscallRegister(G_SYSCALL_LOG, (g_syscall_handler) syscallLog);
 	_syscallRegister(G_SYSCALL_SET_VIDEO_LOG, (g_syscall_handler) syscallSetVideoLog);
 	_syscallRegister(G_SYSCALL_TEST, (g_syscall_handler) syscallTest);

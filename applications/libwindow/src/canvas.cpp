@@ -25,7 +25,7 @@ g_canvas_buffer_info g_canvas::getBuffer()
 {
 	g_canvas_buffer_info info;
 
-	g_atomic_lock(currentBufferLock);
+	g_mutex_acquire(currentBufferLock);
 	if(nextBuffer)
 	{
 		if(currentBuffer)
@@ -55,14 +55,14 @@ g_canvas_buffer_info g_canvas::getBuffer()
 		info.height = header->paintable_height;
 	}
 
-	g_atomic_unlock(currentBufferLock);
+	g_mutex_release(currentBufferLock);
 
 	return info;
 }
 
 g_canvas::g_canvas(uint32_t id) : g_component(id), currentBuffer(0), nextBuffer(0), userListener(0)
 {
-	currentBufferLock = g_atomic_initialize();
+	currentBufferLock = g_mutex_initialize();
 }
 
 g_canvas* g_canvas::create()
@@ -77,12 +77,12 @@ g_canvas* g_canvas::create()
 
 void g_canvas::acknowledgeNewBuffer(g_address address)
 {
-	g_atomic_lock(currentBufferLock);
+	g_mutex_acquire(currentBufferLock);
 	if(address == currentBuffer)
 		return;
 
 	nextBuffer = address;
-	g_atomic_unlock(currentBufferLock);
+	g_mutex_release(currentBufferLock);
 
 	if(userListener)
 		userListener->handle_buffer_changed();
@@ -90,7 +90,7 @@ void g_canvas::acknowledgeNewBuffer(g_address address)
 
 void g_canvas::blit(g_rectangle rect)
 {
-	g_atomic_lock(currentBufferLock);
+	g_mutex_acquire(currentBufferLock);
 
 	if(currentBuffer)
 	{
@@ -110,5 +110,5 @@ void g_canvas::blit(g_rectangle rect)
 		g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_canvas_blit_request), tx);
 	}
 
-	g_atomic_unlock(currentBufferLock);
+	g_mutex_release(currentBufferLock);
 }

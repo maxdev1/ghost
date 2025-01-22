@@ -65,7 +65,7 @@ class screen_t {
 public:
 	screen_color_t colorForeground = SC_WHITE;
 	screen_color_t colorBackground = SC_BLACK;
-	g_atom _lock = g_atomic_initialize();
+	g_user_mutex _lock = g_mutex_initialize();
 
 	virtual ~screen_t() = default;
 
@@ -123,12 +123,12 @@ public:
 
 	virtual void lock()
 	{
-		g_atomic_lock(_lock);
+		g_mutex_acquire(_lock);
 	}
 
 	virtual void unlock()
 	{
-		g_atomic_unlock(_lock);
+		g_mutex_release(_lock);
 	}
 };
 

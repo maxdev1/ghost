@@ -43,7 +43,7 @@ g_message_receive_status g_receive_message_tm(void* buf, size_t max, g_message_t
 /**
  *
  */
-g_message_receive_status g_receive_message_tmb(void* buf, size_t max, g_message_transaction tx, g_message_receive_mode mode, g_atom break_condition) {
+g_message_receive_status g_receive_message_tmb(void* buf, size_t max, g_message_transaction tx, g_message_receive_mode mode, g_user_mutex break_condition) {
 
 	g_syscall_receive_message data;
 	data.buffer = (g_message_header*) buf;

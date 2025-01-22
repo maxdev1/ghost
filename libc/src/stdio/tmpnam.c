@@ -25,7 +25,7 @@
 #include "stdio_internal.h"
 #include "stdlib.h"
 
-g_atom tmpnam_lock = 0;
+g_user_mutex tmpnam_lock = 0;
 char* tmpnam_static = NULL;
 uint64_t tmpnam_next = 0;
 
@@ -36,8 +36,8 @@ char* tmpnam(char* buf)
 {
 	// lock tmpnam
 	if(!tmpnam_lock)
-		tmpnam_lock = g_atomic_initialize(); // TODO Bad initialization
-	g_atomic_lock(tmpnam_lock);
+		tmpnam_lock = g_mutex_initialize(); // TODO Bad initialization
+	g_mutex_acquire(tmpnam_lock);
 
 	// set buffers
 	if(buf == NULL)
@@ -50,7 +50,7 @@ char* tmpnam(char* buf)
 			if(tmpnam_static == NULL)
 			{
 				errno = ENOMEM;
-				g_atomic_unlock(tmpnam_lock);
+				g_mutex_release(tmpnam_lock);
 				return NULL;
 			}
 		}
@@ -66,7 +66,7 @@ char* tmpnam(char* buf)
 			 g_get_pid());
 
 	// unlock tmpnam
-	g_atomic_unlock(tmpnam_lock);
+	g_mutex_release(tmpnam_lock);
 
 	return buf;
 }

@@ -36,9 +36,9 @@ long int ftell(FILE* stream) {
  */
 off_t ftello(FILE* stream) {
 
-	g_atomic_lock(stream->lock);
+	g_mutex_acquire(stream->lock);
 	int res = __ftello_unlocked(stream);
-	g_atomic_unlock(stream->lock);
+	g_mutex_release(stream->lock);
 	return res;
 }
 

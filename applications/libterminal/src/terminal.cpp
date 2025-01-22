@@ -21,7 +21,7 @@
 #include "libterminal/terminal.hpp"
 #include <ghost.h>
 #include <iostream>
-#include <string.h>
+#include <cstring>
 #include <unistd.h>
 
 /**
@@ -30,7 +30,7 @@
 static int* buffer = nullptr;
 static int bufferedChars = 0;
 static int bufferSize = 64;
-static g_atom bufferLock = g_atomic_initialize();
+static g_user_mutex bufferLock = g_mutex_initialize();
 
 /**
  *
@@ -82,7 +82,7 @@ int g_terminal::readUnbuffered()
  */
 void g_terminal::bufferChar(int c)
 {
-	g_atomic_lock(bufferLock);
+	g_mutex_acquire(bufferLock);
 
 	// Create buffer
 	if(buffer == 0)
@@ -103,7 +103,7 @@ void g_terminal::bufferChar(int c)
 		buffer[bufferedChars++] = c;
 	}
 
-	g_atomic_unlock(bufferLock);
+	g_mutex_release(bufferLock);
 }
 
 /**
@@ -127,7 +127,7 @@ int g_terminal::getChar()
 {
 
 	int c;
-	g_atomic_lock(bufferLock);
+	g_mutex_acquire(bufferLock);
 
 	// If there are chars in the buffer, take these
 	if(buffer && bufferedChars > 0)
@@ -141,7 +141,7 @@ int g_terminal::getChar()
 		c = readUnbuffered();
 	}
 
-	g_atomic_unlock(bufferLock);
+	g_mutex_release(bufferLock);
 	return c;
 }
 

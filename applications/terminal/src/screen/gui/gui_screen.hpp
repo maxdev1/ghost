@@ -46,11 +46,11 @@ class gui_screen_t : public screen_t
     g_window* window;
 
     std::list<g_key_info> inputBuffer;
-    g_atom inputBufferEmpty;
-    g_atom inputBufferLock;
+    g_user_mutex inputBufferEmpty;
+    g_user_mutex inputBufferLock;
 
     bool fullRepaint;
-    g_atom upToDate = g_atomic_initialize();
+    g_user_mutex upToDate = g_mutex_initialize();
     bool focused = false;
     uint64_t lastInputTime = 0;
     int scrollY = 0;

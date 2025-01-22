@@ -59,7 +59,7 @@ struct dirent* readdir(DIR* dir) {
  */
 int readdir_r(DIR* dirp, struct dirent* entry, struct dirent** result) {
 
-	g_atomic_lock(dirp->lock);
+	g_mutex_acquire(dirp->lock);
 
 	errno = 0;
 
@@ -72,6 +72,6 @@ int readdir_r(DIR* dirp, struct dirent* entry, struct dirent** result) {
 	}
 
 	int err = errno;
-	g_atomic_unlock(dirp->lock);
+	g_mutex_release(dirp->lock);
 	return err ? err : 0;
 }

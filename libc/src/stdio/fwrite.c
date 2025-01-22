@@ -27,8 +27,8 @@
  *
  */
 size_t fwrite(const void* ptr, size_t size, size_t nmemb, FILE* stream) {
-	g_atomic_lock(stream->lock);
+	g_mutex_acquire(stream->lock);
 	size_t len = __fwrite_unlocked(ptr, size, nmemb, stream);
-	g_atomic_unlock(stream->lock);
+	g_mutex_release(stream->lock);
 	return len;
 }

@@ -34,7 +34,7 @@ static g_fd shellStderr = G_FD_NONE;
 static g_pid controlProcess = G_PID_NONE;
 
 static screen_t *screen = nullptr;
-static g_atom screenLock = g_atomic_initialize();
+static g_user_mutex screenLock = g_mutex_initialize();
 
 static g_terminal_mode inputMode = G_TERMINAL_MODE_DEFAULT;
 static bool inputEcho = true;
@@ -171,9 +171,9 @@ void terminalInputRoutine()
 			{
 				if (inputEcho)
 				{
-					g_atomic_lock(screenLock);
+					g_mutex_acquire(screenLock);
 					screen->write('\n');
-					g_atomic_unlock(screenLock);
+					g_mutex_release(screenLock);
 				}
 
 				buffer += '\n';
@@ -199,9 +199,9 @@ void terminalInputRoutine()
 
 					if (inputEcho)
 					{
-						g_atomic_lock(screenLock);
+						g_mutex_acquire(screenLock);
 						screen->write(chr);
-						g_atomic_unlock(screenLock);
+						g_mutex_release(screenLock);
 					}
 				}
 			}
@@ -213,9 +213,9 @@ void terminalInputRoutine()
 
 				if (inputEcho)
 				{
-					g_atomic_lock(screenLock);
+					g_mutex_acquire(screenLock);
 					screen->write('\n');
-					g_atomic_unlock(screenLock);
+					g_mutex_release(screenLock);
 				}
 			} else if (input.key == "KEY_BACKSPACE" && input.pressed)
 			{
@@ -223,9 +223,9 @@ void terminalInputRoutine()
 
 				if (inputEcho)
 				{
-					g_atomic_lock(screenLock);
+					g_mutex_acquire(screenLock);
 					screen->backspace();
-					g_atomic_unlock(screenLock);
+					g_mutex_release(screenLock);
 				}
 			} else if (input.key == "KEY_ARROW_LEFT" && input.pressed)
 			{
@@ -254,9 +254,9 @@ void terminalInputRoutine()
 
 					if (inputEcho)
 					{
-						g_atomic_lock(screenLock);
+						g_mutex_acquire(screenLock);
 						screen->write(chr);
-						g_atomic_unlock(screenLock);
+						g_mutex_release(screenLock);
 					}
 				}
 			}
@@ -279,7 +279,7 @@ void terminalOutputRoutine(output_routine_startinfo_t *data)
 
 		if (stat == G_FS_READ_SUCCESSFUL)
 		{
-			g_atomic_lock(screenLock);
+			g_mutex_acquire(screenLock);
 
 			for (int i = 0; i < r; i++)
 			{
@@ -287,7 +287,7 @@ void terminalOutputRoutine(output_routine_startinfo_t *data)
 			}
 
 			screen->flush();
-			g_atomic_unlock(screenLock);
+			g_mutex_release(screenLock);
 		} else
 		{
 			break;

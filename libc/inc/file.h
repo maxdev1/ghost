@@ -45,7 +45,7 @@ typedef struct FILE FILE;
  */
 struct FILE {
 	g_fd file_descriptor;
-	g_atom lock;
+	g_user_mutex lock;
 
 	uint8_t* buffer;
 	size_t buffer_size;

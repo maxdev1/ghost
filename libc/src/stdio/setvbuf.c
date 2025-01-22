@@ -28,9 +28,9 @@
  */
 int setvbuf(FILE* stream, char* buf, int mode, size_t size) {
 
-	g_atomic_lock(stream->lock);
+	g_mutex_acquire(stream->lock);
 	int res = __setvbuf_unlocked(stream, buf, mode, size);
-	g_atomic_unlock(stream->lock);
+	g_mutex_release(stream->lock);
 	return res;
 }
 

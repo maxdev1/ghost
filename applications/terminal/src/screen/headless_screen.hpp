@@ -27,7 +27,7 @@ class headless_screen_t : public screen_t {
 private:
 	uint32_t offset;
 
-	g_atom lock;
+	g_user_mutex lock;
 
 	void normalize();
 

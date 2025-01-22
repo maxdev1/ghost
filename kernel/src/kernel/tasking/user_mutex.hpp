@@ -18,20 +18,73 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "__internal.h"
-#include "ghost/user.h"
+#ifndef __KERNEL_USER_MUTEX__
+#define __KERNEL_USER_MUTEX__
+
+#include "ghost/types.h"
+#include "kernel/filesystem/filesystem.hpp"
+#include "kernel/tasking/tasking.hpp"
+
+struct g_user_mutex_waiter
+{
+    g_tid task;
+    g_user_mutex_waiter* next;
+};
+
+struct g_user_mutex_entry
+{
+    g_mutex lock;
+    int value;
+
+    bool reentrant;
+    g_tid owner;
+
+    g_user_mutex_waiter* waiters;
+};
+
+typedef uint32_t g_user_mutex_status;
+#define G_USER_MUTEX_STATUS_ACQUIRED      ((g_user_mutex_status) 1)
+#define G_USER_MUTEX_STATUS_TIMEOUT       ((g_user_mutex_status) 2)
+#define G_USER_MUTEX_STATUS_NOT_ACQUIRED  ((g_user_mutex_status) 3)
+
+/**
+ * Initializes the mutexes.
+ */
+void userMutexInitialize();
+
+/**
+ * Creates a new mutex that can then be locked with the other functions.
+ */
+g_user_mutex userMutexCreate(bool reentrant);
+
+/**
+ * Destroys a mutex.
+ */
+void userMutexDestroy(g_user_mutex mutex);
 
 /**
  *
  */
-g_bool __g_atomic_lock(g_atom atom, bool trying, uint64_t timeout)
-{
-	g_syscall_atomic_lock data;
-	data.atom = atom;
-	data.trying = trying;
-	data.timeout = timeout;
+g_user_mutex_status userMutexAcquire(g_task* task, g_user_mutex mutex, uint64_t timeout, bool trying);
 
-	data.wasSet = false;
-	g_syscall(G_SYSCALL_ATOMIC_LOCK, (g_address) &data);
-	return data.wasSet;
-}
+/**
+ *
+ */
+g_user_mutex_status userMutexTryAcquire(g_task* task, g_user_mutex mutex);
+
+/**
+ * Unlocks the mutex and wakes the next waiting task.
+ */
+void userMutexRelease(g_user_mutex mutex);
+
+/**
+ * Removes the task from a wait queue, for example in case of timeouts.
+ */
+void userMutexUnwaitForAcquire(g_user_mutex mutex, g_tid task);
+
+/**
+ * Adds the task to the wait queue for the mutex.
+ */
+void userMutexWaitForAcquire(g_user_mutex mutex, g_tid task);
+
+#endif

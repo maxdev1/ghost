@@ -11,8 +11,3 @@ About
 kernel to build a facade of C functions. These functions are the base of many
 libc components.
 
-Tasking
--------
-include::g_atomic_lock.adoc[]
-include::g_create_thread.adoc[]
-

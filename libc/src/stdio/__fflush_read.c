@@ -27,8 +27,8 @@
  */
 int __fflush_read(FILE* stream) {
 
-	g_atomic_lock(stream->lock);
+	g_mutex_acquire(stream->lock);
 	int res = __fflush_read_unlocked(stream);
-	g_atomic_unlock(stream->lock);
+	g_mutex_release(stream->lock);
 	return res;
 }

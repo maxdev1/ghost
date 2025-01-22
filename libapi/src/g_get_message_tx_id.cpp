@@ -21,7 +21,7 @@
 #include "ghost/stdint.h"
 #include "ghost/user.h"
 
-static g_atom __next_transaction_lock = g_atomic_initialize();
+static g_user_mutex __next_transaction_lock = g_mutex_initialize();
 static g_message_transaction __next_transaction = G_MESSAGE_TRANSACTION_FIRST;
 
 /**
@@ -29,8 +29,8 @@ static g_message_transaction __next_transaction = G_MESSAGE_TRANSACTION_FIRST;
  */
 g_message_transaction g_get_message_tx_id()
 {
-	g_atomic_lock(__next_transaction_lock);
+	g_mutex_acquire(__next_transaction_lock);
 	g_message_transaction next_topic = __next_transaction++;
-	g_atomic_unlock(__next_transaction_lock);
+	g_mutex_release(__next_transaction_lock);
 	return next_topic;
 }

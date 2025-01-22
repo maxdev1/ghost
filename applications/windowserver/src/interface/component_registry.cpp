@@ -24,37 +24,37 @@
 #include "interface/component_registry.hpp"
 
 static std::map<g_ui_component_id, component_t*> components;
-static g_atom components_lock = g_atomic_initialize();
+static g_user_mutex components_lock = g_mutex_initialize();
 static std::map<g_pid, std::map<g_ui_component_id, component_t*>> components_by_process;
 static g_ui_component_id next_id = 1;
 
 g_ui_component_id component_registry_t::add(g_pid process, component_t* component)
 {
-	g_atomic_lock(components_lock);
+	g_mutex_acquire(components_lock);
 	g_ui_component_id id = next_id++;
 	components[id] = component;
 	components_by_process[process][id] = component;
 	component->id = id;
-	g_atomic_unlock(components_lock);
+	g_mutex_release(components_lock);
 	return id;
 }
 
 component_t* component_registry_t::get(g_ui_component_id id)
 {
-	g_atomic_unlock(components_lock);
+	g_mutex_release(components_lock);
 	if(components.count(id) > 0)
 	{
 		component_t* comp = components[id];
-		g_atomic_unlock(components_lock);
+		g_mutex_release(components_lock);
 		return comp;
 	}
-	g_atomic_unlock(components_lock);
+	g_mutex_release(components_lock);
 	return 0;
 }
 
 void component_registry_t::remove_component(g_pid pid, g_ui_component_id id)
 {
-	g_atomic_lock(components_lock);
+	g_mutex_acquire(components_lock);
 	if(components.count(id) > 0)
 	{
 		if(components_by_process.count(pid) > 0)
@@ -63,15 +63,15 @@ void component_registry_t::remove_component(g_pid pid, g_ui_component_id id)
 		}
 		components.erase(components.find(id));
 	}
-	g_atomic_unlock(components_lock);
+	g_mutex_release(components_lock);
 }
 
 void component_registry_t::cleanup_process(g_pid pid)
 {
 	// Get components mapped for process
-	g_atomic_lock(components_lock);
+	g_mutex_acquire(components_lock);
 	auto components = &components_by_process[pid];
-	g_atomic_unlock(components_lock);
+	g_mutex_release(components_lock);
 
 	if(components)
 	{
@@ -107,9 +107,9 @@ void component_registry_t::cleanup_process(g_pid pid)
 		}
 
 		// Remove map from registry
-		g_atomic_lock(components_lock);
+		g_mutex_acquire(components_lock);
 		components_by_process.erase(components_by_process.find(pid));
-		g_atomic_unlock(components_lock);
+		g_mutex_release(components_lock);
 	}
 }
 

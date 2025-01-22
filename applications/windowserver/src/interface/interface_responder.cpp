@@ -25,18 +25,18 @@
 #include "interface/interface_responder.hpp"
 
 std::deque<command_message_response_t> buffer;
-g_atom buffer_empty = g_atomic_initialize();
-g_atom buffer_lock = g_atomic_initialize();
+g_user_mutex buffer_empty = g_mutex_initialize();
+g_user_mutex buffer_lock = g_mutex_initialize();
 
 void interfaceResponderThread()
 {
 	g_task_register_id("windowserver/interface-responder");
-	g_atomic_lock(buffer_empty);
+	g_mutex_acquire(buffer_empty);
 	while(true)
 	{
-		g_atomic_lock(buffer_empty);
+		g_mutex_acquire(buffer_empty);
 
-		g_atomic_lock(buffer_lock);
+		g_mutex_acquire(buffer_lock);
 		while(buffer.size() > 0)
 		{
 			command_message_response_t& response = buffer.back();
@@ -46,14 +46,14 @@ void interfaceResponderThread()
 
 			buffer.pop_back();
 		}
-		g_atomic_unlock(buffer_lock);
+		g_mutex_release(buffer_lock);
 	}
 }
 
 void interfaceResponderSend(command_message_response_t& response)
 {
-	g_atomic_lock(buffer_lock);
+	g_mutex_acquire(buffer_lock);
 	buffer.push_back(response);
-	g_atomic_unlock(buffer_empty);
-	g_atomic_unlock(buffer_lock);
+	g_mutex_release(buffer_empty);
+	g_mutex_release(buffer_lock);
 }

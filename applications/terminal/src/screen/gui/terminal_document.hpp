@@ -37,7 +37,7 @@ struct terminal_row_t
  */
 class terminal_document_t
 {
-	g_atom linesLock = g_atomic_initialize_r(true);
+	g_user_mutex linesLock = g_mutex_initialize_r(true);
 	terminal_line_t* lines = nullptr;
 
 public:

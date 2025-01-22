@@ -36,8 +36,8 @@ class canvas_t;
 struct async_resizer_info_t
 {
 	bool alive;
-	g_atom lock;
-	g_atom checkAtom;
+	g_user_mutex lock;
+	g_user_mutex checkAtom;
 	canvas_t* canvas;
 };
 
@@ -49,7 +49,7 @@ class canvas_t : public component_t
 
 	async_resizer_info_t* asyncInfo;
 
-	g_atom currentBufferLock = g_atomic_initialize();
+	g_user_mutex currentBufferLock = g_mutex_initialize();
 	buffer_info_t currentBuffer;
 	buffer_info_t nextBuffer;
 

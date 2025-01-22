@@ -35,8 +35,8 @@ canvas_t::canvas_t(g_tid partnerThread) : partnerThread(partnerThread)
 	asyncInfo = new async_resizer_info_t();
 	asyncInfo->canvas = this;
 	asyncInfo->alive = true;
-	asyncInfo->lock = g_atomic_initialize();
-	asyncInfo->checkAtom = g_atomic_initialize();
+	asyncInfo->lock = g_mutex_initialize();
+	asyncInfo->checkAtom = g_mutex_initialize();
 	g_create_thread_d((void*) canvas_t::asyncBufferResizer, asyncInfo);
 }
 
@@ -46,22 +46,22 @@ canvas_t::canvas_t(g_tid partnerThread) : partnerThread(partnerThread)
  */
 canvas_t::~canvas_t()
 {
-	g_atomic_lock(asyncInfo->lock);
+	g_mutex_acquire(asyncInfo->lock);
 	asyncInfo->alive = false;
-	g_atomic_unlock(asyncInfo->lock);
+	g_mutex_release(asyncInfo->lock);
 }
 
 void canvas_t::asyncBufferResizer(async_resizer_info_t* asyncInfo)
 {
 	while(true)
 	{
-		g_atomic_lock_to(asyncInfo->checkAtom, 10000);
+		g_mutex_acquire_to(asyncInfo->checkAtom, 10000);
 
-		g_atomic_lock(asyncInfo->lock);
+		g_mutex_acquire(asyncInfo->lock);
 		if(!asyncInfo->alive)
 			break;
 		asyncInfo->canvas->checkBuffer();
-		g_atomic_unlock(asyncInfo->lock);
+		g_mutex_release(asyncInfo->lock);
 	}
 	delete asyncInfo;
 }
@@ -71,7 +71,7 @@ void canvas_t::asyncBufferResizer(async_resizer_info_t* asyncInfo)
  */
 void canvas_t::handleBoundChange(g_rectangle oldBounds)
 {
-	g_atomic_unlock(asyncInfo->checkAtom);
+	g_mutex_release(asyncInfo->checkAtom);
 }
 
 /**
@@ -165,7 +165,7 @@ void canvas_t::requestClientToAcknowledgeNewBuffer()
 
 void canvas_t::clientHasAcknowledgedCurrentBuffer()
 {
-	g_atomic_lock(currentBufferLock);
+	g_mutex_acquire(currentBufferLock);
 
 	if(currentBuffer.localMapping != nullptr)
 	{
@@ -184,7 +184,7 @@ void canvas_t::clientHasAcknowledgedCurrentBuffer()
 	currentBuffer.surface = cairo_image_surface_create_for_data(bufferContent, CAIRO_FORMAT_ARGB32, header->paintable_width,
 																header->paintable_height, cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, header->paintable_width));
 
-	g_atomic_unlock(currentBufferLock);
+	g_mutex_release(currentBufferLock);
 }
 
 void canvas_t::paint()
@@ -192,10 +192,10 @@ void canvas_t::paint()
 	auto cr = graphics.getContext();
     if(!cr) return;
 
-	g_atomic_lock(currentBufferLock);
+	g_mutex_acquire(currentBufferLock);
 	if(currentBuffer.localMapping == 0 || !currentBuffer.acknowledged)
 	{
-		g_atomic_unlock(currentBufferLock);
+		g_mutex_release(currentBufferLock);
 		return;
 	}
 
@@ -209,7 +209,7 @@ void canvas_t::paint()
 	// mark painted area as dirty
 	markDirty(g_rectangle(header->blit_x, header->blit_y, header->blit_width, header->blit_height));
 
-	g_atomic_unlock(currentBufferLock);
+	g_mutex_release(currentBufferLock);
 }
 
 void canvas_t::blit()

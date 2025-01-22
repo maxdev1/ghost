@@ -30,9 +30,9 @@ void guiScreenPaintEntry(gui_screen_t* screen);
 
 bool gui_screen_t::initialize()
 {
-	inputBufferLock = g_atomic_initialize();
-	inputBufferEmpty = g_atomic_initialize();
-	g_atomic_lock(inputBufferEmpty);
+	inputBufferLock = g_mutex_initialize();
+	inputBufferEmpty = g_mutex_initialize();
+	g_mutex_acquire(inputBufferEmpty);
 
 	if(!createUi())
 		return false;
@@ -125,17 +125,17 @@ g_key_info gui_screen_t::readInput()
 
 	for(;;)
 	{
-		g_atomic_lock(inputBufferLock);
+		g_mutex_acquire(inputBufferLock);
 		if(inputBuffer.size() == 0)
 		{
-			g_atomic_unlock(inputBufferLock);
-			g_atomic_lock(inputBufferEmpty);
+			g_mutex_release(inputBufferLock);
+			g_mutex_acquire(inputBufferEmpty);
 		}
 		else
 		{
 			result = inputBuffer.front();
 			inputBuffer.pop_front();
-			g_atomic_unlock(inputBufferLock);
+			g_mutex_release(inputBufferLock);
 			break;
 		}
 	}
@@ -145,11 +145,11 @@ g_key_info gui_screen_t::readInput()
 
 void gui_screen_t::bufferInput(const g_key_info& info)
 {
-	g_atomic_lock(inputBufferLock);
+	g_mutex_acquire(inputBufferLock);
 	inputBuffer.push_back(info);
 	lastInputTime = g_millis();
-	g_atomic_unlock(inputBufferEmpty);
-	g_atomic_unlock(inputBufferLock);
+	g_mutex_release(inputBufferEmpty);
+	g_mutex_release(inputBufferLock);
 }
 
 void canvas_buffer_listener_t::handle_buffer_changed()
@@ -342,7 +342,7 @@ void gui_screen_t::paint()
 
 		canvas.component->blit(g_rectangle(0, 0, canvas.bounds.width, canvas.bounds.height));
 
-		g_atomic_lock(upToDate);
+		g_mutex_acquire(upToDate);
 	}
 }
 
@@ -450,7 +450,7 @@ void gui_screen_t::flush()
 
 void gui_screen_t::repaint() const
 {
-	g_atomic_unlock(upToDate);
+	g_mutex_release(upToDate);
 }
 
 void gui_screen_t::setFocused(bool _focused)

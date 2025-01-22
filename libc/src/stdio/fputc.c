@@ -27,9 +27,9 @@
  */
 int fputc(int c, FILE* stream) {
 
-	g_atomic_lock(stream->lock);
+	g_mutex_acquire(stream->lock);
 	int result = __fputc_unlocked(c, stream);
-	g_atomic_unlock(stream->lock);
+	g_mutex_release(stream->lock);
 	return result;
 }
 

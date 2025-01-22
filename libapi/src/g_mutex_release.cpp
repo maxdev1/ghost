@@ -18,15 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "__internal.h"
 #include "ghost/user.h"
 
-void g_atomic_lock(g_atom atom)
+void g_mutex_release(g_user_mutex mutex)
 {
-	__g_atomic_lock(atom, false, 0);
-}
-
-g_bool g_atomic_lock_to(g_atom atom, uint64_t timeout)
-{
-	return __g_atomic_lock(atom, false, timeout);
+	g_syscall_user_mutex_release data;
+	data.mutex = mutex;
+	g_syscall(G_SYSCALL_USER_MUTEX_RELEASE, (g_address) &data);
 }

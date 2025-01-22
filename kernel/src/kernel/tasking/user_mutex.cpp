@@ -18,67 +18,67 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "kernel/tasking/atoms.hpp"
+#include "kernel/tasking/user_mutex.hpp"
 #include "kernel/memory/heap.hpp"
 #include "kernel/utils/hashmap.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "shared/logger/logger.hpp"
 
-static g_atom nextAtom;
-static g_mutex fullLock;
-static g_hashmap<g_atom, g_atom_entry*>* atomMap;
+static g_user_mutex nextMutex;
+static g_mutex globalLock;
+static g_hashmap<g_user_mutex, g_user_mutex_entry*>* mutexMap;
 
-void _atomicSetTaskWaiting(g_atom_entry* entry, g_task* task);
-void _atomicWakeWaitingTasks(g_atom_entry* entry);
+void _userMutexSetTaskWaiting(g_user_mutex_entry* entry, g_task* task);
+void _userMutexWakeWaitingTasks(g_user_mutex_entry* entry);
 
-void atomicInitialize()
+void userMutexInitialize()
 {
-	mutexInitialize(&fullLock);
-	nextAtom = 0;
-	atomMap = hashmapCreateNumeric<g_atom, g_atom_entry*>(128);
+	mutexInitialize(&globalLock);
+	nextMutex = 0;
+	mutexMap = hashmapCreateNumeric<g_user_mutex, g_user_mutex_entry*>(128);
 }
 
-g_atom atomicCreate(bool reentrant)
+g_user_mutex userMutexCreate(bool reentrant)
 {
-	g_atom_entry* entry = (g_atom_entry*) heapAllocate(sizeof(g_atom_entry));
+	g_user_mutex_entry* entry = (g_user_mutex_entry*) heapAllocate(sizeof(g_user_mutex_entry));
 	mutexInitialize(&entry->lock);
 	entry->value = 0;
 	entry->waiters = nullptr;
 	entry->reentrant = reentrant;
 	entry->owner = -1;
 
-	mutexAcquire(&fullLock);
-	g_atom atom = ++nextAtom;
-	mutexRelease(&fullLock);
-	hashmapPut(atomMap, atom, entry);
+	mutexAcquire(&globalLock);
+	g_user_mutex mutex = ++nextMutex;
+	mutexRelease(&globalLock);
+	hashmapPut(mutexMap, mutex, entry);
 
-	return atom;
+	return mutex;
 }
 
-g_atom_lock_status atomicTryLock(g_task* task, g_atom atom)
+g_user_mutex_status userMutexTryAcquire(g_task* task, g_user_mutex mutex)
 {
-	g_atom_entry* entry = hashmapGet<g_atom, g_atom_entry*>(atomMap, atom, nullptr);
+	g_user_mutex_entry* entry = hashmapGet<g_user_mutex, g_user_mutex_entry*>(mutexMap, mutex, nullptr);
 	if(!entry)
 	{
-		logWarn("%! task %i tried to lock unknown atom %i", "atoms", task->id, atom);
+		logWarn("%! task %i tried to lock unknown mutex %i", "mutex", task->id, mutex);
 		return false;
 	}
 
-	g_atom_lock_status status;
+	g_user_mutex_status status;
 	mutexAcquire(&entry->lock);
 	if(entry->value)
 	{
 		if(entry->reentrant && task->id == entry->owner)
 		{
 			entry->value++;
-			status = G_ATOM_LOCK_STATUS_SET;
+			status = G_USER_MUTEX_STATUS_ACQUIRED;
 		}
 		else
-			status = G_ATOM_LOCK_STATUS_NOT_SET;
+			status = G_USER_MUTEX_STATUS_NOT_ACQUIRED;
 	}
 	else
 	{
-		status = G_ATOM_LOCK_STATUS_SET;
+		status = G_USER_MUTEX_STATUS_ACQUIRED;
 		entry->value = 1;
 		if(entry->reentrant)
 		{
@@ -91,7 +91,7 @@ g_atom_lock_status atomicTryLock(g_task* task, g_atom atom)
 	return status;
 }
 
-g_atom_lock_status atomicLock(g_task* task, g_atom atom, uint64_t timeout, bool trying)
+g_user_mutex_status userMutexAcquire(g_task* task, g_user_mutex mutex, uint64_t timeout, bool trying)
 {
 	bool wasSet = false;
 	bool hasTimeout = false;
@@ -105,14 +105,14 @@ g_atom_lock_status atomicLock(g_task* task, g_atom atom, uint64_t timeout, bool 
 		if(useTimeout && (hasTimeout = clockHasTimedOut(task->id)))
 			break;
 
-		g_atom_lock_status lockStatus = atomicTryLock(task, atom);
-		if(wasSet = (lockStatus == G_ATOM_LOCK_STATUS_SET))
+		g_user_mutex_status lockStatus = userMutexTryAcquire(task, mutex);
+		if(wasSet = (lockStatus == G_USER_MUTEX_STATUS_ACQUIRED))
 			break;
 
 		if(trying)
 			break;
 
-		atomicWaitForLock(atom, task->id);
+		userMutexWaitForAcquire(mutex, task->id);
 		task->status = G_THREAD_STATUS_WAITING;
 		taskingYield();
 	}
@@ -120,17 +120,17 @@ g_atom_lock_status atomicLock(g_task* task, g_atom atom, uint64_t timeout, bool 
 	if(useTimeout)
 		clockUnwaitForTime(task->id);
 
-	atomicUnwaitForLock(atom, task->id);
+	userMutexUnwaitForAcquire(mutex, task->id);
 
-	return hasTimeout ? G_ATOM_LOCK_STATUS_TIMEOUT : (wasSet ? G_ATOM_LOCK_STATUS_SET : G_ATOM_LOCK_STATUS_NOT_SET);
+	return hasTimeout ? G_USER_MUTEX_STATUS_TIMEOUT : (wasSet ? G_USER_MUTEX_STATUS_ACQUIRED : G_USER_MUTEX_STATUS_NOT_ACQUIRED);
 }
 
-void atomicUnlock(g_atom atom)
+void userMutexRelease(g_user_mutex mutex)
 {
-	g_atom_entry* entry = hashmapGet<g_atom, g_atom_entry*>(atomMap, atom, nullptr);
+	g_user_mutex_entry* entry = hashmapGet<g_user_mutex, g_user_mutex_entry*>(mutexMap, mutex, nullptr);
 	if(!entry)
 	{
-		logWarn("%! task %i tried to unlock unknown atom %i", "atoms", taskingGetCurrentTask()->id, atom);
+		logWarn("%! task %i tried to unlock unknown mutex %i", "mutex", taskingGetCurrentTask()->id, mutex);
 		return;
 	}
 
@@ -142,43 +142,43 @@ void atomicUnlock(g_atom atom)
 		{
 			entry->value = 0;
 			entry->owner = -1;
-			_atomicWakeWaitingTasks(entry);
+			_userMutexWakeWaitingTasks(entry);
 		}
 	}
 	else
 	{
 		entry->value = 0;
-		_atomicWakeWaitingTasks(entry);
+		_userMutexWakeWaitingTasks(entry);
 	}
 	mutexRelease(&entry->lock);
 }
 
-void atomicDestroy(g_atom atom)
+void userMutexDestroy(g_user_mutex mutex)
 {
-	atomicUnlock(atom);
+	userMutexRelease(mutex);
 
-	mutexAcquire(&atomMap->lock);
-	g_atom_entry* entry = hashmapGet<g_atom, g_atom_entry*>(atomMap, atom, nullptr);
+	mutexAcquire(&mutexMap->lock);
+	g_user_mutex_entry* entry = hashmapGet<g_user_mutex, g_user_mutex_entry*>(mutexMap, mutex, nullptr);
 	if(entry)
 	{
-		hashmapRemove(atomMap, atom);
+		hashmapRemove(mutexMap, mutex);
 		heapFree(entry);
 	}
-	mutexRelease(&atomMap->lock);
+	mutexRelease(&mutexMap->lock);
 }
 
-void atomicWaitForLock(g_atom atom, g_tid task)
+void userMutexWaitForAcquire(g_user_mutex mutex, g_tid task)
 {
-	g_atom_entry* entry = hashmapGet<g_atom, g_atom_entry*>(atomMap, atom, nullptr);
+	g_user_mutex_entry* entry = hashmapGet<g_user_mutex, g_user_mutex_entry*>(mutexMap, mutex, nullptr);
 	if(!entry)
 	{
-		logWarn("%! tried to add waiter for task %i to unknown atom %i", "atoms", task, atom);
+		logWarn("%! tried to add waiter for task %i to unknown mutex %i", "mutex", task, mutex);
 		return;
 	}
 
 	mutexAcquire(&entry->lock);
 
-	auto waiter = (g_atom_waiter*) heapAllocate(sizeof(g_atom_waiter));
+	auto waiter = (g_user_mutex_waiter*) heapAllocate(sizeof(g_user_mutex_waiter));
 	waiter->task = task;
 	waiter->next = entry->waiters;
 	entry->waiters = waiter;
@@ -186,19 +186,19 @@ void atomicWaitForLock(g_atom atom, g_tid task)
 	mutexRelease(&entry->lock);
 }
 
-void atomicUnwaitForLock(g_atom atom, g_tid task)
+void userMutexUnwaitForAcquire(g_user_mutex mutex, g_tid task)
 {
-	g_atom_entry* entry = hashmapGet<g_atom, g_atom_entry*>(atomMap, atom, nullptr);
+	g_user_mutex_entry* entry = hashmapGet<g_user_mutex, g_user_mutex_entry*>(mutexMap, mutex, nullptr);
 	if(!entry)
 	{
-		logWarn("%! tried to remove waiter for task %i from unknown atom %i", "atoms", task, atom);
+		logWarn("%! tried to remove waiter for task %i from unknown mutex %i", "mutex", task, mutex);
 		return;
 	}
 
 	mutexAcquire(&entry->lock);
 
-	g_atom_waiter* prev = nullptr;
-	g_atom_waiter* waiter = entry->waiters;
+	g_user_mutex_waiter* prev = nullptr;
+	g_user_mutex_waiter* waiter = entry->waiters;
 	while(waiter)
 	{
 		if(waiter->task == task)
@@ -219,7 +219,7 @@ void atomicUnwaitForLock(g_atom atom, g_tid task)
 	mutexRelease(&entry->lock);
 }
 
-void _atomicWakeWaitingTasks(g_atom_entry* entry)
+void _userMutexWakeWaitingTasks(g_user_mutex_entry* entry)
 {
 	auto waiter = entry->waiters;
 	while(waiter)

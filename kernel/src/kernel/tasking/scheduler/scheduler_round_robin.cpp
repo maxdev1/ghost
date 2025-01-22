@@ -20,7 +20,6 @@
 
 #include "kernel/memory/heap.hpp"
 #include "kernel/system/processor/processor.hpp"
-#include "kernel/tasking/atoms.hpp"
 #include "kernel/tasking/scheduler/scheduler.hpp"
 #include "shared/logger/logger.hpp"
 

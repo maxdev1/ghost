@@ -26,7 +26,7 @@
  */
 int ferror(FILE* stream) {
 
-	g_atomic_lock(stream->lock);
+	g_mutex_acquire(stream->lock);
 	int res;
 	if (stream->impl_error) {
 		res = stream->impl_error(stream);
@@ -34,6 +34,6 @@ int ferror(FILE* stream) {
 		errno = ENOTSUP;
 		res = EOF;
 	}
-	g_atomic_unlock(stream->lock);
+	g_mutex_release(stream->lock);
 	return res;
 }

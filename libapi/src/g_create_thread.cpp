@@ -19,7 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost/user.h"
-#include "__internal.h"
 
 /**
  * Thread setup routine, used by the thread creation call. Assumes that the created thread

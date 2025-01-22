@@ -39,7 +39,7 @@ headless_screen_t::headless_screen_t()
 
 bool headless_screen_t::initialize()
 {
-	lock = g_atomic_initialize();
+	lock = g_mutex_initialize();
 
 	enableCursor();
 	clean();
@@ -49,14 +49,14 @@ bool headless_screen_t::initialize()
 
 void headless_screen_t::clean()
 {
-	g_atomic_lock(lock);
+	g_mutex_acquire(lock);
 	for(uint32_t off = 0; off < SCREEN_HEIGHT * SCREEN_WIDTH * 2; off += 2)
 	{
 		output[off] = ' ';
 		output[off + 1] = SC_COLOR(SC_BLACK, SC_WHITE);
 	}
 	offset = 0;
-	g_atomic_unlock(lock);
+	g_mutex_release(lock);
 }
 
 void headless_screen_t::enableCursor()
@@ -69,7 +69,7 @@ void headless_screen_t::enableCursor()
 
 void headless_screen_t::updateCursor()
 {
-	g_atomic_lock(lock);
+	g_mutex_acquire(lock);
 
 	uint16_t position = (getCursorY() * SCREEN_WIDTH) + getCursorX();
 	ioOutportByte(0x3D4, 0x0F);
@@ -77,12 +77,12 @@ void headless_screen_t::updateCursor()
 	ioOutportByte(0x3D4, 0x0E);
 	ioOutportByte(0x3D5, (uint8_t) ((position >> 8) & 0xFF));
 
-	g_atomic_unlock(lock);
+	g_mutex_release(lock);
 }
 
 void headless_screen_t::setCursor(int x, int y)
 {
-	g_atomic_lock(lock);
+	g_mutex_acquire(lock);
 
 	offset = (y * SCREEN_WIDTH * 2) + x * 2;
 	if(offset < 0)
@@ -94,13 +94,13 @@ void headless_screen_t::setCursor(int x, int y)
 		offset = SCREEN_WIDTH * 2 * SCREEN_HEIGHT;
 	}
 
-	g_atomic_unlock(lock);
+	g_mutex_release(lock);
 	updateCursor();
 }
 
 void headless_screen_t::write(char c)
 {
-	g_atomic_lock(lock);
+	g_mutex_acquire(lock);
 	if(c == '\n')
 	{
 		offset += SCREEN_WIDTH * 2;
@@ -113,30 +113,30 @@ void headless_screen_t::write(char c)
 											  colorForeground);
 	}
 	normalize();
-	g_atomic_unlock(lock);
+	g_mutex_release(lock);
 
 	updateCursor();
 }
 
 void headless_screen_t::remove()
 {
-	g_atomic_lock(lock);
+	g_mutex_acquire(lock);
 	output[offset++] = ' ';
 	++offset; // keep color
 	offset -= 2;
-	g_atomic_unlock(lock);
+	g_mutex_release(lock);
 
 	updateCursor();
 }
 
 void headless_screen_t::backspace()
 {
-	g_atomic_lock(lock);
+	g_mutex_acquire(lock);
 	offset -= 2;
 	output[offset++] = ' ';
 	++offset; // keep color
 	offset -= 2;
-	g_atomic_unlock(lock);
+	g_mutex_release(lock);
 
 	updateCursor();
 }

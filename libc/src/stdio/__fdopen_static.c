@@ -37,7 +37,7 @@ int __fdopen_static(int fd, const char* mode, FILE* file) {
 	}
 
 	// create lock
-	file->lock = g_atomic_initialize();
+	file->lock = g_mutex_initialize();
 
 	// set file descriptor and flags
 	file->file_descriptor = fd;

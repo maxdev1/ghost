@@ -18,12 +18,36 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "__internal.h"
 #include "ghost/user.h"
 
-void g_atomic_destroy(g_atom atom)
+g_bool __g_mutex_acquire(g_user_mutex mutex, bool trying, uint64_t timeout)
 {
-	g_syscall_atomic_destroy data;
-	data.atom = atom;
-	g_syscall(G_SYSCALL_ATOMIC_DESTROY, (g_address) &data);
+	g_syscall_user_mutex_acquire data;
+	data.mutex = mutex;
+	data.trying = trying;
+	data.timeout = timeout;
+
+	data.wasSet = false;
+	g_syscall(G_SYSCALL_USER_MUTEX_ACQUIRE, (g_address) &data);
+	return data.wasSet;
+}
+
+void g_mutex_acquire(g_user_mutex mutex)
+{
+	__g_mutex_acquire(mutex, false, 0);
+}
+
+g_bool g_mutex_acquire_to(g_user_mutex mutex, uint64_t timeout)
+{
+	return __g_mutex_acquire(mutex, false, timeout);
+}
+
+g_bool g_mutex_try_acquire(g_user_mutex mutex)
+{
+	return __g_mutex_acquire(mutex, true, 0);
+}
+
+g_bool g_mutex_try_acquire_to(g_user_mutex mutex, uint64_t timeout)
+{
+	return __g_mutex_acquire(mutex, true, timeout);
 }

@@ -86,7 +86,7 @@ class component_t : public bounds_event_component_t
 	g_rectangle bounds;
 	component_t* parent;
 	std::vector<component_child_reference_t> children;
-	g_atom children_lock = g_atomic_initialize_r(true);
+	g_user_mutex children_lock = g_mutex_initialize_r(true);
 
 	g_dimension minimumSize;
 	g_dimension preferredSize;
@@ -156,7 +156,7 @@ class component_t : public bounds_event_component_t
 		return children;
 	}
 
-	g_atom getChildrenLock()
+	g_user_mutex getChildrenLock()
 	{
 		return children_lock;
 	}

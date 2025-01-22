@@ -36,9 +36,9 @@ int fseek(FILE* stream, long int offset, int whence) {
  */
 int fseeko(FILE* stream, off_t offset, int whence) {
 
-	g_atomic_lock(stream->lock);
+	g_mutex_acquire(stream->lock);
 	int res = __fseeko_unlocked(stream, offset, whence);
-	g_atomic_unlock(stream->lock);
+	g_mutex_release(stream->lock);
 	return res;
 }
 

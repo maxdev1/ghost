@@ -27,7 +27,7 @@ terminal_document_t::terminal_document_t()
 
 void terminal_document_t::insert(int x, int offsetY, char c)
 {
-	g_atomic_lock(this->linesLock);
+	g_mutex_acquire(this->linesLock);
 
 	auto current = this->lines;
 	while(offsetY-- && current)
@@ -59,12 +59,12 @@ void terminal_document_t::insert(int x, int offsetY, char c)
 		}
 	}
 
-	g_atomic_unlock(this->linesLock);
+	g_mutex_release(this->linesLock);
 }
 
 void terminal_document_t::remove(int x, int offsetY)
 {
-	g_atomic_lock(this->linesLock);
+	g_mutex_acquire(this->linesLock);
 
 	auto current = this->lines;
 	while(offsetY-- && current)
@@ -77,13 +77,13 @@ void terminal_document_t::remove(int x, int offsetY)
 		current->remove(x);
 	}
 
-	g_atomic_unlock(this->linesLock);
+	g_mutex_release(this->linesLock);
 }
 
 
 terminal_line_t* terminal_document_t::getLine(int offset)
 {
-	g_atomic_lock(this->linesLock);
+	g_mutex_acquire(this->linesLock);
 
 	auto current = this->lines;
 	while(offset-- && current)
@@ -91,7 +91,7 @@ terminal_line_t* terminal_document_t::getLine(int offset)
 		current = current->previous;
 	}
 
-	g_atomic_unlock(this->linesLock);
+	g_mutex_release(this->linesLock);
 	return current;
 }
 
@@ -112,7 +112,7 @@ terminal_line_t* terminal_document_t::getLine(int offset)
  */
 terminal_row_t terminal_document_t::acquireRow(int offsetY, int columns)
 {
-	g_atomic_lock(this->linesLock);
+	g_mutex_acquire(this->linesLock);
 
 	auto line = this->lines;
 	int rem = line->length;
@@ -175,7 +175,7 @@ terminal_row_t terminal_document_t::acquireRow(int offsetY, int columns)
 
 void terminal_document_t::releaseRow() const
 {
-	g_atomic_unlock(this->linesLock);
+	g_mutex_release(this->linesLock);
 }
 
 int terminal_document_t::getRowCount(int columns)
@@ -184,23 +184,23 @@ int terminal_document_t::getRowCount(int columns)
 		return 0;
 
 	int rows = 0;
-	g_atomic_lock(this->linesLock);
+	g_mutex_acquire(this->linesLock);
 	auto current = this->lines;
 	while(current)
 	{
 		rows += current->length / columns + (current->length != 0 && current->length % columns == 0 ? 0 : 1);
 		current = current->previous;
 	}
-	g_atomic_unlock(this->linesLock);
+	g_mutex_release(this->linesLock);
 	return rows;
 }
 
 void terminal_document_t::clear()
 {
-	g_atomic_lock(this->linesLock);
+	g_mutex_acquire(this->linesLock);
 	auto old = this->lines;
 	this->lines = new terminal_line_t();
-	g_atomic_unlock(this->linesLock);
+	g_mutex_release(this->linesLock);
 
 	auto current = old;
 	while(current)

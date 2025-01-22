@@ -59,7 +59,7 @@ void item_container_t::showSelection(g_rectangle& newSelection)
 
 void item_container_t::updateSelectedChildren(const g_rectangle& newSelection)
 {
-	g_atomic_lock(this->getChildrenLock());
+	g_mutex_acquire(this->getChildrenLock());
 	for(auto child: this->getChildren())
 	{
 		bool intersecting = newSelection.intersects(child.component->getBounds());
@@ -67,7 +67,7 @@ void item_container_t::updateSelectedChildren(const g_rectangle& newSelection)
 		if(childDesktopItem)
 			childDesktopItem->setSelected(intersecting);
 	}
-	g_atomic_unlock(this->getChildrenLock());
+	g_mutex_release(this->getChildrenLock());
 }
 
 
@@ -75,14 +75,14 @@ void item_container_t::hideSelection() { selection->setVisible(false); }
 
 void item_container_t::unselectItems()
 {
-	g_atomic_lock(this->getChildrenLock());
+	g_mutex_acquire(this->getChildrenLock());
 	for(auto child: this->getChildren())
 	{
 		auto childDesktopItem = dynamic_cast<item_t*>(child.component);
 		if(childDesktopItem)
 			childDesktopItem->setSelected(false);
 	}
-	g_atomic_unlock(this->getChildrenLock());
+	g_mutex_release(this->getChildrenLock());
 }
 
 void item_container_t::setSelectedItem(item_t* item)
@@ -93,19 +93,19 @@ void item_container_t::setSelectedItem(item_t* item)
 
 void item_container_t::pressDesktopItems(const g_point& screenPosition)
 {
-	g_atomic_lock(this->getChildrenLock());
+	g_mutex_acquire(this->getChildrenLock());
 	for(auto child: this->getChildren())
 	{
 		auto childDesktopItem = dynamic_cast<item_t*>(child.component);
 		if(childDesktopItem)
 			childDesktopItem->onContainerItemPressed(screenPosition);
 	}
-	g_atomic_unlock(this->getChildrenLock());
+	g_mutex_release(this->getChildrenLock());
 }
 
 void item_container_t::dragDesktopItems(const g_point& screenPosition)
 {
-	g_atomic_lock(this->getChildrenLock());
+	g_mutex_acquire(this->getChildrenLock());
 	for(auto child: this->getChildren())
 	{
 		auto childDesktopItem = dynamic_cast<item_t*>(child.component);
@@ -114,12 +114,12 @@ void item_container_t::dragDesktopItems(const g_point& screenPosition)
 			childDesktopItem->onContainerItemDragged(screenPosition);
 		}
 	}
-	g_atomic_unlock(this->getChildrenLock());
+	g_mutex_release(this->getChildrenLock());
 }
 
 void item_container_t::tidyDesktopItems()
 {
-	g_atomic_lock(this->getChildrenLock());
+	g_mutex_acquire(this->getChildrenLock());
 	for(auto child: this->getChildren())
 	{
 		auto childDesktopItem = dynamic_cast<item_t*>(child.component);
@@ -128,6 +128,6 @@ void item_container_t::tidyDesktopItems()
 			childDesktopItem->tidyPosition();
 		}
 	}
-	g_atomic_unlock(this->getChildrenLock());
+	g_mutex_release(this->getChildrenLock());
 
 }

@@ -28,9 +28,9 @@
  */
 int fgetc(FILE* stream) {
 
-	g_atomic_lock(stream->lock);
+	g_mutex_acquire(stream->lock);
 	int res = __fgetc_unlocked(stream);
-	g_atomic_unlock(stream->lock);
+	g_mutex_release(stream->lock);
 	return res;
 }
 

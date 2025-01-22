@@ -36,7 +36,7 @@ typedef struct DIR DIR;
 struct DIR {
 	struct dirent* entbuf;
 	g_fs_directory_iterator* iter;
-	g_atom lock;
+	g_user_mutex lock;
 };
 
 __END_C

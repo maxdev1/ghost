@@ -164,9 +164,9 @@ int main(int argc, char** argv)
 		window->setBounds(g_rectangle(70, 70, 190, 320));
 		window->setVisible(true);
 
-		g_atom lock = g_atomic_initialize();
-		g_atomic_lock(lock);
-		g_atomic_lock(lock);
+		g_user_mutex lock = g_mutex_initialize();
+		g_mutex_acquire(lock);
+		g_mutex_acquire(lock);
 	}
 }
 

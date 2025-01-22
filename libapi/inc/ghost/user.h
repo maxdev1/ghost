@@ -26,71 +26,67 @@
 #include "ghost/fs.h"
 #include "ghost/ipc.h"
 #include "ghost/kernel.h"
-#include "ghost/ramdisk.h"
 #include "ghost/system.h"
 #include "ghost/types.h"
-#include <stdarg.h>
-#include <stddef.h>
 
 __BEGIN_C
 
 /**
- * Creates an atom used for locking.
+ * Creates an mutex used for locking.
  *
- * @returns atom
- * 		the atom
- *
- * @security-level APPLICATION
- */
-g_atom g_atomic_initialize();
-g_atom g_atomic_initialize_r(g_bool reentrant);
-
-/**
- * Performs an atomic wait. If the atom is true, the executing task must
- * wait until the task that owns the atom has finished its work and sets
- * it to false. Once the atom is false, it is set to true and the function
- * returns.
- *
- * @param atom
- * 		the atom to use
+ * @returns mutex
+ * 		the mutex
  *
  * @security-level APPLICATION
  */
-void g_atomic_lock(g_atom atom);
-g_bool g_atomic_lock_to(g_atom atom, uint64_t timeout);
+g_user_mutex g_mutex_initialize();
+g_user_mutex g_mutex_initialize_r(g_bool reentrant);
 
 /**
- * Trys to perform atomic lock. If the lock is already locked, the function
- * returns 0. Otherwise, the lock is set as in {g_atomic_lock} and the
+ * Acquires the mutex. If the mutex is locked, the executing task must
+ * wait until the task that owns the mutex has finished its work and sets
+ * it to false.
+ *
+ * @param mutex
+ * 		the mutex to use
+ *
+ * @security-level APPLICATION
+ */
+void g_mutex_acquire(g_user_mutex mutex);
+g_bool g_mutex_acquire_to(g_user_mutex mutex, uint64_t timeout);
+
+/**
+ * Trys acquire the mutex. If the lock is already locked, the function
+ * returns 0. Otherwise, the lock is set as in {g_mutex_acquire} and the
  * function returns 1.
  *
- * @param atom
- * 		the atom to use
+ * @param mutex
+ * 		the mutex to use
  *
  * @security-level APPLICATION
  */
-g_bool g_atomic_try_lock(g_atom atom);
-g_bool g_atomic_try_lock_to(g_atom atom, uint64_t timeout);
+g_bool g_mutex_try_acquire(g_user_mutex mutex);
+g_bool g_mutex_try_acquire_to(g_user_mutex mutex, uint64_t timeout);
 
 /**
- * Unlocks the atom.
+ * Unlocks the mutex.
  *
- * @param atom
- * 		the atom to use
+ * @param mutex
+ * 		the mutex to use
  *
  * @security-level APPLICATION
  */
-void g_atomic_unlock(g_atom atom);
+void g_mutex_release(g_user_mutex mutex);
 
 /**
- * Frees an atom when no longer needed. Unlocks it first.
+ * Frees a mutex when no longer needed.
  *
- * @param atom
- * 		the atom to use
+ * @param mutex
+ * 		the mutex to use
  *
  * @security-level APPLICATION
  */
-void g_atomic_destroy(g_atom atom);
+void g_mutex_destroy(g_user_mutex mutex);
 
 /**
  * Spawns a program binary.
@@ -562,7 +558,7 @@ g_message_receive_status g_receive_message(void* buf, size_t max);
 g_message_receive_status g_receive_message_m(void* buf, size_t max, g_message_receive_mode mode);
 g_message_receive_status g_receive_message_t(void* buf, size_t max, g_message_transaction tx);
 g_message_receive_status g_receive_message_tm(void* buf, size_t max, g_message_transaction tx, g_message_receive_mode mode);
-g_message_receive_status g_receive_message_tmb(void* buf, size_t max, g_message_transaction tx, g_message_receive_mode mode, g_atom break_condition);
+g_message_receive_status g_receive_message_tmb(void* buf, size_t max, g_message_transaction tx, g_message_receive_mode mode, g_user_mutex break_condition);
 
 /**
  * Registers the executing task for the given identifier.

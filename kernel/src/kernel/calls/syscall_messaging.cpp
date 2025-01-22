@@ -20,7 +20,7 @@
 
 #include "kernel/calls/syscall_messaging.hpp"
 #include "kernel/ipc/message.hpp"
-#include "kernel/tasking/atoms.hpp"
+#include "kernel/tasking/user_mutex.hpp"
 #include "kernel/tasking/tasking_directory.hpp"
 #include "shared/logger/logger.hpp"
 
@@ -52,10 +52,10 @@ void syscallMessageReceive(g_task* task, g_syscall_receive_message* data)
 		  data->mode == G_MESSAGE_RECEIVE_MODE_BLOCKING)
 	{
 		/**
-		 * TODO: "Break condition" doesn't work anymore since there is no connection between atoms and
+		 * TODO: "Break condition" doesn't work anymore since there is no connection between mutexes and
 		 * the message wait queues. This must be somehow connected and the task waken when required.
 		 */
-		// if(data->break_condition && atomicLock(task, data->break_condition, true, false))
+		// if(data->break_condition && userMutexAcquire(task, data->break_condition, true, false))
 		//{
 		//	data->status = G_MESSAGE_RECEIVE_STATUS_INTERRUPTED;
 		//	break;

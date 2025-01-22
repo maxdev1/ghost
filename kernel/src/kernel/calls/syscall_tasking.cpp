@@ -21,7 +21,7 @@
 #include "kernel/calls/syscall_tasking.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/memory/memory.hpp"
-#include "kernel/tasking/atoms.hpp"
+#include "kernel/tasking/user_mutex.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/utils/wait_queue.hpp"
 #include "shared/logger/logger.hpp"
@@ -34,26 +34,26 @@ void syscallSleep(g_task* task, g_syscall_sleep* data)
 	taskingSchedule();
 }
 
-void syscallAtomicInitialize(g_task* task, g_syscall_atomic_initialize* data)
+void syscallMutexInitialize(g_task* task, g_syscall_user_mutex_initialize* data)
 {
-	data->atom = atomicCreate(data->reentrant);
+	data->mutex = userMutexCreate(data->reentrant);
 }
 
-void syscallAtomicLock(g_task* task, g_syscall_atomic_lock* data)
+void sycallMutexAcquire(g_task* task, g_syscall_user_mutex_acquire* data)
 {
-	auto status = atomicLock(task, data->atom, data->timeout, data->trying);
-	data->wasSet = status == G_ATOM_LOCK_STATUS_SET;
-	data->hasTimedOut = status == G_ATOM_LOCK_STATUS_TIMEOUT;
+	auto status = userMutexAcquire(task, data->mutex, data->timeout, data->trying);
+	data->wasSet = status == G_USER_MUTEX_STATUS_ACQUIRED;
+	data->hasTimedOut = status == G_USER_MUTEX_STATUS_TIMEOUT;
 }
 
-void syscallAtomicUnlock(g_task* task, g_syscall_atomic_unlock* data)
+void syscallMutexRelease(g_task* task, g_syscall_user_mutex_release* data)
 {
-	atomicUnlock(data->atom);
+	userMutexRelease(data->mutex);
 }
 
-void syscallAtomicDestroy(g_task* task, g_syscall_atomic_destroy* data)
+void syscallMutexDestroy(g_task* task, g_syscall_user_mutex_destroy* data)
 {
-	atomicDestroy(data->atom);
+	userMutexDestroy(data->mutex);
 }
 
 void syscallYield(g_task* task)

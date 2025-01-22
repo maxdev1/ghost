@@ -42,7 +42,7 @@ public:
     background_t* background;
     item_container_t* desktopContainer;
     label_t* stateLabel;
-    g_atom renderAtom = g_atomic_initialize();
+    g_user_mutex renderAtom = g_mutex_initialize();
 
     /**
      * Sets up the windowing system by configuring a video output, setting up the

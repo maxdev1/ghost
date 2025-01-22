@@ -24,10 +24,10 @@
 #include <ghost/io.h>
 #include "pcidriver.hpp"
 
-g_atom pciLock = g_atomic_initialize();
+g_user_mutex pciLock = g_mutex_initialize();
 
 g_pci_device* deviceList = nullptr;
-g_atom deviceListLock = g_atomic_initialize();
+g_user_mutex deviceListLock = g_mutex_initialize();
 
 int main()
 {
@@ -69,7 +69,7 @@ void pciDriverIdentifyAhciController(g_tid sender, g_message_transaction transac
 	g_pci_identify_ahci_controller_response response{};
 	response.count = 0;
 
-	g_atomic_lock(deviceListLock);
+	g_mutex_acquire(deviceListLock);
 
 	g_pci_device* dev = deviceList;
 	while(dev)
@@ -89,7 +89,7 @@ void pciDriverIdentifyAhciController(g_tid sender, g_message_transaction transac
 
 		dev = dev->next;
 	}
-	g_atomic_unlock(deviceListLock);
+	g_mutex_release(deviceListLock);
 
 	g_send_message_t(sender, &response, sizeof(g_pci_identify_ahci_controller_response), transaction);
 }
@@ -110,7 +110,7 @@ void pciDriverScanBus()
 
 				if(classCode != 0xFF)
 				{
-					g_atomic_lock(deviceListLock);
+					g_mutex_acquire(deviceListLock);
 					auto device = new g_pci_device();
 					device->bus = bus;
 					device->device = dev;
@@ -120,7 +120,7 @@ void pciDriverScanBus()
 					device->progIf = progIf;
 					device->next = deviceList;
 					deviceList = device;
-					g_atomic_unlock(deviceListLock);
+					g_mutex_release(deviceListLock);
 
 					++total;
 				}
@@ -135,10 +135,10 @@ uint32_t pciReadConfigInt(uint8_t bus, uint8_t device, uint8_t function, uint8_t
 {
 	uint32_t address = (1 << 31) | (bus << 16) | (device << 11) | (function << 8) | (offset);
 
-	g_atomic_lock(pciLock);
+	g_mutex_acquire(pciLock);
 	ioOutportInt(PCI_CONFIG_PORT_ADDR, address);
 	auto result = ioInportInt(PCI_CONFIG_PORT_DATA);
-	g_atomic_unlock(pciLock);
+	g_mutex_release(pciLock);
 	return result;
 }
 

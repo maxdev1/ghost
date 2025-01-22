@@ -18,18 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "__internal.h"
 #include "ghost/user.h"
 
-g_atom g_atomic_initialize()
+void g_mutex_destroy(g_user_mutex mutex)
 {
-	return g_atomic_initialize_r(false);
-}
-
-g_atom g_atomic_initialize_r(g_bool reentrant)
-{
-	g_syscall_atomic_initialize data;
-	data.reentrant = reentrant;
-	g_syscall(G_SYSCALL_ATOMIC_INITIALIZE, (g_address) &data);
-	return data.atom;
+	g_syscall_user_mutex_destroy data;
+	data.mutex = mutex;
+	g_syscall(G_SYSCALL_USER_MUTEX_DESTROY, (g_address) &data);
 }

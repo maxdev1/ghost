@@ -91,7 +91,7 @@ int32_t cursorY = 100;
 uint8_t drawing = 0;
 int mousepacks = 0;
 
-g_atom waitingForData = g_atomic_initialize();
+g_user_mutex waitingForData = g_mutex_initialize();
 char lastChar = 0;
 
 static g_fd keyboardRead = 0;
@@ -105,7 +105,7 @@ void keyboardReceiverThread()
 		if(g_read(keyboardRead, &val, 1) == 1)
 		{
 			lastChar = val;
-			g_atomic_unlock(waitingForData);
+			g_mutex_release(waitingForData);
 		}
 	}
 }
@@ -139,7 +139,7 @@ void mouseReceiverThread()
 			{
 				cursorY = 0;
 			}
-			g_atomic_unlock(waitingForData);
+			g_mutex_release(waitingForData);
 		}
 	}
 }
@@ -189,10 +189,10 @@ int main(int argc, char** argv)
 
 	int xxx = 0;
 
-	g_atom blitlock = g_atomic_initialize();
+	g_user_mutex blitlock = g_mutex_initialize();
 	for(;;)
 	{
-		g_atomic_lock(blitlock);
+		g_mutex_acquire(blitlock);
 		mousePos.x = cursorX;
 		mousePos.y = cursorY;
 		mousePos.width = 10;
@@ -273,10 +273,10 @@ int main(int argc, char** argv)
 		barSize.height = 50;
 		blit(barSize, sourceSize, source);
 
-		g_atomic_unlock(blitlock);
+		g_mutex_release(blitlock);
 
 		lastMousePos = mousePos;
 
-		g_atomic_lock(waitingForData);
+		g_mutex_acquire(waitingForData);
 	}
 }

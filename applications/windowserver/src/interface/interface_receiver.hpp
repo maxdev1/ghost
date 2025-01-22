@@ -29,7 +29,7 @@
 class interface_receiver_t
 {
   public:
-	g_atom stop = g_atomic_initialize();
+	g_user_mutex stop = g_mutex_initialize();
 
 	virtual void run();
 

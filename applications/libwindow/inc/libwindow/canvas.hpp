@@ -39,7 +39,7 @@ class g_canvas : public g_component
   protected:
 	g_address currentBuffer;
 	g_address nextBuffer;
-	g_atom currentBufferLock;
+	g_user_mutex currentBufferLock;
 
 	/**
 	 * Listener only for user purpose, so a client gets an event once the

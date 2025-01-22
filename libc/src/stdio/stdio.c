@@ -66,10 +66,10 @@ void __fini_stdio()
 	while(f)
 	{
 		FILE* n = f->next;
-		if(f->file_descriptor > STDERR_FILENO && g_atomic_try_lock(f->lock))
+		if(f->file_descriptor > STDERR_FILENO && g_mutex_try_acquire(f->lock))
 		{
 			__fclose_static_unlocked(f);
-			g_atomic_unlock(f->lock);
+			g_mutex_release(f->lock);
 		}
 		f = n;
 	}

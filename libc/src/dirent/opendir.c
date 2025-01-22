@@ -36,7 +36,7 @@ DIR* opendir(const char* path) {
 		DIR* dir = (DIR*) malloc(sizeof(DIR));
 		dir->entbuf = (dirent*) malloc(sizeof(dirent));
 		dir->iter = iter;
-		dir->lock = g_atomic_initialize();
+		dir->lock = g_mutex_initialize();
 		return dir;
 
 	} else if (stat == G_FS_OPEN_DIRECTORY_NOT_FOUND) {

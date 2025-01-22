@@ -28,7 +28,7 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/system.hpp"
-#include "kernel/tasking/atoms.hpp"
+#include "kernel/tasking/user_mutex.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking.hpp"
 #include "shared/panic.hpp"
@@ -77,7 +77,7 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	filesystemInitialize();
 	pipeInitialize();
 	messageInitialize();
-	atomicInitialize();
+	userMutexInitialize();
 	clockInitialize();
 
 	taskingInitializeBsp();

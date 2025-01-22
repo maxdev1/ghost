@@ -18,7 +18,6 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "__internal.h"
 #include "ghost/user.h"
 
 /**

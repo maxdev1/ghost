@@ -40,7 +40,7 @@ void grid_layout_manager_t::layout()
 	int cellWidth = (columns > 0) ? (usedBounds.width / columns) : usedBounds.width;
 	int itemWidth = (columns > 0) ? ((usedBounds.width - (columns - 1) * colSpace) / columns) : usedBounds.width;
 
-	g_atomic_lock(component->getChildrenLock());
+	g_mutex_acquire(component->getChildrenLock());
 	auto children = component->getChildren();
 
 	int x = usedBounds.x;
@@ -74,7 +74,7 @@ void grid_layout_manager_t::layout()
 			curCol = 0;
 		}
 	}
-	g_atomic_unlock(component->getChildrenLock());
+	g_mutex_release(component->getChildrenLock());
 
 	auto prefPreferred = component->getPreferredSize();
 

@@ -23,11 +23,11 @@
 #include <ghost.h>
 
 FILE* __open_file_list = 0;
-g_atom open_file_list_lockatom = 0;
+g_user_mutex open_file_list_lock = 0;
 
 void __open_file_list_initialize()
 {
-	open_file_list_lockatom = g_atomic_initialize();
+	open_file_list_lock = g_mutex_initialize();
 }
 
 void __open_file_list_add(FILE* file)
@@ -66,10 +66,10 @@ void __open_file_list_remove(FILE* file)
 
 void __open_file_list_lock()
 {
-	g_atomic_lock(open_file_list_lockatom);
+	g_mutex_acquire(open_file_list_lock);
 }
 
 void __open_file_list_unlock()
 {
-	g_atomic_unlock(open_file_list_lockatom);
+	g_mutex_release(open_file_list_lock);
 }

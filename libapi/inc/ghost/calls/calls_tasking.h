@@ -103,47 +103,48 @@ typedef struct
 } __attribute__((packed)) g_syscall_wait_for_irq;
 
 /**
- * @field atom
- * 		the atom
+ * @field mutex
+ * 		the mutex
  */
 typedef struct
 {
-	g_atom atom;
     uint8_t reentrant : 1;
-} __attribute__((packed)) g_syscall_atomic_initialize;
+
+	g_user_mutex mutex;
+} __attribute__((packed)) g_syscall_user_mutex_initialize;
 
 /**
- * @field atom
- * 		the atom
+ * @field mutex
+ * 		the mutex
  */
 typedef struct
 {
-	g_atom atom;
-} __attribute__((packed)) g_syscall_atomic_destroy;
+	g_user_mutex mutex;
+} __attribute__((packed)) g_syscall_user_mutex_destroy;
 
 /**
- * @field atom
- *      the atom
+ * @field mutex
+ *      the mutex
  * @property isTry
  */
 typedef struct
 {
-    g_atom atom;
+    g_user_mutex mutex;
     uint8_t trying : 1;
     uint64_t timeout;
 
     uint8_t hasTimedOut : 1;
     uint8_t wasSet : 1;
-} __attribute__((packed)) g_syscall_atomic_lock;
+} __attribute__((packed)) g_syscall_user_mutex_acquire;
 
 /**
- * @field atom
- * 		the atom
+ * @field mutex
+ * 		the mutex
  */
 typedef struct
 {
-	g_atom atom;
-} __attribute__((packed)) g_syscall_atomic_unlock;
+	g_user_mutex mutex;
+} __attribute__((packed)) g_syscall_user_mutex_release;
 
 /**
  * @field identifier
