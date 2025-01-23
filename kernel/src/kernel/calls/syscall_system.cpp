@@ -20,6 +20,7 @@
 
 #include "kernel/calls/syscall_system.hpp"
 #include "kernel/filesystem/filesystem.hpp"
+#include "kernel/system/interrupts/apic/ioapic.hpp"
 
 void syscallLog(g_task* task, g_syscall_log* data)
 {
@@ -66,3 +67,17 @@ void syscallCallVm86(g_task* task, g_syscall_call_vm86* data)
 	}
 }
 
+
+void syscallIrqCreateRedirect(g_task* task, g_syscall_irq_create_redirect* data)
+{
+	if(task->securityLevel > G_SECURITY_LEVEL_DRIVER)
+		return;
+
+	if(!ioapicAreAvailable())
+	{
+		logWarn("%! failed to register IRQ redirect for interrupt %i, no ioapic available", "call", data->source);
+		return;
+	}
+
+	ioapicCreateRedirectionEntry(data->source, data->irq, 0);
+}

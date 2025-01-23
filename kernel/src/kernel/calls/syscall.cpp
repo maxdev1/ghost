@@ -143,6 +143,7 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_SET_VIDEO_LOG, (g_syscall_handler) syscallSetVideoLog);
 	_syscallRegister(G_SYSCALL_TEST, (g_syscall_handler) syscallTest);
 	_syscallRegister(G_SYSCALL_CALL_VM86, (g_syscall_handler) syscallCallVm86);
+	_syscallRegister(G_SYSCALL_IRQ_CREATE_REDIRECT, (g_syscall_handler) syscallIrqCreateRedirect);
 
 	// Kernquery
 	_syscallRegister(G_SYSCALL_KERNQUERY, (g_syscall_handler) syscallKernQuery);

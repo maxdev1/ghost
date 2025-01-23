@@ -74,6 +74,13 @@ void g_set_video_log(uint8_t enabled);
  */
 uint32_t g_test(uint32_t test);
 
+/**
+ * Creates an IOAPIC redirection entry for an IRQ.
+ *
+ * @security-level DRIVER
+ */
+void g_irq_create_redirect(uint32_t source, uint32_t irq);
+
 uint8_t g_io_port_read_byte(uint16_t port);
 uint16_t g_io_port_read_word(uint16_t port);
 uint32_t g_io_port_read_dword(uint16_t port);

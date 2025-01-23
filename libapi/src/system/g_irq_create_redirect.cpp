@@ -18,75 +18,18 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef GHOST_API_SYSTEM_CALLSTRUCTS
-#define GHOST_API_SYSTEM_CALLSTRUCTS
-
-#include "../common.h"
-#include "../stdint.h"
-#include "types.h"
-
-__BEGIN_C
-
-/**
- * @field interrupt
- * 		the interrupt to call
- *
- * @field in
- * 		the input registers
- *
- * @field out
- * 		the output registers
- *
- * @field status
- * 		status of the call
- */
-typedef struct {
-	uint32_t interrupt;
-	g_vm86_registers in;
-	g_vm86_registers* out;
-
-	g_vm86_call_status status;
-}__attribute__((packed)) g_syscall_call_vm86;
-
-
-/**
- * @field message
- * 		the message
- */
-typedef struct {
-	char* message;
-}__attribute__((packed)) g_syscall_log;
-
-/**
- * @field enabled
- * 		whether or not to enable the video log
- */
-typedef struct {
-	uint8_t enabled;
-}__attribute__((packed)) g_syscall_set_video_log;
-
-/**
- * @field test
- * 		test value
- *
- * @field result
- * 		test result
- */
-typedef struct {
-	uint32_t test;
-
-	uint32_t result;
-}__attribute__((packed)) g_syscall_test;
+#include "ghost/syscall.h"
+#include "ghost/system.h"
+#include "ghost/system/callstructs.h"
 
 /**
  *
  */
-typedef struct
+void g_irq_create_redirect(uint32_t source, uint32_t irq)
 {
-  uint32_t source;
-  uint32_t irq;
-} __attribute__((packed)) g_syscall_irq_create_redirect;
+	g_syscall_irq_create_redirect data;
+	data.source = source;
+	data.irq = irq;
 
-__END_C
-
-#endif
+	g_syscall(G_SYSCALL_IRQ_CREATE_REDIRECT, (g_address) &data);
+}
