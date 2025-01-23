@@ -19,18 +19,20 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "libgen.h"
-#include "ghost.h"
 #include "string.h"
+#include <ghost/filesystem.h>
 
 static char _statbuf[8];
 
 /**
  *
  */
-char* basename(char* path) {
+char* basename(char* path)
+{
 
 	// return dot if null
-	if (path == NULL) {
+	if(path == NULL)
+	{
 		_statbuf[0] = '.';
 		_statbuf[1] = 0;
 		return _statbuf;
@@ -40,7 +42,8 @@ char* basename(char* path) {
 	size_t len = strlen(path);
 
 	// return dot if empty
-	if (len == 0) {
+	if(len == 0)
+	{
 		_statbuf[0] = '.';
 		_statbuf[1] = 0;
 		return _statbuf;
@@ -48,13 +51,15 @@ char* basename(char* path) {
 
 	// overwrite trailing slashes with nulls
 	char* last = path + len - 1;
-	while (last >= path && *last == '/') {
+	while(last >= path && *last == '/')
+	{
 		*last = 0;
 		--last;
 	}
 
 	// if the entire path consisted of slashes, return slash
-	if (*path == 0) {
+	if(*path == 0)
+	{
 		_statbuf[0] = '/';
 		_statbuf[1] = 0;
 		return _statbuf;
@@ -63,11 +68,11 @@ char* basename(char* path) {
 	// find base name part
 	char* rightmostSlash = strrchr(path, '/');
 
-	if (rightmostSlash == NULL) {
+	if(rightmostSlash == NULL)
+	{
 		// no slash found
 		return path;
 	}
 
 	return rightmostSlash + 1;
 }
-

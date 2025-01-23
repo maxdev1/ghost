@@ -21,8 +21,8 @@
 #ifndef __GHOST_LIBC_FCNTL__
 #define __GHOST_LIBC_FCNTL__
 
-#include "ghost/fs.h"
-#include "ghost/stdint.h"
+#include <ghost/filesystem.h>
+#include <ghost/stdint.h>
 
 __BEGIN_C
 

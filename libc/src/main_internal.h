@@ -21,8 +21,6 @@
 #ifndef __MAIN_INTERNAL__
 #define __MAIN_INTERNAL__
 
-#include "ghost/common.h"
-
 __BEGIN_C
 
 // binary entry point

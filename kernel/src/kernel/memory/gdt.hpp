@@ -24,8 +24,8 @@
 #include "kernel/tasking/tasking.hpp"
 #include "shared/memory/gdt.hpp"
 #include "shared/memory/tss.hpp"
-#include <ghost/kernel.h>
-#include <ghost/types.h>
+#include <ghost/stdint.h>
+#include <ghost/tasks/types.h>
 
 #define G_GDT_NUM_ENTRIES 8
 

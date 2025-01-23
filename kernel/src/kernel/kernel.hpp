@@ -21,7 +21,7 @@
 #ifndef __KERNEL__
 #define __KERNEL__
 
-#include <ghost/types.h>
+#include <ghost/memory/types.h>
 
 struct g_bitmap_page_allocator;
 struct g_setup_information;

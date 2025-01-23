@@ -22,7 +22,7 @@
 #define __PRETTY_BOOT__
 
 #include "build_config.hpp"
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 #include <stdarg.h>
 
 #define G_PRETTY_BOOT_PROGRESS_BAR_Y_POS 15

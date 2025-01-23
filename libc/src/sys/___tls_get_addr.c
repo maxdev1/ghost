@@ -18,8 +18,8 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost.h"
-#include <stdint.h>
+#include <ghost/tasks.h>
+#include <ghost/memory.h>
 
 typedef struct
 {

@@ -18,7 +18,7 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost/types.h"
+#include <ghost/memory/types.h>
 
 #include "kernel/system/acpi/madt.hpp"
 #include "kernel/system/interrupts/apic/ioapic.hpp"

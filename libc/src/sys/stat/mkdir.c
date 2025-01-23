@@ -20,7 +20,7 @@
 
 #include "sys/stat.h"
 #include "stdint.h"
-#include "ghost.h"
+#include <ghost/filesystem.h>
 
 /**
  *

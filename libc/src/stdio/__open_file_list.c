@@ -20,7 +20,6 @@
 
 #include "stdio.h"
 #include "stdio_internal.h"
-#include <ghost.h>
 
 FILE* __open_file_list = 0;
 g_user_mutex open_file_list_lock = 0;

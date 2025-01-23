@@ -21,7 +21,7 @@
 #ifndef __UTILS_MATH__
 #define __UTILS_MATH__
 
-#include "ghost/types.h"
+#include <ghost/stdint.h>
 
 uint32_t mathCeilToPowerOf2(uint32_t n);
 

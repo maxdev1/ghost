@@ -21,7 +21,7 @@
 #ifndef __UTILS_STRING_BUFFER__
 #define __UTILS_STRING_BUFFER__
 
-#include "ghost/types.h"
+#include <ghost/stdint.h>
 
 /**
  * String buffer type

@@ -18,15 +18,12 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost/memory.h"
 
 #include "kernel/calls/syscall.hpp"
 #include "kernel/filesystem/filesystem.hpp"
-#include "kernel/ipc/pipes.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/system/interrupts/requests.hpp"
 #include "kernel/system/processor/processor.hpp"
-#include "kernel/tasking/tasking_memory.hpp"
 #include "shared/logger/logger.hpp"
 
 static g_irq_device* devices[256] = {0};

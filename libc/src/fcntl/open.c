@@ -18,10 +18,10 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost.h"
 #include "fcntl.h"
 #include "errno.h"
 #include <stdarg.h>
+#include <ghost/filesystem.h>
 
 /**
  *

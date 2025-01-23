@@ -23,8 +23,6 @@
 #include "kernel/system/configuration.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "kernel/utils/hashmap.hpp"
-#include "shared/logger/logger.hpp"
 #include "shared/panic.hpp"
 
 static g_clock_local* locals = 0;

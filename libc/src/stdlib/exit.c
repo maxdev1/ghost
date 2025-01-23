@@ -18,9 +18,9 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <ghost.h>
 #include "stdlib.h"
 #include "../main_internal.h"
+#include <ghost/tasks.h>
 
 /**
  *

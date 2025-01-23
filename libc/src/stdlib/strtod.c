@@ -20,12 +20,12 @@
 
 #include "stdlib.h"
 #include "errno.h"
+#include <ghost/system.h>
 
 /**
  *
  */
-double strtod(const char* str, char** endptr) {
-
-	// TODO
+double strtod(const char* str, char** endptr)
+{
 	__G_NOT_IMPLEMENTED("strtod");
 }

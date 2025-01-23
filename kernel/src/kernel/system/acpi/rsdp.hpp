@@ -21,8 +21,7 @@
 #ifndef __KERNEL_RSDP__
 #define __KERNEL_RSDP__
 
-#include "ghost/stdint.h"
-#include "ghost/types.h"
+#include <ghost/stdint.h>
 
 // "RSD PTR ", vice-versa (little endian)
 #define G_RSDPTR_MAGIC	0x2052545020445352

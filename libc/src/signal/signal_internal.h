@@ -21,7 +21,6 @@
 #ifndef __GHOST_LIBC_SIGNAL_INTERNAL__
 #define __GHOST_LIBC_SIGNAL_INTERNAL__
 
-#include "ghost.h"
 #include "signal.h"
 
 __BEGIN_C

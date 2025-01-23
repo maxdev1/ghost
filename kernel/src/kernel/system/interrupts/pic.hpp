@@ -21,7 +21,7 @@
 #ifndef __KERNEL_PIC__
 #define __KERNEL_PIC__
 
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 
 /**
  * PIC constants

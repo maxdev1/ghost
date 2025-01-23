@@ -20,7 +20,6 @@
 
 #include "signal.h"
 #include "signal_internal.h"
-#include "ghost.h"
 #include "stdlib.h"
 
 /**

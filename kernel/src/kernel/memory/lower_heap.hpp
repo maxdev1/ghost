@@ -21,8 +21,7 @@
 #ifndef __KERNEL_LOWER_HEAP__
 #define __KERNEL_LOWER_HEAP__
 
-#include "ghost/types.h"
-#include "shared/memory/constants.hpp"
+#include <ghost/memory/types.h>
 
 /**
  * Initializes the lower heap using the given range of memory.

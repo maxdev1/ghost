@@ -21,10 +21,11 @@
 #ifndef __GHOST_LIBC_DIR__
 #define __GHOST_LIBC_DIR__
 
-#include "ghost.h"
 #include "sys/types.h"
 #include "stdint.h"
 #include "dirent.h"
+
+#include <ghost/filesystem.h>
 
 __BEGIN_C
 
@@ -33,10 +34,11 @@ typedef struct DIR DIR;
 /**
  * Represents a directory stream. Used by dirent-related functions.
  */
-struct DIR {
-	struct dirent* entbuf;
-	g_fs_directory_iterator* iter;
-	g_user_mutex lock;
+struct DIR
+{
+    struct dirent* entbuf;
+    g_fs_directory_iterator* iter;
+    g_user_mutex lock;
 };
 
 __END_C

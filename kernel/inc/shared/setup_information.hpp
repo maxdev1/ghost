@@ -21,7 +21,7 @@
 #ifndef __SETUP_INFORMATION__
 #define __SETUP_INFORMATION__
 
-#include "ghost/types.h"
+#include <ghost/memory/types.h>
 #include "shared/multiboot/multiboot.hpp"
 
 /**

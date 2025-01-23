@@ -21,7 +21,7 @@
 #ifndef __KERNEL_LAPIC__
 #define __KERNEL_LAPIC__
 
-#include "ghost/types.h"
+#include <ghost/memory/types.h>
 
 #define G_EXPECTED_APIC_PHYSICAL_ADDRESS 0xFEE00000
 

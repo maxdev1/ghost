@@ -24,7 +24,7 @@
 #include "shared/logger/logger.hpp"
 #include "shared/panic.hpp"
 #include "shared/utils/string.hpp"
-#include <ghost/types.h>
+#include <ghost/memory/types.h>
 
 static g_acpi_table_header* acpiRoot = 0;
 static g_acpi_entry* acpiTables = 0;
@@ -87,7 +87,7 @@ void acpiPrepareRootSDT(g_rsdp_descriptor* rsdp)
 		{
 #if __x86_64__
 			rootTableLocation = rsdp20->xsdtAddress;
-			g_log_debug("%! found XSDT in 64bit range", "acpi");
+			logDebug("%! found XSDT in 64bit range", "acpi");
 			acpiRootIsXsdt = true;
 #elif __i386__
 			if(rsdp20->xsdtAddress < 0xFFFFFFFF)

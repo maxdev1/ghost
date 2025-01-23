@@ -19,13 +19,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "stdio.h"
-#include "ghost/common.h"
-#include "string.h"
+#include <ghost/system.h>
 
 /**
  *
  */
-int fscanf(FILE* stream, const char* format, ...) {
-
+int fscanf(FILE* stream, const char* format, ...)
+{
 	__G_NOT_IMPLEMENTED(fscanf);
 }

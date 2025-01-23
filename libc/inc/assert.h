@@ -21,7 +21,7 @@
 #ifndef __GHOST_LIBC_ASSERT__
 #define __GHOST_LIBC_ASSERT__
 
-#include "ghost.h"
+#include <ghost/common.h>
 
 __BEGIN_C
 

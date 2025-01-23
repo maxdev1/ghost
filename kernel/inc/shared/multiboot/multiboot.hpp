@@ -21,7 +21,7 @@
 #ifndef __MULTIBOOT__
 #define __MULTIBOOT__
 
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 
 #define G_MULTIBOOT_HEADER_MAGIC 0x1BADB002
 #define G_MULTIBOOT_BOOTLOADER_MAGIC 0x2BADB002

@@ -19,7 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "libgen.h"
-#include "ghost.h"
 #include "string.h"
 
 static char _statbuf[8];

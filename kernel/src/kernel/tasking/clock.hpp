@@ -21,9 +21,8 @@
 #ifndef __KERNEL_CLOCK__
 #define __KERNEL_CLOCK__
 
-#include "ghost/types.h"
 #include "kernel/filesystem/filesystem.hpp"
-#include "kernel/tasking/tasking.hpp"
+#include <ghost/tasks/types.h>
 
 struct g_clock_waiter
 {

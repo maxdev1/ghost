@@ -19,13 +19,13 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "sys/stat.h"
-#include "stdint.h"
-#include "ghost.h"
+#include <ghost/system.h>
 
 /**
  *
  */
-int stat(const char *pathname, struct stat *buf) {
+int stat(const char* pathname, struct stat* buf)
+{
 
-	__G_NOT_IMPLEMENTED(stat)
+	__G_NOT_IMPLEMENTED(stat);
 }

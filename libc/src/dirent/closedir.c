@@ -18,15 +18,16 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost.h"
 #include "dir.h"
 #include "errno.h"
 #include "malloc.h"
+#include <ghost/filesystem.h>
 
 /**
  *
  */
-int closedir(DIR* dir) {
+int closedir(DIR* dir)
+{
 
 	g_close_directory(dir->iter);
 

@@ -36,9 +36,6 @@
 #include "limits.h"
 #include "math.h"
 
-// ghost header
-#include "ghost.h"
-
 /**
  *
  */

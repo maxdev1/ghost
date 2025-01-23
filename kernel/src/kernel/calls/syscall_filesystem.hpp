@@ -21,8 +21,8 @@
 #ifndef __KERNEL_SYSCALL_FS__
 #define __KERNEL_SYSCALL_FS__
 
-#include "ghost/calls/calls.h"
 #include "kernel/tasking/tasking.hpp"
+#include <ghost/filesystem/callstructs.h>
 
 void syscallFsOpen(g_task* task, g_syscall_fs_open* data);
 

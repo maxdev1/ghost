@@ -20,12 +20,12 @@
 
 #include "stdio.h"
 #include "errno.h"
+#include <ghost/system.h>
 
 /**
  *
  */
-int sscanf(const char* s, const char* format, ...) {
-
-	// TODO
+int sscanf(const char* s, const char* format, ...)
+{
 	__G_NOT_IMPLEMENTED("sscanf");
 }

@@ -21,9 +21,7 @@
 #ifndef __KERNEL_IOAPIC__
 #define __KERNEL_IOAPIC__
 
-#include "ghost/stdint.h"
-#include "ghost/kernel.h"
-#include "ghost/types.h"
+#include <ghost/memory/types.h>
 
 /**
  * The two memory-mapped offsets of the IOAPIC

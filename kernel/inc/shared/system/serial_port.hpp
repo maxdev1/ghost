@@ -21,7 +21,7 @@
 #ifndef __SERIAL_PORT__
 #define __SERIAL_PORT__
 
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 
 #define G_SERIAL_PORT_OFFSET_DATA_REGISTER		0 // without DLAB, register for receiving and writing
 #define G_SERIAL_PORT_OFFSET_INTERRUPT_ENABLE	1 // without DLAB, interrupt enable register

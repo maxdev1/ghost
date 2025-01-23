@@ -18,7 +18,6 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost.h"
 #include "malloc.h"
 #include "locale.h"
 #include "errno.h"
@@ -27,6 +26,9 @@
 
 #include "main_internal.h"
 #include "stdio/stdio_internal.h"
+
+#include <ghost/tasks.h>
+#include <ghost/system.h>
 
 void __g_init_libc_call_init();
 void __g_fini_libc_call_fini();

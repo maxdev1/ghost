@@ -21,8 +21,12 @@
 #ifndef __KERNEL_SYSCALL_GENERAL__
 #define __KERNEL_SYSCALL_GENERAL__
 
-#include "ghost/calls/calls.h"
 #include "kernel/tasking/tasking.hpp"
+
+#include <ghost/system/callstructs.h>
+#include <ghost/tasks/callstructs.h>
+#include <ghost/filesystem/callstructs.h>
+#include <ghost/kernquery/callstructs.h>
 
 void syscallLog(g_task* task, g_syscall_log* data);
 
@@ -40,6 +44,6 @@ void syscallGetWorkingDirectory(g_task* task, g_syscall_fs_get_working_directory
 
 void syscallSetWorkingDirectory(g_task* task, g_syscall_fs_set_working_directory* data);
 
-void syscallKernQuery(g_task* task, g_syscall_kernquery* data);
+void syscallKernQuery(g_task * task, g_syscall_kernquery * data);
 
 #endif

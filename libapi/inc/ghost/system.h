@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *                                                                           *
+*                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
  *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
@@ -18,89 +18,69 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __GHOST_SYS_SYSTEM__
-#define __GHOST_SYS_SYSTEM__
+#ifndef GHOST_API_SYSTEM
+#define GHOST_API_SYSTEM
 
-#include "ghost/common.h"
-#include "ghost/kernel.h"
-#include "ghost/fs.h"
+#include "common.h"
+#include "stdint.h"
+#include "system/types.h"
 
 __BEGIN_C
 
+// not implemented warning
+#define __G_NOT_IMPLEMENTED_WARN(name)		g_log("'" #name "' is not implemented");
+#define __G_NOT_IMPLEMENTED(name)		    __G_NOT_IMPLEMENTED_WARN(name) g_exit(0);
+
 /**
- * Required to provide the <g_spawn> function. The spawning process shall
- * register itself with this identifier to be accessible via ipc messaging.
+ * Performs a Virtual 8086 BIOS interrupt call.
+ *
+ * @param interrupt
+ * 		number of the interrupt to fire
+ * @param in
+ * 		input register values
+ * @param out
+ * 		output register values
+ *
+ * @return one of the G_VM86_CALL_STATUS_* status codes
+ *
+ * @security-level DRIVER
  */
-#define G_SPAWNER_IDENTIFIER		"spawner"
+g_vm86_call_status g_call_vm86(uint32_t interrupt, g_vm86_registers* in, g_vm86_registers* out);
 
-// spawner commands
-#define G_SPAWN_COMMAND_SPAWN_REQUEST	1
-#define G_SPAWN_COMMAND_SPAWN_RESPONSE	2
+/**
+ * Prints a message to the log.
+ *
+ * @param message
+ * 		the message to log
+ *
+ * @security-level APPLICATION
+ */
+void g_log(const char* message);
 
-// status codes for spawning
-typedef uint8_t g_spawn_status;
-#define G_SPAWN_STATUS_SUCCESSFUL 						((g_spawn_status) 0)
-#define G_SPAWN_STATUS_IO_ERROR							((g_spawn_status) 1)
-#define G_SPAWN_STATUS_MEMORY_ERROR						((g_spawn_status) 2)
-#define G_SPAWN_STATUS_FORMAT_ERROR						((g_spawn_status) 3)
-#define G_SPAWN_STATUS_TASKING_ERROR					((g_spawn_status) 4)
-#define G_SPAWN_STATUS_DEPENDENCY_ERROR					((g_spawn_status) 5)
+/**
+ * Enables or disables logging to the video output.
+ *
+ * @param enabled
+ * 		whether to enable/disable video log
+ *
+ * @security-level APPLICATION
+ */
+void g_set_video_log(uint8_t enabled);
 
-typedef uint8_t g_spawn_validation_details;
-#define G_SPAWN_VALIDATION_SUCCESSFUL				((g_spawn_validation_details) 0)
-#define G_SPAWN_VALIDATION_ELF32_NOT_ELF			((g_spawn_validation_details) 1)
-#define G_SPAWN_VALIDATION_ELF32_NOT_EXECUTABLE		((g_spawn_validation_details) 2)
-#define G_SPAWN_VALIDATION_ELF32_NOT_I386			((g_spawn_validation_details) 3)
-#define G_SPAWN_VALIDATION_ELF32_NOT_32BIT			((g_spawn_validation_details) 4)
-#define G_SPAWN_VALIDATION_ELF32_NOT_LITTLE_ENDIAN	((g_spawn_validation_details) 5)
-#define G_SPAWN_VALIDATION_ELF32_NOT_STANDARD_ELF	((g_spawn_validation_details) 6)
-#define G_SPAWN_VALIDATION_ELF32_IO_ERROR			((g_spawn_validation_details) 7)
+/**
+ * Test-call for kernel debugging.
+ *
+ * @security-level VARIOUS
+ */
+uint32_t g_test(uint32_t test);
 
-// command structs
-typedef struct {
-	int command;
-}__attribute__((packed)) g_spawn_command_header;
+uint8_t g_io_port_read_byte(uint16_t port);
+uint16_t g_io_port_read_word(uint16_t port);
+uint32_t g_io_port_read_dword(uint16_t port);
 
-typedef struct {
-	g_spawn_command_header header;
-	g_security_level security_level;
-	size_t path_bytes;
-	size_t args_bytes;
-	size_t workdir_bytes;
-	g_fd stdin;
-	g_fd stdout;
-	g_fd stderr;
-	// followed by: path, args, workdir
-}__attribute__((packed)) g_spawn_command_spawn_request;
-
-typedef struct {
-	g_spawn_status status;
-	g_pid spawned_process_id;
-	g_fd stdin_write;
-	g_fd stdout_read;
-	g_fd stderr_read;
-}__attribute__((packed)) g_spawn_command_spawn_response;
-
-// process configuration buffer lengths
-#define G_CLIARGS_BUFFER_LENGTH			1024
-#define G_CLIARGS_SEPARATOR				0x1F // ASCII character: UNIT SEPARATOR
-
-// for <g_syscall_open_irq_device>
-typedef uint8_t g_open_irq_device_status;
-#define G_OPEN_IRQ_DEVICE_STATUS_SUCCESSFUL			((g_open_irq_device_status) 0)
-#define G_OPEN_IRQ_DEVICE_STATUS_NOT_PERMITTED		((g_open_irq_device_status) 1)
-#define G_OPEN_IRQ_DEVICE_STATUS_ERROR				((g_open_irq_device_status) 2)
-
-// for <g_kill>
-typedef uint8_t g_kill_status;
-#define G_KILL_STATUS_SUCCESSFUL						((g_kill_status) 0)
-#define G_KILL_STATUS_NOT_FOUND							((g_kill_status) 1)
-#define G_KILL_STATUS_FAILED					 		((g_kill_status) 2)
-
-// for <g_create_thread>
-typedef uint8_t g_create_thread_status;
-#define G_CREATE_THREAD_STATUS_SUCCESSFUL				((g_create_thread_status) 0)
-#define G_CREATE_THREAD_STATUS_FAILED					((g_create_thread_status) 1)
+void g_io_port_write_byte(uint16_t port, uint8_t data);
+void g_io_port_write_word(uint16_t port, uint16_t data);
+void g_io_port_write_dword(uint16_t port, uint32_t data);
 
 __END_C
 

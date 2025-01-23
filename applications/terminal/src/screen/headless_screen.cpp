@@ -20,7 +20,6 @@
 
 #include "headless_screen.hpp"
 #include <ghost.h>
-#include <ghost/io.h>
 #include <libps2driver/ps2driver.hpp>
 #include <string.h>
 
@@ -61,10 +60,10 @@ void headless_screen_t::clean()
 
 void headless_screen_t::enableCursor()
 {
-	ioOutportByte(0x3D4, 0x0A);
-	ioOutportByte(0x3D5, (ioInportByte(0x3D5) & 0xC0) | 0);
-	ioOutportByte(0x3D4, 0x0B);
-	ioOutportByte(0x3D5, (ioInportByte(0x3D5) & 0xE0) | SCREEN_HEIGHT);
+	g_io_port_write_byte(0x3D4, 0x0A);
+	g_io_port_write_byte(0x3D5, (g_io_port_read_byte(0x3D5) & 0xC0) | 0);
+	g_io_port_write_byte(0x3D4, 0x0B);
+	g_io_port_write_byte(0x3D5, (g_io_port_read_byte(0x3D5) & 0xE0) | SCREEN_HEIGHT);
 }
 
 void headless_screen_t::updateCursor()
@@ -72,10 +71,10 @@ void headless_screen_t::updateCursor()
 	g_mutex_acquire(lock);
 
 	uint16_t position = (getCursorY() * SCREEN_WIDTH) + getCursorX();
-	ioOutportByte(0x3D4, 0x0F);
-	ioOutportByte(0x3D5, (uint8_t) (position & 0xFF));
-	ioOutportByte(0x3D4, 0x0E);
-	ioOutportByte(0x3D5, (uint8_t) ((position >> 8) & 0xFF));
+	g_io_port_write_byte(0x3D4, 0x0F);
+	g_io_port_write_byte(0x3D5, (uint8_t) (position & 0xFF));
+	g_io_port_write_byte(0x3D4, 0x0E);
+	g_io_port_write_byte(0x3D5, (uint8_t) ((position >> 8) & 0xFF));
 
 	g_mutex_release(lock);
 }

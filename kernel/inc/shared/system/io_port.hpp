@@ -21,7 +21,7 @@
 #ifndef __IO_PORTS__
 #define __IO_PORTS__
 
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 
 uint8_t ioPortReadByte(uint16_t port);
 

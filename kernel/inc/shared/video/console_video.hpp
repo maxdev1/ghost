@@ -22,7 +22,7 @@
 #define __CONSOLE_VIDEO__
 
 #include <stdarg.h>
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 
 #define G_CONSOLE_VIDEO_MEMORY			0xB8000
 #define G_CONSOLE_VIDEO_WIDTH			80

@@ -21,7 +21,7 @@
 #ifndef __GHOST_DEBUG_INTERFACE__
 #define __GHOST_DEBUG_INTERFACE__
 
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 #include "build_config.hpp"
 
 #include "shared/debug/debug_protocol.hpp"

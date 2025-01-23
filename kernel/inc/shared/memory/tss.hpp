@@ -21,7 +21,7 @@
 #ifndef __GDT_TSS__
 #define __GDT_TSS__
 
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 
 /**
  * Structure of the x86 task state segment.

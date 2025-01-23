@@ -21,9 +21,8 @@
 #ifndef __KERNEL_PAGE_REF_TRACKER__
 #define __KERNEL_PAGE_REF_TRACKER__
 
-#include "ghost/stdint.h"
-#include "ghost/kernel.h"
-#include "ghost/types.h"
+#include <ghost/stdint.h>
+#include <ghost/memory/types.h>
 
 /**
  *

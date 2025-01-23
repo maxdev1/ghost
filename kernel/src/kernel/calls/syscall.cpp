@@ -19,7 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/calls/syscall.hpp"
-#include "ghost/calls/calls.h"
 #include "kernel/calls/syscall_filesystem.hpp"
 #include "kernel/calls/syscall_general.hpp"
 #include "kernel/calls/syscall_memory.hpp"
@@ -30,6 +29,8 @@
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/tasking/tasking.hpp"
 #include "shared/panic.hpp"
+
+#include <ghost/syscall.h>
 
 g_syscall_registration* syscallRegistrations = 0;
 

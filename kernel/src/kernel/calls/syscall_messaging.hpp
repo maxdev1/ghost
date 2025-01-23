@@ -21,8 +21,9 @@
 #ifndef __KERNEL_SYSCALL_MESSAGING__
 #define __KERNEL_SYSCALL_MESSAGING__
 
-#include "ghost/calls/calls.h"
 #include "kernel/tasking/tasking.hpp"
+#include <ghost/messages/callstructs.h>
+#include <ghost/tasks/callstructs.h>
 
 void syscallRegisterTaskIdentifier(g_task* task, g_syscall_task_id_register* data);
 

@@ -21,8 +21,8 @@
 #ifndef __KERNEL_SYSCALL_VM86__
 #define __KERNEL_SYSCALL_VM86__
 
-#include "ghost/calls/calls.h"
 #include "kernel/tasking/tasking.hpp"
+#include <ghost/system/callstructs.h>
 
 void syscallCallVm86(g_task* task, g_syscall_call_vm86* data);
 

@@ -21,7 +21,7 @@
 #ifndef __KERNEL_DEBUG_INTERFACE__
 #define __KERNEL_DEBUG_INTERFACE__
 
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 #include "shared/debug/debug_interface.hpp"
 
 #if G_DEBUG_INTERFACE_MODE == G_DEBUG_INTERFACE_MODE_FULL

@@ -20,15 +20,12 @@
 
 #include "string.h"
 #include "errno.h"
-#include "ghost/kernel.h"
-#include "ghost.h"
+#include <ghost/system.h>
 
 /**
  *
  */
-int strcoll(const char* str_a, const char* str_b) {
-
-	__G_DEBUG_TRACE(strcoll);
-	// TODO
+int strcoll(const char* str_a, const char* str_b)
+{
 	__G_NOT_IMPLEMENTED("strcoll");
 }

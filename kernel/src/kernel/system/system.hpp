@@ -21,8 +21,7 @@
 #ifndef __KERNEL_SYSTEM__
 #define __KERNEL_SYSTEM__
 
-#include "ghost/types.h"
-#include "kernel/system/processor/processor.hpp"
+#include <ghost/memory/types.h>
 
 /**
  * Sets up all the basic system components that are required to initialize

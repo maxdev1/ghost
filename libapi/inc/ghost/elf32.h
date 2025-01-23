@@ -18,10 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef GHOST_SHARED_ELF_ELF32
-#define GHOST_SHARED_ELF_ELF32
+#ifndef GHOST_API_ELF32
+#define GHOST_API_ELF32
 
-#include "ghost/stdint.h"
+#include "common.h"
+#include "stdint.h"
 
 __BEGIN_C
 
@@ -83,7 +84,8 @@ typedef uint32_t Elf32_Word;
 #define EV_NONE			0
 #define EV_CURRENT		1
 
-typedef struct {
+typedef struct
+{
 	uint8_t e_ident[EI_NIDENT]; // Ident structure
 	Elf32_Half e_type; // Type
 	Elf32_Half e_machine; // Target architecture
@@ -120,23 +122,26 @@ typedef struct {
 #define PF_MASKOS		0x0FF00000
 #define PF_MASKPROC		0xF0000000
 
-typedef struct {
-	Elf32_Word	p_type;		// Type of the segment
-	Elf32_Off	p_offset;	// Offset of the segment in the binary file
-	Elf32_Addr	p_vaddr;	// Virtual address
-	Elf32_Addr	p_paddr;	// Not relevant for System V
-	Elf32_Word	p_filesz;	// Size of the segment in the binary file
-	Elf32_Word	p_memsz;	// Size of the segment in memory
-	Elf32_Word	p_flags;	// Segment flags
-	Elf32_Word	p_align;	// Alignment information
+typedef struct
+{
+	Elf32_Word p_type; // Type of the segment
+	Elf32_Off p_offset; // Offset of the segment in the binary file
+	Elf32_Addr p_vaddr; // Virtual address
+	Elf32_Addr p_paddr; // Not relevant for System V
+	Elf32_Word p_filesz; // Size of the segment in the binary file
+	Elf32_Word p_memsz; // Size of the segment in memory
+	Elf32_Word p_flags; // Segment flags
+	Elf32_Word p_align; // Alignment information
 } __attribute__((packed)) Elf32_Phdr;
 
 /**
  * ELF dynamic section structure
  */
-typedef struct {
+typedef struct
+{
 	Elf32_Sword d_tag; // Controls interpretation of d_un, see DT_*
-	union {
+	union
+	{
 		Elf32_Word d_val;
 		Elf32_Addr d_ptr;
 	} d_un;
@@ -185,18 +190,19 @@ typedef struct {
 /**
  * ELF symbol table
  */
-typedef struct {
-	Elf32_Word	st_name;	// Index to symbol string name
-	Elf32_Addr	st_value;	// Value of associated symbol
-	Elf32_Word	st_size;	// Size of the symbol
-	uint8_t		st_info;	// Type and binding attributes
-	uint8_t		st_other;	// Undefined
-	Elf32_Half	st_shndx;	// Section header table index
+typedef struct
+{
+	Elf32_Word st_name; // Index to symbol string name
+	Elf32_Addr st_value; // Value of associated symbol
+	Elf32_Word st_size; // Size of the symbol
+	uint8_t st_info; // Type and binding attributes
+	uint8_t st_other; // Undefined
+	Elf32_Half st_shndx; // Section header table index
 } Elf32_Sym;
 
 #define ELF32_ST_BIND(i)	((i) >> 4)
 #define ELF32_ST_TYPE(i)	((i) & 0xf)
-#define ELF32_ST_INFO(b, t)	(((b) << 4) + ((t) & 0xf) 
+#define ELF32_ST_INFO(b, t)	(((b) << 4) + ((t) & 0xf)
 
 #define STN_UNDEF	0
 
@@ -217,7 +223,8 @@ typedef struct {
 /**
  * ELF section header
  */
-typedef struct {
+typedef struct
+{
 	Elf32_Word sh_name;
 	Elf32_Word sh_type;
 	Elf32_Word sh_flags;
@@ -250,7 +257,8 @@ typedef struct {
 /**
  * Relocation header entry
  */
-typedef struct {
+typedef struct
+{
 	Elf32_Addr r_offset;
 	Elf32_Word r_info;
 } Elf32_Rel;

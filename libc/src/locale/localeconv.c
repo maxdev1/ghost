@@ -19,7 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "locale.h"
-#include "ghost.h"
+#include <ghost/system.h>
 
 /**
  *

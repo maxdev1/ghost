@@ -22,7 +22,7 @@
 #define __KERNEL_SMP__
 
 #include "kernel/system/processor/processor.hpp"
-#include <ghost/types.h>
+#include <ghost/memory/types.h>
 
 extern bool smpInitialized;
 

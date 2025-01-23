@@ -21,10 +21,10 @@
 #ifndef __GHOST_LIBC_STDIO__
 #define __GHOST_LIBC_STDIO__
 
-#include "ghost.h"
 #include "sys/types.h"
 #include <stddef.h>
 #include <stdarg.h>
+#include <ghost/filesystem.h>
 
 // (N1548-7.21.1-2)
 #include "file.h"
@@ -84,8 +84,8 @@ extern FILE* stdout;
  * @return
  * 		zero if successful, otherwise non-zero
  */
-int remove(const char *filename);
-int unlink(const char *filename);
+int remove(const char* filename);
+int unlink(const char* filename);
 
 /**
  * Renames the file <old_name> to <new_name>. (N1548-7.21.4.2)
@@ -97,7 +97,7 @@ int unlink(const char *filename);
  * @return
  * 		zero if successful, otherwise non-zero
  */
-int rename(const char *old_name, const char *new_name);
+int rename(const char* old_name, const char* new_name);
 
 /**
  * Creates a temporary binary file. (N1548-7.21.4.3)
@@ -260,11 +260,11 @@ int println(const char* format, ...);
  * 		optional list of arguments
  */
 int vcbprintf(void* param,
-		ssize_t (*callback)(void* param, const char* buf, size_t maximum),
-		const char *format, va_list arglist);
+              ssize_t (*callback)(void* param, const char* buf, size_t maximum),
+              const char* format, va_list arglist);
 int cbprintf(void* param,
-		ssize_t (*callback)(void* param, const char* buf, size_t maximum),
-		const char *format, ...);
+             ssize_t (*callback)(void* param, const char* buf, size_t maximum),
+             const char* format, ...);
 
 /**
  * Formatted reading from <stdin>. (N1548-7.21.6.4)
@@ -449,7 +449,7 @@ int putchar(int c);
  * @return
  * 		a non-negative value if successful, otherwise <EOF>
  */
-int puts(const char *s);
+int puts(const char* s);
 
 /**
  * Pushes the given character <c> back to the streams read buffer. (N1548-7.21.7.10)
@@ -589,7 +589,7 @@ int feof(FILE* stream);
  * @return
  * 		non-zero if error indicator is set
  */
-int ferror(FILE *stream);
+int ferror(FILE* stream);
 
 /**
  * Maps the error code in <errno> to a message; then prints the
@@ -618,7 +618,7 @@ int fileno(FILE* stream);
  * 		file descriptor
  *
  */
-FILE* fdopen(int fd, const char *mode);
+FILE* fdopen(int fd, const char* mode);
 
 /**
  * Formatted writing to the kernel log.

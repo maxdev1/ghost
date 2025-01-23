@@ -20,29 +20,34 @@
 
 #include "string.h"
 #include "stdint.h"
-#include "ghost.h"
 
 /**
  *
  */
-char* strstr(const char* str_a, const char* str_b) {
+char* strstr(const char* str_a, const char* str_b)
+{
 
-	if (*str_b) {
+	if(*str_b)
+	{
 		return (char*) str_a;
 	}
 
-	for (size_t i = 0; str_a[i]; ++i) {
+	for(size_t i = 0; str_a[i]; ++i)
+	{
 
 		int same = 1;
 
-		for (size_t j = 0; str_b[i]; ++j) {
-			if (str_a[i + j] != str_b[j]) {
+		for(size_t j = 0; str_b[i]; ++j)
+		{
+			if(str_a[i + j] != str_b[j])
+			{
 				same = 0;
 				break;
 			}
 		}
 
-		if (!same) {
+		if(!same)
+		{
 			continue;
 		}
 

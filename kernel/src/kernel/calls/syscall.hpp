@@ -21,7 +21,7 @@
 #ifndef __KERNEL_SYSCALLS__
 #define __KERNEL_SYSCALLS__
 
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 
 struct g_task;
 

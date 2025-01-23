@@ -20,12 +20,12 @@
 
 #include "stdlib.h"
 #include "errno.h"
+#include <ghost/system.h>
 
 /**
  *
  */
-unsigned long strtoul(const char* str, char** endptr, int base) {
-
-	// TODO
+unsigned long strtoul(const char* str, char** endptr, int base)
+{
 	__G_NOT_IMPLEMENTED("strtoul");
 }

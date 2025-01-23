@@ -20,8 +20,7 @@
 
 #include "list.hpp"
 
-#include <ghost/kernquery.h>
-#include <ghost/user.h>
+#include <ghost.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

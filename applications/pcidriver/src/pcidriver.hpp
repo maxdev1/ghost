@@ -21,6 +21,9 @@
 #ifndef __PCIDRIVER__
 #define __PCIDRIVER__
 
+#include <stdint.h>
+#include <ghost.h>
+
 struct g_pci_device
 {
     uint8_t bus;

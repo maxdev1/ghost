@@ -19,7 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "sched.h"
-#include "ghost/user.h"
+#include <ghost/tasks.h>
 
 /**
  *

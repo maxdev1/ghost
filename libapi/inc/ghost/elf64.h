@@ -18,10 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef GHOST_SHARED_ELF_ELF64
-#define GHOST_SHARED_ELF_ELF64
+#ifndef GHOST_API_ELF64
+#define GHOST_API_ELF64
 
-#include "ghost/stdint.h"
+#include "common.h"
+#include "stdint.h"
 
 __BEGIN_C
 
@@ -33,7 +34,7 @@ typedef uint16_t Elf64_Half;
 typedef uint32_t Elf64_Off;
 typedef int32_t Elf64_Sword;
 typedef uint32_t Elf64_Word;
-typedef int64_t  Elf64_Sxword;
+typedef int64_t Elf64_Sxword;
 typedef uint64_t Elf64_Xword;
 
 /**
@@ -85,7 +86,8 @@ typedef uint64_t Elf64_Xword;
 #define EV_NONE			0
 #define EV_CURRENT		1
 
-typedef struct {
+typedef struct
+{
 	uint8_t e_ident[EI_NIDENT]; // Ident structure
 	Elf64_Half e_type; // Type
 	Elf64_Half e_machine; // Target architecture
@@ -122,23 +124,26 @@ typedef struct {
 #define PF_MASKOS		0x0FF00000
 #define PF_MASKPROC		0xF0000000
 
-typedef struct {
-	Elf64_Word	p_type;		// Type of the segment
-	Elf64_Off	p_offset;	// Offset of the segment in the binary file
-	Elf64_Addr	p_vaddr;	// Virtual address
-	Elf64_Addr	p_paddr;	// Not relevant for System V
-	Elf64_Word	p_filesz;	// Size of the segment in the binary file
-	Elf64_Word	p_memsz;	// Size of the segment in memory
-	Elf64_Word	p_flags;	// Segment flags
-	Elf64_Word	p_align;	// Alignment information
+typedef struct
+{
+	Elf64_Word p_type; // Type of the segment
+	Elf64_Off p_offset; // Offset of the segment in the binary file
+	Elf64_Addr p_vaddr; // Virtual address
+	Elf64_Addr p_paddr; // Not relevant for System V
+	Elf64_Word p_filesz; // Size of the segment in the binary file
+	Elf64_Word p_memsz; // Size of the segment in memory
+	Elf64_Word p_flags; // Segment flags
+	Elf64_Word p_align; // Alignment information
 } __attribute__((packed)) Elf64_Phdr;
 
 /**
  * ELF dynamic section structure
  */
-typedef struct {
+typedef struct
+{
 	Elf64_Sword d_tag; // Controls interpretation of d_un, see DT_*
-	union {
+	union
+	{
 		Elf64_Word d_val;
 		Elf64_Addr d_ptr;
 	} d_un;
@@ -187,18 +192,19 @@ typedef struct {
 /**
  * ELF symbol table
  */
-typedef struct {
-	Elf64_Word	st_name;	// Index to symbol string name
-	Elf64_Addr	st_value;	// Value of associated symbol
-	Elf64_Word	st_size;	// Size of the symbol
-	uint8_t		st_info;	// Type and binding attributes
-	uint8_t		st_other;	// Undefined
-	Elf64_Half	st_shndx;	// Section header table index
+typedef struct
+{
+	Elf64_Word st_name; // Index to symbol string name
+	Elf64_Addr st_value; // Value of associated symbol
+	Elf64_Word st_size; // Size of the symbol
+	uint8_t st_info; // Type and binding attributes
+	uint8_t st_other; // Undefined
+	Elf64_Half st_shndx; // Section header table index
 } Elf64_Sym;
 
 #define ELF64_ST_BIND(i)	((i) >> 4)
 #define ELF64_ST_TYPE(i)	((i) & 0xf)
-#define ELF64_ST_INFO(b, t)	(((b) << 4) + ((t) & 0xf) 
+#define ELF64_ST_INFO(b, t)	(((b) << 4) + ((t) & 0xf)
 
 #define STN_UNDEF	0
 
@@ -219,7 +225,8 @@ typedef struct {
 /**
  * ELF section header
  */
-typedef struct {
+typedef struct
+{
 	Elf64_Word sh_name;
 	Elf64_Word sh_type;
 	Elf64_Word sh_flags;
@@ -252,12 +259,14 @@ typedef struct {
 /**
  * Relocation header entry
  */
-typedef struct {
+typedef struct
+{
 	Elf64_Addr r_offset;
 	Elf64_Word r_info;
 } Elf64_Rel;
 
-typedef struct {
+typedef struct
+{
 	Elf64_Addr r_offset;
 	Elf64_Word r_info;
 	Elf64_Sxword r_addend;

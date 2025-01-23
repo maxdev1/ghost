@@ -21,8 +21,9 @@
 #ifndef __KERNEL_SYSCALL_TASKING__
 #define __KERNEL_SYSCALL_TASKING__
 
-#include "ghost/calls/calls.h"
 #include "kernel/tasking/tasking.hpp"
+#include <ghost/tasks/callstructs.h>
+#include <ghost/mutex/callstructs.h>
 
 void syscallMutexInitialize(g_task* task, g_syscall_user_mutex_initialize* data);
 

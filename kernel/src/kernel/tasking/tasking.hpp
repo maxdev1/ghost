@@ -23,15 +23,16 @@
 
 #include "kernel/tasking/task.hpp"
 #include "kernel/utils/hashmap.hpp"
-#include <ghost/kernel.h>
-#include <ghost/system.h>
+
+#include <ghost/tasks/types.h>
+#include <ghost/system/types.h>
 
 extern g_hashmap<g_tid, g_task*>* taskGlobalMap;
 
 struct g_schedule_entry
 {
-	g_task* task;
-	g_schedule_entry* next;
+    g_task* task;
+    g_schedule_entry* next;
 };
 
 /**
@@ -40,35 +41,35 @@ struct g_schedule_entry
  */
 struct g_tasking_local
 {
-	g_mutex lock;
-	uint32_t processor;
+    g_mutex lock;
+    uint32_t processor;
 
-	/**
-	 * When mutexes are used, each first acquire call to a mutex increases
-	 * the lockCount by one, each last release call to a mutex decreases it.
-	 * On the first acquire, the interrupt flag is stored and interrupts are
-	 * disabled, on the last release the interrupt flag is restored.
-	 */
-	int lockCount;
-	bool lockSetIF;
+    /**
+     * When mutexes are used, each first acquire call to a mutex increases
+     * the lockCount by one, each last release call to a mutex decreases it.
+     * On the first acquire, the interrupt flag is stored and interrupts are
+     * disabled, on the last release the interrupt flag is restored.
+     */
+    int lockCount;
+    bool lockSetIF;
 
-	/**
-	 * Scheduling information for this processor.
-	 */
-	struct
-	{
-		g_schedule_entry* list;
-		g_task* current;
+    /**
+     * Scheduling information for this processor.
+     */
+    struct
+    {
+        g_schedule_entry* list;
+        g_task* current;
 
-		g_task* idleTask;
-	} scheduling;
+        g_task* idleTask;
+    } scheduling;
 };
 
 struct g_spawn_result
 {
-	g_spawn_status status;
-	g_process* process;
-	g_spawn_validation_details validation;
+    g_spawn_status status;
+    g_process* process;
+    g_spawn_validation_details validation;
 };
 
 /**

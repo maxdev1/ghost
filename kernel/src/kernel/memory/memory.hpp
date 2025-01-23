@@ -26,7 +26,6 @@
 #include "kernel/memory/paging.hpp"
 #include "shared/memory/memory.hpp"
 #include "shared/setup_information.hpp"
-#include <ghost/types.h>
 
 class g_task;
 class g_process;

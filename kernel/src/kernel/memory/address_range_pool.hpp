@@ -21,8 +21,8 @@
 #ifndef __KERNEL_ADDRESS_RANGE_POOL__
 #define __KERNEL_ADDRESS_RANGE_POOL__
 
-#include "ghost/types.h"
 #include "shared/system/mutex.hpp"
+#include <ghost/memory/types.h>
 
 struct g_address_range
 {

@@ -19,7 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "string.h"
-#include "ghost.h"
 
 size_t strlen(const char* s) {
 

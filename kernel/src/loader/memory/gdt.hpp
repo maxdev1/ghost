@@ -21,7 +21,7 @@
 #ifndef __GDT_INITIALIZER__
 #define __GDT_INITIALIZER__
 
-#include "ghost/types.h"
+#include <ghost/memory/types.h>
 
 /**
  * Creates the GDT in the page addressed by the usableAddress.
