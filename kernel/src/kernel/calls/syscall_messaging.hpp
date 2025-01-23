@@ -23,11 +23,6 @@
 
 #include "kernel/tasking/tasking.hpp"
 #include <ghost/messages/callstructs.h>
-#include <ghost/tasks/callstructs.h>
-
-void syscallRegisterTaskIdentifier(g_task* task, g_syscall_task_id_register* data);
-
-void syscallGetTaskForIdentifier(g_task* task, g_syscall_task_id_get* data);
 
 void syscallMessageSend(g_task* task, g_syscall_send_message* data);
 

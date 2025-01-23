@@ -180,36 +180,6 @@ int64_t g_tell(g_fd fd);
 int64_t g_tell_s(g_fd fd, g_fs_tell_status* out_status);
 
 /**
- * Sets the working directory for the current process.
- *
- * @param path
- * 		buffer of at least {G_PATH_MAX} bytes size
- * 		containing the new working directory
- *
- * @return one of the {g_set_working_directory_status} codes
- *
- * @security-level APPLICATION if no process given, otherwise KERNEL
- */
-g_set_working_directory_status g_set_working_directory(const char* path);
-
-/**
- * Retrieves the working directory for the current process.
- *
- * @param path
- * 		buffer of at least <maxlen> or {G_PATH_MAX} bytes size
- *
- * @param maxlen
- * 		length of the buffer in bytes
- *
- * @return whether the action was successful
- *
- * @security-level APPLICATION
- */
-g_get_working_directory_status g_get_working_directory(char* buffer);
-g_get_working_directory_status g_get_working_directory_l(char* buffer, size_t maxlen);
-
-
-/**
  * Opens a pipe.
  *
  * @param out_write
@@ -341,17 +311,6 @@ g_fd g_clone_fd_ts(g_fd source_fd, g_pid source_process, g_fd target_fd, g_pid t
  * @security-level DRIVER
  */
 g_open_irq_device_status g_open_irq_device(uint8_t irq, g_fd* outFd);
-
-/**
- * Retrieves the directory of the executable when available, otherwise an empty
- * string is written to the buffer.
- *
- * @param path
- * 		buffer of at least {G_PATH_MAX} bytes size
- *
- * @security-level APPLICATION
- */
-void g_get_executable_path(char* buffer);
 
 __END_C
 

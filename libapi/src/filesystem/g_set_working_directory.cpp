@@ -19,15 +19,15 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost/syscall.h"
-#include "ghost/filesystem.h"
-#include "ghost/filesystem/callstructs.h"
+#include "ghost/tasks.h"
+#include "ghost/tasks/callstructs.h"
 
 /**
  *
  */
 g_set_working_directory_status g_set_working_directory(const char* path)
 {
-	g_syscall_fs_set_working_directory data;
+	g_syscall_set_working_directory data;
 	data.path = (char*) path;
 
 	g_syscall(G_SYSCALL_SET_WORKING_DIRECTORY, (g_address) &data);

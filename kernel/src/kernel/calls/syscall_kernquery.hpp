@@ -18,31 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_SYSCALL_GENERAL__
-#define __KERNEL_SYSCALL_GENERAL__
+#ifndef __KERNEL_SYSCALL_KERNQUERY__
+#define __KERNEL_SYSCALL_KERNQUERY__
 
 #include "kernel/tasking/tasking.hpp"
-
-#include <ghost/system/callstructs.h>
-#include <ghost/tasks/callstructs.h>
-#include <ghost/filesystem/callstructs.h>
 #include <ghost/kernquery/callstructs.h>
-
-void syscallLog(g_task* task, g_syscall_log* data);
-
-void syscallSetVideoLog(g_task* task, g_syscall_set_video_log* data);
-
-void syscallTest(g_task* task, g_syscall_test* data);
-
-void syscallReleaseCliArguments(g_task* task, g_syscall_cli_args_release* data);
-
-void syscallGetMilliseconds(g_task* task, g_syscall_millis* data);
-
-void syscallGetExecutablePath(g_task* task, g_syscall_fs_get_executable_path* data);
-
-void syscallGetWorkingDirectory(g_task* task, g_syscall_fs_get_working_directory* data);
-
-void syscallSetWorkingDirectory(g_task* task, g_syscall_fs_set_working_directory* data);
 
 void syscallKernQuery(g_task * task, g_syscall_kernquery * data);
 

@@ -18,12 +18,18 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_SYSCALL_VM86__
-#define __KERNEL_SYSCALL_VM86__
+#ifndef __KERNEL_SYSCALL_MUTEX__
+#define __KERNEL_SYSCALL_MUTEX__
 
 #include "kernel/tasking/tasking.hpp"
-#include <ghost/system/callstructs.h>
+#include <ghost/mutex/callstructs.h>
 
-void syscallCallVm86(g_task* task, g_syscall_call_vm86* data);
+void syscallMutexInitialize(g_task* task, g_syscall_user_mutex_initialize* data);
+
+void sycallMutexAcquire(g_task* task, g_syscall_user_mutex_acquire* data);
+
+void syscallMutexRelease(g_task* task, g_syscall_user_mutex_release* data);
+
+void syscallMutexDestroy(g_task* task, g_syscall_user_mutex_destroy* data);
 
 #endif

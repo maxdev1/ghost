@@ -23,15 +23,6 @@
 
 #include "kernel/tasking/tasking.hpp"
 #include <ghost/tasks/callstructs.h>
-#include <ghost/mutex/callstructs.h>
-
-void syscallMutexInitialize(g_task* task, g_syscall_user_mutex_initialize* data);
-
-void sycallMutexAcquire(g_task* task, g_syscall_user_mutex_acquire* data);
-
-void syscallMutexRelease(g_task* task, g_syscall_user_mutex_release* data);
-
-void syscallMutexDestroy(g_task* task, g_syscall_user_mutex_destroy* data);
 
 void syscallExit(g_task* task, g_syscall_exit* data);
 
@@ -64,5 +55,19 @@ void syscallGetParentProcessId(g_task* task, g_syscall_get_parent_pid* data);
 void syscallCreateThread(g_task* task, g_syscall_create_thread* data);
 
 void syscallGetThreadEntry(g_task* task, g_syscall_get_thread_entry* data);
+
+void syscallReleaseCliArguments(g_task* task, g_syscall_cli_args_release* data);
+
+void syscallGetMilliseconds(g_task* task, g_syscall_millis* data);
+
+void syscallGetExecutablePath(g_task* task, g_syscall_get_executable_path* data);
+
+void syscallGetWorkingDirectory(g_task* task, g_syscall_get_working_directory* data);
+
+void syscallSetWorkingDirectory(g_task* task, g_syscall_set_working_directory* data);
+
+void syscallRegisterTaskIdentifier(g_task* task, g_syscall_task_id_register* data);
+
+void syscallGetTaskForIdentifier(g_task* task, g_syscall_task_id_get* data);
 
 #endif

@@ -19,15 +19,15 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost/syscall.h"
-#include "ghost/filesystem.h"
-#include "ghost/filesystem/callstructs.h"
+#include "ghost/tasks.h"
+#include "ghost/tasks/callstructs.h"
 
 /**
  *
  */
 void g_get_executable_path(char* buffer)
 {
-	g_syscall_fs_get_executable_path data;
+	g_syscall_get_executable_path data;
 	data.buffer = buffer;
 	g_syscall(G_SYSCALL_GET_EXECUTABLE_PATH, (g_address) &data);
 }

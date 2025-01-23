@@ -22,6 +22,7 @@
 #define GHOST_API_FILESYSTEM_DELEGATE
 
 #include "types.h"
+#include "../memory/types.h"
 
 __BEGIN_C
 

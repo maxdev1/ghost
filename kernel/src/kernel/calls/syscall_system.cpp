@@ -18,36 +18,52 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "kernel/calls/syscall_vm86.hpp"
-#include "kernel/memory/memory.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/calls/syscall_system.hpp"
+#include "kernel/filesystem/filesystem.hpp"
+#include "kernel/tasking/tasking_directory.hpp"
+
+void syscallLog(g_task* task, g_syscall_log* data)
+{
+	logInfo("%! %i: %s", "log", task->id, data->message);
+}
+
+void syscallSetVideoLog(g_task* task, g_syscall_set_video_log* data)
+{
+	loggerEnableVideo(data->enabled);
+}
+
+void syscallTest(g_task* task, g_syscall_test* data)
+{
+	data->result = data->test;
+}
 
 void syscallCallVm86(g_task* task, g_syscall_call_vm86* data)
 {
-    if(task->securityLevel > G_SECURITY_LEVEL_DRIVER)
-    {
-        data->status = G_VM86_CALL_STATUS_FAILED_NOT_PERMITTED;
-        return;
-    }
+	if(task->securityLevel > G_SECURITY_LEVEL_DRIVER)
+	{
+		data->status = G_VM86_CALL_STATUS_FAILED_NOT_PERMITTED;
+		return;
+	}
 
-    g_vm86_registers* registerStore = (g_vm86_registers*) heapAllocate(sizeof(g_vm86_registers));
+	g_vm86_registers* registerStore = (g_vm86_registers*) heapAllocate(sizeof(g_vm86_registers));
 
-    g_task* vm86task = taskingCreateTaskVm86(task->process, data->interrupt, data->in, registerStore);
-    taskingAssign(taskingGetLocal(), vm86task);
+	g_task* vm86task = taskingCreateTaskVm86(task->process, data->interrupt, data->in, registerStore);
+	taskingAssign(taskingGetLocal(), vm86task);
 
-    for(;;)
-    {
-        if(vm86task == 0 || vm86task->status == G_THREAD_STATUS_DEAD)
-        {
-            /* VM86 task has finished, copy out registers */
-            *data->out = *registerStore;
+	for(;;)
+	{
+		if(vm86task == 0 || vm86task->status == G_THREAD_STATUS_DEAD)
+		{
+			/* VM86 task has finished, copy out registers */
+			*data->out = *registerStore;
 
-            heapFree(registerStore);
+			heapFree(registerStore);
 
-            data->status = G_VM86_CALL_STATUS_SUCCESSFUL;
-            break;
-        }
+			data->status = G_VM86_CALL_STATUS_SUCCESSFUL;
+			break;
+		}
 
-        taskingYield();
-    }
+		taskingYield();
+	}
 }
+

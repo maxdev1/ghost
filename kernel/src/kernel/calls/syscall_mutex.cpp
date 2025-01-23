@@ -18,28 +18,28 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost/syscall.h"
-#include "ghost/tasks.h"
-#include "ghost/tasks/callstructs.h"
+#include "kernel/calls/syscall_mutex.hpp"
+#include "kernel/tasking/user_mutex.hpp"
 
-/**
- *
- */
-g_get_working_directory_status g_get_working_directory(char* buffer)
+void syscallMutexInitialize(g_task* task, g_syscall_user_mutex_initialize* data)
 {
-	return g_get_working_directory_l(buffer, G_PATH_MAX);
+	data->mutex = userMutexCreate(data->reentrant);
 }
 
-/**
- *
- */
-g_get_working_directory_status g_get_working_directory_l(char* buffer, size_t maxlen)
+void sycallMutexAcquire(g_task* task, g_syscall_user_mutex_acquire* data)
 {
-	g_syscall_get_working_directory data;
-	data.buffer = buffer;
-	data.maxlen = maxlen;
-
-	g_syscall(G_SYSCALL_GET_WORKING_DIRECTORY, (g_address) &data);
-
-	return data.result;
+	auto status = userMutexAcquire(task, data->mutex, data->timeout, data->trying);
+	data->wasSet = status == G_USER_MUTEX_STATUS_ACQUIRED;
+	data->hasTimedOut = status == G_USER_MUTEX_STATUS_TIMEOUT;
 }
+
+void syscallMutexRelease(g_task* task, g_syscall_user_mutex_release* data)
+{
+	userMutexRelease(data->mutex);
+}
+
+void syscallMutexDestroy(g_task* task, g_syscall_user_mutex_destroy* data)
+{
+	userMutexDestroy(data->mutex);
+}
+

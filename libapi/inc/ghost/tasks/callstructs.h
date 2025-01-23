@@ -257,6 +257,49 @@ typedef struct
 	g_user_threadlocal* userThreadLocal;
 }__attribute__((packed)) g_syscall_task_get_tls;
 
+/**
+ * @field path
+ * 		buffer containing the path
+ *
+ * @field result
+ * 		one of the {g_set_working_directory_status} codes
+ *
+ * @security-level APPLICATION
+ */
+typedef struct
+{
+  char* path;
+
+  g_set_working_directory_status result;
+}__attribute__((packed)) g_syscall_set_working_directory;
+
+/**
+ * @field buffer
+ * 		buffer with the given size
+ *
+ * @field maxlen
+ * 		maximum number of bytes to write to the buffer
+ *
+ * @security-level APPLICATION
+ */
+typedef struct
+{
+  char* buffer;
+  size_t maxlen;
+  g_get_working_directory_status result;
+}__attribute__((packed)) g_syscall_get_working_directory;
+
+/**
+ * @field buffer
+ * 		buffer with a size of at least {G_PATH_MAX} bytes
+ *
+ * @security-level APPLICATION
+ */
+typedef struct
+{
+  char* buffer;
+}__attribute__((packed)) g_syscall_get_executable_path;
+
 __END_C
 
 #endif

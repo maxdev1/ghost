@@ -18,110 +18,14 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "kernel/calls/syscall_general.hpp"
-#include "kernel/filesystem/filesystem.hpp"
-#include "kernel/memory/heap.hpp"
+#include "kernel/calls/syscall_kernquery.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking_directory.hpp"
 #include "kernel/utils/hashmap.hpp"
-#include "shared/logger/logger.hpp"
 #include "shared/utils/string.hpp"
-
-void syscallLog(g_task* task, g_syscall_log* data)
-{
-	logInfo("%! %i: %s", "log", task->id, data->message);
-}
-
-void syscallSetVideoLog(g_task* task, g_syscall_set_video_log* data)
-{
-	loggerEnableVideo(data->enabled);
-}
-
-void syscallTest(g_task* task, g_syscall_test* data)
-{
-	data->result = data->test;
-}
-
-void syscallReleaseCliArguments(g_task* task, g_syscall_cli_args_release* data)
-{
-	if(task->process->environment.arguments)
-		stringCopy(data->buffer, task->process->environment.arguments);
-	else
-		data->buffer[0] = 0;
-}
-
-void syscallGetMilliseconds(g_task* task, g_syscall_millis* data)
-{
-	data->millis = clockGetLocal()->time;
-}
-
-void syscallGetExecutablePath(g_task* task, g_syscall_fs_get_executable_path* data)
-{
-	if(task->process->environment.executablePath)
-		stringCopy(data->buffer, task->process->environment.executablePath);
-	else
-		data->buffer[0] = 0;
-}
-
-void syscallGetWorkingDirectory(g_task* task, g_syscall_fs_get_working_directory* data)
-{
-	const char* workingDirectory = task->process->environment.workingDirectory;
-	if(workingDirectory)
-	{
-		size_t length = stringLength(workingDirectory);
-		if(length + 1 > data->maxlen)
-		{
-			data->result = G_GET_WORKING_DIRECTORY_SIZE_EXCEEDED;
-		}
-		else
-		{
-			stringCopy(data->buffer, workingDirectory);
-			data->result = G_GET_WORKING_DIRECTORY_SUCCESSFUL;
-		}
-	}
-	else
-	{
-		stringCopy(data->buffer, "/");
-		data->result = G_GET_WORKING_DIRECTORY_SUCCESSFUL;
-	}
-}
-
-void syscallSetWorkingDirectory(g_task* task, g_syscall_fs_set_working_directory* data)
-{
-	auto findRes = filesystemFind(nullptr, data->path);
-	if(findRes.status == G_FS_OPEN_SUCCESSFUL)
-	{
-		if(findRes.file->type == G_FS_NODE_TYPE_FOLDER || findRes.file->type == G_FS_NODE_TYPE_MOUNTPOINT || findRes.file->type == G_FS_NODE_TYPE_ROOT)
-		{
-			if(task->process->environment.workingDirectory)
-			{
-				heapFree(task->process->environment.workingDirectory);
-			}
-
-			int length = filesystemGetAbsolutePathLength(findRes.file);
-			task->process->environment.workingDirectory = (char*) heapAllocate(length + 1);
-			filesystemGetAbsolutePath(findRes.file, task->process->environment.workingDirectory);
-			data->result = G_SET_WORKING_DIRECTORY_SUCCESSFUL;
-		}
-		else
-		{
-			data->result = G_SET_WORKING_DIRECTORY_NOT_A_FOLDER;
-		}
-	}
-	else if(findRes.status == G_FS_OPEN_NOT_FOUND)
-	{
-		data->result = G_SET_WORKING_DIRECTORY_NOT_FOUND;
-	}
-	else
-	{
-		data->result = G_SET_WORKING_DIRECTORY_ERROR;
-	}
-}
 
 void syscallKernQuery(g_task* task, g_syscall_kernquery* data)
 {
-	uint64_t start = clockGetLocal()->time;
-
 	if(data->command == G_KERNQUERY_TASK_LIST)
 	{
 		g_kernquery_task_list_data* kdata = (g_kernquery_task_list_data*) data->buffer;
