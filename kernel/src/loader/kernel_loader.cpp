@@ -19,7 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "loader/kernel_loader.hpp"
-#include "ghost/types.h"
 #include "loader/memory/paging.hpp"
 #include "loader/setup_information.hpp"
 #include "shared/logger/logger.hpp"
@@ -29,6 +28,8 @@
 #include "shared/memory/paging.hpp"
 #include "shared/panic.hpp"
 #include "shared/video/pretty_boot.hpp"
+#include <ghost/stdint.h>
+#include <ghost/elf32.h>
 
 /**
  * This must stay as a global variable. We can't put this on

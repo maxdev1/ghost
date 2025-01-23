@@ -21,7 +21,7 @@
 #ifndef __KERNEL_PROCESSOR_STATE__
 #define __KERNEL_PROCESSOR_STATE__
 
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 
 /**
  * Image of the stack on interrupt

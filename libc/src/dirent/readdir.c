@@ -18,12 +18,12 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost.h"
 #include "dir.h"
 #include "dirent.h"
 #include "errno.h"
 #include "malloc.h"
 #include "string.h"
+#include <ghost/filesystem.h>
 
 /**
  *

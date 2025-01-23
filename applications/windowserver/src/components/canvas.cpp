@@ -20,7 +20,7 @@
 
 #include "components/canvas.hpp"
 #include "windowserver.hpp"
-#include <ghost/memory.h>
+#include <ghost.h>
 #include <string.h>
 
 #define ALIGN_UP(value) (value + value % 100)

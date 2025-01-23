@@ -21,7 +21,7 @@
 #ifndef __UTILS_STRING__
 #define __UTILS_STRING__
 
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 #include <stddef.h>
 
 void stringConcat(const char* a, const char* b, char* out);

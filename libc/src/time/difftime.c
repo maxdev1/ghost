@@ -19,12 +19,13 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "time.h"
+#include <ghost/system.h>
 
 /**
  *
  */
-double difftime(time_t timea, time_t timeb) {
-
-	__G_NOT_IMPLEMENTED("difftime")
+double difftime(time_t timea, time_t timeb)
+{
+	__G_NOT_IMPLEMENTED("difftime");
 	return 0;
 }

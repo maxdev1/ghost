@@ -20,12 +20,12 @@
 
 #include "stdlib.h"
 #include "errno.h"
+#include <ghost/system.h>
 
 /**
  *
  */
-float strtof(const char* str, char** endptr) {
-
-	// TODO
+float strtof(const char* str, char** endptr)
+{
 	__G_NOT_IMPLEMENTED("strtof");
 }

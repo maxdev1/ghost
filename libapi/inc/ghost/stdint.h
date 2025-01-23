@@ -18,51 +18,52 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __GHOST_SYS_STDINT__
-#define __GHOST_SYS_STDINT__
+#ifndef GHOST_API_STDINT
+#define GHOST_API_STDINT
+
+#include "common.h"
 
 #include <stddef.h>
-#include "ghost/common.h"
 
 __BEGIN_C
 
 // exact-width integer types (N1546-7.20.1.1)
-typedef __UINT8_TYPE__			uint8_t;
-typedef __INT8_TYPE__			int8_t;
-typedef __UINT16_TYPE__			uint16_t;
-typedef __INT16_TYPE__			int16_t;
-typedef __UINT32_TYPE__			uint32_t;
-typedef __INT32_TYPE__			int32_t;
-typedef __UINT64_TYPE__			uint64_t;
-typedef __INT64_TYPE__			int64_t;
+typedef __UINT8_TYPE__ uint8_t;
+typedef __INT8_TYPE__ int8_t;
+typedef __UINT16_TYPE__ uint16_t;
+typedef __INT16_TYPE__ int16_t;
+typedef __UINT32_TYPE__ uint32_t;
+typedef __INT32_TYPE__ int32_t;
+typedef __UINT64_TYPE__ uint64_t;
+typedef __INT64_TYPE__ int64_t;
 
 // minimum-width integer types (N1548-7.20.1.2)
-typedef __INT_LEAST8_TYPE__		int_least8_t;
-typedef __UINT_LEAST8_TYPE__	uint_least8_t;
-typedef __INT_LEAST16_TYPE__	int_least16_t;
-typedef __UINT_LEAST16_TYPE__	uint_least16_t;
-typedef __INT_LEAST32_TYPE__	int_least32_t;
-typedef __UINT_LEAST32_TYPE__	uint_least32_t;
-typedef __INT_LEAST64_TYPE__	int_least64_t;
-typedef __UINT_LEAST64_TYPE__	uint_least64_t;
+typedef __INT_LEAST8_TYPE__ int_least8_t;
+typedef __UINT_LEAST8_TYPE__ uint_least8_t;
+typedef __INT_LEAST16_TYPE__ int_least16_t;
+typedef __UINT_LEAST16_TYPE__ uint_least16_t;
+typedef __INT_LEAST32_TYPE__ int_least32_t;
+typedef __UINT_LEAST32_TYPE__ uint_least32_t;
+typedef __INT_LEAST64_TYPE__ int_least64_t;
+typedef __UINT_LEAST64_TYPE__ uint_least64_t;
 
 // fastest minimum-width integer types (N1548-7.20.1.3)
-typedef __INT_FAST8_TYPE__		int_fast8_t;
-typedef __UINT_FAST8_TYPE__		uint_fast8_t;
-typedef __INT_FAST16_TYPE__		int_fast16_t;
-typedef __UINT_FAST16_TYPE__	uint_fast16_t;
-typedef __INT_FAST32_TYPE__		int_fast32_t;
-typedef __UINT_FAST32_TYPE__	uint_fast32_t;
-typedef __INT_FAST64_TYPE__		int_fast64_t;
-typedef __UINT_FAST64_TYPE__	uint_fast64_t;
+typedef __INT_FAST8_TYPE__ int_fast8_t;
+typedef __UINT_FAST8_TYPE__ uint_fast8_t;
+typedef __INT_FAST16_TYPE__ int_fast16_t;
+typedef __UINT_FAST16_TYPE__ uint_fast16_t;
+typedef __INT_FAST32_TYPE__ int_fast32_t;
+typedef __UINT_FAST32_TYPE__ uint_fast32_t;
+typedef __INT_FAST64_TYPE__ int_fast64_t;
+typedef __UINT_FAST64_TYPE__ uint_fast64_t;
 
 // integer type capable of holding the value of a pointer (N1548-7.20.1.4)
-typedef __INTPTR_TYPE__			intptr_t;
-typedef __UINTPTR_TYPE__		uintptr_t;
+typedef __INTPTR_TYPE__ intptr_t;
+typedef __UINTPTR_TYPE__ uintptr_t;
 
 // greatest-width integer types (N1548-7.20.1.5)
-typedef __INTMAX_TYPE__			intmax_t;
-typedef __UINTMAX_TYPE__		uintmax_t;
+typedef __INTMAX_TYPE__ intmax_t;
+typedef __UINTMAX_TYPE__ uintmax_t;
 
 // limits of exact-width integer types (N1548-7.20.2.1)
 #define INT8_MAX				(__INT8_MAX__)
@@ -145,6 +146,9 @@ typedef __UINTMAX_TYPE__		uintmax_t;
 // macros for greatest-width integer constants (N1546-7.20.4.2)
 #define INTMAX_C(c)				(__INTMAX_C(c))
 #define UINTMAX_C(c)			(__UINTMAX_C(c))
+
+// custom types
+typedef uint8_t g_bool;
 
 __END_C
 

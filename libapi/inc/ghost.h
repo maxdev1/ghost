@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *                                                                           *
+*                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
  *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
@@ -18,17 +18,19 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __GHOST_API__
-#define __GHOST_API__
+#ifndef GHOST_API
+#define GHOST_API
 
 #include "ghost/common.h"
-#include "ghost/user.h"
-#include "ghost/kernel.h"
-#include "ghost/system.h"
+#include "ghost/filesystem.h"
+#include "ghost/kernquery.h"
+#include "ghost/memory.h"
+#include "ghost/messages.h"
+#include "ghost/mutex.h"
 #include "ghost/ramdisk.h"
-#include "ghost/ipc.h"
-#include "ghost/types.h"
-#include "ghost/fs.h"
-#include "ghost/calls/calls.h"
+#include "ghost/signal.h"
+#include "ghost/syscall.h"
+#include "ghost/system.h"
+#include "ghost/tasks.h"
 
 #endif

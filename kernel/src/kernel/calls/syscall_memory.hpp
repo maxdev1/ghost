@@ -21,8 +21,8 @@
 #ifndef __KERNEL_SYSCALL_MEMORY__
 #define __KERNEL_SYSCALL_MEMORY__
 
-#include "ghost/calls/calls.h"
 #include "kernel/tasking/tasking.hpp"
+#include <ghost/memory/callstructs.h>
 
 void syscallSbrk(g_task* task, g_syscall_sbrk* data);
 

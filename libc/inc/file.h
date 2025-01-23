@@ -21,10 +21,10 @@
 #ifndef __GHOST_LIBC_FILE__
 #define __GHOST_LIBC_FILE__
 
-#include "ghost/common.h"
-#include "ghost/fs.h"
 #include "sys/types.h"
 #include "stdint.h"
+#include <ghost/filesystem.h>
+#include <ghost/mutex.h>
 
 __BEGIN_C
 

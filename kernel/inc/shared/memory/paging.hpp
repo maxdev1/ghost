@@ -21,8 +21,8 @@
 #ifndef __PAGING__
 #define __PAGING__
 
-#include "ghost/memory.h"
-#include "ghost/types.h"
+#include <ghost/memory/types.h>
+#include <ghost/stdint.h>
 
 #define G_PAGE_TABLE_PRESENT        (1)
 #define G_PAGE_TABLE_READWRITE      (1 << 1)

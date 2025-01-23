@@ -18,7 +18,6 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <ghost.h>
 #include <stdio.h>
 #include <string.h>
 

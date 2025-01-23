@@ -19,14 +19,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "time.h"
-#include "ghost/kernel.h"
+#include <ghost/system.h>
 
 /**
  *
  */
-clock_t clock() {
-
-	// TODO
-	__G_NOT_IMPLEMENTED("clock")
+clock_t clock()
+{
+	__G_NOT_IMPLEMENTED("clock");
 }
-

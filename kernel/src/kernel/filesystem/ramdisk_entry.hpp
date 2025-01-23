@@ -21,8 +21,8 @@
 #ifndef __KERNEL_RAMDISK_ENTRY__
 #define __KERNEL_RAMDISK_ENTRY__
 
-#include "ghost/stdint.h"
-#include "ghost/ramdisk.h"
+#include <ghost/stdint.h>
+#include <ghost/ramdisk.h>
 
 /**
  * Struct of a ramdisk entry

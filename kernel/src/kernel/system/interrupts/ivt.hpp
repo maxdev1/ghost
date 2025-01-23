@@ -21,7 +21,7 @@
 #ifndef __KERNEL_IVT__
 #define __KERNEL_IVT__
 
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 #include "shared/memory/memory.hpp"
 
 /**

@@ -19,7 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "unistd.h"
-#include "ghost/kernel.h"
 
 /**
  *

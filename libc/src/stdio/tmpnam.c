@@ -19,7 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "errno.h"
-#include "ghost/user.h"
 #include "inttypes.h"
 #include "stdio.h"
 #include "stdio_internal.h"

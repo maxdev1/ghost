@@ -21,9 +21,9 @@
 #ifndef __PAGING_INITIALIZER__
 #define __PAGING_INITIALIZER__
 
-#include "ghost/types.h"
 #include "shared/memory/paging.hpp"
 #include "shared/setup_information.hpp"
+#include <ghost/memory/types.h>
 
 /**
  * Initially creates the paging directory and identity maps the lower 1MB plus the area of the kernel
@@ -55,12 +55,14 @@ void pagingRelocateMultibootModules(g_page_directory pageDirectory, g_virtual_ad
  * Identity-maps the area from start to end to the page directory directory, using the given tableFlags and pageFlags.
  * This only works while paging is disable, thus it is private for the paging initializer.
  */
-void pagingIdentityMap(g_page_directory directory, uint32_t start, uint32_t end, uint32_t tableFlags, uint32_t pageFlags);
+void pagingIdentityMap(g_page_directory directory, uint32_t start, uint32_t end, uint32_t tableFlags,
+                       uint32_t pageFlags);
 
 /**
  * Maps the page at physicalAddress to the virtualAddress, using the given tableFlags and pageFlags.
  * This only works while paging is disable, thus it is private for the paging initializer.
  */
-void pagingMapPageToDirectory(g_page_directory directory, uint32_t virtualAddress, uint32_t physicalAddress, uint32_t tableFlags, uint32_t pageFlags);
+void pagingMapPageToDirectory(g_page_directory directory, uint32_t virtualAddress, uint32_t physicalAddress,
+                              uint32_t tableFlags, uint32_t pageFlags);
 
 #endif

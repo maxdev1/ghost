@@ -21,9 +21,9 @@
 #ifndef __KERNEL_FILESYSTEM__
 #define __KERNEL_FILESYSTEM__
 
-#include "ghost/fs.h"
 #include "kernel/tasking/tasking.hpp"
 #include "shared/system/mutex.hpp"
+#include <ghost/filesystem/types.h>
 
 struct g_fs_node;
 struct g_fs_node_entry;
@@ -35,19 +35,19 @@ struct g_file_descriptor;
  */
 struct g_fs_node
 {
-	g_fs_virt_id id;
-	g_fs_phys_id physicalId;
-	g_fs_node_type type;
-	g_mutex lock;
+    g_fs_virt_id id;
+    g_fs_phys_id physicalId;
+    g_fs_node_type type;
+    g_mutex lock;
 
-	char* name;
-	g_fs_node* parent;
-	g_fs_node_entry* children;
+    char* name;
+    g_fs_node* parent;
+    g_fs_node_entry* children;
 
-	g_fs_delegate* delegate;
+    g_fs_delegate* delegate;
 
-	bool blocking;
-	bool upToDate;
+    bool blocking;
+    bool upToDate;
 };
 
 /**
@@ -55,8 +55,8 @@ struct g_fs_node
  */
 struct g_fs_node_entry
 {
-	g_fs_node* node;
-	g_fs_node_entry* next;
+    g_fs_node* node;
+    g_fs_node_entry* next;
 };
 
 /**
@@ -64,30 +64,30 @@ struct g_fs_node_entry
  */
 struct g_fs_delegate
 {
-	g_mutex lock;
+    g_mutex lock;
 
-	g_fs_open_status (*open)(g_fs_node* node, g_file_flag_mode flags);
-	g_fs_open_status (*discover)(g_fs_node* parent, const char* name, g_fs_node** outNode);
-	g_fs_read_status (*read)(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
-	g_fs_write_status (*write)(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote);
-	g_fs_length_status (*getLength)(g_fs_node* node, uint64_t* outLength);
-	g_fs_open_status (*create)(g_fs_node* parent, const char* name, g_fs_node** outFile);
-	g_fs_open_status (*truncate)(g_fs_node* file);
-	g_fs_close_status (*close)(g_fs_node* node, g_file_flag_mode openFlags);
-	g_fs_directory_refresh_status (*refreshDir)(g_fs_node* node);
+    g_fs_open_status (*open)(g_fs_node* node, g_file_flag_mode flags);
+    g_fs_open_status (*discover)(g_fs_node* parent, const char* name, g_fs_node** outNode);
+    g_fs_read_status (*read)(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
+    g_fs_write_status (*write)(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote);
+    g_fs_length_status (*getLength)(g_fs_node* node, uint64_t* outLength);
+    g_fs_open_status (*create)(g_fs_node* parent, const char* name, g_fs_node** outFile);
+    g_fs_open_status (*truncate)(g_fs_node* file);
+    g_fs_close_status (*close)(g_fs_node* node, g_file_flag_mode openFlags);
+    g_fs_directory_refresh_status (*refreshDir)(g_fs_node* node);
 
-	void (*waitForRead)(g_tid task, g_fs_node* node);
-	void (*waitForWrite)(g_tid task, g_fs_node* node);
+    void (*waitForRead)(g_tid task, g_fs_node* node);
+    void (*waitForWrite)(g_tid task, g_fs_node* node);
 };
 
 struct g_filesystem_find_result
 {
-	g_fs_open_status status;
-	g_fs_node* file;
+    g_fs_open_status status;
+    g_fs_node* file;
 
-	bool foundAllButLast;
-	g_fs_node* lastFoundNode;
-	const char* fileNameStart;
+    bool foundAllButLast;
+    g_fs_node* lastFoundNode;
+    const char* fileNameStart;
 };
 
 /**
@@ -158,8 +158,10 @@ g_fs_delegate* filesystemFindDelegate(g_fs_node* node);
  * Opens a file, creating a file descriptor.
  */
 g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task* task, g_fd* outFd);
-g_fs_open_status filesystemOpenNode(g_fs_node* file, g_file_flag_mode flags, g_pid process, g_file_descriptor** outDescriptor, g_fd optionalTargetFd = G_FD_NONE);
-g_fs_open_status filesystemOpenNodeFd(g_fs_node* file, g_file_flag_mode flags, g_pid process, g_fd* outFd, g_fd optionalTargetFd = G_FD_NONE);
+g_fs_open_status filesystemOpenNode(g_fs_node* file, g_file_flag_mode flags, g_pid process,
+                                    g_file_descriptor** outDescriptor, g_fd optionalTargetFd = G_FD_NONE);
+g_fs_open_status filesystemOpenNodeFd(g_fs_node* file, g_file_flag_mode flags, g_pid process, g_fd* outFd,
+                                      g_fd optionalTargetFd = G_FD_NONE);
 
 /**
  * Reads bytes from a file.
@@ -171,7 +173,8 @@ g_fs_read_status filesystemRead(g_fs_node* file, uint8_t* buffer, uint64_t offse
  * Writes bytes to a file.
  */
 g_fs_write_status filesystemWrite(g_task* task, g_fd fd, uint8_t* buffer, uint64_t length, int64_t* outWrote);
-g_fs_write_status filesystemWrite(g_fs_node* file, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote);
+g_fs_write_status filesystemWrite(g_fs_node* file, uint8_t* buffer, uint64_t offset, uint64_t length,
+                                  int64_t* outWrote);
 
 /**
  * Closes a file descriptor.

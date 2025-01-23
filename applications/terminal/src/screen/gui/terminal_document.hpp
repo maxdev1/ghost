@@ -21,9 +21,9 @@
 #ifndef __TERMINAL_DOCUMENT__
 #define __TERMINAL_DOCUMENT__
 
-#include <ghost/user.h>
-
 #include "terminal_line.hpp"
+
+#include <ghost.h>
 
 struct terminal_row_t
 {

@@ -21,7 +21,6 @@
 #ifndef __KERNEL_INTERRUPTS__
 #define __KERNEL_INTERRUPTS__
 
-#include "ghost/types.h"
 #include "kernel/system/processor/processor.hpp"
 
 /**

@@ -21,8 +21,6 @@
 #ifndef __KERNEL_APIC__
 #define __KERNEL_APIC__
 
-#include "ghost/types.h"
-
 /**
  * Attempts to find and parse the MADT (Multiple APIC Description Table).
  * If possible, all available LAPIC and IOAPIC are detected and prepared.

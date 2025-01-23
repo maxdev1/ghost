@@ -21,9 +21,10 @@
 #ifndef __KERNEL_USER_MUTEX__
 #define __KERNEL_USER_MUTEX__
 
-#include "ghost/types.h"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/tasking/tasking.hpp"
+#include <ghost/tasks/types.h>
+#include <ghost/mutex/types.h>
 
 struct g_user_mutex_waiter
 {

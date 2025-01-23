@@ -20,7 +20,6 @@
 
 #include "strings.h"
 #include "stdint.h"
-#include "ghost.h"
 #include "ctype.h"
 
 /**

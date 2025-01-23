@@ -21,7 +21,7 @@
 #ifndef __KERNEL_IDT__
 #define __KERNEL_IDT__
 
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 
 /**
  * Structure of the IDT pointer

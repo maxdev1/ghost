@@ -19,7 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "time.h"
-#include "ghost/kernel.h"
 
 /**
  *

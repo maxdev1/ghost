@@ -21,7 +21,7 @@
 #ifndef __SYSTEM_MUTEX__
 #define __SYSTEM_MUTEX__
 
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 #include "shared/logger/logger.hpp"
 #include "shared/system/spinlock.hpp"
 

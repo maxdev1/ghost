@@ -21,6 +21,7 @@
 #include "stdio.h"
 #include "stdio_internal.h"
 #include "errno.h"
+#include <ghost/system.h>
 
 /**
  *

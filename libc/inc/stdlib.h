@@ -21,7 +21,6 @@
 #ifndef __GHOST_LIBC_STDLIB__
 #define __GHOST_LIBC_STDLIB__
 
-#include "ghost.h"
 #include "malloc.h"
 
 __BEGIN_C

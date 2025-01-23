@@ -21,7 +21,7 @@
 #ifndef __KERNEL_PAGING__
 #define __KERNEL_PAGING__
 
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 #include "shared/memory/memory.hpp"
 #include "shared/memory/paging.hpp"
 

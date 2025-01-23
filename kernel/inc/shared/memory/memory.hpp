@@ -23,7 +23,6 @@
 
 #include "shared/memory/bitmap_page_allocator.hpp"
 #include <ghost/stdint.h>
-#include <ghost/types.h>
 #include <stddef.h>
 
 #define G_ALIGN_UP(value, alignment) ((value % alignment) ? (value + (alignment - value % alignment)) : value)

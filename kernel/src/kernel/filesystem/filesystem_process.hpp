@@ -21,20 +21,20 @@
 #ifndef __KERNEL_FILESYSTEM_PROCESS__
 #define __KERNEL_FILESYSTEM_PROCESS__
 
-#include "ghost/fs.h"
-#include "ghost/kernel.h"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/utils/hashmap.hpp"
+
+#include <ghost/filesystem/types.h>
 
 /**
  * Structure of a file descriptor.
  */
 struct g_file_descriptor
 {
-	g_fd id;
-	uint64_t offset;
-	g_fs_virt_id nodeId;
-	g_file_flag_mode openFlags;
+    g_fd id;
+    uint64_t offset;
+    g_fs_virt_id nodeId;
+    g_file_flag_mode openFlags;
 };
 
 /**
@@ -42,9 +42,9 @@ struct g_file_descriptor
  */
 struct g_filesystem_process
 {
-	g_fd nextDescriptor;
-	g_mutex nextDescriptorLock;
-	g_hashmap<g_fd, g_file_descriptor*>* descriptors;
+    g_fd nextDescriptor;
+    g_mutex nextDescriptorLock;
+    g_hashmap<g_fd, g_file_descriptor*>* descriptors;
 };
 
 /**
@@ -66,7 +66,7 @@ void filesystemProcessRemove(g_pid pid);
  * Creates a file descriptor opening a node.
  */
 g_fs_open_status filesystemProcessCreateDescriptor(g_pid pid, g_fs_virt_id nodeId, g_file_flag_mode flags,
-												   g_file_descriptor** outDescriptor, g_fd optionalFd = G_FD_NONE);
+                                                   g_file_descriptor** outDescriptor, g_fd optionalFd = G_FD_NONE);
 
 /**
  * Finds a file descriptor.
@@ -81,7 +81,8 @@ void filesystemProcessRemoveDescriptor(g_pid pid, g_fd fd);
 /**
  * Clones a file descriptor.
  */
-g_fs_clonefd_status filesystemProcessCloneDescriptor(g_pid sourcePid, g_fd sourceFd, g_pid targetPid, g_fd targetFd, g_fd* outFd);
+g_fs_clonefd_status filesystemProcessCloneDescriptor(g_pid sourcePid, g_fd sourceFd, g_pid targetPid, g_fd targetFd,
+                                                     g_fd* outFd);
 
 /**
  * Creates stdio for a new process (and possibly maps requested values).

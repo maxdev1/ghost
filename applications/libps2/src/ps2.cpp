@@ -21,8 +21,7 @@
 #include "libps2/ps2.hpp"
 #include "ps2_intern.hpp"
 
-#include <ghost/io.h>
-#include <ghost/user.h>
+#include <ghost.h>
 #include <stdio.h>
 
 uint8_t mouse_packet_number = 0;
@@ -79,9 +78,9 @@ void ps2ReadMouseIrq()
 void ps2IrqHandler(uint8_t irq)
 {
 	uint8_t status;
-	while(((status = ioInportByte(G_PS2_STATUS_PORT)) & 0x01) != 0)
+	while(((status = g_io_port_read_byte(G_PS2_STATUS_PORT)) & 0x01) != 0)
 	{
-		uint8_t value = ioInportByte(G_PS2_DATA_PORT);
+		uint8_t value = g_io_port_read_byte(G_PS2_DATA_PORT);
 
 		if((status & 0x20) == 0)
 		{
@@ -103,28 +102,28 @@ ps2_status_t ps2InitializeMouse()
 {
 
 	// empty input buffer
-	while(ioInportByte(G_PS2_STATUS_PORT) & 0x01)
+	while(g_io_port_read_byte(G_PS2_STATUS_PORT) & 0x01)
 	{
-		ioInportByte(G_PS2_DATA_PORT);
+		g_io_port_read_byte(G_PS2_DATA_PORT);
 	}
 
 	// activate mouse device
 	ps2WaitForBuffer(PS2_OUT);
-	ioOutportByte(G_PS2_STATUS_PORT, 0xA8);
+	g_io_port_write_byte(G_PS2_STATUS_PORT, 0xA8);
 	ps2WaitForBuffer(PS2_IN);
-	ioInportByte(G_PS2_DATA_PORT);
+	g_io_port_read_byte(G_PS2_DATA_PORT);
 
 	// get commando-byte, set bit 1 (enables IRQ12), send back
 	ps2WaitForBuffer(PS2_OUT);
-	ioOutportByte(G_PS2_STATUS_PORT, 0x20);
+	g_io_port_write_byte(G_PS2_STATUS_PORT, 0x20);
 
 	ps2WaitForBuffer(PS2_IN);
-	uint8_t status = (ioInportByte(G_PS2_DATA_PORT) | 0x02) & (~0x10);
+	uint8_t status = (g_io_port_read_byte(G_PS2_DATA_PORT) | 0x02) & (~0x10);
 
 	ps2WaitForBuffer(PS2_OUT);
-	ioOutportByte(G_PS2_STATUS_PORT, 0x60);
+	g_io_port_write_byte(G_PS2_STATUS_PORT, 0x60);
 	ps2WaitForBuffer(PS2_OUT);
-	ioOutportByte(G_PS2_DATA_PORT, status);
+	g_io_port_write_byte(G_PS2_DATA_PORT, status);
 
 	// send set-default-settings command to mouse
 	if(ps2WriteToMouse(0xF6))
@@ -213,7 +212,7 @@ void ps2WaitForBuffer(ps2_buffer_t buffer)
 	int timeout = 100;
 	while(timeout--)
 	{
-		if((ioInportByte(G_PS2_STATUS_PORT) & requiredBit) == requiredValue)
+		if((g_io_port_read_byte(G_PS2_STATUS_PORT) & requiredBit) == requiredValue)
 		{
 			return;
 		}
@@ -225,13 +224,13 @@ int ps2WriteToMouse(uint8_t value)
 {
 
 	ps2WaitForBuffer(PS2_OUT);
-	ioOutportByte(G_PS2_STATUS_PORT, 0xD4);
+	g_io_port_write_byte(G_PS2_STATUS_PORT, 0xD4);
 
 	ps2WaitForBuffer(PS2_OUT);
-	ioOutportByte(G_PS2_DATA_PORT, value);
+	g_io_port_write_byte(G_PS2_DATA_PORT, value);
 
 	ps2WaitForBuffer(PS2_IN);
-	if(ioInportByte(G_PS2_DATA_PORT) != 0xFA)
+	if(g_io_port_read_byte(G_PS2_DATA_PORT) != 0xFA)
 	{
 		return 1;
 	}

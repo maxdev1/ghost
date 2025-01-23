@@ -19,7 +19,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "stdlib.h"
-#include <ghost.h>
+#include <ghost/system.h>
+#include <ghost/tasks.h>
 
 /**
  *

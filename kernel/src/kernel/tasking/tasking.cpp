@@ -20,18 +20,15 @@
 
 #include "kernel/tasking/tasking.hpp"
 
-#include "ghost/calls/calls.h"
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/ipc/message.hpp"
 #include "kernel/memory/gdt.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
-#include "kernel/system/interrupts/ivt.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/system/system.hpp"
 #include "kernel/tasking/cleanup.hpp"
-#include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/elf/elf_loader.hpp"
 #include "kernel/tasking/scheduler/scheduler.hpp"
 #include "kernel/tasking/tasking_directory.hpp"

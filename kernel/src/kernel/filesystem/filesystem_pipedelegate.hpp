@@ -21,18 +21,19 @@
 #ifndef __KERNEL_FILESYSTEM_PIPE_DELEGATE__
 #define __KERNEL_FILESYSTEM_PIPE_DELEGATE__
 
-#include "ghost/fs.h"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "shared/system/mutex.hpp"
+#include <ghost/filesystem/types.h>
 
 g_fs_open_status filesystemPipeDelegateOpen(g_fs_node* node, g_file_flag_mode flags);
 
 g_fs_close_status filesystemPipeDelegateClose(g_fs_node* node, g_file_flag_mode openFlags);
 
-g_fs_read_status filesystemPipeDelegateRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
+g_fs_read_status filesystemPipeDelegateRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length,
+                                            int64_t* outRead);
 
-g_fs_write_status filesystemPipeDelegateWrite(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote);
+g_fs_write_status filesystemPipeDelegateWrite(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length,
+                                              int64_t* outWrote);
 
 g_fs_length_status filesystemPipeDelegateGetLength(g_fs_node* node, uint64_t* outLength);
 

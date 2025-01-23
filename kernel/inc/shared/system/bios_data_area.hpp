@@ -21,7 +21,7 @@
 #ifndef __BIOS_DATA_AREA__
 #define __BIOS_DATA_AREA
 
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 
 /**
  * COM port information within the BIOS data area

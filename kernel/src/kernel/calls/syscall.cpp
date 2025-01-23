@@ -19,17 +19,20 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/calls/syscall.hpp"
-#include "ghost/calls/calls.h"
 #include "kernel/calls/syscall_filesystem.hpp"
-#include "kernel/calls/syscall_general.hpp"
+#include "kernel/calls/syscall_system.hpp"
 #include "kernel/calls/syscall_memory.hpp"
 #include "kernel/calls/syscall_messaging.hpp"
 #include "kernel/calls/syscall_tasking.hpp"
-#include "kernel/calls/syscall_vm86.hpp"
+#include "kernel/calls/syscall_mutex.hpp"
+#include "kernel/calls/syscall_kernquery.hpp"
+
 #include "kernel/memory/memory.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/tasking/tasking.hpp"
 #include "shared/panic.hpp"
+
+#include <ghost/syscall.h>
 
 g_syscall_registration* syscallRegistrations = 0;
 
@@ -74,6 +77,7 @@ void syscallRegisterAll()
 {
 	syscallRegistrations = (g_syscall_registration*) heapAllocateClear(sizeof(g_syscall_registration) * G_SYSCALL_MAX);
 
+	// Tasking
 	_syscallRegister(G_SYSCALL_EXIT, (g_syscall_handler) syscallExit);
 	_syscallRegister(G_SYSCALL_YIELD, (g_syscall_handler) syscallYield);
 	_syscallRegister(G_SYSCALL_GET_PROCESS_ID, (g_syscall_handler) syscallGetProcessId);
@@ -82,25 +86,24 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_FORK, (g_syscall_handler) syscallFork);
 	_syscallRegister(G_SYSCALL_JOIN, (g_syscall_handler) syscallJoin);
 	_syscallRegister(G_SYSCALL_SLEEP, (g_syscall_handler) syscallSleep);
-	_syscallRegister(G_SYSCALL_USER_MUTEX_INITIALIZE, (g_syscall_handler) syscallMutexInitialize);
-	_syscallRegister(G_SYSCALL_USER_MUTEX_ACQUIRE, (g_syscall_handler) sycallMutexAcquire);
-	_syscallRegister(G_SYSCALL_USER_MUTEX_RELEASE, (g_syscall_handler) syscallMutexRelease);
-	_syscallRegister(G_SYSCALL_USER_MUTEX_DESTROY, (g_syscall_handler) syscallMutexDestroy);
-	_syscallRegister(G_SYSCALL_LOG, (g_syscall_handler) syscallLog);
-	_syscallRegister(G_SYSCALL_SET_VIDEO_LOG, (g_syscall_handler) syscallSetVideoLog);
-	_syscallRegister(G_SYSCALL_TEST, (g_syscall_handler) syscallTest);
 	_syscallRegister(G_SYSCALL_RELEASE_CLI_ARGUMENTS, (g_syscall_handler) syscallReleaseCliArguments);
 	_syscallRegister(G_SYSCALL_GET_WORKING_DIRECTORY, (g_syscall_handler) syscallGetWorkingDirectory);
 	_syscallRegister(G_SYSCALL_SET_WORKING_DIRECTORY, (g_syscall_handler) syscallSetWorkingDirectory);
 	_syscallRegister(G_SYSCALL_KILL, (g_syscall_handler) syscallKill);
-	_syscallRegister(G_SYSCALL_OPEN_IRQ_DEVICE, (g_syscall_handler) syscallOpenIrqDevice);
 	_syscallRegister(G_SYSCALL_KERNQUERY, (g_syscall_handler) syscallKernQuery);
 	_syscallRegister(G_SYSCALL_GET_EXECUTABLE_PATH, (g_syscall_handler) syscallGetExecutablePath);
 	_syscallRegister(G_SYSCALL_GET_PARENT_PROCESS_ID, (g_syscall_handler) syscallGetParentProcessId);
 	_syscallRegister(G_SYSCALL_TASK_GET_TLS, (g_syscall_handler) syscallTaskGetTls);
 	_syscallRegister(G_SYSCALL_PROCESS_GET_INFO, (g_syscall_handler) syscallProcessGetInfo);
+	_syscallRegister(G_SYSCALL_SPAWN, (g_syscall_handler) syscallSpawn);
+	_syscallRegister(G_SYSCALL_CREATE_THREAD, (g_syscall_handler) syscallCreateThread);
+	_syscallRegister(G_SYSCALL_GET_THREAD_ENTRY, (g_syscall_handler) syscallGetThreadEntry);
+	_syscallRegister(G_SYSCALL_EXIT_THREAD, (g_syscall_handler) syscallExitThread);
+	_syscallRegister(G_SYSCALL_REGISTER_TASK_IDENTIFIER, (g_syscall_handler) syscallRegisterTaskIdentifier);
+	_syscallRegister(G_SYSCALL_GET_TASK_FOR_IDENTIFIER, (g_syscall_handler) syscallGetTaskForIdentifier);
+	_syscallRegister(G_SYSCALL_GET_MILLISECONDS, (g_syscall_handler) syscallGetMilliseconds);
 
-	_syscallRegister(G_SYSCALL_CALL_VM86, (g_syscall_handler) syscallCallVm86);
+	// Memory
 	_syscallRegister(G_SYSCALL_LOWER_MEMORY_ALLOCATE, (g_syscall_handler) syscallLowerMemoryAllocate);
 	_syscallRegister(G_SYSCALL_LOWER_MEMORY_FREE, (g_syscall_handler) syscallLowerMemoryFree);
 	_syscallRegister(G_SYSCALL_ALLOCATE_MEMORY, (g_syscall_handler) syscallAllocateMemory);
@@ -109,18 +112,17 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_MAP_MMIO_AREA, (g_syscall_handler) syscallMapMmioArea);
 	_syscallRegister(G_SYSCALL_SBRK, (g_syscall_handler) syscallSbrk);
 
-	_syscallRegister(G_SYSCALL_SPAWN, (g_syscall_handler) syscallSpawn);
-	_syscallRegister(G_SYSCALL_CREATE_THREAD, (g_syscall_handler) syscallCreateThread);
-	_syscallRegister(G_SYSCALL_GET_THREAD_ENTRY, (g_syscall_handler) syscallGetThreadEntry);
-	_syscallRegister(G_SYSCALL_EXIT_THREAD, (g_syscall_handler) syscallExitThread);
+	// Mutex
+	_syscallRegister(G_SYSCALL_USER_MUTEX_INITIALIZE, (g_syscall_handler) syscallMutexInitialize);
+	_syscallRegister(G_SYSCALL_USER_MUTEX_ACQUIRE, (g_syscall_handler) sycallMutexAcquire);
+	_syscallRegister(G_SYSCALL_USER_MUTEX_RELEASE, (g_syscall_handler) syscallMutexRelease);
+	_syscallRegister(G_SYSCALL_USER_MUTEX_DESTROY, (g_syscall_handler) syscallMutexDestroy);
 
-	_syscallRegister(G_SYSCALL_REGISTER_TASK_IDENTIFIER, (g_syscall_handler) syscallRegisterTaskIdentifier);
-	_syscallRegister(G_SYSCALL_GET_TASK_FOR_IDENTIFIER, (g_syscall_handler) syscallGetTaskForIdentifier);
+	// Messages
 	_syscallRegister(G_SYSCALL_MESSAGE_SEND, (g_syscall_handler) syscallMessageSend);
 	_syscallRegister(G_SYSCALL_MESSAGE_RECEIVE, (g_syscall_handler) syscallMessageReceive);
 
-	_syscallRegister(G_SYSCALL_GET_MILLISECONDS, (g_syscall_handler) syscallGetMilliseconds);
-
+	// Filesystem
 	_syscallRegister(G_SYSCALL_FS_OPEN, (g_syscall_handler) syscallFsOpen);
 	_syscallRegister(G_SYSCALL_FS_SEEK, (g_syscall_handler) syscallFsSeek);
 	_syscallRegister(G_SYSCALL_FS_READ, (g_syscall_handler) syscallFsRead);
@@ -135,4 +137,11 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_FS_OPEN_DIRECTORY, (g_syscall_handler) syscallFsOpenDirectory);
 	_syscallRegister(G_SYSCALL_FS_READ_DIRECTORY, (g_syscall_handler) syscallFsReadDirectory);
 	_syscallRegister(G_SYSCALL_FS_CLOSE_DIRECTORY, (g_syscall_handler) syscallFsCloseDirectory);
+	_syscallRegister(G_SYSCALL_OPEN_IRQ_DEVICE, (g_syscall_handler) syscallOpenIrqDevice);
+
+	// System
+	_syscallRegister(G_SYSCALL_LOG, (g_syscall_handler) syscallLog);
+	_syscallRegister(G_SYSCALL_SET_VIDEO_LOG, (g_syscall_handler) syscallSetVideoLog);
+	_syscallRegister(G_SYSCALL_TEST, (g_syscall_handler) syscallTest);
+	_syscallRegister(G_SYSCALL_CALL_VM86, (g_syscall_handler) syscallCallVm86);
 }

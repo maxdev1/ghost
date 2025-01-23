@@ -21,7 +21,6 @@
 #ifndef __KERNEL_IPC_PIPES__
 #define __KERNEL_IPC_PIPES__
 
-#include "ghost.h"
 #include "kernel/utils/wait_queue.hpp"
 #include "shared/system/mutex.hpp"
 

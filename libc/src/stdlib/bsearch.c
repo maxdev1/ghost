@@ -19,7 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "stdlib.h"
-#include "ghost/kernel.h"
 #include "errno.h"
 #include "stdio.h"
 

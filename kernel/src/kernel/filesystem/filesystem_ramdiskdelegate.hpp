@@ -21,9 +21,9 @@
 #ifndef __KERNEL_FILESYSTEM_RAMDISK_DELEGATE__
 #define __KERNEL_FILESYSTEM_RAMDISK_DELEGATE__
 
-#include "ghost/fs.h"
 #include "kernel/filesystem/filesystem.hpp"
 #include "shared/system/mutex.hpp"
+#include <ghost/filesystem/types.h>
 
 g_fs_open_status filesystemRamdiskDelegateOpen(g_fs_node* node, g_file_flag_mode flags);
 
@@ -31,9 +31,11 @@ g_fs_close_status filesystemRamdiskDelegateClose(g_fs_node* node, g_file_flag_mo
 
 g_fs_open_status filesystemRamdiskDelegateDiscover(g_fs_node* parent, const char* name, g_fs_node** outNode);
 
-g_fs_read_status filesystemRamdiskDelegateRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
+g_fs_read_status filesystemRamdiskDelegateRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length,
+                                               int64_t* outRead);
 
-g_fs_write_status filesystemRamdiskDelegateWrite(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote);
+g_fs_write_status filesystemRamdiskDelegateWrite(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length,
+                                                 int64_t* outWrote);
 
 g_fs_length_status filesystemRamdiskDelegateGetLength(g_fs_node* node, uint64_t* outLength);
 

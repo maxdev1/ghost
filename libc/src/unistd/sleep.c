@@ -19,7 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "unistd.h"
-#include "ghost/common.h"
+#include <ghost/tasks.h>
 
 /**
  *

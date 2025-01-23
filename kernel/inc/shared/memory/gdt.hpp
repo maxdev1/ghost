@@ -21,7 +21,7 @@
 #ifndef __GDT__
 #define __GDT__
 
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 #include "shared/memory/gdt_macros.hpp"
 
 /**

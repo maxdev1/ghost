@@ -21,8 +21,9 @@
 #ifndef __GHOST_LIBC_TYPES__
 #define __GHOST_LIBC_TYPES__
 
-#include "ghost.h"
-#include "ghost/common.h"
+#include <ghost/tasks.h>
+#include <ghost/filesystem.h>
+#include <ghost/common.h>
 
 __BEGIN_C
 

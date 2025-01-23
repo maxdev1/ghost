@@ -21,8 +21,8 @@
 #ifndef __KERNEL_RAMDISK__
 #define __KERNEL_RAMDISK__
 
-#include "ghost/stdint.h"
-#include "ghost/ramdisk.h"
+#include <ghost/stdint.h>
+#include <ghost/ramdisk.h>
 
 #include "kernel/filesystem/ramdisk_entry.hpp"
 #include "shared/multiboot/multiboot.hpp"

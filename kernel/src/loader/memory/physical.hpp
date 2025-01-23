@@ -21,8 +21,8 @@
 #ifndef __LOADER_PHYSICALALLOCATOR__
 #define __LOADER_PHYSICALALLOCATOR__
 
-#include "ghost/types.h"
 #include "shared/memory/bitmap.hpp"
+#include <ghost/memory/types.h>
 
 /**
  * Reads the GRUB memory map to find out which memory areas are usable and free.

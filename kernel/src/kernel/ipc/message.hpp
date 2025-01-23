@@ -21,9 +21,10 @@
 #ifndef __KERNEL_IPC_MESSAGE__
 #define __KERNEL_IPC_MESSAGE__
 
-#include "ghost.h"
 #include "kernel/utils/wait_queue.hpp"
 #include "shared/system/mutex.hpp"
+
+#include <ghost/messages/callstructs.h>
 
 struct g_message_queue
 {

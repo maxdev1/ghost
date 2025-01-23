@@ -22,7 +22,7 @@
 #define __KERNEL_MADT__
 
 #include "kernel/system/acpi/acpi.hpp"
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 
 struct g_madt_header
 {

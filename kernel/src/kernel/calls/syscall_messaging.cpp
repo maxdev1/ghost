@@ -24,15 +24,6 @@
 #include "kernel/tasking/tasking_directory.hpp"
 #include "shared/logger/logger.hpp"
 
-void syscallRegisterTaskIdentifier(g_task* task, g_syscall_task_id_register* data)
-{
-	data->successful = taskingDirectoryRegister(data->identifier, task->id, task->securityLevel);
-}
-
-void syscallGetTaskForIdentifier(g_task* task, g_syscall_task_id_get* data)
-{
-	data->resultTaskId = taskingDirectoryGet(data->identifier);
-}
 
 void syscallMessageSend(g_task* task, g_syscall_send_message* data)
 {

@@ -20,7 +20,6 @@
 
 #include "stdio.h"
 #include "errno.h"
-#include "ghost/kernel.h"
 
 /**
  *

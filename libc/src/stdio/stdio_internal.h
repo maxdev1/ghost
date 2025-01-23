@@ -21,8 +21,8 @@
 #ifndef __GHOST_LIBC_STDIO_INTERNAL__
 #define __GHOST_LIBC_STDIO_INTERNAL__
 
-#include "ghost.h"
 #include "file.h"
+#include <stdarg.h>
 
 __BEGIN_C
 

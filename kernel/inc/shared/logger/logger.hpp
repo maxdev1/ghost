@@ -22,7 +22,7 @@
 #define __LOGGER__
 
 #include "stdarg.h"
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 
 #include "shared/logger/logger_macros.hpp"
 

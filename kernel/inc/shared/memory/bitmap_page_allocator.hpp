@@ -21,14 +21,14 @@
 #ifndef __BITMAP_PAGE_ALLOCATOR__
 #define __BITMAP_PAGE_ALLOCATOR__
 
-#include "ghost/types.h"
 #include "shared/memory/bitmap.hpp"
-#include "shared/system/mutex.hpp"
+
+#include <ghost/stdint.h>
 
 struct g_bitmap_page_allocator
 {
-	uint32_t freePageCount;
-	g_bitmap_header* bitmapArray;
+    uint32_t freePageCount;
+    g_bitmap_header* bitmapArray;
 };
 
 /**

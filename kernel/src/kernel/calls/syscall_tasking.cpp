@@ -22,6 +22,7 @@
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/user_mutex.hpp"
+#include "kernel/tasking/tasking_directory.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/utils/wait_queue.hpp"
 #include "shared/logger/logger.hpp"
@@ -32,28 +33,6 @@ void syscallSleep(g_task* task, g_syscall_sleep* data)
 	clockWaitForTime(task->id, clockGetLocal()->time + data->milliseconds);
 	task->status = G_THREAD_STATUS_WAITING;
 	taskingSchedule();
-}
-
-void syscallMutexInitialize(g_task* task, g_syscall_user_mutex_initialize* data)
-{
-	data->mutex = userMutexCreate(data->reentrant);
-}
-
-void sycallMutexAcquire(g_task* task, g_syscall_user_mutex_acquire* data)
-{
-	auto status = userMutexAcquire(task, data->mutex, data->timeout, data->trying);
-	data->wasSet = status == G_USER_MUTEX_STATUS_ACQUIRED;
-	data->hasTimedOut = status == G_USER_MUTEX_STATUS_TIMEOUT;
-}
-
-void syscallMutexRelease(g_task* task, g_syscall_user_mutex_release* data)
-{
-	userMutexRelease(data->mutex);
-}
-
-void syscallMutexDestroy(g_task* task, g_syscall_user_mutex_destroy* data)
-{
-	userMutexDestroy(data->mutex);
 }
 
 void syscallYield(g_task* task)
@@ -197,4 +176,90 @@ void syscallFork(g_task* task, g_syscall_fork* data)
 void syscallGetParentProcessId(g_task* task, g_syscall_get_parent_pid* data)
 {
 	logInfo("syscall not implemented: syscallGetParentProcessId");
+}
+
+void syscallGetMilliseconds(g_task* task, g_syscall_millis* data)
+{
+	data->millis = clockGetLocal()->time;
+}
+
+void syscallGetExecutablePath(g_task* task, g_syscall_get_executable_path* data)
+{
+	if(task->process->environment.executablePath)
+		stringCopy(data->buffer, task->process->environment.executablePath);
+	else
+		data->buffer[0] = 0;
+}
+
+void syscallGetWorkingDirectory(g_task* task, g_syscall_get_working_directory* data)
+{
+	const char* workingDirectory = task->process->environment.workingDirectory;
+	if(workingDirectory)
+	{
+		size_t length = stringLength(workingDirectory);
+		if(length + 1 > data->maxlen)
+		{
+			data->result = G_GET_WORKING_DIRECTORY_SIZE_EXCEEDED;
+		}
+		else
+		{
+			stringCopy(data->buffer, workingDirectory);
+			data->result = G_GET_WORKING_DIRECTORY_SUCCESSFUL;
+		}
+	}
+	else
+	{
+		stringCopy(data->buffer, "/");
+		data->result = G_GET_WORKING_DIRECTORY_SUCCESSFUL;
+	}
+}
+
+void syscallSetWorkingDirectory(g_task* task, g_syscall_set_working_directory* data)
+{
+	auto findRes = filesystemFind(nullptr, data->path);
+	if(findRes.status == G_FS_OPEN_SUCCESSFUL)
+	{
+		if(findRes.file->type == G_FS_NODE_TYPE_FOLDER || findRes.file->type == G_FS_NODE_TYPE_MOUNTPOINT || findRes.file->type == G_FS_NODE_TYPE_ROOT)
+		{
+			if(task->process->environment.workingDirectory)
+			{
+				heapFree(task->process->environment.workingDirectory);
+			}
+
+			int length = filesystemGetAbsolutePathLength(findRes.file);
+			task->process->environment.workingDirectory = (char*) heapAllocate(length + 1);
+			filesystemGetAbsolutePath(findRes.file, task->process->environment.workingDirectory);
+			data->result = G_SET_WORKING_DIRECTORY_SUCCESSFUL;
+		}
+		else
+		{
+			data->result = G_SET_WORKING_DIRECTORY_NOT_A_FOLDER;
+		}
+	}
+	else if(findRes.status == G_FS_OPEN_NOT_FOUND)
+	{
+		data->result = G_SET_WORKING_DIRECTORY_NOT_FOUND;
+	}
+	else
+	{
+		data->result = G_SET_WORKING_DIRECTORY_ERROR;
+	}
+}
+
+void syscallReleaseCliArguments(g_task* task, g_syscall_cli_args_release* data)
+{
+	if(task->process->environment.arguments)
+		stringCopy(data->buffer, task->process->environment.arguments);
+	else
+		data->buffer[0] = 0;
+}
+
+void syscallRegisterTaskIdentifier(g_task* task, g_syscall_task_id_register* data)
+{
+	data->successful = taskingDirectoryRegister(data->identifier, task->id, task->securityLevel);
+}
+
+void syscallGetTaskForIdentifier(g_task* task, g_syscall_task_id_get* data)
+{
+	data->resultTaskId = taskingDirectoryGet(data->identifier);
 }

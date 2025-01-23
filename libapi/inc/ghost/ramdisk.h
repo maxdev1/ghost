@@ -18,10 +18,10 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __GHOST_SYS_RAMDISK__
-#define __GHOST_SYS_RAMDISK__
+#ifndef GHOST_API_RAMDISK
+#define GHOST_API_RAMDISK
 
-#include "ghost/common.h"
+#include "common.h"
 
 __BEGIN_C
 
@@ -32,16 +32,17 @@ __BEGIN_C
 
 // types of ramdisk entries
 typedef int g_ramdisk_entry_type;
-#define G_RAMDISK_ENTRY_TYPE_UNKNOWN	-1
-#define G_RAMDISK_ENTRY_TYPE_FOLDER		0
-#define G_RAMDISK_ENTRY_TYPE_FILE		1
+#define G_RAMDISK_ENTRY_TYPE_UNKNOWN	((g_ramdisk_entry_type) -1)
+#define G_RAMDISK_ENTRY_TYPE_FOLDER		((g_ramdisk_entry_type) 0)
+#define G_RAMDISK_ENTRY_TYPE_FILE		((g_ramdisk_entry_type) 1)
 
 typedef uint32_t g_ramdisk_id;
 
 /**
  * Ramdisk entry information struct used within system calls
  */
-typedef struct {
+typedef struct
+{
 	g_ramdisk_entry_type type;
 	char name[512];
 	unsigned int length;

@@ -23,7 +23,7 @@
 
 #include "shared/logger/logger.hpp"
 #include "shared/system/mutex.hpp"
-#include <ghost/types.h>
+#include <ghost/memory/types.h>
 
 /**
  * Types of allocators

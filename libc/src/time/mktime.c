@@ -19,12 +19,13 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "time.h"
+#include <ghost/system.h>
 
 /**
  *
  */
-time_t mktime(struct tm * time) {
-
-	__G_NOT_IMPLEMENTED("mktime")
+time_t mktime(struct tm* time)
+{
+	__G_NOT_IMPLEMENTED("mktime");
 	return 0;
 }

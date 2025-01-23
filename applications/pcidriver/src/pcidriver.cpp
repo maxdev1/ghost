@@ -18,11 +18,12 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include "pcidriver.hpp"
+
 #include <cstdio>
 #include <libpci/pci.hpp>
 #include <libpci/driver.hpp>
-#include <ghost/io.h>
-#include "pcidriver.hpp"
+#include <ghost.h>
 
 g_user_mutex pciLock = g_mutex_initialize();
 
@@ -35,7 +36,7 @@ int main()
 
 	if(!g_task_register_id(G_PCI_DRIVER_IDENTIFIER))
 	{
-		klog("PCI driver failed to register with identifier '%s'",G_PCI_DRIVER_IDENTIFIER);
+		klog("PCI driver failed to register with identifier '%s'", G_PCI_DRIVER_IDENTIFIER);
 		return -1;
 	}
 	pciDriverReceiveMessages();
@@ -136,8 +137,8 @@ uint32_t pciReadConfigInt(uint8_t bus, uint8_t device, uint8_t function, uint8_t
 	uint32_t address = (1 << 31) | (bus << 16) | (device << 11) | (function << 8) | (offset);
 
 	g_mutex_acquire(pciLock);
-	ioOutportInt(PCI_CONFIG_PORT_ADDR, address);
-	auto result = ioInportInt(PCI_CONFIG_PORT_DATA);
+	g_io_port_write_dword(PCI_CONFIG_PORT_ADDR, address);
+	auto result = g_io_port_read_dword(PCI_CONFIG_PORT_DATA);
 	g_mutex_release(pciLock);
 	return result;
 }

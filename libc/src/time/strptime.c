@@ -20,7 +20,6 @@
 
 #include "time.h"
 #include "errno.h"
-#include "ghost/kernel.h"
 #include "string.h"
 
 /**

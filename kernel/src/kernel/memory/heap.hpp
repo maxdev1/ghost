@@ -21,8 +21,8 @@
 #ifndef __KERNEL_HEAP__
 #define __KERNEL_HEAP__
 
-#include "ghost/types.h"
 #include "shared/memory/constants.hpp"
+#include <ghost/memory/types.h>
 
 /**
  * Initializes the kernel heap using the given range of memory.

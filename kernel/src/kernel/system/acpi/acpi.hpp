@@ -21,10 +21,9 @@
 #ifndef __KERNEL_ACPI__
 #define __KERNEL_ACPI__
 
-#include "ghost/stdint.h"
-#include "ghost/kernel.h"
-#include "ghost/types.h"
+#include <ghost/stdint.h>
 #include "kernel/system/acpi/rsdp.hpp"
+#include <ghost/memory/types.h>
 
 // Set a maximum for SDTs to avoid problems with possible junk tables
 #define	G_SDT_MAXIMUM_BYTES		0x10000

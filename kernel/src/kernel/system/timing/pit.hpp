@@ -21,7 +21,7 @@
 #ifndef __KERNEL_PIT__
 #define __KERNEL_PIT__
 
-#include "ghost/stdint.h"
+#include <ghost/stdint.h>
 
 #define PIT_FREQUENCY	1193180
 

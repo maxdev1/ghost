@@ -18,9 +18,9 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost.h"
 #include "stdint.h"
 #include "sys/time.h"
+#include <ghost/system.h>
 
 /**
  *
