@@ -57,7 +57,7 @@ g_ui_open_status g_ui::open()
 	}
 
 	// start event dispatcher
-	g_ui_event_dispatcher_tid = g_create_thread((void*) &event_dispatch_thread);
+	g_ui_event_dispatcher_tid = g_create_task((void*) &event_dispatch_thread);
 
 	// send initialization request
 	g_message_transaction init_tx = g_get_message_tx_id();

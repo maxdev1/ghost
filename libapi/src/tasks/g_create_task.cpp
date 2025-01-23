@@ -18,34 +18,53 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include "ghost/syscall.h"
 #include "ghost/tasks.h"
 #include "ghost/tasks/callstructs.h"
 
 /**
- * TODO: This is trash
+ * Task setup routine, used by the task creation call. Assumes that the created task
+ * has a valid "userEntry" - otherwise exits with error code -1.
  */
-uint32_t g_task_find(const char* name, int maxTries)
+void __g_task_setup_routine()
 {
+	g_syscall_get_task_entry data;
+	g_syscall(G_SYSCALL_GET_TASK_ENTRY, (g_address) &data);
 
-	uint32_t id = -1;
-	int tries = 0;
-
-	while(id == -1 && tries < maxTries)
+	void (*userEntry)(void*) = (void(*)(void*)) (data.userEntry);
+	if(userEntry)
 	{
-		id = g_task_get_id(name);
-		++tries;
-
-		if(id == -1)
-		{
-			// TODO limit tries
-			g_sleep(100);
-		}
+		(userEntry)(data.userData);
 	}
 
-	if(id == -1)
-	{
-		// TODO set errno
-	}
+	return g_exit_task();
+}
 
-	return id;
+// redirect
+g_tid g_create_task(void* function)
+{
+	return g_create_task_d(function, 0);
+}
+
+// redirect
+g_tid g_create_task_d(void* function, void* userData)
+{
+	return g_create_task_ds(function, userData, 0);
+}
+
+/**
+ *
+ */
+g_tid g_create_task_ds(void* function, void* userData, g_create_task_status* out_status)
+{
+	g_syscall_create_task data;
+	data.initialEntry = (void*) __g_task_setup_routine;
+	data.userEntry = function;
+	data.userData = userData;
+	g_syscall(G_SYSCALL_CREATE_TASK, (g_address) &data);
+	if(out_status)
+	{
+		*out_status = data.status;
+	}
+	return data.threadId;
 }

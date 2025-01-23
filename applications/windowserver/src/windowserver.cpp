@@ -70,7 +70,7 @@ void windowserver_t::launch()
 
 	g_task_register_id("windowserver");
 	initializeGraphics();
-	g_create_thread((void*) &windowserver_t::initializeInput);
+	g_create_task((void*) &windowserver_t::initializeInput);
 
 	g_dimension resolution = videoOutput->getResolution();
 	g_rectangle screenBounds(0, 0, resolution.width, resolution.height);
@@ -120,7 +120,7 @@ void windowserver_t::initializeGraphics()
 
 void windowserver_t::renderLoop(g_rectangle screenBounds)
 {
-	g_create_thread((void*) &windowserver_t::fpsCounter);
+	g_create_task((void*) &windowserver_t::fpsCounter);
 	g_task_register_id("windowserver/renderer");
 
 	g_graphics global;
@@ -246,6 +246,6 @@ void windowserver_t::fpsCounter()
 
 void windowserver_t::startInterface()
 {
-	g_create_thread((void*) &interfaceRegistrationThread);
-	g_create_thread((void*) &interfaceResponderThread);
+	g_create_task((void*) &interfaceRegistrationThread);
+	g_create_task((void*) &interfaceResponderThread);
 }

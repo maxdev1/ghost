@@ -113,7 +113,7 @@ g_user_mutex_status userMutexAcquire(g_task* task, g_user_mutex mutex, uint64_t 
 			break;
 
 		userMutexWaitForAcquire(mutex, task->id);
-		task->status = G_THREAD_STATUS_WAITING;
+		task->status = G_TASK_STATUS_WAITING;
 		taskingYield();
 	}
 
@@ -225,9 +225,9 @@ void _userMutexWakeWaitingTasks(g_user_mutex_entry* entry)
 	while(waiter)
 	{
 		g_task* wakeTask = taskingGetById(waiter->task);
-		if(wakeTask && wakeTask->status == G_THREAD_STATUS_WAITING)
+		if(wakeTask && wakeTask->status == G_TASK_STATUS_WAITING)
 		{
-			wakeTask->status = G_THREAD_STATUS_RUNNING;
+			wakeTask->status = G_TASK_STATUS_RUNNING;
 		}
 
 		auto next = waiter->next;

@@ -163,8 +163,8 @@ void messageUnwaitForSend(g_tid sender, g_tid receiver)
 void _messageWakeWaitingReceiver(g_message_queue* queue)
 {
 	g_task* task = taskingGetById(queue->task);
-	if(task && task->status == G_THREAD_STATUS_WAITING)
-		task->status = G_THREAD_STATUS_RUNNING;
+	if(task && task->status == G_TASK_STATUS_WAITING)
+		task->status = G_TASK_STATUS_RUNNING;
 }
 
 void _messageRemoveFromQueue(g_message_queue* queue, g_message_header* message)

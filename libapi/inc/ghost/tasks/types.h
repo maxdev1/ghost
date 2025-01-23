@@ -57,32 +57,32 @@ typedef struct _g_user_threadlocal
 /**
  * Task types
  */
-typedef uint8_t g_thread_type;
+typedef uint8_t g_task_type;
 
-#define G_TASK_TYPE_DEFAULT ((g_thread_type) 0)
-#define G_TASK_TYPE_VM86 ((g_thread_type) 1)
-#define G_TASK_TYPE_VITAL ((g_thread_type) 2)
+#define G_TASK_TYPE_DEFAULT ((g_task_type) 0)
+#define G_TASK_TYPE_VM86 ((g_task_type) 1)
+#define G_TASK_TYPE_VITAL ((g_task_type) 2)
 
 /**
  * Task priority
  */
-typedef uint8_t g_thread_priority;
+typedef uint8_t g_task_priority;
 
-#define G_THREAD_PRIORITY_NORMAL ((g_thread_priority) 0)
-#define G_THREAD_PRIORITY_IDLE ((g_thread_priority) 1)
+#define G_TASK_PRIORITY_NORMAL ((g_task_priority) 0)
+#define G_TASK_PRIORITY_IDLE ((g_task_priority) 1)
 
 /**
  * Task setup constants
  */
-#define G_THREAD_USER_STACK_RESERVED_VIRTUAL_PAGES 16
+#define G_TASK_USER_STACK_RESERVED_VIRTUAL_PAGES 16
 
 /**
  * Task states
  */
-typedef uint8_t g_thread_status;
-#define G_THREAD_STATUS_DEAD ((g_thread_status) 0)
-#define G_THREAD_STATUS_RUNNING ((g_thread_status) 1)
-#define G_THREAD_STATUS_WAITING ((g_thread_status) 2)
+typedef uint8_t g_task_status;
+#define G_TASK_STATUS_DEAD ((g_task_status) 0)
+#define G_TASK_STATUS_RUNNING ((g_task_status) 1)
+#define G_TASK_STATUS_WAITING ((g_task_status) 2)
 
 // for <g_kill>
 typedef uint8_t g_kill_status;
@@ -90,10 +90,10 @@ typedef uint8_t g_kill_status;
 #define G_KILL_STATUS_NOT_FOUND							((g_kill_status) 1)
 #define G_KILL_STATUS_FAILED					 		((g_kill_status) 2)
 
-// for <g_create_thread>
-typedef uint8_t g_create_thread_status;
-#define G_CREATE_THREAD_STATUS_SUCCESSFUL				((g_create_thread_status) 0)
-#define G_CREATE_THREAD_STATUS_FAILED					((g_create_thread_status) 1)
+// for <g_create_task>
+typedef uint8_t g_create_task_status;
+#define G_CREATE_TASK_STATUS_SUCCESSFUL				((g_create_task_status) 0)
+#define G_CREATE_TASK_STATUS_FAILED					((g_create_task_status) 1)
 
 /**
  * Process information section header

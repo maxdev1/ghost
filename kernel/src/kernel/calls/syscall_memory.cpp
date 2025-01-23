@@ -58,12 +58,10 @@ void syscallAllocateMemory(g_task* task, g_syscall_alloc_mem* data)
 	if(pages == 0)
 		return;
 
-	/* Prepare a virtual range */
 	g_virtual_address mapped = addressRangePoolAllocate(task->process->virtualRangePool, pages);
 	if(mapped == 0)
 		return;
 
-	/* Try to allocate physical memory */
 	bool failedPhysical = false;
 	for(uint32_t i = 0; i < pages; i++)
 	{
@@ -76,7 +74,6 @@ void syscallAllocateMemory(g_task* task, g_syscall_alloc_mem* data)
 		pagingMapPage(mapped + i * G_PAGE_SIZE, page, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 	}
 
-	/* If physical mapping fails, clean up allocated memory */
 	if(failedPhysical)
 	{
 		logInfo("%! ran out of physical memory during allocate-memory syscall in %i", "syscall", task->id);
@@ -89,7 +86,6 @@ void syscallAllocateMemory(g_task* task, g_syscall_alloc_mem* data)
 		return;
 	}
 
-	/* Mapping successful */
 	data->virtualResult = (void*) mapped;
 }
 
@@ -99,7 +95,6 @@ void syscallUnmap(g_task* task, g_syscall_unmap* data)
 	if(!range)
 		return;
 
-	/* Unmap all pages in the range */
 	for(uint32_t i = 0; i < range->pages; i++)
 	{
 		g_virtual_address virt = range->base + i * G_PAGE_SIZE;
@@ -107,14 +102,12 @@ void syscallUnmap(g_task* task, g_syscall_unmap* data)
 		if(!page)
 			continue;
 
-		/* Free physical memory if possible */
 		if((range->flags & G_PROC_VIRTUAL_RANGE_FLAG_WEAK) == 0)
 			memoryPhysicalFree(page);
 
 		pagingUnmapPage(virt);
 	}
 
-	/* Free range */
 	addressRangePoolFree(task->process->virtualRangePool, range->base);
 }
 
@@ -122,16 +115,14 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 {
 	data->virtualAddress = 0;
 
-	/* Find target thread */
-	g_task* targetThread = taskingGetById(data->processId);
-	if(!targetThread)
+	g_task* targetTask = taskingGetById(data->processId);
+	if(!targetTask)
 	{
 		logInfo("%! task %i was unable to share memory with non-existing process %i", "syscall", task->id, data->processId);
 		return;
 	}
-	g_process* targetProcess = targetThread->process;
+	g_process* targetProcess = targetTask->process;
 
-	/* Calculate and check validity */
 	g_virtual_address memory = (g_virtual_address) data->memory;
 	uint32_t pages = G_PAGE_ALIGN_UP(data->size) / G_PAGE_SIZE;
 	if(memory > G_KERNEL_AREA_START || (memory + pages * G_PAGE_SIZE) > G_KERNEL_AREA_START)
@@ -140,7 +131,6 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 		return;
 	}
 
-	/* Allocate a virtual range in the target process */
 	g_virtual_address virtualRangeBase = addressRangePoolAllocate(targetProcess->virtualRangePool, pages, G_PROC_VIRTUAL_RANGE_FLAG_NONE);
 	if(virtualRangeBase == 0)
 	{
@@ -149,12 +139,10 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 		return;
 	}
 
-	/* Map required pages */
 	for(uint32_t i = 0; i < pages; i++)
 	{
 		g_physical_address physicalAddr = pagingVirtualToPhysical(memory + i * G_PAGE_SIZE);
 
-		/* Switch into target space to map */
 		g_physical_address back = taskingMemoryTemporarySwitchTo(targetProcess->pageDirectory);
 		pagingMapPage(virtualRangeBase + i * G_PAGE_SIZE, physicalAddr, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 		taskingMemoryTemporarySwitchBack(back);
@@ -162,7 +150,6 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 		pageReferenceTrackerIncrement(physicalAddr);
 	}
 
-	/* Mapping successful */
 	data->virtualAddress = (void*) virtualRangeBase;
 	logDebug("%! shared memory area of process %i at %h of size %h with process %i to address %h", "syscall", task->id, memory,
 			 pages * G_PAGE_SIZE, targetProcess->main->id, virtualRangeBase);
@@ -172,7 +159,6 @@ void syscallMapMmioArea(g_task* task, g_syscall_map_mmio* data)
 {
 	uint32_t pages = G_PAGE_ALIGN_UP(data->size) / G_PAGE_SIZE;
 
-	/* Allocate a weak virtual range */
 	g_virtual_address virtualRangeBase = addressRangePoolAllocate(task->process->virtualRangePool, pages, G_PROC_VIRTUAL_RANGE_FLAG_WEAK);
 	if(virtualRangeBase == 0)
 	{
@@ -180,7 +166,6 @@ void syscallMapMmioArea(g_task* task, g_syscall_map_mmio* data)
 		return;
 	}
 
-	/* Map to physical memory */
 	for(uint32_t i = 0; i < pages; i++)
 	{
 		pagingMapPage(virtualRangeBase + i * G_PAGE_SIZE, data->physicalAddress + i * G_PAGE_SIZE, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);

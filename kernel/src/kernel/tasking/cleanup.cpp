@@ -37,7 +37,7 @@ void taskingCleanupThread()
 		while(entry)
 		{
 			g_schedule_entry* next = entry->next;
-			if(entry->task->status == G_THREAD_STATUS_DEAD)
+			if(entry->task->status == G_TASK_STATUS_DEAD)
 			{
 				if(previous)
 					previous->next = next;
@@ -67,7 +67,7 @@ void taskingCleanupThread()
 
 		// Sleep for some time
 		clockWaitForTime(task->id, clockGetLocal()->time + 3000);
-		task->status = G_THREAD_STATUS_WAITING;
+		task->status = G_TASK_STATUS_WAITING;
 		taskingYield();
 	}
 }

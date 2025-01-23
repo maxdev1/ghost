@@ -81,7 +81,7 @@ void schedulerSchedule(g_tasking_local* local)
 	for(;;)
 	{
 		g_task* task = entry->task;
-		if(task->status == G_THREAD_STATUS_RUNNING)
+		if(task->status == G_TASK_STATUS_RUNNING)
 		{
 			local->scheduling.current = task;
 			local->scheduling.current->statistics.timesScheduled++;
@@ -125,20 +125,20 @@ void schedulerDump()
 	while(entry)
 	{
 		const char* taskState;
-		if(entry->task->status == G_THREAD_STATUS_RUNNING)
+		if(entry->task->status == G_TASK_STATUS_RUNNING)
 		{
 			taskState = "";
 		}
-		else if(entry->task->status == G_THREAD_STATUS_DEAD)
+		else if(entry->task->status == G_TASK_STATUS_DEAD)
 		{
 			taskState = " [dead]";
 		}
-		else if(entry->task->status == G_THREAD_STATUS_WAITING)
+		else if(entry->task->status == G_TASK_STATUS_WAITING)
 		{
 			taskState = " [waiting]";
 		}
 
-		if(entry->task->status != G_THREAD_STATUS_DEAD)
+		if(entry->task->status != G_TASK_STATUS_DEAD)
 		{
 			logInfo("%# (%i:%i)%s usage: %i", entry->task->process->id, entry->task->id, taskState, USAGE(entry->task->statistics.timesScheduled, entry->task->statistics.timesYielded));
 			entry->task->statistics.timesScheduled = 0;

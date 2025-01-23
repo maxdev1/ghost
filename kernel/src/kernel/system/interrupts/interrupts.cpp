@@ -82,7 +82,7 @@ extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_st
 		waitQueueWake(&process->waitersSpawn);
 
 		// Task is now prepared but waits until the spawner wakes it
-		task->status = G_THREAD_STATUS_WAITING;
+		task->status = G_TASK_STATUS_WAITING;
 		taskingSchedule();
 	}
 	else

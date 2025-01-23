@@ -60,11 +60,11 @@ int main(int argc, char *argv[])
 
 	output_routine_startinfo_t *outInfo = new output_routine_startinfo_t();
 	outInfo->isStderr = false;
-	g_create_thread_d((void *) &terminalOutputRoutine, outInfo);
+	g_create_task_d((void *) &terminalOutputRoutine, outInfo);
 
 	output_routine_startinfo_t *errInfo = new output_routine_startinfo_t();
 	errInfo->isStderr = true;
-	g_create_thread_d((void *) &terminalOutputRoutine, errInfo);
+	g_create_task_d((void *) &terminalOutputRoutine, errInfo);
 
 	terminalInputRoutine();
 	return 0;

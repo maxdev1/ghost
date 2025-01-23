@@ -167,8 +167,8 @@ int main(int argc, char** argv)
 		klog("failed to register at PS2 driver");
 		return -1;
 	}
-	g_create_thread((void*) keyboardReceiverThread);
-	g_create_thread((void*) mouseReceiverThread);
+	g_create_task((void*) keyboardReceiverThread);
+	g_create_task((void*) mouseReceiverThread);
 
 	g_color_argb* source = (g_color_argb*) malloc(1024 * 768 * 4);
 

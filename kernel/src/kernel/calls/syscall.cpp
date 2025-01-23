@@ -90,15 +90,14 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_GET_WORKING_DIRECTORY, (g_syscall_handler) syscallGetWorkingDirectory);
 	_syscallRegister(G_SYSCALL_SET_WORKING_DIRECTORY, (g_syscall_handler) syscallSetWorkingDirectory);
 	_syscallRegister(G_SYSCALL_KILL, (g_syscall_handler) syscallKill);
-	_syscallRegister(G_SYSCALL_KERNQUERY, (g_syscall_handler) syscallKernQuery);
 	_syscallRegister(G_SYSCALL_GET_EXECUTABLE_PATH, (g_syscall_handler) syscallGetExecutablePath);
 	_syscallRegister(G_SYSCALL_GET_PARENT_PROCESS_ID, (g_syscall_handler) syscallGetParentProcessId);
 	_syscallRegister(G_SYSCALL_TASK_GET_TLS, (g_syscall_handler) syscallTaskGetTls);
 	_syscallRegister(G_SYSCALL_PROCESS_GET_INFO, (g_syscall_handler) syscallProcessGetInfo);
 	_syscallRegister(G_SYSCALL_SPAWN, (g_syscall_handler) syscallSpawn);
-	_syscallRegister(G_SYSCALL_CREATE_THREAD, (g_syscall_handler) syscallCreateThread);
-	_syscallRegister(G_SYSCALL_GET_THREAD_ENTRY, (g_syscall_handler) syscallGetThreadEntry);
-	_syscallRegister(G_SYSCALL_EXIT_THREAD, (g_syscall_handler) syscallExitThread);
+	_syscallRegister(G_SYSCALL_CREATE_TASK, (g_syscall_handler) syscallCreateTask);
+	_syscallRegister(G_SYSCALL_GET_TASK_ENTRY, (g_syscall_handler) syscallGetTaskEntry);
+	_syscallRegister(G_SYSCALL_EXIT_TASK, (g_syscall_handler) syscallExitTask);
 	_syscallRegister(G_SYSCALL_REGISTER_TASK_IDENTIFIER, (g_syscall_handler) syscallRegisterTaskIdentifier);
 	_syscallRegister(G_SYSCALL_GET_TASK_FOR_IDENTIFIER, (g_syscall_handler) syscallGetTaskForIdentifier);
 	_syscallRegister(G_SYSCALL_GET_MILLISECONDS, (g_syscall_handler) syscallGetMilliseconds);
@@ -144,4 +143,8 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_SET_VIDEO_LOG, (g_syscall_handler) syscallSetVideoLog);
 	_syscallRegister(G_SYSCALL_TEST, (g_syscall_handler) syscallTest);
 	_syscallRegister(G_SYSCALL_CALL_VM86, (g_syscall_handler) syscallCallVm86);
+
+	// Kernquery
+	_syscallRegister(G_SYSCALL_KERNQUERY, (g_syscall_handler) syscallKernQuery);
+
 }

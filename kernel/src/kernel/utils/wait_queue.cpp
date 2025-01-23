@@ -57,8 +57,8 @@ void waitQueueWake(g_wait_queue_entry** queue)
 	while(waiter)
 	{
 		g_task* task = taskingGetById(waiter->task);
-		if(task && task->status == G_THREAD_STATUS_WAITING)
-			task->status = G_THREAD_STATUS_RUNNING;
+		if(task && task->status == G_TASK_STATUS_WAITING)
+			task->status = G_TASK_STATUS_RUNNING;
 
 		auto next = waiter->next;
 		heapFree(waiter);

@@ -47,8 +47,8 @@ void interfaceRegistrationThread()
 			g_ui_initialize_request* request = (g_ui_initialize_request*) G_MESSAGE_CONTENT(buffer);
 
 			auto receiver = new interface_receiver_t();
-			g_tid receiverTid = g_create_thread_d((void*) &interfaceReceiverThread, receiver);
-			g_create_thread_d((void*) &interfaceApplicationExitCleanupThread, new application_exit_cleanup_handler_t(g_get_pid_for_tid(request_message->sender), receiver));
+			g_tid receiverTid = g_create_task_d((void*) &interfaceReceiverThread, receiver);
+			g_create_task_d((void*) &interfaceApplicationExitCleanupThread, new application_exit_cleanup_handler_t(g_get_pid_for_tid(request_message->sender), receiver));
 
 			g_ui_initialize_response response;
 			response.header.id = G_UI_PROTOCOL_INITIALIZATION;

@@ -72,8 +72,8 @@ struct g_task
     g_process* process;
     g_tid id;
     g_security_level securityLevel;
-    g_thread_status status;
-    g_thread_type type;
+    g_task_status status;
+    g_task_type type;
 
     /**
      * Indicates whether this task is currently running on the processor that its assigned to.

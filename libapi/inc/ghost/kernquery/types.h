@@ -103,7 +103,7 @@ typedef struct
 	uint8_t found;
 
 	g_tid parent;
-	g_thread_type type;
+	g_task_type type;
 	char identifier[512];
 	char source_path[G_PATH_MAX];
 

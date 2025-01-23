@@ -213,9 +213,9 @@ typedef struct
 	void* userEntry;
 	void* userData;
 
-	g_create_thread_status status;
+	g_create_task_status status;
 	g_tid threadId;
-}__attribute__((packed)) g_syscall_create_thread;
+}__attribute__((packed)) g_syscall_create_task;
 
 /**
  * @field userEntry
@@ -228,7 +228,7 @@ typedef struct
 {
 	void* userEntry;
 	void* userData;
-}__attribute__((packed)) g_syscall_get_thread_entry;
+}__attribute__((packed)) g_syscall_get_task_entry;
 
 /**
  * Used for process configuration on spawning.

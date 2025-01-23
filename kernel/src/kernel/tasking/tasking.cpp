@@ -111,7 +111,7 @@ void taskingIdleThread()
 void taskingExit()
 {
 	auto task = taskingGetCurrentTask();
-	task->status = G_THREAD_STATUS_DEAD;
+	task->status = G_TASK_STATUS_DEAD;
 	waitQueueWake(&task->waitersJoin);
 	taskingYield();
 }
@@ -225,7 +225,7 @@ void taskingAssignBalanced(g_task* task)
 		auto entry = local->scheduling.list;
 		while(entry)
 		{
-			if(entry->task->status != G_THREAD_STATUS_DEAD)
+			if(entry->task->status != G_TASK_STATUS_DEAD)
 				++taskCount;
 			entry = entry->next;
 		}
@@ -402,7 +402,7 @@ g_task* taskingCreateTaskVm86(g_process* process, uint32_t intr, g_vm86_register
 
 void taskingDestroyTask(g_task* task)
 {
-	if(task->status != G_THREAD_STATUS_DEAD)
+	if(task->status != G_TASK_STATUS_DEAD)
 		panic("%! tried to remove a task %i that is not dead", "tasking", task->id);
 
 	// Wake up tasks that joined this task
@@ -442,7 +442,7 @@ void taskingInitializeTask(g_task* task, g_process* process, g_security_level le
 		task->id = taskingGetNextId();
 	task->process = process;
 	task->securityLevel = level;
-	task->status = G_THREAD_STATUS_RUNNING;
+	task->status = G_TASK_STATUS_RUNNING;
 	task->active = false;
 	task->waitersJoin = nullptr;
 }
@@ -461,7 +461,7 @@ void taskingProcessKillAllTasks(g_pid pid)
 	g_task_entry* entry = task->process->tasks;
 	while(entry)
 	{
-		entry->task->status = G_THREAD_STATUS_DEAD;
+		entry->task->status = G_TASK_STATUS_DEAD;
 		entry = entry->next;
 	}
 
@@ -504,7 +504,7 @@ g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel)
 	// Start thread & wait for spawn to finish
 	waitQueueAdd(&res.process->waitersSpawn, caller->id);
 	taskingAssignBalanced(task);
-	caller->status = G_THREAD_STATUS_WAITING;
+	caller->status = G_TASK_STATUS_WAITING;
 	taskingYield();
 
 	// Take result

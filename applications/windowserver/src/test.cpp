@@ -44,7 +44,7 @@ class open_executable_action_handler_t : public internal_action_handler_t
 	}
 	void handle(action_component_t* source)
 	{
-		g_create_thread_d((void*) &open_executable_spawn, this);
+		g_create_task_d((void*) &open_executable_spawn, this);
 	}
 };
 
@@ -176,7 +176,7 @@ void createTestWindow2()
 
 void create_test_window_handler_t::handle(action_component_t* source)
 {
-	g_create_thread((void*) &createTestWindow);
+	g_create_task((void*) &createTestWindow);
 }
 
 void test_t::createTestComponents()

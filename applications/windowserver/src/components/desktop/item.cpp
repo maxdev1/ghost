@@ -119,7 +119,7 @@ component_t* item_t::handleMouseEvent(mouse_event_t& e)
 		if(e.clickCount == 2)
 		{
 			// TODO This doesn't belong here
-			g_create_thread_d((void*) &spawnerThread, this);
+			g_create_task_d((void*) &spawnerThread, this);
 		}
 		else
 		{

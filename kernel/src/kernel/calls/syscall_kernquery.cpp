@@ -53,7 +53,7 @@ void syscallKernQuery(g_task* task, g_syscall_kernquery* data)
 		g_kernquery_task_get_data* kdata = (g_kernquery_task_get_data*) data->buffer;
 
 		g_task* ktask = taskingGetById(kdata->id);
-		if(!ktask || ktask->status == G_THREAD_STATUS_DEAD)
+		if(!ktask || ktask->status == G_TASK_STATUS_DEAD)
 		{
 			data->status = G_KERNQUERY_STATUS_UNKNOWN_ID;
 			kdata->id = -1;

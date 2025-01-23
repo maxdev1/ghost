@@ -20,7 +20,6 @@
 
 #include "kernel/calls/syscall_system.hpp"
 #include "kernel/filesystem/filesystem.hpp"
-#include "kernel/tasking/tasking_directory.hpp"
 
 void syscallLog(g_task* task, g_syscall_log* data)
 {
@@ -45,14 +44,14 @@ void syscallCallVm86(g_task* task, g_syscall_call_vm86* data)
 		return;
 	}
 
-	g_vm86_registers* registerStore = (g_vm86_registers*) heapAllocate(sizeof(g_vm86_registers));
+	auto registerStore = (g_vm86_registers*) heapAllocate(sizeof(g_vm86_registers));
 
 	g_task* vm86task = taskingCreateTaskVm86(task->process, data->interrupt, data->in, registerStore);
 	taskingAssign(taskingGetLocal(), vm86task);
 
 	for(;;)
 	{
-		if(vm86task == 0 || vm86task->status == G_THREAD_STATUS_DEAD)
+		if(vm86task == nullptr || vm86task->status == G_TASK_STATUS_DEAD)
 		{
 			/* VM86 task has finished, copy out registers */
 			*data->out = *registerStore;

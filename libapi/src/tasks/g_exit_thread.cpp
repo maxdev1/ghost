@@ -24,8 +24,8 @@
 /**
  *
  */
-void g_exit_thread()
+void g_exit_task()
 {
-	g_syscall(G_SYSCALL_EXIT_THREAD, 0);
+	g_syscall(G_SYSCALL_EXIT_TASK, 0);
 	__builtin_unreachable();
 }

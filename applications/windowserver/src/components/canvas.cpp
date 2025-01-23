@@ -37,7 +37,7 @@ canvas_t::canvas_t(g_tid partnerThread) : partnerThread(partnerThread)
 	asyncInfo->alive = true;
 	asyncInfo->lock = g_mutex_initialize();
 	asyncInfo->checkAtom = g_mutex_initialize();
-	g_create_thread_d((void*) canvas_t::asyncBufferResizer, asyncInfo);
+	g_create_task_d((void*) canvas_t::asyncBufferResizer, asyncInfo);
 }
 
 /**

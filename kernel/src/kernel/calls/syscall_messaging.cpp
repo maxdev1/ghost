@@ -31,7 +31,7 @@ void syscallMessageSend(g_task* task, g_syscall_send_message* data)
 		  data->mode == G_MESSAGE_SEND_MODE_BLOCKING)
 	{
 		messageWaitForSend(task->id, data->receiver);
-		task->status = G_THREAD_STATUS_WAITING;
+		task->status = G_TASK_STATUS_WAITING;
 		taskingYield();
 	}
 	messageUnwaitForSend(task->id, data->receiver);
@@ -52,7 +52,7 @@ void syscallMessageReceive(g_task* task, g_syscall_receive_message* data)
 		//	break;
 		// }
 
-		task->status = G_THREAD_STATUS_WAITING;
+		task->status = G_TASK_STATUS_WAITING;
 		taskingYield();
 	}
 }

@@ -88,16 +88,16 @@ g_pid g_get_pid_for_tid(uint32_t tid);
  *
  * @security-level APPLICATION
  */
-g_tid g_create_thread(void* function);
-g_tid g_create_thread_d(void* function, void* userData);
-g_tid g_create_thread_ds(void* function, void* userData, g_create_thread_status* out_status);
+g_tid g_create_task(void* function);
+g_tid g_create_task_d(void* function, void* userData);
+g_tid g_create_task_ds(void* function, void* userData, g_create_task_status* out_status);
 
 /**
  * Exits a thread.
  *
  * @security-level APPLICATION
  */
-void g_exit_thread();
+void g_exit_task();
 
 
 /**

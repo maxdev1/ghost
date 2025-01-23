@@ -37,8 +37,8 @@ bool gui_screen_t::initialize()
 	if(!createUi())
 		return false;
 
-	g_create_thread_d((void*) guiScreenPaintEntry, this);
-	g_create_thread_d((void*) guiScreenBlinkCursorEntry, this);
+	g_create_task_d((void*) guiScreenPaintEntry, this);
+	g_create_task_d((void*) guiScreenBlinkCursorEntry, this);
 	return true;
 }
 

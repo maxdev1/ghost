@@ -104,7 +104,7 @@ void clockUpdate()
 		g_task* task = taskingGetById(local->waiters->task);
 		if(task)
 		{
-			task->status = G_THREAD_STATUS_RUNNING;
+			task->status = G_TASK_STATUS_RUNNING;
 		}
 
 		auto next = local->waiters->next;

@@ -31,7 +31,7 @@
 void syscallSleep(g_task* task, g_syscall_sleep* data)
 {
 	clockWaitForTime(task->id, clockGetLocal()->time + data->milliseconds);
-	task->status = G_THREAD_STATUS_WAITING;
+	task->status = G_TASK_STATUS_WAITING;
 	taskingSchedule();
 }
 
@@ -46,7 +46,7 @@ void syscallExit(g_task* task, g_syscall_exit* data)
 	taskingExit();
 }
 
-void syscallExitThread(g_task* task)
+void syscallExitTask(g_task* task)
 {
 	taskingExit();
 }
@@ -77,7 +77,7 @@ void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
 void syscallJoin(g_task* task, g_syscall_join* data)
 {
 	taskingWaitForExit(data->taskId, task->id);
-	task->status = G_THREAD_STATUS_WAITING;
+	task->status = G_TASK_STATUS_WAITING;
 	taskingYield();
 }
 
@@ -104,7 +104,7 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 			if(data->workdir)
 				spawned.process->environment.workingDirectory = stringDuplicate(data->workdir);
 
-			spawned.process->main->status = G_THREAD_STATUS_RUNNING;
+			spawned.process->main->status = G_TASK_STATUS_RUNNING;
 		}
 	}
 	else
@@ -130,7 +130,7 @@ void syscallKill(g_task* task, g_syscall_kill* data)
 	if(target)
 	{
 		data->status = G_KILL_STATUS_SUCCESSFUL;
-		target->process->main->status = G_THREAD_STATUS_DEAD;
+		target->process->main->status = G_TASK_STATUS_DEAD;
 		waitQueueWake(&target->waitersJoin);
 		taskingYield();
 	}
@@ -140,29 +140,29 @@ void syscallKill(g_task* task, g_syscall_kill* data)
 	}
 }
 
-void syscallCreateThread(g_task* task, g_syscall_create_thread* data)
+void syscallCreateTask(g_task* task, g_syscall_create_task* data)
 {
 	mutexAcquire(&task->process->lock);
 
-	g_task* thread = taskingCreateTask((g_virtual_address) data->initialEntry, task->process,
+	g_task* newTask = taskingCreateTask((g_virtual_address) data->initialEntry, task->process,
 	                                   task->process->main->securityLevel);
-	if(thread)
+	if(newTask)
 	{
-		thread->userEntry.function = data->userEntry;
-		thread->userEntry.data = data->userData;
-		data->threadId = thread->id;
-		data->status = G_CREATE_THREAD_STATUS_SUCCESSFUL;
-		taskingAssignBalanced(thread);
+		newTask->userEntry.function = data->userEntry;
+		newTask->userEntry.data = data->userData;
+		data->threadId = newTask->id;
+		data->status = G_CREATE_TASK_STATUS_SUCCESSFUL;
+		taskingAssignBalanced(newTask);
 	}
 	else
 	{
-		data->status = G_CREATE_THREAD_STATUS_FAILED;
+		data->status = G_CREATE_TASK_STATUS_FAILED;
 	}
 
 	mutexRelease(&task->process->lock);
 }
 
-void syscallGetThreadEntry(g_task* task, g_syscall_get_thread_entry* data)
+void syscallGetTaskEntry(g_task* task, g_syscall_get_task_entry* data)
 {
 	data->userData = task->userEntry.data;
 	data->userEntry = task->userEntry.function;

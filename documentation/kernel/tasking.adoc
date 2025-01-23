@@ -8,40 +8,40 @@ include::../common/homelink.adoc[]
 
 [[Processes]]
 == Processes
-A process contains one or more threads. It holds information that
-is common for all of its threads. Each process has a main thread and can
-have multiple child threads.
+A process contains one or more tasks. It holds information that
+is common for all of its tasks. Each process has a main task and can
+have multiple child tasks.
 
-A process itself has no id, it is identified by the id of its main thread.
+A process itself has no id, it is identified by the id of its main task.
 
 
-[[Threads]]
-== Threads
-A thread is a single stream of execution. `g_task` is the data structure
-that contains information for a thread.
+[[Tasks]]
+== Tasks
+A task is a single stream of execution. `g_task` is the data structure
+that contains information for a task.
 
-Threads running in kernel-level only have one stack, user-space threads have an additional
+Tasks running in kernel-level only have one stack, user-space tasks have an additional
 stack that is used during interrupt handling. The <<memory#Stacks,stack section>> describes
 how these stacks are handled.
 
 === Types
-The following constants of type `g_thread_type` denote types of threads.
+The following constants of type `g_task_type` denote types of tasks.
 [options="header"]
 |==========================================================
 | Identifier			| Description
-| G_TASK_TYPE_DEFAULT	| Normal thread
-| G_TASK_TYPE_VM86		| Virtual 8086 thread
+| G_TASK_TYPE_DEFAULT	| Normal task
+| G_TASK_TYPE_VM86		| Virtual 8086 task
 |==========================================================
 
 
 
 === Kernel-level
-==== Creating a thread
-In kernel space, a thread can be created by using `taskingCreateTask` and
+==== Creating a task
+In kernel space, a task can be created by using `taskingCreateTask` and
 assigning it to scheduling with `taskingAssign`.
 
 ==== Considerations
-There are some things to consider when implementing a thread in kernel-level.
+There are some things to consider when implementing a task in kernel-level.
 When a kernel-lock is taken by a task, scheduling is disabled until the task
 releases the lock. This is inevitable as it could cause a deadlock if the task
 is interrupted while holding a lock.
@@ -49,23 +49,23 @@ is interrupted while holding a lock.
 To minimize any blocking, locks should therefore be used around critical parts
 but acquired as late and released as soon as possible.
 
-==== Exiting a thread
-A kernel thread must be exited using `taskingExit`, otherwise the
+==== Exiting a task
+A kernel task must be exited using `taskingExit`, otherwise the
 task will run into nirvana and cause a failure.
 
 
 === User-level
-==== Creating a thread
-To create a thread from userspace, the `<<libapi#g_create_thread,g_create_thread>>`
+==== Creating a task
+To create a task from userspace, the `<<libapi#g_create_task,g_create_task>>`
 API function is used. This function must be supplied with an address pointing to
-code that the thread shall execute. Additionally to the entry point, a pointer
+code that the task shall execute. Additionally to the entry point, a pointer
 to user data can be passed.
 
 A simple example could look like this:
 
 [source,c]
 -----
-void myThreadedCounter(int* counter) {
+void myTaskCounter(int* counter) {
 	for(;;) {
 		(*counter)++;
 	}
@@ -73,7 +73,7 @@ void myThreadedCounter(int* counter) {
 
 int main(int argc, char** argv) {
 	int counter = 0;
-	g_create_thread_d(myThreadedCounter, &counter);
+	g_create_task_d(myTaskCounter, &counter);
 	
 	for(;;) {
 		g_sleep(1000);
@@ -82,18 +82,18 @@ int main(int argc, char** argv) {
 }
 -----
 
-Each thread has a unique id of type `g_tid`. This id can be obtained from within
-the thread using `<<libapi#g_get_tid,g_get_tid>>`.
+Each task has a unique id of type `g_tid`. This id can be obtained from within
+the task using `<<libapi#g_get_tid,g_get_tid>>`.
 
 ==== Internal initialization
-The thread initialization sequence uses a wrapper function for starting
-the thread. First, the `G_SYSCALL_CREATE_THREAD` system call is called
-and supplied with a "thread setup routine" and the "user entry" (the function
-given to `g_create_thread`).
+The task initialization sequence uses a wrapper function for starting
+the task. First, the `G_SYSCALL_CREATE_TASK` system call is called
+and supplied with a "task setup routine" and the "user entry" (the function
+given to `g_create_task`).
 
 This setup routine is the first piece of code that is executed from within the
-newly created thread, but does initially not know where to start execution.
-To get this information, it uses `G_SYSCALL_GET_THREAD_ENTRY` which returns
+newly created tasnk, but does initially not know where to start execution.
+To get this information, it uses `G_SYSCALL_GET_TASK_ENTRY` which returns
 the user entry to start executing at.
 
 This entire procedure is done to avoid that the kernel must modify the user
@@ -101,15 +101,15 @@ stack to put the necessary values on it, but rather do it from within code which
 is inherently ABI compatible.
 
 
-==== Exiting a thread
-A thread is automatically destroyed once the entry function finishes execution.
+==== Exiting a task
+A task is automatically destroyed once the entry function finishes execution.
 To stop execution from an arbitrary point, the `<<libapi#g_exit,g_exit>>` API
 function can be used.
 
-A single thread can not be killed from a different process; using the
+A single task can not be killed from a different process; using the
 `<<libapi#g_kill,g_kill>>` always causes the entire process to exit.
 
-When the main thread of a <<Processes,process>> dies, all threads of the process
+When the main task of a <<Processes,process>> dies, all tasks of the process
 are killed.
 
 
@@ -117,8 +117,8 @@ are killed.
 [[SecurityLevels]]
 === Security Levels
 When creating a process, a security level is used to determine what permissions
-the threads of the process have. This security level is stored on the process
-and applied on thread creation.
+the tasks of the process have. This security level is stored on the process
+and applied on task creation.
 
 ==== Existing security levels
 The following constants of type `g_security_level` denote the different
