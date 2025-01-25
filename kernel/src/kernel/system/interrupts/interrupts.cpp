@@ -119,11 +119,7 @@ extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_st
 			}
 			else
 			{
-				// TODO task->active?
-				// I think this might currently accidentally be marking a task as not active
-				// when simply an interrupt must be written to the irq pipe (see above)
 				requestsWriteToIrqDevice(task, irq);
-				// logInfo("Intr: %x", irq);
 			}
 
 			_interruptsSendEndOfInterrupt(irq);
