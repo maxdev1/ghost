@@ -72,8 +72,24 @@ void interruptsInitializeAp()
 extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_state* state)
 {
 	g_task* task = taskingGetCurrentTask();
+	if(task)
+		task->state = (g_processor_state*) state;
+	else
+		taskingSchedule();
 
-	if(state->intr == 0x82) // Privilege downgrade for spawn
+	if(state->intr < 0x20) // Exception
+	{
+		exceptionsHandle(task);
+	}
+	else if(state->intr == 0x80) // Syscall
+	{
+		syscallHandle(task);
+	}
+	else if(state->intr == 0x81) // Yield
+	{
+		taskingSchedule();
+	}
+	else if(state->intr == 0x82) // Privilege downgrade for spawn
 	{
 		// Prepare state to match the expected security level
 		auto process = task->process;
@@ -87,43 +103,18 @@ extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_st
 	}
 	else
 	{
-		// In all usual cases, store the tasks state
-		if(task)
+		uint8_t irq = state->intr - 0x20;
+		if(irq == 0) // Timer
 		{
-			task->state = (g_processor_state*) state;
-		}
-		else
-		{
-			taskingSchedule();
-		}
-
-		if(state->intr < 0x20) // Exception
-		{
-			exceptionsHandle(task);
-		}
-		else if(state->intr == 0x80) // Syscall
-		{
-			syscallHandle(task);
-		}
-		else if(state->intr == 0x81) // Yield
-		{
+			clockUpdate();
 			taskingSchedule();
 		}
 		else
 		{
-			uint8_t irq = state->intr - 0x20;
-			if(irq == 0) // Timer
-			{
-				clockUpdate();
-				taskingSchedule();
-			}
-			else
-			{
-				requestsWriteToIrqDevice(task, irq);
-			}
-
-			_interruptsSendEndOfInterrupt(irq);
+			requestsWriteToIrqDevice(task, irq);
 		}
+
+		_interruptsSendEndOfInterrupt(irq);
 	}
 
 	return taskingGetCurrentTask()->state;
