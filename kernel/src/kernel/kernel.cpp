@@ -69,8 +69,8 @@ extern "C" void kernelMain(g_setup_information* setupInformation)
 
 void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 {
-	mutexInitialize(&bootstrapCoreLock, true);
-	mutexInitialize(&applicationCoreLock, true);
+	mutexInitializeCritical(&bootstrapCoreLock);
+	mutexInitializeCritical(&applicationCoreLock);
 
 	mutexAcquire(&bootstrapCoreLock);
 

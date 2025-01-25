@@ -42,7 +42,7 @@ void* _memoryAllocatorAllocateInSpecificBucket(g_allocator* allocator, g_allocat
 
 void memoryAllocatorInitialize(g_allocator* allocator, g_allocator_type type, g_virtual_address start, g_virtual_address end)
 {
-	mutexInitialize(&allocator->lock, true);
+	mutexInitializeCritical(&allocator->lock);
 
 	allocator->type = type;
 

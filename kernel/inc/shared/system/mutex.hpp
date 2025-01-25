@@ -30,15 +30,20 @@ typedef struct
     volatile int initialized;
     g_spinlock lock;
 
-    bool disablesInterrupts: 1;
+    bool disablesInterrupts : 1;
     int depth;
     uint32_t owner;
 } __attribute__((packed)) g_mutex;
 
 /**
- * Initializes the mutex.
+ * Initializes a mutex.
  */
-void mutexInitialize(g_mutex* mutex, bool disablesInterrupts = false);
+void mutexInitialize(g_mutex* mutex);
+
+/**
+ * Initializes a mutex for a critical section. Acquiring such a mutex disables interrupts until it is released.
+ */
+void mutexInitializeCritical(g_mutex* mutex);
 
 /**
  * Acquires the mutex. Increases the lock count for this processor.

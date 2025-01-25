@@ -47,10 +47,13 @@ struct g_tasking_local
     /**
      * When mutexes are used, each first acquire call to a mutex increases
      * the lockCount by one, each last release call to a mutex decreases it.
-     * On the first acquire, the interrupt flag is stored and interrupts are
-     * disabled, on the last release the interrupt flag is restored.
      */
     int lockCount;
+
+    /**
+     * Interrupts are disabled while a mutex on a critical section is locked.
+     * This flag is used to store the interrupt flag before locking.
+     */
     bool lockSetIF;
 
     /**

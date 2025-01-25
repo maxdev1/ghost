@@ -32,14 +32,25 @@ g_spinlock mutexInitializerLock = 0;
 	if(mutex->initialized != G_MUTEX_INITIALIZED) \
 		mutexErrorUninitialized(mutex);
 
-bool mutexTryAcquire(g_mutex* mutex, uint32_t owner);
+bool _mutexTryAcquire(g_mutex* mutex, uint32_t owner);
+void _mutexInitialize(g_mutex* mutex, bool disablesInterrupts);
 
 void mutexErrorUninitialized(g_mutex* mutex)
 {
 	panic("%! %i: tried to use uninitialized mutex %h", "mutex", processorGetCurrentId(), mutex);
 }
 
-void mutexInitialize(g_mutex* mutex, bool disablesInterrupts)
+void mutexInitialize(g_mutex* mutex)
+{
+	_mutexInitialize(mutex, false);
+}
+
+void mutexInitializeCritical(g_mutex* mutex)
+{
+	_mutexInitialize(mutex, true);
+}
+
+void _mutexInitialize(g_mutex* mutex, bool disablesInterrupts)
 {
 	G_SPINLOCK_ACQUIRE(mutexInitializerLock);
 
@@ -58,7 +69,7 @@ void mutexAcquire(g_mutex* mutex)
 
 	uint32_t owner = processorGetCurrentId();
 
-	while(!mutexTryAcquire(mutex, owner))
+	while(!_mutexTryAcquire(mutex, owner))
 	{
 		if(mutex->disablesInterrupts)
 			asm("pause");
@@ -67,19 +78,13 @@ void mutexAcquire(g_mutex* mutex)
 	}
 }
 
-bool mutexTryAcquire(g_mutex* mutex, uint32_t owner)
+bool _mutexTryAcquire(g_mutex* mutex, uint32_t owner)
 {
 	MUTEX_GUARD;
 
-	bool set = false;
-
-	bool hasIF = false;
-	if(mutex->disablesInterrupts)
-	{
-		hasIF = interruptsAreEnabled();
-		if(hasIF)
-			interruptsDisable();
-	}
+	bool wasSet = false;
+	bool hadIF = interruptsAreEnabled();
+	interruptsDisable();
 
 	G_SPINLOCK_ACQUIRE(mutex->lock);
 
@@ -89,24 +94,28 @@ bool mutexTryAcquire(g_mutex* mutex, uint32_t owner)
 		{
 			auto local = taskingGetLocal();
 			if(local->lockCount == 0)
-				local->lockSetIF = hasIF;
+				local->lockSetIF = hadIF;
 			local->lockCount++;
 		}
 		++mutex->depth;
 		mutex->owner = owner;
-		set = true;
+		wasSet = true;
 	}
 
 	G_SPINLOCK_RELEASE(mutex->lock);
 
-	return set;
+	if(!mutex->disablesInterrupts && hadIF)
+		interruptsEnable();
+
+	return wasSet;
 }
 
 void mutexRelease(g_mutex* mutex)
 {
 	MUTEX_GUARD;
 
-	bool setIF = false;
+	bool hadIF = false;
+	interruptsDisable();
 
 	G_SPINLOCK_ACQUIRE(mutex->lock);
 
@@ -120,7 +129,7 @@ void mutexRelease(g_mutex* mutex)
 				auto local = taskingGetLocal();
 				local->lockCount--;
 				if(local->lockCount == 0)
-					setIF = local->lockSetIF;
+					hadIF = local->lockSetIF;
 			}
 
 			mutex->owner = -1;
@@ -129,9 +138,6 @@ void mutexRelease(g_mutex* mutex)
 
 	G_SPINLOCK_RELEASE(mutex->lock);
 
-	if(mutex->disablesInterrupts)
-	{
-		if(setIF)
-			interruptsEnable();
-	}
+	if(hadIF)
+		interruptsEnable();
 }

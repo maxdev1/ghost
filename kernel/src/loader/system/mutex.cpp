@@ -26,7 +26,7 @@
  * are not required.
  */
 
-void mutexInitialize(g_mutex* mutex, bool disablesInterrupts)
+void mutexInitialize(g_mutex* mutex)
 {
 }
 

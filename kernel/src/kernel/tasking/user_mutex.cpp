@@ -33,7 +33,7 @@ void _userMutexWakeWaitingTasks(g_user_mutex_entry* entry);
 
 void userMutexInitialize()
 {
-	mutexInitialize(&globalLock);
+	mutexInitializeCritical(&globalLock);
 	nextMutex = 0;
 	mutexMap = hashmapCreateNumeric<g_user_mutex, g_user_mutex_entry*>(128);
 }
