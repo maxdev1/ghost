@@ -20,11 +20,14 @@
 
 #include "shared/system/mutex.hpp"
 
-void _mutexInitialize(g_mutex* mutex)
+/**
+ * This implementation exists only because the loader uses code that relies on
+ * these functions being available, but in the context of the loader mutexes
+ * are not required.
+ */
+
+void mutexInitialize(g_mutex* mutex, bool disablesInterrupts)
 {
-	if(mutex->initialized)
-		return;
-	mutex->initialized = 1;
 }
 
 void mutexAcquire(g_mutex* mutex)

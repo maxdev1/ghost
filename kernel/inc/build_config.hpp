@@ -40,7 +40,6 @@
 
 // fine-grained debugging options
 #define G_DEBUG_WHOS_WAITING false
-#define G_DEBUG_MUTEXES false
 #define G_DEBUG_THREAD_DUMPING false
 
 // mode for the debug interface
@@ -48,7 +47,7 @@
 
 // version
 #define G_VERSION_MAJOR 0
-#define G_VERSION_MINOR 16
+#define G_VERSION_MINOR 17
 #define G_VERSION_PATCH 0
 
 #define G_LOADER_VERSION_MAJOR 1

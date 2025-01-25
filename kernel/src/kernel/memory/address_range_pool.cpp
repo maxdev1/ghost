@@ -21,13 +21,12 @@
 #include "kernel/memory/address_range_pool.hpp"
 #include "kernel/memory/heap.hpp"
 #include "shared/logger/logger.hpp"
-#include "shared/memory/paging.hpp"
 #include "shared/panic.hpp"
 
 void addressRangePoolInitialize(g_address_range_pool* pool)
 {
 	pool->first = 0;
-	mutexInitialize(&pool->lock);
+	mutexInitialize(&pool->lock, true);
 }
 
 void addressRangePoolDestroy(g_address_range_pool* pool)

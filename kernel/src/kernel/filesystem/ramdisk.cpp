@@ -25,6 +25,7 @@
 #include "shared/memory/memory.hpp"
 #include "shared/panic.hpp"
 #include "shared/utils/string.hpp"
+#include "shared/logger/logger.hpp"
 
 g_ramdisk* ramdiskMain = 0;
 

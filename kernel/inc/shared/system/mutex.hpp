@@ -21,36 +21,29 @@
 #ifndef __SYSTEM_MUTEX__
 #define __SYSTEM_MUTEX__
 
-#include <ghost/stdint.h>
-#include "shared/logger/logger.hpp"
 #include "shared/system/spinlock.hpp"
+
+#include <ghost/stdint.h>
 
 typedef struct
 {
-	volatile int initialized = 0;
-	g_spinlock lock = 0;
+    volatile int initialized;
+    g_spinlock lock;
 
-	int depth = 0;
-	uint32_t owner = -1;
+    bool disablesInterrupts: 1;
+    int depth;
+    uint32_t owner;
 } __attribute__((packed)) g_mutex;
 
 /**
  * Initializes the mutex.
  */
-#if G_DEBUG_MUTEXES
-#define mutexInitialize(mutex) \
-	_mutexInitialize(mutex);   \
-	logInfo("%! initalize %x @%s", "mutex", mutex, __func__);
-#else
-#define mutexInitialize(mutex) _mutexInitialize(mutex);
-#endif
-void _mutexInitialize(g_mutex* mutex);
+void mutexInitialize(g_mutex* mutex, bool disablesInterrupts = false);
 
 /**
  * Acquires the mutex. Increases the lock count for this processor.
  */
 void mutexAcquire(g_mutex* mutex);
-bool mutexTryAcquire(g_mutex* mutex, uint32_t owner);
 
 /**
  * Releases the mutex. Decreases the lock count for this processor.

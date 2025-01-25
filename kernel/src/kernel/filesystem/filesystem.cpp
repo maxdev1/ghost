@@ -25,9 +25,10 @@
 #include "kernel/ipc/pipes.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "shared/panic.hpp"
 #include "shared/system/mutex.hpp"
+#include "shared/panic.hpp"
 #include "shared/utils/string.hpp"
+#include "shared/logger/logger.hpp"
 
 static g_fs_node* filesystemRoot;
 static g_fs_node* mountFolder;

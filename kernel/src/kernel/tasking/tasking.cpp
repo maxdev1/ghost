@@ -86,17 +86,16 @@ g_task* taskingGetById(g_tid id)
 void taskingYield()
 {
 	if(!systemIsReady())
+	{
 		return;
-
-	if(taskingGetLocal()->lockCount)
-		panic("%! can't yield while %i locks are held", "tasking", taskingGetLocal()->lockCount);
+	}
 
 	g_task* task = taskingGetCurrentTask();
 	task->statistics.timesYielded++;
 
 	auto previousState = task->state;
 	asm volatile("int $0x81" ::
-					 : "cc", "memory");
+		: "cc", "memory");
 	task->state = previousState;
 }
 
@@ -118,7 +117,7 @@ void taskingExit()
 
 void taskingInitializeBsp()
 {
-	mutexInitialize(&taskingIdLock);
+	mutexInitialize(&taskingIdLock, true);
 
 	auto numProcs = processorGetNumberOfProcessors();
 	taskingLocal = (g_tasking_local*) heapAllocate(sizeof(g_tasking_local) * numProcs);
@@ -144,10 +143,11 @@ void taskingInitializeLocal()
 	local->scheduling.list = nullptr;
 	local->scheduling.idleTask = nullptr;
 
-	mutexInitialize(&local->lock);
+	mutexInitialize(&local->lock, true);
 
 	g_process* idle = taskingCreateProcess(G_SECURITY_LEVEL_KERNEL);
-	local->scheduling.idleTask = taskingCreateTask((g_virtual_address) taskingIdleThread, idle, G_SECURITY_LEVEL_KERNEL);
+	local->scheduling.idleTask =
+			taskingCreateTask((g_virtual_address) taskingIdleThread, idle, G_SECURITY_LEVEL_KERNEL);
 	local->scheduling.idleTask->type = G_TASK_TYPE_VITAL;
 	logInfo("%! core: %i idle task: %i", "tasking", processorGetCurrentId(), idle->main->id);
 
@@ -283,8 +283,6 @@ void taskingApplySwitch()
 		panic("%! tried to restore without a current task", "tasking");
 	}
 
-	task->active = true;
-
 	// Switch to process address space
 	if(task->overridePageDirectory)
 	{
@@ -318,7 +316,7 @@ g_process* taskingCreateProcess(g_security_level securityLevel)
 	process->main = 0;
 	process->tasks = 0;
 
-	mutexInitialize(&process->lock);
+	mutexInitialize(&process->lock, true);
 
 	process->tlsMaster.size = 0;
 	process->tlsMaster.location = 0;
@@ -443,7 +441,6 @@ void taskingInitializeTask(g_task* task, g_process* process, g_security_level le
 	task->process = process;
 	task->securityLevel = level;
 	task->status = G_TASK_STATUS_RUNNING;
-	task->active = false;
 	task->waitersJoin = nullptr;
 }
 
@@ -542,7 +539,7 @@ void taskingSpawnEntry()
 	args->entry = loadRes.entry;
 
 	asm volatile("int $0x82" ::
-					 : "cc", "memory");
+		: "cc", "memory");
 }
 
 void taskingWaitForExit(g_tid joinedTid, g_tid waiter)

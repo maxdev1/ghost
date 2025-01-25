@@ -31,11 +31,12 @@
 #include "kernel/tasking/user_mutex.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking.hpp"
+#include "shared/system/mutex.hpp"
 #include "shared/panic.hpp"
 #include "shared/setup_information.hpp"
-#include "shared/system/mutex.hpp"
 #include "shared/video/console_video.hpp"
 #include "shared/video/pretty_boot.hpp"
+#include "shared/logger/logger.hpp"
 
 static g_mutex bootstrapCoreLock;
 static g_mutex applicationCoreLock;
@@ -68,8 +69,8 @@ extern "C" void kernelMain(g_setup_information* setupInformation)
 
 void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 {
-	mutexInitialize(&bootstrapCoreLock);
-	mutexInitialize(&applicationCoreLock);
+	mutexInitialize(&bootstrapCoreLock, true);
+	mutexInitialize(&applicationCoreLock, true);
 
 	mutexAcquire(&bootstrapCoreLock);
 
@@ -84,7 +85,8 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	syscallRegisterAll();
 
 	auto initializationProcess = taskingCreateProcess(G_SECURITY_LEVEL_KERNEL);
-	auto initializationTask = taskingCreateTask((g_virtual_address) kernelInitializationThread, initializationProcess, G_SECURITY_LEVEL_KERNEL);
+	auto initializationTask = taskingCreateTask((g_virtual_address) kernelInitializationThread, initializationProcess,
+	                                            G_SECURITY_LEVEL_KERNEL);
 	taskingAssign(taskingGetLocal(), initializationTask);
 
 	logInfo("%! starting on %i cores", "kernel", processorGetNumberOfProcessors());

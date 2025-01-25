@@ -34,7 +34,7 @@ void clockInitialize()
 
 	for(uint32_t i = 0; i < numProcs; i++)
 	{
-		mutexInitialize(&locals[i].lock);
+		mutexInitialize(&locals[i].lock, true);
 		locals[i].waiters = nullptr;
 	}
 }

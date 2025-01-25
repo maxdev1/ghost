@@ -42,7 +42,7 @@ void* _memoryAllocatorAllocateInSpecificBucket(g_allocator* allocator, g_allocat
 
 void memoryAllocatorInitialize(g_allocator* allocator, g_allocator_type type, g_virtual_address start, g_virtual_address end)
 {
-	mutexInitialize(&allocator->lock);
+	mutexInitialize(&allocator->lock, true);
 
 	allocator->type = type;
 
@@ -89,7 +89,11 @@ g_size memoryAllocatorFree(g_allocator* allocator, void* mem)
 	} while(current);
 
 	if(!current)
-		panic("%! attempted to free kernel memory that is not part of the allocator %i", "alloc", allocator->type);
+	{
+		logInfo("%! attempted to free %x not managed by kernel allocator (type %i)", "critical", mem, allocator->type);
+		mutexRelease(&allocator->lock);
+		return 0;
+	}
 
 	g_size size;
 	if(current->type == G_ALLOCATOR_SECTION_TYPE_CHUNK)

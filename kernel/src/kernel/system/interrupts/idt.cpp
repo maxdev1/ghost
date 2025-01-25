@@ -21,6 +21,7 @@
 #include "kernel/system/interrupts/idt.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/memory/gdt_macros.hpp"
 
 /**
  * IDT pointer structure
@@ -30,13 +31,13 @@ g_idt_pointer idtPointer;
 /**
  * Interrupt descriptor table (consisting of 256 IDT entries)
  */
-g_idt_entry idt[256];
+__attribute__((aligned(8))) g_idt_entry idt[256];
 
-void idtCreateGate(uint32_t index, uint32_t base, uint16_t kernelSegment, uint8_t flags)
+void idtCreateGate(uint32_t index, void* base, uint8_t flags)
 {
-	idt[index].baseLow = base & 0xFFFF;
-	idt[index].baseHigh = (base >> 16) & 0xFFFF;
-	idt[index].kernelSegment = kernelSegment;
+	idt[index].baseLow = ((uint32_t) base) & 0xFFFF;
+	idt[index].baseHigh = (((uint32_t) base) >> 16) & 0xFFFF;
+	idt[index].kernelSegment = G_GDT_DESCRIPTOR_KERNEL_CODE;
 	idt[index].zero = 0;
 	idt[index].flags = flags;
 }
@@ -61,4 +62,3 @@ void idtLoad()
 	_loadIdt((uint32_t) &idtPointer);
 	logDebug("%! loaded on core %i", "idt", processorGetCurrentId());
 }
-

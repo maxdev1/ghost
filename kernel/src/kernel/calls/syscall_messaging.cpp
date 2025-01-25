@@ -21,14 +21,13 @@
 #include "kernel/calls/syscall_messaging.hpp"
 #include "kernel/ipc/message.hpp"
 #include "kernel/tasking/user_mutex.hpp"
-#include "kernel/tasking/tasking_directory.hpp"
-#include "shared/logger/logger.hpp"
 
 
 void syscallMessageSend(g_task* task, g_syscall_send_message* data)
 {
-	while((data->status = messageSend(task->id, data->receiver, data->buffer, data->length, data->transaction)) == G_MESSAGE_SEND_STATUS_QUEUE_FULL &&
-		  data->mode == G_MESSAGE_SEND_MODE_BLOCKING)
+	while((data->status = messageSend(task->id, data->receiver, data->buffer, data->length, data->transaction)) ==
+	      G_MESSAGE_SEND_STATUS_QUEUE_FULL &&
+	      data->mode == G_MESSAGE_SEND_MODE_BLOCKING)
 	{
 		messageWaitForSend(task->id, data->receiver);
 		task->status = G_TASK_STATUS_WAITING;
@@ -39,8 +38,9 @@ void syscallMessageSend(g_task* task, g_syscall_send_message* data)
 
 void syscallMessageReceive(g_task* task, g_syscall_receive_message* data)
 {
-	while((data->status = messageReceive(task->id, data->buffer, data->maximum, data->transaction)) == G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY &&
-		  data->mode == G_MESSAGE_RECEIVE_MODE_BLOCKING)
+	while((data->status = messageReceive(task->id, data->buffer, data->maximum, data->transaction)) ==
+	      G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY &&
+	      data->mode == G_MESSAGE_RECEIVE_MODE_BLOCKING)
 	{
 		/**
 		 * TODO: "Break condition" doesn't work anymore since there is no connection between mutexes and

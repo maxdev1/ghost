@@ -174,8 +174,7 @@ void taskingProcessAddToTaskList(g_process* process, g_task* task);
 void taskingProcessRemoveFromTaskList(g_task* task);
 
 /**
- * Schedules and sets the next task as the current. This may only be called
- * during interrupt handling!
+ * Schedules and sets the next task as the current. May only be called during interrupt handling!
  */
 void taskingSchedule();
 

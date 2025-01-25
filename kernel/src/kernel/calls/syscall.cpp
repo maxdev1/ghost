@@ -26,11 +26,10 @@
 #include "kernel/calls/syscall_tasking.hpp"
 #include "kernel/calls/syscall_mutex.hpp"
 #include "kernel/calls/syscall_kernquery.hpp"
-
-#include "kernel/memory/memory.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/tasking/tasking.hpp"
 #include "shared/panic.hpp"
+#include "shared/logger/logger.hpp"
 
 #include <ghost/syscall.h>
 
@@ -43,6 +42,7 @@ void syscallHandle(g_task* task)
 
 	syscall(callId, syscallData);
 }
+
 
 void syscall(uint32_t callId, void* syscallData)
 {
@@ -60,15 +60,19 @@ void syscall(uint32_t callId, void* syscallData)
 		return;
 	}
 
+	auto state = task->state;
+	interruptsEnable();
+
 	reg->handler(task, syscallData);
+
+	interruptsDisable();
+	task->state = state;
 }
 
 void _syscallRegister(int callId, g_syscall_handler handler)
 {
 	if(callId > G_SYSCALL_MAX)
-	{
 		panic("%! tried to register syscall with id %i, maximum is %i", "syscall", callId, G_SYSCALL_MAX);
-	}
 
 	syscallRegistrations[callId].handler = handler;
 }
