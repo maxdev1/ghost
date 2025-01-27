@@ -88,8 +88,8 @@ void mutexAcquire(g_mutex* mutex)
 	while(!_mutexTryAcquire(mutex, owner))
 	{
 		++deadlock;
-		if(deadlock % 1000 == 0)
-			logInfo("DEADLOCK %s", mutex->name);
+		if(deadlock % 10000 == 0)
+			logInfo("%! long lock %s", "mutex", mutex->name);
 
 		if(mutex->type == G_MUTEX_TYPE_GLOBAL)
 			asm volatile("pause");
