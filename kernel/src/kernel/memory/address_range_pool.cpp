@@ -26,7 +26,7 @@
 void addressRangePoolInitialize(g_address_range_pool* pool)
 {
 	pool->first = 0;
-	mutexInitializeCritical(&pool->lock, "adr-pool");
+	mutexInitializeNonInterruptible(&pool->lock, __func__);
 }
 
 void addressRangePoolDestroy(g_address_range_pool* pool)

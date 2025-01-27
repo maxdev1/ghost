@@ -34,7 +34,7 @@ typedef struct
     volatile int initialized;
     g_spinlock lock;
 
-    const char* name;
+    const char* location;
     g_mutex_type type;
     int depth;
     uint32_t owner;
@@ -43,12 +43,12 @@ typedef struct
 /**
  * Initializes a mutex.
  */
-void mutexInitialize(g_mutex* mutex, const char* name = "unknown");
+void mutexInitialize(g_mutex* mutex, const char* location = "unknown");
 
 /**
  * Initializes a mutex for a critical section. Acquiring such a mutex disables interrupts until it is released.
  */
-void mutexInitializeCritical(g_mutex* mutex, const char* name = "unknown");
+void mutexInitializeNonInterruptible(g_mutex* mutex, const char* location = "unknown");
 
 /**
  * Acquires the mutex. Increases the lock count for this processor.

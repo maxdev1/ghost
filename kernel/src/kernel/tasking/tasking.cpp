@@ -111,7 +111,7 @@ void taskingExit()
 
 void taskingInitializeBsp()
 {
-	mutexInitializeCritical(&taskingIdLock, "task-id");
+	mutexInitializeNonInterruptible(&taskingIdLock, __func__);
 
 	auto numProcs = processorGetNumberOfProcessors();
 	taskingLocal = (g_tasking_local*) heapAllocate(sizeof(g_tasking_local) * numProcs);
@@ -137,7 +137,7 @@ void taskingInitializeLocal()
 	local->scheduling.list = nullptr;
 	local->scheduling.idleTask = nullptr;
 
-	mutexInitializeCritical(&local->lock, "task-local");
+	mutexInitializeNonInterruptible(&local->lock, __func__);
 
 	g_process* idle = taskingCreateProcess(G_SECURITY_LEVEL_KERNEL);
 	local->scheduling.idleTask =
@@ -310,7 +310,7 @@ g_process* taskingCreateProcess(g_security_level securityLevel)
 	process->main = 0;
 	process->tasks = 0;
 
-	mutexInitializeCritical(&process->lock, "proc");
+	mutexInitializeNonInterruptible(&process->lock, __func__);
 
 	process->tlsMaster.size = 0;
 	process->tlsMaster.location = 0;
