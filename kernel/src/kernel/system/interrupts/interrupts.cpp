@@ -74,8 +74,6 @@ extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_st
 	g_task* task = taskingGetCurrentTask();
 	if(task)
 		task->state = (g_processor_state*) state;
-	else
-		taskingSchedule();
 
 	if(state->intr < 0x20) // Exception
 	{

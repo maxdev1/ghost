@@ -21,6 +21,7 @@
 #include "kernel/memory/heap.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking.hpp"
+#include "kernel/system/interrupts/interrupts.hpp"
 
 void taskingCleanupThread()
 {
@@ -66,8 +67,10 @@ void taskingCleanupThread()
 		}
 
 		// Sleep for some time
+		INTERRUPTS_PAUSE;
 		clockWaitForTime(task->id, clockGetLocal()->time + 3000);
 		task->status = G_TASK_STATUS_WAITING;
 		taskingYield();
+		INTERRUPTS_RESUME;
 	}
 }

@@ -215,7 +215,7 @@ g_message_queue* _messageGetQueue(g_tid receiver)
 	else
 	{
 		queue = (g_message_queue*) heapAllocate(sizeof(g_message_queue));
-		mutexInitialize(&queue->lock);
+		mutexInitialize(&queue->lock, "msg-queue");
 		queue->task = receiver;
 		queue->size = 0;
 		queue->head = nullptr;

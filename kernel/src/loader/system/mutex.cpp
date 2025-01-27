@@ -26,7 +26,7 @@
  * are not required.
  */
 
-void mutexInitialize(g_mutex* mutex)
+void mutexInitialize(g_mutex* mutex, const char* name)
 {
 }
 

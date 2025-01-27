@@ -21,6 +21,7 @@
 #include "kernel/calls/syscall_messaging.hpp"
 #include "kernel/ipc/message.hpp"
 #include "kernel/tasking/user_mutex.hpp"
+#include "kernel/system/interrupts/interrupts.hpp"
 
 
 void syscallMessageSend(g_task* task, g_syscall_send_message* data)
@@ -29,9 +30,11 @@ void syscallMessageSend(g_task* task, g_syscall_send_message* data)
 	      G_MESSAGE_SEND_STATUS_QUEUE_FULL &&
 	      data->mode == G_MESSAGE_SEND_MODE_BLOCKING)
 	{
+		INTERRUPTS_PAUSE;
 		messageWaitForSend(task->id, data->receiver);
 		task->status = G_TASK_STATUS_WAITING;
 		taskingYield();
+		INTERRUPTS_RESUME;
 	}
 	messageUnwaitForSend(task->id, data->receiver);
 }
@@ -52,7 +55,9 @@ void syscallMessageReceive(g_task* task, g_syscall_receive_message* data)
 		//	break;
 		// }
 
+		INTERRUPTS_PAUSE;
 		task->status = G_TASK_STATUS_WAITING;
 		taskingYield();
+		INTERRUPTS_RESUME;
 	}
 }

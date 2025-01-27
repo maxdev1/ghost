@@ -25,12 +25,17 @@
 
 #include <ghost/stdint.h>
 
+typedef int g_mutex_type;
+#define G_MUTEX_TYPE_GLOBAL   ((g_mutex_type) 0)
+#define G_MUTEX_TYPE_TASK     ((g_mutex_type) 1)
+
 typedef struct
 {
     volatile int initialized;
     g_spinlock lock;
 
-    bool disablesInterrupts : 1;
+    const char* name;
+    g_mutex_type type;
     int depth;
     uint32_t owner;
 } __attribute__((packed)) g_mutex;
@@ -38,12 +43,12 @@ typedef struct
 /**
  * Initializes a mutex.
  */
-void mutexInitialize(g_mutex* mutex);
+void mutexInitialize(g_mutex* mutex, const char* name = "unknown");
 
 /**
  * Initializes a mutex for a critical section. Acquiring such a mutex disables interrupts until it is released.
  */
-void mutexInitializeCritical(g_mutex* mutex);
+void mutexInitializeCritical(g_mutex* mutex, const char* name = "unknown");
 
 /**
  * Acquires the mutex. Increases the lock count for this processor.

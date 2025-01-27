@@ -111,7 +111,7 @@ void taskingExit()
 
 void taskingInitializeBsp()
 {
-	mutexInitializeCritical(&taskingIdLock);
+	mutexInitializeCritical(&taskingIdLock, "task-id");
 
 	auto numProcs = processorGetNumberOfProcessors();
 	taskingLocal = (g_tasking_local*) heapAllocate(sizeof(g_tasking_local) * numProcs);
@@ -137,7 +137,7 @@ void taskingInitializeLocal()
 	local->scheduling.list = nullptr;
 	local->scheduling.idleTask = nullptr;
 
-	mutexInitializeCritical(&local->lock);
+	mutexInitializeCritical(&local->lock, "task-local");
 
 	g_process* idle = taskingCreateProcess(G_SECURITY_LEVEL_KERNEL);
 	local->scheduling.idleTask =
@@ -310,7 +310,7 @@ g_process* taskingCreateProcess(g_security_level securityLevel)
 	process->main = 0;
 	process->tasks = 0;
 
-	mutexInitializeCritical(&process->lock);
+	mutexInitializeCritical(&process->lock, "proc");
 
 	process->tlsMaster.size = 0;
 	process->tlsMaster.location = 0;
@@ -492,11 +492,13 @@ g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel)
 	// Set kernel-level entry
 	taskingStateReset(task, (g_address) &taskingSpawnEntry, G_SECURITY_LEVEL_KERNEL);
 
-	// Start thread & wait for spawn to finish
+	// Start thread &  wait for spawn to finish
+	INTERRUPTS_PAUSE;
 	waitQueueAdd(&res.process->waitersSpawn, caller->id);
 	taskingAssignBalanced(task);
 	caller->status = G_TASK_STATUS_WAITING;
 	taskingYield();
+	INTERRUPTS_RESUME;
 
 	// Take result
 	res.status = res.process->spawnArgs->status;

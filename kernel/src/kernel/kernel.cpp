@@ -69,8 +69,8 @@ extern "C" void kernelMain(g_setup_information* setupInformation)
 
 void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 {
-	mutexInitializeCritical(&bootstrapCoreLock);
-	mutexInitializeCritical(&applicationCoreLock);
+	mutexInitializeCritical(&bootstrapCoreLock, "core-bp");
+	mutexInitializeCritical(&applicationCoreLock, "core-ap");
 
 	mutexAcquire(&bootstrapCoreLock);
 
@@ -155,8 +155,9 @@ void kernelInitializationThread()
 	kernelSpawnService("/applications/vbedriver.bin", "", G_SECURITY_LEVEL_DRIVER);
 
 	G_PRETTY_BOOT_STATUS_P(80);
+	kernelSpawnService("/applications/terminal.bin", "--headless", G_SECURITY_LEVEL_DRIVER);
 	// kernelSpawnService("/applications/terminal.bin", "--headless", G_SECURITY_LEVEL_DRIVER);
-	kernelSpawnService("/applications/windowserver.bin", "", G_SECURITY_LEVEL_APPLICATION);
+	// kernelSpawnService("/applications/windowserver.bin", "", G_SECURITY_LEVEL_APPLICATION);
 
 	taskingExit();
 }

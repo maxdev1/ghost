@@ -107,7 +107,7 @@ void syscallFsFstat(g_task* task, g_syscall_fs_fstat* data)
 void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 {
 	g_fs_node* pipeNode;
-	data->status = filesystemCreatePipe(data->blocking, &pipeNode);
+	data->status = filesystemCreatePipe(data->blocking, &pipeNode, false);
 
 	if(data->status != G_FS_PIPE_SUCCESSFUL)
 	{

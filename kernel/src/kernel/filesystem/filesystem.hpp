@@ -48,6 +48,12 @@ struct g_fs_node
 
     bool blocking;
     bool upToDate;
+
+    /**
+     * If a note is non-interruptible, it means that during any read or write operations, interrupts will be disabled.
+     * This is important for example for IRQ-device pipes to avoid deadlocking.
+     */
+    bool nonInterruptible;
 };
 
 /**
@@ -205,7 +211,7 @@ g_fs_open_status filesystemTruncate(g_fs_node* file);
 /**
  * Creates a new pipe on the filesystem.
  */
-g_fs_pipe_status filesystemCreatePipe(g_bool blocking, g_fs_node** outPipeNode);
+g_fs_pipe_status filesystemCreatePipe(g_bool blocking, g_fs_node** outPipeNode, bool nonInterruptible);
 
 /**
  * Writes the absolute path of node into the given buffer (which must be of G_PATH_MAX bytes size).

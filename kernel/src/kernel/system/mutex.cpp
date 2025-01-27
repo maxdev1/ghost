@@ -24,6 +24,7 @@
 #include "kernel/tasking/tasking.hpp"
 #include "shared/panic.hpp"
 #include "shared/video/console_video.hpp"
+#include "shared/logger/logger.hpp"
 
 g_spinlock mutexInitializerLock = 0;
 #define G_MUTEX_INITIALIZED 0xFEED
@@ -33,24 +34,24 @@ g_spinlock mutexInitializerLock = 0;
 		mutexErrorUninitialized(mutex);
 
 bool _mutexTryAcquire(g_mutex* mutex, uint32_t owner);
-void _mutexInitialize(g_mutex* mutex, bool disablesInterrupts);
+void _mutexInitialize(g_mutex* mutex, g_mutex_type type, const char* name);
 
 void mutexErrorUninitialized(g_mutex* mutex)
 {
 	panic("%! %i: tried to use uninitialized mutex %h", "mutex", processorGetCurrentId(), mutex);
 }
 
-void mutexInitialize(g_mutex* mutex)
+void mutexInitialize(g_mutex* mutex, const char* name)
 {
-	_mutexInitialize(mutex, false);
+	_mutexInitialize(mutex, G_MUTEX_TYPE_TASK, name);
 }
 
-void mutexInitializeCritical(g_mutex* mutex)
+void mutexInitializeCritical(g_mutex* mutex, const char* name)
 {
-	_mutexInitialize(mutex, true);
+	_mutexInitialize(mutex, G_MUTEX_TYPE_GLOBAL, name);
 }
 
-void _mutexInitialize(g_mutex* mutex, bool disablesInterrupts)
+void _mutexInitialize(g_mutex* mutex, g_mutex_type type, const char* name)
 {
 	G_SPINLOCK_ACQUIRE(mutexInitializerLock);
 
@@ -58,7 +59,8 @@ void _mutexInitialize(g_mutex* mutex, bool disablesInterrupts)
 	mutex->lock = 0;
 	mutex->depth = 0;
 	mutex->owner = -1;
-	mutex->disablesInterrupts = disablesInterrupts;
+	mutex->type = type;
+	mutex->name = name;
 
 	G_SPINLOCK_RELEASE(mutexInitializerLock);
 }
@@ -67,12 +69,30 @@ void mutexAcquire(g_mutex* mutex)
 {
 	MUTEX_GUARD;
 
-	uint32_t owner = processorGetCurrentId();
+	uint32_t owner;
+	if(mutex->type == G_MUTEX_TYPE_GLOBAL || !systemIsReady())
+	{
+		owner = processorGetCurrentId();
+	}
+	else
+	{
+		auto currentTask = taskingGetCurrentTask();
+		if(currentTask)
+			owner = currentTask->id;
+		else
+			panic("%! early acquire %x", "mutex", mutex);
+	}
+
+	int deadlock = 0;
 
 	while(!_mutexTryAcquire(mutex, owner))
 	{
-		if(mutex->disablesInterrupts)
-			asm("pause");
+		++deadlock;
+		if(deadlock % 1000 == 0)
+			logInfo("DEADLOCK %s", mutex->name);
+
+		if(mutex->type == G_MUTEX_TYPE_GLOBAL)
+			asm volatile("pause");
 		else
 			taskingYield();
 	}
@@ -104,7 +124,7 @@ bool _mutexTryAcquire(g_mutex* mutex, uint32_t owner)
 
 	G_SPINLOCK_RELEASE(mutex->lock);
 
-	if(!mutex->disablesInterrupts && hadIF)
+	if(mutex->type == G_MUTEX_TYPE_TASK && hadIF)
 		interruptsEnable();
 
 	return wasSet;

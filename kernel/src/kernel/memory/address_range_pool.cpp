@@ -26,7 +26,7 @@
 void addressRangePoolInitialize(g_address_range_pool* pool)
 {
 	pool->first = 0;
-	mutexInitializeCritical(&pool->lock);
+	mutexInitializeCritical(&pool->lock, "adr-pool");
 }
 
 void addressRangePoolDestroy(g_address_range_pool* pool)
@@ -220,7 +220,8 @@ void addressRangePoolMerge(g_address_range_pool* pool)
 
 	while(current && current->next)
 	{
-		if(!current->used && !current->next->used && ((current->base + current->pages * G_PAGE_SIZE) == current->next->base))
+		if(!current->used && !current->next->used && (
+			   (current->base + current->pages * G_PAGE_SIZE) == current->next->base))
 		{
 			current->pages += current->next->pages;
 
@@ -249,7 +250,8 @@ void addressRangePoolDump(g_address_range_pool* pool, bool onlyFree)
 	{
 		if(!onlyFree || !current->used)
 		{
-			logDebug("%#  used: %b, base: %h, pages: %i (- %h)", current->used, current->base, current->pages, current->base + current->pages * G_PAGE_SIZE);
+			logDebug("%#  used: %b, base: %h, pages: %i (- %h)", current->used, current->base, current->pages,
+			         current->base + current->pages * G_PAGE_SIZE);
 		}
 		current = current->next;
 	}

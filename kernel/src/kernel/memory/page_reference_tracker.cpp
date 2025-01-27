@@ -31,7 +31,7 @@ static g_mutex lock;
 
 void pageReferenceTrackerInitialize()
 {
-	mutexInitializeCritical(&lock);
+	mutexInitializeCritical(&lock, "pg-ref");
 }
 
 void pageReferenceTrackerIncrement(g_physical_address address)
