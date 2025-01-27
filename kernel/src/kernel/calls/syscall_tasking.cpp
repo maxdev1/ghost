@@ -32,12 +32,12 @@ void syscallSleep(g_task* task, g_syscall_sleep* data)
 {
 	clockWaitForTime(task->id, clockGetLocal()->time + data->milliseconds);
 	task->status = G_TASK_STATUS_WAITING;
-	taskingSchedule();
+	taskingYield();
 }
 
 void syscallYield(g_task* task)
 {
-	taskingSchedule();
+	taskingYield();
 }
 
 void syscallExit(g_task* task, g_syscall_exit* data)
