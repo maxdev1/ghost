@@ -60,12 +60,6 @@ g_task* taskingGetCurrentTask()
 	return taskingGetLocal()->scheduling.current;
 }
 
-void taskingSetCurrentTask(g_task* task)
-{
-	taskingGetLocal()->scheduling.current = task;
-	taskingApplySwitch();
-}
-
 g_tid taskingGetNextId()
 {
 	mutexAcquire(&taskingIdLock);

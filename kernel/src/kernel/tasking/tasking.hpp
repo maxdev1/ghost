@@ -87,11 +87,6 @@ g_tasking_local* taskingGetLocal();
 g_task* taskingGetCurrentTask();
 
 /**
- * Sets the currently executed task.
- */
-void taskingSetCurrentTask(g_task* task);
-
-/**
  * @return the next assignable task id
  */
 g_tid taskingGetNextId();
