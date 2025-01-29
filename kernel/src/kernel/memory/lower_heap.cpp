@@ -23,6 +23,7 @@
 #include "shared/panic.hpp"
 
 static g_allocator lowerHeapAllocator;
+static g_mutex lowerHeapMutex;
 static g_virtual_address lowerHeapStart = 0;
 static g_virtual_address lowerHeapEnd = 0;
 static uint32_t lowerHeapAmountInUse = 0;
@@ -33,6 +34,7 @@ void lowerHeapInitialize(g_virtual_address start, g_virtual_address end)
 	memoryAllocatorInitialize(&lowerHeapAllocator, G_ALLOCATOR_TYPE_LOWERMEM, start, end);
 	lowerHeapStart = start;
 	lowerHeapEnd = end;
+	mutexInitializeNonInterruptible(&lowerHeapMutex);
 
 	logDebug("%! initialized with area: %h - %h", "lowerheap", start, end);
 	lowerHeapInitialized = true;
@@ -43,11 +45,15 @@ void* lowerHeapAllocate(uint32_t size)
 	if(!lowerHeapInitialized)
 		panic("%! tried to use uninitialized kernel heap", "lowerheap");
 
+	mutexAcquire(&lowerHeapMutex);
+
 	void* ptr = memoryAllocatorAllocate(&lowerHeapAllocator, size);
 	if(!ptr)
 		panic("%! failed to allocate kernel memory", "lowerheap");
 
 	lowerHeapAmountInUse += size;
+
+	mutexRelease(&lowerHeapMutex);
 	return ptr;
 }
 
@@ -56,7 +62,9 @@ void lowerHeapFree(void* ptr)
 	if(!lowerHeapInitialized)
 		panic("%! tried to use uninitialized lower heap", "lowerheap");
 
+	mutexAcquire(&lowerHeapMutex);
 	lowerHeapAmountInUse -= memoryAllocatorFree(&lowerHeapAllocator, ptr);
+	mutexRelease(&lowerHeapMutex);
 }
 
 uint32_t lowerHeapGetUsedAmount()

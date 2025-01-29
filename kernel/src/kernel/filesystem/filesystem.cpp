@@ -397,12 +397,12 @@ g_fs_read_status filesystemRead(g_task* task, g_fd fd, uint8_t* buffer, uint64_t
 	while((status = filesystemRead(node, buffer, descriptor->offset, length, &read)) == G_FS_READ_BUSY && node->
 	      blocking)
 	{
-		INTERRUPTS_PAUSE;
 		g_fs_delegate* delegate = filesystemFindDelegate(node);
 		if(!delegate->waitForRead)
 			panic("%! task %i tried to wait for file %i but delegate didn't provide wait-for-read implementation",
 			      "filesytem", task->id, node->id);
 
+		INTERRUPTS_PAUSE;
 		delegate->waitForRead(task->id, node);
 		task->status = G_TASK_STATUS_WAITING;
 		taskingYield();
@@ -481,12 +481,12 @@ g_fs_write_status filesystemWrite(g_task* task, g_fd fd, uint8_t* buffer, uint64
 
 	while((status = filesystemWrite(node, buffer, startOffset, length, &wrote)) == G_FS_WRITE_BUSY && node->blocking)
 	{
-		INTERRUPTS_PAUSE;
 		g_fs_delegate* delegate = filesystemFindDelegate(node);
 		if(!delegate->waitForWrite)
 			panic("%! task %i tried to wait for file %i but delegate didn't provide wait-for-write implementation",
 			      "filesytem", task->id, node->id);
 
+		INTERRUPTS_PAUSE;
 		delegate->waitForWrite(task->id, node);
 		task->status = G_TASK_STATUS_WAITING;
 		taskingYield();
