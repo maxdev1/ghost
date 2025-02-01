@@ -36,9 +36,10 @@ headless_screen_t::headless_screen_t()
 	offset = 0;
 }
 
-bool headless_screen_t::initialize()
+bool headless_screen_t::initialize(g_user_mutex exitFlag)
 {
 	lock = g_mutex_initialize();
+	this->exitFlag = exitFlag;
 
 	enableCursor();
 	clean();
@@ -109,7 +110,7 @@ void headless_screen_t::write(char c)
 	{
 		output[offset++] = c;
 		output[offset++] = (uint8_t) SC_COLOR(colorBackground,
-											  colorForeground);
+		                                      colorForeground);
 	}
 	normalize();
 	g_mutex_release(lock);
@@ -150,7 +151,7 @@ void headless_screen_t::normalize()
 		uint32_t screenSize = SCREEN_HEIGHT * lineBytes;
 
 		memcpy(output, &output[SCREEN_WIDTH * 2],
-			   screenSize - lineBytes);
+		       screenSize - lineBytes);
 
 		for(uint32_t i = 0; i < SCREEN_WIDTH * 2; i += 2)
 		{

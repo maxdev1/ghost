@@ -20,7 +20,6 @@
 
 #include "kernel/memory/paging.hpp"
 #include "shared/memory/constants.hpp"
-#include "shared/panic.hpp"
 
 g_physical_address pagingVirtualToPhysical(g_virtual_address addr)
 {

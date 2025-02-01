@@ -19,13 +19,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "shared/system/mutex.hpp"
-#include "kernel/debug/debug.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/system.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "shared/logger/logger.hpp"
 #include "shared/panic.hpp"
 #include "shared/video/console_video.hpp"
+#include "shared/logger/logger.hpp"
 
 g_spinlock mutexInitializerLock = 0;
 #define G_MUTEX_INITIALIZED 0xFEED
@@ -34,12 +33,25 @@ g_spinlock mutexInitializerLock = 0;
 	if(mutex->initialized != G_MUTEX_INITIALIZED) \
 		mutexErrorUninitialized(mutex);
 
+bool _mutexTryAcquire(g_mutex* mutex, uint32_t owner);
+void _mutexInitialize(g_mutex* mutex, g_mutex_type type, const char* location);
+
 void mutexErrorUninitialized(g_mutex* mutex)
 {
 	panic("%! %i: tried to use uninitialized mutex %h", "mutex", processorGetCurrentId(), mutex);
 }
 
-void _mutexInitialize(g_mutex* mutex)
+void mutexInitialize(g_mutex* mutex, const char* location)
+{
+	_mutexInitialize(mutex, G_MUTEX_TYPE_TASK, location);
+}
+
+void mutexInitializeNonInterruptible(g_mutex* mutex, const char* location)
+{
+	_mutexInitialize(mutex, G_MUTEX_TYPE_GLOBAL, location);
+}
+
+void _mutexInitialize(g_mutex* mutex, g_mutex_type type, const char* location)
 {
 	G_SPINLOCK_ACQUIRE(mutexInitializerLock);
 
@@ -47,6 +59,8 @@ void _mutexInitialize(g_mutex* mutex)
 	mutex->lock = 0;
 	mutex->depth = 0;
 	mutex->owner = -1;
+	mutex->type = type;
+	mutex->location = location;
 
 	G_SPINLOCK_RELEASE(mutexInitializerLock);
 }
@@ -55,35 +69,42 @@ void mutexAcquire(g_mutex* mutex)
 {
 	MUTEX_GUARD;
 
-	uint32_t owner = processorGetCurrentId();
-
-#if G_DEBUG_MUTEXES
-	int dead = 0;
-#endif
-
-	while(!mutexTryAcquire(mutex, owner))
+	uint32_t owner;
+	if(mutex->type == G_MUTEX_TYPE_GLOBAL || !systemIsReady())
 	{
-#if G_DEBUG_MUTEXES
-		dead++;
-		if(dead > 10000)
-		{
-			logInfo("%i likely deadlocked @%x (owner: %i, depth: %i)", owner, mutex, mutex->owner, mutex->depth);
-			DEBUG_TRACE_STACK;
-		}
-#endif
-		asm volatile("pause");
+		owner = processorGetCurrentId();
+	}
+	else
+	{
+		auto currentTask = taskingGetCurrentTask();
+		if(currentTask)
+			owner = currentTask->id;
+		else
+			panic("%! early acquire of mutex initialized at %s", "mutex", mutex->location);
+	}
+
+	int deadlock = 0;
+
+	while(!_mutexTryAcquire(mutex, owner))
+	{
+		++deadlock;
+		if(deadlock % 10000 == 0)
+			logInfo("%! long lock initialized at %s", "mutex", mutex->location);
+
+		if(mutex->type == G_MUTEX_TYPE_GLOBAL)
+			asm volatile("pause");
+		else
+			taskingYield();
 	}
 }
 
-bool mutexTryAcquire(g_mutex* mutex, uint32_t owner)
+bool _mutexTryAcquire(g_mutex* mutex, uint32_t owner)
 {
 	MUTEX_GUARD;
 
-	bool set = false;
-
-	bool intr = interruptsAreEnabled();
-	if(intr)
-		interruptsDisable();
+	bool wasSet = false;
+	bool hadIF = interruptsAreEnabled();
+	interruptsDisable();
 
 	G_SPINLOCK_ACQUIRE(mutex->lock);
 
@@ -93,24 +114,28 @@ bool mutexTryAcquire(g_mutex* mutex, uint32_t owner)
 		{
 			auto local = taskingGetLocal();
 			if(local->lockCount == 0)
-				local->lockSetIF = intr;
+				local->lockSetIF = hadIF;
 			local->lockCount++;
 		}
 		++mutex->depth;
 		mutex->owner = owner;
-		set = true;
+		wasSet = true;
 	}
 
 	G_SPINLOCK_RELEASE(mutex->lock);
 
-	return set;
+	if(mutex->type == G_MUTEX_TYPE_TASK && hadIF)
+		interruptsEnable();
+
+	return wasSet;
 }
 
 void mutexRelease(g_mutex* mutex)
 {
 	MUTEX_GUARD;
 
-	bool intr = false;
+	bool hadIF = false;
+	interruptsDisable();
 
 	G_SPINLOCK_ACQUIRE(mutex->lock);
 
@@ -124,7 +149,7 @@ void mutexRelease(g_mutex* mutex)
 				auto local = taskingGetLocal();
 				local->lockCount--;
 				if(local->lockCount == 0)
-					intr = local->lockSetIF;
+					hadIF = local->lockSetIF;
 			}
 
 			mutex->owner = -1;
@@ -133,6 +158,6 @@ void mutexRelease(g_mutex* mutex)
 
 	G_SPINLOCK_RELEASE(mutex->lock);
 
-	if(intr)
+	if(hadIF)
 		interruptsEnable();
 }

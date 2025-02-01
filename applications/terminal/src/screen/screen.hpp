@@ -61,75 +61,76 @@ typedef uint8_t screen_color_t;
  */
 #define OEMUS_CHAR_UE ((char) 0x81) /*�*/
 
-class screen_t {
+class screen_t
+{
 public:
-	screen_color_t colorForeground = SC_WHITE;
-	screen_color_t colorBackground = SC_BLACK;
-	g_user_mutex _lock = g_mutex_initialize();
+    screen_color_t colorForeground = SC_WHITE;
+    screen_color_t colorBackground = SC_BLACK;
+    g_user_mutex _lock = g_mutex_initialize();
 
-	virtual ~screen_t() = default;
+    virtual ~screen_t() = default;
 
-	virtual bool initialize() = 0;
+    virtual bool initialize(g_user_mutex exitFlag) = 0;
 
-	virtual g_key_info readInput() = 0;
+    virtual g_key_info readInput() = 0;
 
-	virtual void clean() = 0;
+    virtual void clean() = 0;
 
-	virtual void backspace() = 0;
+    virtual void backspace() = 0;
 
-	virtual void remove() = 0;
+    virtual void remove() = 0;
 
-	virtual void write(char c) = 0;
+    virtual void write(char c) = 0;
 
-	virtual void flush() = 0;
+    virtual void flush() = 0;
 
-	virtual void setCursor(int x, int y) = 0;
+    virtual void setCursor(int x, int y) = 0;
 
-	virtual int getCursorX() = 0;
+    virtual int getCursorX() = 0;
 
-	virtual int getCursorY() = 0;
+    virtual int getCursorY() = 0;
 
-	virtual void setCursorVisible(bool visible) = 0;
+    virtual void setCursorVisible(bool visible) = 0;
 
-	virtual void setScrollAreaScreen() = 0;
+    virtual void setScrollAreaScreen() = 0;
 
-	virtual void setScrollArea(int start, int end) = 0;
+    virtual void setScrollArea(int start, int end) = 0;
 
-	virtual void scroll(int value) = 0;
+    virtual void scroll(int value) = 0;
 
-	virtual int getColumns() = 0;
+    virtual int getColumns() = 0;
 
-	virtual int getRows() = 0;
+    virtual int getRows() = 0;
 
-	virtual void setColorForeground(int c)
-	{
-		colorForeground = c;
-	}
+    virtual void setColorForeground(int c)
+    {
+        colorForeground = c;
+    }
 
-	virtual void setColorBackground(int c)
-	{
-		colorBackground = c;
-	}
+    virtual void setColorBackground(int c)
+    {
+        colorBackground = c;
+    }
 
-	virtual int getColorForeground()
-	{
-		return colorForeground;
-	}
+    virtual int getColorForeground()
+    {
+        return colorForeground;
+    }
 
-	virtual int getColorBackground()
-	{
-		return colorBackground;
-	}
+    virtual int getColorBackground()
+    {
+        return colorBackground;
+    }
 
-	virtual void lock()
-	{
-		g_mutex_acquire(_lock);
-	}
+    virtual void lock()
+    {
+        g_mutex_acquire(_lock);
+    }
 
-	virtual void unlock()
-	{
-		g_mutex_release(_lock);
-	}
+    virtual void unlock()
+    {
+        g_mutex_release(_lock);
+    }
 };
 
 #endif

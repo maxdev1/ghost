@@ -25,6 +25,7 @@
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/smp.hpp"
 #include "shared/panic.hpp"
+#include "shared/logger/logger.hpp"
 
 static int applicationCoresWaiting;
 static bool bspInitialized = false;

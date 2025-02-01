@@ -28,8 +28,9 @@
 void guiScreenBlinkCursorEntry(gui_screen_t* screen);
 void guiScreenPaintEntry(gui_screen_t* screen);
 
-bool gui_screen_t::initialize()
+bool gui_screen_t::initialize(g_user_mutex exitFlag)
 {
+	this->exitFlag = exitFlag;
 	inputBufferLock = g_mutex_initialize();
 	inputBufferEmpty = g_mutex_initialize();
 	g_mutex_acquire(inputBufferEmpty);
@@ -83,9 +84,9 @@ bool gui_screen_t::createUi()
 	canvas.component->setListener(G_UI_COMPONENT_EVENT_TYPE_KEY, new input_key_listener_t(this));
 	window->setListener(G_UI_COMPONENT_EVENT_TYPE_FOCUS, new terminal_focus_listener_t(this));
 
-	window->onClose([]()
+	window->onClose([this]()
 	{
-		g_exit(0);
+		g_mutex_release(exitFlag);
 	});
 	return true;
 }

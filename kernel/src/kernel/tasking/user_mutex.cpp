@@ -21,6 +21,7 @@
 #include "kernel/tasking/user_mutex.hpp"
 #include "kernel/memory/heap.hpp"
 #include "kernel/utils/hashmap.hpp"
+#include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "shared/logger/logger.hpp"
 
@@ -33,7 +34,7 @@ void _userMutexWakeWaitingTasks(g_user_mutex_entry* entry);
 
 void userMutexInitialize()
 {
-	mutexInitialize(&globalLock);
+	mutexInitializeNonInterruptible(&globalLock, __func__);
 	nextMutex = 0;
 	mutexMap = hashmapCreateNumeric<g_user_mutex, g_user_mutex_entry*>(128);
 }
@@ -41,7 +42,7 @@ void userMutexInitialize()
 g_user_mutex userMutexCreate(bool reentrant)
 {
 	g_user_mutex_entry* entry = (g_user_mutex_entry*) heapAllocate(sizeof(g_user_mutex_entry));
-	mutexInitialize(&entry->lock);
+	mutexInitialize(&entry->lock, __func__);
 	entry->value = 0;
 	entry->waiters = nullptr;
 	entry->reentrant = reentrant;
@@ -112,9 +113,11 @@ g_user_mutex_status userMutexAcquire(g_task* task, g_user_mutex mutex, uint64_t 
 		if(trying)
 			break;
 
+		INTERRUPTS_PAUSE;
 		userMutexWaitForAcquire(mutex, task->id);
 		task->status = G_TASK_STATUS_WAITING;
 		taskingYield();
+		INTERRUPTS_RESUME;
 	}
 
 	if(useTimeout)
@@ -122,7 +125,9 @@ g_user_mutex_status userMutexAcquire(g_task* task, g_user_mutex mutex, uint64_t 
 
 	userMutexUnwaitForAcquire(mutex, task->id);
 
-	return hasTimeout ? G_USER_MUTEX_STATUS_TIMEOUT : (wasSet ? G_USER_MUTEX_STATUS_ACQUIRED : G_USER_MUTEX_STATUS_NOT_ACQUIRED);
+	return hasTimeout
+		       ? G_USER_MUTEX_STATUS_TIMEOUT
+		       : (wasSet ? G_USER_MUTEX_STATUS_ACQUIRED : G_USER_MUTEX_STATUS_NOT_ACQUIRED);
 }
 
 void userMutexRelease(g_user_mutex mutex)

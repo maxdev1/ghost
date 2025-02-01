@@ -23,6 +23,7 @@
 #include "kernel/tasking/elf/elf_loader.hpp"
 #include "kernel/tasking/elf/elf_tls.hpp"
 #include "shared/utils/string.hpp"
+#include "shared/logger/logger.hpp"
 
 g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* name, g_fd file, g_virtual_address base)
 {

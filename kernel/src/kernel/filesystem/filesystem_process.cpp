@@ -34,7 +34,7 @@ void filesystemProcessCreate(g_pid pid)
 	g_filesystem_process* info = (g_filesystem_process*) heapAllocate(sizeof(g_filesystem_process));
 
 	info->nextDescriptor = 3; // after stdin, stdout, stderr
-	mutexInitialize(&info->nextDescriptorLock);
+	mutexInitialize(&info->nextDescriptorLock, __func__);
 	info->descriptors = hashmapCreateNumeric<g_fd, g_file_descriptor*>(128);
 
 	hashmapPut(filesystemProcessInfo, pid, info);

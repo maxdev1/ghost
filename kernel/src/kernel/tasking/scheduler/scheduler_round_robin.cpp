@@ -140,7 +140,9 @@ void schedulerDump()
 
 		if(entry->task->status != G_TASK_STATUS_DEAD)
 		{
-			logInfo("%# (%i:%i)%s usage: %i", entry->task->process->id, entry->task->id, taskState, USAGE(entry->task->statistics.timesScheduled, entry->task->statistics.timesYielded));
+			logInfo("%# (%i:%i)%s usage: %i, at: %x", entry->task->process->id, entry->task->id, taskState,
+			        USAGE(entry->task->statistics.timesScheduled, entry->task->statistics.timesYielded),
+			        *((uint32_t*)entry->task->state->ebp + 1));
 			entry->task->statistics.timesScheduled = 0;
 			entry->task->statistics.timesYielded = 0;
 		}
@@ -148,7 +150,8 @@ void schedulerDump()
 	}
 
 	g_task* idle = local->scheduling.idleTask;
-	logInfo("%# (%i:%i) idle, usage: %i", idle->process->id, idle->id, USAGE(idle->statistics.timesScheduled, idle->statistics.timesYielded));
+	logInfo("%# (%i:%i) idle, usage: %i", idle->process->id, idle->id,
+	        USAGE(idle->statistics.timesScheduled, idle->statistics.timesYielded));
 	idle->statistics.timesScheduled = 0;
 	idle->statistics.timesYielded = 0;
 

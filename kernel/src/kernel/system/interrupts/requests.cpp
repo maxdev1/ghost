@@ -31,7 +31,7 @@ static g_mutex devicesLock;
 
 void requestsInitialize()
 {
-	mutexInitialize(&devicesLock);
+	mutexInitializeNonInterruptible(&devicesLock, __func__);
 }
 
 g_irq_device* requestsGetIrqDevice(uint8_t irq)
@@ -47,7 +47,7 @@ g_irq_device* requestsGetIrqDevice(uint8_t irq)
 
 	// Create a pipe if it doesn't exist yet
 	g_fs_node* node;
-	if(filesystemCreatePipe(true, &node) != G_FS_PIPE_SUCCESSFUL)
+	if(filesystemCreatePipe(true, &node, true) != G_FS_PIPE_SUCCESSFUL)
 	{
 		logInfo("%! failed to create IO pipe for IRQ %i", "requests", irq);
 		return nullptr;

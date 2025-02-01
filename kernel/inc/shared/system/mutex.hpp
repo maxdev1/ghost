@@ -21,36 +21,39 @@
 #ifndef __SYSTEM_MUTEX__
 #define __SYSTEM_MUTEX__
 
-#include <ghost/stdint.h>
-#include "shared/logger/logger.hpp"
 #include "shared/system/spinlock.hpp"
+
+#include <ghost/stdint.h>
+
+typedef int g_mutex_type;
+#define G_MUTEX_TYPE_GLOBAL   ((g_mutex_type) 0)
+#define G_MUTEX_TYPE_TASK     ((g_mutex_type) 1)
 
 typedef struct
 {
-	volatile int initialized = 0;
-	g_spinlock lock = 0;
+    volatile int initialized;
+    g_spinlock lock;
 
-	int depth = 0;
-	uint32_t owner = -1;
+    const char* location;
+    g_mutex_type type;
+    int depth;
+    uint32_t owner;
 } __attribute__((packed)) g_mutex;
 
 /**
- * Initializes the mutex.
+ * Initializes a mutex.
  */
-#if G_DEBUG_MUTEXES
-#define mutexInitialize(mutex) \
-	_mutexInitialize(mutex);   \
-	logInfo("%! initalize %x @%s", "mutex", mutex, __func__);
-#else
-#define mutexInitialize(mutex) _mutexInitialize(mutex);
-#endif
-void _mutexInitialize(g_mutex* mutex);
+void mutexInitialize(g_mutex* mutex, const char* location = "unknown");
+
+/**
+ * Initializes a mutex for a critical section. Acquiring such a mutex disables interrupts until it is released.
+ */
+void mutexInitializeNonInterruptible(g_mutex* mutex, const char* location = "unknown");
 
 /**
  * Acquires the mutex. Increases the lock count for this processor.
  */
 void mutexAcquire(g_mutex* mutex);
-bool mutexTryAcquire(g_mutex* mutex, uint32_t owner);
 
 /**
  * Releases the mutex. Decreases the lock count for this processor.

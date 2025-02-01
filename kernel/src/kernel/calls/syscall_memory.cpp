@@ -23,6 +23,7 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/tasking/tasking_memory.hpp"
+#include "kernel/system/interrupts/interrupts.hpp"
 
 #include "shared/logger/logger.hpp"
 
@@ -56,11 +57,17 @@ void syscallAllocateMemory(g_task* task, g_syscall_alloc_mem* data)
 
 	uint32_t pages = G_PAGE_ALIGN_UP(data->size) / G_PAGE_SIZE;
 	if(pages == 0)
+	{
+		logInfo("%! task %i failed to allocate an empty physical memory area", "syscall", task->id);
 		return;
+	}
 
 	g_virtual_address mapped = addressRangePoolAllocate(task->process->virtualRangePool, pages);
 	if(mapped == 0)
+	{
+		logInfo("%! task %i failed to allocate a virtual address range for memory mapping", "syscall", task->id);
 		return;
+	}
 
 	bool failedPhysical = false;
 	for(uint32_t i = 0; i < pages; i++)
@@ -115,10 +122,12 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 {
 	data->virtualAddress = 0;
 
+	INTERRUPTS_PAUSE;
 	g_task* targetTask = taskingGetById(data->processId);
 	if(!targetTask)
 	{
-		logInfo("%! task %i was unable to share memory with non-existing process %i", "syscall", task->id, data->processId);
+		logInfo("%! task %i was unable to share memory with non-existing process %i", "syscall", task->id,
+		        data->processId);
 		return;
 	}
 	g_process* targetProcess = targetTask->process;
@@ -127,39 +136,57 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 	uint32_t pages = G_PAGE_ALIGN_UP(data->size) / G_PAGE_SIZE;
 	if(memory > G_KERNEL_AREA_START || (memory + pages * G_PAGE_SIZE) > G_KERNEL_AREA_START)
 	{
-		logInfo("%! task %i was unable to share memory because addresses above %h are not allowed", "syscall", task->id, G_KERNEL_AREA_START);
+		logInfo("%! task %i was unable to share memory because addresses above %h are not allowed", "syscall", task->id,
+		        G_KERNEL_AREA_START);
 		return;
 	}
 
-	g_virtual_address virtualRangeBase = addressRangePoolAllocate(targetProcess->virtualRangePool, pages, G_PROC_VIRTUAL_RANGE_FLAG_NONE);
+	g_virtual_address virtualRangeBase = addressRangePoolAllocate(targetProcess->virtualRangePool, pages,
+	                                                              G_PROC_VIRTUAL_RANGE_FLAG_NONE);
 	if(virtualRangeBase == 0)
 	{
-		logInfo("%! task %i was unable to share memory area %h of size %h with task %i because there was no free virtual range", "syscall",
+		logInfo(
+				"%! task %i was unable to share memory area %h of size %h with task %i because there was no free virtual range",
+				"syscall",
 				task->id, memory, pages * G_PAGE_SIZE, targetProcess->main->id);
 		return;
 	}
+	INTERRUPTS_RESUME;
 
 	for(uint32_t i = 0; i < pages; i++)
 	{
 		g_physical_address physicalAddr = pagingVirtualToPhysical(memory + i * G_PAGE_SIZE);
 
+		INTERRUPTS_PAUSE;
+		targetTask = taskingGetById(data->processId);
+		if(!targetTask)
+		{
+			logInfo("%! task %i was unable to share memory with no longer existing process %i", "syscall", task->id,
+			        data->processId);
+			return;
+		}
+		targetProcess = targetTask->process;
+
 		g_physical_address back = taskingMemoryTemporarySwitchTo(targetProcess->pageDirectory);
 		pagingMapPage(virtualRangeBase + i * G_PAGE_SIZE, physicalAddr, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 		taskingMemoryTemporarySwitchBack(back);
+		INTERRUPTS_RESUME;
 
 		pageReferenceTrackerIncrement(physicalAddr);
 	}
 
 	data->virtualAddress = (void*) virtualRangeBase;
-	logDebug("%! shared memory area of process %i at %h of size %h with process %i to address %h", "syscall", task->id, memory,
-			 pages * G_PAGE_SIZE, targetProcess->main->id, virtualRangeBase);
+	logDebug("%! shared memory area of process %i at %h of size %h with process %i to address %h", "syscall", task->id,
+	         memory,
+	         pages * G_PAGE_SIZE, targetProcess->main->id, virtualRangeBase);
 }
 
 void syscallMapMmioArea(g_task* task, g_syscall_map_mmio* data)
 {
 	uint32_t pages = G_PAGE_ALIGN_UP(data->size) / G_PAGE_SIZE;
 
-	g_virtual_address virtualRangeBase = addressRangePoolAllocate(task->process->virtualRangePool, pages, G_PROC_VIRTUAL_RANGE_FLAG_WEAK);
+	g_virtual_address virtualRangeBase = addressRangePoolAllocate(task->process->virtualRangePool, pages,
+	                                                              G_PROC_VIRTUAL_RANGE_FLAG_WEAK);
 	if(virtualRangeBase == 0)
 	{
 		logInfo("%! task %i failed to map mmio memory, could not allocate virtual range", "syscall", task->id);
@@ -168,7 +195,8 @@ void syscallMapMmioArea(g_task* task, g_syscall_map_mmio* data)
 
 	for(uint32_t i = 0; i < pages; i++)
 	{
-		pagingMapPage(virtualRangeBase + i * G_PAGE_SIZE, data->physicalAddress + i * G_PAGE_SIZE, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
+		pagingMapPage(virtualRangeBase + i * G_PAGE_SIZE, data->physicalAddress + i * G_PAGE_SIZE,
+		              G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 	}
 
 	data->virtualAddress = (void*) virtualRangeBase;

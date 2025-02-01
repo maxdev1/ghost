@@ -26,11 +26,10 @@
 #include "kernel/calls/syscall_tasking.hpp"
 #include "kernel/calls/syscall_mutex.hpp"
 #include "kernel/calls/syscall_kernquery.hpp"
-
-#include "kernel/memory/memory.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/tasking/tasking.hpp"
 #include "shared/panic.hpp"
+#include "shared/logger/logger.hpp"
 
 #include <ghost/syscall.h>
 
@@ -43,6 +42,7 @@ void syscallHandle(g_task* task)
 
 	syscall(callId, syscallData);
 }
+
 
 void syscall(uint32_t callId, void* syscallData)
 {
@@ -60,17 +60,24 @@ void syscall(uint32_t callId, void* syscallData)
 		return;
 	}
 
+	auto state = task->state;
+	if(reg->interruptible)
+		interruptsEnable();
+
 	reg->handler(task, syscallData);
+	asm volatile("" ::: "memory");
+
+	interruptsDisable();
+	task->state = state;
 }
 
-void _syscallRegister(int callId, g_syscall_handler handler)
+void _syscallRegister(int callId, g_syscall_handler handler, bool interruptible = false)
 {
 	if(callId > G_SYSCALL_MAX)
-	{
 		panic("%! tried to register syscall with id %i, maximum is %i", "syscall", callId, G_SYSCALL_MAX);
-	}
 
 	syscallRegistrations[callId].handler = handler;
+	syscallRegistrations[callId].interruptible = interruptible;
 }
 
 void syscallRegisterAll()
@@ -94,7 +101,7 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_GET_PARENT_PROCESS_ID, (g_syscall_handler) syscallGetParentProcessId);
 	_syscallRegister(G_SYSCALL_TASK_GET_TLS, (g_syscall_handler) syscallTaskGetTls);
 	_syscallRegister(G_SYSCALL_PROCESS_GET_INFO, (g_syscall_handler) syscallProcessGetInfo);
-	_syscallRegister(G_SYSCALL_SPAWN, (g_syscall_handler) syscallSpawn);
+	_syscallRegister(G_SYSCALL_SPAWN, (g_syscall_handler) syscallSpawn, true);
 	_syscallRegister(G_SYSCALL_CREATE_TASK, (g_syscall_handler) syscallCreateTask);
 	_syscallRegister(G_SYSCALL_GET_TASK_ENTRY, (g_syscall_handler) syscallGetTaskEntry);
 	_syscallRegister(G_SYSCALL_EXIT_TASK, (g_syscall_handler) syscallExitTask);
@@ -103,13 +110,13 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_GET_MILLISECONDS, (g_syscall_handler) syscallGetMilliseconds);
 
 	// Memory
-	_syscallRegister(G_SYSCALL_LOWER_MEMORY_ALLOCATE, (g_syscall_handler) syscallLowerMemoryAllocate);
-	_syscallRegister(G_SYSCALL_LOWER_MEMORY_FREE, (g_syscall_handler) syscallLowerMemoryFree);
-	_syscallRegister(G_SYSCALL_ALLOCATE_MEMORY, (g_syscall_handler) syscallAllocateMemory);
-	_syscallRegister(G_SYSCALL_UNMAP, (g_syscall_handler) syscallUnmap);
-	_syscallRegister(G_SYSCALL_SHARE_MEMORY, (g_syscall_handler) syscallShareMemory);
-	_syscallRegister(G_SYSCALL_MAP_MMIO_AREA, (g_syscall_handler) syscallMapMmioArea);
-	_syscallRegister(G_SYSCALL_SBRK, (g_syscall_handler) syscallSbrk);
+	_syscallRegister(G_SYSCALL_LOWER_MEMORY_ALLOCATE, (g_syscall_handler) syscallLowerMemoryAllocate, true);
+	_syscallRegister(G_SYSCALL_LOWER_MEMORY_FREE, (g_syscall_handler) syscallLowerMemoryFree, true);
+	_syscallRegister(G_SYSCALL_ALLOCATE_MEMORY, (g_syscall_handler) syscallAllocateMemory, true);
+	_syscallRegister(G_SYSCALL_UNMAP, (g_syscall_handler) syscallUnmap, true);
+	_syscallRegister(G_SYSCALL_SHARE_MEMORY, (g_syscall_handler) syscallShareMemory, true);
+	_syscallRegister(G_SYSCALL_MAP_MMIO_AREA, (g_syscall_handler) syscallMapMmioArea, true);
+	_syscallRegister(G_SYSCALL_SBRK, (g_syscall_handler) syscallSbrk, true);
 
 	// Mutex
 	_syscallRegister(G_SYSCALL_USER_MUTEX_INITIALIZE, (g_syscall_handler) syscallMutexInitialize);
@@ -122,21 +129,21 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_MESSAGE_RECEIVE, (g_syscall_handler) syscallMessageReceive);
 
 	// Filesystem
-	_syscallRegister(G_SYSCALL_FS_OPEN, (g_syscall_handler) syscallFsOpen);
-	_syscallRegister(G_SYSCALL_FS_SEEK, (g_syscall_handler) syscallFsSeek);
-	_syscallRegister(G_SYSCALL_FS_READ, (g_syscall_handler) syscallFsRead);
-	_syscallRegister(G_SYSCALL_FS_WRITE, (g_syscall_handler) syscallFsWrite);
-	_syscallRegister(G_SYSCALL_FS_CLOSE, (g_syscall_handler) syscallFsClose);
-	_syscallRegister(G_SYSCALL_FS_CLONEFD, (g_syscall_handler) syscallFsCloneFd);
-	_syscallRegister(G_SYSCALL_FS_LENGTH, (g_syscall_handler) syscallFsLength);
-	_syscallRegister(G_SYSCALL_FS_TELL, (g_syscall_handler) syscallFsTell);
-	_syscallRegister(G_SYSCALL_FS_STAT, (g_syscall_handler) syscallFsStat);
-	_syscallRegister(G_SYSCALL_FS_FSTAT, (g_syscall_handler) syscallFsFstat);
-	_syscallRegister(G_SYSCALL_FS_PIPE, (g_syscall_handler) syscallFsPipe);
-	_syscallRegister(G_SYSCALL_FS_OPEN_DIRECTORY, (g_syscall_handler) syscallFsOpenDirectory);
-	_syscallRegister(G_SYSCALL_FS_READ_DIRECTORY, (g_syscall_handler) syscallFsReadDirectory);
-	_syscallRegister(G_SYSCALL_FS_CLOSE_DIRECTORY, (g_syscall_handler) syscallFsCloseDirectory);
-	_syscallRegister(G_SYSCALL_OPEN_IRQ_DEVICE, (g_syscall_handler) syscallOpenIrqDevice);
+	_syscallRegister(G_SYSCALL_FS_OPEN, (g_syscall_handler) syscallFsOpen, true);
+	_syscallRegister(G_SYSCALL_FS_SEEK, (g_syscall_handler) syscallFsSeek, true);
+	_syscallRegister(G_SYSCALL_FS_READ, (g_syscall_handler) syscallFsRead, true);
+	_syscallRegister(G_SYSCALL_FS_WRITE, (g_syscall_handler) syscallFsWrite, true);
+	_syscallRegister(G_SYSCALL_FS_CLOSE, (g_syscall_handler) syscallFsClose, true);
+	_syscallRegister(G_SYSCALL_FS_CLONEFD, (g_syscall_handler) syscallFsCloneFd, true);
+	_syscallRegister(G_SYSCALL_FS_LENGTH, (g_syscall_handler) syscallFsLength, true);
+	_syscallRegister(G_SYSCALL_FS_TELL, (g_syscall_handler) syscallFsTell, true);
+	_syscallRegister(G_SYSCALL_FS_STAT, (g_syscall_handler) syscallFsStat, true);
+	_syscallRegister(G_SYSCALL_FS_FSTAT, (g_syscall_handler) syscallFsFstat, true);
+	_syscallRegister(G_SYSCALL_FS_PIPE, (g_syscall_handler) syscallFsPipe, true);
+	_syscallRegister(G_SYSCALL_FS_OPEN_DIRECTORY, (g_syscall_handler) syscallFsOpenDirectory, true);
+	_syscallRegister(G_SYSCALL_FS_READ_DIRECTORY, (g_syscall_handler) syscallFsReadDirectory, true);
+	_syscallRegister(G_SYSCALL_FS_CLOSE_DIRECTORY, (g_syscall_handler) syscallFsCloseDirectory, true);
+	_syscallRegister(G_SYSCALL_OPEN_IRQ_DEVICE, (g_syscall_handler) syscallOpenIrqDevice, true);
 
 	// System
 	_syscallRegister(G_SYSCALL_LOG, (g_syscall_handler) syscallLog);

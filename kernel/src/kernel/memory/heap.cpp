@@ -41,7 +41,7 @@ void heapInitialize(g_virtual_address start, g_virtual_address end)
 	if(heapInitialized)
 		panic("%! tried to initialized kernel heap twice", "kernheap");
 
-	mutexInitialize(&heapLock);
+	mutexInitializeNonInterruptible(&heapLock, __func__);
 
 	memoryAllocatorInitialize(&heapAllocator, G_ALLOCATOR_TYPE_HEAP, start, end);
 	heapStart = start;

@@ -22,6 +22,7 @@
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/user_mutex.hpp"
+#include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/tasking/tasking_directory.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/utils/wait_queue.hpp"
@@ -30,14 +31,16 @@
 
 void syscallSleep(g_task* task, g_syscall_sleep* data)
 {
+	INTERRUPTS_PAUSE;
 	clockWaitForTime(task->id, clockGetLocal()->time + data->milliseconds);
 	task->status = G_TASK_STATUS_WAITING;
-	taskingSchedule();
+	taskingYield();
+	INTERRUPTS_RESUME;
 }
 
 void syscallYield(g_task* task)
 {
-	taskingSchedule();
+	taskingYield();
 }
 
 void syscallExit(g_task* task, g_syscall_exit* data)
@@ -76,9 +79,11 @@ void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
 
 void syscallJoin(g_task* task, g_syscall_join* data)
 {
+	INTERRUPTS_PAUSE;
 	taskingWaitForExit(data->taskId, task->id);
 	task->status = G_TASK_STATUS_WAITING;
 	taskingYield();
+	INTERRUPTS_RESUME;
 }
 
 void syscallSpawn(g_task* task, g_syscall_spawn* data)
@@ -145,7 +150,7 @@ void syscallCreateTask(g_task* task, g_syscall_create_task* data)
 	mutexAcquire(&task->process->lock);
 
 	g_task* newTask = taskingCreateTask((g_virtual_address) data->initialEntry, task->process,
-	                                   task->process->main->securityLevel);
+	                                    task->process->main->securityLevel);
 	if(newTask)
 	{
 		newTask->userEntry.function = data->userEntry;
@@ -219,7 +224,8 @@ void syscallSetWorkingDirectory(g_task* task, g_syscall_set_working_directory* d
 	auto findRes = filesystemFind(nullptr, data->path);
 	if(findRes.status == G_FS_OPEN_SUCCESSFUL)
 	{
-		if(findRes.file->type == G_FS_NODE_TYPE_FOLDER || findRes.file->type == G_FS_NODE_TYPE_MOUNTPOINT || findRes.file->type == G_FS_NODE_TYPE_ROOT)
+		if(findRes.file->type == G_FS_NODE_TYPE_FOLDER || findRes.file->type == G_FS_NODE_TYPE_MOUNTPOINT || findRes.
+		   file->type == G_FS_NODE_TYPE_ROOT)
 		{
 			if(task->process->environment.workingDirectory)
 			{

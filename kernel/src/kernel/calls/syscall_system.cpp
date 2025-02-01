@@ -21,6 +21,7 @@
 #include "kernel/calls/syscall_system.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/system/interrupts/apic/ioapic.hpp"
+#include "shared/logger/logger.hpp"
 
 void syscallLog(g_task* task, g_syscall_log* data)
 {

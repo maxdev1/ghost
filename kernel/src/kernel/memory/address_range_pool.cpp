@@ -21,13 +21,12 @@
 #include "kernel/memory/address_range_pool.hpp"
 #include "kernel/memory/heap.hpp"
 #include "shared/logger/logger.hpp"
-#include "shared/memory/paging.hpp"
 #include "shared/panic.hpp"
 
 void addressRangePoolInitialize(g_address_range_pool* pool)
 {
 	pool->first = 0;
-	mutexInitialize(&pool->lock);
+	mutexInitializeNonInterruptible(&pool->lock, __func__);
 }
 
 void addressRangePoolDestroy(g_address_range_pool* pool)
@@ -221,7 +220,8 @@ void addressRangePoolMerge(g_address_range_pool* pool)
 
 	while(current && current->next)
 	{
-		if(!current->used && !current->next->used && ((current->base + current->pages * G_PAGE_SIZE) == current->next->base))
+		if(!current->used && !current->next->used && (
+			   (current->base + current->pages * G_PAGE_SIZE) == current->next->base))
 		{
 			current->pages += current->next->pages;
 
@@ -250,7 +250,8 @@ void addressRangePoolDump(g_address_range_pool* pool, bool onlyFree)
 	{
 		if(!onlyFree || !current->used)
 		{
-			logDebug("%#  used: %b, base: %h, pages: %i (- %h)", current->used, current->base, current->pages, current->base + current->pages * G_PAGE_SIZE);
+			logDebug("%#  used: %b, base: %h, pages: %i (- %h)", current->used, current->base, current->pages,
+			         current->base + current->pages * G_PAGE_SIZE);
 		}
 		current = current->next;
 	}

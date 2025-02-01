@@ -24,6 +24,26 @@
 #include <ghost/stdint.h>
 
 /**
+ * Flags for flag section of IDT descriptors
+ */
+#define G_IDT_FLAGS_SEGMENT_PRESENT          0b10000000
+
+#define G_IDT_FLAGS_PRIVILEGE_RING0          0b00000000
+#define G_IDT_FLAGS_PRIVILEGE_RING1          0b00100000
+#define G_IDT_FLAGS_PRIVILEGE_RING2          0b01000000
+#define G_IDT_FLAGS_PRIVILEGE_RING3          0b01100000
+
+#define G_IDT_FLAGS_GATE_TYPE_TASK           0b00000101
+#define G_IDT_FLAGS_GATE_TYPE_INTERRUPT_16   0b00000110
+#define G_IDT_FLAGS_GATE_TYPE_INTERRUPT_32   0b00001110
+#define G_IDT_FLAGS_GATE_TYPE_TRAP_16        0b00000111
+#define G_IDT_FLAGS_GATE_TYPE_TRAP_32        0b00001111
+
+
+#define G_IDT_FLAGS_INTERRUPT_GATE_KERNEL   (G_IDT_FLAGS_SEGMENT_PRESENT | G_IDT_FLAGS_GATE_TYPE_INTERRUPT_32 | G_IDT_FLAGS_PRIVILEGE_RING0)
+#define G_IDT_FLAGS_INTERRUPT_GATE_USER     (G_IDT_FLAGS_SEGMENT_PRESENT | G_IDT_FLAGS_GATE_TYPE_INTERRUPT_32 | G_IDT_FLAGS_PRIVILEGE_RING3)
+
+/**
  * Structure of the IDT pointer
  */
 struct g_idt_pointer
@@ -69,9 +89,8 @@ void idtLoad();
  *
  * @param index			gate index
  * @param base			gate base address
- * @param kernelSegment kernel code segment descriptor index
  * @param flags			the flags to apply
  */
-void idtCreateGate(uint32_t index, uint32_t base, uint16_t kernelSegment, uint8_t flags);
+void idtCreateGate(uint32_t index, void* base, uint8_t flags);
 
 #endif

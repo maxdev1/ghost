@@ -35,7 +35,8 @@ typedef void (*g_syscall_handler)(g_task*, void*);
  */
 struct g_syscall_registration
 {
-	g_syscall_handler handler;
+    g_syscall_handler handler;
+    bool interruptible;
 };
 
 /**

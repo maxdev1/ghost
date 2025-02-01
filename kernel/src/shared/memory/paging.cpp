@@ -22,6 +22,7 @@
 #include "shared/memory/constants.hpp"
 #include "shared/memory/memory.hpp"
 #include "shared/panic.hpp"
+#include "shared/logger/logger.hpp"
 
 void pagingSwitchToSpace(g_physical_address dir)
 {

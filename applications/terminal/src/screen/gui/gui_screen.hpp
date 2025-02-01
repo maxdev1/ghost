@@ -43,6 +43,7 @@ class terminal_focus_listener_t;
 
 class gui_screen_t : public screen_t
 {
+    g_user_mutex exitFlag;
     g_window* window;
 
     std::list<g_key_info> inputBuffer;
@@ -113,7 +114,7 @@ public:
     void recalculateView();
     void normalizeScroll();
 
-    bool initialize() override;
+    bool initialize(g_user_mutex exitFlag) override;
     g_key_info readInput() override;
     void clean() override;
     void backspace() override;

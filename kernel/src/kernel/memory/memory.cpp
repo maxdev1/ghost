@@ -27,6 +27,7 @@
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/memory/paging.hpp"
 #include "kernel/tasking/task.hpp"
+#include "shared/logger/logger.hpp"
 
 g_address_range_pool* memoryVirtualRangePool = 0;
 

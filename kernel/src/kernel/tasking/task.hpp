@@ -76,11 +76,6 @@ struct g_task
     g_task_type type;
 
     /**
-     * Indicates whether this task is currently running on the processor that its assigned to.
-     */
-    g_bool active;
-
-    /**
      * Pointer to the processor-local tasking structure that this task is currently scheduled on.
      */
     g_tasking_local* assignment;

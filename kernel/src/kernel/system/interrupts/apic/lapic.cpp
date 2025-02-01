@@ -21,11 +21,10 @@
 #include "kernel/system/interrupts/apic/lapic.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/system/acpi/acpi.hpp"
-#include "kernel/system/acpi/madt.hpp"
 #include "kernel/system/configuration.hpp"
-#include "kernel/system/processor/processor.hpp"
 #include "kernel/system/timing/pit.hpp"
 #include "shared/panic.hpp"
+#include "shared/logger/logger.hpp"
 
 static bool available = false;
 
@@ -91,7 +90,8 @@ void lapicCreateMapping()
 
 	// "APIC registers are memory-mapped to a 4-KByte region of the processor’s physical
 	// address space with an initial starting address of FEE00000H." - x86 System Programming Manual, 10.4.1
-	pagingMapPage(virtualBase, physicalBase, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT | G_PAGE_CACHE_DISABLED);
+	pagingMapPage(virtualBase, physicalBase, G_PAGE_TABLE_KERNEL_DEFAULT,
+	              G_PAGE_KERNEL_DEFAULT | G_PAGE_CACHE_DISABLED);
 }
 
 uint32_t lapicReadId()
@@ -135,7 +135,7 @@ void lapicStartTimer()
 
 	// Start timer as periodic on IRQ 0
 	lapicWrite(APIC_REGISTER_TIMER_DIV, 0x3);
-	lapicWrite(APIC_REGISTER_LVT_TIMER, 32 | APIC_LVT_TIMER_MODE_PERIODIC);
+	lapicWrite(APIC_REGISTER_LVT_TIMER, 0x20 | APIC_LVT_TIMER_MODE_PERIODIC);
 	lapicWrite(APIC_REGISTER_TIMER_INITCNT, ticksPer10ms / (G_TIMER_FREQUENCY / 100));
 }
 

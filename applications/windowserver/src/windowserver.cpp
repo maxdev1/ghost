@@ -99,7 +99,8 @@ void windowserver_t::createVitalComponents(g_rectangle screenBounds)
 	stateLabel = new label_t();
 	stateLabel->setTitle("");
 	stateLabel->setAlignment(g_text_alignment::RIGHT);
-	stateLabel->setBounds(g_rectangle(screenBounds.width - 200, screenBounds.height - 30, 200, 30));
+	stateLabel->setBounds(g_rectangle(10, screenBounds.height - 30, screenBounds.width - 20, 30));
+	instance()->stateLabel->setColor(RGB(255, 255, 255));
 	background->addChild(stateLabel);
 
 	// background.load("/system/graphics/wallpaper.png");
@@ -229,15 +230,18 @@ component_t* windowserver_t::dispatch(component_t* component, event_t& event)
 void windowserver_t::fpsCounter()
 {
 	g_task_register_id("windowserver/fps-counter");
-	int seconds = 0;
 
-	int renders = 0;
+	int tenthSeconds = 0;
 	for(;;)
 	{
-		g_sleep(1000);
-		seconds++;
+		g_sleep(100);
+		tenthSeconds++;
 		std::stringstream s;
-		s << "FPS: " << framesTotal << ", Time: " << renders++ << "s";
+		s
+				<< "FPS: " << framesTotal << ", "
+				<< "TIME: "
+				<< "System: " << ((double) g_millis()) / 1000.0 << "s, "
+				<< "Application: " << tenthSeconds / 10;
 		instance()->stateLabel->setTitle(s.str());
 		instance()->triggerRender();
 		framesTotal = 0;
