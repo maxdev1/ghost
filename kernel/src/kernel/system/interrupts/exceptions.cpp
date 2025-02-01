@@ -123,7 +123,7 @@ void exceptionsDumpTask(g_task* task)
 	for(int frame = 0; frame < 8; ++frame)
 	{
 		g_address eip = ebp[1];
-		if(eip == 0)
+		if(eip < 0x1000)
 		{
 			break;
 		}
