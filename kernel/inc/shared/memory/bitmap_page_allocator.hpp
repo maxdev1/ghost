@@ -25,10 +25,19 @@
 
 #include <ghost/stdint.h>
 
+#define G_BITMAP_ALLOCATOR_FASTBUFFER_SIZE 128
+
 struct g_bitmap_page_allocator
 {
     uint32_t freePageCount;
     g_bitmap_header* bitmapArray;
+
+    struct
+    {
+        g_mutex lock;
+        g_physical_address buffer[G_BITMAP_ALLOCATOR_FASTBUFFER_SIZE];
+        int size;
+    } fastBuffer;
 };
 
 /**
@@ -44,5 +53,6 @@ void bitmapPageAllocatorRelocate(g_bitmap_page_allocator* allocator, g_virtual_a
 void bitmapPageAllocatorMarkFree(g_bitmap_page_allocator* allocator, g_physical_address address);
 
 g_physical_address bitmapPageAllocatorAllocate(g_bitmap_page_allocator* allocator);
+
 
 #endif

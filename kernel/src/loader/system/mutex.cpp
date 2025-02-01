@@ -30,6 +30,10 @@ void mutexInitialize(g_mutex* mutex, const char* location)
 {
 }
 
+void mutexInitializeNonInterruptible(g_mutex* mutex, const char* location)
+{
+}
+
 void mutexAcquire(g_mutex* mutex)
 {
 }

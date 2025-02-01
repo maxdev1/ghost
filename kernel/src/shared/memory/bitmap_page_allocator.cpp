@@ -19,8 +19,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "shared/memory/bitmap_page_allocator.hpp"
-
 #include "shared/logger/logger.hpp"
+
+void bitmapPageAllocatorFastBufferInitialize(g_bitmap_page_allocator* allocator);
+bool bitmapPageAllocatorFastBufferFree(g_bitmap_page_allocator* allocator, g_physical_address address);
+g_physical_address bitmapPageAllocatorFastBufferAllocate(g_bitmap_page_allocator* allocator);
+
 
 void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, g_bitmap_header* bitmapArray)
 {
@@ -30,11 +34,14 @@ void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, g_bitmap_
 	g_bitmap_header* bitmap = bitmapArray;
 	while(bitmap)
 	{
-		mutexInitialize(&bitmap->lock);
+		mutexInitializeNonInterruptible(&bitmap->lock);
 		allocator->freePageCount += bitmap->entryCount * G_BITMAP_PAGES_PER_ENTRY;
 		bitmap = G_BITMAP_NEXT(bitmap);
 	}
+
+	bitmapPageAllocatorFastBufferInitialize(allocator);
 }
+
 
 void bitmapPageAllocatorRelocate(g_bitmap_page_allocator* allocator, g_virtual_address newBitmapArray)
 {
@@ -43,6 +50,9 @@ void bitmapPageAllocatorRelocate(g_bitmap_page_allocator* allocator, g_virtual_a
 
 void bitmapPageAllocatorMarkFree(g_bitmap_page_allocator* allocator, g_physical_address address)
 {
+	if(bitmapPageAllocatorFastBufferFree(allocator, address))
+		return;
+
 	bool freed = false;
 
 	g_bitmap_header* bitmap = allocator->bitmapArray;
@@ -81,6 +91,10 @@ void bitmapPageAllocatorMarkFree(g_bitmap_page_allocator* allocator, g_physical_
 
 g_physical_address bitmapPageAllocatorAllocate(g_bitmap_page_allocator* allocator)
 {
+	g_physical_address addressFromFB = bitmapPageAllocatorFastBufferAllocate(allocator);
+	if(addressFromFB)
+		return addressFromFB;
+
 	g_bitmap_header* bitmap = allocator->bitmapArray;
 	while(bitmap)
 	{
@@ -117,4 +131,48 @@ g_physical_address bitmapPageAllocatorAllocate(g_bitmap_page_allocator* allocato
 
 	logWarn("%! failed to allocate physical page", "bitmap");
 	return 0;
+}
+
+/**
+ * Initializes the "fast buffer" which is used to keep a stack of free pages for faster allocation.
+ *
+ * @param allocator
+ */
+void bitmapPageAllocatorFastBufferInitialize(g_bitmap_page_allocator* allocator)
+{
+	mutexInitializeNonInterruptible(&allocator->fastBuffer.lock);
+	for(g_physical_address& cell: allocator->fastBuffer.buffer)
+	{
+		cell = 0;
+	}
+	allocator->fastBuffer.size = 0;
+}
+
+bool bitmapPageAllocatorFastBufferFree(g_bitmap_page_allocator* allocator, g_physical_address address)
+{
+	bool freed = false;
+
+	mutexAcquire(&allocator->fastBuffer.lock);
+	if(allocator->fastBuffer.size < G_BITMAP_ALLOCATOR_FASTBUFFER_SIZE)
+	{
+		allocator->fastBuffer.buffer[allocator->fastBuffer.size++] = address;
+		freed = true;
+	}
+	mutexRelease(&allocator->fastBuffer.lock);
+
+	return freed;
+}
+
+g_physical_address bitmapPageAllocatorFastBufferAllocate(g_bitmap_page_allocator* allocator)
+{
+	g_physical_address address = 0;
+
+	mutexAcquire(&allocator->fastBuffer.lock);
+	if(allocator->fastBuffer.size > 0)
+	{
+		address = allocator->fastBuffer.buffer[--allocator->fastBuffer.size];
+	}
+	mutexRelease(&allocator->fastBuffer.lock);
+
+	return address;
 }
