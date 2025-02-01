@@ -65,7 +65,7 @@ void assertNotEquals(T a, T b, int line)
 void _panic(int line, const char* msg, ...);
 
 // Mock overrides
-#define mutexInitialize(m)
+#define mutexInitialize(m, ...)
 #define _mutexInitialize(m)
 #define mutexAcquire(m)
 #define mutexRelease(m)

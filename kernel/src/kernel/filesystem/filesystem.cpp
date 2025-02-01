@@ -358,7 +358,7 @@ g_fs_open_status filesystemOpenNode(g_fs_node* file, g_file_flag_mode flags, g_p
 	}
 
 	g_fs_open_status status = delegate->open(file, flags);
-	if(status == G_FS_OPEN_SUCCESSFUL)
+	if(status == G_FS_OPEN_SUCCESSFUL && process != G_PID_NONE)
 	{
 		status = filesystemProcessCreateDescriptor(process, file->id, flags, outDescriptor, optionalTargetFd);
 	}
