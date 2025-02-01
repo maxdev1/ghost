@@ -178,8 +178,8 @@ void ps2HandleMouseData(uint8_t value)
 		}
 		else
 		{
-			int16_t offX = valX - ((flags << 4) & 0x100);
-			int16_t offY = valY - ((flags << 3) & 0x100);
+			int16_t offX = (valX | ((flags & 0x10) ? 0xFF00 : 0));
+			int16_t offY = (valY | ((flags & 0x20) ? 0xFF00 : 0));
 
 			if(registeredMouseCallback)
 			{
@@ -209,14 +209,14 @@ void ps2WaitForBuffer(ps2_buffer_t buffer)
 		requiredValue = 1;
 	}
 
-	int timeout = 100;
+	int timeout = 10000;
 	while(timeout--)
 	{
 		if((g_io_port_read_byte(G_PS2_STATUS_PORT) & requiredBit) == requiredValue)
 		{
 			return;
 		}
-		g_yield();
+		asm volatile("pause");
 	}
 }
 
