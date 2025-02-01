@@ -51,10 +51,6 @@ void interruptsInitializeBsp()
 		picDisable();
 		lapicInitialize();
 		ioapicInitializeAll();
-
-		// Redirect keyboard (1) and mouse (12) IRQs
-		ioapicCreateRedirectionEntry(1, 1, 0);
-		ioapicCreateRedirectionEntry(12, 12, 0);
 	}
 	else
 	{
@@ -109,7 +105,7 @@ extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_st
 		}
 		else
 		{
-			requestsWriteToIrqDevice(task, irq);
+			requestsWriteToIrqDevice(irq);
 		}
 
 		_interruptsSendEndOfInterrupt(irq);

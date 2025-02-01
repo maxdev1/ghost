@@ -22,12 +22,11 @@
 #define __KERNEL_REQUESTS__
 
 #include "kernel/filesystem/filesystem.hpp"
-#include "kernel/tasking/tasking.hpp"
 
 struct g_irq_device
 {
-	g_fs_node* node;
-	g_tid task;
+    g_fs_node* node;
+    g_tid task;
 };
 
 void requestsInitialize();
@@ -36,7 +35,7 @@ void requestsInitialize();
  * Calls the user-space handler for an IRQ if there is one registered
  * on the given task.
  */
-void requestsWriteToIrqDevice(g_task* task, uint8_t irq);
+void requestsWriteToIrqDevice(uint8_t irq);
 
 /**
  * Retrieves (or creates) the IO device for the IRQ.

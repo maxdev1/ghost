@@ -19,9 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 
-#include "kernel/calls/syscall.hpp"
 #include "kernel/filesystem/filesystem.hpp"
-#include "kernel/memory/memory.hpp"
 #include "kernel/system/interrupts/requests.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "shared/logger/logger.hpp"
@@ -69,7 +67,7 @@ g_irq_device* requestsGetIrqDevice(uint8_t irq)
 	return device;
 }
 
-void requestsWriteToIrqDevice(g_task* task, uint8_t irq)
+void requestsWriteToIrqDevice(uint8_t irq)
 {
 	g_irq_device* device = requestsGetIrqDevice(irq);
 	if(!device)

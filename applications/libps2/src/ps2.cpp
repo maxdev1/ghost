@@ -48,6 +48,9 @@ ps2_status_t ps2Initialize(void (*mouseCallback)(int16_t, int16_t, uint8_t),
 		return status;
 	}
 
+	g_irq_create_redirect(1, 1);
+	g_irq_create_redirect(12, 12);
+
 	g_open_irq_device(1, &keyIrqIn);
 	g_create_task((void*) &ps2ReadKeyIrq);
 	g_open_irq_device(12, &mouseIrqIn);
