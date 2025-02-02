@@ -25,12 +25,15 @@
 #define G_PCI_DRIVER_IDENTIFIER		"pcidriver"
 
 typedef int g_pci_command;
-#define G_PCI_IDENTIFY_AHCI_CONTROLLER	((g_pci_command) 0)
+#define G_PCI_IDENTIFY_AHCI_CONTROLLER     	((g_pci_command) 0)
+#define G_PCI_IDENTIFY_VMSVGA_CONTROLLER	((g_pci_command) 1)
 
 struct g_pci_request_header
 {
     g_pci_command command;
 }__attribute__((packed));
+
+// AHCI
 
 struct g_pci_identify_ahci_controller_request
 {
@@ -52,7 +55,7 @@ struct g_pci_identify_ahci_controller_response
 }__attribute__((packed));
 
 /**
- * Requests the PCI driver to identify AHCI controllers and return information about them.
+ * Requests information about AHCI controllers.
  *
  * @param outEntries
  *      filled with the resulting entries
@@ -61,5 +64,25 @@ struct g_pci_identify_ahci_controller_response
  * @return whether the request was successful
  */
 bool pciDriverIdentifyAhciController(g_pci_identify_ahci_controller_entry** outEntries, int* outCount);
+
+// VMSVGA
+
+struct g_pci_identify_vmsvga_controller_request
+{
+    g_pci_request_header header;
+}__attribute__((packed));
+
+struct g_pci_identify_vmsvga_controller_response
+{
+    g_bool found;
+    uint32_t ioBase;
+    g_physical_address fbBase;
+    g_physical_address fifoBase;
+}__attribute__((packed));
+
+/**
+ * Requests identification of the VMSVGA controller.
+ */
+bool pciDriverIdentifyVmSvgaController(g_pci_identify_vmsvga_controller_response* outResult);
 
 #endif

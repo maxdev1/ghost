@@ -5,16 +5,26 @@
 #define PCI_NUM_DEVICES		32
 #define PCI_NUM_FUNCTIONS	8
 
+
+#define PCI_CONFIG_OFF(bus, device, function, offset)	((1 << 31) | (bus << 16) | (device << 11) | (function << 8) | offset)
+
+/**
+* If bit 1 of a BAR is set, it is IO related.
+*/
+#define PCI_CONFIG_BAR_IO	0x1
+
 /**
 * IO ports
 */
 #define PCI_CONFIG_PORT_ADDR 0xCF8
 #define PCI_CONFIG_PORT_DATA 0xCFC
 
+
 /**
 * Configuration space offsets
 */
-#define PCI_CONFIG_OFF_DEVICE_VENDOR_ID		0x00
+#define PCI_CONFIG_OFF_VENDOR_ID			0x00
+#define PCI_CONFIG_OFF_DEVICE_ID			0x02
 #define PCI_CONFIG_OFF_COMMAND				0x04
 #define PCI_CONFIG_OFF_STATUS				0x08
 #define PCI_CONFIG_OFF_REVISION				0x08
@@ -75,5 +85,13 @@
 #define PCI_01_06_PROGIF_VENDOR_SPEC		0x00
 #define PCI_01_06_PROGIF_AHCI				0x01
 #define PCI_01_06_PROGIF_STORAGEBUS			0x02
+
+#define PCI_03_SUBCLASS_VGA                 0x00
+#define PCI_03_SUBCLASS_XGA                 0x01
+#define PCI_03_SUBCLASS_3D                  0x02
+#define PCI_03_SUBCLASS_OTHER               0x80
+
+#define PCI_03_00_PROGIF_VGA_COMPATIBLE     0x00
+#define PCI_03_00_PROGIF_8514_COMPATIBLE    0x01
 
 #endif

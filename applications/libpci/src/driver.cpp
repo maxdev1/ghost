@@ -46,7 +46,35 @@ bool pciDriverIdentifyAhciController(g_pci_identify_ahci_controller_entry** outE
 		*outCount = response->count;
 		*outEntries = new g_pci_identify_ahci_controller_entry[response->count];
 		memcpy(*outEntries, response->entries,
-			   sizeof(g_pci_identify_ahci_controller_entry) * G_PCI_IDENTIFY_AHCI_CONTROLLER_ENTRIES);
+		       sizeof(g_pci_identify_ahci_controller_entry) * G_PCI_IDENTIFY_AHCI_CONTROLLER_ENTRIES);
+		return true;
+	}
+
+	return false;
+}
+
+bool pciDriverIdentifyVmSvgaController(g_pci_identify_vmsvga_controller_response* outResult)
+{
+	g_tid driverTid = g_task_get_id(G_PCI_DRIVER_IDENTIFIER);
+	if(driverTid == -1)
+	{
+		return false;
+	}
+
+	g_message_transaction transaction = g_get_message_tx_id();
+
+	g_pci_identify_vmsvga_controller_request request{};
+	request.header.command = G_PCI_IDENTIFY_VMSVGA_CONTROLLER;
+	g_send_message_t(driverTid, &request, sizeof(g_pci_identify_vmsvga_controller_request), transaction);
+
+	size_t buflen = sizeof(g_message_header) + sizeof(g_pci_identify_vmsvga_controller_response);
+	uint8_t buf[buflen];
+	auto status = g_receive_message_t(buf, buflen, transaction);
+	auto response = (g_pci_identify_vmsvga_controller_response*) G_MESSAGE_CONTENT(buf);
+
+	if(status == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	{
+		*outResult = *response;
 		return true;
 	}
 

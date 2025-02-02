@@ -43,14 +43,32 @@ struct g_pci_device
 void pciDriverScanBus();
 
 /**
- * Reads a dword from the PCI configuration space.
+ * Reads a BAR value
  */
-uint32_t pciReadConfigInt(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset);
+uint32_t pciConfigGetBAR(g_pci_device* dev, int bar);
 
 /**
- * Reads a byte from the PCI configuration space.
+ * Reads the size of a BAR. The value that is returned after writing to the BAR contains the fixed bits, hence the flipping.
  */
-uint8_t pciReadConfigByte(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset);
+uint32_t pciConfigGetBARSize(g_pci_device* dev, int bar);
+
+/**
+ * Reads from or writes to the PCI configuration space.
+*/
+uint8_t pciConfigReadByte(g_pci_device* dev, uint8_t offset);
+uint16_t pciConfigReadWord(g_pci_device* dev, uint8_t offset);
+uint32_t pciConfigReadDword(g_pci_device* dev, uint8_t offset);
+uint32_t pciConfigReadDwordAt(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset);
+
+void pciConfigWriteByte(g_pci_device* dev, uint8_t offset, uint8_t value);
+void pciConfigWriteWord(g_pci_device* dev, uint8_t offset, uint16_t value);
+void pciConfigWriteDword(g_pci_device* dev, uint8_t offset, uint32_t value);
+void pciConfigWriteDwordAt(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint32_t value);
+
+/**
+ * Enables or disables memory space, IO space and bus mastering.
+ */
+void pciEnableResourceAccess(g_pci_device* dev, bool enabled);
 
 /**
  * Receives incoming messages.
@@ -58,8 +76,15 @@ uint8_t pciReadConfigByte(uint8_t bus, uint8_t device, uint8_t function, uint8_t
 void pciDriverReceiveMessages();
 
 /**
- * Identifies AHCI controllers and responds accordingly.
+ * Identifies AHCI controllers
  */
 void pciDriverIdentifyAhciController(g_tid sender, g_message_transaction transaction);
+
+/**
+ * Identifies VBox SVGA controllers
+ */
+void pciDriverIdentifyVboxSvgaController(g_tid sender, g_message_transaction transaction);
+void pciDriverIdentifyVmSvgaController(g_tid sender, g_message_transaction transaction);
+
 
 #endif
