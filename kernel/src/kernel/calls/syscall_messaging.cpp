@@ -23,7 +23,6 @@
 #include "kernel/tasking/user_mutex.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 
-
 void syscallMessageSend(g_task* task, g_syscall_send_message* data)
 {
 	while((data->status = messageSend(task->id, data->receiver, data->buffer, data->length, data->transaction)) ==
@@ -60,4 +59,9 @@ void syscallMessageReceive(g_task* task, g_syscall_receive_message* data)
 		taskingYield();
 		INTERRUPTS_RESUME;
 	}
+}
+
+void syscallMessageNextTxid(g_task* task, g_syscall_message_next_txid* data)
+{
+	data->transaction = messageNextTxId();
 }

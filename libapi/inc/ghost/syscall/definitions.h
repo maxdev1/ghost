@@ -68,6 +68,7 @@ __BEGIN_C
 // Messages
 #define G_SYSCALL_MESSAGE_SEND                  70
 #define G_SYSCALL_MESSAGE_RECEIVE				71
+#define G_SYSCALL_MESSAGE_NEXT_TXID				72
 
 // Filesystem
 #define G_SYSCALL_FS_OPEN						80

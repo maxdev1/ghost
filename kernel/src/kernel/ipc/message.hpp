@@ -52,6 +52,8 @@ g_message_send_status messageSend(g_tid sender, g_tid receiver, void* content, u
  */
 g_message_receive_status messageReceive(g_tid receiver, g_message_header* out, uint32_t max, g_message_transaction tx);
 
+g_message_transaction messageNextTxId();
+
 /**
  * When a task is removed, this function is called to cleanup any occupied memory.
  */

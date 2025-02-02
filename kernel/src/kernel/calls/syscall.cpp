@@ -127,6 +127,7 @@ void syscallRegisterAll()
 	// Messages
 	_syscallRegister(G_SYSCALL_MESSAGE_SEND, (g_syscall_handler) syscallMessageSend);
 	_syscallRegister(G_SYSCALL_MESSAGE_RECEIVE, (g_syscall_handler) syscallMessageReceive);
+	_syscallRegister(G_SYSCALL_MESSAGE_NEXT_TXID, (g_syscall_handler) syscallMessageNextTxid);
 
 	// Filesystem
 	_syscallRegister(G_SYSCALL_FS_OPEN, (g_syscall_handler) syscallFsOpen, true);

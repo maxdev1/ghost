@@ -18,12 +18,49 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __VMSVGADRIVER__
-#define __VMSVGADRIVER__
+#ifndef __SVGA__
+#define __SVGA__
 
-/**
- *
- */
-void vmsvgaDriverReceiveMessages();
+#include "svga_reg.h"
+#include <ghost/memory.h>
+
+struct svga_device_t
+{
+	uint32_t versionId = SVGA_ID_2;
+	uint32_t ioBase = 0;
+	uint32_t vramSize = 0;
+
+	struct
+	{
+		g_physical_address physical = 0;
+		uint32_t size = 0;
+		uint32_t* mapped = nullptr;
+	} fb;
+
+	struct
+	{
+		g_physical_address physical = 0;
+		uint32_t size = 0;
+		uint32_t* mapped = nullptr;
+
+		uint32_t reservedSize = 0;
+	} fifo;
+};
+
+bool svgaInitializeDevice();
+bool svgaIdentifyVersion();
+uint32_t svgaReadReg(uint32_t index);
+void svgaWriteReg(uint32_t index, uint32_t value);
+void svgaSetMode(uint32_t width, uint32_t height, uint32_t bpp);
+
+uint32_t* svgaGetFb();
+uint32_t svgaGetFbSize();
+bool svgaFifoHasCapability(int cap);
+
+void* svgaFifoReserveSpace(uint32_t size);
+void* svgaFifoReserveCommand(uint32_t type, uint32_t bytes);
+void svgaFifoCommit(uint32_t bytes);
+void svgaFifoCommitReserved();
+void svgaUpdate(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
 
 #endif

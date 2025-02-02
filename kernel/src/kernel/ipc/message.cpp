@@ -25,7 +25,10 @@
 
 #include "shared/logger/logger.hpp"
 
-static g_hashmap<g_tid, g_message_queue*>* messageQueues = 0;
+static g_message_transaction messageNextTx = G_MESSAGE_TRANSACTION_FIRST;
+static g_mutex messageTxLock;
+
+static g_hashmap<g_tid, g_message_queue*>* messageQueues = nullptr;
 
 void _messageRemoveFromQueue(g_message_queue* queue, g_message_header* message);
 void _messageAddToQueueTail(g_message_queue* queue, g_message_header* message);
@@ -35,9 +38,11 @@ g_message_queue* _messageGetQueue(g_tid task);
 void messageInitialize()
 {
 	messageQueues = hashmapCreateNumeric<g_tid, g_message_queue*>(64);
+	mutexInitialize(&messageTxLock);
 }
 
-g_message_send_status messageSend(g_tid sender, g_tid receiver, void* content, uint32_t length, g_message_transaction tx)
+g_message_send_status messageSend(g_tid sender, g_tid receiver, void* content, uint32_t length,
+                                  g_message_transaction tx)
 {
 	if(length > G_MESSAGE_MAXIMUM_LENGTH)
 	{
@@ -120,6 +125,15 @@ g_message_receive_status messageReceive(g_tid receiver, g_message_header* out, u
 	mutexRelease(&queue->lock);
 	return status;
 }
+
+g_message_transaction messageNextTxId()
+{
+	mutexAcquire(&messageTxLock);
+	g_message_transaction tx = messageNextTx++;
+	mutexRelease(&messageTxLock);
+	return tx;
+}
+
 
 void messageTaskRemoved(g_tid task)
 {

@@ -87,4 +87,12 @@ typedef struct
 	g_message_receive_status status;
 }__attribute__((packed)) g_syscall_receive_message;
 
+/**
+ * @security-level APPLICATION
+ */
+typedef struct
+{
+	g_message_transaction transaction;
+}__attribute__((packed)) g_syscall_message_next_txid;
+
 #endif

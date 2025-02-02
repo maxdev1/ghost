@@ -29,6 +29,7 @@
 #include "interface/interface_responder.hpp"
 #include "interface/registration_thread.hpp"
 #include "video/vbe_video_output.hpp"
+#include "video/vmsvga_video_output.hpp"
 
 #include <cairo/cairo.h>
 #include <iostream>
@@ -110,12 +111,25 @@ void windowserver_t::initializeGraphics()
 {
 	g_set_video_log(false);
 
-	videoOutput = new g_vbe_video_output();
-	if(!videoOutput->initialize())
+	auto vmsvgaOutput = new g_vmsvga_video_output(); //new g_vbe_video_output();
+	if(vmsvgaOutput->initialize())
 	{
-		std::cerr << "failed to initialize video mode" << std::endl;
-		klog("failed to initialize video mode");
-		return;
+		videoOutput = vmsvgaOutput;
+	}
+	else
+	{
+		klog("failed to initialize VMSVGA video output, trying VESA");
+
+		auto vbeOutput = new g_vbe_video_output();
+		if(vbeOutput->initialize())
+		{
+			videoOutput = vbeOutput;
+		}
+		else
+		{
+			klog("failed to initialize VBE output, exiting");
+			g_exit(0);
+		}
 	}
 }
 

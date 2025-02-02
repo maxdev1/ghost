@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,12 +18,23 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __VMSVGADRIVER__
-#define __VMSVGADRIVER__
+#ifndef __VMSVGA_VIDEO_OUTPUT__
+#define __VMSVGA_VIDEO_OUTPUT__
+
+#include "configuration_based_video_output.hpp"
+#include <libvmsvgadriver/vmsvgadriver.hpp>
 
 /**
  *
  */
-void vmsvgaDriverReceiveMessages();
+class g_vmsvga_video_output : public g_configuration_based_video_output
+{
+    g_vmsvga_mode_info video_mode_information;
+
+public:
+    bool initializeWithSettings(uint32_t width, uint32_t height, uint32_t bits) override;
+    void blit(g_rectangle invalid, g_rectangle sourceSize, g_color_argb* source) override;
+    g_dimension getResolution() override;
+};
 
 #endif

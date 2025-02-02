@@ -63,6 +63,9 @@ bool pciDriverIdentifyVmSvgaController(g_pci_identify_vmsvga_controller_response
 
 	g_message_transaction transaction = g_get_message_tx_id();
 
+	klog("vmsvgadriver: asking sending request to %i to identify VMSVGA controller in transaction %i", driverTid,
+	     transaction);
+
 	g_pci_identify_vmsvga_controller_request request{};
 	request.header.command = G_PCI_IDENTIFY_VMSVGA_CONTROLLER;
 	g_send_message_t(driverTid, &request, sizeof(g_pci_identify_vmsvga_controller_request), transaction);
@@ -71,6 +74,9 @@ bool pciDriverIdentifyVmSvgaController(g_pci_identify_vmsvga_controller_response
 	uint8_t buf[buflen];
 	auto status = g_receive_message_t(buf, buflen, transaction);
 	auto response = (g_pci_identify_vmsvga_controller_response*) G_MESSAGE_CONTENT(buf);
+
+	klog("vmsvgadriver: answer from %i on transaction %i", ((g_message_header*) buf)->sender,
+	     transaction);
 
 	if(status == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{

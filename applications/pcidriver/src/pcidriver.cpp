@@ -65,7 +65,6 @@ void pciDriverReceiveMessages()
 		}
 		else if(request->command == G_PCI_IDENTIFY_VMSVGA_CONTROLLER)
 		{
-			klog("Got requested to identify VMSVGA controller...");
 			pciDriverIdentifyVmSvgaController(header->sender, header->transaction);
 		}
 	}
@@ -144,7 +143,7 @@ void pciDriverIdentifyVmSvgaController(g_tid sender, g_message_transaction trans
 			uint16_t vendor = pciConfigReadWord(dev, PCI_CONFIG_OFF_VENDOR_ID);
 			uint16_t device = pciConfigReadWord(dev, PCI_CONFIG_OFF_DEVICE_ID);
 
-			if(vendor == 0x15AD /* VMWare */ && device == 0x0405/* SVGA2 */)
+			if(vendor == 0x15AD /* VMWare */ && device == 0x0405 /* SVGA2 */)
 			{
 				pciEnableResourceAccess(dev, true);
 

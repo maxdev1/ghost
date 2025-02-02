@@ -21,18 +21,10 @@
 #include "ghost/syscall.h"
 #include "ghost/messages.h"
 #include "ghost/messages/callstructs.h"
-#include "ghost/mutex.h"
 
-static g_user_mutex __next_transaction_lock = g_mutex_initialize();
-static g_message_transaction __next_transaction = G_MESSAGE_TRANSACTION_FIRST;
-
-/**
- *
- */
 g_message_transaction g_get_message_tx_id()
 {
-	g_mutex_acquire(__next_transaction_lock);
-	g_message_transaction next_topic = __next_transaction++;
-	g_mutex_release(__next_transaction_lock);
-	return next_topic;
+	g_syscall_message_next_txid data;
+	g_syscall(G_SYSCALL_MESSAGE_NEXT_TXID, (g_address) &data);
+	return data.transaction;
 }
