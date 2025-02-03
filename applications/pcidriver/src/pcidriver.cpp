@@ -174,7 +174,7 @@ void pciDriverIdentifyVmSvgaController(g_tid sender, g_message_transaction trans
 void pciDriverScanBus()
 {
 	int total = 0;
-	for(uint16_t bus = 0; bus < PCI_NUM_BUSES; bus++)
+	for(uint16_t bus = 0; bus < 2 /* TODO: How much should we really scan? PCI_NUM_BUSES */; bus++)
 	{
 		for(uint8_t dev = 0; dev < PCI_NUM_DEVICES; dev++)
 		{
