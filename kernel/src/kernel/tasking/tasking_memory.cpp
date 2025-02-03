@@ -93,7 +93,8 @@ void taskingMemoryCreateStacks(g_task* task)
 	// Interrupt stack for ring 3 & VM86 tasks
 	if(task->securityLevel != G_SECURITY_LEVEL_KERNEL || task->type == G_TASK_TYPE_VM86)
 	{
-		task->interruptStack = taskingMemoryCreateStack(memoryVirtualRangePool, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT, G_TASKING_MEMORY_INTERRUPT_STACK_PAGES);
+		task->interruptStack = taskingMemoryCreateStack(memoryVirtualRangePool, G_PAGE_TABLE_KERNEL_DEFAULT,
+		                                                G_PAGE_KERNEL_DEFAULT, G_TASKING_MEMORY_INTERRUPT_STACK_PAGES);
 	}
 	else
 	{
@@ -104,21 +105,24 @@ void taskingMemoryCreateStacks(g_task* task)
 	// Create task stack
 	if(task->type == G_TASK_TYPE_VM86)
 	{
-		uint32_t stackSize = 2 * G_PAGE_SIZE;
+		uint32_t stackSize = G_PAGE_SIZE;
 		task->stack.start = (uint32_t) lowerHeapAllocate(stackSize);
 		task->stack.end = task->stack.start + stackSize;
 	}
 	else if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
 	{
-		task->stack = taskingMemoryCreateStack(memoryVirtualRangePool, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT, G_TASKING_MEMORY_KERNEL_STACK_PAGES);
+		task->stack = taskingMemoryCreateStack(memoryVirtualRangePool, G_PAGE_TABLE_KERNEL_DEFAULT,
+		                                       G_PAGE_KERNEL_DEFAULT, G_TASKING_MEMORY_KERNEL_STACK_PAGES);
 	}
 	else
 	{
-		task->stack = taskingMemoryCreateStack(task->process->virtualRangePool, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT, G_TASKING_MEMORY_USER_STACK_PAGES);
+		task->stack = taskingMemoryCreateStack(task->process->virtualRangePool, G_PAGE_TABLE_USER_DEFAULT,
+		                                       G_PAGE_USER_DEFAULT, G_TASKING_MEMORY_USER_STACK_PAGES);
 	}
 }
 
-g_stack taskingMemoryCreateStack(g_address_range_pool* addressRangePool, uint32_t tableFlags, uint32_t pageFlags, int pages)
+g_stack taskingMemoryCreateStack(g_address_range_pool* addressRangePool, uint32_t tableFlags, uint32_t pageFlags,
+                                 int pages)
 {
 	g_virtual_address stackVirt = addressRangePoolAllocate(addressRangePool, pages);
 
@@ -284,7 +288,8 @@ void taskingMemoryInitializeTls(g_task* task)
 			task->threadLocal.start = tlsStart;
 			task->threadLocal.end = tlsEnd;
 
-			logDebug("%! created tls copy in process %i, thread %i at %h", "threadmgr", process->id, task->id, task->threadLocal.start);
+			logDebug("%! created tls copy in process %i, thread %i at %h", "threadmgr", process->id, task->id,
+			         task->threadLocal.start);
 		}
 	}
 }

@@ -49,7 +49,7 @@ void* lowerHeapAllocate(uint32_t size)
 
 	void* ptr = memoryAllocatorAllocate(&lowerHeapAllocator, size);
 	if(!ptr)
-		panic("%! failed to allocate kernel memory", "lowerheap");
+		panic("%! failed to allocate lower memory of size %x", "lowerheap", size);
 
 	lowerHeapAmountInUse += size;
 

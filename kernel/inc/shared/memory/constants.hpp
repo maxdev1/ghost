@@ -30,7 +30,7 @@
 #define G_SMP_STARTUP_AREA_END				        0x00007BFF
 
 #define G_LOWER_HEAP_MEMORY_START				    0x00007E00	// area used by the lower memory allocator
-#define G_LOWER_HEAP_MEMORY_END				        0x0007FFFF	// for vm86 and other 16bit stuff
+#define G_LOWER_HEAP_MEMORY_END				        0x000CFFFF	// for vm86 and other 16bit stuff
 #define G_LOWER_MEMORY_END					        0x00100000
 
 #define G_USER_MAXIMUM_HEAP_BREAK				    0xA0000000
