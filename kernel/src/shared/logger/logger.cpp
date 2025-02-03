@@ -26,7 +26,7 @@
 #include "shared/utils/string.hpp"
 #include "shared/video/console_video.hpp"
 
-static const uint32_t LOGGER_HEADER_WIDTH = 10;
+static const uint32_t LOGGER_HEADER_WIDTH = 14;
 
 static bool logSerial = false;
 static bool logVideo = G_VIDEO_LOG_BOOT;

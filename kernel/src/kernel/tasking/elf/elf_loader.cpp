@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/tasking/elf/elf_loader.hpp"
+#include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/calls/syscall.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/memory/memory.hpp"
@@ -39,7 +40,10 @@ g_load_executable_result elfLoadExecutable(g_fd fd, g_security_level securityLev
 		return res;
 	}
 
-	auto rootRes = elfObjectLoad(nullptr, "root", fd, 0);
+	const char* name = "root";
+	filesystemGetFileName(fd, &name);
+
+	auto rootRes = elfObjectLoad(nullptr, name, fd, 0);
 	res.status = rootRes.status;
 	res.validationDetails = rootRes.validation;
 
@@ -58,7 +62,8 @@ g_load_executable_result elfLoadExecutable(g_fd fd, g_security_level securityLev
 	return res;
 }
 
-g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* rootObject, g_virtual_address imageEnd, g_security_level securityLevel)
+g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* rootObject, g_virtual_address imageEnd,
+                                           g_security_level securityLevel)
 {
 	// Calculate required space
 	int objectCount = 0;
@@ -137,7 +142,7 @@ g_spawn_validation_details elfValidateHeader(Elf32_Ehdr* header, bool root)
 	if((header->e_ident[EI_MAG0] != ELFMAG0) || // 0x7F
 	   (header->e_ident[EI_MAG1] != ELFMAG1) || // E
 	   (header->e_ident[EI_MAG2] != ELFMAG2) || // L
-	   (header->e_ident[EI_MAG3] != ELFMAG3))	// F
+	   (header->e_ident[EI_MAG3] != ELFMAG3)) // F
 	{
 		return G_SPAWN_VALIDATION_ELF32_NOT_ELF;
 	}

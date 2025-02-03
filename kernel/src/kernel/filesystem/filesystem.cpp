@@ -769,3 +769,18 @@ bool filesystemReadToMemory(g_fd fd, size_t offset, uint8_t* buffer, uint64_t le
 	}
 	return true;
 }
+
+
+bool filesystemGetFileName(g_fd fd, const char** outName)
+{
+	auto descriptor = filesystemProcessGetDescriptor(taskingGetCurrentTask()->process->id, fd);
+	if(!descriptor)
+		return false;
+
+	auto node = filesystemGetNode(descriptor->nodeId);
+	if(!node)
+		return false;
+
+	*outName = node->name;
+	return true;
+}

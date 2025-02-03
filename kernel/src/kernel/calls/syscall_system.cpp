@@ -22,10 +22,36 @@
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/system/interrupts/apic/ioapic.hpp"
 #include "shared/logger/logger.hpp"
+#include "kernel/tasking/elf/elf_object.hpp"
+#include "shared/utils/string.hpp"
+
+void _getBinaryNameWithoutExtension(g_task* task, char buf[], int len)
+{
+	char* p = buf;
+	if(stringLength(task->process->object->name) < len)
+	{
+		char* ip = task->process->object->name;
+		while(*ip && *ip != '.')
+		{
+			*p++ = *ip++;
+		}
+	}
+	*p = 0;
+}
 
 void syscallLog(g_task* task, g_syscall_log* data)
 {
-	logInfo("%! %i: %s", "log", task->id, data->message);
+	if(task->process->object && task->process->object->name)
+	{
+		int nameBufLen = 64;
+		char name[nameBufLen];
+		_getBinaryNameWithoutExtension(task, name, nameBufLen);
+		logInfo("%! (%i) %s", name, task->id, data->message);
+	}
+	else
+	{
+		logInfo("%! (%i) %s", "unknown", task->id, data->message);
+	}
 }
 
 void syscallSetVideoLog(g_task* task, g_syscall_set_video_log* data)

@@ -128,6 +128,11 @@ g_fs_open_status filesystemFindChild(g_fs_node* parent, const char* name, g_fs_n
 bool filesystemFindExistingChild(g_fs_node* parent, const char* name, g_fs_node** outChild = nullptr);
 
 /**
+ *
+ */
+bool filesystemGetFileName(g_fd fd, const char** outName);
+
+/**
  * Searches for a node by a path relative to the parent node. Uses <filesystemFindChild>
  * to search for a child.
  */
