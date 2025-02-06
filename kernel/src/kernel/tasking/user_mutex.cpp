@@ -146,7 +146,7 @@ void userMutexRelease(g_user_mutex mutex)
 		if(entry->value <= 0)
 		{
 			entry->value = 0;
-			entry->owner = -1;
+			entry->owner = G_TID_NONE;
 			_userMutexWakeWaitingTasks(entry);
 		}
 	}

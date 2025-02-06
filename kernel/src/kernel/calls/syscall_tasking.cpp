@@ -92,24 +92,24 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 	g_fs_open_status open = filesystemOpen(data->path, G_FILE_FLAG_MODE_READ, task, &fd);
 	if(open == G_FS_OPEN_SUCCESSFUL)
 	{
-		auto spawned = taskingSpawn(fd, G_SECURITY_LEVEL_APPLICATION);
-		data->status = spawned.status;
-		data->validationDetails = spawned.validation;
+ 		auto target = taskingSpawn(fd, G_SECURITY_LEVEL_APPLICATION);
+		data->status = target.status;
+		data->validationDetails = target.validation;
 
 		filesystemClose(task->process->id, fd, true);
 
 		if(data->status == G_SPAWN_STATUS_SUCCESSFUL)
 		{
-			data->pid = spawned.process->id;
-			filesystemProcessCreateStdio(task->process->id, data->inStdio, spawned.process->id, data->outStdio);
+			data->pid = target.process->id;
+			filesystemProcessCreateStdio(task->process->id, data->inStdio, target.process->id, data->outStdio);
 
-			spawned.process->environment.executablePath = stringDuplicate(data->path);
+			target.process->environment.executablePath = stringDuplicate(data->path);
 			if(data->args)
-				spawned.process->environment.arguments = stringDuplicate(data->args);
+				target.process->environment.arguments = stringDuplicate(data->args);
 			if(data->workdir)
-				spawned.process->environment.workingDirectory = stringDuplicate(data->workdir);
+				target.process->environment.workingDirectory = stringDuplicate(data->workdir);
 
-			spawned.process->main->status = G_TASK_STATUS_RUNNING;
+			target.process->main->status = G_TASK_STATUS_RUNNING;
 		}
 	}
 	else

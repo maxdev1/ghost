@@ -76,6 +76,13 @@ struct g_task
     g_task_type type;
 
     /**
+     * Flag that is only relevant when this task is spawned from an executable. After the task has
+     * privilege-downgraded itself, it must be waked by the task that spawned it. This task is waiting
+     * until the flag is set.
+     */
+    g_bool spawnFinished;
+
+    /**
      * Pointer to the processor-local tasking structure that this task is currently scheduled on.
      */
     g_tasking_local* assignment;

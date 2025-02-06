@@ -85,15 +85,7 @@ extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_st
 	}
 	else if(state->intr == 0x82) // Privilege downgrade for spawn
 	{
-		// Prepare state to match the expected security level
-		auto process = task->process;
-		task->securityLevel = process->spawnArgs->securityLevel;
-		taskingStateReset(task, process->spawnArgs->entry, task->securityLevel);
-		waitQueueWake(&process->waitersSpawn);
-
-		// Task is now prepared but waits until the spawner wakes it
-		task->status = G_TASK_STATUS_WAITING;
-		taskingSchedule();
+		taskingFinalizeSpawn(task);
 	}
 	else
 	{

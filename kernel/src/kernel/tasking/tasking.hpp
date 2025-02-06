@@ -225,6 +225,12 @@ g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel);
 void taskingSpawnEntry();
 
 /**
+ * This function is entered after the binary is loaded within the kernel thread and the task
+ * should escape to userland. Finally sets the task waiting until the caller task wakes it.
+ */
+void taskingFinalizeSpawn(g_task* task);
+
+/**
  * Waits until the task exits and then wakes the waiting task.
  */
 void taskingWaitForExit(g_tid task, g_tid waiter);

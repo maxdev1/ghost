@@ -466,8 +466,8 @@ g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel)
 	// Create target process & task
 	g_spawn_result res;
 	res.process = taskingCreateProcess(securityLevel);
-	g_task* task = taskingCreateTask(0, res.process, securityLevel);
-	if(!task)
+	g_task* newTask = taskingCreateTask(0, res.process, securityLevel);
+	if(!newTask)
 	{
 		logInfo("%! failed to create main thread to spawn binary", "elf");
 		res.status = G_SPAWN_STATUS_TASKING_ERROR;
@@ -490,20 +490,28 @@ g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel)
 	res.process->spawnArgs->securityLevel = securityLevel;
 
 	// Set kernel-level entry
-	taskingStateReset(task, (g_address) &taskingSpawnEntry, G_SECURITY_LEVEL_KERNEL);
+	taskingStateReset(newTask, (g_address) &taskingSpawnEntry, G_SECURITY_LEVEL_KERNEL);
 
-	// Start thread &  wait for spawn to finish
+	// Start thread & wait for spawn to finish
+	newTask->spawnFinished = false;
+
 	INTERRUPTS_PAUSE;
 	waitQueueAdd(&res.process->waitersSpawn, caller->id);
-	taskingAssignBalanced(task);
 	caller->status = G_TASK_STATUS_WAITING;
-	taskingYield();
+	taskingAssignBalanced(newTask);
 	INTERRUPTS_RESUME;
+
+	while(!newTask->spawnFinished)
+	{
+		caller->status = G_TASK_STATUS_WAITING;
+		taskingYield();
+	}
 
 	// Take result
 	res.status = res.process->spawnArgs->status;
 	res.validation = res.process->spawnArgs->validation;
 
+	// Clean up
 	heapFree(res.process->spawnArgs);
 	res.process->spawnArgs = nullptr;
 
@@ -528,14 +536,24 @@ void taskingSpawnEntry()
 		taskingExit();
 	}
 
-	// Finalize task setup & leave to lower privileges
+	// Finalize initialization and do privilege downgrade
 	interruptsDisable();
-
 	taskingMemoryInitializeTls(task);
 	args->entry = loadRes.entry;
-
 	asm volatile("int $0x82" ::
 		: "cc", "memory");
+}
+
+void taskingFinalizeSpawn(g_task* task)
+{
+	auto process = task->process;
+	task->securityLevel = process->spawnArgs->securityLevel;
+	taskingStateReset(task, process->spawnArgs->entry, task->securityLevel);
+	waitQueueWake(&process->waitersSpawn);
+
+	task->status = G_TASK_STATUS_WAITING;
+	task->spawnFinished = true;
+	taskingSchedule();
 }
 
 void taskingWaitForExit(g_tid joinedTid, g_tid waiter)
