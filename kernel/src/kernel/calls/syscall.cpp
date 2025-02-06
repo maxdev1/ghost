@@ -101,7 +101,7 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_GET_PARENT_PROCESS_ID, (g_syscall_handler) syscallGetParentProcessId);
 	_syscallRegister(G_SYSCALL_TASK_GET_TLS, (g_syscall_handler) syscallTaskGetTls);
 	_syscallRegister(G_SYSCALL_PROCESS_GET_INFO, (g_syscall_handler) syscallProcessGetInfo);
-	_syscallRegister(G_SYSCALL_SPAWN, (g_syscall_handler) syscallSpawn, true);
+	_syscallRegister(G_SYSCALL_SPAWN, (g_syscall_handler) syscallSpawn);
 	_syscallRegister(G_SYSCALL_CREATE_TASK, (g_syscall_handler) syscallCreateTask);
 	_syscallRegister(G_SYSCALL_GET_TASK_ENTRY, (g_syscall_handler) syscallGetTaskEntry);
 	_syscallRegister(G_SYSCALL_EXIT_TASK, (g_syscall_handler) syscallExitTask);
