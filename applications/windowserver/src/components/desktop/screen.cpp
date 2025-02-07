@@ -19,9 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "components/desktop/screen.hpp"
-#include "components/desktop/item_container.hpp"
-#include "components/cursor.hpp"
-#include "windowserver.hpp"
 
 void screen_t::markDirty(g_rectangle rect)
 {
@@ -59,42 +56,4 @@ void screen_t::markDirty(g_rectangle rect)
 	{
 		invalid.height = getBounds().height - invalid.y;
 	}
-}
-
-component_t* screen_t::handleMouseEvent(mouse_event_t& e)
-{
-	if(e.type == G_MOUSE_EVENT_DRAG)
-	{
-		if(pressing)
-		{
-			g_rectangle selection(pressPoint.x, pressPoint.y, e.position.x - pressPoint.x, e.position.y - pressPoint.y);
-			windowserver_t::instance()->desktopContainer->showSelection(selection);
-		}
-		return this;
-	}
-	else if(e.type == G_MOUSE_EVENT_DRAG_RELEASE)
-	{
-		if(pressing)
-		{
-			pressing = false;
-			windowserver_t::instance()->desktopContainer->hideSelection();
-			return this;
-		}
-	}
-
-	component_t* handledByChild = component_t::handleMouseEvent(e);
-	if(handledByChild)
-		return handledByChild;
-
-	if(e.type == G_MOUSE_EVENT_PRESS)
-	{
-		pressing = true;
-		pressPoint = e.position;
-
-		g_rectangle empty(0, 0, 0, 0);
-		windowserver_t::instance()->desktopContainer->showSelection(empty);
-	}
-
-	cursor_t::set("default");
-	return this;
 }

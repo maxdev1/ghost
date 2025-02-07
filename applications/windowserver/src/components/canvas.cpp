@@ -21,16 +21,18 @@
 #include "components/canvas.hpp"
 #include "windowserver.hpp"
 #include <ghost.h>
+#include <stdlib.h>
 #include <string.h>
+#include <interface/process_registry.hpp>
 
 #define ALIGN_UP(value) (value + value % 100)
 
-canvas_t::canvas_t(g_tid partnerThread) : partnerThread(partnerThread)
+canvas_t::canvas_t(g_tid partnerThread) :
+	partnerThread(partnerThread)
 {
 	partnerProcess = g_get_pid_for_tid(partnerThread);
 
-	currentBuffer.localMapping = nullptr;
-	nextBuffer.localMapping = nullptr;
+	hasGraphics = false;
 
 	asyncInfo = new async_resizer_info_t();
 	asyncInfo->canvas = this;
@@ -79,141 +81,168 @@ void canvas_t::handleBoundChange(g_rectangle oldBounds)
  */
 void canvas_t::checkBuffer()
 {
+	g_mutex_acquire(lock);
 	g_rectangle bounds = getBounds();
 	if(bounds.width == 0 || bounds.height == 0)
+	{
+		g_mutex_release(lock);
 		return;
-
-	int stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, ALIGN_UP(bounds.width));
-	int requiredSize = G_UI_CANVAS_SHARED_MEMORY_HEADER_SIZE + stride * ALIGN_UP(bounds.height);
-
-	uint16_t requiredPages = G_PAGE_ALIGN_UP(requiredSize) / G_PAGE_SIZE;
-
-	// if there is no buffer yet, create one
-	if(currentBuffer.localMapping == nullptr)
-	{
-		createNewBuffer(requiredPages);
-
-	} // if current buffer is acknowledged but too small, create a new one
-	else if(currentBuffer.acknowledged)
-	{
-		auto* header = (g_ui_canvas_shared_memory_header*) currentBuffer.localMapping;
-		if(header->paintable_width < bounds.width || header->paintable_height < bounds.height)
-		{
-			createNewBuffer(requiredPages);
-		}
 	}
+
+	bounds.width = ALIGN_UP(bounds.width);
+	bounds.height = ALIGN_UP(bounds.height);
+
+	int stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, bounds.width);
+	int requiredSize = stride * bounds.height;
+
+	g_mutex_acquire(bufferLock);
+	if(buffer.localMapping == nullptr)
+	{
+		createNewBuffer(bounds, requiredSize);
+	}
+	else if(buffer.pages < G_PAGE_ALIGN_UP(requiredSize) / G_PAGE_SIZE)
+	{
+		createNewBuffer(bounds, requiredSize);
+	}
+	g_mutex_release(bufferLock);
+	g_mutex_release(lock);
 }
 
-void canvas_t::createNewBuffer(uint16_t requiredPages)
+void canvas_t::createNewBuffer(g_rectangle& bounds, uint32_t size)
 {
-	g_rectangle bounds = getBounds();
-
-	// TODO
-	if(nextBuffer.localMapping != 0) {
-		return;
+	if(buffer.surface)
+	{
+		cairo_surface_destroy(buffer.surface);
+		buffer.surface = nullptr;
+	}
+	if(buffer.localMapping)
+	{
+		g_unmap(buffer.localMapping);
+		buffer.localMapping = nullptr;
 	}
 
 	// create a new buffer
-	uint32_t bufferSize = requiredPages * G_PAGE_SIZE;
-	nextBuffer.acknowledged = false;
-	nextBuffer.pages = requiredPages;
-	nextBuffer.localMapping = (uint8_t*) g_alloc_mem(bufferSize);
+	uint16_t pages = G_PAGE_ALIGN_UP(size) / G_PAGE_SIZE;
+	uint32_t bufferSize = pages * G_PAGE_SIZE;
+	buffer.pages = pages;
+	buffer.localMapping = (uint8_t*) g_alloc_mem(bufferSize);
+	buffer.paintableWidth = bounds.width;
+	buffer.paintableHeight = bounds.height;
 
-	if(nextBuffer.localMapping == 0)
+	if(buffer.localMapping == nullptr)
 	{
 		klog("warning: failed to allocate a buffer of size %i for a canvas", bufferSize);
-		return;
 	}
-	memset((void*) nextBuffer.localMapping, 0, bufferSize);
-
-	// share buffer with target process
-	nextBuffer.remoteMapping = (uint8_t*) g_share_mem(nextBuffer.localMapping, requiredPages * G_PAGE_SIZE, partnerProcess);
-
-	if(nextBuffer.remoteMapping == 0)
+	else
 	{
-		klog("warning: failed to share a buffer for a canvas to proc %i", partnerProcess);
-		g_unmap(nextBuffer.localMapping);
-		return;
+		memset(buffer.localMapping, 0, bufferSize);
+		buffer.remoteMapping = (uint8_t*) g_share_mem(buffer.localMapping, pages * G_PAGE_SIZE,
+		                                              partnerProcess);
+		if(buffer.remoteMapping == nullptr)
+		{
+			klog("warning: failed to share a buffer for a canvas to proc %i", partnerProcess);
+		}
+		else
+		{
+			buffer.surface = cairo_image_surface_create_for_data(
+					buffer.localMapping, CAIRO_FORMAT_ARGB32,
+					buffer.paintableWidth,
+					buffer.paintableHeight,
+					cairo_format_stride_for_width(
+							CAIRO_FORMAT_ARGB32,
+							buffer.paintableWidth));
+
+			auto status = cairo_surface_status(buffer.surface);
+			if(status != CAIRO_STATUS_SUCCESS)
+			{
+				klog("failed to create surface: %i", status);
+				buffer.surface = nullptr;
+			}
+		}
 	}
 
-	// initialize the header
-	g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) nextBuffer.localMapping;
-	header->paintable_width = ALIGN_UP(bounds.width);
-	header->paintable_height = ALIGN_UP(bounds.height);
-	header->blit_x = 0;
-	header->blit_y = 0;
-	header->blit_width = 0;
-	header->blit_height = 0;
-	header->ready = false;
-
-	requestClientToAcknowledgeNewBuffer();
+	notifyClientAboutNewBuffer();
 }
 
-void canvas_t::requestClientToAcknowledgeNewBuffer()
+void canvas_t::notifyClientAboutNewBuffer()
 {
-	event_listener_info_t listenerInfo;
-	if(getListener(G_UI_COMPONENT_EVENT_TYPE_CANVAS_WFA, listenerInfo))
+	g_ui_component_canvas_wfa_event event;
+	event.header.type = G_UI_COMPONENT_EVENT_TYPE_CANVAS_NEW_BUFFER;
+	event.header.component_id = this->id;
+	event.newBufferAddress = (g_address) buffer.remoteMapping;
+	event.width = buffer.paintableWidth;
+	event.height = buffer.paintableHeight;
+
+	g_tid eventDispatcher = process_registry_t::get(partnerProcess);
+	if(eventDispatcher == G_TID_NONE)
 	{
-		// create a canvas-wait-for-acknowledge-event
-		g_ui_component_canvas_wfa_event event;
-		event.header.type = G_UI_COMPONENT_EVENT_TYPE_CANVAS_WFA;
-		event.header.component_id = listenerInfo.component_id;
-		event.newBufferAddress = (g_address) nextBuffer.remoteMapping;
-		g_send_message(listenerInfo.target_thread, &event, sizeof(g_ui_component_canvas_wfa_event));
+		klog("failed to send buffer notification to event dispatcher of process %i since it is not registered",
+		     partnerProcess);
+	}
+	else
+	{
+		g_send_message(eventDispatcher, &event, sizeof(g_ui_component_canvas_wfa_event));
 	}
 }
 
-void canvas_t::clientHasAcknowledgedCurrentBuffer()
+void canvas_t::blit(graphics_t* out, const g_rectangle& clip, const g_point& positionOnParent)
 {
-	g_mutex_acquire(currentBufferLock);
-
-	if(currentBuffer.localMapping != nullptr)
+	auto cr = out->acquireContext();
+	if(cr)
 	{
-		g_unmap(currentBuffer.localMapping);
-		currentBuffer.localMapping = nullptr;
+		g_mutex_acquire(bufferLock);
+
+		if(buffer.surface)
+		{
+			/**
+			 * TODO
+			 * For some reason, this blitting sometimes does not work. I'm absolutely not sure why, maybe it is related
+			 * to issues with cairo and multithreading (or SIMD?) or due to the buffer being accessed here before it
+			 * is filled completely by the client
+			 */
+			cairo_surface_mark_dirty(buffer.surface);
+			cairo_save(cr);
+			// TODO ?
+			// cairo_rectangle(cr, clip.x, clip.y, clip.width, clip.height);
+			// cairo_clip(cr);
+			// cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
+			cairo_set_source_surface(cr, buffer.surface, positionOnParent.x, positionOnParent.y);
+			cairo_paint(cr);
+			cairo_restore(cr);
+		}
+		g_mutex_release(bufferLock);
+
+		if(windowserver_t::isDebug())
+		{
+			cairo_save(cr);
+			cairo_set_line_width(cr, 2);
+			cairo_rectangle(cr, clip.x, clip.y, clip.width, clip.height);
+			cairo_set_source_rgba(cr, 1, 0, 0, 1);
+			cairo_stroke(cr);
+			cairo_restore(cr);
+		}
+
+		out->releaseContext();
 	}
 
-	currentBuffer = nextBuffer;
-	currentBuffer.acknowledged = true;
-	nextBuffer.localMapping = 0;
-
-	g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer.localMapping;
-	header->ready = false;
-
-	uint8_t* bufferContent = (uint8_t*) (currentBuffer.localMapping + G_UI_CANVAS_SHARED_MEMORY_HEADER_SIZE);
-	currentBuffer.surface = cairo_image_surface_create_for_data(bufferContent, CAIRO_FORMAT_ARGB32, header->paintable_width,
-																header->paintable_height, cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, header->paintable_width));
-
-	g_mutex_release(currentBufferLock);
+	this->blitChildren(out, clip, positionOnParent);
 }
 
-void canvas_t::paint()
-{
-	auto cr = graphics.getContext();
-    if(!cr) return;
 
-	g_mutex_acquire(currentBufferLock);
-	if(currentBuffer.localMapping == 0 || !currentBuffer.acknowledged)
+void canvas_t::requestBlit(g_rectangle& area)
+{
+	g_mutex_acquire(bufferLock);
+	if(bufferDirty.width == 0)
 	{
-		g_mutex_release(currentBufferLock);
-		return;
+		bufferDirty = area;
 	}
+	else
+	{
+		bufferDirty.extend(area.getStart());
+		bufferDirty.extend(area.getEnd());
+	}
+	g_mutex_release(bufferLock);
 
-	g_ui_canvas_shared_memory_header* header = (g_ui_canvas_shared_memory_header*) currentBuffer.localMapping;
-
-	// create a cairo surface from the buffer
-	cairo_set_source_surface(cr, currentBuffer.surface, 0, 0);
-	cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-	cairo_paint(cr);
-
-	// mark painted area as dirty
-	markDirty(g_rectangle(header->blit_x, header->blit_y, header->blit_width, header->blit_height));
-
-	g_mutex_release(currentBufferLock);
-}
-
-void canvas_t::blit()
-{
 	markFor(COMPONENT_REQUIREMENT_PAINT);
 	windowserver_t::instance()->triggerRender();
 }

@@ -39,7 +39,7 @@ bool svgaInitializeDevice()
 	}
 	if(!response.found)
 	{
-		klog("No VMSVGA controller present");
+		klog("no VMSVGA controller present");
 		return false;
 	}
 	device.ioBase = response.ioBase;
@@ -49,14 +49,13 @@ bool svgaInitializeDevice()
 
 	if(!svgaIdentifyVersion())
 	{
-		klog("Failed to identify SVGA version");
+		klog("failed to identify SVGA version");
 		return false;
 	}
-	klog("SVGA device version is: %x", device.versionId);
+	klog("device version: %x", device.versionId);
 
 	device.fifo.size = svgaReadReg(SVGA_REG_MEM_SIZE);
 	device.fifo.mapped = (uint32_t*) g_map_mmio((void*) device.fifo.physical, device.fifo.size);
-	klog("Fifo mapped at: %x", device.fifo);
 	device.fifo.mapped[SVGA_FIFO_MIN] = SVGA_FIFO_NUM_REGS * sizeof(uint32_t);
 	device.fifo.mapped[SVGA_FIFO_MAX] = device.fifo.size;
 	device.fifo.mapped[SVGA_FIFO_NEXT_CMD] = device.fifo.mapped[SVGA_FIFO_MIN];
@@ -131,7 +130,7 @@ void* svgaFifoReserveSpace(uint32_t bytes)
 
 	if(bytes > (max - min))
 	{
-		klog("Error: FIFO command too large");
+		klog("error: FIFO command too large");
 		return nullptr;
 	}
 

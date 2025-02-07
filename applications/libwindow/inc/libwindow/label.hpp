@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,19 +18,26 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_LABEL__
-#define __LIBWINDOW_LABEL__
+#ifndef LIBWINDOW_LABEL
+#define LIBWINDOW_LABEL
 
-#include "libwindow/component.hpp"
-#include "libwindow/titled_component.hpp"
+#include "component.hpp"
+#include "titled_component.hpp"
+#include <libfont/text_alignment.hpp>
 
-class g_label: public g_component, public g_titled_component {
+class g_label : public g_component, public g_titled_component
+{
 protected:
-	g_label(uint32_t id) :
-			g_component(id), g_titled_component(id) {
-	}
+    g_label(uint32_t id) :
+        g_component(id), g_titled_component(id)
+    {
+    }
+
 public:
-	static g_label* create();
+    static g_label* create();
+
+    bool setColor(g_color_argb argb);
+    bool setAlignment(g_text_alignment alignment);
 };
 
 #endif

@@ -18,10 +18,17 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <utility>
+
 #include "libwindow/component.hpp"
 #include "libwindow/bounds_event_component.hpp"
 
-bool g_bounds_event_component::setBoundsListener(g_bounds_listener *new_listener)
+bool g_bounds_event_component::setBoundsListener(g_bounds_listener* new_listener)
 {
 	return self->setListener(G_UI_COMPONENT_EVENT_TYPE_BOUNDS, new_listener);
+}
+
+bool g_bounds_event_component::setBoundsListener(g_bounds_listener_func func)
+{
+	return self->setListener(G_UI_COMPONENT_EVENT_TYPE_BOUNDS, new g_bounds_listener_dispatcher(std::move(func)));
 }

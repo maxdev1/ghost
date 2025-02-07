@@ -18,8 +18,8 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_COLORARGB__
-#define __LIBWINDOW_COLORARGB__
+#ifndef LIBWINDOW_COLORARGB
+#define LIBWINDOW_COLORARGB
 
 #include <cstdint>
 

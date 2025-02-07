@@ -23,8 +23,9 @@
 
 void selection_t::paint()
 {
-	cairo_t* cr = graphics.getContext();
-    if(!cr) return;
+	cairo_t* cr = graphics.acquireContext();
+	if(!cr)
+		return;
 
 	auto bounds = getBounds();
 
@@ -38,6 +39,8 @@ void selection_t::paint()
 	cairo_set_source_rgba(cr, 1, 1, 1, 1);
 	cairo_set_line_width(cr, 1.0);
 	cairo_set_dash(cr, dash, 1, 0);
-	cairo_rectangle(cr, 1.5, 1.5, bounds.width - 1, bounds.height - 1);
+	cairo_rectangle(cr, 1.5, 1.5, bounds.width - 2, bounds.height - 2);
 	cairo_stroke(cr);
+
+	graphics.releaseContext();
 }

@@ -31,9 +31,13 @@
 bool g_ui_initialized = false;
 
 /**
- *
+ * ID of the window server interface receiver task
  */
 g_tid g_ui_delegate_tid = -1;
+
+/**
+ * Our local event dispatcher task ID
+ */
 g_tid g_ui_event_dispatcher_tid = -1;
 
 /**
@@ -41,7 +45,6 @@ g_tid g_ui_event_dispatcher_tid = -1;
  */
 g_ui_open_status g_ui::open()
 {
-
 	// check if already open
 	if(g_ui_initialized)
 	{
@@ -49,55 +52,52 @@ g_ui_open_status g_ui::open()
 	}
 
 	// get window managers id
-	g_tid window_mgr = g_task_get_id(G_UI_REGISTRATION_THREAD_IDENTIFIER);
-	if(window_mgr == -1)
+	g_tid windowServerRegistrationTask = g_task_get_id(G_UI_REGISTRATION_THREAD_IDENTIFIER);
+	if(windowServerRegistrationTask == -1)
 	{
 		klog("failed to retrieve task id of window server with identifier '%s'", G_UI_REGISTRATION_THREAD_IDENTIFIER);
 		return G_UI_OPEN_STATUS_COMMUNICATION_FAILED;
 	}
 
 	// start event dispatcher
-	g_ui_event_dispatcher_tid = g_create_task((void*) &event_dispatch_thread);
+	g_ui_event_dispatcher_tid = g_create_task((void*) &eventDispatchThread);
 
 	// send initialization request
 	g_message_transaction init_tx = g_get_message_tx_id();
 
 	g_ui_initialize_request request;
 	request.header.id = G_UI_PROTOCOL_INITIALIZATION;
-	g_send_message_t(window_mgr, &request, sizeof(g_ui_initialize_request), init_tx);
+	request.event_dispatcher = g_ui_event_dispatcher_tid;
+	g_send_message_t(windowServerRegistrationTask, &request, sizeof(g_ui_initialize_request), init_tx);
 
 	// receive initialization response
-	uint32_t response_buffer_size = sizeof(g_message_header) + sizeof(g_ui_initialize_response);
-	uint8_t* response_buffer = new uint8_t[response_buffer_size];
-	if(g_receive_message_t(response_buffer, response_buffer_size, init_tx) != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_initialize_response);
+	uint8_t* buf[buflen];
+	if(g_receive_message_t(buf, buflen, init_tx) != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
 		klog("failed to communicate with the window server");
-		delete response_buffer;
 		return G_UI_OPEN_STATUS_COMMUNICATION_FAILED;
 	}
 
 	// check response
-	g_ui_initialize_response* response = (g_ui_initialize_response*) G_MESSAGE_CONTENT(response_buffer);
+	auto response = (g_ui_initialize_response*) G_MESSAGE_CONTENT(buf);
 	if(response->status != G_UI_PROTOCOL_SUCCESS)
 	{
 		klog("failed to open UI");
-		delete response_buffer;
 		return G_UI_OPEN_STATUS_FAILED;
 	}
 
 	// mark UI as ready
 	g_ui_initialized = true;
-	g_ui_delegate_tid = response->window_server_delegate_thread;
-	delete response_buffer;
+	g_ui_delegate_tid = response->window_server_delegate;
 	return G_UI_OPEN_STATUS_SUCCESSFUL;
 }
 
 /**
  *
  */
-void g_ui::event_dispatch_thread()
+void g_ui::eventDispatchThread()
 {
-
 	size_t buffer_size = G_UI_MAXIMUM_MESSAGE_SIZE;
 	uint8_t* buffer = new uint8_t[buffer_size];
 
@@ -130,7 +130,7 @@ void g_ui::event_dispatch_thread()
 /**
  *
  */
-bool g_ui::register_desktop_canvas(g_canvas* c)
+bool g_ui::registerDesktopCanvas(g_canvas* c)
 {
 
 	if(!g_ui_initialized)
@@ -153,7 +153,8 @@ bool g_ui::register_desktop_canvas(g_canvas* c)
 	bool success = false;
 	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		g_ui_register_desktop_canvas_response* response = (g_ui_register_desktop_canvas_response*) G_MESSAGE_CONTENT(buffer);
+		g_ui_register_desktop_canvas_response* response = (g_ui_register_desktop_canvas_response*)
+				G_MESSAGE_CONTENT(buffer);
 
 		success = (response->status == G_UI_PROTOCOL_SUCCESS);
 	}
@@ -165,7 +166,7 @@ bool g_ui::register_desktop_canvas(g_canvas* c)
 /**
  *
  */
-bool g_ui::get_screen_dimension(g_dimension* out)
+bool g_ui::getScreenDimension(g_dimension* out)
 {
 
 	if(!g_ui_initialized)

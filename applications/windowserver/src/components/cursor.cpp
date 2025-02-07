@@ -33,136 +33,140 @@ g_point cursor_t::nextPosition;
 
 g_mouse_button cursor_t::pressedButtons = G_MOUSE_EVENT_NONE;
 g_mouse_button cursor_t::nextPressedButtons = G_MOUSE_EVENT_NONE;
-component_t* cursor_t::pressedComponent = 0;
-component_t* cursor_t::draggedComponent = 0;
-component_t* cursor_t::hoveredComponent = 0;
-component_t* cursor_t::focusedComponent = 0;
+
+g_ui_component_id cursor_t::pressedComponent = -1;
+g_ui_component_id cursor_t::draggedComponent = -1;
+g_ui_component_id cursor_t::hoveredComponent = -1;
+g_ui_component_id cursor_t::focusedComponent = -1;
 
 void cursor_t::set(std::string name)
 {
-    if(cursorConfigurations.count(name) > 0)
-    {
-        currentConfiguration = &cursorConfigurations[name];
-    }
-    else if(cursorConfigurations.count("default") > 0)
-    {
-        currentConfiguration = &cursorConfigurations["default"];
-    }
-    else
-    {
-        klog("could neither load '%s' cursor nor 'default' cursor", name.c_str());
-    }
+	if(cursorConfigurations.count(name) > 0)
+	{
+		currentConfiguration = &cursorConfigurations[name];
+	}
+	else if(cursorConfigurations.count("default") > 0)
+	{
+		currentConfiguration = &cursorConfigurations["default"];
+	}
+	else
+	{
+		klog("could neither load '%s' cursor nor 'default' cursor", name.c_str());
+	}
 
-    screen_t* screen = windowserver_t::instance()->screen;
-    if(screen)
-    {
-        screen->markDirty(getArea());
-    }
+	screen_t* screen = windowserver_t::instance()->screen;
+	if(screen)
+	{
+		screen->markDirty(getArea());
+	}
 }
 
 std::string cursor_t::get()
 {
-    if(currentConfiguration)
-        return currentConfiguration->name;
-    return "default";
+	if(currentConfiguration)
+		return currentConfiguration->name;
+	return "default";
 }
 
 bool cursor_t::load(std::string cursorPath)
 {
-    // Open config file
-    std::string configpath = cursorPath + "/cursor.cfg";
-    std::ifstream in(configpath);
-    if(!in.good())
-    {
-        klog("failed to open cursor configuration at %s", configpath.c_str());
-        return false;
-    }
+	// Open config file
+	std::string configpath = cursorPath + "/cursor.cfg";
+	std::ifstream in(configpath);
+	if(!in.good())
+	{
+		klog("failed to open cursor configuration at %s", configpath.c_str());
+		return false;
+	}
 
-    g_properties_parser props(in);
-    auto content = props.getProperties();
+	g_properties_parser props(in);
+	auto content = props.getProperties();
 
-    // Read required params
-    std::string name = content["name"];
-    std::string hitpoint_x = content["hitpoint.x"];
-    std::string hitpoint_y = content["hitpoint.y"];
-    std::string image = content["image"];
+	// Read required params
+	std::string name = content["name"];
+	std::string hitpoint_x = content["hitpoint.x"];
+	std::string hitpoint_y = content["hitpoint.y"];
+	std::string image = content["image"];
 
-    if(name.empty() || hitpoint_x.empty() || hitpoint_y.empty() || image.empty())
-    {
-        return false;
-    }
+	if(name.empty() || hitpoint_x.empty() || hitpoint_y.empty() || image.empty())
+	{
+		return false;
+	}
 
-    // Convert hitpoint
-    std::stringstream stx;
-    stx << hitpoint_x;
-    int hitpointX;
-    stx >> hitpointX;
+	// Convert hitpoint
+	std::stringstream stx;
+	stx << hitpoint_x;
+	int hitpointX;
+	stx >> hitpointX;
 
-    std::stringstream sty;
-    sty << hitpoint_y;
-    int hitpointY;
-    sty >> hitpointY;
+	std::stringstream sty;
+	sty << hitpoint_y;
+	int hitpointY;
+	sty >> hitpointY;
 
-    std::string cursorImagePath = (cursorPath + "/" + image);
+	std::string cursorImagePath = (cursorPath + "/" + image);
 
-    // check if file exists
-    FILE* cursorImageFile = fopen(cursorImagePath.c_str(), "r");
-    if(cursorImageFile == NULL)
-    {
-        return false;
-    }
-    fclose(cursorImageFile);
+	// check if file exists
+	FILE* cursorImageFile = fopen(cursorImagePath.c_str(), "r");
+	if(cursorImageFile == NULL)
+	{
+		return false;
+	}
+	fclose(cursorImageFile);
 
-    // load cursor
-    cursor_configuration pack;
-    pack.surface = cairo_image_surface_create_from_png(cursorImagePath.c_str());
-    if(pack.surface == nullptr)
-    {
-        klog("failed to load cursor image at '%s' for configuration '%s'", cursorImagePath.c_str(), cursorPath.c_str());
-        return false;
-    }
+	// load cursor
+	cursor_configuration pack;
+	pack.surface = cairo_image_surface_create_from_png(cursorImagePath.c_str());
+	if(pack.surface == nullptr)
+	{
+		klog("failed to load cursor image at '%s' for configuration '%s'", cursorImagePath.c_str(), cursorPath.c_str());
+		return false;
+	}
 
-    pack.hitpoint = g_point(hitpointX, hitpointY);
-    pack.size = g_dimension(cairo_image_surface_get_width(pack.surface), cairo_image_surface_get_height(pack.surface));
-    pack.name = name;
-    cursorConfigurations[name] = pack;
+	pack.hitpoint = g_point(hitpointX, hitpointY);
+	pack.size = g_dimension(cairo_image_surface_get_width(pack.surface), cairo_image_surface_get_height(pack.surface));
+	pack.name = name;
+	cursorConfigurations[name] = pack;
 
-    return true;
+	return true;
 }
 
-void cursor_t::paint(g_graphics* global)
+void cursor_t::paint(graphics_t* global)
 {
-    auto cr = global->getContext();
-    if(!cr) return;
+	auto cr = global->acquireContext();
+	if(!cr)
+		return;
 
-    cairo_reset_clip(cr);
+	cairo_reset_clip(cr);
 
-    if(currentConfiguration)
-    {
-        cairo_set_source_surface(cr, currentConfiguration->surface, position.x - currentConfiguration->hitpoint.x,
-                                 position.y - currentConfiguration->hitpoint.y);
-        cairo_paint(cr);
-    }
-    else if(cursorConfigurations.size() > 0)
-    {
-        cairo_set_source_rgb(cr, 0, 0, 0);
-        cairo_rectangle(cr, position.x, position.y, FALLBACK_CURSOR_SIZE, FALLBACK_CURSOR_SIZE);
-        cairo_fill(cr);
-    }
+	if(currentConfiguration)
+	{
+		cairo_set_source_surface(cr, currentConfiguration->surface, position.x - currentConfiguration->hitpoint.x,
+		                         position.y - currentConfiguration->hitpoint.y);
+		cairo_paint(cr);
+	}
+	else if(cursorConfigurations.size() > 0)
+	{
+		cairo_set_source_rgb(cr, 0, 0, 0);
+		cairo_rectangle(cr, position.x, position.y, FALLBACK_CURSOR_SIZE, FALLBACK_CURSOR_SIZE);
+		cairo_fill(cr);
+	}
+
+	global->releaseContext();
 }
 
 g_rectangle cursor_t::getArea()
 {
 
-    // get area for current cursor
-    if(currentConfiguration)
-    {
-        return g_rectangle(position.x - currentConfiguration->hitpoint.x,
-                           position.y - currentConfiguration->hitpoint.y,
-                           currentConfiguration->size.width,
-                           currentConfiguration->size.height);
-    }
+	// get area for current cursor
+	if(currentConfiguration)
+	{
+		return g_rectangle(position.x - currentConfiguration->hitpoint.x,
+		                   position.y - currentConfiguration->hitpoint.y,
+		                   currentConfiguration->size.width,
+		                   currentConfiguration->size.height);
+	}
 
-    // fallback cursor is just a square
-    return g_rectangle(position.x, position.y, FALLBACK_CURSOR_SIZE, FALLBACK_CURSOR_SIZE);
+	// fallback cursor is just a square
+	return g_rectangle(position.x, position.y, FALLBACK_CURSOR_SIZE, FALLBACK_CURSOR_SIZE);
 }

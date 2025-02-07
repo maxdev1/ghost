@@ -21,8 +21,6 @@
 #include "windowserver.hpp"
 #include "components/button.hpp"
 #include "components/cursor.hpp"
-#include "components/desktop/background.hpp"
-#include "components/desktop/item_container.hpp"
 #include "events/event.hpp"
 #include "events/locatable.hpp"
 #include "input/input_receiver.hpp"
@@ -34,10 +32,15 @@
 #include <cairo/cairo.h>
 #include <iostream>
 #include <cstdio>
+#include <test.hpp>
+#include <components/window.hpp>
+#include <components/text/text_field.hpp>
+#include <layout/grid_layout_manager.hpp>
 
 static windowserver_t* server;
-static g_user_mutex dispatchLock = g_mutex_initialize();
+static g_user_mutex dispatchLock = g_mutex_initialize_r(true);
 static int framesTotal = 0;
+static bool debugOn = false;
 
 int main()
 {
@@ -65,6 +68,12 @@ void windowserver_t::initializeInput()
 	server->triggerRender();
 }
 
+void startOtherTasks()
+{
+	// TODO not the windowservers job
+	g_spawn("/applications/desktop.bin", "", "", G_SECURITY_LEVEL_APPLICATION);
+}
+
 void windowserver_t::launch()
 {
 	eventProcessor = new event_processor_t();
@@ -79,6 +88,8 @@ void windowserver_t::launch()
 
 	startInterface();
 
+	g_create_task((void*) &startOtherTasks);
+
 	renderLoop(screenBounds);
 }
 
@@ -87,31 +98,20 @@ void windowserver_t::createVitalComponents(g_rectangle screenBounds)
 	screen = new screen_t();
 	screen->setBounds(screenBounds);
 
-	background = new background_t();
-	background->setBounds(screenBounds);
-	screen->addChild(background);
-	cursor_t::focusedComponent = screen;
-
-	desktopContainer = new item_container_t();
-	desktopContainer->setBounds(screenBounds);
-	screen->addChild(desktopContainer);
-	desktopContainer->startLoadDesktopItems();
-
 	stateLabel = new label_t();
 	stateLabel->setTitle("");
 	stateLabel->setAlignment(g_text_alignment::RIGHT);
 	stateLabel->setBounds(g_rectangle(10, screenBounds.height - 30, screenBounds.width - 20, 30));
 	instance()->stateLabel->setColor(RGB(255, 255, 255));
-	background->addChild(stateLabel);
-
-	// background.load("/system/graphics/wallpaper.png");
+	screen->addChild(stateLabel);
+	g_create_task((void*) &windowserver_t::fpsCounter);
 }
 
 void windowserver_t::initializeGraphics()
 {
 	g_set_video_log(false);
 
-	auto vmsvgaOutput = new g_vmsvga_video_output(); //new g_vbe_video_output();
+	auto vmsvgaOutput = new g_vmsvga_video_output();
 	if(vmsvgaOutput->initialize())
 	{
 		videoOutput = vmsvgaOutput;
@@ -135,10 +135,9 @@ void windowserver_t::initializeGraphics()
 
 void windowserver_t::renderLoop(g_rectangle screenBounds)
 {
-	g_create_task((void*) &windowserver_t::fpsCounter);
 	g_task_register_id("windowserver/renderer");
 
-	g_graphics global;
+	graphics_t global;
 	global.resize(screenBounds.width, screenBounds.height, false);
 
 	cursor_t::nextPosition = g_point(screenBounds.width / 2, screenBounds.height / 2);
@@ -148,9 +147,9 @@ void windowserver_t::renderLoop(g_rectangle screenBounds)
 	{
 		eventProcessor->process();
 
-		screen->resolveRequirement(COMPONENT_REQUIREMENT_UPDATE);
-		screen->resolveRequirement(COMPONENT_REQUIREMENT_LAYOUT);
-		screen->resolveRequirement(COMPONENT_REQUIREMENT_PAINT);
+		screen->resolveRequirement(COMPONENT_REQUIREMENT_UPDATE, 0);
+		screen->resolveRequirement(COMPONENT_REQUIREMENT_LAYOUT, 0);
+		screen->resolveRequirement(COMPONENT_REQUIREMENT_PAINT, 0);
 
 		screen->blit(&global, screenBounds, g_point(0, 0));
 		cursor_t::paint(&global);
@@ -167,7 +166,7 @@ void windowserver_t::triggerRender()
 	g_mutex_release(renderAtom);
 }
 
-void windowserver_t::output(g_graphics* graphics)
+void windowserver_t::output(graphics_t* graphics)
 {
 	g_rectangle invalid = screen->grabInvalid();
 	if(invalid.width == 0 && invalid.height == 0)
@@ -175,7 +174,10 @@ void windowserver_t::output(g_graphics* graphics)
 
 	g_dimension resolution = videoOutput->getResolution();
 	g_rectangle screenBounds(0, 0, resolution.width, resolution.height);
-	g_color_argb* buffer = (g_color_argb*) cairo_image_surface_get_data(graphics->getSurface());
+
+	auto screenSurface = graphics->getSurface();
+	cairo_surface_flush(screenSurface);
+	g_color_argb* buffer = (g_color_argb*) cairo_image_surface_get_data(screenSurface);
 	videoOutput->blit(invalid, screenBounds, buffer);
 }
 
@@ -266,4 +268,14 @@ void windowserver_t::startInterface()
 {
 	g_create_task((void*) &interfaceRegistrationThread);
 	g_create_task((void*) &interfaceResponderThread);
+}
+
+void windowserver_t::setDebug(bool cond)
+{
+	debugOn = cond;
+}
+
+bool windowserver_t::isDebug()
+{
+	return debugOn;
 }

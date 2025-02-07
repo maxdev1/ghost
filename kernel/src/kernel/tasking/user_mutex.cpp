@@ -86,7 +86,7 @@ g_user_mutex_status userMutexTryAcquire(g_task* task, g_user_mutex mutex)
 			entry->owner = task->id;
 		}
 		else
-			entry->owner = -1;
+			entry->owner = G_TID_NONE;
 	}
 	mutexRelease(&entry->lock);
 	return status;
@@ -145,6 +145,10 @@ void userMutexRelease(g_user_mutex mutex)
 		entry->value--;
 		if(entry->value <= 0)
 		{
+			if(entry->value < 0)
+			{
+				logInfo("over-release of mutex %x", entry);
+			}
 			entry->value = 0;
 			entry->owner = G_TID_NONE;
 			_userMutexWakeWaitingTasks(entry);

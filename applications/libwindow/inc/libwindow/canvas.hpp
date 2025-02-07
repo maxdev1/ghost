@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,49 +18,71 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_CANVAS__
-#define __LIBWINDOW_CANVAS__
+#ifndef LIBWINDOW_CANVAS
+#define LIBWINDOW_CANVAS
 
-#include <cstdint>
-
-#include "libwindow/color_argb.hpp"
 #include "libwindow/component.hpp"
 #include "libwindow/listener/canvas_buffer_listener.hpp"
 
+#include <cstdint>
+#include <utility>
+#include <cairo/cairo.h>
+
 struct g_canvas_buffer_info
 {
-	uint8_t* buffer;
-	uint16_t width;
-	uint16_t height;
+    uint8_t* buffer;
+    uint16_t width;
+    uint16_t height;
+
+    cairo_surface_t* surface;
+    cairo_t* context;
+    int contextRefCount;
 };
 
+/**
+ * A canvas is a simple component that offers a buffer to the creator for arbitrary painting. This buffer automatically
+ * resizes when the bounds of the component change, so it is crucial to always keep track of which buffer to paint to.
+ */
 class g_canvas : public g_component
 {
-  protected:
-	g_address currentBuffer;
-	g_address nextBuffer;
-	g_user_mutex currentBufferLock;
+protected:
+    g_canvas_buffer_info currentBuffer;
+    g_user_mutex currentBufferLock;
 
-	/**
-	 * Listener only for user purpose, so a client gets an event once the
-	 * buffer was changed.
-	 */
-	g_canvas_buffer_listener* userListener;
+    /**
+     * Listener only for user purpose, so a client gets an event once the
+     * buffer was changed.
+     */
+    g_canvas_buffer_listener* userListener;
 
-	g_canvas(uint32_t id);
+    explicit g_canvas(uint32_t id);
 
-  public:
-	static g_canvas* create();
+public:
+    static g_canvas* create();
 
-	void acknowledgeNewBuffer(g_address address);
+    void acknowledgeNewBuffer(g_address address, uint16_t width, uint16_t height);
 
-	void blit(g_rectangle rect);
-	g_canvas_buffer_info getBuffer();
+    void blit(const g_rectangle& rect);
 
-	void setBufferListener(g_canvas_buffer_listener* l)
-	{
-		userListener = l;
-	}
+    /**
+     * Acquires the current buffer and lends it to the user for painting. The buffer must be released afterwards.
+     */
+    cairo_t* acquireGraphics();
+
+    /**
+     * Releases the current buffer.
+     */
+    void releaseGraphics();
+
+    void setBufferListener(g_canvas_buffer_listener* l)
+    {
+        userListener = l;
+    }
+
+    void setBufferListener(g_canvas_buffer_listener_func func)
+    {
+        userListener = new g_canvas_buffer_listener_dispatcher(std::move(func));
+    }
 };
 
 #endif

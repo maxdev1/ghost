@@ -23,6 +23,7 @@
 #include "events/focus_event.hpp"
 #include "events/mouse_event.hpp"
 #include "windowserver.hpp"
+#include "interface/component_registry.hpp"
 
 #include <cairo/cairo.h>
 #include <libfont/font_manager.hpp>
@@ -30,7 +31,8 @@
 #include <libwindow/properties.hpp>
 #include <math.h>
 
-window_t::window_t() : backgroundColor(RGB(240, 240, 240)), borderWidth(DEFAULT_BORDER_WIDTH), cornerSize(DEFAULT_CORNER_SIZE)
+window_t::window_t() :
+	backgroundColor(RGB(244, 244, 248)), borderWidth(DEFAULT_BORDER_WIDTH), cornerSize(DEFAULT_CORNER_SIZE)
 {
 	visible = false;
 	resizable = true;
@@ -55,7 +57,8 @@ void window_t::layout()
 	g_rectangle bounds = getBounds();
 	int titleHeight = 30;
 	label.setBounds(g_rectangle(padding + 10, padding, bounds.width - padding - 20, titleHeight));
-	panel.setBounds(g_rectangle(padding, padding + titleHeight, bounds.width - padding * 2, bounds.height - titleHeight - padding * 2));
+	panel.setBounds(g_rectangle(padding, padding + titleHeight, bounds.width - padding * 2,
+	                            bounds.height - titleHeight - padding * 2));
 	crossBounds = g_rectangle(bounds.width - 30, 14, 15, 15);
 }
 
@@ -66,6 +69,7 @@ void window_t::addChild(component_t* component, component_child_reference_type_t
 {
 	panel.addChild(component);
 }
+
 void window_t::setLayoutManager(layout_manager_t* layoutManager)
 {
 	panel.setLayoutManager(layoutManager);
@@ -85,8 +89,9 @@ void roundedRectangle(cairo_t* cr, double x, double y, double width, double heig
 void window_t::paint()
 {
 	g_rectangle bounds = getBounds();
-	cairo_t* cr = graphics.getContext();
-    if(!cr) return;
+	cairo_t* cr = graphics.acquireContext();
+	if(!cr)
+		return;
 
 	clearSurface();
 
@@ -112,12 +117,13 @@ void window_t::paint()
 	}
 
 	// draw background
-	roundedRectangle(cr, shadowSize, shadowSize, bounds.width - 2 * shadowSize, bounds.height - 2 * shadowSize, shadowSize);
+	roundedRectangle(cr, shadowSize, shadowSize, bounds.width - 2 * shadowSize, bounds.height - 2 * shadowSize,
+	                 shadowSize);
 	cairo_set_source_rgba(cr,
-						  ARGB_FR_FROM(backgroundColor),
-						  ARGB_FG_FROM(backgroundColor),
-						  ARGB_FB_FROM(backgroundColor),
-						  ARGB_FA_FROM(backgroundColor) * (focused ? 1.0 : 0.9));
+	                      ARGB_FR_FROM(backgroundColor),
+	                      ARGB_FG_FROM(backgroundColor),
+	                      ARGB_FB_FROM(backgroundColor),
+	                      ARGB_FA_FROM(backgroundColor) * (focused ? 1.0 : 0.9));
 	cairo_fill(cr);
 
 	// draw cross
@@ -137,18 +143,22 @@ void window_t::paint()
 	int crossPadding = 3;
 	cairo_set_line_width(cr, 1.5);
 	cairo_move_to(cr, crossBounds.x + crossPadding, crossBounds.y + crossPadding);
-	cairo_line_to(cr, crossBounds.x + crossBounds.width - crossPadding, crossBounds.y + crossBounds.height - crossPadding);
+	cairo_line_to(cr, crossBounds.x + crossBounds.width - crossPadding,
+	              crossBounds.y + crossBounds.height - crossPadding);
 	cairo_stroke(cr);
 	cairo_move_to(cr, crossBounds.x + crossBounds.width - crossPadding, crossBounds.y + crossPadding);
 	cairo_line_to(cr, crossBounds.x + crossPadding, crossBounds.y + crossBounds.height - crossPadding);
 	cairo_stroke(cr);
+
+	graphics.releaseContext();
 }
 
 component_t* window_t::handleFocusEvent(focus_event_t& fe)
 {
-	if(fe.newFocusedComponent)
+	if(fe.newFocusedComponent != -1)
 	{
-		this->focused = (this == fe.newFocusedComponent) || fe.newFocusedComponent->isChildOf(this);
+		auto newFocused = component_registry_t::get(fe.newFocusedComponent);
+		this->focused = (this->id == fe.newFocusedComponent) || (newFocused && newFocused->isChildOf(this));
 	}
 	else
 	{
@@ -267,36 +277,54 @@ component_t* window_t::handleMouseEvent(mouse_event_t& me)
 		if(resizable)
 		{
 			g_point pos = me.position;
-			if((pos.x < shadowSize + cornerSize / 2) && (pos.x > shadowSize - cornerSize / 2) && (pos.y < cornerSize) && (pos.y > shadowSize - cornerSize / 2))
-			{ // Top left corner
+			if((pos.x < shadowSize + cornerSize / 2) && (pos.x > shadowSize - cornerSize / 2) && (pos.y < cornerSize) &&
+			   (pos.y > shadowSize - cornerSize / 2))
+			{
+				// Top left corner
 				cursor_t::set("resize-nwes");
 			}
-			else if((pos.x > currentBounds.width - shadowSize - cornerSize / 2) && (pos.x < currentBounds.width - shadowSize + cornerSize / 2) && (pos.y < cornerSize) && (pos.y > shadowSize - cornerSize / 2))
-			{ // Top right corner
+			else if((pos.x > currentBounds.width - shadowSize - cornerSize / 2) && (
+				        pos.x < currentBounds.width - shadowSize + cornerSize / 2) && (pos.y < cornerSize) && (
+				        pos.y > shadowSize - cornerSize / 2))
+			{
+				// Top right corner
 				cursor_t::set("resize-nesw");
 			}
-			else if((pos.x < shadowSize + cornerSize / 2) && (pos.x > shadowSize - cornerSize / 2) && (pos.y > currentBounds.height - shadowSize - cornerSize / 2) && (pos.y < currentBounds.height - shadowSize + cornerSize / 2))
-			{ // Bottom left corner
+			else if((pos.x < shadowSize + cornerSize / 2) && (pos.x > shadowSize - cornerSize / 2) && (
+				        pos.y > currentBounds.height - shadowSize - cornerSize / 2) && (
+				        pos.y < currentBounds.height - shadowSize + cornerSize / 2))
+			{
+				// Bottom left corner
 				cursor_t::set("resize-nesw");
 			}
-			else if((pos.x > currentBounds.width - shadowSize - cornerSize / 2) && (pos.x < currentBounds.width - shadowSize + cornerSize / 2) && (pos.y > currentBounds.height - shadowSize - cornerSize / 2) && (pos.y < currentBounds.height - shadowSize + cornerSize / 2))
-			{ // Bottom right corner
+			else if((pos.x > currentBounds.width - shadowSize - cornerSize / 2) && (
+				        pos.x < currentBounds.width - shadowSize + cornerSize / 2) && (
+				        pos.y > currentBounds.height - shadowSize - cornerSize / 2) && (
+				        pos.y < currentBounds.height - shadowSize + cornerSize / 2))
+			{
+				// Bottom right corner
 				cursor_t::set("resize-nwes");
 			}
 			else if(pos.y < shadowSize + borderWidth / 2 && pos.y > shadowSize - borderWidth / 2)
-			{ // Top edge
+			{
+				// Top edge
 				cursor_t::set("resize-ns");
 			}
 			else if(pos.x < shadowSize + borderWidth / 2 && pos.x > shadowSize - borderWidth / 2)
-			{ // Left edge
+			{
+				// Left edge
 				cursor_t::set("resize-ew");
 			}
-			else if((pos.y > currentBounds.height - shadowSize - borderWidth / 2) && (pos.y < currentBounds.height - shadowSize + borderWidth / 2))
-			{ // Bottom edge
+			else if((pos.y > currentBounds.height - shadowSize - borderWidth / 2) && (
+				        pos.y < currentBounds.height - shadowSize + borderWidth / 2))
+			{
+				// Bottom edge
 				cursor_t::set("resize-ns");
 			}
-			else if((pos.x > currentBounds.width - shadowSize - borderWidth / 2) && (pos.x < currentBounds.width - shadowSize + borderWidth / 2))
-			{ // Right edge
+			else if((pos.x > currentBounds.width - shadowSize - borderWidth / 2) && (
+				        pos.x < currentBounds.width - shadowSize + borderWidth / 2))
+			{
+				// Right edge
 				cursor_t::set("resize-ew");
 			}
 			else
@@ -321,7 +349,6 @@ component_t* window_t::handleMouseEvent(mouse_event_t& me)
 	}
 	else if(me.type == G_MOUSE_EVENT_PRESS)
 	{
-
 		// Press on the cross
 		if(crossBounds.contains(me.position))
 		{
@@ -340,35 +367,47 @@ component_t* window_t::handleMouseEvent(mouse_event_t& me)
 			if(resizable)
 			{
 
-				if((pressPoint.x < shadowSize + cornerSize / 2) && (pressPoint.x > shadowSize - cornerSize / 2) && (pressPoint.y < cornerSize) && (pressPoint.y > shadowSize - cornerSize / 2))
-				{ // Corner resizing
+				if((pressPoint.x < shadowSize + cornerSize / 2) && (pressPoint.x > shadowSize - cornerSize / 2) && (
+					   pressPoint.y < cornerSize) && (pressPoint.y > shadowSize - cornerSize / 2))
+				{
+					// Corner resizing
 					resizeMode = RESIZE_MODE_TOP_LEFT;
 				}
-				else if((pressPoint.x > currentBounds.width - shadowSize - cornerSize / 2) && (pressPoint.x < currentBounds.width - shadowSize + cornerSize / 2) && (pressPoint.y < cornerSize) && (pressPoint.y > shadowSize - cornerSize / 2))
+				else if((pressPoint.x > currentBounds.width - shadowSize - cornerSize / 2) && (
+					        pressPoint.x < currentBounds.width - shadowSize + cornerSize / 2) && (
+					        pressPoint.y < cornerSize) && (pressPoint.y > shadowSize - cornerSize / 2))
 				{
 					resizeMode = RESIZE_MODE_TOP_RIGHT;
 				}
-				else if((pressPoint.x < shadowSize + cornerSize / 2) && (pressPoint.x > shadowSize - cornerSize / 2) && (pressPoint.y > currentBounds.height - shadowSize - cornerSize / 2) && (pressPoint.y < currentBounds.height - shadowSize + cornerSize / 2))
+				else if((pressPoint.x < shadowSize + cornerSize / 2) && (pressPoint.x > shadowSize - cornerSize / 2) &&
+				        (pressPoint.y > currentBounds.height - shadowSize - cornerSize / 2) && (
+					        pressPoint.y < currentBounds.height - shadowSize + cornerSize / 2))
 				{
 					resizeMode = RESIZE_MODE_BOTTOM_LEFT;
 				}
-				else if((pressPoint.x > currentBounds.width - shadowSize - cornerSize / 2) && (pressPoint.x < currentBounds.width - shadowSize + cornerSize / 2) && (pressPoint.y > currentBounds.height - shadowSize - cornerSize / 2) && (pressPoint.y < currentBounds.height - shadowSize + cornerSize / 2))
+				else if((pressPoint.x > currentBounds.width - shadowSize - cornerSize / 2) && (
+					        pressPoint.x < currentBounds.width - shadowSize + cornerSize / 2) && (
+					        pressPoint.y > currentBounds.height - shadowSize - cornerSize / 2) && (
+					        pressPoint.y < currentBounds.height - shadowSize + cornerSize / 2))
 				{
 					resizeMode = RESIZE_MODE_BOTTOM_RIGHT;
 				}
 				else if(pressPoint.y < shadowSize + borderWidth / 2 && pressPoint.y > shadowSize - borderWidth / 2)
-				{ // Edge resizing
+				{
+					// Edge resizing
 					resizeMode = RESIZE_MODE_TOP;
 				}
 				else if(pressPoint.x < shadowSize + borderWidth / 2 && pressPoint.x > shadowSize - borderWidth / 2)
 				{
 					resizeMode = RESIZE_MODE_LEFT;
 				}
-				else if((pressPoint.y > currentBounds.height - shadowSize - borderWidth / 2) && (pressPoint.y < currentBounds.height - shadowSize + borderWidth / 2))
+				else if((pressPoint.y > currentBounds.height - shadowSize - borderWidth / 2) && (
+					        pressPoint.y < currentBounds.height - shadowSize + borderWidth / 2))
 				{
 					resizeMode = RESIZE_MODE_BOTTOM;
 				}
-				else if((pressPoint.x > currentBounds.width - shadowSize - borderWidth / 2) && (pressPoint.x < currentBounds.width - shadowSize + borderWidth / 2))
+				else if((pressPoint.x > currentBounds.width - shadowSize - borderWidth / 2) && (
+					        pressPoint.x < currentBounds.width - shadowSize + borderWidth / 2))
 				{
 					resizeMode = RESIZE_MODE_RIGHT;
 				}
@@ -402,7 +441,6 @@ component_t* window_t::handleMouseEvent(mouse_event_t& me)
 
 void window_t::close()
 {
-
 	event_listener_info_t info;
 	if(getListener(G_UI_COMPONENT_EVENT_TYPE_CLOSE, info))
 	{
@@ -416,7 +454,6 @@ void window_t::close()
 
 bool window_t::getNumericProperty(int property, uint32_t* out)
 {
-
 	if(property == G_UI_PROPERTY_RESIZABLE)
 	{
 		*out = resizable;
@@ -428,7 +465,6 @@ bool window_t::getNumericProperty(int property, uint32_t* out)
 
 bool window_t::setNumericProperty(int property, uint32_t value)
 {
-
 	if(property == G_UI_PROPERTY_RESIZABLE)
 	{
 		resizable = value;

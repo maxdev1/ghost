@@ -26,55 +26,49 @@
 #include <libwindow/metrics/dimension.hpp>
 #include <libwindow/metrics/rectangle.hpp>
 #include <stdint.h>
+#include <ghost/mutex.h>
 
-class g_graphics
+class graphics_t
 {
-  private:
-	int width;
-	int height;
-	cairo_t* context = 0;
-	cairo_surface_t* surface = 0;
-	int averageFactor = 10;
+    cairo_t* context = nullptr;
+    cairo_surface_t* surface = nullptr;
+    g_user_mutex lock = g_mutex_initialize_r(true);
 
-  public:
-	/**
-	 * Creates a graphics object. This is a class that holds a surface.
-	 * If an <code>externalBuffer</code> is provided, no internal buffer will be
-	 * automatically created.
-	 *
-	 * @param width of the externalBuffer
-	 * @param height of the externalBuffer
-	 */
-	g_graphics(uint16_t width = 0, uint16_t height = 0);
+    int contextRefCount = 0;
 
-	void resize(int width, int height, bool averaged = true, bool force = false);
+    int averageFactor = 10;
 
-	void setAverageFactor(int factor)
-	{
-		this->averageFactor = factor;
-	}
+public:
+    int width;
+    int height;
 
-	cairo_t* getContext()
-	{
-		return context;
-	}
+    /**
+     * Creates a graphics object. This is a class that holds a surface.
+     * If an <code>externalBuffer</code> is provided, no internal buffer will be
+     * automatically created.
+     *
+     * @param width of the externalBuffer
+     * @param height of the externalBuffer
+     */
+    graphics_t(uint16_t width = 0, uint16_t height = 0);
 
-	cairo_surface_t* getSurface()
-	{
-		return surface;
-	}
+    void resize(int width, int height, bool averaged = true, bool force = false);
 
-	int getWidth()
-	{
-		return width;
-	}
+    void setAverageFactor(int factor)
+    {
+        this->averageFactor = factor;
+    }
 
-	int getHeight()
-	{
-		return height;
-	}
+    cairo_t* acquireContext();
 
-	void blitTo(g_graphics* graphics, g_rectangle absoluteClip, g_point position);
+    void releaseContext();
+
+    cairo_surface_t* getSurface()
+    {
+        return surface;
+    }
+
+    void blitTo(graphics_t* target, const g_rectangle& clip, const g_point& position);
 };
 
 #endif

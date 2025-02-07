@@ -51,47 +51,6 @@ double totalValue = 0;
 double currentValue = 0;
 int previousCommand = COM_NONE;
 
-/**
- *
- */
-class num_press_action_listener_t : public g_action_listener
-{
-  public:
-	int number;
-
-	num_press_action_listener_t(int num)
-	{
-		this->number = num;
-	}
-
-	virtual void handle_action()
-	{
-		pad_button_pressed(number);
-	}
-};
-
-/**
- *
- */
-class command_press_action_listener_t : public g_action_listener
-{
-  public:
-	int command;
-
-	command_press_action_listener_t(int com)
-	{
-		this->command = com;
-	}
-
-	virtual void handle_action()
-	{
-		command_pressed(command);
-	}
-};
-
-/**
- *
- */
 int main(int argc, char** argv)
 {
 
@@ -102,6 +61,10 @@ int main(int argc, char** argv)
 		g_window* window = g_window::create();
 		window->setTitle("Calculator");
 		window->setResizable(false);
+		window->onClose([]()
+		{
+			g_exit(0);
+		});
 
 		display = g_textfield::create();
 		display->setTitle("0");
@@ -124,42 +87,42 @@ int main(int argc, char** argv)
 		int dispOff = 40;
 
 		PLACE_BUTTON_T(Clear, "C", grid1, grid1 + dispOff);
-		butClear->setActionListener(new command_press_action_listener_t(COM_CLEAR));
+		butClear->setActionListener([]() { command_pressed(COM_CLEAR); });
 
 		PLACE_BUTTON(1, grid1, grid2 + dispOff);
-		but1->setActionListener(new num_press_action_listener_t(1));
+		but1->setActionListener([] { pad_button_pressed(1); });
 		PLACE_BUTTON(2, grid2, grid2 + dispOff);
-		but2->setActionListener(new num_press_action_listener_t(2));
+		but2->setActionListener([] { pad_button_pressed(2); });
 		PLACE_BUTTON(3, grid3, grid2 + dispOff);
-		but3->setActionListener(new num_press_action_listener_t(3));
+		but3->setActionListener([] { pad_button_pressed(3); });
 
 		PLACE_BUTTON(4, grid1, grid3 + dispOff);
-		but4->setActionListener(new num_press_action_listener_t(4));
+		but4->setActionListener([] { pad_button_pressed(4); });
 		PLACE_BUTTON(5, grid2, grid3 + dispOff);
-		but5->setActionListener(new num_press_action_listener_t(5));
+		but5->setActionListener([] { pad_button_pressed(5); });
 		PLACE_BUTTON(6, grid3, grid3 + dispOff);
-		but6->setActionListener(new num_press_action_listener_t(6));
+		but6->setActionListener([] { pad_button_pressed(6); });
 
 		PLACE_BUTTON(7, grid1, grid4 + dispOff);
-		but7->setActionListener(new num_press_action_listener_t(7));
+		but7->setActionListener([] { pad_button_pressed(7); });
 		PLACE_BUTTON(8, grid2, grid4 + dispOff);
-		but8->setActionListener(new num_press_action_listener_t(8));
+		but8->setActionListener([] { pad_button_pressed(8); });
 		PLACE_BUTTON(9, grid3, grid4 + dispOff);
-		but9->setActionListener(new num_press_action_listener_t(9));
+		but9->setActionListener([] { pad_button_pressed(9); });
 
 		PLACE_BUTTON(0, grid1, grid5 + dispOff);
-		but0->setActionListener(new num_press_action_listener_t(0));
+		but0->setActionListener([] { pad_button_pressed(0); });
 
 		PLACE_BUTTON_T(Plus, "+", grid4, grid1 + dispOff);
-		butPlus->setActionListener(new command_press_action_listener_t(COM_PLUS));
+		butPlus->setActionListener([]() { command_pressed(COM_PLUS); });
 		PLACE_BUTTON_T(Minus, "-", grid4, grid2 + dispOff);
-		butMinus->setActionListener(new command_press_action_listener_t(COM_MINUS));
+		butMinus->setActionListener([]() { command_pressed(COM_MINUS); });
 		PLACE_BUTTON_T(Mult, "*", grid4, grid3 + dispOff);
-		butMult->setActionListener(new command_press_action_listener_t(COM_MULT));
+		butMult->setActionListener([]() { command_pressed(COM_MULT); });
 		PLACE_BUTTON_T(Div, "/", grid4, grid4 + dispOff);
-		butDiv->setActionListener(new command_press_action_listener_t(COM_DIV));
+		butDiv->setActionListener([]() { command_pressed(COM_DIV); });
 		PLACE_BUTTON_T(Eq, "=", grid4, grid5 + dispOff);
-		butEq->setActionListener(new command_press_action_listener_t(COM_EQ));
+		butEq->setActionListener([]() { command_pressed(COM_EQ); });
 
 		window->setBounds(g_rectangle(70, 70, 190, 320));
 		window->setVisible(true);

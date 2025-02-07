@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,43 +18,55 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "components/desktop/background.hpp"
+#include "desktop.hpp"
+#include "background.hpp"
 
-void background_t::load(const char* path)
+#include <fstream>
+#include <libproperties/parser.hpp>
+
+#define USER_DESKTOP_DIR "/user/desktop/"
+
+background* background;
+
+int main()
 {
-	if(surface)
-		cairo_surface_destroy(surface);
+	if(g_ui::open() != G_UI_OPEN_STATUS_SUCCESSFUL)
+	{
+		klog("failed to create UI");
+		return -1;
+	}
 
-	surface = cairo_image_surface_create_from_png(path);
+	background = background::create();
+	g_ui::registerDesktopCanvas(background);
+
+	// TODO: If we don't pause here for a moment, some icons are sometimes not rendered, for some reason.
+	// It seems to be somehow related to the cairo rendering in the server-side canvas. See there for more.
+	g_sleep(300);
+	desktopLoadItems();
+
+	for(;;)
+	{
+		g_sleep(999999);
+	}
 }
 
-void background_t::paint()
+void desktopLoadItems()
 {
-	cairo_t* cr = graphics.getContext();
-	if(!cr)
-		return;
+	auto dir = g_open_directory(USER_DESKTOP_DIR);
 
-	auto bounds = getBounds();
-
-	// Background pattern
-	cairo_pattern_t* gradient = cairo_pattern_create_linear(bounds.width * 0.4, 0, bounds.width * 0.8, bounds.height);
-	cairo_pattern_add_color_stop_rgb(gradient, 0.0, 105.0 / 255.0, 84.0 / 255.0, 161.0 / 255.0);
-	cairo_pattern_add_color_stop_rgb(gradient, 1.0, 22.0 / 255.0, 50.0 / 255.0, 100.0 / 255.0);
-	cairo_rectangle(cr, 0, 0, bounds.width, bounds.height);
-	cairo_set_source(cr, gradient);
-	cairo_fill(cr);
-	cairo_pattern_destroy(gradient);
-
-	// Background image
-	if(surface)
+	int next = 0;
+	g_fs_directory_entry* entry;
+	while((entry = g_read_directory(dir)) != nullptr)
 	{
-		int imgwidth = cairo_image_surface_get_width(surface);
-		int imgheight = cairo_image_surface_get_height(surface);
+		std::string path = std::string(USER_DESKTOP_DIR) + entry->name;
 
-		int bgx = bounds.x + (bounds.width / 2 - imgwidth / 2);
-		int bgy = bounds.y + (bounds.height / 2 - imgheight / 2);
-		cairo_set_source_surface(cr, surface, bgx, bgy);
-		cairo_rectangle(cr, bgx, bgy, bounds.width, bounds.height);
-		cairo_fill(cr);
+		std::ifstream cfg(path);
+		g_properties_parser parser(cfg);
+		auto properties = parser.getProperties();
+
+		auto item = item::create(properties["name"], properties["icon"], properties["application"]);
+		item->setBounds(g_rectangle(0, next++ * 100, 100, 100));
+		background->addItem(item);
 	}
+	background->organize();
 }

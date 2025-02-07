@@ -22,7 +22,6 @@
 #define __WINDOWSERVER__
 
 #include "components/component.hpp"
-#include "components/desktop/background.hpp"
 #include "components/desktop/screen.hpp"
 #include "components/label.hpp"
 #include "events/event_processor.hpp"
@@ -39,8 +38,6 @@ public:
     g_video_output* videoOutput;
     event_processor_t* eventProcessor;
     screen_t* screen;
-    background_t* background;
-    item_container_t* desktopContainer;
     label_t* stateLabel;
     g_user_mutex renderAtom = g_mutex_initialize();
 
@@ -57,13 +54,17 @@ public:
 
     void renderLoop(g_rectangle screenBounds);
     void triggerRender();
+
+    static void setDebug(bool cond);
+    static bool isDebug();
+
     static void initializeInput();
     static void fpsCounter();
 
     /**
      * Blits the component state.
      */
-    void output(g_graphics* graphics);
+    void output(graphics_t* graphics);
 
     /**
      * Dispatches the given event to the component.

@@ -47,8 +47,6 @@ class screen_t : public component_t
      */
     virtual void markDirty(g_rectangle rect);
 
-    virtual component_t* handleMouseEvent(mouse_event_t& e);
-
     g_rectangle grabInvalid()
     {
         g_rectangle ret = invalid;

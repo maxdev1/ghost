@@ -23,6 +23,7 @@
 
 #include "events/event.hpp"
 #include <stdint.h>
+#include <libwindow/interface.hpp>
 
 enum focus_event_type_t
 {
@@ -35,9 +36,9 @@ class focus_event_t : public event_t
 {
   public:
     focus_event_type_t type;
-    component_t* newFocusedComponent;
+    g_ui_component_id newFocusedComponent;
 
-    focus_event_t() : type(FOCUS_EVENT_NONE), newFocusedComponent(nullptr)
+    focus_event_t() : type(FOCUS_EVENT_NONE), newFocusedComponent(-1)
     {
     }
 

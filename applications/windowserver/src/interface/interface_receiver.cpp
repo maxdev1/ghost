@@ -27,6 +27,7 @@
 #include "components/canvas.hpp"
 #include "components/text/text_field.hpp"
 #include "components/window.hpp"
+#include "components/desktop/selection.hpp"
 #include "interface/component_registry.hpp"
 #include "interface/interface_receiver.hpp"
 
@@ -37,8 +38,6 @@ void interfaceReceiverThread(interface_receiver_t* receiver)
 
 void interface_receiver_t::run()
 {
-	g_tid tid = g_get_tid();
-
 	// create a buffer for incoming command messages
 	size_t bufferLength = sizeof(g_message_header) + G_UI_MAXIMUM_MESSAGE_SIZE;
 	uint8_t* buffer = new uint8_t[bufferLength];
@@ -46,7 +45,10 @@ void interface_receiver_t::run()
 	for(;;)
 	{
 		// receive messages
-		g_message_receive_status stat = g_receive_message_tmb(buffer, bufferLength, G_MESSAGE_TRANSACTION_NONE, G_MESSAGE_RECEIVE_MODE_BLOCKING, stop);
+		g_message_receive_status stat = g_receive_message_tmb(
+				buffer, bufferLength,
+				G_MESSAGE_TRANSACTION_NONE, G_MESSAGE_RECEIVE_MODE_BLOCKING,
+				stop); // TODO break condition not working
 
 		if(stat == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 		{
@@ -75,7 +77,8 @@ void interface_receiver_t::run()
 	delete buffer;
 }
 
-void interface_receiver_t::processCommand(g_tid senderTid, g_ui_message_header* requestIn, command_message_response_t& responseOut)
+void interface_receiver_t::processCommand(g_tid senderTid, g_ui_message_header* requestIn,
+                                          command_message_response_t& responseOut)
 {
 	if(requestIn->id == G_UI_PROTOCOL_CREATE_COMPONENT)
 	{
@@ -84,37 +87,43 @@ void interface_receiver_t::processCommand(g_tid senderTid, g_ui_message_header* 
 		component_t* component = 0;
 		switch(create_request->type)
 		{
-		case G_UI_COMPONENT_TYPE_WINDOW:
-			component = new window_t();
-			windowserver_t::instance()->screen->addChild(component);
-			break;
+			case G_UI_COMPONENT_TYPE_WINDOW:
+				component = new window_t();
+				windowserver_t::instance()->screen->addChild(component);
+				break;
 
-		case G_UI_COMPONENT_TYPE_LABEL:
-			component = new label_t();
-			break;
+			case G_UI_COMPONENT_TYPE_LABEL:
+				component = new label_t();
+				break;
 
-		case G_UI_COMPONENT_TYPE_BUTTON:
-			component = new button_t();
-			break;
+			case G_UI_COMPONENT_TYPE_BUTTON:
+				component = new button_t();
+				break;
 
-		case G_UI_COMPONENT_TYPE_TEXTFIELD:
-			component = new text_field_t();
-			break;
+			case G_UI_COMPONENT_TYPE_TEXTFIELD:
+				component = new text_field_t();
+				break;
 
-		case G_UI_COMPONENT_TYPE_CANVAS:
-		{
-			component = new canvas_t(senderTid);
-			break;
-		}
+			case G_UI_COMPONENT_TYPE_CANVAS:
+				component = new canvas_t(senderTid);
+				break;
 
-		default:
-			klog("don't know how to create a component of type %i", create_request->type);
-			break;
+			case G_UI_COMPONENT_TYPE_SELECTION:
+				component = new selection_t();
+				break;
+
+
+			default:
+				klog("don't know how to create a component of type %i", create_request->type);
+				break;
 		}
 
 		g_ui_component_id component_id = -1;
 		if(component)
-			component_id = component_registry_t::add(g_get_pid_for_tid(senderTid), component);
+		{
+			component_id = component->id;
+			component_registry_t::bind(g_get_pid_for_tid(senderTid), component);
+		}
 
 		// create response message
 		g_ui_create_component_response* response = new g_ui_create_component_response;
@@ -352,21 +361,16 @@ void interface_receiver_t::processCommand(g_tid senderTid, g_ui_message_header* 
 		responseOut.message = response;
 		responseOut.length = sizeof(g_ui_component_get_title_response);
 	}
-	else if(requestIn->id == G_UI_PROTOCOL_CANVAS_ACK_BUFFER_REQUEST)
-	{
-		g_ui_component_canvas_ack_buffer_request* request = (g_ui_component_canvas_ack_buffer_request*) requestIn;
-		component_t* component = component_registry_t::get(request->id);
-
-		canvas_t* canvas = (canvas_t*) component;
-		canvas->clientHasAcknowledgedCurrentBuffer();
-	}
 	else if(requestIn->id == G_UI_PROTOCOL_CANVAS_BLIT)
 	{
 		g_ui_component_canvas_blit_request* request = (g_ui_component_canvas_blit_request*) requestIn;
 		component_t* component = component_registry_t::get(request->id);
 
-		canvas_t* canvas = (canvas_t*) component;
-		canvas->blit();
+		if(component)
+		{
+			canvas_t* canvas = (canvas_t*) component;
+			canvas->requestBlit(request->area);
+		}
 	}
 	else if(requestIn->id == G_UI_PROTOCOL_REGISTER_DESKTOP_CANVAS)
 	{

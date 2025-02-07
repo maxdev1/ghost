@@ -20,7 +20,6 @@
 
 #include "components/action_component.hpp"
 #include "components/component.hpp"
-#include <stdio.h>
 
 void action_component_t::fireAction()
 {

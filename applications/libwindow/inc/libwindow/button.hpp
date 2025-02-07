@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,14 +18,12 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_BUTTON__
-#define __LIBWINDOW_BUTTON__
+#ifndef LIBWINDOW_BUTTON
+#define LIBWINDOW_BUTTON
 
-#include <cstdint>
-
-#include "libwindow/action_component.hpp"
-#include "libwindow/component.hpp"
-#include "libwindow/titled_component.hpp"
+#include "action_component.hpp"
+#include "component.hpp"
+#include "titled_component.hpp"
 
 class g_button : public g_component, public g_titled_component, public g_action_component
 {

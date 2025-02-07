@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,36 +18,9 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_CANVASWFALISTENER__
-#define __LIBWINDOW_CANVASWFALISTENER__
+#ifndef DESKTOP
+#define DESKTOP
 
-#include <cstdint>
-
-#include "libwindow/listener/listener.hpp"
-
-class g_component;
-
-class g_canvas_wfa_listener : public g_listener
-{
-  public:
-	g_canvas *canvas;
-
-	g_canvas_wfa_listener(g_canvas *canvas) : canvas(canvas)
-	{
-	}
-
-	virtual ~g_canvas_wfa_listener()
-	{
-	}
-
-	virtual void process(g_ui_component_event_header *header)
-	{
-		if(header->type == G_UI_COMPONENT_EVENT_TYPE_CANVAS_WFA)
-		{
-			g_ui_component_canvas_wfa_event *event = (g_ui_component_canvas_wfa_event *) header;
-			canvas->acknowledgeNewBuffer(event->newBufferAddress);
-		}
-	}
-};
+void desktopLoadItems();
 
 #endif

@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,20 +18,17 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __WINDOWSERVER_COMPONENTS_BACKGROUND__
-#define __WINDOWSERVER_COMPONENTS_BACKGROUND__
+#ifndef __WINDOWSERVER_INTERFACE_PROCESSREGISTRY__
+#define __WINDOWSERVER_INTERFACE_PROCESSREGISTRY__
 
-#include "components/component.hpp"
+#include <libwindow/interface.hpp>
 
-class background_t : public component_t
+class process_registry_t
 {
-    cairo_surface_t* surface = nullptr;
-
 public:
-    ~background_t() override = default;
-
-    void paint() override;
-    virtual void load(const char* path);
+    static void bind(g_pid pid, g_tid eventDispatcher);
+    static g_tid get(g_pid);
+    static void cleanup_process(g_pid pid);
 };
 
 #endif

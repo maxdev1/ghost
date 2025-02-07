@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -21,25 +21,22 @@
 #ifndef __LIBWINDOW_TITLED_COMPONENT__
 #define __LIBWINDOW_TITLED_COMPONENT__
 
-#include "libwindow/interface.hpp"
+#include "interface.hpp"
 
 class g_titled_component
 {
-  private:
-	uint32_t id;
+    uint32_t id;
 
-  protected:
-	g_titled_component(uint32_t id) : id(id)
-	{
-	}
+protected:
+    explicit g_titled_component(uint32_t id) : id(id)
+    {
+    }
 
-  public:
-	virtual ~g_titled_component()
-	{
-	}
+public:
+    virtual ~g_titled_component() = default;
 
-	virtual bool setTitle(std::string title);
-	virtual std::string getTitle();
+    virtual bool setTitle(std::string title);
+    virtual std::string getTitle();
 };
 
 #endif

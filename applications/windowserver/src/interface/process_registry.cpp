@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,36 +18,36 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef ITEM_CONTAINER_HPP
-#define ITEM_CONTAINER_HPP
+#include "interface/process_registry.hpp"
 
-#include <components/component.hpp>
+#include <map>
 
-#include "selection.hpp"
-#include "item.hpp"
+static std::map<g_pid, g_tid> remoteDelegates;
+static g_user_mutex remoteDelegatesLock = g_mutex_initialize();
 
-
-class item_container_t : public component_t
+void process_registry_t::bind(g_pid pid, g_tid tid)
 {
-	int gridScale = 100;
-	selection_t* selection;
+	g_mutex_acquire(remoteDelegatesLock);
+	remoteDelegates[pid] = tid;
+	g_mutex_release(remoteDelegatesLock);
+}
 
-public:
-	item_container_t();
-	~item_container_t() override = default;
+g_tid process_registry_t::get(g_pid pid)
+{
+	g_mutex_acquire(remoteDelegatesLock);
+	if(remoteDelegates.count(pid) > 0)
+	{
+		g_tid tid = remoteDelegates[pid];
+		g_mutex_release(remoteDelegatesLock);
+		return tid;
+	}
+	g_mutex_release(remoteDelegatesLock);
+	return G_TID_NONE;
+}
 
-	int getGridScale() const { return gridScale; }
-
-	void updateSelectedChildren(const g_rectangle& newSelection);
-	void showSelection(g_rectangle& selection);
-	void hideSelection();
-	void startLoadDesktopItems();
-	void unselectItems();
-	void setSelectedItem(item_t* item);
-	void pressDesktopItems(const g_point& screen_position);
-	void dragDesktopItems(const g_point& screen_position);
-	void tidyDesktopItems();
-};
-
-
-#endif //ITEM_CONTAINER_HPP
+void process_registry_t::cleanup_process(g_pid pid)
+{
+	g_mutex_acquire(remoteDelegatesLock);
+	remoteDelegates.erase(pid);
+	g_mutex_release(remoteDelegatesLock);
+}

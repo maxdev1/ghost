@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,28 +18,24 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_WINDOW__
-#define __LIBWINDOW_WINDOW__
+#ifndef LIBWINDOW_WINDOW
+#define LIBWINDOW_WINDOW
 
-#include "libwindow/component.hpp"
-#include "libwindow/listener/listener.hpp"
-#include "libwindow/titled_component.hpp"
-#include <functional>
+#include "component.hpp"
+#include "titled_component.hpp"
 
 class g_window : public g_component, public g_titled_component
 {
-  protected:
-	g_window(uint32_t id) : g_component(id), g_titled_component(id)
-	{
-	}
+protected:
+    explicit g_window(uint32_t id);
 
-  public:
-	static g_window* create();
+public:
+    static g_window* create();
 
-	bool isResizable();
-	void setResizable(bool resizable);
+    bool isResizable();
+    void setResizable(bool resizable);
 
-	bool onClose(std::function<void()> func);
+    bool onClose(std::function<void()> func);
 };
 
 #endif

@@ -62,19 +62,20 @@ typedef uint32_t component_child_reference_type_t;
 #define COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL 1
 
 class component_t;
+
 class component_child_reference_t
 {
-  public:
-	component_t* component;
-	component_child_reference_type_t type;
+public:
+    component_t* component;
+    component_child_reference_type_t type;
 };
 
 struct component_listener_entry_t
 {
-	component_listener_entry_t* previous;
-	g_ui_component_event_type type;
-	event_listener_info_t info;
-	component_listener_entry_t* next;
+    component_listener_entry_t* previous;
+    g_ui_component_event_type type;
+    event_listener_info_t info;
+    component_listener_entry_t* next;
 };
 
 /**
@@ -82,283 +83,285 @@ struct component_listener_entry_t
  */
 class component_t : public bounds_event_component_t
 {
-  private:
-	g_rectangle bounds;
-	component_t* parent;
-	std::vector<component_child_reference_t> children;
-	g_user_mutex children_lock = g_mutex_initialize_r(true);
+protected:
+    g_rectangle bounds;
+    component_t* parent;
+    std::vector<component_child_reference_t> children;
+    g_user_mutex children_lock = g_mutex_initialize_r(true);
 
-	g_dimension minimumSize;
-	g_dimension preferredSize;
-	g_dimension maximumSize;
+    g_dimension minimumSize;
+    g_dimension preferredSize;
+    g_dimension maximumSize;
 
-	component_requirement_t requirements;
-	component_requirement_t childRequirements;
+    component_requirement_t requirements;
+    component_requirement_t childRequirements;
 
-	component_listener_entry_t* listeners = 0;
+    component_listener_entry_t* listeners = 0;
 
-	int z_index = 1000;
+    int z_index = 1000;
 
-  protected:
-	layout_manager_t* layoutManager;
-	g_graphics graphics;
+    g_user_mutex lock = g_mutex_initialize_r(true);
 
-	bool visible;
+    layout_manager_t* layoutManager;
+    graphics_t graphics;
 
-	/**
-	 * Should be set to false if this component does not paint anything on itself.
-	 */
-	bool needsGraphics = true;
+    bool visible;
 
-  public:
-	g_ui_component_id id;
+    /**
+     * Should be set to false if this component does not paint anything on itself.
+     */
+    bool hasGraphics = true;
 
-	/**
-	 * Creates the component; initially marks it as dirty
-	 * and sets no parent
-	 */
-	component_t() : id(-1), graphics(), visible(true),
-					requirements(COMPONENT_REQUIREMENT_ALL), childRequirements(COMPONENT_REQUIREMENT_ALL),
-					parent(0), layoutManager(0), bounds_event_component_t(this)
-	{
-	}
+public:
+    g_ui_component_id id;
 
-	/**
-	 * Destroys the component
-	 */
-	virtual ~component_t();
+    component_t();
 
-	void setZIndex(int z_index)
-	{
-		this->z_index = z_index;
-	}
+    /**
+     * Destroys the component
+     */
+    virtual ~component_t();
 
-	/**
-	 * Returns a Pointer to the components graphics
-	 */
-	g_graphics* getGraphics()
-	{
-		return &graphics;
-	}
+    bool isVisible() const
+    {
+        return this->visible;
+    }
 
-	/**
-	 * Returns the components parent
-	 *
-	 * @return the components parent
-	 */
-	component_t* getParent()
-	{
-		return parent;
-	}
+    void setZIndex(int z_index)
+    {
+        this->z_index = z_index;
+    }
 
-	std::vector<component_child_reference_t>& getChildren()
-	{
-		return children;
-	}
+    /**
+     * Returns a Pointer to the components graphics
+     */
+    graphics_t* getGraphics()
+    {
+        return &graphics;
+    }
 
-	g_user_mutex getChildrenLock()
-	{
-		return children_lock;
-	}
+    /**
+     * Returns the components parent
+     *
+     * @return the components parent
+     */
+    component_t* getParent()
+    {
+        return parent;
+    }
 
-	bool canHandleEvents() const;
+    std::vector<component_child_reference_t>& getChildren()
+    {
+        return children;
+    }
 
-	void setVisible(bool visible);
+    g_user_mutex getChildrenLock()
+    {
+        return children_lock;
+    }
 
-	/**
-	 * Sets the bounds of the component and recreates its graphics buffer.
-	 *
-	 * @param bounds	the new bounds of the component
-	 */
-	void setBounds(const g_rectangle& bounds);
+    bool canHandleEvents() const;
 
-	/**
-	 * Returns the bounds of the component.
-	 *
-	 * @return the bounds
-	 */
-	g_rectangle getBounds() const
-	{
-		return bounds;
-	}
+    void setVisible(bool visible);
 
-	void setPreferredSize(const g_dimension& size);
+    /**
+     * Sets the bounds of the component and recreates its graphics buffer.
+     *
+     * @param bounds	the new bounds of the component
+     */
+    void setBounds(const g_rectangle& bounds);
 
-	virtual g_dimension getPreferredSize()
-	{
-		return preferredSize;
-	}
+    /**
+     * Returns the bounds of the component.
+     *
+     * @return the bounds
+     */
+    g_rectangle getBounds() const
+    {
+        return bounds;
+    }
 
-	void setMinimumSize(const g_dimension& size);
+    void setPreferredSize(const g_dimension& size);
 
-	g_dimension getMinimumSize() const
-	{
-		return minimumSize;
-	}
+    virtual g_dimension getPreferredSize()
+    {
+        return preferredSize;
+    }
 
-	void setMaximumSize(const g_dimension& size);
+    void setMinimumSize(const g_dimension& size);
 
-	g_dimension getMaximumSize() const
-	{
-		return maximumSize;
-	}
+    g_dimension getMinimumSize() const
+    {
+        return minimumSize;
+    }
 
-	/**
-	 * This method is used to blit the component and all of its children
-	 * to the out buffer
-	 *
-	 * @param absClip	absolute bounds that may not be exceeded
-	 * @param position	absolute screen position to blit to
-	 */
-	void blit(g_graphics* out, g_rectangle absClip, g_point position);
+    void setMaximumSize(const g_dimension& size);
 
-	/**
-	 * Adds the given component as a child to this component
-	 *
-	 * @param comp	the component to add
-	 */
-	virtual void addChild(component_t* comp, component_child_reference_type_t type = COMPONENT_CHILD_REFERENCE_TYPE_DEFAULT);
+    g_dimension getMaximumSize() const
+    {
+        return maximumSize;
+    }
 
-	/**
-	 * Removes the given component from this component
-	 *
-	 * @param comp	the component to remove
-	 */
-	void removeChild(component_t* comp);
+    /**
+     * This method is used to blit the component and all of its children
+     * to the out buffer
+     *
+     * @param clip	absolute bounds that may not be exceeded
+     * @param screenPosition	absolute screen position to blit to
+     */
+    virtual void blit(graphics_t* out, const g_rectangle& clip, const g_point& screenPosition);
 
-	/**
-	 * Returns the component at the given Point
-	 *
-	 * @param p		the Point
-	 */
-	virtual component_t* getComponentAt(g_point p);
+    virtual void blitChildren(graphics_t* out, const g_rectangle& clip, const g_point& screenPosition);
 
-	/**
-	 * Returns the first in the hierarchy that is a Window
-	 *
-	 * @return the window
-	 */
-	virtual window_t* getWindow();
+    /**
+     * Adds the given component as a child to this component
+     *
+     * @param comp	the component to add
+     */
+    virtual void addChild(component_t* comp,
+                          component_child_reference_type_t type = COMPONENT_CHILD_REFERENCE_TYPE_DEFAULT);
 
-	/**
-	 * @return whether this type of component is a window.
-	 */
-	virtual bool isWindow()
-	{
-		return false;
-	}
+    /**
+     * Removes the given component from this component
+     *
+     * @param comp	the component to remove
+     */
+    void removeChild(component_t* comp);
 
-	/**
-	 * Brings this component to the front
-	 */
-	virtual void bringToFront();
+    /**
+     * Returns the component at the given Point
+     *
+     * @param p		the Point
+     */
+    virtual component_t* getComponentAt(g_point p);
 
-	/**
-	 * Brings the given child component to the front
-	 *
-	 * @param comp	the child component
-	 */
-	virtual void bringChildToFront(component_t* comp);
+    /**
+     * Returns the first in the hierarchy that is a Window
+     *
+     * @return the window
+     */
+    virtual window_t* getWindow();
 
-	/**
-	 * Returns the location of the component on screen
-	 *
-	 * @return the location
-	 */
-	virtual g_point getLocationOnScreen();
+    /**
+     * @return whether this type of component is a window.
+     */
+    virtual bool isWindow()
+    {
+        return false;
+    }
 
-	virtual component_t* handleMouseEvent(mouse_event_t& event);
-	virtual component_t* handleKeyEvent(key_event_t& event);
-	virtual component_t* handleFocusEvent(focus_event_t& event);
+    /**
+     * Brings this component to the front
+     */
+    virtual void bringToFront();
 
-	virtual void handleBoundChange(g_rectangle oldBounds)
-	{
-		// May be implemented by subtypes
-	}
+    /**
+     * Brings the given child component to the front
+     *
+     * @param comp	the child component
+     */
+    virtual void bringChildToFront(component_t* comp);
 
-	virtual void setLayoutManager(layout_manager_t* layoutManager);
+    /**
+     * Returns the location of the component on screen
+     *
+     * @return the location
+     */
+    virtual g_point getLocationOnScreen();
 
-	layout_manager_t* getLayoutManager() const
-	{
-		return layoutManager;
-	}
+    virtual component_t* handleMouseEvent(mouse_event_t& event);
+    virtual component_t* handleKeyEvent(key_event_t& event);
+    virtual component_t* handleFocusEvent(focus_event_t& event);
 
-	/**
-	 * Marks the given area as dirty so it is copied to the framebuffer
-	 *
-	 * @param rect	the g_rectangle to mark dirty
-	 */
-	virtual void markDirty(g_rectangle rect);
+    virtual void handleBoundChange(g_rectangle oldBounds)
+    {
+        // May be implemented by subtypes
+    }
 
-	/**
-	 * Marks the entire component as dirty
-	 */
-	virtual void markDirty()
-	{
-		markDirty(g_rectangle(0, 0, bounds.width + 1, bounds.height + 1));
-	}
+    virtual void setLayoutManager(layout_manager_t* layoutManager);
 
-	/**
-	 * Places the flag for the given requirement on the parent component (if non-null).
-	 */
-	void markParentFor(component_requirement_t req);
+    layout_manager_t* getLayoutManager() const
+    {
+        return layoutManager;
+    }
 
-	/**
-	 * Places the flag for the given requirement on this component.
-	 */
-	void markFor(component_requirement_t req);
+    /**
+     * Marks the given area as dirty so it is copied to the framebuffer
+     *
+     * @param rect	the g_rectangle to mark dirty
+     */
+    virtual void markDirty(g_rectangle rect);
 
-	/**
-	 * Places the flag for the given requirement in the list of child-requirements.
-	 */
-	void markChildsFor(component_requirement_t req);
+    /**
+     * Marks the entire component as dirty
+     */
+    virtual void markDirty()
+    {
+        markDirty(g_rectangle(0, 0, bounds.width + 1, bounds.height + 1));
+    }
 
-	/**
-	 * Resolves the given requirement
-	 */
-	void resolveRequirement(component_requirement_t req);
-	bool hasChildRequirements() const
-	{
-		return childRequirements != COMPONENT_REQUIREMENT_NONE;
-	}
+    /**
+     * Places the flag for the given requirement on the parent component (if non-null).
+     */
+    void markParentFor(component_requirement_t req);
 
-	/**
-	 * This method is called by the window manager if the update requirement flag is set.
-	 * The component may here change the contents of it's model.
-	 */
-	virtual void update();
+    /**
+     * Places the flag for the given requirement on this component.
+     */
+    void markFor(component_requirement_t req);
 
-	/**
-	 * This method is called by the window manager if the layout requirement flag is set.
-	 * The component may here change the bounds of each child component and also change its
-	 * own preferred size.
-	 */
-	virtual void layout();
+    /**
+     * Places the flag for the given requirement in the list of child-requirements.
+     */
+    void markChildsFor(component_requirement_t req);
 
-	/**
-	 * This method is called by the window manager if the paint requirement flag is set.
-	 * The component may here repaint itself.
-	 */
-	virtual void paint();
+    /**
+     * Resolves the given requirement
+     */
+    void resolveRequirement(component_requirement_t req, int lvl);
 
-	virtual bool getNumericProperty(int property, uint32_t* out);
+    bool hasChildRequirements() const
+    {
+        return childRequirements != COMPONENT_REQUIREMENT_NONE;
+    }
 
-	virtual bool setNumericProperty(int property, uint32_t value);
+    /**
+     * This method is called by the window manager if the update requirement flag is set.
+     * The component may here change the contents of it's model.
+     */
+    virtual void update();
 
-	void setListener(g_ui_component_event_type eventType, g_tid target_thread, g_ui_component_id id);
+    /**
+     * This method is called by the window manager if the layout requirement flag is set.
+     * The component may here change the bounds of each child component and also change its
+     * own preferred size.
+     */
+    virtual void layout();
 
-	bool getListener(g_ui_component_event_type eventType, event_listener_info_t& out);
+    /**
+     * This method is called by the window manager if the paint requirement flag is set.
+     * The component may here repaint itself.
+     */
+    virtual void paint();
 
-	void clearSurface();
+    virtual bool getNumericProperty(int property, uint32_t* out);
 
-	bool isChildOf(component_t* c);
+    virtual bool setNumericProperty(int property, uint32_t value);
 
-	/**
-	 * Returns the reference to the given component (if the given component is a child of this component).
-	 *
-	 * @return true if the component was found
-	 */
-	bool getChildReference(component_t* child, component_child_reference_t& out);
+    void setListener(g_ui_component_event_type eventType, g_tid target_thread, g_ui_component_id id);
+
+    bool getListener(g_ui_component_event_type eventType, event_listener_info_t& out);
+
+    void clearSurface();
+
+    bool isChildOf(component_t* c);
+
+    /**
+     * Returns the reference to the given component (if the given component is a child of this component).
+     *
+     * @return true if the component was found
+     */
+    bool getChildReference(component_t* child, component_child_reference_t& out);
 };
 
 #endif

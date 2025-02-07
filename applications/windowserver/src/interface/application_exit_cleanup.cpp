@@ -18,11 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <interface/application_exit_cleanup.hpp>
-#include <interface/component_registry.hpp>
+#include "application_exit_cleanup.hpp"
+#include "component_registry.hpp"
+#include "process_registry.hpp"
+
 #include <libwindow/interface.hpp>
-#include <stdio.h>
-#include <string.h>
 
 void interfaceApplicationExitCleanupThread(application_exit_cleanup_handler_t* handler)
 {
@@ -35,5 +35,6 @@ void application_exit_cleanup_handler_t::run()
 
 	interfaceReceiver->stop = true;
 
-	component_registry_t::cleanup_process(pid);
+	component_registry_t::cleanupProcess(pid);
+	process_registry_t::cleanup_process(pid);
 }

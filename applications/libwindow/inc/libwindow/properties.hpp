@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,8 +18,8 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_PROPERTIES__
-#define __LIBWINDOW_PROPERTIES__
+#ifndef LIBWINDOW_PROPERTIES
+#define LIBWINDOW_PROPERTIES
 
 /**
  * Properties may have a different meaning for each component. They are
@@ -32,5 +32,7 @@
 #define G_UI_PROPERTY_ENABLED			4
 #define G_UI_PROPERTY_LAYOUT_MANAGER	5
 #define G_UI_PROPERTY_BACKGROUND        6
+#define G_UI_PROPERTY_COLOR             7
+#define G_UI_PROPERTY_ALIGNMENT         8
 
 #endif

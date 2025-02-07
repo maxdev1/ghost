@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,27 +18,41 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_ACTIONLISTENER__
-#define __LIBWINDOW_ACTIONLISTENER__
+#ifndef LIBWINDOW_ACTIONLISTENER
+#define LIBWINDOW_ACTIONLISTENER
 
-#include <cstdint>
-
-#include "libwindow/listener/listener.hpp"
+#include "listener.hpp"
+#include <utility>
+#include <bits/std_function.h>
 
 class g_component;
 
+typedef std::function<void()> g_action_listener_func;
+
 class g_action_listener : public g_listener
 {
-  public:
-	virtual ~g_action_listener()
-	{
-	}
+public:
+    void process(g_ui_component_event_header* header) override
+    {
+        handleAction();
+    }
 
-	virtual void process(g_ui_component_event_header *header)
-	{
-		handle_action();
-	}
-	virtual void handle_action() = 0;
+    virtual void handleAction() = 0;
+};
+
+class g_action_listener_dispatcher : public g_action_listener
+{
+    g_action_listener_func func;
+
+public:
+    explicit g_action_listener_dispatcher(g_action_listener_func func): func(std::move(func))
+    {
+    }
+
+    void handleAction() override
+    {
+        func();
+    }
 };
 
 #endif

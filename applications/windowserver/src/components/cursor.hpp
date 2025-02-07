@@ -50,12 +50,12 @@ class cursor_t
     static g_mouse_button pressedButtons;
     static g_mouse_button nextPressedButtons;
 
-    static component_t* pressedComponent;
-    static component_t* draggedComponent;
-    static component_t* hoveredComponent;
-    static component_t* focusedComponent;
+    static g_ui_component_id pressedComponent;
+    static g_ui_component_id draggedComponent;
+    static g_ui_component_id hoveredComponent;
+    static g_ui_component_id focusedComponent;
 
-    static void paint(g_graphics* global);
+    static void paint(graphics_t* global);
 
     static g_rectangle getArea();
 

@@ -25,36 +25,42 @@
 #include "interface/interface_receiver.hpp"
 #include "registration_thread.hpp"
 
+#include "process_registry.hpp"
+
 void interfaceRegistrationThread()
 {
-	g_tid tid = g_get_tid();
 	if(!g_task_register_id(G_UI_REGISTRATION_THREAD_IDENTIFIER))
 	{
 		klog("failed to register as \"%s\"", G_UI_REGISTRATION_THREAD_IDENTIFIER);
 		return;
 	}
 
-	size_t bufferLength = sizeof(g_message_header) + sizeof(g_ui_initialize_request);
-	uint8_t* buffer = new uint8_t[bufferLength];
+	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_initialize_request);
+	uint8_t buf[buflen];
 
 	while(true)
 	{
-		g_message_receive_status stat = g_receive_message(buffer, bufferLength);
+		g_message_receive_status stat = g_receive_message(buf, buflen);
 
 		if(stat == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 		{
-			g_message_header* request_message = (g_message_header*) buffer;
-			g_ui_initialize_request* request = (g_ui_initialize_request*) G_MESSAGE_CONTENT(buffer);
+			auto header = (g_message_header*) buf;
+			auto body = (g_ui_initialize_request*) G_MESSAGE_CONTENT(buf);
+
+			process_registry_t::bind(g_get_pid_for_tid(body->event_dispatcher), body->event_dispatcher);
 
 			auto receiver = new interface_receiver_t();
 			g_tid receiverTid = g_create_task_d((void*) &interfaceReceiverThread, receiver);
-			g_create_task_d((void*) &interfaceApplicationExitCleanupThread, new application_exit_cleanup_handler_t(g_get_pid_for_tid(request_message->sender), receiver));
+			g_create_task_d((void*) &interfaceApplicationExitCleanupThread,
+			                new application_exit_cleanup_handler_t(g_get_pid_for_tid(header->sender),
+			                                                       receiver));
 
 			g_ui_initialize_response response;
 			response.header.id = G_UI_PROTOCOL_INITIALIZATION;
 			response.status = G_UI_PROTOCOL_SUCCESS;
-			response.window_server_delegate_thread = receiverTid;
-			g_send_message_t(request_message->sender, &response, sizeof(g_ui_initialize_response), request_message->transaction);
+			response.window_server_delegate = receiverTid;
+			g_send_message_t(header->sender, &response, sizeof(g_ui_initialize_response),
+			                 header->transaction);
 		}
 	}
 }

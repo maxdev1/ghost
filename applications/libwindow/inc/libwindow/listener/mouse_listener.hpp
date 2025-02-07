@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,27 +18,42 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_MOUSELISTENER__
-#define __LIBWINDOW_MOUSELISTENER__
-
-#include <cstdint>
+#ifndef LIBWINDOW_MOUSELISTENER
+#define LIBWINDOW_MOUSELISTENER
 
 #include "libwindow/listener/listener.hpp"
+#include <functional>
+#include <utility>
+#include <bits/std_function.h>
+
+typedef std::function<void(g_ui_component_mouse_event*)> g_mouse_listener_func;
 
 class g_mouse_listener : public g_listener
 {
-  public:
-	virtual ~g_mouse_listener()
-	{
-	}
+public:
+    ~g_mouse_listener() override = default;
 
-	virtual void process(g_ui_component_event_header *header)
-	{
-		g_ui_component_mouse_event *event = (g_ui_component_mouse_event *) header;
-		handle_mouse_event(event);
-	}
+    void process(g_ui_component_event_header* header) override
+    {
+        handle_mouse_event((g_ui_component_mouse_event*)header);
+    }
 
-	virtual void handle_mouse_event(g_ui_component_mouse_event *e) = 0;
+    virtual void handle_mouse_event(g_ui_component_mouse_event* e) = 0;
+};
+
+class g_mouse_listener_dispatcher : public g_mouse_listener
+{
+    g_mouse_listener_func func;
+
+public:
+    explicit g_mouse_listener_dispatcher(g_mouse_listener_func func) : func(std::move(func))
+    {
+    };
+
+    void handle_mouse_event(g_ui_component_mouse_event* e) override
+    {
+        func(e);
+    }
 };
 
 #endif

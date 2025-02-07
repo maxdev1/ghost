@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,21 +18,17 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_LISTENER__
-#define __LIBWINDOW_LISTENER__
+#ifndef LIBWINDOW_LISTENER
+#define LIBWINDOW_LISTENER
 
 #include "libwindow/interface.hpp"
 
-#include <cstdint>
-
 class g_listener
 {
-  public:
-	virtual ~g_listener()
-	{
-	}
+public:
+    virtual ~g_listener() = default;
 
-	virtual void process(g_ui_component_event_header *header) = 0;
+    virtual void process(g_ui_component_event_header* header) = 0;
 };
 
 #endif

@@ -28,12 +28,14 @@
 #include <libfont/text_alignment.hpp>
 #include <math.h>
 
-button_t::button_t() : insets(g_insets(5, 10, 5, 10)), action_component_t(this)
+button_t::button_t() :
+	insets(g_insets(5, 10, 5, 10)), action_component_t(this)
 {
 	enabled = true;
 	addChild(&label, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
 	label.setAlignment(g_text_alignment::CENTER);
 }
+
 /**
  * Layouts the button.
  */
@@ -66,7 +68,10 @@ void button_t::layout()
 void button_t::paint()
 {
 
-	auto cr = graphics.getContext();
+	auto cr = graphics.acquireContext();
+	if(!cr)
+		return;
+
 	clearSurface();
 	auto bounds = getBounds();
 
@@ -118,6 +123,8 @@ void button_t::paint()
 	cairo_set_source_rgba(cr, G_COLOR_ARGB_TO_FPARAMS(border));
 	cairo_set_line_width(cr, 1);
 	cairo_stroke(cr);
+
+	graphics.releaseContext();
 }
 
 component_t* button_t::handleMouseEvent(mouse_event_t& me)
@@ -147,7 +154,8 @@ component_t* button_t::handleMouseEvent(mouse_event_t& me)
 
 		if(me.type == G_MOUSE_EVENT_RELEASE)
 		{
-			if(me.position.x >= 0 && me.position.y >= 0 && me.position.x < getBounds().width && me.position.y < getBounds().height)
+			if(me.position.x >= 0 && me.position.y >= 0 && me.position.x < getBounds().width && me.position.y <
+			   getBounds().height)
 			{
 				fireAction();
 			}

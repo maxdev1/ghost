@@ -25,13 +25,12 @@
 
 class panel_t : public component_t
 {
-  private:
     g_color_argb background;
 
   public:
     panel_t() : background(ARGB(0, 0, 0, 0))
     {
-        needsGraphics = false;
+        hasGraphics = false;
     }
 
     virtual void paint();

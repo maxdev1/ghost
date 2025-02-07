@@ -24,24 +24,30 @@
 #include "interface/component_registry.hpp"
 
 static std::map<g_ui_component_id, component_t*> components;
-static g_user_mutex components_lock = g_mutex_initialize();
+static g_user_mutex components_lock = g_mutex_initialize_r(true);
 static std::map<g_pid, std::map<g_ui_component_id, component_t*>> components_by_process;
 static g_ui_component_id next_id = 1;
 
-g_ui_component_id component_registry_t::add(g_pid process, component_t* component)
+g_ui_component_id component_registry_t::add(component_t* component)
 {
 	g_mutex_acquire(components_lock);
 	g_ui_component_id id = next_id++;
 	components[id] = component;
-	components_by_process[process][id] = component;
 	component->id = id;
 	g_mutex_release(components_lock);
 	return id;
 }
 
+void component_registry_t::bind(g_pid process, component_t* component)
+{
+	g_mutex_acquire(components_lock);
+	components_by_process[process][component->id] = component;
+	g_mutex_release(components_lock);
+}
+
 component_t* component_registry_t::get(g_ui_component_id id)
 {
-	g_mutex_release(components_lock);
+	g_mutex_acquire(components_lock);
 	if(components.count(id) > 0)
 	{
 		component_t* comp = components[id];
@@ -49,36 +55,35 @@ component_t* component_registry_t::get(g_ui_component_id id)
 		return comp;
 	}
 	g_mutex_release(components_lock);
-	return 0;
+	return nullptr;
 }
 
-void component_registry_t::remove_component(g_pid pid, g_ui_component_id id)
+void component_registry_t::removeComponent(g_pid pid, g_ui_component_id id)
 {
 	g_mutex_acquire(components_lock);
 	if(components.count(id) > 0)
 	{
 		if(components_by_process.count(pid) > 0)
 		{
-			components_by_process[pid].erase(components_by_process[pid].find(id));
+			components_by_process[pid].erase(id);
 		}
-		components.erase(components.find(id));
+		components.erase(id);
 	}
 	g_mutex_release(components_lock);
 }
 
-void component_registry_t::cleanup_process(g_pid pid)
+void component_registry_t::cleanupProcess(g_pid pid)
 {
 	// Get components mapped for process
 	g_mutex_acquire(components_lock);
 	auto components = &components_by_process[pid];
-	g_mutex_release(components_lock);
 
 	if(components)
 	{
 		// Put them into a list
 		auto componentList = std::list<component_t*>();
 
-		for(auto& entry : *components)
+		for(auto& entry: *components)
 		{
 			component_t* component = entry.second;
 			if(component && std::find(componentList.begin(), componentList.end(), component) == componentList.end())
@@ -97,9 +102,9 @@ void component_registry_t::cleanup_process(g_pid pid)
 
 			if(component->isWindow())
 			{
-				remove_process_components(pid, component, removedComponents);
+				removeProcessComponents(pid, component, removedComponents);
 
-				for(auto removed : removedComponents)
+				for(auto removed: removedComponents)
 				{
 					componentList.remove(removed);
 				}
@@ -107,13 +112,13 @@ void component_registry_t::cleanup_process(g_pid pid)
 		}
 
 		// Remove map from registry
-		g_mutex_acquire(components_lock);
-		components_by_process.erase(components_by_process.find(pid));
-		g_mutex_release(components_lock);
+		components_by_process.erase(pid);
 	}
+	g_mutex_release(components_lock);
 }
 
-void component_registry_t::remove_process_components(g_pid process, component_t* component, std::list<component_t*>& removedComponents)
+void component_registry_t::removeProcessComponents(g_pid process, component_t* component,
+                                                     std::list<component_t*>& removedComponents)
 {
 	// Never remove twice
 	if(std::find(removedComponents.begin(), removedComponents.end(), component) != removedComponents.end())
@@ -128,20 +133,21 @@ void component_registry_t::remove_process_components(g_pid process, component_t*
 	removedComponents.push_back(component);
 
 	// Recursively remove all child elements first
-	for(auto childRef : component->getChildren())
+	g_mutex_acquire(component->getChildrenLock());
+	for(auto childRef: component->getChildren())
 	{
-		remove_process_components(process, childRef.component, removedComponents);
+		removeProcessComponents(process, childRef.component, removedComponents);
 	}
+	g_mutex_release(component->getChildrenLock());
 
 	// Remove from registry
-	remove_component(process, component->id);
+	removeComponent(process, component->id);
 
 	// Remove from parent
 	auto parent = component->getParent();
 	bool canBeDeleted = true;
 	if(parent)
 	{
-
 		// Only allow to really "delete" children that are default referenced
 		component_child_reference_t childReference;
 		if(parent->getChildReference(component, childReference))
@@ -156,6 +162,7 @@ void component_registry_t::remove_process_components(g_pid process, component_t*
 	// Finally, delete it
 	if(canBeDeleted)
 	{
-		delete component;
+		// TODO This results in some endless loop in another thread:
+		// delete component;
 	}
 }
