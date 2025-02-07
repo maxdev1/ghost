@@ -86,6 +86,8 @@ void windowserver_t::launch()
 	g_rectangle screenBounds(0, 0, resolution.width, resolution.height);
 	createVitalComponents(screenBounds);
 
+	// test_t::createTestComponents();
+
 	startInterface();
 
 	g_create_task((void*) &startOtherTasks);

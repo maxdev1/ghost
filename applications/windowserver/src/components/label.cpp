@@ -55,12 +55,15 @@ void label_t::update()
 	if(!cr)
 		return;
 
+	cairo_save(cr);
 	cairo_set_font_face(cr, font->getFace());
 	cairo_set_font_size(cr, fontSize);
 	cairo_text_extents(cr, this->text.c_str(), &lastExtents);
-	markFor(COMPONENT_REQUIREMENT_LAYOUT);
+	cairo_restore(cr);
 
 	graphics.releaseContext();
+
+	markFor(COMPONENT_REQUIREMENT_LAYOUT);
 }
 
 void label_t::layout()
@@ -68,7 +71,8 @@ void label_t::layout()
 	g_dimension newPreferred(lastExtents.width + 3, lastExtents.height + 3);
 
 	// Set new preferred size
-	if(getPreferredSize() != newPreferred)
+	auto oldPreferred = getPreferredSize();
+	if(oldPreferred != newPreferred)
 	{
 		setPreferredSize(newPreferred);
 		markParentFor(COMPONENT_REQUIREMENT_UPDATE);
@@ -87,6 +91,7 @@ void label_t::paint()
 
 	auto bounds = getBounds();
 
+	cairo_save(cr);
 	cairo_set_source_rgb(cr, ARGB_FR_FROM(color), ARGB_FB_FROM(color), ARGB_FG_FROM(color));
 
 	int textLeft;
@@ -109,6 +114,7 @@ void label_t::paint()
 	cairo_set_font_face(cr, font->getFace());
 	cairo_set_font_size(cr, fontSize);
 	cairo_show_text(cr, text.c_str());
+	cairo_restore(cr);
 
 	graphics.releaseContext();
 }

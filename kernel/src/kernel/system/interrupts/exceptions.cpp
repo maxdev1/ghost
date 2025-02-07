@@ -68,10 +68,9 @@ uint32_t exceptionsGetCR2()
 
 bool exceptionsHandleDivideError(g_task* task)
 {
-	// Let process run, but skip the faulty instruction
-	task->state->eip++;
-	logDebug("%! task %i had a divide error", "exception", task->id);
-	return true;
+	// TODO This handling doesn't work. Instructions can have a different size.
+	// task->state->eip++;
+	return false;
 }
 
 /**

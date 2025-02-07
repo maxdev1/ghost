@@ -96,14 +96,6 @@ void item::paint()
 		cairo_fill(cr);
 		cairo_restore(cr);
 	}
-	else
-	{
-		cairo_save(cr);
-		roundedRectangle(cr, 3, 3, bounds.width - 6, bounds.height - 6, 5);
-		cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.1);
-		cairo_fill(cr);
-		cairo_restore(cr);
-	}
 
 	if(iconSurface)
 	{

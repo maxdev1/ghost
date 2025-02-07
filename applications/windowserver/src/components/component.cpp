@@ -161,6 +161,7 @@ void component_t::addChild(component_t* comp, component_child_reference_type_t t
 	});
 	g_mutex_release(children_lock);
 
+	comp->markFor(COMPONENT_REQUIREMENT_ALL);
 	markFor(COMPONENT_REQUIREMENT_ALL);
 }
 
