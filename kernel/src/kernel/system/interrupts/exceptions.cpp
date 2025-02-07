@@ -35,42 +35,64 @@
  * Names of the exceptions
  */
 static const char* EXCEPTION_NAMES[] = {
-	"divide error",						// 0x00
-	"debug exception",					// 0x01
-	"non-maskable interrupt exception", // 0x02
-	"breakpoint exception",				// 0x03
-	"detected overflow",				// 0x04
-	"out of bounds",					// 0x05
-	"invalid operation code",			// 0x06
-	"no co-processor",					// 0x07
-	"double fault",						// 0x08
-	"co-processor segment overrun",		// 0x09
-	"Bad TSS exception",				// 0x0A
-	"segment not present",				// 0x0B
-	"stack fault",						// 0x0C
-	"general protection fault",			// 0x0D
-	"page fault",						// 0x0E
-	"unknown interrupt",				// 0x0F
-	"co-processor fault",				// 0x10
-	"alignment check exception",		// 0x11
-	"machine check exception",			// 0x12
-	"reserved exception", "reserved exception", "reserved exception", "reserved exception", "reserved exception", "reserved exception",
-	"reserved exception", "reserved exception", "reserved exception", "reserved exception", "reserved exception", "reserved exception", "reserved exception" // reserved exceptions
+		"divide error", // 0x00
+		"debug exception", // 0x01
+		"non-maskable interrupt exception", // 0x02
+		"breakpoint exception", // 0x03
+		"detected overflow", // 0x04
+		"out of bounds", // 0x05
+		"invalid operation code", // 0x06
+		"no co-processor", // 0x07
+		"double fault", // 0x08
+		"co-processor segment overrun", // 0x09
+		"Bad TSS exception", // 0x0A
+		"segment not present", // 0x0B
+		"stack fault", // 0x0C
+		"general protection fault", // 0x0D
+		"page fault", // 0x0E
+		"unknown interrupt", // 0x0F
+		"co-processor fault", // 0x10
+		"alignment check exception", // 0x11
+		"machine check exception", // 0x12
+		"reserved exception", "reserved exception", "reserved exception", "reserved exception", "reserved exception",
+		"reserved exception",
+		"reserved exception", "reserved exception", "reserved exception", "reserved exception", "reserved exception",
+		"reserved exception", "reserved exception" // reserved exceptions
 };
 
 uint32_t exceptionsGetCR2()
 {
 	uint32_t addr;
 	asm volatile("mov %%cr2, %0"
-				 : "=r"(addr));
+		: "=r"(addr));
 	return addr;
 }
 
 bool exceptionsHandleDivideError(g_task* task)
 {
-	// TODO This handling doesn't work. Instructions can have a different size.
-	// task->state->eip++;
-	return false;
+	uint8_t* faulting_instruction = (uint8_t*) task->state->eip;
+
+	uint8_t opcode = faulting_instruction[0];
+	int skip = 1;
+
+	if(
+		opcode == 0xF6 // DIV
+		|| opcode == 0xF7 // IDIV
+	)
+	{
+		skip = 2;
+		uint8_t modrm = faulting_instruction[1];
+		uint8_t mod = (modrm >> 6) & 0x3;
+		if(mod == 1)
+			skip += 1;
+		else if(mod == 2)
+			skip += 4;
+	}
+
+	task->state->eip += skip;
+
+	logInfo("%! Divide error in task %i, skipping to EIP: %x", "exception", task->id, task->state->eip);
+	return true;
 }
 
 /**
@@ -83,7 +105,8 @@ void exceptionsDumpTask(g_task* task)
 	logInfo("%! %s in task %i (process %i)", "exception", EXCEPTION_NAMES[state->intr], task->id, process->main->id);
 
 	if(state->intr == 0x0E)
-	{ // Page fault
+	{
+		// Page fault
 		logInfo("%#    accessed address: %h", exceptionsGetCR2());
 	}
 	logInfo("%#    eip: %h   eflags: %h", state->eip, state->eflags);
@@ -143,7 +166,8 @@ bool exceptionsHandlePageFault(g_task* task)
 		return true;
 
 	g_physical_address physPage = pagingVirtualToPhysical(G_PAGE_ALIGN_DOWN(accessed));
-	logInfo("%! task %i (core %i) EIP: %x (accessed %h, mapped page %h)", "pagefault", task->id, processorGetCurrentId(), task->state->eip, accessed, physPage);
+	logInfo("%! task %i (core %i) EIP: %x (accessed %h, mapped page %h)", "pagefault", task->id,
+	        processorGetCurrentId(), task->state->eip, accessed, physPage);
 
 	exceptionsDumpTask(task);
 
@@ -192,7 +216,8 @@ bool exceptionsHandleGeneralProtectionFault(g_task* task)
 
 	exceptionsDumpTask(task);
 
-	logInfo("%! #%i task %i killed due to general protection fault at EIP %h", "exception", processorGetCurrentId(), task->id, task->state->eip);
+	logInfo("%! #%i task %i killed due to general protection fault at EIP %h", "exception", processorGetCurrentId(),
+	        task->id, task->state->eip);
 	task->status = G_TASK_STATUS_DEAD;
 	taskingSchedule();
 	return true;
@@ -201,7 +226,7 @@ bool exceptionsHandleGeneralProtectionFault(g_task* task)
 bool exceptionsKillTask(g_task* task)
 {
 	logInfo("%! task %i killed due to exception %i (error %i) at EIP %h", "exception", task->id, task->state->intr,
-			task->state->error, task->state->eip);
+	        task->state->error, task->state->eip);
 	task->status = G_TASK_STATUS_DEAD;
 	taskingSchedule();
 	return true;
@@ -213,32 +238,37 @@ void exceptionsHandle(g_task* task)
 
 	switch(task->state->intr)
 	{
-	case 0x00:
-	{ // Divide error
-		resolved = exceptionsHandleDivideError(task);
-		break;
-	}
-	case 0x0E:
-	{ // Page fault
-		resolved = exceptionsHandlePageFault(task);
-		break;
-	}
-	case 0x0D:
-	{ // General protection fault
-		resolved = exceptionsHandleGeneralProtectionFault(task);
-		break;
-	}
-	case 0x06:
-	{ // Invalid operation code
-		resolved = exceptionsKillTask(task);
-		break;
-	}
+		case 0x00:
+		{
+			// Divide error
+			resolved = exceptionsHandleDivideError(task);
+			break;
+		}
+		case 0x0E:
+		{
+			// Page fault
+			resolved = exceptionsHandlePageFault(task);
+			break;
+		}
+		case 0x0D:
+		{
+			// General protection fault
+			resolved = exceptionsHandleGeneralProtectionFault(task);
+			break;
+		}
+		case 0x06:
+		{
+			// Invalid operation code
+			resolved = exceptionsKillTask(task);
+			break;
+		}
 	}
 
 	if(!resolved)
 	{
-		logInfo("%*%! task %i caused unresolved exception %i (error %i) at EIP: %h ESP: %h", 0x0C, "exception", task->id, task->state->intr,
-				task->state->error, task->state->eip, task->state->esp);
+		logInfo("%*%! task %i caused unresolved exception %i (error %i) at EIP: %h ESP: %h", 0x0C, "exception",
+		        task->id, task->state->intr,
+		        task->state->error, task->state->eip, task->state->esp);
 		for(;;)
 		{
 			asm("hlt");
