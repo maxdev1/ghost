@@ -187,21 +187,16 @@ void canvas_t::blit(graphics_t* out, const g_rectangle& clip, const g_point& pos
 	if(cr)
 	{
 		g_mutex_acquire(bufferLock);
-
-		if(buffer.surface)
+		if(bufferReady && buffer.surface)
 		{
 			/**
 			 * TODO
-			 * For some reason, this blitting sometimes does not work. I'm absolutely not sure why, maybe it is related
-			 * to issues with cairo and multithreading (or SIMD?) or due to the buffer being accessed here before it
-			 * is filled completely by the client
+			 * For some reason, this blitting sometimes does not work, maybe due
+			 * to race conditions? I'm absolutely not sure why, maybe it is related
+			 * to issues with cairo and multithreading (or SIMD?)
 			 */
 			cairo_surface_mark_dirty(buffer.surface);
 			cairo_save(cr);
-			// TODO ?
-			// cairo_rectangle(cr, clip.x, clip.y, clip.width, clip.height);
-			// cairo_clip(cr);
-			// cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
 			cairo_set_source_surface(cr, buffer.surface, positionOnParent.x, positionOnParent.y);
 			cairo_paint(cr);
 			cairo_restore(cr);
@@ -227,18 +222,11 @@ void canvas_t::blit(graphics_t* out, const g_rectangle& clip, const g_point& pos
 
 void canvas_t::requestBlit(g_rectangle& area)
 {
+	// TODO actually use "area"
 	g_mutex_acquire(bufferLock);
-	if(bufferDirty.width == 0)
-	{
-		bufferDirty = area;
-	}
-	else
-	{
-		bufferDirty.extend(area.getStart());
-		bufferDirty.extend(area.getEnd());
-	}
+	bufferReady = true;
 	g_mutex_release(bufferLock);
 
-	markFor(COMPONENT_REQUIREMENT_PAINT);
+	markDirty(area);
 	windowserver_t::instance()->requestRender();
 }

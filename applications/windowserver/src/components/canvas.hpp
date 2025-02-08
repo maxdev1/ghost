@@ -51,7 +51,7 @@ class canvas_t : public component_t
 
     g_user_mutex bufferLock = g_mutex_initialize_r(true);
     buffer_info_t buffer{};
-    g_rectangle bufferDirty = g_rectangle();
+    bool bufferReady = false;
 
     void createNewBuffer(g_rectangle& bounds, uint32_t size);
     void notifyClientAboutNewBuffer();

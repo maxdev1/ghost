@@ -373,8 +373,11 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 
 		if(component)
 		{
-			auto canvas = (canvas_t*) component;
-			canvas->requestBlit(request->area);
+			auto canvas = dynamic_cast<canvas_t*>(component);
+			if(canvas)
+			{
+				canvas->requestBlit(request->area);
+			}
 		}
 	}
 	else if(requestUiMessage->id == G_UI_PROTOCOL_REGISTER_DESKTOP_CANVAS)

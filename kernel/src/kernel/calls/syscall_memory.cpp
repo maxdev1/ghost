@@ -53,7 +53,7 @@ void syscallLowerMemoryFree(g_task* task, g_syscall_lower_free* data)
 
 void syscallAllocateMemory(g_task* task, g_syscall_alloc_mem* data)
 {
-	data->virtualResult = 0;
+	data->virtualResult = nullptr;
 
 	uint32_t pages = G_PAGE_ALIGN_UP(data->size) / G_PAGE_SIZE;
 	if(pages == 0)

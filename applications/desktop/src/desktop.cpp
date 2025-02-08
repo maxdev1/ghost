@@ -41,6 +41,10 @@ int main()
 	background = background::create();
 	g_ui::registerDesktopCanvas(background);
 
+	// TODO: If we don't pause here for a moment, some icons are sometimes not rendered, for some reason.
+	// It seems to be somehow related to the cairo rendering in the server-side canvas. See there for more.
+	g_sleep(300);
+
 	g_dimension screenDimension;
 	g_ui::getScreenDimension(screenDimension);
 	taskbar = taskbar::create();
@@ -50,11 +54,6 @@ int main()
 	{
 		taskbar->handleDesktopEvent(event);
 	});
-
-
-	// TODO: If we don't pause here for a moment, some icons are sometimes not rendered, for some reason.
-	// It seems to be somehow related to the cairo rendering in the server-side canvas. See there for more.
-	g_sleep(300);
 
 	desktopLoadItems();
 
