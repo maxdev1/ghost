@@ -214,7 +214,7 @@ public:
      *
      * @param comp	the component to remove
      */
-    void removeChild(component_t* comp);
+    virtual void removeChild(component_t* comp);
 
     /**
      * Returns the component at the given Point

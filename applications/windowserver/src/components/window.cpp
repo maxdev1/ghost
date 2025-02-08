@@ -486,6 +486,9 @@ bool window_t::setNumericProperty(int property, uint32_t value)
 void window_t::setTitle(std::string title)
 {
 	label.setTitle(title);
+
+	if(titleChangedListener)
+		titleChangedListener();
 }
 
 std::string window_t::getTitle()

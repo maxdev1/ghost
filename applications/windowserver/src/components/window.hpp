@@ -25,6 +25,8 @@
 #include "components/label.hpp"
 #include "components/panel.hpp"
 #include "components/titled_component.hpp"
+
+#include <bits/std_function.h>
 #include <libwindow/color_argb.hpp>
 
 /**
@@ -75,6 +77,8 @@ class window_t : public component_t, public titled_component_t
     int padding;
     g_rectangle crossBounds;
 
+    std::function<void()> titleChangedListener{};
+
 public:
     window_t();
 
@@ -115,6 +119,11 @@ public:
 
     void setTitle(std::string title) override;
     std::string getTitle() override;
+
+    void onTitleChanged(const std::function<void()>& callback)
+    {
+        titleChangedListener = callback;
+    }
 
     virtual void close();
 

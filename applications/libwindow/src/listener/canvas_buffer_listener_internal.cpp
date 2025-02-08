@@ -18,35 +18,14 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "libwindow/component_registry.hpp"
-#include "libwindow/component.hpp"
-#include <map>
+#include "libwindow/listener/canvas_buffer_listener_internal.hpp"
+#include "libwindow/canvas.hpp"
 
-static g_user_mutex componentsLock = g_mutex_initialize();
-static std::map<g_ui_component_id, g_component*> components;
-
-/**
- *
- */
-void g_component_registry::add(g_component* component)
+void g_canvas_buffer_listener_internal::process(g_ui_component_event_header* header)
 {
-	g_mutex_acquire(componentsLock);
-	components[component->getId()] = component;
-	g_mutex_release(componentsLock);
-}
-
-/**
- *
- */
-g_component* g_component_registry::get(g_ui_component_id id)
-{
-	g_mutex_acquire(componentsLock);
-
-	g_component* component = nullptr;
-	if(components.count(id) > 0)
-		component = components[id];
-
-	g_mutex_release(componentsLock);
-
-	return component;
+	if(header->type == G_UI_COMPONENT_EVENT_TYPE_CANVAS_NEW_BUFFER)
+	{
+		auto event = (g_ui_component_canvas_wfa_event*) header;
+		canvas->acknowledgeNewBuffer(event->newBufferAddress, event->width, event->height);
+	}
 }

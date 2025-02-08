@@ -19,6 +19,66 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "components/desktop/screen.hpp"
+#include "components/window.hpp"
+
+#include <cstring>
+
+void screen_t::addChild(component_t* comp, component_child_reference_type_t type)
+{
+	component_t::addChild(comp, type);
+
+	if(comp->isWindow())
+	{
+		event_listener_info_t listenerInfo;
+		if(this->getListener(G_UI_COMPONENT_EVENT_TYPE_WINDOWS, listenerInfo))
+		{
+			auto window = (window_t*) comp;
+			sendWindowEvent(listenerInfo.component_id, window, listenerInfo.target_thread, true);
+			window->onTitleChanged([listenerInfo, window, this]()
+			{
+				sendWindowEvent(listenerInfo.component_id, window, listenerInfo.target_thread, true);
+			});
+		}
+	}
+}
+
+void screen_t::removeChild(component_t* comp)
+{
+	if(comp->isWindow())
+	{
+		event_listener_info_t listenerInfo;
+		if(this->getListener(G_UI_COMPONENT_EVENT_TYPE_WINDOWS, listenerInfo))
+		{
+			sendWindowEvent(listenerInfo.component_id, (window_t*) comp, listenerInfo.target_thread, false);
+		}
+	}
+
+	component_t::removeChild(comp);
+}
+
+void screen_t::sendWindowEvent(g_ui_component_id observerId, window_t* window, g_tid observerThread, bool present)
+{
+	g_ui_windows_event windowEvent;
+	windowEvent.header.type = G_UI_COMPONENT_EVENT_TYPE_WINDOWS;
+	windowEvent.header.component_id = observerId;
+	windowEvent.window_id = window->id;
+	windowEvent.present = present;
+
+	auto title = window->getTitle();
+	size_t titleLen;
+	if(title.length() >= G_UI_COMPONENT_TITLE_MAXIMUM)
+	{
+		titleLen = G_UI_COMPONENT_TITLE_MAXIMUM - 1;
+	}
+	else
+	{
+		titleLen = title.length();
+	}
+	memcpy(windowEvent.title, title.c_str(), titleLen);
+	windowEvent.title[titleLen] = 0;
+
+	g_send_message(observerThread, &windowEvent, sizeof(g_ui_windows_event));
+}
 
 void screen_t::markDirty(g_rectangle rect)
 {

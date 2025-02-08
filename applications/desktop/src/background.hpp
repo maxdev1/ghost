@@ -41,7 +41,7 @@ protected:
     g_selection* selection = nullptr;
     item_organizer* organizer = nullptr;
 
-    void onMouseLeftPress(const g_point& position);
+    void onMouseLeftPress(const g_point& position, int clickCount);
     void onMouseDrag(const g_point& position);
     void onMouseRelease(const g_point& position);
 

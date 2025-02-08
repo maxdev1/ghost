@@ -20,13 +20,15 @@
 
 #include "desktop.hpp"
 #include "background.hpp"
+#include "taskbar.hpp"
 
 #include <fstream>
 #include <libproperties/parser.hpp>
 
 #define USER_DESKTOP_DIR "/user/desktop/"
 
-background* background;
+background* background = nullptr;
+taskbar* taskbar = nullptr;
 
 int main()
 {
@@ -38,6 +40,17 @@ int main()
 
 	background = background::create();
 	g_ui::registerDesktopCanvas(background);
+
+	g_dimension screenDimension;
+	g_ui::getScreenDimension(screenDimension);
+	taskbar = taskbar::create();
+	taskbar->setBounds(g_rectangle(0, screenDimension.height - 50, screenDimension.width, 50));
+	background->addChild(taskbar);
+	background->setDesktopListener([](g_ui_windows_event* event)
+	{
+		taskbar->handleDesktopEvent(event);
+	});
+
 
 	// TODO: If we don't pause here for a moment, some icons are sometimes not rendered, for some reason.
 	// It seems to be somehow related to the cairo rendering in the server-side canvas. See there for more.

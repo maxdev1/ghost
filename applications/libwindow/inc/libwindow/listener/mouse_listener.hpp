@@ -35,10 +35,10 @@ public:
 
     void process(g_ui_component_event_header* header) override
     {
-        handle_mouse_event((g_ui_component_mouse_event*)header);
+        handleMouseEvent((g_ui_component_mouse_event*)header);
     }
 
-    virtual void handle_mouse_event(g_ui_component_mouse_event* e) = 0;
+    virtual void handleMouseEvent(g_ui_component_mouse_event* e) = 0;
 };
 
 class g_mouse_listener_dispatcher : public g_mouse_listener
@@ -50,7 +50,7 @@ public:
     {
     };
 
-    void handle_mouse_event(g_ui_component_mouse_event* e) override
+    void handleMouseEvent(g_ui_component_mouse_event* e) override
     {
         func(e);
     }

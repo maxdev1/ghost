@@ -45,6 +45,7 @@ void syscallYield(g_task* task)
 
 void syscallExit(g_task* task, g_syscall_exit* data)
 {
+	waitQueueWake(&task->waitersJoin);
 	taskingProcessKillAllTasks(task->process->id);
 	taskingExit();
 }

@@ -39,6 +39,8 @@ class g_component : public g_bounds_event_component
 {
 protected:
     g_ui_component_id id;
+
+    g_user_mutex listenersLock = g_mutex_initialize_r(true);
     std::map<g_ui_component_event_type, g_listener*> listeners;
 
     g_component(g_ui_component_id id) : id(id), g_bounds_event_component(this, id)

@@ -18,55 +18,88 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef LIBWINDOW_UI
-#define LIBWINDOW_UI
+#include "taskbar.hpp"
 
-class g_listener;
-class g_canvas;
+#include <cairo/cairo.h>
+#include <cstdlib>
 
-#include "interface.hpp"
-#include "metrics/dimension.hpp"
-
-typedef int g_ui_open_status;
-const g_ui_open_status G_UI_OPEN_STATUS_SUCCESSFUL = 0;
-const g_ui_open_status G_UI_OPEN_STATUS_COMMUNICATION_FAILED = 1;
-const g_ui_open_status G_UI_OPEN_STATUS_FAILED = 2;
-const g_ui_open_status G_UI_OPEN_STATUS_EXISTING = 3;
-
-struct g_ui_event_dispatch_data
+taskbar::taskbar(uint32_t id):
+	g_canvas(id)
 {
-    g_listener* listener;
-    uint8_t* data;
-    uint32_t length;
-};
+}
 
-/**
- * ID of the thread that the window server creates when
- * initializing the UI communication.
- */
-extern g_tid g_ui_delegate_tid;
-
-/**
- * ID of the event dispatcher thread that is continuously waiting
- * for events from the window manager to fire the respective listener
- * that was attached.
- */
-extern g_tid g_ui_event_dispatcher_tid;
-
-class g_ui
+taskbar* taskbar::create()
 {
-    static void eventDispatchThread();
-    static void eventDispatchQueueAdd(const g_ui_event_dispatch_data& data);
+	auto instance = createCanvasComponent<taskbar>();
+	instance->init();
+	return instance;
+}
 
-public:
-    static g_ui_open_status open();
+void taskbar::init()
+{
+	this->setBufferListener([this]()
+	{
+		paint();
+	});
 
-    static void addListener(g_listener* l);
-    static void removeListener(g_listener* l);
+	this->setMouseListener([this](g_ui_component_mouse_event* e)
+	{
+		auto position = e->position;
+		if(e->type == G_MOUSE_EVENT_MOVE)
+		{
+			onMouseMove(position);
+		}
+		else if(e->type == G_MOUSE_EVENT_PRESS && e->buttons & G_MOUSE_BUTTON_1)
+		{
+			onMouseLeftPress(position, e->clickCount);
+		}
+		else if(e->type == G_MOUSE_EVENT_DRAG && e->buttons & G_MOUSE_BUTTON_1)
+		{
+			onMouseDrag(position);
+		}
+		else if(e->type == G_MOUSE_EVENT_RELEASE)
+		{
+			onMouseRelease(position);
+		}
+	});
+}
 
-    static bool registerDesktopCanvas(g_canvas* c);
+void taskbar::onMouseMove(const g_point& position)
+{
+}
 
-    static bool getScreenDimension(g_dimension& out);
-};
+void taskbar::onMouseLeftPress(const g_point& position, int clickCount)
+{
+}
 
-#endif
+void taskbar::onMouseDrag(const g_point& position)
+{
+}
+
+void taskbar::onMouseRelease(const g_point& position)
+{
+}
+
+void taskbar::paint()
+{
+	auto cr = this->acquireGraphics();
+	if(!cr)
+		return;
+
+	auto bounds = this->getBounds();
+
+	cairo_save(cr);
+	cairo_set_source_rgb(cr, 1, 1, 1);
+	cairo_rectangle(cr, 0, 0, bounds.width, bounds.height);
+	cairo_fill(cr);
+	cairo_restore(cr);
+
+	this->blit(g_rectangle(0, 0, bounds.width, bounds.height));
+
+	this->releaseGraphics();
+}
+
+void taskbar::handleDesktopEvent(g_ui_windows_event* event)
+{
+
+}

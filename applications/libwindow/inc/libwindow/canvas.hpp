@@ -23,6 +23,8 @@
 
 #include "libwindow/component.hpp"
 #include "libwindow/listener/canvas_buffer_listener.hpp"
+#include "libwindow/listener/desktop_canvas_listener.hpp"
+#include "libwindow/listener/canvas_buffer_listener_internal.hpp"
 
 #include <cstdint>
 #include <utility>
@@ -30,13 +32,13 @@
 
 struct g_canvas_buffer_info
 {
-    uint8_t* buffer;
-    uint16_t width;
-    uint16_t height;
+    uint8_t* buffer = nullptr;
+    uint16_t width = 0;
+    uint16_t height = 0;
 
-    cairo_surface_t* surface;
-    cairo_t* context;
-    int contextRefCount;
+    cairo_surface_t* surface = nullptr;
+    cairo_t* context = nullptr;
+    int contextRefCount = 0;
 };
 
 /**
@@ -46,16 +48,33 @@ struct g_canvas_buffer_info
 class g_canvas : public g_component
 {
 protected:
-    g_canvas_buffer_info currentBuffer;
-    g_user_mutex currentBufferLock;
+    g_canvas_buffer_info currentBuffer{};
+    g_user_mutex currentBufferLock = g_mutex_initialize();
 
     /**
      * Listener only for user purpose, so a client gets an event once the
      * buffer was changed.
      */
-    g_canvas_buffer_listener* userListener;
+    g_canvas_buffer_listener* bufferListener = nullptr;
 
-    explicit g_canvas(uint32_t id);
+    explicit g_canvas(g_ui_component_id id) :
+        g_component(id)
+    {
+    }
+
+    /**
+     * Template method that implementing classes can use to create their own
+     * canvas and automatically register all required listeners.
+     */
+    template <typename COMPONENT_TYPE>
+    static COMPONENT_TYPE* createCanvasComponent()
+    {
+        auto instance = createComponent<COMPONENT_TYPE, G_UI_COMPONENT_TYPE_CANVAS>();
+        if (instance)
+            instance->setListener(G_UI_COMPONENT_EVENT_TYPE_CANVAS_NEW_BUFFER,
+                                  new g_canvas_buffer_listener_internal(instance));
+        return instance;
+    }
 
 public:
     static g_canvas* create();
@@ -76,12 +95,22 @@ public:
 
     void setBufferListener(g_canvas_buffer_listener* l)
     {
-        userListener = l;
+        bufferListener = l;
     }
 
     void setBufferListener(g_canvas_buffer_listener_func func)
     {
-        userListener = new g_canvas_buffer_listener_dispatcher(std::move(func));
+        bufferListener = new g_canvas_buffer_listener_dispatcher(std::move(func));
+    }
+
+    void setDesktopListener(g_desktop_canvas_listener* l)
+    {
+        this->setListener(G_UI_COMPONENT_EVENT_TYPE_WINDOWS, l);
+    }
+
+    void setDesktopListener(g_desktop_canvas_listener_func func)
+    {
+        this->setListener(G_UI_COMPONENT_EVENT_TYPE_WINDOWS, new g_desktop_canvas_listener_dispatcher(std::move(func)));
     }
 };
 

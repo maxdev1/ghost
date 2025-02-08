@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,35 +18,38 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "libwindow/component_registry.hpp"
-#include "libwindow/component.hpp"
-#include <map>
+#ifndef DESKTOP_TASKBAR
+#define DESKTOP_TASKBAR
 
-static g_user_mutex componentsLock = g_mutex_initialize();
-static std::map<g_ui_component_id, g_component*> components;
+#include <libwindow/canvas.hpp>
+#include <libwindow/selection.hpp>
+#include <vector>
 
-/**
- *
- */
-void g_component_registry::add(g_component* component)
+struct taskbar_entry
 {
-	g_mutex_acquire(componentsLock);
-	components[component->getId()] = component;
-	g_mutex_release(componentsLock);
-}
+};
 
-/**
- *
- */
-g_component* g_component_registry::get(g_ui_component_id id)
+class taskbar : public g_canvas
 {
-	g_mutex_acquire(componentsLock);
+    std::vector<taskbar_entry> entries;
 
-	g_component* component = nullptr;
-	if(components.count(id) > 0)
-		component = components[id];
+protected:
+    explicit taskbar(uint32_t id);
+    void init();
 
-	g_mutex_release(componentsLock);
+    void onMouseMove(const g_point& position);
 
-	return component;
-}
+    void onMouseLeftPress(const g_point& position, int clickCount);
+    void onMouseDrag(const g_point& position);
+    void onMouseRelease(const g_point& position);
+
+public:
+    ~taskbar() override = default;
+    static taskbar* create();
+
+    void handleDesktopEvent(g_ui_windows_event* event);
+
+    virtual void paint();
+};
+
+#endif

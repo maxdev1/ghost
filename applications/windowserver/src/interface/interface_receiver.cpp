@@ -350,7 +350,7 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 				size_t titleLen;
 				if(title.length() >= G_UI_COMPONENT_TITLE_MAXIMUM)
 				{
-					titleLen = G_UI_COMPONENT_TITLE_MAXIMUM;
+					titleLen = G_UI_COMPONENT_TITLE_MAXIMUM - 1;
 				}
 				else
 				{
@@ -396,6 +396,7 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 
 			screen_t* screen = windowserver_t::instance()->screen;
 			screen->addChild(canvas);
+			screen->setListener(G_UI_COMPONENT_EVENT_TYPE_WINDOWS, request->target_thread, canvas->id);
 			canvas->setBounds(screen->getBounds());
 		}
 

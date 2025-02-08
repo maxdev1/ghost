@@ -21,7 +21,6 @@
 #include "item.hpp"
 #include <cairo/cairo.h>
 #include <math.h>
-#include <libwindow/listener/canvas_buffer_listener_internal.hpp>
 #include <libfont/text_alignment.hpp>
 #include <libwindow/color_argb.hpp>
 
@@ -36,11 +35,7 @@ item::item(uint32_t id):
 
 item* item::create(std::string name, std::string icon, std::string application)
 {
-	auto instance = createComponent<item, G_UI_COMPONENT_TYPE_CANVAS>();
-
-	if(instance)
-		instance->setListener(G_UI_COMPONENT_EVENT_TYPE_CANVAS_NEW_BUFFER, new g_canvas_buffer_listener_internal(instance));
-
+	auto instance = createCanvasComponent<item>();
 	instance->init(name, icon, application);
 	return instance;
 }

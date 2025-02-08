@@ -107,6 +107,7 @@ void windowserver_t::createVitalComponents(g_rectangle screenBounds)
 	stateLabel = new label_t();
 	stateLabel->setTitle("");
 	stateLabel->setAlignment(g_text_alignment::RIGHT);
+	stateLabel->setVisible(false);
 	stateLabel->setBounds(g_rectangle(10, screenBounds.height - 30, screenBounds.width - 20, 30));
 	instance()->stateLabel->setColor(RGB(255, 255, 255));
 	screen->addChild(stateLabel);
@@ -281,6 +282,11 @@ void windowserver_t::fpsCounter()
 	int tenthSeconds = 0;
 	for(;;)
 	{
+		if(!debugOn)
+		{
+			g_sleep(5000);
+			continue;
+		}
 		g_sleep(100);
 		tenthSeconds++;
 		std::stringstream s;
@@ -298,6 +304,7 @@ void windowserver_t::fpsCounter()
 void windowserver_t::setDebug(bool cond)
 {
 	debugOn = cond;
+	server->stateLabel->setVisible(cond);
 }
 
 bool windowserver_t::isDebug()

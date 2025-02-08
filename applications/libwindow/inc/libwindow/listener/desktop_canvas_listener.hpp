@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,35 +18,39 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "libwindow/component_registry.hpp"
-#include "libwindow/component.hpp"
-#include <map>
+#ifndef LIBWINDOW_DESKTOPCANVASLISTENER
+#define LIBWINDOW_DESKTOPCANVASLISTENER
 
-static g_user_mutex componentsLock = g_mutex_initialize();
-static std::map<g_ui_component_id, g_component*> components;
+#include "listener.hpp"
+#include <bits/std_function.h>
+#include <utility>
 
-/**
- *
- */
-void g_component_registry::add(g_component* component)
+typedef std::function<void(g_ui_windows_event*)> g_desktop_canvas_listener_func;
+
+class g_desktop_canvas_listener : public g_listener
 {
-	g_mutex_acquire(componentsLock);
-	components[component->getId()] = component;
-	g_mutex_release(componentsLock);
-}
+public:
+    void process(g_ui_component_event_header* header) override
+    {
+        handleEvent((g_ui_windows_event*)header);
+    }
 
-/**
- *
- */
-g_component* g_component_registry::get(g_ui_component_id id)
+    virtual void handleEvent(g_ui_windows_event* event) = 0;
+};
+
+class g_desktop_canvas_listener_dispatcher : public g_desktop_canvas_listener
 {
-	g_mutex_acquire(componentsLock);
+    g_desktop_canvas_listener_func func;
 
-	g_component* component = nullptr;
-	if(components.count(id) > 0)
-		component = components[id];
+public:
+    explicit g_desktop_canvas_listener_dispatcher(g_desktop_canvas_listener_func func): func(std::move(func))
+    {
+    }
 
-	g_mutex_release(componentsLock);
+    void handleEvent(g_ui_windows_event* event) override
+    {
+        func(event);
+    }
+};
 
-	return component;
-}
+#endif

@@ -27,19 +27,19 @@
 
 class screen_t : public component_t
 {
-  private:
-    /**
-     * Area that is invalid and needs to be copied to the video output.
-     */
     g_rectangle invalid;
 
-    bool pressing;
+    bool pressing = false;
     g_point pressPoint;
 
-  public:
-    virtual ~screen_t()
-    {
-    }
+public:
+    ~screen_t() override = default;
+
+    void addChild(component_t* comp,
+                  component_child_reference_type_t type = COMPONENT_CHILD_REFERENCE_TYPE_DEFAULT) override;
+    void removeChild(component_t* comp) override;
+
+    void sendWindowEvent(g_ui_component_id observerId, window_t* window, g_tid observerThread, bool present);
 
     /**
      * Overrides the default invalidation method. On the component, this method

@@ -20,7 +20,6 @@
 
 #include "background.hpp"
 #include <cairo/cairo.h>
-#include <libwindow/listener/canvas_buffer_listener_internal.hpp>
 #include <stdlib.h>
 
 background::background(uint32_t id):
@@ -30,11 +29,7 @@ background::background(uint32_t id):
 
 background* background::create()
 {
-	auto instance = createComponent<background, G_UI_COMPONENT_TYPE_CANVAS>();
-
-	if(instance)
-		instance->setListener(G_UI_COMPONENT_EVENT_TYPE_CANVAS_NEW_BUFFER, new g_canvas_buffer_listener_internal(instance));
-
+	auto instance = createCanvasComponent<background>();
 	instance->init();
 	return instance;
 }
@@ -57,7 +52,7 @@ void background::init()
 		}
 		else if(e->type == G_MOUSE_EVENT_PRESS && e->buttons & G_MOUSE_BUTTON_1)
 		{
-			onMouseLeftPress(position);
+			onMouseLeftPress(position, e->clickCount);
 		}
 		else if(e->type == G_MOUSE_EVENT_DRAG && e->buttons & G_MOUSE_BUTTON_1)
 		{
@@ -87,7 +82,7 @@ void background::onMouseMove(const g_point& position)
 	}
 }
 
-void background::onMouseLeftPress(const g_point& position)
+void background::onMouseLeftPress(const g_point& position, int clickCount)
 {
 	item* pressedItem = nullptr;
 	std::vector<g_rectangle> itemsBounds;
@@ -104,15 +99,9 @@ void background::onMouseLeftPress(const g_point& position)
 
 	if(pressedItem)
 	{
-		auto now = g_millis();
-		if(now - pressedItem->lastPress < 500)
+		if(clickCount == 2)
 		{
-			pressedItem->lastPress = now - 1000;
 			pressedItem->onDoubleClick();
-		}
-		else
-		{
-			pressedItem->lastPress = now;
 		}
 
 		// If pressed item not selected, unselect all others

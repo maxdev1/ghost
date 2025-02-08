@@ -19,27 +19,10 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "libwindow/canvas.hpp"
-#include "libwindow/listener/canvas_buffer_listener_internal.hpp"
-
-g_canvas::g_canvas(uint32_t id) :
-	g_component(id), userListener(0)
-{
-	currentBuffer.buffer = nullptr;
-	currentBuffer.surface = nullptr;
-	currentBuffer.context = nullptr;
-	currentBuffer.contextRefCount = 0;
-	currentBufferLock = g_mutex_initialize();
-}
 
 g_canvas* g_canvas::create()
 {
-	g_canvas* instance = createComponent<g_canvas, G_UI_COMPONENT_TYPE_CANVAS>();
-
-	if(instance)
-		instance->setListener(G_UI_COMPONENT_EVENT_TYPE_CANVAS_NEW_BUFFER,
-		                      new g_canvas_buffer_listener_internal(instance));
-
-	return instance;
+	return createCanvasComponent<g_canvas>();
 }
 
 void g_canvas::acknowledgeNewBuffer(g_address address, uint16_t width, uint16_t height)
@@ -83,8 +66,8 @@ void g_canvas::acknowledgeNewBuffer(g_address address, uint16_t width, uint16_t 
 	}
 	g_mutex_release(currentBufferLock);
 
-	if(changed && userListener)
-		userListener->handleBufferChanged();
+	if(changed && bufferListener)
+		bufferListener->handleBufferChanged();
 }
 
 cairo_t* g_canvas::acquireGraphics()

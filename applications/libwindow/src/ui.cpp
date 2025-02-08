@@ -110,7 +110,7 @@ void g_ui::eventDispatchThread()
 			g_ui_component_event_header* event_header = (g_ui_component_event_header*) G_MESSAGE_CONTENT(buffer);
 			g_component* component = g_component_registry::get(event_header->component_id);
 
-			if(component == 0)
+			if(component == nullptr)
 			{
 				klog("event received for unknown component %i", event_header->component_id);
 				continue;
@@ -132,7 +132,6 @@ void g_ui::eventDispatchThread()
  */
 bool g_ui::registerDesktopCanvas(g_canvas* c)
 {
-
 	if(!g_ui_initialized)
 	{
 		return false;
@@ -144,31 +143,27 @@ bool g_ui::registerDesktopCanvas(g_canvas* c)
 	g_ui_register_desktop_canvas_request request;
 	request.header.id = G_UI_PROTOCOL_REGISTER_DESKTOP_CANVAS;
 	request.canvas_id = c->getId();
+	request.target_thread = g_ui_event_dispatcher_tid;
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_register_desktop_canvas_request), tx);
 
 	// read response
-	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_register_desktop_canvas_response);
-	uint8_t* buffer = new uint8_t[bufferSize];
+	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_register_desktop_canvas_response);
+	uint8_t buf[buflen];
 
 	bool success = false;
-	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	if(g_receive_message_t(buf, buflen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		g_ui_register_desktop_canvas_response* response = (g_ui_register_desktop_canvas_response*)
-				G_MESSAGE_CONTENT(buffer);
-
+		auto response = (g_ui_register_desktop_canvas_response*) G_MESSAGE_CONTENT(buf);
 		success = (response->status == G_UI_PROTOCOL_SUCCESS);
 	}
-
-	delete buffer;
 	return success;
 }
 
 /**
  *
  */
-bool g_ui::getScreenDimension(g_dimension* out)
+bool g_ui::getScreenDimension(g_dimension& out)
 {
-
 	if(!g_ui_initialized)
 	{
 		return false;
@@ -189,7 +184,7 @@ bool g_ui::getScreenDimension(g_dimension* out)
 	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
 		g_ui_get_screen_dimension_response* response = (g_ui_get_screen_dimension_response*) G_MESSAGE_CONTENT(buffer);
-		*out = response->size;
+		out = response->size;
 		success = true;
 	}
 

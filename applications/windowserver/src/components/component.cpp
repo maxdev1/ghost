@@ -326,13 +326,14 @@ component_t* component_t::handleMouseEvent(mouse_event_t& event)
 		event_listener_info_t info;
 		if(getListener(G_UI_COMPONENT_EVENT_TYPE_MOUSE, info))
 		{
-			g_ui_component_mouse_event posted_event;
-			posted_event.header.type = G_UI_COMPONENT_EVENT_TYPE_MOUSE;
-			posted_event.header.component_id = info.component_id;
-			posted_event.position = event.position;
-			posted_event.type = event.type;
-			posted_event.buttons = event.buttons;
-			g_send_message(info.target_thread, &posted_event, sizeof(g_ui_component_mouse_event));
+			g_ui_component_mouse_event postedEvent;
+			postedEvent.header.type = G_UI_COMPONENT_EVENT_TYPE_MOUSE;
+			postedEvent.header.component_id = info.component_id;
+			postedEvent.position = event.position;
+			postedEvent.type = event.type;
+			postedEvent.buttons = event.buttons;
+			postedEvent.clickCount = event.clickCount;
+			g_send_message(info.target_thread, &postedEvent, sizeof(g_ui_component_mouse_event));
 
 			return component_registry_t::get(info.component_id);
 		}

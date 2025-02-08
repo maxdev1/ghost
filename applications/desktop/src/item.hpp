@@ -38,7 +38,6 @@ protected:
 public:
     bool hover = false;
     bool selected = false;
-    uint64_t lastPress = 0;
     g_point dragOffset;
 
     static item* create(std::string name, std::string icon, std::string application);

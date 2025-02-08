@@ -24,6 +24,7 @@
 #include "listener.hpp"
 
 class g_component;
+class g_canvas;
 
 /**
  * Listener that a canvas registers on itself to react when a new buffer is ready.
@@ -37,14 +38,7 @@ public:
     {
     }
 
-    void process(g_ui_component_event_header* header) override
-    {
-        if (header->type == G_UI_COMPONENT_EVENT_TYPE_CANVAS_NEW_BUFFER)
-        {
-            auto event = (g_ui_component_canvas_wfa_event*)header;
-            canvas->acknowledgeNewBuffer(event->newBufferAddress, event->width, event->height);
-        }
-    }
+    void process(g_ui_component_event_header* header) override;
 };
 
 #endif

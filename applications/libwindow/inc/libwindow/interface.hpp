@@ -103,6 +103,7 @@ const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_KEY = 3;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_FOCUS = 4;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_MOUSE = 5;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_CLOSE = 6;
+const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_WINDOWS = 7;
 
 /**
  *
@@ -308,6 +309,7 @@ typedef struct
 {
     g_ui_message_header header;
     g_ui_component_id canvas_id;
+    g_tid target_thread; // For global events (like window event)
 } __attribute__((packed)) g_ui_register_desktop_canvas_request;
 
 typedef struct
@@ -393,6 +395,15 @@ typedef struct
     g_ui_component_event_header header;
 } __attribute__((packed)) g_ui_component_close_event;
 
+typedef struct
+{
+    g_ui_component_event_header header;
+    g_ui_protocol_status status;
+    g_ui_component_id window_id;
+    bool present;
+    char title[G_UI_COMPONENT_TITLE_MAXIMUM];
+} __attribute__((packed)) g_ui_windows_event;
+
 /**
  * Mouse events
  */
@@ -418,6 +429,7 @@ typedef struct
     g_point position;
     g_mouse_event_type type;
     g_mouse_button buttons;
+    int clickCount;
 } __attribute__((packed)) g_ui_component_mouse_event;
 
 #endif
