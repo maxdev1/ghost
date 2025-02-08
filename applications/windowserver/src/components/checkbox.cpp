@@ -27,7 +27,7 @@ checkbox_t::checkbox_t() :
 	addChild(&label, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
 }
 
-void checkbox_t::handleBoundChange(g_rectangle oldBounds)
+void checkbox_t::handleBoundChanged(const g_rectangle& oldBounds)
 {
 	g_rectangle unpositioned = getBounds();
 	unpositioned.x = boxSize + boxTextGap;

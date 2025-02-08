@@ -25,7 +25,6 @@
 #include "components/button_state.hpp"
 #include "components/component.hpp"
 #include "components/label.hpp"
-#include <libfont/font.hpp>
 #include "components/titled_component.hpp"
 
 #include <libwindow/metrics/insets.hpp>
@@ -33,28 +32,30 @@
 
 class button_t : public component_t, public titled_component_t, public action_component_t
 {
-  private:
     button_state_t state;
     label_t label;
     g_insets insets;
     bool enabled;
 
-  public:
+public:
     button_t();
-    virtual ~button_t()
-    {
-    }
+    ~button_t() override = default;
 
-    virtual void update();
-    virtual void layout();
-    virtual void paint();
-    virtual component_t* handleMouseEvent(mouse_event_t& e);
-    virtual component_t* handleFocusEvent(focus_event_t& e);
+    void update() override;
+    void layout() override;
+    void paint() override;
 
-    virtual void setTitle(std::string title);
-    virtual std::string getTitle();
+    component_t* handleMouseEvent(mouse_event_t& e) override;
+    component_t* handleFocusEvent(focus_event_t& e) override;
+
+    void setTitle(std::string title) override;
+    std::string getTitle() override;
+
+    bool getNumericProperty(int property, uint32_t* out) override;
+    bool setNumericProperty(int property, uint32_t value) override;
 
     virtual void setEnabled(bool enabled);
+
     virtual bool isEnabled() const
     {
         return enabled;
@@ -64,10 +65,6 @@ class button_t : public component_t, public titled_component_t, public action_co
     {
         return label;
     }
-
-    virtual bool getNumericProperty(int property, uint32_t* out);
-
-    virtual bool setNumericProperty(int property, uint32_t value);
 };
 
 #endif

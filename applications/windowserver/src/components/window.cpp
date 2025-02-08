@@ -23,7 +23,7 @@
 #include "events/focus_event.hpp"
 #include "events/mouse_event.hpp"
 #include "windowserver.hpp"
-#include "interface/component_registry.hpp"
+#include "component_registry.hpp"
 
 #include <cairo/cairo.h>
 #include <libfont/font_manager.hpp>

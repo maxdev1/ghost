@@ -19,7 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "components/cursor.hpp"
-#include "events/mouse_event.hpp"
 #include "windowserver.hpp"
 
 #include <ghost.h>
@@ -157,16 +156,13 @@ void cursor_t::paint(graphics_t* global)
 
 g_rectangle cursor_t::getArea()
 {
-
-	// get area for current cursor
 	if(currentConfiguration)
 	{
-		return g_rectangle(position.x - currentConfiguration->hitpoint.x,
-		                   position.y - currentConfiguration->hitpoint.y,
-		                   currentConfiguration->size.width,
-		                   currentConfiguration->size.height);
+		return {position.x - currentConfiguration->hitpoint.x,
+		        position.y - currentConfiguration->hitpoint.y,
+		        currentConfiguration->size.width,
+		        currentConfiguration->size.height};
 	}
 
-	// fallback cursor is just a square
-	return g_rectangle(position.x, position.y, FALLBACK_CURSOR_SIZE, FALLBACK_CURSOR_SIZE);
+	return {position.x, position.y, FALLBACK_CURSOR_SIZE, FALLBACK_CURSOR_SIZE};
 }

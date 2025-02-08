@@ -74,7 +74,7 @@ void graphics_t::releaseContext()
 	g_mutex_release(lock);
 }
 
-void graphics_t::resize(int newWidth, int newHeight, bool averaged, bool force)
+void graphics_t::resize(int newWidth, int newHeight, bool averaged)
 {
 	if(newWidth <= 0 || newHeight <= 0)
 		return;
@@ -86,7 +86,7 @@ void graphics_t::resize(int newWidth, int newHeight, bool averaged, bool force)
 	}
 
 	// TODO: Like this, buffers never downscale. Check if we want this:
-	if(newWidth <= width && newHeight <= height && !force)
+	if(newWidth <= width && newHeight <= height)
 	{
 		return;
 	}

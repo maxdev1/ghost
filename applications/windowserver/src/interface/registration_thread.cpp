@@ -19,7 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <libwindow/interface.hpp>
-#include <stdio.h>
 
 #include "interface/application_exit_cleanup.hpp"
 #include "interface/interface_receiver.hpp"
@@ -38,6 +37,7 @@ void interfaceRegistrationThread()
 	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_initialize_request);
 	uint8_t buf[buflen];
 
+	g_tid receiverTid = g_create_task((void*) &interfaceReceiverThread);
 	while(true)
 	{
 		g_message_receive_status stat = g_receive_message(buf, buflen);
@@ -49,11 +49,8 @@ void interfaceRegistrationThread()
 
 			process_registry_t::bind(g_get_pid_for_tid(body->event_dispatcher), body->event_dispatcher);
 
-			auto receiver = new interface_receiver_t();
-			g_tid receiverTid = g_create_task_d((void*) &interfaceReceiverThread, receiver);
 			g_create_task_d((void*) &interfaceApplicationExitCleanupThread,
-			                new application_exit_cleanup_handler_t(g_get_pid_for_tid(header->sender),
-			                                                       receiver));
+			                new application_exit_cleanup_handler_t(g_get_pid_for_tid(header->sender)));
 
 			g_ui_initialize_response response;
 			response.header.id = G_UI_PROTOCOL_INITIALIZATION;

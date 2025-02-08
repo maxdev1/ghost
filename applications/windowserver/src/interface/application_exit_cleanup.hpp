@@ -25,16 +25,16 @@
 
 class application_exit_cleanup_handler_t
 {
-  private:
-	g_tid pid;
-	interface_receiver_t* interfaceReceiver;
+    g_tid pid;
 
-  public:
-	application_exit_cleanup_handler_t(g_pid pid, interface_receiver_t* interfaceReceiver) : pid(pid), interfaceReceiver(interfaceReceiver)
-	{
-	}
+public:
+    application_exit_cleanup_handler_t(g_pid pid) : pid(pid)
+    {
+    }
 
-	virtual void run();
+    virtual ~application_exit_cleanup_handler_t() = default;
+
+    virtual void run();
 };
 
 void interfaceApplicationExitCleanupThread(application_exit_cleanup_handler_t* handler);

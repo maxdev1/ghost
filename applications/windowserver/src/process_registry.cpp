@@ -18,42 +18,36 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <libwindow/interface.hpp>
-#include <stdio.h>
+#include "process_registry.hpp"
 
-#include "events/event_processor.hpp"
-#include "interface/interface_responder.hpp"
+#include <map>
 
-std::deque<command_message_response_t> buffer;
-g_user_mutex buffer_empty = g_mutex_initialize();
-g_user_mutex buffer_lock = g_mutex_initialize();
+static std::map<g_pid, g_tid> remoteDelegates;
+static g_user_mutex remoteDelegatesLock = g_mutex_initialize();
 
-void interfaceResponderThread()
+void process_registry_t::bind(g_pid pid, g_tid tid)
 {
-	g_task_register_id("windowserver/interface-responder");
-	g_mutex_acquire(buffer_empty);
-	while(true)
-	{
-		g_mutex_acquire(buffer_empty);
-
-		g_mutex_acquire(buffer_lock);
-		while(buffer.size() > 0)
-		{
-			command_message_response_t& response = buffer.back();
-			g_send_message_t(response.target, response.message, response.length, response.transaction);
-
-			delete(g_message_header*) response.message;
-
-			buffer.pop_back();
-		}
-		g_mutex_release(buffer_lock);
-	}
+	g_mutex_acquire(remoteDelegatesLock);
+	remoteDelegates[pid] = tid;
+	g_mutex_release(remoteDelegatesLock);
 }
 
-void interfaceResponderSend(command_message_response_t& response)
+g_tid process_registry_t::get(g_pid pid)
 {
-	g_mutex_acquire(buffer_lock);
-	buffer.push_back(response);
-	g_mutex_release(buffer_empty);
-	g_mutex_release(buffer_lock);
+	g_mutex_acquire(remoteDelegatesLock);
+	if(remoteDelegates.count(pid) > 0)
+	{
+		g_tid tid = remoteDelegates[pid];
+		g_mutex_release(remoteDelegatesLock);
+		return tid;
+	}
+	g_mutex_release(remoteDelegatesLock);
+	return G_TID_NONE;
+}
+
+void process_registry_t::cleanup_process(g_pid pid)
+{
+	g_mutex_acquire(remoteDelegatesLock);
+	remoteDelegates.erase(pid);
+	g_mutex_release(remoteDelegatesLock);
 }

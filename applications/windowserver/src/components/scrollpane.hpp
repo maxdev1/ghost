@@ -22,12 +22,10 @@
 #define __WINDOWSERVER_COMPONENTS_SCROLLPANE__
 
 #include "components/component.hpp"
-#include "components/panel.hpp"
 #include "components/scrollbar.hpp"
 
 class scrollpane_t : public component_t, public scroll_handler_t
 {
-  private:
     component_t* content = nullptr;
     g_point scrollPosition = g_point(0, 0);
     scrollbar_t verticalScrollbar = scrollbar_t(scrollbar_orientation_t::VERTICAL);
@@ -39,17 +37,23 @@ class scrollpane_t : public component_t, public scroll_handler_t
     bool showHbar = false;
     bool showVbar = false;
 
-  public:
-    scrollpane_t();
+    virtual void updateContent();
 
+protected:
+    bool hasGraphics() const override
+    {
+        return false;
+    }
+
+public:
     virtual g_point getPosition() const
     {
         return scrollPosition;
     }
 
-    virtual void layout();
+    void layout() override;
 
-    virtual void updateContent();
+    void handleScroll(scrollbar_t* bar) override;
 
     virtual void setContent(component_t* content);
 
@@ -58,14 +62,13 @@ class scrollpane_t : public component_t, public scroll_handler_t
         return content;
     }
 
-    virtual void handleScroll(scrollbar_t* bar);
-
     g_dimension calculateViewport(g_dimension contentPrefSize);
 
     void setFixedWidth(bool fix)
     {
         this->fixedWidth = fix;
     }
+
     void setFixedHeight(bool fix)
     {
         this->fixedHeight = fix;

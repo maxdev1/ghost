@@ -22,9 +22,11 @@
 #define __WINDOWSERVER_COMPONENTS_LABEL__
 
 #include "components/component.hpp"
+#include "components/titled_component.hpp"
+
 #include <libfont/font.hpp>
 #include <libfont/text_alignment.hpp>
-#include "components/titled_component.hpp"
+#include <libwindow/color_argb.hpp>
 
 class label_t : public component_t, public titled_component_t
 {
@@ -39,10 +41,7 @@ private:
 
 public:
     label_t();
-
-    virtual ~label_t()
-    {
-    }
+    ~label_t() override = default;
 
     void paint() override;
     void layout() override;

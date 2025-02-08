@@ -24,7 +24,6 @@
 #include "events/event.hpp"
 #include "events/locatable.hpp"
 #include "input/input_receiver.hpp"
-#include "interface/interface_responder.hpp"
 #include "interface/registration_thread.hpp"
 #include "video/vbe_video_output.hpp"
 #include "video/vmsvga_video_output.hpp"
@@ -35,6 +34,7 @@
 #include <test.hpp>
 #include <components/window.hpp>
 #include <components/text/text_field.hpp>
+#include <interface/interface_receiver.hpp>
 #include <layout/grid_layout_manager.hpp>
 
 static windowserver_t* server;
@@ -54,7 +54,12 @@ windowserver_t* windowserver_t::instance()
 	return server;
 }
 
-void windowserver_t::initializeInput()
+windowserver_t::windowserver_t()
+{
+	eventProcessor = new event_processor_t();
+}
+
+void windowserver_t::startInputHandlers()
 {
 	input_receiver_t::initialize();
 
@@ -65,7 +70,7 @@ void windowserver_t::initializeInput()
 	}
 
 	server->loadCursor();
-	server->triggerRender();
+	server->requestUpdate();
 }
 
 void startOtherTasks()
@@ -76,11 +81,11 @@ void startOtherTasks()
 
 void windowserver_t::launch()
 {
-	eventProcessor = new event_processor_t();
-
 	g_task_register_id("windowserver");
-	initializeGraphics();
-	g_create_task((void*) &windowserver_t::initializeInput);
+
+	initializeVideo();
+
+	g_create_task((void*) &startInputHandlers);
 
 	g_dimension resolution = videoOutput->getResolution();
 	g_rectangle screenBounds(0, 0, resolution.width, resolution.height);
@@ -88,10 +93,9 @@ void windowserver_t::launch()
 
 	// test_t::createTestComponents();
 
-	startInterface();
-
+	g_create_task((void*) &interfaceRegistrationThread);
 	g_create_task((void*) &startOtherTasks);
-
+	g_create_task_d((void*) startUpdateLoop, this);
 	renderLoop(screenBounds);
 }
 
@@ -106,10 +110,11 @@ void windowserver_t::createVitalComponents(g_rectangle screenBounds)
 	stateLabel->setBounds(g_rectangle(10, screenBounds.height - 30, screenBounds.width - 20, 30));
 	instance()->stateLabel->setColor(RGB(255, 255, 255));
 	screen->addChild(stateLabel);
+
 	g_create_task((void*) &windowserver_t::fpsCounter);
 }
 
-void windowserver_t::initializeGraphics()
+void windowserver_t::initializeVideo()
 {
 	g_set_video_log(false);
 
@@ -135,6 +140,36 @@ void windowserver_t::initializeGraphics()
 	}
 }
 
+void windowserver_t::startUpdateLoop(windowserver_t* self)
+{
+	self->updateLoop();
+}
+
+
+void windowserver_t::updateLoop()
+{
+	g_task_register_id("windowserver/updater");
+
+	g_mutex_acquire(updateLock);
+	while(true)
+	{
+		eventProcessor->process();
+		interfaceReceiverProcessBufferedCommands();
+		screen->resolveRequirement(COMPONENT_REQUIREMENT_UPDATE, 0);
+		screen->resolveRequirement(COMPONENT_REQUIREMENT_LAYOUT, 0);
+		screen->resolveRequirement(COMPONENT_REQUIREMENT_PAINT, 0);
+
+		requestRender();
+		g_mutex_acquire_to(updateLock, 1000);
+	}
+}
+
+void windowserver_t::requestUpdate() const
+{
+	g_mutex_release(updateLock);
+}
+
+
 void windowserver_t::renderLoop(g_rectangle screenBounds)
 {
 	g_task_register_id("windowserver/renderer");
@@ -144,31 +179,25 @@ void windowserver_t::renderLoop(g_rectangle screenBounds)
 
 	cursor_t::nextPosition = g_point(screenBounds.width / 2, screenBounds.height / 2);
 
-	g_mutex_acquire(renderAtom);
+	g_mutex_acquire(renderLock);
 	while(true)
 	{
-		eventProcessor->process();
-
-		screen->resolveRequirement(COMPONENT_REQUIREMENT_UPDATE, 0);
-		screen->resolveRequirement(COMPONENT_REQUIREMENT_LAYOUT, 0);
-		screen->resolveRequirement(COMPONENT_REQUIREMENT_PAINT, 0);
-
 		screen->blit(&global, screenBounds, g_point(0, 0));
 		cursor_t::paint(&global);
 
 		output(&global);
 
 		framesTotal++;
-		g_mutex_acquire_to(renderAtom, 1000);
+		g_mutex_acquire_to(renderLock, 1000);
 	}
 }
 
-void windowserver_t::triggerRender()
+void windowserver_t::requestRender() const
 {
-	g_mutex_release(renderAtom);
+	g_mutex_release(renderLock);
 }
 
-void windowserver_t::output(graphics_t* graphics)
+void windowserver_t::output(graphics_t* graphics) const
 {
 	g_rectangle invalid = screen->grabInvalid();
 	if(invalid.width == 0 && invalid.height == 0)
@@ -179,7 +208,7 @@ void windowserver_t::output(graphics_t* graphics)
 
 	auto screenSurface = graphics->getSurface();
 	cairo_surface_flush(screenSurface);
-	g_color_argb* buffer = (g_color_argb*) cairo_image_surface_get_data(screenSurface);
+	auto buffer = (g_color_argb*) cairo_image_surface_get_data(screenSurface);
 	videoOutput->blit(invalid, screenBounds, buffer);
 }
 
@@ -209,7 +238,7 @@ component_t* windowserver_t::dispatchUpwards(component_t* component, event_t& ev
 	while(dispatch(acceptor, event) == nullptr)
 	{
 		acceptor = acceptor->getParent();
-		if(acceptor == 0)
+		if(acceptor == nullptr)
 		{
 			break;
 		}
@@ -261,15 +290,9 @@ void windowserver_t::fpsCounter()
 				<< "System: " << ((double) g_millis()) / 1000.0 << "s, "
 				<< "Application: " << tenthSeconds / 10;
 		instance()->stateLabel->setTitle(s.str());
-		instance()->triggerRender();
+		instance()->requestUpdate();
 		framesTotal = 0;
 	}
-}
-
-void windowserver_t::startInterface()
-{
-	g_create_task((void*) &interfaceRegistrationThread);
-	g_create_task((void*) &interfaceResponderThread);
 }
 
 void windowserver_t::setDebug(bool cond)

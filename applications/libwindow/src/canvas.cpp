@@ -19,11 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "libwindow/canvas.hpp"
-
-#include <stdlib.h>
-
 #include "libwindow/listener/canvas_buffer_listener_internal.hpp"
-
 
 g_canvas::g_canvas(uint32_t id) :
 	g_component(id), userListener(0)
@@ -40,7 +36,8 @@ g_canvas* g_canvas::create()
 	g_canvas* instance = createComponent<g_canvas, G_UI_COMPONENT_TYPE_CANVAS>();
 
 	if(instance)
-		instance->setListener(G_UI_COMPONENT_EVENT_TYPE_CANVAS_NEW_BUFFER, new g_canvas_buffer_listener_internal(instance));
+		instance->setListener(G_UI_COMPONENT_EVENT_TYPE_CANVAS_NEW_BUFFER,
+		                      new g_canvas_buffer_listener_internal(instance));
 
 	return instance;
 }

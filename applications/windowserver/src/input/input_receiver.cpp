@@ -54,7 +54,7 @@ void input_receiver_t::startReceiveKeyEvents()
 
 		event_queue->bufferKeyEvent(key);
 
-		windowserver_t::instance()->triggerRender();
+		windowserver_t::instance()->requestUpdate();
 	}
 }
 
@@ -103,6 +103,6 @@ void input_receiver_t::startReceiveMouseEvents()
 			cursor_t::nextPressedButtons |= G_MOUSE_BUTTON_3;
 		}
 
-		windowserver_t::instance()->triggerRender();
+		windowserver_t::instance()->requestUpdate();
 	}
 }

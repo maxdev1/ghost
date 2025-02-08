@@ -19,15 +19,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "components/scrollpane.hpp"
-#include "events/mouse_event.hpp"
-#include <stdio.h>
 
 #define SCROLLBAR_SIZE 15
-
-scrollpane_t::scrollpane_t()
-{
-	hasGraphics = false;
-}
 
 void scrollpane_t::setContent(component_t* component)
 {

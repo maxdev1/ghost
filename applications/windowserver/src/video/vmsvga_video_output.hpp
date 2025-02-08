@@ -24,12 +24,9 @@
 #include "configuration_based_video_output.hpp"
 #include <libvmsvgadriver/vmsvgadriver.hpp>
 
-/**
- *
- */
 class g_vmsvga_video_output : public g_configuration_based_video_output
 {
-    g_vmsvga_mode_info video_mode_information;
+    g_vmsvga_mode_info videoModeInformation{};
 
 public:
     bool initializeWithSettings(uint32_t width, uint32_t height, uint32_t bits) override;

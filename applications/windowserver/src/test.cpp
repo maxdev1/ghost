@@ -22,8 +22,6 @@
 #include "components/button.hpp"
 #include "components/checkbox.hpp"
 #include "components/cursor.hpp"
-#include "components/plain_console_panel.hpp"
-#include "components/scrollbar.hpp"
 #include "components/scrollpane.hpp"
 #include "components/text/text_field.hpp"
 #include "components/window.hpp"

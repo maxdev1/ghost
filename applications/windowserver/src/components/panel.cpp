@@ -22,26 +22,28 @@
 
 void panel_t::paint()
 {
-    if(background == ARGB(0, 0, 0, 0))
-        return;
+	if(background == ARGB(0, 0, 0, 0))
+		return;
 
-    auto cr = graphics.acquireContext();
-    if(!cr) return;
+	auto cr = graphics.acquireContext();
+	if(!cr)
+		return;
 
-    cairo_set_source_rgba(cr, ARGB_FR_FROM(background), ARGB_FG_FROM(background), ARGB_FB_FROM(background), ARGB_FA_FROM(background));
-    cairo_rectangle(cr, 0, 0, getBounds().width, getBounds().height);
-    cairo_fill(cr);
+	cairo_set_source_rgba(cr, ARGB_FR_FROM(background), ARGB_FG_FROM(background), ARGB_FB_FROM(background),
+	                      ARGB_FA_FROM(background));
+	cairo_rectangle(cr, 0, 0, getBounds().width, getBounds().height);
+	cairo_fill(cr);
 
 	graphics.releaseContext();
 }
 
 void panel_t::setBackground(g_color_argb color)
 {
-    background = color;
-    markFor(COMPONENT_REQUIREMENT_PAINT);
+	background = color;
+	markFor(COMPONENT_REQUIREMENT_PAINT);
 }
 
 g_color_argb panel_t::getBackground()
 {
-    return background;
+	return background;
 }

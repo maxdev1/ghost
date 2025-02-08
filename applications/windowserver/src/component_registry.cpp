@@ -21,7 +21,7 @@
 #include <algorithm>
 #include <map>
 
-#include "interface/component_registry.hpp"
+#include "component_registry.hpp"
 
 static std::map<g_ui_component_id, component_t*> components;
 static g_user_mutex components_lock = g_mutex_initialize_r(true);
@@ -118,7 +118,7 @@ void component_registry_t::cleanupProcess(g_pid pid)
 }
 
 void component_registry_t::removeProcessComponents(g_pid process, component_t* component,
-                                                     std::list<component_t*>& removedComponents)
+                                                   std::list<component_t*>& removedComponents)
 {
 	// Never remove twice
 	if(std::find(removedComponents.begin(), removedComponents.end(), component) != removedComponents.end())
@@ -133,12 +133,12 @@ void component_registry_t::removeProcessComponents(g_pid process, component_t* c
 	removedComponents.push_back(component);
 
 	// Recursively remove all child elements first
-	g_mutex_acquire(component->getChildrenLock());
-	for(auto childRef: component->getChildren())
+	auto children = component->acquireChildren();
+	for(auto& childRef: children)
 	{
 		removeProcessComponents(process, childRef.component, removedComponents);
 	}
-	g_mutex_release(component->getChildrenLock());
+	component->releaseChildren();
 
 	// Remove from registry
 	removeComponent(process, component->id);

@@ -27,11 +27,11 @@ struct buffer_info_t
 {
     uint8_t* localMapping = nullptr;
     uint8_t* remoteMapping = nullptr;
-    uint16_t pages;
+    uint16_t pages = 0;
 
     cairo_surface_t* surface = nullptr;
-    uint16_t paintableWidth;
-    uint16_t paintableHeight;
+    uint16_t paintableWidth = 0;
+    uint16_t paintableHeight = 0;
 };
 
 class canvas_t;
@@ -46,37 +46,34 @@ struct async_resizer_info_t
 
 class canvas_t : public component_t
 {
-public:
     g_pid partnerProcess;
-    g_tid partnerThread;
-
     async_resizer_info_t* asyncInfo;
 
     g_user_mutex bufferLock = g_mutex_initialize_r(true);
     buffer_info_t buffer{};
     g_rectangle bufferDirty = g_rectangle();
 
-    canvas_t(g_tid partnerThread);
-    virtual ~canvas_t();
-
-    virtual bool handle()
-    {
-        return false;
-    }
-
-    virtual void handleBoundChange(g_rectangle oldBounds);
-
-    static void asyncBufferResizer(async_resizer_info_t* info);
-
-    void blit(graphics_t* out, const g_rectangle& absClip, const g_point& positionOnParent) override;
-
-    void requestBlit(g_rectangle& area);
-
-private:
     void createNewBuffer(g_rectangle& bounds, uint32_t size);
     void notifyClientAboutNewBuffer();
 
     void checkBuffer();
+
+protected:
+    bool hasGraphics() const override
+    {
+        return false;
+    }
+
+public:
+    explicit canvas_t(g_tid partnerThread);
+    ~canvas_t() override;
+
+    void handleBoundChanged(const g_rectangle& oldBounds) override;
+
+    void blit(graphics_t* out, const g_rectangle& absClip, const g_point& positionOnParent) override;
+
+    static void asyncBufferResizer(async_resizer_info_t* info);
+    void requestBlit(g_rectangle& area);
 };
 
 #endif

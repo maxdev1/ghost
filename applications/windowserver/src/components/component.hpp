@@ -54,7 +54,9 @@ class window_t;
 typedef uint32_t component_requirement_t;
 
 /**
- *
+ * Type used to differentiate how a child component relates to the parent
+ * component. If it is an internal component that may not be deleted
+ * separately, it is referenced with the internal type.
  */
 typedef uint32_t component_child_reference_type_t;
 
@@ -87,7 +89,7 @@ protected:
     g_rectangle bounds;
     component_t* parent;
     std::vector<component_child_reference_t> children;
-    g_user_mutex children_lock = g_mutex_initialize_r(true);
+    g_user_mutex childrenLock = g_mutex_initialize_r(true);
 
     g_dimension minimumSize;
     g_dimension preferredSize;
@@ -96,9 +98,9 @@ protected:
     component_requirement_t requirements;
     component_requirement_t childRequirements;
 
-    component_listener_entry_t* listeners = 0;
+    component_listener_entry_t* listeners = nullptr;
 
-    int z_index = 1000;
+    int zIndex = 1000;
 
     g_user_mutex lock = g_mutex_initialize_r(true);
 
@@ -108,36 +110,31 @@ protected:
     bool visible;
 
     /**
-     * Should be set to false if this component does not paint anything on itself.
+     * If a component that extends this class does not need to paint anything, it should return false here.
      */
-    bool hasGraphics = true;
+    virtual bool hasGraphics() const
+    {
+        return true;
+    }
 
 public:
     g_ui_component_id id;
 
     component_t();
-
-    /**
-     * Destroys the component
-     */
-    virtual ~component_t();
+    ~component_t() override;
 
     bool isVisible() const
     {
         return this->visible;
     }
 
-    void setZIndex(int z_index)
-    {
-        this->z_index = z_index;
-    }
-
     /**
-     * Returns a Pointer to the components graphics
+     * Sets the z-index of this component on its parent. When new children are added,
+     * all children are sorted based on this z-index.
      */
-    graphics_t* getGraphics()
+    void setZIndex(int zIndex)
     {
-        return &graphics;
+        this->zIndex = zIndex;
     }
 
     /**
@@ -150,15 +147,9 @@ public:
         return parent;
     }
 
-    std::vector<component_child_reference_t>& getChildren()
-    {
-        return children;
-    }
+    std::vector<component_child_reference_t>& acquireChildren();
 
-    g_user_mutex getChildrenLock()
-    {
-        return children_lock;
-    }
+    void releaseChildren() const;
 
     bool canHandleEvents() const;
 
@@ -176,10 +167,7 @@ public:
      *
      * @return the bounds
      */
-    g_rectangle getBounds() const
-    {
-        return bounds;
-    }
+    g_rectangle getBounds() const;
 
     void setPreferredSize(const g_dimension& size);
 
@@ -273,7 +261,7 @@ public:
     virtual component_t* handleKeyEvent(key_event_t& event);
     virtual component_t* handleFocusEvent(focus_event_t& event);
 
-    virtual void handleBoundChange(g_rectangle oldBounds)
+    virtual void handleBoundChanged(const g_rectangle& oldBounds)
     {
         // May be implemented by subtypes
     }
@@ -325,6 +313,15 @@ public:
         return childRequirements != COMPONENT_REQUIREMENT_NONE;
     }
 
+    bool isChildOf(component_t* c);
+
+    /**
+     * Returns the reference to the given component (if the given component is a child of this component).
+     *
+     * @return true if the component was found
+     */
+    bool getChildReference(component_t* child, component_child_reference_t& out);
+
     /**
      * This method is called by the window manager if the update requirement flag is set.
      * The component may here change the contents of it's model.
@@ -344,24 +341,13 @@ public:
      */
     virtual void paint();
 
-    virtual bool getNumericProperty(int property, uint32_t* out);
+    void clearSurface();
 
+    virtual bool getNumericProperty(int property, uint32_t* out);
     virtual bool setNumericProperty(int property, uint32_t value);
 
     void setListener(g_ui_component_event_type eventType, g_tid target_thread, g_ui_component_id id);
-
     bool getListener(g_ui_component_event_type eventType, event_listener_info_t& out);
-
-    void clearSurface();
-
-    bool isChildOf(component_t* c);
-
-    /**
-     * Returns the reference to the given component (if the given component is a child of this component).
-     *
-     * @return true if the component was found
-     */
-    bool getChildReference(component_t* child, component_child_reference_t& out);
 };
 
 #endif

@@ -19,21 +19,17 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "components/canvas.hpp"
+#include "process_registry.hpp"
 #include "windowserver.hpp"
+
 #include <ghost.h>
-#include <stdlib.h>
-#include <string.h>
-#include <interface/process_registry.hpp>
+#include <cstring>
 
 #define ALIGN_UP(value) (value + value % 100)
 
-canvas_t::canvas_t(g_tid partnerThread) :
-	partnerThread(partnerThread)
+canvas_t::canvas_t(g_tid partnerThread)
 {
 	partnerProcess = g_get_pid_for_tid(partnerThread);
-
-	hasGraphics = false;
-
 	asyncInfo = new async_resizer_info_t();
 	asyncInfo->canvas = this;
 	asyncInfo->alive = true;
@@ -71,7 +67,7 @@ void canvas_t::asyncBufferResizer(async_resizer_info_t* asyncInfo)
 /**
  * When the bounds of a canvas are changed, the buffer must be checked.
  */
-void canvas_t::handleBoundChange(g_rectangle oldBounds)
+void canvas_t::handleBoundChanged(const g_rectangle& oldBounds)
 {
 	g_mutex_release(asyncInfo->checkAtom);
 }
@@ -244,5 +240,5 @@ void canvas_t::requestBlit(g_rectangle& area)
 	g_mutex_release(bufferLock);
 
 	markFor(COMPONENT_REQUIREMENT_PAINT);
-	windowserver_t::instance()->triggerRender();
+	windowserver_t::instance()->requestRender();
 }

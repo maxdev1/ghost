@@ -19,8 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "events/event_processor.hpp"
-#include "interface/component_registry.hpp"
-#include "components/button.hpp"
+#include "component_registry.hpp"
 #include "components/cursor.hpp"
 #include "components/text/text_field.hpp"
 #include "components/window.hpp"
@@ -263,7 +262,7 @@ void event_processor_t::processMouseState()
 				// Leave
 				if(cursor_t::hoveredComponent != -1)
 				{
-					auto hoveredComponent = component_registry_t::get(cursor_t::draggedComponent);
+					auto hoveredComponent = component_registry_t::get(cursor_t::hoveredComponent);
 
 					if(hoveredComponent)
 					{

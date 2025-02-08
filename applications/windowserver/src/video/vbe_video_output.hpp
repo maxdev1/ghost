@@ -24,18 +24,14 @@
 #include "configuration_based_video_output.hpp"
 #include <libvbedriver/vbedriver.hpp>
 
-/**
- *
- */
 class g_vbe_video_output : public g_configuration_based_video_output
 {
-  private:
-    g_vbe_mode_info video_mode_information;
+    g_vbe_mode_info videoModeInformation{};
 
-  public:
-    virtual bool initializeWithSettings(uint32_t width, uint32_t height, uint32_t bits);
-    virtual void blit(g_rectangle invalid, g_rectangle sourceSize, g_color_argb* source);
-    virtual g_dimension getResolution();
+public:
+    bool initializeWithSettings(uint32_t width, uint32_t height, uint32_t bits) override;
+    void blit(g_rectangle invalid, g_rectangle sourceSize, g_color_argb* source) override;
+    g_dimension getResolution() override;
 };
 
 #endif

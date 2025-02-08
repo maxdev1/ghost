@@ -25,7 +25,7 @@
 bool g_vmsvga_video_output::initializeWithSettings(uint32_t width, uint32_t height, uint32_t bits)
 {
 	int tries = 3;
-	while(!vmsvgaDriverSetMode(width, height, bits, video_mode_information))
+	while(!vmsvgaDriverSetMode(width, height, bits, videoModeInformation))
 	{
 		klog("failed to initialize VMSVGA video... retrying");
 		if(tries-- == 0)
@@ -37,8 +37,8 @@ bool g_vmsvga_video_output::initializeWithSettings(uint32_t width, uint32_t heig
 
 void g_vmsvga_video_output::blit(g_rectangle invalid, g_rectangle sourceSize, g_color_argb* source)
 {
-	uint16_t bpp = video_mode_information.bpp;
-	uint8_t* position = ((uint8_t*) video_mode_information.lfb) + (invalid.y * video_mode_information.bpsl);
+	uint16_t bpp = videoModeInformation.bpp;
+	uint8_t* position = ((uint8_t*) videoModeInformation.lfb) + (invalid.y * videoModeInformation.bpsl);
 
 	uint32_t right = invalid.x + invalid.width;
 	uint32_t bottom = invalid.y + invalid.height;
@@ -47,12 +47,12 @@ void g_vmsvga_video_output::blit(g_rectangle invalid, g_rectangle sourceSize, g_
 	{
 		for(int y = invalid.y; y < bottom; y++)
 		{
-			uint32_t* position4 = (uint32_t*) position;
+			auto position4 = (uint32_t*) position;
 			for(int x = invalid.x; x < right; x++)
 			{
 				position4[x] = source[y * sourceSize.width + x];
 			}
-			position += video_mode_information.bpsl;
+			position += videoModeInformation.bpsl;
 		}
 	}
 	else if(bpp == 24)
@@ -66,7 +66,7 @@ void g_vmsvga_video_output::blit(g_rectangle invalid, g_rectangle sourceSize, g_
 				position[x * 3 + 1] = (color >> 8) & 0xFF;
 				position[x * 3 + 2] = (color >> 16) & 0xFF;
 			}
-			position += video_mode_information.bpsl;
+			position += videoModeInformation.bpsl;
 		}
 	}
 
@@ -75,5 +75,5 @@ void g_vmsvga_video_output::blit(g_rectangle invalid, g_rectangle sourceSize, g_
 
 g_dimension g_vmsvga_video_output::getResolution()
 {
-	return g_dimension(video_mode_information.resX, video_mode_information.resY);
+	return {videoModeInformation.resX, videoModeInformation.resY};
 }

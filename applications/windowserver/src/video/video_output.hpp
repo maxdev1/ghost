@@ -31,10 +31,8 @@
  */
 class g_video_output
 {
-  public:
-    virtual ~g_video_output()
-    {
-    }
+public:
+    virtual ~g_video_output() = default;
 
     /**
      * Initializes the video mode implementation.

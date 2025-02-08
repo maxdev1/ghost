@@ -89,7 +89,9 @@ void label_t::paint()
 	if(!cr)
 		return;
 
+	g_mutex_acquire(lock);
 	auto bounds = getBounds();
+	g_mutex_release(lock);
 
 	cairo_save(cr);
 	cairo_set_source_rgb(cr, ARGB_FR_FROM(color), ARGB_FB_FROM(color), ARGB_FG_FROM(color));
