@@ -43,4 +43,9 @@ void schedulerSchedule(g_tasking_local* local);
  */
 void schedulerDump();
 
+/**
+ * Sets a task as the "preferred task" for scheduling.
+ */
+void schedulerPrefer(g_tid task);
+
 #endif

@@ -31,9 +31,9 @@ static g_fd mouseIn;
 
 void input_receiver_t::initialize()
 {
-	ps2DriverInitialize(&keyboardIn, &mouseIn);
-	g_create_task((void*) startReceiveMouseEvents);
-	g_create_task((void*) startReceiveKeyEvents);
+	g_tid keyEventThread = g_create_task((void*) startReceiveKeyEvents);
+	g_tid mouseEventThread = g_create_task((void*) startReceiveMouseEvents);
+	ps2DriverInitialize(&keyboardIn, &mouseIn, keyEventThread, mouseEventThread);
 }
 
 void input_receiver_t::startReceiveKeyEvents()

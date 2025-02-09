@@ -228,6 +228,13 @@ void g_sleep(uint64_t ms);
 void g_yield();
 
 /**
+ * Yields, trying to cooperatively yield to the given target task.
+ *
+ * @security-level APPLICATION
+ */
+void g_yield_t(g_tid target);
+
+/**
  * TODO: currently returns the number of milliseconds that one
  * of the schedulers is running.
  *

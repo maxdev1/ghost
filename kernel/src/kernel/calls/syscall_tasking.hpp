@@ -28,7 +28,7 @@ void syscallExit(g_task* task, g_syscall_exit* data);
 
 void syscallExitTask(g_task* task);
 
-void syscallYield(g_task* task);
+void syscallYield(g_task* task, g_syscall_yield* data);
 
 void syscallGetProcessId(g_task* task, g_syscall_get_pid* data);
 

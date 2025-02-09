@@ -41,6 +41,7 @@ static windowserver_t* server;
 static g_user_mutex dispatchLock = g_mutex_initialize_r(true);
 static int framesTotal = 0;
 static bool debugOn = false;
+int debugBorderCycle = 0;
 
 int main()
 {
@@ -75,6 +76,7 @@ void windowserver_t::startInputHandlers()
 
 void startOtherTasks()
 {
+	g_task_register_id("windowserver/launcher");
 	// TODO not the windowservers job
 	g_spawn("/applications/desktop.bin", "", "", G_SECURITY_LEVEL_APPLICATION);
 }
@@ -95,7 +97,9 @@ void windowserver_t::launch()
 
 	g_create_task((void*) &interfaceRegistrationThread);
 	g_create_task((void*) &startOtherTasks);
-	g_create_task_d((void*) startUpdateLoop, this);
+
+	updateTask = g_create_task_d((void*) startUpdateLoop, this);
+	renderTask = g_get_tid();
 	renderLoop(screenBounds);
 }
 
@@ -108,7 +112,7 @@ void windowserver_t::createVitalComponents(g_rectangle screenBounds)
 	stateLabel->setTitle("");
 	stateLabel->setAlignment(g_text_alignment::RIGHT);
 	stateLabel->setVisible(false);
-	stateLabel->setBounds(g_rectangle(10, screenBounds.height - 30, screenBounds.width - 20, 30));
+	stateLabel->setBounds(g_rectangle(10, screenBounds.height - 100, screenBounds.width - 20, 30));
 	instance()->stateLabel->setColor(RGB(255, 255, 255));
 	screen->addChild(stateLabel);
 
@@ -146,7 +150,6 @@ void windowserver_t::startUpdateLoop(windowserver_t* self)
 	self->updateLoop();
 }
 
-
 void windowserver_t::updateLoop()
 {
 	g_task_register_id("windowserver/updater");
@@ -168,6 +171,7 @@ void windowserver_t::updateLoop()
 void windowserver_t::requestUpdate() const
 {
 	g_mutex_release(updateLock);
+	g_yield_t(updateTask);
 }
 
 
@@ -196,6 +200,7 @@ void windowserver_t::renderLoop(g_rectangle screenBounds)
 void windowserver_t::requestRender() const
 {
 	g_mutex_release(renderLock);
+	g_yield_t(renderTask);
 }
 
 void windowserver_t::output(graphics_t* graphics) const
@@ -210,10 +215,14 @@ void windowserver_t::output(graphics_t* graphics) const
 		auto cr = graphics->acquireContext();
 		if(cr)
 		{
+			debugBorderCycle++;
+			if(debugBorderCycle > 100)
+				debugBorderCycle = 0;
+
 			cairo_save(cr);
 			cairo_set_line_width(cr, 2);
 			cairo_rectangle(cr, invalid.x, invalid.y, invalid.width, invalid.height);
-			cairo_set_source_rgba(cr, 0, 1, 0, 1);
+			cairo_set_source_rgba(cr, 0, ((double) (debugBorderCycle + 100)) / 255, 0, 1);
 			cairo_stroke(cr);
 			cairo_restore(cr);
 			graphics->releaseContext();
@@ -320,7 +329,7 @@ void windowserver_t::fpsCounter()
 void windowserver_t::setDebug(bool cond)
 {
 	debugOn = cond;
-	server->stateLabel->setVisible(cond);
+	// server->stateLabel->setVisible(cond);
 }
 
 bool windowserver_t::isDebug()

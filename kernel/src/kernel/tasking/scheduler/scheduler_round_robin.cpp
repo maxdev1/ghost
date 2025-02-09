@@ -18,8 +18,6 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-
-#include "kernel/system/processor/processor.hpp"
 #include "kernel/tasking/scheduler/scheduler.hpp"
 #include "shared/logger/logger.hpp"
 
@@ -30,8 +28,15 @@
 
 #define G_DEBUG_LOG_PAUSE 5000
 
+/**
+ * The "preferred task" is just a hint to scheduling that it would make sense to
+ * switch to a specific task. It is checked on all cores.
+ */
+g_tid preferredTask;
+
 void schedulerInitializeLocal()
 {
+	preferredTask = G_TID_NONE;
 }
 
 void schedulerPrepareEntry(g_schedule_entry* entry)
@@ -46,6 +51,21 @@ g_schedule_entry* schedulerGetNextTask(g_tasking_local* local)
 		return entry;
 	}
 
+	// Check if there is a global "preferred task" to do next
+	if(preferredTask != G_TID_NONE)
+	{
+		while(entry)
+		{
+			if(entry->task->id == preferredTask)
+			{
+				preferredTask = G_TID_NONE;
+				return entry;
+			}
+			entry = entry->next;
+		}
+	}
+
+	// Otherwise just find our current tasks entry and choose the next one
 	while(entry)
 	{
 		if(entry->task == local->scheduling.current)
@@ -54,7 +74,6 @@ g_schedule_entry* schedulerGetNextTask(g_tasking_local* local)
 		}
 		entry = entry->next;
 	}
-
 	if(entry)
 	{
 		entry = entry->next;
@@ -64,6 +83,11 @@ g_schedule_entry* schedulerGetNextTask(g_tasking_local* local)
 		entry = local->scheduling.list;
 	}
 	return entry;
+}
+
+void schedulerPrefer(g_tid task)
+{
+	preferredTask = task;
 }
 
 void schedulerSchedule(g_tasking_local* local)

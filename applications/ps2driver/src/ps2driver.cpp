@@ -31,9 +31,11 @@ g_fd keyboardWrite;
 g_fd mouseRead;
 g_fd mouseWrite;
 
+g_tid keyboardPartnerTask = G_TID_NONE;
+g_tid mousePartnerTask = G_TID_NONE;
+
 int main()
 {
-	uint32_t tid = g_get_tid();
 	if(!g_task_register_id(G_PS2_DRIVER_IDENTIFIER))
 	{
 		klog("ps2driver: could not register with task identifier '%s'", (char*) G_PS2_DRIVER_IDENTIFIER);
@@ -69,11 +71,17 @@ void ps2MouseCallback(int16_t x, int16_t y, uint8_t flags)
 	packet.y = y;
 	packet.flags = flags;
 	g_write(mouseWrite, &packet, sizeof(g_ps2_mouse_packet));
+
+	if(mousePartnerTask != G_TID_NONE)
+		g_yield_t(mousePartnerTask);
 }
 
 void ps2KeyboardCallback(uint8_t c)
 {
 	g_write(keyboardWrite, &c, 1);
+
+	if(keyboardPartnerTask != G_TID_NONE)
+		g_yield_t(keyboardPartnerTask);
 }
 
 void ps2DriverReceiveMessages()
@@ -104,10 +112,14 @@ void ps2DriverReceiveMessages()
 	}
 }
 
-void ps2HandleCommandInitialize(g_ps2_initialize_request* request, g_tid requestingTaskId, g_message_transaction requestTransaction)
+void ps2HandleCommandInitialize(g_ps2_initialize_request* request, g_tid requestingTaskId,
+                                g_message_transaction requestTransaction)
 {
 	g_pid targetPid = g_get_pid_for_tid(requestingTaskId);
 	g_pid sourcePid = g_get_pid();
+
+	keyboardPartnerTask = request->keyboardPartnerTask;
+	mousePartnerTask = request->mousePartnerTask;
 
 	g_ps2_initialize_response response;
 	response.status = G_PS2_STATUS_SUCCESS;

@@ -41,13 +41,6 @@ void event_processor_t::bufferKeyEvent(g_key_info keyInfo)
 	g_mutex_release(key_info_buffer_lock);
 }
 
-void event_processor_t::bufferCommandMessage(void* commandMessage)
-{
-	g_mutex_acquire(command_message_buffer_lock);
-	command_message_buffer.push_back(commandMessage);
-	g_mutex_release(command_message_buffer_lock);
-}
-
 void event_processor_t::process()
 {
 	processMouseState();

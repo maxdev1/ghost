@@ -20,11 +20,23 @@
 
 #include "ghost/syscall.h"
 #include "ghost/tasks.h"
+#include "ghost/tasks/callstructs.h"
 
 /**
  *
  */
 void g_yield()
 {
-	g_syscall(G_SYSCALL_YIELD, 0);
+	g_yield_t(G_TID_NONE);
+}
+
+/**
+ *
+ */
+void g_yield_t(g_tid target)
+{
+	g_syscall_yield data;
+	data.target = target;
+
+	g_syscall(G_SYSCALL_YIELD, (g_address) &data);
 }

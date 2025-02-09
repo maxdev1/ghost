@@ -20,7 +20,6 @@
 
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/calls/syscall.hpp"
-#include "kernel/memory/gdt.hpp"
 #include "kernel/system/interrupts/apic/ioapic.hpp"
 #include "kernel/system/interrupts/apic/lapic.hpp"
 #include "kernel/system/interrupts/exceptions.hpp"
@@ -30,8 +29,6 @@
 #include "kernel/system/timing/pit.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "kernel/tasking/tasking_state.hpp"
-#include "kernel/utils/wait_queue.hpp"
 #include "shared/panic.hpp"
 
 void _interruptsSendEndOfInterrupt(uint8_t irq);

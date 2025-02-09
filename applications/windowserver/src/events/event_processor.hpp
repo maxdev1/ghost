@@ -42,10 +42,6 @@ class event_processor_t
 	g_user_mutex key_info_buffer_lock = g_mutex_initialize();
 	void bufferKeyEvent(g_key_info keyInfo);
 
-	std::deque<void*> command_message_buffer;
-	g_user_mutex command_message_buffer_lock = g_mutex_initialize();
-	void bufferCommandMessage(void* commandMessage);
-
 	void process();
 
 	void translateKeyEvent(g_key_info& info);

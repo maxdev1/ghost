@@ -300,6 +300,17 @@ typedef struct
   char* buffer;
 }__attribute__((packed)) g_syscall_get_executable_path;
 
+/**
+ * @field target
+ * 		yield target task
+ *
+ * @security-level APPLICATION
+ */
+typedef struct
+{
+	g_tid target;
+}__attribute__((packed)) g_syscall_yield;
+
 __END_C
 
 #endif

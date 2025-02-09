@@ -23,6 +23,7 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/user_mutex.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
+#include "kernel/tasking/scheduler/scheduler.hpp"
 #include "kernel/tasking/tasking_directory.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/utils/wait_queue.hpp"
@@ -38,8 +39,10 @@ void syscallSleep(g_task* task, g_syscall_sleep* data)
 	taskingYield();
 }
 
-void syscallYield(g_task* task)
+void syscallYield(g_task* task, g_syscall_yield* data)
 {
+	if(data->target != G_TID_NONE)
+		schedulerPrefer(data->target);
 	taskingYield();
 }
 

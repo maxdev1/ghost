@@ -34,6 +34,8 @@ class item_container_t;
  */
 class windowserver_t
 {
+    g_tid updateTask = G_TID_NONE;
+    g_tid renderTask = G_TID_NONE;
     g_user_mutex updateLock = g_mutex_initialize();
     g_user_mutex renderLock = g_mutex_initialize();
 

@@ -35,8 +35,9 @@ typedef int g_ps2_command;
 /**
  *
  */
-struct g_ps2_request_header {
-	g_ps2_command command;
+struct g_ps2_request_header
+{
+    g_ps2_command command;
 }__attribute__((packed));
 
 /**
@@ -49,31 +50,40 @@ typedef int g_ps2_initialize_status;
 /**
  *
  */
-struct g_ps2_initialize_request {
-	g_ps2_request_header header;
+struct g_ps2_initialize_request
+{
+    g_ps2_request_header header;
+    g_tid keyboardPartnerTask;
+    g_tid mousePartnerTask;
 }__attribute__((packed));
 
 /**
  *
  */
-struct g_ps2_initialize_response {
+struct g_ps2_initialize_response
+{
     g_ps2_initialize_status status;
-	g_fd keyboardRead;
-	g_fd mouseRead;
+    g_fd keyboardRead;
+    g_fd mouseRead;
 }__attribute__((packed));
 
 /**
  *
  */
-struct g_ps2_mouse_packet {
-	int16_t x;
+struct g_ps2_mouse_packet
+{
+    int16_t x;
     int16_t y;
     uint8_t flags;
 }__attribute__((packed));
 
 /**
  * Sends a request to the PS2 driver to allow this process to read data.
+ * If partner tasks are provided, the driver will yield control to them
+ * whenever new data is available.
  */
-bool ps2DriverInitialize(g_fd* keyboardReadOut, g_fd* mouseReadOut);
+bool ps2DriverInitialize(g_fd* keyboardReadOut, g_fd* mouseReadOut,
+                         g_tid keyboardPartnerTask = G_TID_NONE,
+                         g_tid mousePartnerTask = G_TID_NONE);
 
 #endif
