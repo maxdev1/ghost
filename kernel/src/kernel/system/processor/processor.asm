@@ -52,6 +52,7 @@ _checkForCPUID:
 ;
 ; Prepares the necessary CPU flags to enable SSE instructions
 _enableSSE:
+    ctls
     fninit
     mov eax, cr0
     and eax, 0xFFFBFFFF

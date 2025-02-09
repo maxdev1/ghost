@@ -18,13 +18,14 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "kernel/memory/heap.hpp"
+
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/tasking/scheduler/scheduler.hpp"
 #include "shared/logger/logger.hpp"
 
 #if G_DEBUG_THREAD_DUMPING
 #include "kernel/tasking/clock.hpp"
+#include "kernel/tasking/tasking_directory.hpp"
 #endif
 
 #define G_DEBUG_LOG_PAUSE 5000
@@ -115,12 +116,14 @@ void schedulerSchedule(g_tasking_local* local)
 
 #define USAGE(timesScheduled, timesYielded) ((timesScheduled - timesYielded) / (G_DEBUG_LOG_PAUSE / 1000))
 
+#if G_DEBUG_THREAD_DUMPING
 void schedulerDump()
 {
 	g_tasking_local* local = taskingGetLocal();
 	mutexAcquire(&local->lock);
 
-	logInfo("%! dump @%i", "sched", processorGetCurrentId());
+	auto processorId = processorGetCurrentId();
+	logInfo("%# time on %i: %i", processorId, (uint32_t) clockGetLocal()->time);
 	g_schedule_entry* entry = local->scheduling.list;
 	while(entry)
 	{
@@ -140,7 +143,9 @@ void schedulerDump()
 
 		if(entry->task->status != G_TASK_STATUS_DEAD)
 		{
-			logInfo("%# (%i:%i)%s usage: %i, at: %x", entry->task->process->id, entry->task->id, taskState,
+			auto ident = taskingDirectoryGetIdentifier(entry->task->id);
+			logInfo("%# @%i (%i:%i:%s)%s usage: %i, at: %x", processorId, entry->task->process->id, entry->task->id,
+			        ident == nullptr?"":ident, taskState,
 			        USAGE(entry->task->statistics.timesScheduled, entry->task->statistics.timesYielded),
 			        *((uint32_t*)entry->task->state->ebp + 1));
 			entry->task->statistics.timesScheduled = 0;
@@ -157,3 +162,4 @@ void schedulerDump()
 
 	mutexRelease(&local->lock);
 }
+#endif

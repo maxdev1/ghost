@@ -22,7 +22,7 @@
 #define __KERNEL_PROCESSOR__
 
 #include <ghost/stdint.h>
-#include "kernel/system/processor/processor_state.hpp"
+#include "kernel/tasking/task.hpp"
 
 /**
  * CPUID.1 feature flags
@@ -217,5 +217,12 @@ void processorWriteMsr(uint32_t msr, uint32_t lo, uint32_t hi);
  * Reads the EFLAGS register.
  */
 uint32_t processorReadEflags();
+
+/**
+ *
+ */
+void processorSaveFpuState(g_task* task);
+
+void processorRestoreFpuState(g_task* task);
 
 #endif

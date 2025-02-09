@@ -259,3 +259,30 @@ uint32_t processorReadEflags()
 		: "=g"(eflags));
 	return eflags;
 }
+
+void processorSaveFpuState(g_task* task)
+{
+	if(task->fpu.state)
+	{
+		asm volatile (
+			"fxsave (%0)"
+			:
+			: "r" (task->fpu.state)
+			: "memory"
+		);
+		task->fpu.stored = true;
+	}
+}
+
+void processorRestoreFpuState(g_task* task)
+{
+	if(task->fpu.stored)
+	{
+		asm volatile (
+			"fxrstor (%0)"
+			:
+			: "r" (task->fpu.state)
+			: "memory"
+		);
+	}
+}

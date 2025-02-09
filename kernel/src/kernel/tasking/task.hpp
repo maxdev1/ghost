@@ -126,7 +126,7 @@ struct g_task
         uint8_t* stateMem;
         uint8_t* state;
         bool stored;
-    } sse;
+    } fpu;
 
     /**
      * For Ring 3 tasks, the interrupt stack is used during interrupt handling.

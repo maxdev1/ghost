@@ -105,17 +105,17 @@ void taskingMemoryInitializeUtility(g_task* task)
 		uint8_t sseAlignment = 0x10;
 		// TODO Our allocator is currently not capable of aligned allocation so
 		// we just allocate a bit more and remember both pointers for freeing:
-		task->sse.stateMem = (uint8_t*) heapAllocate(G_SSE_STATE_SIZE + sseAlignment);
-		auto stateAddr = (g_address) task->sse.stateMem;
+		task->fpu.stateMem = (uint8_t*) heapAllocate(G_SSE_STATE_SIZE + sseAlignment);
+		auto stateAddr = (g_address) task->fpu.stateMem;
 		stateAddr = G_ALIGN_UP(stateAddr, sseAlignment);
-		task->sse.state = (uint8_t*) stateAddr;
+		task->fpu.state = (uint8_t*) stateAddr;
 	}
 	else
 	{
-		task->sse.stateMem = nullptr;
-		task->sse.state = nullptr;
+		task->fpu.stateMem = nullptr;
+		task->fpu.state = nullptr;
 	}
-	task->sse.stored = false;
+	task->fpu.stored = false;
 }
 
 void taskingMemoryInitializeStacks(g_task* task)
@@ -177,10 +177,10 @@ void taskingMemoryDestroy(g_task* task)
 
 void taskingMemoryDestroyUtility(g_task* task)
 {
-	if(task->sse.stateMem)
+	if(task->fpu.stateMem)
 	{
-		heapFree(task->sse.stateMem);
-		task->sse.stateMem = nullptr;
+		heapFree(task->fpu.stateMem);
+		task->fpu.stateMem = nullptr;
 	}
 }
 

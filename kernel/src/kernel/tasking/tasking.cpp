@@ -271,20 +271,11 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 
 void taskingSaveState(g_task* task, g_processor_state* state)
 {
+	// Save latest pointer to interrupt stack top
 	task->state = state;
 
-	// Save SSE registers
-	if(task->sse.state)
-	{
-		asm volatile (
-			"clts\n\t" // Clear TS bit to avoid #NM exception
-			"fxsave (%0)\n\t" // Save SSE state
-			:
-			: "r" (task->sse.state)
-			: "memory" // Tell compiler fxsave modifies memory
-		);
-		task->sse.stored = true;
-	}
+	// Save FPU state
+	processorSaveFpuState(task);
 }
 
 
@@ -312,18 +303,8 @@ void taskingApplySwitch()
 	// Set TSS ESP0 for ring 3 tasks to return onto
 	gdtSetTssEsp0(task->interruptStack.end);
 
-	// Restore SSE registers
-	if(task->sse.stored)
-	{
-		asm volatile (
-			"clts\n\t" // Clear TS bit before using SSE
-			"fxrstor (%0)\n\t" // Restore SSE state
-			:
-			: "r" (task->sse.state)
-			: "memory"
-		);
-		task->sse.stored = false;
-	}
+	// Restore FPU state
+	processorRestoreFpuState(task);
 }
 
 void taskingSchedule()
