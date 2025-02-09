@@ -113,11 +113,11 @@ g_user_mutex_status userMutexAcquire(g_task* task, g_user_mutex mutex, uint64_t 
 		if(trying)
 			break;
 
-		INTERRUPTS_PAUSE;
+		mutexAcquire(&task->lock);
 		userMutexWaitForAcquire(mutex, task->id);
 		task->status = G_TASK_STATUS_WAITING;
+		mutexRelease(&task->lock);
 		taskingYield();
-		INTERRUPTS_RESUME;
 	}
 
 	if(useTimeout)

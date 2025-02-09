@@ -74,6 +74,7 @@ struct g_task
     g_security_level securityLevel;
     g_task_status status;
     g_task_type type;
+    g_mutex lock;
 
     /**
      * Flag that is only relevant when this task is spawned from an executable. After the task has

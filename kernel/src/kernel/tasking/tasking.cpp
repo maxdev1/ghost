@@ -445,6 +445,7 @@ void taskingInitializeTask(g_task* task, g_process* process, g_security_level le
 	task->securityLevel = level;
 	task->status = G_TASK_STATUS_RUNNING;
 	task->waitersJoin = nullptr;
+	mutexInitializeNonInterruptible(&task->lock, __func__);
 }
 
 void taskingProcessKillAllTasks(g_pid pid)
@@ -504,15 +505,17 @@ g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel)
 	// Start thread & wait for spawn to finish
 	newTask->spawnFinished = false;
 
-	INTERRUPTS_PAUSE;
+	mutexAcquire(&caller->lock);
 	waitQueueAdd(&res.process->waitersSpawn, caller->id);
 	caller->status = G_TASK_STATUS_WAITING;
 	taskingAssignBalanced(newTask);
-	INTERRUPTS_RESUME;
+	mutexRelease(&caller->lock);
 
 	while(!newTask->spawnFinished)
 	{
+		mutexAcquire(&caller->lock);
 		caller->status = G_TASK_STATUS_WAITING;
+		mutexRelease(&caller->lock);
 		taskingYield();
 	}
 

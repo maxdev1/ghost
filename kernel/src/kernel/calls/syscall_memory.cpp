@@ -122,7 +122,7 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 {
 	data->virtualAddress = 0;
 
-	INTERRUPTS_PAUSE;
+	mutexAcquire(&task->process->lock);
 	g_task* targetTask = taskingGetById(data->processId);
 	if(!targetTask)
 	{
@@ -151,13 +151,12 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 				task->id, memory, pages * G_PAGE_SIZE, targetProcess->main->id);
 		return;
 	}
-	INTERRUPTS_RESUME;
+	mutexRelease(&task->process->lock);
 
 	for(uint32_t i = 0; i < pages; i++)
 	{
 		g_physical_address physicalAddr = pagingVirtualToPhysical(memory + i * G_PAGE_SIZE);
 
-		INTERRUPTS_PAUSE;
 		targetTask = taskingGetById(data->processId);
 		if(!targetTask)
 		{
@@ -165,12 +164,14 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 			        data->processId);
 			return;
 		}
+
+		mutexAcquire(&targetTask->lock);
 		targetProcess = targetTask->process;
 
 		g_physical_address back = taskingMemoryTemporarySwitchTo(targetProcess->pageDirectory);
 		pagingMapPage(virtualRangeBase + i * G_PAGE_SIZE, physicalAddr, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 		taskingMemoryTemporarySwitchBack(back);
-		INTERRUPTS_RESUME;
+		mutexRelease(&targetTask->lock);
 
 		pageReferenceTrackerIncrement(physicalAddr);
 	}

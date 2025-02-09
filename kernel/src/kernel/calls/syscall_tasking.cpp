@@ -31,11 +31,11 @@
 
 void syscallSleep(g_task* task, g_syscall_sleep* data)
 {
-	INTERRUPTS_PAUSE;
+	mutexAcquire(&task->lock);
 	clockWaitForTime(task->id, clockGetLocal()->time + data->milliseconds);
 	task->status = G_TASK_STATUS_WAITING;
+	mutexRelease(&task->lock);
 	taskingYield();
-	INTERRUPTS_RESUME;
 }
 
 void syscallYield(g_task* task)
@@ -80,11 +80,11 @@ void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
 
 void syscallJoin(g_task* task, g_syscall_join* data)
 {
-	INTERRUPTS_PAUSE;
+	mutexAcquire(&task->lock);
 	taskingWaitForExit(data->taskId, task->id);
 	task->status = G_TASK_STATUS_WAITING;
+	mutexRelease(&task->lock);
 	taskingYield();
-	INTERRUPTS_RESUME;
 }
 
 void syscallSpawn(g_task* task, g_syscall_spawn* data)
@@ -93,7 +93,7 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 	g_fs_open_status open = filesystemOpen(data->path, G_FILE_FLAG_MODE_READ, task, &fd);
 	if(open == G_FS_OPEN_SUCCESSFUL)
 	{
- 		auto target = taskingSpawn(fd, G_SECURITY_LEVEL_APPLICATION);
+		auto target = taskingSpawn(fd, G_SECURITY_LEVEL_APPLICATION);
 		data->status = target.status;
 		data->validationDetails = target.validation;
 

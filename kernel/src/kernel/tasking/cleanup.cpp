@@ -67,10 +67,10 @@ void taskingCleanupThread()
 		}
 
 		// Sleep for some time
-		INTERRUPTS_PAUSE;
+		mutexAcquire(&task->lock);
 		clockWaitForTime(task->id, clockGetLocal()->time + 3000);
 		task->status = G_TASK_STATUS_WAITING;
+		mutexRelease(&task->lock);
 		taskingYield();
-		INTERRUPTS_RESUME;
 	}
 }

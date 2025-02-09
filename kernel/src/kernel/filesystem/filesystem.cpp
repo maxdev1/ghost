@@ -402,11 +402,11 @@ g_fs_read_status filesystemRead(g_task* task, g_fd fd, uint8_t* buffer, uint64_t
 			panic("%! task %i tried to wait for file %i but delegate didn't provide wait-for-read implementation",
 			      "filesytem", task->id, node->id);
 
-		INTERRUPTS_PAUSE;
+		mutexAcquire(&task->lock);
 		delegate->waitForRead(task->id, node);
 		task->status = G_TASK_STATUS_WAITING;
+		mutexRelease(&task->lock);
 		taskingYield();
-		INTERRUPTS_RESUME;
 	}
 	if(read > 0)
 	{
@@ -486,11 +486,11 @@ g_fs_write_status filesystemWrite(g_task* task, g_fd fd, uint8_t* buffer, uint64
 			panic("%! task %i tried to wait for file %i but delegate didn't provide wait-for-write implementation",
 			      "filesytem", task->id, node->id);
 
-		INTERRUPTS_PAUSE;
+		mutexAcquire(&task->lock);
 		delegate->waitForWrite(task->id, node);
 		task->status = G_TASK_STATUS_WAITING;
+		mutexRelease(&task->lock);
 		taskingYield();
-		INTERRUPTS_RESUME;
 	}
 	if(wrote > 0)
 	{
