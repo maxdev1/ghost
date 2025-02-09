@@ -204,6 +204,22 @@ void windowserver_t::output(graphics_t* graphics) const
 	if(invalid.width == 0 && invalid.height == 0)
 		return;
 
+	// Draw the green debug border around invalid area
+	if(debugOn)
+	{
+		auto cr = graphics->acquireContext();
+		if(cr)
+		{
+			cairo_save(cr);
+			cairo_set_line_width(cr, 2);
+			cairo_rectangle(cr, invalid.x, invalid.y, invalid.width, invalid.height);
+			cairo_set_source_rgba(cr, 0, 1, 0, 1);
+			cairo_stroke(cr);
+			cairo_restore(cr);
+			graphics->releaseContext();
+		}
+	}
+
 	g_dimension resolution = videoOutput->getResolution();
 	g_rectangle screenBounds(0, 0, resolution.width, resolution.height);
 

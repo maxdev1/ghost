@@ -89,12 +89,8 @@ void screen_t::markDirty(g_rectangle rect)
 	}
 	else
 	{
-		int top = rect.getTop() < invalid.getTop() ? rect.getTop() : invalid.getTop();
-		int left = rect.getLeft() < invalid.getLeft() ? rect.getLeft() : invalid.getLeft();
-		int bottom = rect.getBottom() > invalid.getBottom() ? rect.getBottom() : invalid.getBottom();
-		int right = rect.getRight() > invalid.getRight() ? rect.getRight() : invalid.getRight();
-
-		invalid = g_rectangle(left, top, right - left + 1, bottom - top + 1);
+		invalid.extend(rect.getStart());
+		invalid.extend(rect.getEnd());
 	}
 
 	// Fix invalid area

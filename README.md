@@ -11,6 +11,14 @@ See the `documentation` folder. It contains information about the technical desi
 
 An usually up-to-date version of the documentation is provided here: https://ghostkernel.org/documentation/
 
+## Live ISO
+
+If you just want to play around with the latest state, you can download an ISO
+image from the [release section](https://github.com/maxdev1/ghost/releases).
+
+The suggested way to test it is in VirtualBox with at least 512MB of RAM and the
+VMSVGA graphics adapter enabled for better performance.
+
 ## Quick-start
 
 1. On your host machine (where Docker is installed), run `./docker-build-toolchain-image.sh`. This will 

@@ -77,8 +77,11 @@ void background::onMouseMove(const g_point& position)
 	for(auto item: items)
 	{
 		auto rect = item->getBounds();
+		bool oldHover = item->hover;
 		item->hover = rect.contains(position);
-		item->paint();
+
+		if(item->hover != oldHover)
+			item->paint();
 	}
 }
 
