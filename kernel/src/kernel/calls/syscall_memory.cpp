@@ -122,7 +122,6 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 {
 	data->virtualAddress = 0;
 
-	mutexAcquire(&task->process->lock);
 	g_task* targetTask = taskingGetById(data->processId);
 	if(!targetTask)
 	{
@@ -131,6 +130,7 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 		return;
 	}
 	g_process* targetProcess = targetTask->process;
+	mutexAcquire(&targetProcess->lock);
 
 	g_virtual_address memory = (g_virtual_address) data->memory;
 	uint32_t pages = G_PAGE_ALIGN_UP(data->size) / G_PAGE_SIZE;
@@ -149,9 +149,10 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 				"%! task %i was unable to share memory area %h of size %h with task %i because there was no free virtual range",
 				"syscall",
 				task->id, memory, pages * G_PAGE_SIZE, targetProcess->main->id);
+		mutexRelease(&targetProcess->lock);
 		return;
 	}
-	mutexRelease(&task->process->lock);
+	mutexRelease(&targetProcess->lock);
 
 	for(uint32_t i = 0; i < pages; i++)
 	{
@@ -165,13 +166,13 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 			return;
 		}
 
-		mutexAcquire(&targetTask->lock);
+		mutexAcquire(&targetProcess->lock);
 		targetProcess = targetTask->process;
 
 		g_physical_address back = taskingMemoryTemporarySwitchTo(targetProcess->pageDirectory);
 		pagingMapPage(virtualRangeBase + i * G_PAGE_SIZE, physicalAddr, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 		taskingMemoryTemporarySwitchBack(back);
-		mutexRelease(&targetTask->lock);
+		mutexRelease(&targetProcess->lock);
 
 		pageReferenceTrackerIncrement(physicalAddr);
 	}
