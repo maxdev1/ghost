@@ -26,19 +26,23 @@
 void taskingCleanupThread()
 {
 	g_tasking_local* local = taskingGetLocal();
-	g_task* task = taskingGetCurrentTask();
+	g_task* self = taskingGetCurrentTask();
 	for(;;)
 	{
 		// Find and remove dead tasks from local scheduling list
 		mutexAcquire(&local->lock);
 
-		g_schedule_entry* deadList = 0;
+		g_schedule_entry* deadList = nullptr;
 		g_schedule_entry* entry = local->scheduling.list;
-		g_schedule_entry* previous = 0;
+		g_schedule_entry* previous = nullptr;
 		while(entry)
 		{
 			g_schedule_entry* next = entry->next;
-			if(entry->task->status == G_TASK_STATUS_DEAD)
+
+			auto task = entry->task;
+			mutexAcquire(&task->lock);
+
+			if(task->status == G_TASK_STATUS_DEAD)
 			{
 				if(previous)
 					previous->next = next;
@@ -53,6 +57,8 @@ void taskingCleanupThread()
 				previous = entry;
 			}
 			entry = next;
+
+			mutexRelease(&task->lock);
 		}
 
 		mutexRelease(&local->lock);
@@ -67,10 +73,10 @@ void taskingCleanupThread()
 		}
 
 		// Sleep for some time
-		mutexAcquire(&task->lock);
-		clockWaitForTime(task->id, clockGetLocal()->time + 3000);
-		task->status = G_TASK_STATUS_WAITING;
-		mutexRelease(&task->lock);
+		mutexAcquire(&self->lock);
+		clockWaitForTime(self->id, clockGetLocal()->time + 3000);
+		self->status = G_TASK_STATUS_WAITING;
+		mutexRelease(&self->lock);
 		taskingYield();
 	}
 }

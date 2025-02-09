@@ -104,7 +104,9 @@ void clockUpdate()
 		g_task* task = taskingGetById(local->waiters->task);
 		if(task)
 		{
+			mutexAcquire(&task->lock);
 			task->status = G_TASK_STATUS_RUNNING;
+			mutexRelease(&task->lock);
 		}
 
 		auto next = local->waiters->next;

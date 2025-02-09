@@ -405,6 +405,8 @@ g_task* taskingCreateTaskVm86(g_process* process, uint32_t intr, g_vm86_register
 
 void taskingDestroyTask(g_task* task)
 {
+	mutexAcquire(&task->lock);
+
 	if(task->status != G_TASK_STATUS_DEAD)
 		panic("%! tried to remove a task %i that is not dead", "tasking", task->id);
 

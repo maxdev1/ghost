@@ -82,25 +82,35 @@ void schedulerSchedule(g_tasking_local* local)
 	for(;;)
 	{
 		g_task* task = entry->task;
+
+		bool done = false;
+
+		mutexAcquire(&task->lock);
 		if(task->status == G_TASK_STATUS_RUNNING)
 		{
 			local->scheduling.current = task;
 			local->scheduling.current->statistics.timesScheduled++;
-			break;
+			done = true;
 		}
-
-		entry = entry->next;
-		if(!entry)
+		else
 		{
-			entry = local->scheduling.list;
-		}
+			entry = entry->next;
+			if(!entry)
+			{
+				entry = local->scheduling.list;
+			}
 
-		if(entry == start)
-		{
-			local->scheduling.current = local->scheduling.idleTask;
-			local->scheduling.idleTask->statistics.timesScheduled++;
-			break;
+			if(entry == start)
+			{
+				local->scheduling.current = local->scheduling.idleTask;
+				local->scheduling.idleTask->statistics.timesScheduled++;
+				done = true;
+			}
 		}
+		mutexRelease(&task->lock);
+
+		if(done)
+			break;
 	}
 	mutexRelease(&local->lock);
 
@@ -144,10 +154,9 @@ void schedulerDump()
 		if(entry->task->status != G_TASK_STATUS_DEAD)
 		{
 			auto ident = taskingDirectoryGetIdentifier(entry->task->id);
-			logInfo("%# @%i (%i:%i:%s)%s usage: %i, at: %x", processorId, entry->task->process->id, entry->task->id,
+			logInfo("%# @%i (%i:%i:%s)%s usage: %i", processorId, entry->task->process->id, entry->task->id,
 			        ident == nullptr?"":ident, taskState,
-			        USAGE(entry->task->statistics.timesScheduled, entry->task->statistics.timesYielded),
-			        *((uint32_t*)entry->task->state->ebp + 1));
+			        USAGE(entry->task->statistics.timesScheduled, entry->task->statistics.timesYielded));
 			entry->task->statistics.timesScheduled = 0;
 			entry->task->statistics.timesYielded = 0;
 		}

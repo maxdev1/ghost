@@ -27,7 +27,7 @@
 struct g_clock_waiter
 {
 	g_tid task;
-	uint32_t wakeTime;
+	uint64_t wakeTime;
 	g_clock_waiter* next;
 };
 
