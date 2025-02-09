@@ -22,9 +22,6 @@
 #include "components/button.hpp"
 #include "components/checkbox.hpp"
 #include "components/cursor.hpp"
-#include "components/desktop/background.hpp"
-#include "components/plain_console_panel.hpp"
-#include "components/scrollbar.hpp"
 #include "components/scrollpane.hpp"
 #include "components/text/text_field.hpp"
 #include "components/window.hpp"
@@ -36,12 +33,15 @@ void open_executable_spawn(open_executable_action_handler_t* data);
 
 class open_executable_action_handler_t : public internal_action_handler_t
 {
-  public:
+public:
 	std::string exe;
 	std::string args;
-	open_executable_action_handler_t(std::string exe, std::string args) : exe(exe), args(args)
+
+	open_executable_action_handler_t(std::string exe, std::string args) :
+		exe(exe), args(args)
 	{
 	}
+
 	void handle(action_component_t* source)
 	{
 		g_create_task_d((void*) &open_executable_spawn, this);
@@ -54,6 +54,7 @@ void open_executable_spawn(open_executable_action_handler_t* data)
 }
 
 static int nextButtonPos = 70;
+
 void addExecutableButton(window_t* window, std::string name, std::string exe, std::string args)
 {
 
@@ -67,7 +68,7 @@ void addExecutableButton(window_t* window, std::string name, std::string exe, st
 
 class create_test_window_handler_t : public internal_action_handler_t
 {
-  public:
+public:
 	void handle(action_component_t* source);
 };
 
@@ -75,13 +76,12 @@ void createTestWindow()
 {
 	window_t* window = new window_t;
 	window->setTitle("Components");
-	window->setBounds(g_rectangle(30, 30, 320, 530));
+	window->setBounds(g_rectangle(530, 30, 320, 530));
 	window->setLayoutManager(new grid_layout_manager_t(1, 1));
 
 	scrollpane_t* scroller = new scrollpane_t;
 	scroller->setBounds(g_rectangle(0, 0, 300, 200));
 	scroller->setFixedWidth(true);
-	window->addChild(scroller);
 
 	panel_t* content = new panel_t();
 	auto contentGrid = new grid_layout_manager_t(1);
@@ -89,6 +89,7 @@ void createTestWindow()
 	contentGrid->setPadding(g_insets(10, 10, 10, 10));
 	content->setLayoutManager(contentGrid);
 	scroller->setContent(content);
+	window->addChild(scroller);
 
 	{
 		panel_t* panel = new panel_t();
@@ -155,7 +156,7 @@ void createTestWindow2()
 {
 	window_t* window = new window_t;
 	window->setTitle("Grid layout");
-	window->setBounds(g_rectangle(400, 10, 300, 300));
+	window->setBounds(g_rectangle(700, 10, 300, 300));
 
 	auto grid = new grid_layout_manager_t(3, 3, 10, 10);
 	grid->setPadding(g_insets(10, 10, 10, 10));

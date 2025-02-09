@@ -21,10 +21,6 @@
 #ifndef __WINDOWSERVER_COMPONENTS_ACTIONCOMPONENT__
 #define __WINDOWSERVER_COMPONENTS_ACTIONCOMPONENT__
 
-#include <ghost.h>
-#include <list>
-#include <string>
-
 class component_t;
 class action_component_t;
 
@@ -33,10 +29,9 @@ class action_component_t;
  */
 class internal_action_handler_t
 {
-  public:
-    virtual ~internal_action_handler_t()
-    {
-    }
+public:
+    virtual ~internal_action_handler_t() = default;
+
     virtual void handle(action_component_t* source) = 0;
 };
 
@@ -47,18 +42,15 @@ class internal_action_handler_t
  */
 class action_component_t
 {
-  protected:
     component_t* self;
     internal_action_handler_t* internalHandler;
 
-  public:
-    action_component_t(component_t* self) : self(self), internalHandler(nullptr)
+public:
+    explicit action_component_t(component_t* self) : self(self), internalHandler(nullptr)
     {
     }
 
-    virtual ~action_component_t()
-    {
-    }
+    virtual ~action_component_t() = default;
 
     virtual void fireAction();
     virtual void setInternalActionHandler(internal_action_handler_t* handler);

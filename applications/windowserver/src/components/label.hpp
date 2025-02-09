@@ -22,13 +22,15 @@
 #define __WINDOWSERVER_COMPONENTS_LABEL__
 
 #include "components/component.hpp"
+#include "components/titled_component.hpp"
+
 #include <libfont/font.hpp>
 #include <libfont/text_alignment.hpp>
-#include "components/titled_component.hpp"
+#include <libwindow/color_argb.hpp>
 
 class label_t : public component_t, public titled_component_t
 {
-  private:
+private:
     g_font* font;
     int fontSize;
     cairo_text_extents_t lastExtents;
@@ -37,25 +39,26 @@ class label_t : public component_t, public titled_component_t
     g_text_alignment alignment;
     g_color_argb color;
 
-  public:
+public:
     label_t();
-    virtual ~label_t()
-    {
-    }
+    ~label_t() override = default;
 
-    virtual void paint();
-    virtual void update();
+    void paint() override;
+    void layout() override;
+    void update() override;
 
     virtual void setFont(g_font* font);
 
     virtual void setColor(g_color_argb color);
     virtual g_color_argb getColor();
 
-    virtual void setTitle(std::string title);
-    virtual std::string getTitle();
+    void setTitle(std::string title) override;
+    std::string getTitle() override;
 
     void setAlignment(g_text_alignment alignment);
     g_text_alignment getAlignment();
+
+    bool setNumericProperty(int property, uint32_t value) override;
 };
 
 #endif

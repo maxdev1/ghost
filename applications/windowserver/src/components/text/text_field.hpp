@@ -21,14 +21,14 @@
 #ifndef __TEXT_FIELD__
 #define __TEXT_FIELD__
 
-#include <libfont/font.hpp>
-#include <libfont/text_layouter.hpp>
 #include "components/text/text_component.hpp"
 #include "components/titled_component.hpp"
 
+#include <libfont/font.hpp>
+#include <libfont/text_layouter.hpp>
 #include <libinput/keyboard/keyboard.hpp>
 #include <libwindow/metrics/insets.hpp>
-#include <list>
+#include <libwindow/color_argb.hpp>
 #include <string>
 
 enum class text_field_visual_status_t : uint8_t
@@ -39,7 +39,6 @@ enum class text_field_visual_status_t : uint8_t
 
 class text_field_t : public text_component_t, public titled_component_t
 {
-  private:
     std::string text;
     text_field_visual_status_t visualStatus;
     bool focused;
@@ -62,127 +61,64 @@ class text_field_t : public text_component_t, public titled_component_t
     void loadDefaultFont();
     void applyScroll();
 
-  public:
+public:
     text_field_t();
-    virtual ~text_field_t();
+    ~text_field_t() override = default;
 
-    /**
-     *
-     */
-    virtual void update();
+    void update() override;
+    void paint() override;
 
-    /**
-     *
-     */
-    virtual void paint();
+    component_t* handleKeyEvent(key_event_t& e) override;
+    component_t* handleMouseEvent(mouse_event_t& e) override;
+    component_t* handleFocusEvent(focus_event_t& e) override;
 
-    virtual component_t* handleKeyEvent(key_event_t& e);
-    virtual component_t* handleMouseEvent(mouse_event_t& e);
-    virtual component_t* handleFocusEvent(focus_event_t& e);
+    bool getNumericProperty(int property, uint32_t* out) override;
+    bool setNumericProperty(int property, uint32_t value) override;
 
-    virtual void setText(std::string text);
-    virtual std::string getText()
-    {
-        return text;
-    }
+    void setText(std::string text) override;
+    std::string getText() override;
 
     virtual void setSecure(bool secure);
+
     virtual bool isSecure()
     {
         return secure;
     }
 
-    /**
-     *
-     */
-    virtual void setTitle(std::string title)
+    void setTitle(std::string title) override
     {
         setText(title);
     }
 
-    /**
-     *
-     */
-    virtual std::string getTitle()
+    std::string getTitle() override
     {
         return getText();
     }
 
-    /**
-     *
-     */
-    virtual void setCursor(int pos);
+    void setCursor(int pos) override;
 
-    /**
-     *
-     */
-    virtual int getCursor()
+    int getCursor() override
     {
         return cursor;
     }
 
-    /**
-     *
-     */
-    virtual void setMarker(int pos);
+    void setMarker(int pos) override;
 
-    /**
-     *
-     */
-    virtual int getMarker()
+    int getMarker() override
     {
         return marker;
     }
 
-    /**
-     *
-     */
+    g_range getSelectedRange() override;
+
     void backspace(g_key_info& info);
 
-    /**
-     *
-     */
     void insert(std::string text);
-
-    /**
-     *
-     */
     int viewToPosition(g_point p);
-
-    /**
-     *
-     */
     g_rectangle glyphToView(g_positioned_glyph& g);
-
-    /**
-     *
-     */
     int positionToUnscrolledCursorX(int pos);
-
-    /**
-     *
-     */
     g_rectangle positionToCursorBounds(int pos);
-
-    /**
-     *
-     */
     void setFont(g_font* f);
-
-    /**
-     *
-     */
-    virtual g_range getSelectedRange();
-
-    /**
-     *
-     */
-    virtual bool getNumericProperty(int property, uint32_t* out);
-
-    /**
-     *
-     */
-    virtual bool setNumericProperty(int property, uint32_t value);
 };
 
 #endif

@@ -25,7 +25,8 @@
 #include <ghost/stdint.h>
 #include <stddef.h>
 
-#define G_ALIGN_UP(value, alignment) ((value % alignment) ? (value + (alignment - value % alignment)) : value)
+#define G_ALIGN_UP(value, boundary)    (((value) + ((boundary) - 1)) & ~((boundary) - 1))
+#define G_ALIGN_DOWN(value, boundary)  ((value) & ~((boundary) - 1))
 
 /**
  * Reference to the loaders or kernels physical page allocator.

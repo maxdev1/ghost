@@ -22,15 +22,10 @@
 #define __WINDOWSERVER_COMPONENTS_CURSOR__
 
 #include "components/component.hpp"
-#include "events/mouse_event.hpp"
 
 #include <cairo/cairo.h>
-#include <cstdio>
 #include <fstream>
 #include <libwindow/metrics/point.hpp>
-#include <map>
-#include <sstream>
-#include <string.h>
 
 #define FALLBACK_CURSOR_SIZE 10
 
@@ -44,18 +39,18 @@ struct cursor_configuration
 
 class cursor_t
 {
-  public:
+public:
     static g_point position;
     static g_point nextPosition;
     static g_mouse_button pressedButtons;
     static g_mouse_button nextPressedButtons;
 
-    static component_t* pressedComponent;
-    static component_t* draggedComponent;
-    static component_t* hoveredComponent;
-    static component_t* focusedComponent;
+    static g_ui_component_id pressedComponent;
+    static g_ui_component_id draggedComponent;
+    static g_ui_component_id hoveredComponent;
+    static g_ui_component_id focusedComponent;
 
-    static void paint(g_graphics* global);
+    static void paint(graphics_t* global);
 
     static g_rectangle getArea();
 

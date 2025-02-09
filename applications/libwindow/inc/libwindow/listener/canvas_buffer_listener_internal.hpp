@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,24 +18,27 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __WINDOWSERVER_INTERFACE_COMPONENTREGISTRY__
-#define __WINDOWSERVER_INTERFACE_COMPONENTREGISTRY__
+#ifndef LIBWINDOW_CANVASBUFFERLISTENERINTERNAL
+#define LIBWINDOW_CANVASBUFFERLISTENERINTERNAL
 
-#include <libwindow/interface.hpp>
+#include "listener.hpp"
 
-#include "components/component.hpp"
+class g_component;
+class g_canvas;
 
-class component_registry_t
+/**
+ * Listener that a canvas registers on itself to react when a new buffer is ready.
+ */
+class g_canvas_buffer_listener_internal : public g_listener
 {
-  public:
-	static g_ui_component_id add(g_pid process, component_t* component);
-	static component_t* get(g_ui_component_id id);
+public:
+    g_canvas* canvas;
 
-	static void remove_component(g_pid pid, g_ui_component_id id);
-	static void cleanup_process(g_pid pid);
+    explicit g_canvas_buffer_listener_internal(g_canvas* canvas) : canvas(canvas)
+    {
+    }
 
-  private:
-	static void remove_process_components(g_pid process, component_t* component, std::list<component_t*>& removedComponents);
+    void process(g_ui_component_event_header* header) override;
 };
 
 #endif

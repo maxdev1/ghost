@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,35 +18,51 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_KEYLISTENER__
-#define __LIBWINDOW_KEYLISTENER__
+#ifndef LIBWINDOW_KEYLISTENER
+#define LIBWINDOW_KEYLISTENER
 
-#include <cstdint>
+#include "listener.hpp"
+#include "../interface.hpp"
 
-#include "libwindow/listener/listener.hpp"
+#include <libinput/keyboard/keyboard.hpp>
+#include <bits/std_function.h>
 
 struct g_key_event
 {
 	g_key_info_basic info;
 };
 
+typedef std::function<void(g_key_event&)> g_key_listener_func;
+
 class g_key_listener : public g_listener
 {
-  public:
-	virtual ~g_key_listener()
+public:
+	void process(g_ui_component_event_header* header) override
 	{
-	}
-
-	virtual void process(g_ui_component_event_header *header)
-	{
-		g_ui_component_key_event *event = (g_ui_component_key_event *) header;
+		auto event = (g_ui_component_key_event*) header;
 
 		g_key_event e;
 		e.info = event->key_info;
-		handle_key_event(e);
+		handleKeyEvent(e);
 	}
 
-	virtual void handle_key_event(g_key_event &e) = 0;
+	virtual void handleKeyEvent(g_key_event& e) = 0;
+};
+
+class g_key_listener_dispatcher : public g_key_listener
+{
+	g_key_listener_func func;
+
+public:
+	explicit g_key_listener_dispatcher(g_key_listener_func func):
+		func(std::move(func))
+	{
+	}
+
+	void handleKeyEvent(g_key_event& e) override
+	{
+		func(e);
+	}
 };
 
 #endif

@@ -18,36 +18,9 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef ITEM_CONTAINER_HPP
-#define ITEM_CONTAINER_HPP
+#ifndef DESKTOP
+#define DESKTOP
 
-#include <components/component.hpp>
+void desktopLoadItems();
 
-#include "selection.hpp"
-#include "item.hpp"
-
-
-class item_container_t : public component_t
-{
-	int gridScale = 100;
-	selection_t* selection;
-
-public:
-	item_container_t();
-	~item_container_t() override = default;
-
-	int getGridScale() const { return gridScale; }
-
-	void updateSelectedChildren(const g_rectangle& newSelection);
-	void showSelection(g_rectangle& selection);
-	void hideSelection();
-	void startLoadDesktopItems();
-	void unselectItems();
-	void setSelectedItem(item_t* item);
-	void pressDesktopItems(const g_point& screen_position);
-	void dragDesktopItems(const g_point& screen_position);
-	void tidyDesktopItems();
-};
-
-
-#endif //ITEM_CONTAINER_HPP
+#endif

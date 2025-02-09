@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,14 +18,14 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_INTERFACE__
-#define __LIBWINDOW_INTERFACE__
+#ifndef LIBWINDOW_INTERFACE
+#define LIBWINDOW_INTERFACE
 
 #include <ghost.h>
 #include <libinput/keyboard/keyboard.hpp>
 
-#include "libwindow/metrics/dimension.hpp"
-#include "libwindow/metrics/rectangle.hpp"
+#include "metrics/dimension.hpp"
+#include "metrics/rectangle.hpp"
 
 /**
  * This UI interface specification defines the messages
@@ -59,21 +59,20 @@ typedef int32_t g_ui_listener_id;
  * A protocol message always starts with the header, the message id
  */
 typedef uint8_t g_ui_protocol_command_id;
-const g_ui_protocol_command_id G_UI_PROTOCOL_INITIALIZATION = 1;
-const g_ui_protocol_command_id G_UI_PROTOCOL_CREATE_COMPONENT = 2;
-const g_ui_protocol_command_id G_UI_PROTOCOL_ADD_COMPONENT = 3;
-const g_ui_protocol_command_id G_UI_PROTOCOL_SET_TITLE = 4;
-const g_ui_protocol_command_id G_UI_PROTOCOL_GET_TITLE = 5;
-const g_ui_protocol_command_id G_UI_PROTOCOL_SET_BOUNDS = 6;
-const g_ui_protocol_command_id G_UI_PROTOCOL_SET_VISIBLE = 7;
-const g_ui_protocol_command_id G_UI_PROTOCOL_SET_LISTENER = 8;
-const g_ui_protocol_command_id G_UI_PROTOCOL_SET_NUMERIC_PROPERTY = 9;
-const g_ui_protocol_command_id G_UI_PROTOCOL_GET_NUMERIC_PROPERTY = 10;
-const g_ui_protocol_command_id G_UI_PROTOCOL_CANVAS_ACK_BUFFER_REQUEST = 11;
-const g_ui_protocol_command_id G_UI_PROTOCOL_GET_BOUNDS = 12;
-const g_ui_protocol_command_id G_UI_PROTOCOL_CANVAS_BLIT = 13;
-const g_ui_protocol_command_id G_UI_PROTOCOL_REGISTER_DESKTOP_CANVAS = 14;
-const g_ui_protocol_command_id G_UI_PROTOCOL_GET_SCREEN_DIMENSION = 15;
+#define G_UI_PROTOCOL_INITIALIZATION			((g_ui_protocol_command_id) 1)
+#define G_UI_PROTOCOL_CREATE_COMPONENT			((g_ui_protocol_command_id) 2)
+#define G_UI_PROTOCOL_ADD_COMPONENT				((g_ui_protocol_command_id) 3)
+#define G_UI_PROTOCOL_SET_TITLE					((g_ui_protocol_command_id) 4)
+#define G_UI_PROTOCOL_GET_TITLE					((g_ui_protocol_command_id) 5)
+#define G_UI_PROTOCOL_SET_BOUNDS				((g_ui_protocol_command_id) 6)
+#define G_UI_PROTOCOL_SET_VISIBLE				((g_ui_protocol_command_id) 7)
+#define G_UI_PROTOCOL_SET_LISTENER				((g_ui_protocol_command_id) 8)
+#define G_UI_PROTOCOL_SET_NUMERIC_PROPERTY		((g_ui_protocol_command_id) 9)
+#define G_UI_PROTOCOL_GET_NUMERIC_PROPERTY		((g_ui_protocol_command_id) 10)
+#define G_UI_PROTOCOL_GET_BOUNDS				((g_ui_protocol_command_id) 11)
+#define G_UI_PROTOCOL_CANVAS_BLIT				((g_ui_protocol_command_id) 12)
+#define G_UI_PROTOCOL_REGISTER_DESKTOP_CANVAS	((g_ui_protocol_command_id) 13)
+#define G_UI_PROTOCOL_GET_SCREEN_DIMENSION		((g_ui_protocol_command_id) 14)
 
 /**
  * Common status for requests
@@ -91,6 +90,7 @@ const g_ui_component_type G_UI_COMPONENT_TYPE_BUTTON = 1;
 const g_ui_component_type G_UI_COMPONENT_TYPE_LABEL = 2;
 const g_ui_component_type G_UI_COMPONENT_TYPE_TEXTFIELD = 3;
 const g_ui_component_type G_UI_COMPONENT_TYPE_CANVAS = 4;
+const g_ui_component_type G_UI_COMPONENT_TYPE_SELECTION = 5;
 
 /**
  * Types of events that can be listened to
@@ -98,11 +98,12 @@ const g_ui_component_type G_UI_COMPONENT_TYPE_CANVAS = 4;
 typedef uint32_t g_ui_component_event_type;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_ACTION = 0;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_BOUNDS = 1;
-const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_CANVAS_WFA = 2; // "wait for acknowledge"-event
+const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_CANVAS_NEW_BUFFER = 2;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_KEY = 3;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_FOCUS = 4;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_MOUSE = 5;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_CLOSE = 6;
+const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_WINDOWS = 7;
 
 /**
  *
@@ -116,7 +117,7 @@ typedef uint8_t g_ui_layout_manager;
  */
 typedef struct
 {
-	g_ui_protocol_command_id id;
+    g_ui_protocol_command_id id;
 } __attribute__((packed)) g_ui_message_header;
 
 /**
@@ -126,7 +127,8 @@ typedef struct
  */
 typedef struct
 {
-	g_ui_message_header header;
+    g_ui_message_header header;
+    g_tid event_dispatcher;
 } __attribute__((packed)) g_ui_initialize_request;
 
 /**
@@ -134,14 +136,14 @@ typedef struct
  *
  * @field status
  * 		whether the initialization was successful
- * @field window_server_delegate_thread
- * 		id of the thread that is responsible for further window server communication
+ * @field window_server_delegate
+ * 		id of the task that is responsible for further window server communication
  */
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_protocol_status status;
-	g_tid window_server_delegate_thread;
+    g_ui_message_header header;
+    g_ui_protocol_status status;
+    g_tid window_server_delegate;
 } __attribute__((packed)) g_ui_initialize_response;
 
 /**
@@ -149,8 +151,8 @@ typedef struct
  */
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_component_type type;
+    g_ui_message_header header;
+    g_ui_component_type type;
 } __attribute__((packed)) g_ui_create_component_request;
 
 /**
@@ -158,9 +160,9 @@ typedef struct
  */
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_protocol_status status;
-	g_ui_component_id id;
+    g_ui_message_header header;
+    g_ui_protocol_status status;
+    g_ui_component_id id;
 } __attribute__((packed)) g_ui_create_component_response;
 
 /**
@@ -168,15 +170,15 @@ typedef struct
  */
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_component_id parent;
-	g_ui_component_id child;
+    g_ui_message_header header;
+    g_ui_component_id parent;
+    g_ui_component_id child;
 } __attribute__((packed)) g_ui_component_add_child_request;
 
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_protocol_status status;
+    g_ui_message_header header;
+    g_ui_protocol_status status;
 } __attribute__((packed)) g_ui_component_add_child_response;
 
 /**
@@ -184,15 +186,15 @@ typedef struct
  */
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_component_id id;
-	g_rectangle bounds;
+    g_ui_message_header header;
+    g_ui_component_id id;
+    g_rectangle bounds;
 } __attribute__((packed)) g_ui_component_set_bounds_request;
 
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_protocol_status status;
+    g_ui_message_header header;
+    g_ui_protocol_status status;
 } __attribute__((packed)) g_ui_component_set_bounds_response;
 
 /**
@@ -200,15 +202,15 @@ typedef struct
  */
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_component_id id;
+    g_ui_message_header header;
+    g_ui_component_id id;
 } __attribute__((packed)) g_ui_component_get_bounds_request;
 
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_protocol_status status;
-	g_rectangle bounds;
+    g_ui_message_header header;
+    g_ui_protocol_status status;
+    g_rectangle bounds;
 } __attribute__((packed)) g_ui_component_get_bounds_response;
 
 /**
@@ -216,15 +218,15 @@ typedef struct
  */
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_component_id id;
-	bool visible;
+    g_ui_message_header header;
+    g_ui_component_id id;
+    bool visible;
 } __attribute__((packed)) g_ui_component_set_visible_request;
 
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_protocol_status status;
+    g_ui_message_header header;
+    g_ui_protocol_status status;
 } __attribute__((packed)) g_ui_component_set_visible_response;
 
 /**
@@ -232,15 +234,15 @@ typedef struct
  */
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_component_id id;
-	char title[G_UI_COMPONENT_TITLE_MAXIMUM];
+    g_ui_message_header header;
+    g_ui_component_id id;
+    char title[G_UI_COMPONENT_TITLE_MAXIMUM];
 } __attribute__((packed)) g_ui_component_set_title_request;
 
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_protocol_status status;
+    g_ui_message_header header;
+    g_ui_protocol_status status;
 } __attribute__((packed)) g_ui_component_set_title_response;
 
 /**
@@ -248,15 +250,15 @@ typedef struct
  */
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_component_id id;
+    g_ui_message_header header;
+    g_ui_component_id id;
 } __attribute__((packed)) g_ui_component_get_title_request;
 
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_protocol_status status;
-	char title[G_UI_COMPONENT_TITLE_MAXIMUM];
+    g_ui_message_header header;
+    g_ui_protocol_status status;
+    char title[G_UI_COMPONENT_TITLE_MAXIMUM];
 } __attribute__((packed)) g_ui_component_get_title_response;
 
 /**
@@ -264,16 +266,16 @@ typedef struct
  */
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_component_id id;
-	int property;
+    g_ui_message_header header;
+    g_ui_component_id id;
+    int property;
 } __attribute__((packed)) g_ui_component_get_numeric_property_request;
 
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_protocol_status status;
-	uint32_t value;
+    g_ui_message_header header;
+    g_ui_protocol_status status;
+    uint32_t value;
 } __attribute__((packed)) g_ui_component_get_numeric_property_response;
 
 /**
@@ -281,31 +283,23 @@ typedef struct
  */
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_component_id id;
-	int property;
-	uint32_t value;
+    g_ui_message_header header;
+    g_ui_component_id id;
+    int property;
+    uint32_t value;
 } __attribute__((packed)) g_ui_component_set_numeric_property_request;
 
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_protocol_status status;
+    g_ui_message_header header;
+    g_ui_protocol_status status;
 } __attribute__((packed)) g_ui_component_set_numeric_property_response;
 
-/**
- * Request/response for acknowledging the buffer update of a canvas/blitting the canvas
- */
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_component_id id;
-} __attribute__((packed)) g_ui_component_canvas_ack_buffer_request;
-
-typedef struct
-{
-	g_ui_message_header header;
-	g_ui_component_id id;
+    g_ui_message_header header;
+    g_ui_component_id id;
+    g_rectangle area;
 } __attribute__((packed)) g_ui_component_canvas_blit_request;
 
 /**
@@ -313,14 +307,15 @@ typedef struct
  */
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_component_id canvas_id;
+    g_ui_message_header header;
+    g_ui_component_id canvas_id;
+    g_tid target_thread; // For global events (like window event)
 } __attribute__((packed)) g_ui_register_desktop_canvas_request;
 
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_protocol_status status;
+    g_ui_message_header header;
+    g_ui_protocol_status status;
 } __attribute__((packed)) g_ui_register_desktop_canvas_response;
 
 /**
@@ -328,16 +323,16 @@ typedef struct
  */
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_component_id id;
-	g_ui_component_event_type event_type;
-	g_tid target_thread;
+    g_ui_message_header header;
+    g_ui_component_id id;
+    g_ui_component_event_type event_type;
+    g_tid target_thread;
 } __attribute__((packed)) g_ui_component_set_listener_request;
 
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_protocol_status status;
+    g_ui_message_header header;
+    g_ui_protocol_status status;
 } __attribute__((packed)) g_ui_component_set_listener_response;
 
 /**
@@ -345,13 +340,13 @@ typedef struct
  */
 typedef struct
 {
-	g_ui_message_header header;
+    g_ui_message_header header;
 } __attribute__((packed)) g_ui_get_screen_dimension_request;
 
 typedef struct
 {
-	g_ui_message_header header;
-	g_dimension size;
+    g_ui_message_header header;
+    g_dimension size;
 } __attribute__((packed)) g_ui_get_screen_dimension_response;
 
 /**
@@ -359,44 +354,55 @@ typedef struct
  */
 typedef struct
 {
-	g_ui_message_header header;
-	g_ui_component_event_type type;
-	g_ui_component_id component_id;
+    g_ui_message_header header;
+    g_ui_component_event_type type;
+    g_ui_component_id component_id;
 } __attribute__((packed)) g_ui_component_event_header;
 
 typedef struct
 {
-	g_ui_component_event_header header;
+    g_ui_component_event_header header;
 } __attribute__((packed)) g_ui_component_action_event;
 
 typedef struct
 {
-	g_ui_component_event_header header;
-	g_rectangle bounds;
+    g_ui_component_event_header header;
+    g_rectangle bounds;
 } __attribute__((packed)) g_ui_component_bounds_event;
 
 typedef struct
 {
-	g_ui_component_event_header header;
-	g_address newBufferAddress;
+    g_ui_component_event_header header;
+    g_address newBufferAddress;
+    uint16_t width;
+    uint16_t height;
 } __attribute__((packed)) g_ui_component_canvas_wfa_event;
 
 typedef struct
 {
-	g_ui_component_event_header header;
-	g_key_info_basic key_info;
+    g_ui_component_event_header header;
+    g_key_info_basic key_info;
 } __attribute__((packed)) g_ui_component_key_event;
 
 typedef struct
 {
-	g_ui_component_event_header header;
-	uint8_t now_focused;
+    g_ui_component_event_header header;
+    uint8_t now_focused;
 } __attribute__((packed)) g_ui_component_focus_event;
 
 typedef struct
 {
-	g_ui_component_event_header header;
+    g_ui_component_event_header header;
 } __attribute__((packed)) g_ui_component_close_event;
+
+typedef struct
+{
+    g_ui_component_event_header header;
+    g_ui_protocol_status status;
+    g_ui_component_id window_id;
+    bool present;
+    char title[G_UI_COMPONENT_TITLE_MAXIMUM];
+} __attribute__((packed)) g_ui_windows_event;
 
 /**
  * Mouse events
@@ -419,30 +425,11 @@ typedef uint8_t g_mouse_event_type;
 
 typedef struct
 {
-	g_ui_component_event_header header;
-	g_point position;
-	g_mouse_event_type type;
-	g_mouse_button buttons;
+    g_ui_component_event_header header;
+    g_point position;
+    g_mouse_event_type type;
+    g_mouse_button buttons;
+    int clickCount;
 } __attribute__((packed)) g_ui_component_mouse_event;
-
-/**
- * Canvas shared memory header
- */
-typedef struct
-{
-	uint16_t paintable_width;
-	uint16_t paintable_height;
-	uint16_t blit_x;
-	uint16_t blit_y;
-	uint16_t blit_width;
-	uint16_t blit_height;
-	g_bool ready;
-} __attribute__((packed)) g_ui_canvas_shared_memory_header;
-
-/**
- * Cairo requires the canvas memory buffer to be aligned. This constant must be used to calculate
- * the address for the canvas buffer in the canvas shared memory.
- */
-#define G_UI_CANVAS_SHARED_MEMORY_HEADER_SIZE ((sizeof(g_ui_canvas_shared_memory_header) - sizeof(g_ui_canvas_shared_memory_header) % sizeof(g_address)) + sizeof(g_address))
 
 #endif

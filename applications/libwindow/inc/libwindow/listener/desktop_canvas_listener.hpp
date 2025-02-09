@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,20 +18,39 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __WINDOWSERVER_INTERFACE_COMMANDMESSAGERESPONDERTHREAD__
-#define __WINDOWSERVER_INTERFACE_COMMANDMESSAGERESPONDERTHREAD__
+#ifndef LIBWINDOW_DESKTOPCANVASLISTENER
+#define LIBWINDOW_DESKTOPCANVASLISTENER
 
-#include <deque>
+#include "listener.hpp"
+#include <bits/std_function.h>
+#include <utility>
 
-typedef struct
+typedef std::function<void(g_ui_windows_event*)> g_desktop_canvas_listener_func;
+
+class g_desktop_canvas_listener : public g_listener
 {
-	g_tid target;
-	uint32_t transaction;
-	void* message;
-	size_t length;
-} command_message_response_t;
+public:
+    void process(g_ui_component_event_header* header) override
+    {
+        handleEvent((g_ui_windows_event*)header);
+    }
 
-void interfaceResponderSend(command_message_response_t& response);
-void interfaceResponderThread();
+    virtual void handleEvent(g_ui_windows_event* event) = 0;
+};
+
+class g_desktop_canvas_listener_dispatcher : public g_desktop_canvas_listener
+{
+    g_desktop_canvas_listener_func func;
+
+public:
+    explicit g_desktop_canvas_listener_dispatcher(g_desktop_canvas_listener_func func): func(std::move(func))
+    {
+    }
+
+    void handleEvent(g_ui_windows_event* event) override
+    {
+        func(event);
+    }
+};
 
 #endif

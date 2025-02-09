@@ -21,7 +21,7 @@
 #ifndef __LIBWINDOW_METRICS_DIMENSION__
 #define __LIBWINDOW_METRICS_DIMENSION__
 
-#include "libwindow/metrics/point.hpp"
+#include "point.hpp"
 #include <cstdint>
 
 class g_dimension

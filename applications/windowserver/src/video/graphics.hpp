@@ -22,59 +22,46 @@
 #define __WINDOWSERVER_VIDEO_GRAPHICS__
 
 #include <cairo/cairo.h>
-#include <libwindow/color_argb.hpp>
 #include <libwindow/metrics/dimension.hpp>
 #include <libwindow/metrics/rectangle.hpp>
-#include <stdint.h>
+#include <ghost/mutex.h>
 
-class g_graphics
+/**
+ * The graphics class is a utility that internally holds a cairo surface and has
+ * the ability to resize it when required.
+ */
+class graphics_t
 {
-  private:
-	int width;
-	int height;
-	cairo_t* context = 0;
-	cairo_surface_t* surface = 0;
-	int averageFactor = 10;
+    cairo_t* context = nullptr;
+    cairo_surface_t* surface = nullptr;
+    g_user_mutex lock = g_mutex_initialize_r(true);
 
-  public:
-	/**
-	 * Creates a graphics object. This is a class that holds a surface.
-	 * If an <code>externalBuffer</code> is provided, no internal buffer will be
-	 * automatically created.
-	 *
-	 * @param width of the externalBuffer
-	 * @param height of the externalBuffer
-	 */
-	g_graphics(uint16_t width = 0, uint16_t height = 0);
+    int contextRefCount = 0;
+    int averageFactor = 10;
 
-	void resize(int width, int height, bool averaged = true, bool force = false);
+public:
+    int width;
+    int height;
 
-	void setAverageFactor(int factor)
-	{
-		this->averageFactor = factor;
-	}
+    explicit graphics_t(uint16_t width = 0, uint16_t height = 0);
 
-	cairo_t* getContext()
-	{
-		return context;
-	}
+    void resize(int width, int height, bool averaged = true);
 
-	cairo_surface_t* getSurface()
-	{
-		return surface;
-	}
+    cairo_surface_t* getSurface() const
+    {
+        return surface;
+    }
 
-	int getWidth()
-	{
-		return width;
-	}
+    void setAverageFactor(int factor)
+    {
+        this->averageFactor = factor;
+    }
 
-	int getHeight()
-	{
-		return height;
-	}
+    cairo_t* acquireContext();
 
-	void blitTo(g_graphics* graphics, g_rectangle absoluteClip, g_point position);
+    void releaseContext();
+
+    void blitTo(graphics_t* target, const g_rectangle& clip, const g_point& position);
 };
 
 #endif

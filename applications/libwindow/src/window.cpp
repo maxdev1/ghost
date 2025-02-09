@@ -19,26 +19,32 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <functional>
+#include <utility>
 #include <ghost.h>
 
 #include "libwindow/properties.hpp"
-#include "libwindow/ui.hpp"
 #include "libwindow/window.hpp"
 
-class __g_window_close_listener : public g_listener
+class g_window_close_dispatcher : public g_listener
 {
-  private:
 	std::function<void()> func;
 
-  public:
-	__g_window_close_listener(std::function<void()> func) : func(func)
+public:
+	explicit g_window_close_dispatcher(std::function<void()> func) :
+		func(std::move(func))
 	{
 	}
-	void process(g_ui_component_event_header* header)
+
+	void process(g_ui_component_event_header* header) override
 	{
 		func();
 	}
 };
+
+g_window::g_window(uint32_t id):
+	g_component(id), g_titled_component(id)
+{
+}
 
 g_window* g_window::create()
 {
@@ -48,16 +54,16 @@ g_window* g_window::create()
 bool g_window::isResizable()
 {
 	uint32_t value;
-	g_component::getNumericProperty(G_UI_PROPERTY_RESIZABLE, &value);
+	getNumericProperty(G_UI_PROPERTY_RESIZABLE, &value);
 	return value;
 }
 
 void g_window::setResizable(bool resizable)
 {
-	g_component::setNumericProperty(G_UI_PROPERTY_RESIZABLE, resizable);
+	setNumericProperty(G_UI_PROPERTY_RESIZABLE, resizable);
 }
 
 bool g_window::onClose(std::function<void()> func)
 {
-	return setListener(G_UI_COMPONENT_EVENT_TYPE_CLOSE, new __g_window_close_listener(func));
+	return setListener(G_UI_COMPONENT_EVENT_TYPE_CLOSE, new g_window_close_dispatcher(std::move(func)));
 }

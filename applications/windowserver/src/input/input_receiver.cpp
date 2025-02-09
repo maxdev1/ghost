@@ -45,9 +45,16 @@ void input_receiver_t::startReceiveKeyEvents()
 	while(true)
 	{
 		g_key_info key = g_keyboard::readKey(keyboardIn);
+
+		if(key.ctrl && key.key == "KEY_Q" && key.pressed)
+		{
+			windowserver_t::setDebug(!windowserver_t::isDebug());
+			continue;
+		}
+
 		event_queue->bufferKeyEvent(key);
 
-		windowserver_t::instance()->triggerRender();
+		windowserver_t::instance()->requestUpdate();
 	}
 }
 
@@ -96,6 +103,6 @@ void input_receiver_t::startReceiveMouseEvents()
 			cursor_t::nextPressedButtons |= G_MOUSE_BUTTON_3;
 		}
 
-		windowserver_t::instance()->triggerRender();
+		windowserver_t::instance()->requestUpdate();
 	}
 }

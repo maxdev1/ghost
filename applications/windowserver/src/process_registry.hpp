@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,48 +18,17 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __WINDOWSERVER_COMPONENTS_DESKTOPITEM__
-#define __WINDOWSERVER_COMPONENTS_DESKTOPITEM__
+#ifndef __WINDOWSERVER_INTERFACE_PROCESSREGISTRY__
+#define __WINDOWSERVER_INTERFACE_PROCESSREGISTRY__
 
-#include "components/component.hpp"
-#include "components/label.hpp"
-#include <cairo/cairo.h>
-#include <libwindow/metrics/point.hpp>
-#include <string>
+#include <libwindow/interface.hpp>
 
-class item_container_t;
-
-class item_t : public component_t
+class process_registry_t
 {
-    item_container_t* container;
-
-    label_t* label;
-    bool hovered = false;
-    bool selected = false;
-    cairo_surface_t* surface = 0;
-
-    g_point pressLocation;
-    g_point pressOffset;
-
-    std::string title;
-    std::string icon;
-
 public:
-    item_t(item_container_t* container, std::string title, std::string program, std::string icon);
-
-    std::string program;
-
-    ~item_t() override = default;
-
-    component_t* handleMouseEvent(mouse_event_t& e) override;
-    void layout() override;
-    void paint() override;
-
-    virtual void setSelected(bool selected);
-    virtual void onContainerItemPressed(const g_point& screenPosition);
-    virtual void onContainerItemDragged(const g_point& screenPosition);
-    virtual bool isSelected() const { return selected; }
-    virtual void tidyPosition();
+    static void bind(g_pid pid, g_tid eventDispatcher);
+    static g_tid get(g_pid);
+    static void cleanup_process(g_pid pid);
 };
 
 #endif

@@ -25,10 +25,8 @@
 
 class titled_component_t
 {
-  public:
-    virtual ~titled_component_t()
-    {
-    }
+public:
+    virtual ~titled_component_t() = default;
 
     virtual void setTitle(std::string title) = 0;
 

@@ -21,46 +21,41 @@
 #include "layout/flow_layout_manager.hpp"
 #include "components/component.hpp"
 
-#include <typeinfo>
-#include <vector>
-
 /**
  *
  */
 void flow_layout_manager_t::layout()
 {
+	if(component == nullptr)
+		return;
 
-    if(component == 0)
-    {
-        return;
-    }
+	int x = 0;
+	int y = 0;
+	int lineHeight = 0;
 
-    std::vector<component_child_reference_t>& children = component->getChildren();
+	g_rectangle parentBounds = component->getBounds();
+	auto& children = component->acquireChildren();
+	for(auto& ref: children)
+	{
+		component_t* c = ref.component;
 
-    int x = 0;
-    int y = 0;
-    int lineHeight = 0;
+		g_dimension preferredSize = c->getPreferredSize();
 
-    g_rectangle parentBounds = component->getBounds();
-    for(auto& ref : children)
-    {
-        component_t* c = ref.component;
+		if(x + preferredSize.width > parentBounds.width)
+		{
+			x = 0;
+			y += lineHeight;
+			lineHeight = 0;
+		}
 
-        g_dimension preferredSize = c->getPreferredSize();
+		c->setBounds(g_rectangle(x, y, preferredSize.width, preferredSize.height));
+		x += preferredSize.width;
 
-        if(x + preferredSize.width > parentBounds.width)
-        {
-            x = 0;
-            y += lineHeight;
-            lineHeight = 0;
-        }
+		if(preferredSize.height > lineHeight)
+		{
+			lineHeight = preferredSize.height;
+		}
+	}
 
-        c->setBounds(g_rectangle(x, y, preferredSize.width, preferredSize.height));
-        x += preferredSize.width;
-
-        if(preferredSize.height > lineHeight)
-        {
-            lineHeight = preferredSize.height;
-        }
-    }
+	component->releaseChildren();
 }

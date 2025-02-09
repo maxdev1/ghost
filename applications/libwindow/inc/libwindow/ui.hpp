@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,14 +18,14 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_UI__
-#define __LIBWINDOW_UI__
+#ifndef LIBWINDOW_UI
+#define LIBWINDOW_UI
 
 class g_listener;
 class g_canvas;
 
-#include "libwindow/interface.hpp"
-#include "libwindow/metrics/dimension.hpp"
+#include "interface.hpp"
+#include "metrics/dimension.hpp"
 
 typedef int g_ui_open_status;
 const g_ui_open_status G_UI_OPEN_STATUS_SUCCESSFUL = 0;
@@ -35,9 +35,9 @@ const g_ui_open_status G_UI_OPEN_STATUS_EXISTING = 3;
 
 struct g_ui_event_dispatch_data
 {
-	g_listener *listener;
-	uint8_t *data;
-	uint32_t length;
+    g_listener* listener;
+    uint8_t* data;
+    uint32_t length;
 };
 
 /**
@@ -55,19 +55,18 @@ extern g_tid g_ui_event_dispatcher_tid;
 
 class g_ui
 {
-  private:
-	static void event_dispatch_thread();
-	static void event_dispatch_queue_add(const g_ui_event_dispatch_data &data);
+    static void eventDispatchThread();
+    static void eventDispatchQueueAdd(const g_ui_event_dispatch_data& data);
 
-  public:
-	static g_ui_open_status open();
+public:
+    static g_ui_open_status open();
 
-	static void add_listener(g_listener *l);
-	static void remove_listener(g_listener *l);
+    static void addListener(g_listener* l);
+    static void removeListener(g_listener* l);
 
-	static bool register_desktop_canvas(g_canvas *c);
+    static bool registerDesktopCanvas(g_canvas* c);
 
-	static bool get_screen_dimension(g_dimension *out);
+    static bool getScreenDimension(g_dimension& out);
 };
 
 #endif

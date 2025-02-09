@@ -22,20 +22,9 @@
 #define __INTERFACE_COMMAND_MESSAGE_RECEIVER__
 
 #include <ghost.h>
-#include <libwindow/interface.hpp>
 
-#include "interface/interface_responder.hpp"
-
-class interface_receiver_t
-{
-  public:
-	g_user_mutex stop = g_mutex_initialize();
-
-	virtual void run();
-
-	void processCommand(g_tid senderTid, g_ui_message_header* request, command_message_response_t& response);
-};
-
-void interfaceReceiverThread(interface_receiver_t* receiver);
+void interfaceReceiverThread();
+void interfaceReceiverProcessCommand(g_message_header* requestMessage);
+void interfaceReceiverProcessBufferedCommands();
 
 #endif

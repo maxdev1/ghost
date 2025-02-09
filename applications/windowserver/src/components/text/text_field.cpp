@@ -28,27 +28,27 @@
 #include <libproperties/parser.hpp>
 #include <libwindow/properties.hpp>
 #include <libfont/font_loader.hpp>
-#include <libfont/font_manager.hpp>
 #include <sstream>
 
-text_field_t::text_field_t() : cursor(0), marker(0), scrollX(0), secure(false), focused(false),
-							   visualStatus(text_field_visual_status_t::NORMAL), fontSize(14),
-							   textColor(RGB(0, 0, 0)), insets(g_insets(5, 5, 5, 5))
+text_field_t::text_field_t() :
+	text(""), cursor(0), marker(0), scrollX(0), secure(false), focused(false),
+	visualStatus(text_field_visual_status_t::NORMAL), fontSize(14),
+	textColor(RGB(0, 0, 0)), insets(g_insets(5, 5, 5, 5))
 {
 	caretMoveStrategy = default_caret_move_strategy_t::getInstance();
-
 	viewModel = g_text_layouter::getInstance()->initializeBuffer();
-	setFont(g_font_loader::getDefault());
-}
-
-text_field_t::~text_field_t()
-{
+	font = g_font_loader::getDefault();
 }
 
 void text_field_t::setText(std::string newText)
 {
 	text = newText;
 	markFor(COMPONENT_REQUIREMENT_UPDATE);
+}
+
+std::string text_field_t::getText()
+{
+	return text;
 }
 
 void text_field_t::setSecure(bool newSecure)
@@ -59,7 +59,6 @@ void text_field_t::setSecure(bool newSecure)
 
 void text_field_t::update()
 {
-	// Perform layouting
 	g_rectangle bounds = getBounds();
 
 	std::string visible_text = text;
@@ -72,23 +71,27 @@ void text_field_t::update()
 		}
 	}
 
-	if(graphics.getContext())
-		g_text_layouter::getInstance()->layout(graphics.getContext(), visible_text.c_str(), font, fontSize,
-											   g_rectangle(0, 0, bounds.width, bounds.height), g_text_alignment::LEFT, viewModel, false);
+	auto cr = graphics.acquireContext();
+	if(!cr)
+		return;
+
+	g_text_layouter::getInstance()->layout(cr, visible_text.c_str(), font, fontSize,
+	                                       g_rectangle(0, 0, bounds.width, bounds.height), g_text_alignment::LEFT,
+	                                       viewModel, false);
 
 	markFor(COMPONENT_REQUIREMENT_PAINT);
+
+	graphics.releaseContext();
 }
 
 void text_field_t::paint()
 {
-
-	if(font == 0)
-	{
+	if(font == nullptr)
 		return;
-	}
 
-	auto cr = graphics.getContext();
-    if(!cr) return;
+	auto cr = graphics.acquireContext();
+	if(!cr)
+		return;
 
 	g_rectangle bounds = getBounds();
 
@@ -116,6 +119,20 @@ void text_field_t::paint()
 	cairo_set_line_width(cr, 1.0);
 	cairo_stroke(cr);
 
+	// TODO Unfortunately need to do this again because we have a new cairo context otherwise they are lost
+	std::string visible_text = text;
+	if(secure)
+	{
+		visible_text = "";
+		for(int i = 0; i < text.length(); i++)
+		{
+			visible_text += "*";
+		}
+	}
+	g_text_layouter::getInstance()->layout(cr, visible_text.c_str(), font, fontSize,
+	                                       g_rectangle(0, 0, bounds.width, bounds.height), g_text_alignment::LEFT,
+	                                       viewModel, false);
+
 	// Scroll
 	applyScroll();
 
@@ -127,7 +144,7 @@ void text_field_t::paint()
 	if(focused)
 	{
 		pos = 0;
-		for(g_positioned_glyph& g : viewModel->positions)
+		for(pos = 0; pos < viewModel->positions.size(); pos++)
 		{
 			g_color_argb color = textColor;
 			if(first != second && pos >= first && pos < second)
@@ -140,13 +157,12 @@ void text_field_t::paint()
 
 				color = RGB(255, 255, 255);
 			}
-			++pos;
 		}
 	}
 
 	// Paint glyphs
 	pos = 0;
-	for(g_positioned_glyph& g : viewModel->positions)
+	for(g_positioned_glyph& g: viewModel->positions)
 	{
 
 		g_rectangle onView = glyphToView(g);
@@ -169,10 +185,12 @@ void text_field_t::paint()
 	if(focused)
 	{
 		cairo_set_source_rgba(cr, G_COLOR_ARGB_TO_FPARAMS(RGB(60, 60, 60)));
-		auto bounds = positionToCursorBounds(cursor);
-		cairo_rectangle(cr, bounds.x, bounds.y, bounds.width, bounds.height);
+		auto cursorBounds = positionToCursorBounds(cursor);
+		cairo_rectangle(cr, cursorBounds.x, cursorBounds.y, cursorBounds.width, cursorBounds.height);
 		cairo_fill(cr);
 	}
+
+	graphics.releaseContext();
 }
 
 void text_field_t::applyScroll()

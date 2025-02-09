@@ -22,19 +22,24 @@
 #define __WINDOWSERVER_COMPONENTS_PANEL__
 
 #include "components/component.hpp"
+#include <libwindow/color_argb.hpp>
 
 class panel_t : public component_t
 {
-  private:
     g_color_argb background;
 
-  public:
-    panel_t() : background(ARGB(0, 0, 0, 0))
+protected:
+    bool hasGraphics() const override
     {
-        needsGraphics = false;
+        return false;
     }
 
-    virtual void paint();
+public:
+    panel_t() : background(ARGB(0, 0, 0, 0))
+    {
+    }
+
+    void paint() override;
 
     void setBackground(g_color_argb color);
     g_color_argb getBackground();

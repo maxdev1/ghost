@@ -24,6 +24,7 @@
 #include <list>
 #include <cstdio>
 #include <cstring>
+#include <libwindow/color_argb.hpp>
 
 void guiScreenBlinkCursorEntry(gui_screen_t* screen);
 void guiScreenPaintEntry(gui_screen_t* screen);
@@ -72,6 +73,8 @@ bool gui_screen_t::createUi()
 
 	canvas.component = g_canvas::create();
 	canvas.component->setBufferListener(new canvas_buffer_listener_t(this));
+	canvas.component->setBoundsListener(new canvas_resize_bounds_listener_t(this));
+	canvas.component->setListener(G_UI_COMPONENT_EVENT_TYPE_KEY, new input_key_listener_t(this));
 
 	window->setLayout(G_UI_LAYOUT_MANAGER_GRID);
 	window->addChild(canvas.component);
@@ -80,8 +83,6 @@ bool gui_screen_t::createUi()
 	window->setBounds(windowBounds);
 	window->setVisible(true);
 
-	canvas.component->setBoundsListener(new canvas_resize_bounds_listener_t(this));
-	canvas.component->setListener(G_UI_COMPONENT_EVENT_TYPE_KEY, new input_key_listener_t(this));
 	window->setListener(G_UI_COMPONENT_EVENT_TYPE_FOCUS, new terminal_focus_listener_t(this));
 
 	window->onClose([this]()
@@ -97,13 +98,13 @@ void gui_screen_t::blinkCursor()
 	repaint();
 }
 
-void canvas_resize_bounds_listener_t::handle_bounds_changed(g_rectangle bounds)
+void canvas_resize_bounds_listener_t::handleBoundsChanged(g_rectangle bounds)
 {
 	screen->setCanvasBounds(bounds);
 	screen->repaint();
 }
 
-void input_key_listener_t::handle_key_event(g_key_event& e)
+void input_key_listener_t::handleKeyEvent(g_key_event& e)
 {
 	auto info = g_keyboard::fullKeyInfo(e.info);
 	if(info.key == "KEY_PAD_2")
@@ -153,12 +154,12 @@ void gui_screen_t::bufferInput(const g_key_info& info)
 	g_mutex_release(inputBufferLock);
 }
 
-void canvas_buffer_listener_t::handle_buffer_changed()
+void canvas_buffer_listener_t::handleBufferChanged()
 {
 	screen->repaint();
 }
 
-void terminal_focus_listener_t::handle_focus_changed(bool now_focused)
+void terminal_focus_listener_t::handleFocusChanged(bool now_focused)
 {
 	screen->setFocused(now_focused);
 	screen->repaint();
@@ -176,7 +177,7 @@ void gui_screen_t::paint()
 
 	while(true)
 	{
-		auto cr = getGraphics();
+		auto cr = acquireGraphics();
 		if(!cr)
 		{
 			g_sleep(100);
@@ -342,35 +343,15 @@ void gui_screen_t::paint()
 		}
 
 		canvas.component->blit(g_rectangle(0, 0, canvas.bounds.width, canvas.bounds.height));
+		canvas.component->releaseGraphics();
 
 		g_mutex_acquire(upToDate);
 	}
 }
 
-cairo_t* gui_screen_t::getGraphics()
+cairo_t* gui_screen_t::acquireGraphics()
 {
-	auto bufferInfo = canvas.component->getBuffer();
-	if(bufferInfo.buffer == nullptr)
-		return nullptr;
-
-	canvas.bufferSize.width = bufferInfo.width;
-	canvas.bufferSize.height = bufferInfo.height;
-
-	if(canvas.surface == nullptr || canvas.surfaceBuffer != bufferInfo.buffer)
-	{
-		if(canvas.context != nullptr)
-			cairo_destroy(canvas.context);
-
-		canvas.surface = cairo_image_surface_create_for_data(
-				bufferInfo.buffer, CAIRO_FORMAT_ARGB32,
-				bufferInfo.width, bufferInfo.height,
-				cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, bufferInfo.width)
-				);
-		canvas.surfaceBuffer = bufferInfo.buffer;
-		canvas.context = cairo_create(canvas.surface);
-	}
-
-	return canvas.context;
+	return canvas.component->acquireGraphics();
 }
 
 bool charIsUtf8(char c)

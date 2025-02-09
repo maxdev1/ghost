@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,29 +18,43 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_FOCUSLISTENER__
-#define __LIBWINDOW_FOCUSLISTENER__
+#ifndef LIBWINDOW_FOCUSLISTENER
+#define LIBWINDOW_FOCUSLISTENER
 
-#include <cstdint>
-
-#include "libwindow/listener/listener.hpp"
+#include "listener.hpp"
+#include "../interface.hpp"
+#include <bits/std_function.h>
 
 class g_component;
 
+typedef std::function<void(bool)> g_focus_listener_func;
+
 class g_focus_listener : public g_listener
 {
-  public:
-	virtual ~g_focus_listener()
+public:
+	void process(g_ui_component_event_header* header) override
+	{
+		auto event = (g_ui_component_focus_event*) header;
+		handleFocusChanged(event->now_focused);
+	}
+
+	virtual void handleFocusChanged(bool nowFocused) = 0;
+};
+
+class g_focus_listener_dispatcher : public g_focus_listener
+{
+	g_focus_listener_func func;
+
+public:
+	explicit g_focus_listener_dispatcher(g_focus_listener_func func):
+		func(std::move(func))
 	{
 	}
 
-	virtual void process(g_ui_component_event_header *header)
+	void handleFocusChanged(bool nowFocused) override
 	{
-		g_ui_component_focus_event *event = (g_ui_component_focus_event *) header;
-		handle_focus_changed(event->now_focused);
+		func(nowFocused);
 	}
-
-	virtual void handle_focus_changed(bool now_focused) = 0;
 };
 
 #endif

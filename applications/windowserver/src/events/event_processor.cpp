@@ -19,16 +19,14 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "events/event_processor.hpp"
-#include "components/button.hpp"
+#include "component_registry.hpp"
 #include "components/cursor.hpp"
-#include "components/label.hpp"
 #include "components/text/text_field.hpp"
 #include "components/window.hpp"
 #include "events/event.hpp"
 #include "events/focus_event.hpp"
 #include "events/key_event.hpp"
 #include "events/mouse_event.hpp"
-#include "input/input_receiver.hpp"
 #include "windowserver.hpp"
 
 event_processor_t::event_processor_t()
@@ -69,12 +67,16 @@ void event_processor_t::processKeyState()
 
 void event_processor_t::translateKeyEvent(g_key_info& info)
 {
-	if(cursor_t::focusedComponent)
+	if(cursor_t::focusedComponent != -1)
 	{
-		// process
-		key_event_t k;
-		k.info = info;
-		windowserver_t::instance()->dispatch(cursor_t::focusedComponent, k);
+		auto focusedComponent = component_registry_t::get(cursor_t::focusedComponent);
+
+		if(focusedComponent)
+		{
+			key_event_t k;
+			k.info = info;
+			windowserver_t::instance()->dispatch(focusedComponent, k);
+		}
 	}
 }
 
@@ -83,7 +85,6 @@ void event_processor_t::processMouseState()
 	g_point previousPosition = cursor_t::position;
 	g_mouse_button previousPressedButtons = cursor_t::pressedButtons;
 
-	g_dimension resolution = windowserver_t::instance()->videoOutput->getResolution();
 	windowserver_t* instance = windowserver_t::instance();
 	screen_t* screen = instance->screen;
 
@@ -128,27 +129,29 @@ void event_processor_t::processMouseState()
 		pressEvent.clickCount = clickCount;
 
 		// Send event
-		cursor_t::pressedComponent = instance->dispatch(screen, pressEvent);
+		auto pressedComponent = instance->dispatch(screen, pressEvent);
 
-		if(cursor_t::pressedComponent)
+		if(pressedComponent)
 		{
 			// Prepare drag
+			cursor_t::pressedComponent = pressedComponent->id;
 			cursor_t::draggedComponent = cursor_t::pressedComponent;
 
 			// Switch focus
 			if(cursor_t::pressedComponent != cursor_t::focusedComponent)
 			{
 				// Old loses focus
-				if(cursor_t::focusedComponent)
+				auto focusedComponent = component_registry_t::get(cursor_t::focusedComponent);
+				if(focusedComponent)
 				{
 					focus_event_t focusLostEvent;
 					focusLostEvent.type = FOCUS_EVENT_LOST;
 					focusLostEvent.newFocusedComponent = cursor_t::pressedComponent;
-					instance->dispatchUpwards(cursor_t::focusedComponent, focusLostEvent);
+					instance->dispatchUpwards(focusedComponent, focusLostEvent);
 
 					// Post event to client
 					event_listener_info_t listenerInfo;
-					if(cursor_t::focusedComponent->getListener(G_UI_COMPONENT_EVENT_TYPE_FOCUS, listenerInfo))
+					if(focusedComponent->getListener(G_UI_COMPONENT_EVENT_TYPE_FOCUS, listenerInfo))
 					{
 						g_ui_component_focus_event focus_event;
 						focus_event.header.type = G_UI_COMPONENT_EVENT_TYPE_FOCUS;
@@ -159,7 +162,7 @@ void event_processor_t::processMouseState()
 				}
 
 				// Bring hit components window to front
-				window_t* parentWindow = cursor_t::pressedComponent->getWindow();
+				window_t* parentWindow = pressedComponent->getWindow();
 				if(parentWindow != 0)
 				{
 					parentWindow->bringToFront();
@@ -169,11 +172,16 @@ void event_processor_t::processMouseState()
 				focus_event_t focusGainedEvent;
 				focusGainedEvent.type = FOCUS_EVENT_GAINED;
 				focusGainedEvent.newFocusedComponent = cursor_t::pressedComponent;
-				cursor_t::focusedComponent = instance->dispatchUpwards(cursor_t::pressedComponent, focusGainedEvent);
+				auto newFocusedComponent = instance->dispatchUpwards(pressedComponent, focusGainedEvent);
+				if(newFocusedComponent)
+				{
+					cursor_t::focusedComponent = newFocusedComponent->id;
+				}
 
 				// Post event to client
 				event_listener_info_t listenerInfo;
-				if(cursor_t::focusedComponent && cursor_t::focusedComponent->getListener(G_UI_COMPONENT_EVENT_TYPE_FOCUS, listenerInfo))
+				if(newFocusedComponent && newFocusedComponent->getListener(
+						   G_UI_COMPONENT_EVENT_TYPE_FOCUS, listenerInfo))
 				{
 					g_ui_component_focus_event focus_event;
 					focus_event.header.type = G_UI_COMPONENT_EVENT_TYPE_FOCUS;
@@ -182,6 +190,10 @@ void event_processor_t::processMouseState()
 					g_send_message(listenerInfo.target_thread, &focus_event, sizeof(g_ui_component_focus_event));
 				}
 			}
+		}
+		else
+		{
+			cursor_t::pressedComponent = -1;
 		}
 
 		// Release
@@ -192,60 +204,82 @@ void event_processor_t::processMouseState()
 		((previousPressedButtons & G_MOUSE_BUTTON_3) && !(cursor_t::pressedButtons & G_MOUSE_BUTTON_3)))
 	{
 
-		if(cursor_t::draggedComponent)
+		if(cursor_t::draggedComponent != -1)
 		{
-			mouse_event_t releaseDraggedEvent = baseEvent;
-			releaseDraggedEvent.type = G_MOUSE_EVENT_DRAG_RELEASE;
-			instance->dispatchUpwards(cursor_t::draggedComponent, releaseDraggedEvent);
+			auto draggedComponent = component_registry_t::get(cursor_t::draggedComponent);
 
-			cursor_t::draggedComponent = 0;
+			if(draggedComponent)
+			{
+				mouse_event_t releaseDraggedEvent = baseEvent;
+				releaseDraggedEvent.type = G_MOUSE_EVENT_DRAG_RELEASE;
+				instance->dispatchUpwards(draggedComponent, releaseDraggedEvent);
+			}
+
+			cursor_t::draggedComponent = -1;
 		}
 
-		if(cursor_t::pressedComponent)
+		if(cursor_t::pressedComponent != -1)
 		{
-			mouse_event_t releaseEvent = baseEvent;
-			releaseEvent.type = G_MOUSE_EVENT_RELEASE;
-			instance->dispatchUpwards(cursor_t::pressedComponent, releaseEvent);
+			auto pressedComponent = component_registry_t::get(cursor_t::pressedComponent);
+			if(pressedComponent)
+			{
+				mouse_event_t releaseEvent = baseEvent;
+				releaseEvent.type = G_MOUSE_EVENT_RELEASE;
+				instance->dispatchUpwards(pressedComponent, releaseEvent);
+			}
 
-			cursor_t::pressedComponent = 0;
+			cursor_t::pressedComponent = -1;
 		}
 
 		// Move or drag
 	}
 	else if(cursor_t::position != previousPosition)
 	{
-		if(cursor_t::draggedComponent != 0)
-		{ // Dragging
-			mouse_event_t dragEvent = baseEvent;
-			dragEvent.type = G_MOUSE_EVENT_DRAG;
-			instance->dispatchUpwards(cursor_t::draggedComponent, dragEvent);
+		if(cursor_t::draggedComponent != -1)
+		{
+			auto draggedComponent = component_registry_t::get(cursor_t::draggedComponent);
+
+			if(draggedComponent)
+			{
+				// Dragging
+				mouse_event_t dragEvent = baseEvent;
+				dragEvent.type = G_MOUSE_EVENT_DRAG;
+				instance->dispatchUpwards(draggedComponent, dragEvent);
+			}
 		}
 		else
-		{ // Moving
+		{
+			// Moving
 			mouse_event_t moveEvent = baseEvent;
 			moveEvent.type = G_MOUSE_EVENT_MOVE;
-			component_t* hovered = instance->dispatch(screen, moveEvent);
+
+			component_t* newHoveredComponent = instance->dispatch(screen, moveEvent);
 
 			// Post enter or leave events
-			if((hovered != cursor_t::hoveredComponent) &&
-			   (cursor_t::draggedComponent == 0 || cursor_t::draggedComponent != cursor_t::hoveredComponent))
+			if(newHoveredComponent && (newHoveredComponent->id != cursor_t::hoveredComponent) &&
+			   (cursor_t::draggedComponent == -1 || cursor_t::draggedComponent != cursor_t::hoveredComponent))
 			{
 				// Leave
-				if(cursor_t::hoveredComponent)
+				if(cursor_t::hoveredComponent != -1)
 				{
-					mouse_event_t leaveEvent = baseEvent;
-					leaveEvent.type = G_MOUSE_EVENT_LEAVE;
-					instance->dispatchUpwards(cursor_t::hoveredComponent, leaveEvent);
-					cursor_t::hoveredComponent = 0;
+					auto hoveredComponent = component_registry_t::get(cursor_t::hoveredComponent);
+
+					if(hoveredComponent)
+					{
+						mouse_event_t leaveEvent = baseEvent;
+						leaveEvent.type = G_MOUSE_EVENT_LEAVE;
+						instance->dispatchUpwards(hoveredComponent, leaveEvent);
+						cursor_t::hoveredComponent = -1;
+					}
 				}
 
-				if(hovered)
+				if(newHoveredComponent)
 				{
 					// Enter
 					mouse_event_t enterEvent = baseEvent;
 					enterEvent.type = G_MOUSE_EVENT_ENTER;
-					cursor_t::hoveredComponent = hovered;
-					instance->dispatchUpwards(cursor_t::hoveredComponent, enterEvent);
+					cursor_t::hoveredComponent = newHoveredComponent->id;
+					instance->dispatchUpwards(newHoveredComponent, enterEvent);
 				}
 			}
 		}

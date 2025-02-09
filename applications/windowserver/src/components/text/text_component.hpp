@@ -22,19 +22,16 @@
 #define __WINDOWSERVER_COMPONENTS_TEXT_TEXTCOMPONENT__
 
 #include "components/component.hpp"
-#include "components/text/caret_direction.hpp"
 #include "components/text/move/caret_move_strategy.hpp"
 #include <libwindow/metrics/range.hpp>
 
 class text_component_t : public component_t
 {
-  protected:
-    caret_move_strategy_t* caretMoveStrategy;
+protected:
+    caret_move_strategy_t* caretMoveStrategy = nullptr;
 
-  public:
-    virtual ~text_component_t()
-    {
-    }
+public:
+    ~text_component_t() override = default;
 
     virtual void setCursor(int position) = 0;
     virtual int getCursor() = 0;

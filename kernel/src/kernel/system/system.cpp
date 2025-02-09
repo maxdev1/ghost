@@ -45,6 +45,7 @@ void systemInitializeBsp(g_physical_address initialPdPhys)
 	gdtInitialize();
 
 	interruptsInitializeBsp();
+	processorFinalizeSetup();
 
 	auto numCores = processorGetNumberOfProcessors();
 	if(numCores > 1)
@@ -56,15 +57,15 @@ void systemInitializeBsp(g_physical_address initialPdPhys)
 
 void systemInitializeAp()
 {
-	processorInitializeAp();
-
 	gdtInitialize();
 	interruptsInitializeAp();
+	processorFinalizeSetup();
 }
 
 void systemWaitForApplicationCores()
 {
-	logDebug("%! waiting for %i application processors", processorGetCurrentId() == 0 ? "bsp" : "ap", applicationCoresWaiting);
+	logDebug("%! waiting for %i application processors", processorGetCurrentId() == 0 ? "bsp" : "ap",
+	         applicationCoresWaiting);
 	while(applicationCoresWaiting > 0)
 		asm("pause");
 }

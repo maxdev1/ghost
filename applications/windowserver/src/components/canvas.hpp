@@ -25,55 +25,55 @@
 
 struct buffer_info_t
 {
-	uint8_t* localMapping;
-	uint8_t* remoteMapping;
-	uint16_t pages;
-	bool acknowledged;
-	cairo_surface_t* surface;
+    uint8_t* localMapping = nullptr;
+    uint8_t* remoteMapping = nullptr;
+    uint16_t pages = 0;
+
+    cairo_surface_t* surface = nullptr;
+    uint16_t paintableWidth = 0;
+    uint16_t paintableHeight = 0;
 };
 
 class canvas_t;
+
 struct async_resizer_info_t
 {
-	bool alive;
-	g_user_mutex lock;
-	g_user_mutex checkAtom;
-	canvas_t* canvas;
+    bool alive;
+    g_user_mutex lock;
+    g_user_mutex checkAtom;
+    canvas_t* canvas;
 };
 
 class canvas_t : public component_t
 {
-  public:
-	g_pid partnerProcess;
-	g_tid partnerThread;
+    g_pid partnerProcess;
+    async_resizer_info_t* asyncInfo;
 
-	async_resizer_info_t* asyncInfo;
+    g_user_mutex bufferLock = g_mutex_initialize_r(true);
+    buffer_info_t buffer{};
+    bool bufferReady = false;
 
-	g_user_mutex currentBufferLock = g_mutex_initialize();
-	buffer_info_t currentBuffer;
-	buffer_info_t nextBuffer;
+    void createNewBuffer(g_rectangle& bounds, uint32_t size);
+    void notifyClientAboutNewBuffer();
 
-	canvas_t(g_tid partnerThread);
-	virtual ~canvas_t();
+    void checkBuffer();
 
-	virtual void paint();
+protected:
+    bool hasGraphics() const override
+    {
+        return false;
+    }
 
-	virtual bool handle()
-	{
-		return false;
-	}
+public:
+    explicit canvas_t(g_tid partnerThread);
+    ~canvas_t() override;
 
-	virtual void handleBoundChange(g_rectangle oldBounds);
+    void handleBoundChanged(const g_rectangle& oldBounds) override;
 
-	static void asyncBufferResizer(async_resizer_info_t* info);
+    void blit(graphics_t* out, const g_rectangle& absClip, const g_point& positionOnParent) override;
 
-	void createNewBuffer(uint16_t requiredPages);
-	void clientHasAcknowledgedCurrentBuffer();
-	void requestClientToAcknowledgeNewBuffer();
-	void blit();
-
-  private:
-	void checkBuffer();
+    static void asyncBufferResizer(async_resizer_info_t* info);
+    void requestBlit(g_rectangle& area);
 };
 
 #endif

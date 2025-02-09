@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,20 +18,33 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __WINDOWSERVER_COMPONENTS_BACKGROUND__
-#define __WINDOWSERVER_COMPONENTS_BACKGROUND__
+#ifndef DESKTOP_ITEM
+#define DESKTOP_ITEM
 
-#include "components/component.hpp"
+#include <libwindow/canvas.hpp>
+#include <libwindow/label.hpp>
+#include <cairo/cairo.h>
 
-class background_t : public component_t
+class item : public g_canvas
 {
-    cairo_surface_t* surface = nullptr;
+protected:
+    cairo_surface_t* iconSurface = nullptr;
+    g_label* label = nullptr;
+    std::string application;
+    explicit item(uint32_t id);
+
+    void init(std::string name, std::string icon, std::string application);
 
 public:
-    ~background_t() override = default;
+    bool hover = false;
+    bool selected = false;
+    g_point dragOffset;
 
-    void paint() override;
-    virtual void load(const char* path);
+    static item* create(std::string name, std::string icon, std::string application);
+
+    ~item() override = default;
+    virtual void paint();
+    void onDoubleClick();
 };
 
 #endif

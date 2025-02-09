@@ -21,26 +21,20 @@
 #ifndef __WINDOWSERVER_COMPONENTS_BOUNDSEVENTCOMPONENT__
 #define __WINDOWSERVER_COMPONENTS_BOUNDSEVENTCOMPONENT__
 
-#include <ghost.h>
 #include <libwindow/metrics/rectangle.hpp>
-#include <list>
-#include <string>
 
 class component_t;
 
 class bounds_event_component_t
 {
-  private:
     component_t* self;
 
-  public:
-    bounds_event_component_t(component_t* self) : self(self)
+public:
+    explicit bounds_event_component_t(component_t* self) : self(self)
     {
     }
 
-    virtual ~bounds_event_component_t()
-    {
-    }
+    virtual ~bounds_event_component_t() = default;
 
     virtual void fireBoundsChange(g_rectangle& bounds);
 };

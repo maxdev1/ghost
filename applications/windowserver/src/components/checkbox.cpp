@@ -21,12 +21,13 @@
 #include "components/checkbox.hpp"
 #include "events/mouse_event.hpp"
 
-checkbox_t::checkbox_t() : checked(false), boxSize(DEFAULT_BOX_SIZE), boxTextGap(DEFAULT_BOX_TEXT_GAP), hovered(false), pressed(false)
+checkbox_t::checkbox_t() :
+	checked(false), boxSize(DEFAULT_BOX_SIZE), boxTextGap(DEFAULT_BOX_TEXT_GAP), hovered(false), pressed(false)
 {
 	addChild(&label, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
 }
 
-void checkbox_t::handleBoundChange(g_rectangle oldBounds)
+void checkbox_t::handleBoundChanged(const g_rectangle& oldBounds)
 {
 	g_rectangle unpositioned = getBounds();
 	unpositioned.x = boxSize + boxTextGap;
@@ -47,8 +48,9 @@ void checkbox_t::layout()
 
 void checkbox_t::paint()
 {
-	auto cr = graphics.getContext();
-    if(!cr) return;
+	auto cr = graphics.acquireContext();
+	if(!cr)
+		return;
 
 	auto background = (pressed ? RGB(240, 240, 240) : (hovered ? RGB(245, 245, 255) : RGB(255, 255, 255)));
 	cairo_set_source_rgba(cr, G_COLOR_ARGB_TO_FPARAMS(background));
@@ -68,6 +70,8 @@ void checkbox_t::paint()
 		cairo_rectangle(cr, 1 + pad, 1.5 + pad, boxSize - pad * 2 - 1, boxSize - pad * 2 - 1.5);
 		cairo_fill(cr);
 	}
+
+	graphics.releaseContext();
 }
 
 component_t* checkbox_t::handleMouseEvent(mouse_event_t& me)

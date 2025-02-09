@@ -29,7 +29,6 @@
 
 class checkbox_t : public component_t
 {
-  private:
     label_t label;
     bool checked;
     int boxSize;
@@ -38,13 +37,14 @@ class checkbox_t : public component_t
     bool hovered;
     bool pressed;
 
-  public:
+public:
     checkbox_t();
 
-    virtual void layout();
-    virtual void paint();
-    virtual component_t* handleMouseEvent(mouse_event_t& e);
-    virtual void handleBoundChange(g_rectangle oldBounds);
+    void layout() override;
+    void paint() override;
+
+    component_t* handleMouseEvent(mouse_event_t& e) override;
+    void handleBoundChanged(const g_rectangle& oldBounds) override;
 
     label_t& getLabel()
     {

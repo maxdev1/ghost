@@ -27,40 +27,43 @@
 #include "components/canvas.hpp"
 #include "components/text/text_field.hpp"
 #include "components/window.hpp"
-#include "interface/component_registry.hpp"
+#include "components/desktop/selection.hpp"
+#include "component_registry.hpp"
 #include "interface/interface_receiver.hpp"
 
-void interfaceReceiverThread(interface_receiver_t* receiver)
+g_user_mutex eventBufferLock = g_mutex_initialize();
+std::vector<g_message_header*> eventBuffer;
+
+void interfaceReceiverThread()
 {
-	receiver->run();
-}
-
-void interface_receiver_t::run()
-{
-	g_tid tid = g_get_tid();
-
-	// create a buffer for incoming command messages
-	size_t bufferLength = sizeof(g_message_header) + G_UI_MAXIMUM_MESSAGE_SIZE;
-	uint8_t* buffer = new uint8_t[bufferLength];
-
-	for(;;)
+	while(true)
 	{
-		// receive messages
-		g_message_receive_status stat = g_receive_message_tmb(buffer, bufferLength, G_MESSAGE_TRANSACTION_NONE, G_MESSAGE_RECEIVE_MODE_BLOCKING, stop);
+		size_t buflen = sizeof(g_message_header) + G_UI_MAXIMUM_MESSAGE_SIZE;
+		auto buf = new uint8_t[buflen];
+		bool deferred = false;
+
+		g_message_receive_status stat = g_receive_message_tmb(
+				buf, buflen,
+				G_MESSAGE_TRANSACTION_NONE, G_MESSAGE_RECEIVE_MODE_BLOCKING,
+				0); // TODO break condition not working
 
 		if(stat == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 		{
-			g_message_header* message = (g_message_header*) buffer;
+			auto message = (g_message_header*) buf;
+			auto content = (g_ui_message_header*) G_MESSAGE_CONTENT(message);
 
-			command_message_response_t response;
-			response.target = message->sender;
-			response.transaction = message->transaction;
-			response.message = 0;
-
-			processCommand(message->sender, (g_ui_message_header*) G_MESSAGE_CONTENT(message), response);
-
-			if(response.message)
-				interfaceResponderSend(response);
+			if(content->id == G_UI_PROTOCOL_GET_BOUNDS || content->id == G_UI_PROTOCOL_SET_BOUNDS)
+			{
+				interfaceReceiverProcessCommand(message);
+			}
+			else
+			{
+				g_mutex_acquire(eventBufferLock);
+				eventBuffer.push_back(message);
+				g_mutex_release(eventBufferLock);
+				windowserver_t::instance()->requestUpdate();
+				deferred = true;
+			}
 		}
 		else if(stat == G_MESSAGE_RECEIVE_STATUS_EXCEEDS_BUFFER_SIZE)
 		{
@@ -70,73 +73,94 @@ void interface_receiver_t::run()
 		{
 			klog("an unknown error occurred when trying to receive a UI request (code: %i)", stat);
 		}
-	}
 
-	delete buffer;
+		if(!deferred)
+			delete buf;
+	}
 }
 
-void interface_receiver_t::processCommand(g_tid senderTid, g_ui_message_header* requestIn, command_message_response_t& responseOut)
+void interfaceReceiverProcessBufferedCommands()
 {
-	if(requestIn->id == G_UI_PROTOCOL_CREATE_COMPONENT)
+	g_mutex_acquire(eventBufferLock);
+	for(auto& entry: eventBuffer)
 	{
-		g_ui_create_component_request* create_request = (g_ui_create_component_request*) requestIn;
+		interfaceReceiverProcessCommand(entry);
+		delete entry;
+	}
+	eventBuffer.clear();
+	g_mutex_release(eventBufferLock);
+}
 
-		component_t* component = 0;
-		switch(create_request->type)
+void interfaceReceiverProcessCommand(g_message_header* requestMessage)
+{
+	auto requestUiMessage = (g_ui_message_header*) G_MESSAGE_CONTENT(requestMessage);
+	void* responseMessage = nullptr;
+	int responseLength = 0;
+
+	if(requestUiMessage->id == G_UI_PROTOCOL_CREATE_COMPONENT)
+	{
+		auto createRequest = (g_ui_create_component_request*) requestUiMessage;
+
+		component_t* component = nullptr;
+		switch(createRequest->type)
 		{
-		case G_UI_COMPONENT_TYPE_WINDOW:
-			component = new window_t();
-			windowserver_t::instance()->screen->addChild(component);
-			break;
+			case G_UI_COMPONENT_TYPE_WINDOW:
+				component = new window_t();
+				windowserver_t::instance()->screen->addChild(component);
+				break;
 
-		case G_UI_COMPONENT_TYPE_LABEL:
-			component = new label_t();
-			break;
+			case G_UI_COMPONENT_TYPE_LABEL:
+				component = new label_t();
+				break;
 
-		case G_UI_COMPONENT_TYPE_BUTTON:
-			component = new button_t();
-			break;
+			case G_UI_COMPONENT_TYPE_BUTTON:
+				component = new button_t();
+				break;
 
-		case G_UI_COMPONENT_TYPE_TEXTFIELD:
-			component = new text_field_t();
-			break;
+			case G_UI_COMPONENT_TYPE_TEXTFIELD:
+				component = new text_field_t();
+				break;
 
-		case G_UI_COMPONENT_TYPE_CANVAS:
-		{
-			component = new canvas_t(senderTid);
-			break;
-		}
+			case G_UI_COMPONENT_TYPE_CANVAS:
+				component = new canvas_t(requestMessage->sender);
+				break;
 
-		default:
-			klog("don't know how to create a component of type %i", create_request->type);
-			break;
+			case G_UI_COMPONENT_TYPE_SELECTION:
+				component = new selection_t();
+				break;
+
+			default:
+				klog("don't know how to create a component of type %i", createRequest->type);
+				break;
 		}
 
 		g_ui_component_id component_id = -1;
 		if(component)
-			component_id = component_registry_t::add(g_get_pid_for_tid(senderTid), component);
+		{
+			component_id = component->id;
+			component_registry_t::bind(g_get_pid_for_tid(requestMessage->sender), component);
+		}
 
 		// create response message
-		g_ui_create_component_response* response = new g_ui_create_component_response;
+		auto response = new g_ui_create_component_response;
 		response->header.id = G_UI_PROTOCOL_CREATE_COMPONENT;
 		response->id = component_id;
-		response->status = (component != 0 ? G_UI_PROTOCOL_SUCCESS : G_UI_PROTOCOL_FAIL);
+		response->status = (component != nullptr ? G_UI_PROTOCOL_SUCCESS : G_UI_PROTOCOL_FAIL);
 
-		responseOut.message = response;
-		responseOut.length = sizeof(g_ui_create_component_response);
+		responseMessage = response;
+		responseLength = sizeof(g_ui_create_component_response);
 	}
-	else if(requestIn->id == G_UI_PROTOCOL_ADD_COMPONENT)
+	else if(requestUiMessage->id == G_UI_PROTOCOL_ADD_COMPONENT)
 	{
-		g_ui_component_add_child_request* request = (g_ui_component_add_child_request*) requestIn;
+		auto request = (g_ui_component_add_child_request*) requestUiMessage;
 		component_t* parent = component_registry_t::get(request->parent);
 		component_t* child = component_registry_t::get(request->child);
 
 		// create response message
-		g_ui_component_add_child_response* response = new g_ui_component_add_child_response;
-		if(parent == 0 || child == 0)
+		auto response = new g_ui_component_add_child_response;
+		if(parent == nullptr || child == nullptr)
 		{
 			response->status = G_UI_PROTOCOL_FAIL;
-			klog("could not add %i (%x) to %i (%x)", request->child, child, request->parent, parent);
 		}
 		else
 		{
@@ -144,17 +168,16 @@ void interface_receiver_t::processCommand(g_tid senderTid, g_ui_message_header* 
 			response->status = G_UI_PROTOCOL_SUCCESS;
 		}
 
-		responseOut.message = response;
-		responseOut.length = sizeof(g_ui_component_add_child_response);
+		responseMessage = response;
+		responseLength = sizeof(g_ui_component_add_child_response);
 	}
-	else if(requestIn->id == G_UI_PROTOCOL_SET_BOUNDS)
+	else if(requestUiMessage->id == G_UI_PROTOCOL_SET_BOUNDS)
 	{
-		g_ui_component_set_bounds_request* request = (g_ui_component_set_bounds_request*) requestIn;
+		auto request = (g_ui_component_set_bounds_request*) requestUiMessage;
 		component_t* component = component_registry_t::get(request->id);
 
-		// create response message
-		g_ui_component_set_bounds_response* response = new g_ui_component_set_bounds_response;
-		if(component == 0)
+		auto response = new g_ui_component_set_bounds_response;
+		if(component == nullptr)
 		{
 			response->status = G_UI_PROTOCOL_FAIL;
 		}
@@ -164,17 +187,16 @@ void interface_receiver_t::processCommand(g_tid senderTid, g_ui_message_header* 
 			response->status = G_UI_PROTOCOL_SUCCESS;
 		}
 
-		responseOut.message = response;
-		responseOut.length = sizeof(g_ui_component_set_bounds_response);
+		responseMessage = response;
+		responseLength = sizeof(g_ui_component_set_bounds_response);
 	}
-	else if(requestIn->id == G_UI_PROTOCOL_GET_BOUNDS)
+	else if(requestUiMessage->id == G_UI_PROTOCOL_GET_BOUNDS)
 	{
-		g_ui_component_get_bounds_request* request = (g_ui_component_get_bounds_request*) requestIn;
+		auto request = (g_ui_component_get_bounds_request*) requestUiMessage;
 		component_t* component = component_registry_t::get(request->id);
 
-		// create response message
-		g_ui_component_get_bounds_response* response = new g_ui_component_get_bounds_response;
-		if(component == 0)
+		auto response = new g_ui_component_get_bounds_response;
+		if(component == nullptr)
 		{
 			response->status = G_UI_PROTOCOL_FAIL;
 		}
@@ -184,17 +206,16 @@ void interface_receiver_t::processCommand(g_tid senderTid, g_ui_message_header* 
 			response->status = G_UI_PROTOCOL_SUCCESS;
 		}
 
-		responseOut.message = response;
-		responseOut.length = sizeof(g_ui_component_get_bounds_response);
+		responseMessage = response;
+		responseLength = sizeof(g_ui_component_get_bounds_response);
 	}
-	else if(requestIn->id == G_UI_PROTOCOL_SET_VISIBLE)
+	else if(requestUiMessage->id == G_UI_PROTOCOL_SET_VISIBLE)
 	{
-		g_ui_component_set_visible_request* request = (g_ui_component_set_visible_request*) requestIn;
+		auto request = (g_ui_component_set_visible_request*) requestUiMessage;
 		component_t* component = component_registry_t::get(request->id);
 
-		// create response message
-		g_ui_component_set_visible_response* response = new g_ui_component_set_visible_response;
-		if(component == 0)
+		auto response = new g_ui_component_set_visible_response;
+		if(component == nullptr)
 		{
 			response->status = G_UI_PROTOCOL_FAIL;
 		}
@@ -204,17 +225,16 @@ void interface_receiver_t::processCommand(g_tid senderTid, g_ui_message_header* 
 			response->status = G_UI_PROTOCOL_SUCCESS;
 		}
 
-		responseOut.message = response;
-		responseOut.length = sizeof(g_ui_component_set_visible_response);
+		responseMessage = response;
+		responseLength = sizeof(g_ui_component_set_visible_response);
 	}
-	else if(requestIn->id == G_UI_PROTOCOL_SET_LISTENER)
+	else if(requestUiMessage->id == G_UI_PROTOCOL_SET_LISTENER)
 	{
-		g_ui_component_set_listener_request* request = (g_ui_component_set_listener_request*) requestIn;
+		auto request = (g_ui_component_set_listener_request*) requestUiMessage;
 		component_t* component = component_registry_t::get(request->id);
 
-		// create response message
-		g_ui_component_set_listener_response* response = new g_ui_component_set_listener_response;
-		if(component == 0)
+		auto response = new g_ui_component_set_listener_response;
+		if(component == nullptr)
 		{
 			response->status = G_UI_PROTOCOL_FAIL;
 		}
@@ -224,17 +244,16 @@ void interface_receiver_t::processCommand(g_tid senderTid, g_ui_message_header* 
 			response->status = G_UI_PROTOCOL_SUCCESS;
 		}
 
-		responseOut.message = response;
-		responseOut.length = sizeof(g_ui_component_set_listener_response);
+		responseMessage = response;
+		responseLength = sizeof(g_ui_component_set_listener_response);
 	}
-	else if(requestIn->id == G_UI_PROTOCOL_SET_NUMERIC_PROPERTY)
+	else if(requestUiMessage->id == G_UI_PROTOCOL_SET_NUMERIC_PROPERTY)
 	{
-		g_ui_component_set_numeric_property_request* request = (g_ui_component_set_numeric_property_request*) requestIn;
+		auto request = (g_ui_component_set_numeric_property_request*) requestUiMessage;
 		component_t* component = component_registry_t::get(request->id);
 
-		// create response message
-		g_ui_component_set_numeric_property_response* response = new g_ui_component_set_numeric_property_response;
-		if(component == 0)
+		auto response = new g_ui_component_set_numeric_property_response;
+		if(component == nullptr)
 		{
 			response->status = G_UI_PROTOCOL_FAIL;
 		}
@@ -250,26 +269,25 @@ void interface_receiver_t::processCommand(g_tid senderTid, g_ui_message_header* 
 			}
 		}
 
-		responseOut.message = response;
-		responseOut.length = sizeof(g_ui_component_set_numeric_property_response);
+		responseMessage = response;
+		responseLength = sizeof(g_ui_component_set_numeric_property_response);
 	}
-	else if(requestIn->id == G_UI_PROTOCOL_GET_NUMERIC_PROPERTY)
+	else if(requestUiMessage->id == G_UI_PROTOCOL_GET_NUMERIC_PROPERTY)
 	{
-		g_ui_component_get_numeric_property_request* request = (g_ui_component_get_numeric_property_request*) requestIn;
+		auto request = (g_ui_component_get_numeric_property_request*) requestUiMessage;
 		component_t* component = component_registry_t::get(request->id);
 
-		// create response message
-		g_ui_component_get_numeric_property_response* response = new g_ui_component_get_numeric_property_response;
-		if(component == 0)
+		auto response = new g_ui_component_get_numeric_property_response;
+		if(component == nullptr)
 		{
 			response->status = G_UI_PROTOCOL_FAIL;
 		}
 		else
 		{
-			uint32_t out;
-			if(component->getNumericProperty(request->property, &out))
+			uint32_t value;
+			if(component->getNumericProperty(request->property, &value))
 			{
-				response->value = out;
+				response->value = value;
 				response->status = G_UI_PROTOCOL_SUCCESS;
 			}
 			else
@@ -278,24 +296,23 @@ void interface_receiver_t::processCommand(g_tid senderTid, g_ui_message_header* 
 			}
 		}
 
-		responseOut.message = response;
-		responseOut.length = sizeof(g_ui_component_get_numeric_property_response);
+		responseMessage = response;
+		responseLength = sizeof(g_ui_component_get_numeric_property_response);
 	}
-	else if(requestIn->id == G_UI_PROTOCOL_SET_TITLE)
+	else if(requestUiMessage->id == G_UI_PROTOCOL_SET_TITLE)
 	{
-		g_ui_component_set_title_request* request = (g_ui_component_set_title_request*) requestIn;
+		auto request = (g_ui_component_set_title_request*) requestUiMessage;
 		component_t* component = component_registry_t::get(request->id);
 
-		// create response message
-		g_ui_component_set_title_response* response = new g_ui_component_set_title_response;
-		if(component == 0)
+		auto response = new g_ui_component_set_title_response;
+		if(component == nullptr)
 		{
 			response->status = G_UI_PROTOCOL_FAIL;
 		}
 		else
 		{
 			titled_component_t* titled_component = dynamic_cast<titled_component_t*>(component);
-			if(titled_component == 0)
+			if(titled_component == nullptr)
 			{
 				response->status = G_UI_PROTOCOL_FAIL;
 			}
@@ -306,76 +323,70 @@ void interface_receiver_t::processCommand(g_tid senderTid, g_ui_message_header* 
 			}
 		}
 
-		responseOut.message = response;
-		responseOut.length = sizeof(g_ui_component_set_title_response);
+		responseMessage = response;
+		responseLength = sizeof(g_ui_component_set_title_response);
 	}
-	else if(requestIn->id == G_UI_PROTOCOL_GET_TITLE)
+	else if(requestUiMessage->id == G_UI_PROTOCOL_GET_TITLE)
 	{
-		g_ui_component_get_title_request* request = (g_ui_component_get_title_request*) requestIn;
+		auto request = (g_ui_component_get_title_request*) requestUiMessage;
 		component_t* component = component_registry_t::get(request->id);
 
-		// create response message
-		g_ui_component_get_title_response* response = new g_ui_component_get_title_response;
-		if(component == 0)
+		auto response = new g_ui_component_get_title_response;
+		if(component == nullptr)
 		{
 			response->status = G_UI_PROTOCOL_FAIL;
 		}
 		else
 		{
-			titled_component_t* titled_component = dynamic_cast<titled_component_t*>(component);
-			if(titled_component == 0)
+			titled_component_t* titledComponent = dynamic_cast<titled_component_t*>(component);
+			if(titledComponent == nullptr)
 			{
 				response->status = G_UI_PROTOCOL_FAIL;
 			}
 			else
 			{
-				std::string title = titled_component->getTitle();
+				std::string title = titledComponent->getTitle();
 
-				// fill text (truncate if necessary)
-				const char* title_str = title.c_str();
-				size_t title_len;
+				size_t titleLen;
 				if(title.length() >= G_UI_COMPONENT_TITLE_MAXIMUM)
 				{
-					title_len = G_UI_COMPONENT_TITLE_MAXIMUM;
+					titleLen = G_UI_COMPONENT_TITLE_MAXIMUM - 1;
 				}
 				else
 				{
-					title_len = title.length();
+					titleLen = title.length();
 				}
-				memcpy(response->title, title.c_str(), title_len);
-				response->title[title_len] = 0;
+				memcpy(response->title, title.c_str(), titleLen);
+				response->title[titleLen] = 0;
 
 				response->status = G_UI_PROTOCOL_SUCCESS;
 			}
 		}
 
-		responseOut.message = response;
-		responseOut.length = sizeof(g_ui_component_get_title_response);
+		responseMessage = response;
+		responseLength = sizeof(g_ui_component_get_title_response);
 	}
-	else if(requestIn->id == G_UI_PROTOCOL_CANVAS_ACK_BUFFER_REQUEST)
+	else if(requestUiMessage->id == G_UI_PROTOCOL_CANVAS_BLIT)
 	{
-		g_ui_component_canvas_ack_buffer_request* request = (g_ui_component_canvas_ack_buffer_request*) requestIn;
+		auto request = (g_ui_component_canvas_blit_request*) requestUiMessage;
 		component_t* component = component_registry_t::get(request->id);
 
-		canvas_t* canvas = (canvas_t*) component;
-		canvas->clientHasAcknowledgedCurrentBuffer();
+		if(component)
+		{
+			auto canvas = dynamic_cast<canvas_t*>(component);
+			if(canvas)
+			{
+				canvas->requestBlit(request->area);
+			}
+		}
 	}
-	else if(requestIn->id == G_UI_PROTOCOL_CANVAS_BLIT)
+	else if(requestUiMessage->id == G_UI_PROTOCOL_REGISTER_DESKTOP_CANVAS)
 	{
-		g_ui_component_canvas_blit_request* request = (g_ui_component_canvas_blit_request*) requestIn;
-		component_t* component = component_registry_t::get(request->id);
-
-		canvas_t* canvas = (canvas_t*) component;
-		canvas->blit();
-	}
-	else if(requestIn->id == G_UI_PROTOCOL_REGISTER_DESKTOP_CANVAS)
-	{
-		g_ui_register_desktop_canvas_request* request = (g_ui_register_desktop_canvas_request*) requestIn;
+		auto request = (g_ui_register_desktop_canvas_request*) requestUiMessage;
 		component_t* component = component_registry_t::get(request->canvas_id);
 
-		// create response message
-		g_ui_register_desktop_canvas_response* response = new g_ui_register_desktop_canvas_response;
-		if(component == 0)
+		auto response = new g_ui_register_desktop_canvas_response;
+		if(component == nullptr)
 		{
 			response->status = G_UI_PROTOCOL_FAIL;
 		}
@@ -383,25 +394,27 @@ void interface_receiver_t::processCommand(g_tid senderTid, g_ui_message_header* 
 		{
 			response->status = G_UI_PROTOCOL_SUCCESS;
 
-			canvas_t* canvas = (canvas_t*) component;
+			auto canvas = (canvas_t*) component;
 			canvas->setZIndex(1);
 
 			screen_t* screen = windowserver_t::instance()->screen;
 			screen->addChild(canvas);
+			screen->setListener(G_UI_COMPONENT_EVENT_TYPE_WINDOWS, request->target_thread, canvas->id);
 			canvas->setBounds(screen->getBounds());
 		}
 
-		responseOut.message = response;
-		responseOut.length = sizeof(g_ui_register_desktop_canvas_response);
+		responseMessage = response;
+		responseLength = sizeof(g_ui_register_desktop_canvas_response);
 	}
-	else if(requestIn->id == G_UI_PROTOCOL_GET_SCREEN_DIMENSION)
+	else if(requestUiMessage->id == G_UI_PROTOCOL_GET_SCREEN_DIMENSION)
 	{
-		g_ui_get_screen_dimension_request* request = (g_ui_get_screen_dimension_request*) requestIn;
-
-		g_ui_get_screen_dimension_response* response = new g_ui_get_screen_dimension_response;
+		auto response = new g_ui_get_screen_dimension_response;
 		response->size = windowserver_t::instance()->screen->getBounds().getSize();
 
-		responseOut.message = response;
-		responseOut.length = sizeof(g_ui_get_screen_dimension_response);
+		responseMessage = response;
+		responseLength = sizeof(g_ui_get_screen_dimension_response);
 	}
+
+	if(responseMessage)
+		g_send_message_t(requestMessage->sender, responseMessage, responseLength, requestMessage->transaction);
 }

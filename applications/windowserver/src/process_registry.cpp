@@ -1,0 +1,53 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+#include "process_registry.hpp"
+
+#include <map>
+
+static std::map<g_pid, g_tid> remoteDelegates;
+static g_user_mutex remoteDelegatesLock = g_mutex_initialize();
+
+void process_registry_t::bind(g_pid pid, g_tid tid)
+{
+	g_mutex_acquire(remoteDelegatesLock);
+	remoteDelegates[pid] = tid;
+	g_mutex_release(remoteDelegatesLock);
+}
+
+g_tid process_registry_t::get(g_pid pid)
+{
+	g_mutex_acquire(remoteDelegatesLock);
+	if(remoteDelegates.count(pid) > 0)
+	{
+		g_tid tid = remoteDelegates[pid];
+		g_mutex_release(remoteDelegatesLock);
+		return tid;
+	}
+	g_mutex_release(remoteDelegatesLock);
+	return G_TID_NONE;
+}
+
+void process_registry_t::cleanup_process(g_pid pid)
+{
+	g_mutex_acquire(remoteDelegatesLock);
+	remoteDelegates.erase(pid);
+	g_mutex_release(remoteDelegatesLock);
+}

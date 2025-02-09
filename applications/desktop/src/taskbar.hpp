@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,42 +18,40 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <libwindow/interface.hpp>
-#include <stdio.h>
+#ifndef DESKTOP_TASKBAR
+#define DESKTOP_TASKBAR
 
-#include "events/event_processor.hpp"
-#include "interface/interface_responder.hpp"
+#include <libwindow/canvas.hpp>
+#include <libwindow/selection.hpp>
+#include <vector>
 
-std::deque<command_message_response_t> buffer;
-g_user_mutex buffer_empty = g_mutex_initialize();
-g_user_mutex buffer_lock = g_mutex_initialize();
-
-void interfaceResponderThread()
+struct taskbar_entry
 {
-	g_task_register_id("windowserver/interface-responder");
-	g_mutex_acquire(buffer_empty);
-	while(true)
-	{
-		g_mutex_acquire(buffer_empty);
+    g_ui_component_id window;
+    std::string title;
+};
 
-		g_mutex_acquire(buffer_lock);
-		while(buffer.size() > 0)
-		{
-			command_message_response_t& response = buffer.back();
-			g_send_message_t(response.target, response.message, response.length, response.transaction);
-
-			delete(g_message_header*) response.message;
-
-			buffer.pop_back();
-		}
-		g_mutex_release(buffer_lock);
-	}
-}
-
-void interfaceResponderSend(command_message_response_t& response)
+class taskbar : public g_canvas
 {
-	g_mutex_acquire(buffer_lock);
-	buffer.push_back(response);
-	g_mutex_release(buffer_empty);
-	g_mutex_release(buffer_lock);
-}
+    std::vector<taskbar_entry> entries;
+
+protected:
+    explicit taskbar(g_ui_component_id id);
+    void init();
+
+    void onMouseMove(const g_point& position);
+
+    void onMouseLeftPress(const g_point& position, int clickCount);
+    void onMouseDrag(const g_point& position);
+    void onMouseRelease(const g_point& position);
+
+public:
+    ~taskbar() override = default;
+    static taskbar* create();
+
+    void handleDesktopEvent(g_ui_windows_event* event);
+
+    virtual void paint();
+};
+
+#endif

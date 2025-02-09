@@ -18,36 +18,14 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_CANVASWFALISTENER__
-#define __LIBWINDOW_CANVASWFALISTENER__
+#include "libwindow/listener/canvas_buffer_listener_internal.hpp"
+#include "libwindow/canvas.hpp"
 
-#include <cstdint>
-
-#include "libwindow/listener/listener.hpp"
-
-class g_component;
-
-class g_canvas_wfa_listener : public g_listener
+void g_canvas_buffer_listener_internal::process(g_ui_component_event_header* header)
 {
-  public:
-	g_canvas *canvas;
-
-	g_canvas_wfa_listener(g_canvas *canvas) : canvas(canvas)
+	if(header->type == G_UI_COMPONENT_EVENT_TYPE_CANVAS_NEW_BUFFER)
 	{
+		auto event = (g_ui_component_canvas_wfa_event*) header;
+		canvas->acknowledgeNewBuffer(event->newBufferAddress, event->width, event->height);
 	}
-
-	virtual ~g_canvas_wfa_listener()
-	{
-	}
-
-	virtual void process(g_ui_component_event_header *header)
-	{
-		if(header->type == G_UI_COMPONENT_EVENT_TYPE_CANVAS_WFA)
-		{
-			g_ui_component_canvas_wfa_event *event = (g_ui_component_canvas_wfa_event *) header;
-			canvas->acknowledgeNewBuffer(event->newBufferAddress);
-		}
-	}
-};
-
-#endif
+}

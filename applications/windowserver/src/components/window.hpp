@@ -26,6 +26,9 @@
 #include "components/panel.hpp"
 #include "components/titled_component.hpp"
 
+#include <bits/std_function.h>
+#include <libwindow/color_argb.hpp>
+
 /**
  * constants for border sizes
  */
@@ -54,7 +57,6 @@ enum window_resize_mode_t
  */
 class window_t : public component_t, public titled_component_t
 {
-  private:
     int borderWidth;
     int cornerSize;
     g_color_argb backgroundColor;
@@ -75,12 +77,12 @@ class window_t : public component_t, public titled_component_t
     int padding;
     g_rectangle crossBounds;
 
-  public:
+    std::function<void()> titleChangedListener{};
+
+public:
     window_t();
 
-    virtual ~window_t()
-    {
-    }
+    ~window_t() override = default;
 
     panel_t* getPanel()
     {
@@ -93,39 +95,39 @@ class window_t : public component_t, public titled_component_t
         markFor(COMPONENT_REQUIREMENT_PAINT);
     }
 
-    g_color_argb getBackground()
+    g_color_argb getBackground() const
     {
         return backgroundColor;
     }
 
-    virtual void addChild(component_t* component, component_child_reference_type_t type = COMPONENT_CHILD_REFERENCE_TYPE_DEFAULT);
-
-    virtual void layout();
-
-    virtual void paint();
-
-    virtual component_t* handleFocusEvent(focus_event_t& e);
-    virtual component_t* handleMouseEvent(mouse_event_t& e);
-
-    virtual bool getNumericProperty(int property, uint32_t* out);
-
-    virtual bool setNumericProperty(int property, uint32_t value);
-
-    virtual void setTitle(std::string title);
-
-    virtual std::string getTitle();
-
-    virtual void close();
-
-    virtual void setLayoutManager(layout_manager_t* layoutManager);
-
-    /**
-     * @return whether this type of component is a window.
-     */
-    virtual bool isWindow()
+    bool isWindow() override
     {
         return true;
     }
+
+    void addChild(component_t* component,
+                  component_child_reference_type_t type = COMPONENT_CHILD_REFERENCE_TYPE_DEFAULT) override;
+
+    void layout() override;
+    void paint() override;
+
+    component_t* handleFocusEvent(focus_event_t& e) override;
+    component_t* handleMouseEvent(mouse_event_t& e) override;
+
+    bool getNumericProperty(int property, uint32_t* out) override;
+    bool setNumericProperty(int property, uint32_t value) override;
+
+    void setTitle(std::string title) override;
+    std::string getTitle() override;
+
+    void onTitleChanged(const std::function<void()>& callback)
+    {
+        titleChangedListener = callback;
+    }
+
+    virtual void close();
+
+    void setLayoutManager(layout_manager_t* layoutManager) override;
 };
 
 #endif

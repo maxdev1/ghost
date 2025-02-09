@@ -20,7 +20,6 @@
 
 #include "components/bounds_event_component.hpp"
 #include "components/component.hpp"
-#include <stdio.h>
 
 void bounds_event_component_t::fireBoundsChange(g_rectangle& bounds)
 {

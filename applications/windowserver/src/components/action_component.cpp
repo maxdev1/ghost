@@ -20,7 +20,6 @@
 
 #include "components/action_component.hpp"
 #include "components/component.hpp"
-#include <stdio.h>
 
 void action_component_t::fireAction()
 {
@@ -31,13 +30,13 @@ void action_component_t::fireAction()
 	}
 
 	// otherwise send message to registered thread
-	event_listener_info_t listener_info;
-	if(self->getListener(G_UI_COMPONENT_EVENT_TYPE_ACTION, listener_info))
+	event_listener_info_t listenerInfo;
+	if(self->getListener(G_UI_COMPONENT_EVENT_TYPE_ACTION, listenerInfo))
 	{
 		g_ui_component_action_event action_event;
 		action_event.header.type = G_UI_COMPONENT_EVENT_TYPE_ACTION;
-		action_event.header.component_id = listener_info.component_id;
-		g_send_message(listener_info.target_thread, &action_event, sizeof(g_ui_component_action_event));
+		action_event.header.component_id = listenerInfo.component_id;
+		g_send_message(listenerInfo.target_thread, &action_event, sizeof(g_ui_component_action_event));
 	}
 }
 

@@ -33,6 +33,17 @@
 bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress);
 
 /**
+ * Creates the stacks and other utility memory for a newly created task.
+ */
+void taskingMemoryInitialize(g_task* task);
+
+/**
+ * Initializes additional utility memory for the task, for example storage for
+ * FPU registers.
+ */
+void taskingMemoryInitializeUtility(g_task* task);
+
+/**
  * Creates the stacks for a newly created task.
  *
  * For a task running on kernel-level, only the main stack is created. On interrupt
@@ -41,12 +52,33 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
  * For user-space tasks, there is a user-space stack and a dedicated interrupt stack
  * that is switched to when handling interrupts.
  */
-void taskingMemoryCreateStacks(g_task* task);
+void taskingMemoryInitializeStacks(g_task* task);
+
+/**
+ * Creates and maps a stack.
+ */
+g_stack taskingMemoryCreateStack(g_address_range_pool* addressRangePool, uint32_t tableFlags, uint32_t pageFlags,
+                                 int pages);
+
+/**
+ * Destroys stacks and utility memory of a task.
+ */
+void taskingMemoryDestroy(g_task* task);
 
 /**
  * Frees the allocated stacks of the task.
  */
 void taskingMemoryDestroyStacks(g_task* task);
+
+/**
+ * Destroys task utility memory.
+ */
+void taskingMemoryDestroyUtility(g_task* task);
+
+/**
+ * Destroys and unmaps a stack.
+ */
+void taskingMemoryDestroyStack(g_address_range_pool* addressRangePool, g_stack& stack);
 
 /**
  * Creates a new page directory to use for a new process. Clones the kernel space
@@ -65,16 +97,6 @@ g_physical_address taskingMemoryCreatePageDirectory(g_security_level securityLev
 void taskingMemoryDestroyPageDirectory(g_physical_address directory);
 
 /**
- * Creates and maps a stack.
- */
-g_stack taskingMemoryCreateStack(g_address_range_pool* addressRangePool, uint32_t tableFlags, uint32_t pageFlags, int pages);
-
-/**
- * Destroys and unmaps a stack.
- */
-void taskingMemoryDestroyStack(g_address_range_pool* addressRangePool, g_stack& stack);
-
-/**
  * Initializes the tasks thread-local-storage. Creates a copy of the master TLS for this task.
  */
 void taskingMemoryInitializeTls(g_task* task);
@@ -82,7 +104,7 @@ void taskingMemoryInitializeTls(g_task* task);
 /**
  * Destroys the tasks thread-local-storage.
  */
-void taskingMemoryDestroyThreadLocalStorage(g_task* task);
+void taskingMemoryDestroyTls(g_task* task);
 
 /**
  * When a task needs to do work within the address space of another task, it can temporarily

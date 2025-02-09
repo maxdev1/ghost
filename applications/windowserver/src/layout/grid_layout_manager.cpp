@@ -40,18 +40,19 @@ void grid_layout_manager_t::layout()
 	int cellWidth = (columns > 0) ? (usedBounds.width / columns) : usedBounds.width;
 	int itemWidth = (columns > 0) ? ((usedBounds.width - (columns - 1) * colSpace) / columns) : usedBounds.width;
 
-	g_mutex_acquire(component->getChildrenLock());
-	auto children = component->getChildren();
-
 	int x = usedBounds.x;
 	int y = usedBounds.y;
 	int curRow = 0;
 	int curCol = 0;
-	for(auto& ref : children)
+
+	auto& children = component->acquireChildren();
+	for(auto& ref: children)
 	{
 		component_t* child = ref.component;
 
-		int itemHeight = ((rows > 0) ? ((usedBounds.height - (rows - 1) * rowSpace) / rows) : child->getPreferredSize().height);
+		int itemHeight = ((rows > 0)
+			                  ? ((usedBounds.height - (rows - 1) * rowSpace) / rows)
+			                  : child->getPreferredSize().height);
 
 		int xoff = (columns > 0) ? (((float) curCol / columns) * colSpace) : 0;
 		int yoff = (rows > 0) ? (((float) curRow / rows) * rowSpace) : 0;
@@ -74,10 +75,9 @@ void grid_layout_manager_t::layout()
 			curCol = 0;
 		}
 	}
-	g_mutex_release(component->getChildrenLock());
+	component->releaseChildren();
 
 	auto prefPreferred = component->getPreferredSize();
-
 	int addedHeight = rowHeight + padding.bottom;
 	if(rows == 0)
 	{

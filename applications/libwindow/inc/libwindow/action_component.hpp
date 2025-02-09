@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,35 +18,31 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_ACTIONCOMPONENT__
-#define __LIBWINDOW_ACTIONCOMPONENT__
+#ifndef LIBWINDOW_ACTIONCOMPONENT
+#define LIBWINDOW_ACTIONCOMPONENT
 
-#include <cstdint>
-
-#include "libwindow/listener/action_listener.hpp"
-#include "libwindow/interface.hpp"
+#include "listener/action_listener.hpp"
+#include "interface.hpp"
 
 /**
  * Component that is capable of receiving action events
  */
 class g_action_component
 {
-  private:
-	g_ui_component_id id;
+    g_ui_component_id id;
 
-  protected:
-	g_component *self;
+protected:
+    g_component* self;
 
-	g_action_component(g_component *self, g_ui_component_id id) : self(self), id(id)
-	{
-	}
+    g_action_component(g_component* self, g_ui_component_id id) : self(self), id(id)
+    {
+    }
 
-  public:
-	virtual ~g_action_component()
-	{
-	}
+public:
+    virtual ~g_action_component() = default;
 
-	bool setActionListener(g_action_listener *l);
+    bool setActionListener(g_action_listener* l);
+    bool setActionListener(g_action_listener_func func);
 };
 
 #endif

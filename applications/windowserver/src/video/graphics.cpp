@@ -19,17 +19,62 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "video/graphics.hpp"
-#include <malloc.h>
-#include <string.h>
 
 #include <stdio.h>
+#include <windowserver.hpp>
 
-g_graphics::g_graphics(uint16_t width, uint16_t height) : width(width), height(height)
+graphics_t::graphics_t(uint16_t width, uint16_t height) :
+	width(width), height(height)
 {
 	resize(width, height);
 }
 
-void g_graphics::resize(int newWidth, int newHeight, bool averaged, bool force)
+
+cairo_t* graphics_t::acquireContext()
+{
+	g_mutex_acquire(lock);
+	if(!surface)
+	{
+		g_mutex_release(lock);
+		return nullptr;
+	}
+
+	if(!context)
+	{
+		context = cairo_create(surface);
+		auto contextStatus = cairo_status(context);
+		if(contextStatus != CAIRO_STATUS_SUCCESS)
+		{
+			context = nullptr;
+			g_mutex_release(lock);
+			return nullptr;
+		}
+	}
+
+	contextRefCount++;
+	return context;
+}
+
+void graphics_t::releaseContext()
+{
+	--contextRefCount;
+	if(contextRefCount < 0)
+	{
+		klog("error: over-deref of canvas by %i references", contextRefCount);
+		contextRefCount = 0;
+		return;
+	}
+
+	if(contextRefCount == 0 && context)
+	{
+		cairo_destroy(context);
+		context = nullptr;
+	}
+
+	g_mutex_release(lock);
+}
+
+void graphics_t::resize(int newWidth, int newHeight, bool averaged)
 {
 	if(newWidth <= 0 || newHeight <= 0)
 		return;
@@ -41,27 +86,68 @@ void g_graphics::resize(int newWidth, int newHeight, bool averaged, bool force)
 	}
 
 	// TODO: Like this, buffers never downscale. Check if we want this:
-	if(newWidth <= width && newHeight <= height && !force)
+	if(newWidth <= width && newHeight <= height)
+	{
 		return;
+	}
 
+	g_mutex_acquire(lock);
 	if(surface)
+	{
 		cairo_surface_destroy(surface);
-	if(context)
-		cairo_destroy(context);
+		surface = nullptr;
+	}
 
 	width = newWidth;
 	height = newHeight;
 	surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
-	context = cairo_create(surface);
+	auto surfaceStatus = cairo_surface_status(surface);
+	if(surfaceStatus != CAIRO_STATUS_SUCCESS)
+	{
+		klog("failed to create graphics surface of size %i %i: %i", width, height, surfaceStatus);
+		surface = nullptr;
+	}
+
+	g_mutex_release(lock);
 }
 
-void g_graphics::blitTo(g_graphics* graphics, g_rectangle absoluteClip, g_point position)
+void graphics_t::blitTo(graphics_t* target, const g_rectangle& clip, const g_point& position)
 {
-	auto cr = graphics->context;
-	cairo_save(cr);
-	cairo_set_source_surface(cr, this->surface, position.x, position.y);
-	cairo_rectangle(cr, absoluteClip.x, absoluteClip.y, absoluteClip.width, absoluteClip.height);
-	cairo_clip(cr);
-	cairo_paint(cr);
-	cairo_restore(cr);
+	g_mutex_acquire(lock);
+
+	auto cr = target->acquireContext();
+	if(cr)
+	{
+		if(surface)
+		{
+			auto surfaceStatus = cairo_surface_status(surface);
+			if(surfaceStatus != CAIRO_STATUS_SUCCESS)
+			{
+				klog("bad surface status");
+			}
+			else
+			{
+				cairo_save(cr);
+				cairo_rectangle(cr, clip.x, clip.y, clip.width, clip.height);
+				cairo_clip(cr);
+				cairo_set_source_surface(cr, surface, position.x, position.y);
+				cairo_paint(cr);
+				cairo_restore(cr);
+			}
+		}
+
+		if(windowserver_t::isDebug())
+		{
+			cairo_save(cr);
+			cairo_set_line_width(cr, 2);
+			cairo_rectangle(cr, clip.x, clip.y, clip.width, clip.height);
+			cairo_set_source_rgba(cr, 1, 0, 0, 1);
+			cairo_stroke(cr);
+			cairo_restore(cr);
+		}
+
+		target->releaseContext();
+	}
+
+	g_mutex_release(lock);
 }

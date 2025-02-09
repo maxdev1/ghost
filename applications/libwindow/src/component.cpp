@@ -18,6 +18,8 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <utility>
+
 #include "libwindow/component.hpp"
 #include "libwindow/properties.hpp"
 
@@ -86,7 +88,6 @@ bool g_component::setBounds(g_rectangle rect)
 
 g_rectangle g_component::getBounds()
 {
-
 	if(!g_ui_initialized)
 	{
 		return g_rectangle();
@@ -139,7 +140,8 @@ bool g_component::setVisible(bool visible)
 
 	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		g_ui_component_set_visible_response* response = (g_ui_component_set_visible_response*) G_MESSAGE_CONTENT(buffer);
+		g_ui_component_set_visible_response* response = (g_ui_component_set_visible_response*)
+				G_MESSAGE_CONTENT(buffer);
 		if(response->status == G_UI_PROTOCOL_SUCCESS)
 		{
 			return true;
@@ -174,7 +176,8 @@ bool g_component::setNumericProperty(int property, uint32_t value)
 	bool success = false;
 	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		g_ui_component_set_numeric_property_response* response = (g_ui_component_set_numeric_property_response*) G_MESSAGE_CONTENT(buffer);
+		g_ui_component_set_numeric_property_response* response = (g_ui_component_set_numeric_property_response*)
+				G_MESSAGE_CONTENT(buffer);
 		success = (response->status == G_UI_PROTOCOL_SUCCESS);
 	}
 
@@ -206,7 +209,8 @@ bool g_component::getNumericProperty(int property, uint32_t* out)
 	bool success = false;
 	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		g_ui_component_get_numeric_property_response* response = (g_ui_component_get_numeric_property_response*) G_MESSAGE_CONTENT(buffer);
+		g_ui_component_get_numeric_property_response* response = (g_ui_component_get_numeric_property_response*)
+				G_MESSAGE_CONTENT(buffer);
 
 		if(response->status == G_UI_PROTOCOL_SUCCESS)
 		{
@@ -219,22 +223,17 @@ bool g_component::getNumericProperty(int property, uint32_t* out)
 	return success;
 }
 
-bool g_component::setListener(g_ui_component_event_type eventType, g_listener* new_listener)
+bool g_component::setListener(g_ui_component_event_type eventType, g_listener* newListener)
 {
-
 	if(!g_ui_initialized)
-	{
 		return false;
-	}
 
-	// set new
-	listeners[eventType] = new_listener;
+	g_mutex_acquire(listenersLock);
+	listeners[eventType] = newListener;
+	g_mutex_release(listenersLock);
 
-	// check
-	if(new_listener == 0)
-	{
+	if(newListener == nullptr)
 		return false;
-	}
 
 	// send request
 	g_message_transaction tx = g_get_message_tx_id();
@@ -252,11 +251,9 @@ bool g_component::setListener(g_ui_component_event_type eventType, g_listener* n
 
 	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		g_ui_component_set_listener_response* response = (g_ui_component_set_listener_response*) G_MESSAGE_CONTENT(buffer);
-		if(response->status == G_UI_PROTOCOL_SUCCESS)
-		{
-			return true;
-		}
+		auto response = (g_ui_component_set_listener_response*)
+				G_MESSAGE_CONTENT(buffer);
+		return response->status == G_UI_PROTOCOL_SUCCESS;
 	}
 
 	return false;
@@ -266,10 +263,16 @@ void g_component::handle(g_ui_component_event_header* header)
 {
 	auto eventType = header->type;
 
+	g_mutex_acquire(listenersLock);
 	if(listeners.count(eventType) > 0)
 	{
 		listeners[eventType]->process(header);
 	}
+	else
+	{
+		klog("incoming event (%i) but no one to handle", eventType);
+	}
+	g_mutex_release(listenersLock);
 }
 
 bool g_component::setMouseListener(g_mouse_listener* listener)
@@ -277,12 +280,17 @@ bool g_component::setMouseListener(g_mouse_listener* listener)
 	return setListener(G_UI_COMPONENT_EVENT_TYPE_MOUSE, listener);
 }
 
+bool g_component::setMouseListener(g_mouse_listener_func func)
+{
+	return setListener(G_UI_COMPONENT_EVENT_TYPE_MOUSE, new g_mouse_listener_dispatcher(std::move(func)));
+}
+
 bool g_component::setLayout(g_ui_layout_manager layout)
 {
 	return setNumericProperty(G_UI_PROPERTY_LAYOUT_MANAGER, layout);
 }
 
-bool g_component::setBackground(uint32_t argb)
+bool g_component::setBackground(g_color_argb argb)
 {
 	return setNumericProperty(G_UI_PROPERTY_BACKGROUND, argb);
 }

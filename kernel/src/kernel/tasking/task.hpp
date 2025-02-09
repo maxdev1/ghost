@@ -121,6 +121,13 @@ struct g_task
      */
     volatile g_processor_state* state;
 
+    struct
+    {
+        uint8_t* stateMem;
+        uint8_t* state;
+        bool stored;
+    } sse;
+
     /**
      * For Ring 3 tasks, the interrupt stack is used during interrupt handling.
      */
