@@ -94,6 +94,13 @@ g_user_mutex_status userMutexTryAcquire(g_task* task, g_user_mutex mutex)
 
 g_user_mutex_status userMutexAcquire(g_task* task, g_user_mutex mutex, uint64_t timeout, bool trying)
 {
+	g_user_mutex_entry* entry = hashmapGet<g_user_mutex, g_user_mutex_entry*>(mutexMap, mutex, nullptr);
+	if(!entry)
+	{
+		logWarn("%! task %i attempted to acquire unknown mutex %i", "mutex", taskingGetCurrentTask()->id, mutex);
+		return G_USER_MUTEX_STATUS_NOT_ACQUIRED;
+	}
+
 	bool wasSet = false;
 	bool hasTimeout = false;
 
@@ -103,20 +110,31 @@ g_user_mutex_status userMutexAcquire(g_task* task, g_user_mutex mutex, uint64_t 
 
 	while(true)
 	{
+		mutexAcquire(&entry->lock);
+		bool stop = false;
 		if(useTimeout && (hasTimeout = clockHasTimedOut(task->id)))
+		{
+			stop = true;
+		}
+		else
+		{
+			g_user_mutex_status status = userMutexTryAcquire(task, mutex);
+			wasSet = (status == G_USER_MUTEX_STATUS_ACQUIRED);
+			stop = wasSet || trying;
+		}
+		if(stop)
+		{
+			mutexRelease(&entry->lock);
 			break;
-
-		g_user_mutex_status lockStatus = userMutexTryAcquire(task, mutex);
-		if(wasSet = (lockStatus == G_USER_MUTEX_STATUS_ACQUIRED))
-			break;
-
-		if(trying)
-			break;
+		}
 
 		mutexAcquire(&task->lock);
-		userMutexWaitForAcquire(mutex, task->id);
 		task->status = G_TASK_STATUS_WAITING;
+		userMutexWaitForAcquire(mutex, task->id);
 		mutexRelease(&task->lock);
+
+		mutexRelease(&entry->lock);
+
 		taskingYield();
 	}
 
@@ -234,9 +252,12 @@ void _userMutexWakeWaitingTasks(g_user_mutex_entry* entry)
 	while(waiter)
 	{
 		g_task* wakeTask = taskingGetById(waiter->task);
-		if(wakeTask && wakeTask->status == G_TASK_STATUS_WAITING)
+		if(wakeTask)
 		{
-			wakeTask->status = G_TASK_STATUS_RUNNING;
+			mutexAcquire(&wakeTask->lock);
+			if(wakeTask->status == G_TASK_STATUS_WAITING)
+				wakeTask->status = G_TASK_STATUS_RUNNING;
+			mutexRelease(&wakeTask->lock);
 		}
 
 		auto next = waiter->next;
