@@ -37,15 +37,22 @@ void processorInitializeBsp()
 		panic("%! processor has no CPUID support", "cpu");
 
 	processorPrintInformation();
-	processorEnableSSE();
 
 	if(!processorHasFeature(g_cpuid_standard_edx_feature::APIC))
 		panic("%! processor has no APIC", "cpu");
 }
 
-void processorInitializeAp()
+void processorFinalizeSetup()
 {
-	processorEnableSSE();
+	if(processorHasFeature(g_cpuid_standard_edx_feature::SSE))
+	{
+		_enableSSE();
+		logDebug("%! support enabled", "sse");
+	}
+	else
+	{
+		logWarn("%! not supported", "sse");
+	}
 }
 
 void processorApicIdCreateMappingTable()
@@ -124,9 +131,9 @@ uint32_t processorGetCurrentId()
 	// GS:0x0 is relative address within <g_kernel_threadlocal>
 	uint32_t processor;
 	asm volatile("mov $" STR(G_GDT_DESCRIPTOR_KERNELTHREADLOCAL) ", %%eax\n"
-																 "mov %%eax, %%gs\n"
-																 "mov %%gs:0x0, %0"
-				 : "=r"(processor)::"eax");
+		"mov %%eax, %%gs\n"
+		"mov %%gs:0x0, %0"
+		: "=r"(processor)::"eax");
 	return processor;
 }
 
@@ -150,21 +157,12 @@ bool processorSupportsCpuid()
 void processorCpuid(uint32_t code, uint32_t* outA, uint32_t* outB, uint32_t* outC, uint32_t* outD)
 {
 	asm volatile("cpuid"
-				 : "=a"(*outA), "=b"(*outB), "=c"(*outC), "=d"(*outD)
-				 : "a"(code));
+		: "=a"(*outA), "=b"(*outB), "=c"(*outC), "=d"(*outD)
+		: "a"(code));
 }
 
 void processorEnableSSE()
 {
-	if(processorHasFeature(g_cpuid_standard_edx_feature::SSE))
-	{
-		_enableSSE();
-		logDebug("%! support enabled", "sse");
-	}
-	else
-	{
-		logWarn("%! not supported", "sse");
-	}
 }
 
 bool processorHasFeature(g_cpuid_standard_edx_feature feature)
@@ -242,22 +240,22 @@ g_processor* processorGetList()
 void processorReadMsr(uint32_t msr, uint32_t* lo, uint32_t* hi)
 {
 	asm volatile("rdmsr"
-				 : "=a"(*lo), "=d"(*hi)
-				 : "c"(msr));
+		: "=a"(*lo), "=d"(*hi)
+		: "c"(msr));
 }
 
 void processorWriteMsr(uint32_t msr, uint32_t lo, uint32_t hi)
 {
 	asm volatile("wrmsr"
-				 :
-				 : "a"(lo), "d"(hi), "c"(msr));
+		:
+		: "a"(lo), "d"(hi), "c"(msr));
 }
 
 uint32_t processorReadEflags()
 {
 	uint32_t eflags;
 	asm volatile("pushf\n"
-				 "pop %0"
-				 : "=g"(eflags));
+		"pop %0"
+		: "=g"(eflags));
 	return eflags;
 }

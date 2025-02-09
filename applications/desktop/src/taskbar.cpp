@@ -22,8 +22,12 @@
 
 #include <cairo/cairo.h>
 #include <cstdlib>
+#include <map>
 
-taskbar::taskbar(uint32_t id):
+g_user_mutex tasksLock = g_mutex_initialize();
+std::map<g_ui_component_id, taskbar_entry*> tasks;
+
+taskbar::taskbar(g_ui_component_id id):
 	g_canvas(id)
 {
 }
@@ -94,6 +98,23 @@ void taskbar::paint()
 	cairo_fill(cr);
 	cairo_restore(cr);
 
+	g_mutex_acquire(tasksLock);
+	if(tasks.size() > 0)
+	{
+		int maxPerTask = bounds.width / tasks.size();
+		int pos = 0;
+		int taskWidth = std::min(200, maxPerTask);
+		for(auto& task: tasks)
+		{
+			cairo_save(cr);
+			cairo_set_source_rgb(cr, 0, 0, 0);
+			cairo_rectangle(cr, pos++ * taskWidth, 0, taskWidth, bounds.height);
+			cairo_fill(cr);
+			cairo_restore(cr);
+		}
+	}
+	g_mutex_release(tasksLock);
+
 	this->blit(g_rectangle(0, 0, bounds.width, bounds.height));
 
 	this->releaseGraphics();
@@ -101,5 +122,30 @@ void taskbar::paint()
 
 void taskbar::handleDesktopEvent(g_ui_windows_event* event)
 {
+	g_mutex_acquire(tasksLock);
 
+	if(event->present)
+	{
+		taskbar_entry* entry = nullptr;
+		if(tasks.count(event->window_id) > 0)
+		{
+			entry = tasks[event->window_id];
+		}
+		else
+		{
+			entry = new taskbar_entry();
+			tasks[event->window_id] = entry;
+		}
+
+		entry->title = std::string(event->title);
+	}
+	else if(tasks.count(event->window_id) > 0)
+	{
+		delete tasks[event->window_id];
+		tasks.erase(event->window_id);
+	}
+
+	g_mutex_release(tasksLock);
+
+	this->paint();
 }

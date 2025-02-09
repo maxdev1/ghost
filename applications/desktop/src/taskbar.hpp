@@ -27,6 +27,8 @@
 
 struct taskbar_entry
 {
+    g_ui_component_id window;
+    std::string title;
 };
 
 class taskbar : public g_canvas
@@ -34,7 +36,7 @@ class taskbar : public g_canvas
     std::vector<taskbar_entry> entries;
 
 protected:
-    explicit taskbar(uint32_t id);
+    explicit taskbar(g_ui_component_id id);
     void init();
 
     void onMouseMove(const g_point& position);

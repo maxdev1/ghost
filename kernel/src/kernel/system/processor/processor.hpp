@@ -29,38 +29,36 @@
  */
 enum class g_cpuid_standard_edx_feature
 {
-
-	FPU = 1 << 0, // Onboard x87 FPU
-	VME = 1 << 1, // Virtual 8086 supported
-	DE = 1 << 2, // Debugging extensions
-	PSE = 1 << 3, // Page size extension
-	TSC = 1 << 4, // Time stamp counter
-	MSR = 1 << 5, // Model specific registers
-	PAE = 1 << 6, // Physical address extension
-	MCE = 1 << 7, // Machine check exception
-	CX8 = 1 << 8, // CMPXCHG8 instruction
-	APIC = 1 << 9, // APIC available
-	SEP = 1 << 11, // SYSENTER / SYSEXIT
-	MTRR = 1 << 12, // Memory type range registers
-	PGE = 1 << 13, // Page global enable bit in CR4
-	MCA = 1 << 14, // Machine check architecture
-	CMOV = 1 << 15, // Cond. move / FCMOV instructions
-	PAT = 1 << 16, // Page attribute table
-	PSE36 = 1 << 17, // 36 bit page size extension
-	PSN = 1 << 18, // Processor serial number
-	CLF = 1 << 19, // CLFLUSH instruction
-	DTES = 1 << 21, // Debug store available
-	ACPI_THERMAL = 1 << 22, // on-board thermal control MSRs
-	MMX = 1 << 23, // MMX instructions
-	FXSR = 1 << 24, // FXSAVE, FXRESTOR instructions
-	SSE = 1 << 25, // Streaming SIMD Extensions
-	SSE2 = 1 << 26, // Streaming SIMD Extensions 2
-	SS = 1 << 27, // CPU cache supports self-snoop
-	HTT = 1 << 28, // Hyperthreading
-	TM1 = 1 << 29, // Thermal monitor auto-limits temperature
-	IA64 = 1 << 30, // Processor is IA64 that emulates x86
-	PBE = 1 << 31, // Pending break enable wakeup support
-
+    FPU = 1 << 0, // Onboard x87 FPU
+    VME = 1 << 1, // Virtual 8086 supported
+    DE = 1 << 2, // Debugging extensions
+    PSE = 1 << 3, // Page size extension
+    TSC = 1 << 4, // Time stamp counter
+    MSR = 1 << 5, // Model specific registers
+    PAE = 1 << 6, // Physical address extension
+    MCE = 1 << 7, // Machine check exception
+    CX8 = 1 << 8, // CMPXCHG8 instruction
+    APIC = 1 << 9, // APIC available
+    SEP = 1 << 11, // SYSENTER / SYSEXIT
+    MTRR = 1 << 12, // Memory type range registers
+    PGE = 1 << 13, // Page global enable bit in CR4
+    MCA = 1 << 14, // Machine check architecture
+    CMOV = 1 << 15, // Cond. move / FCMOV instructions
+    PAT = 1 << 16, // Page attribute table
+    PSE36 = 1 << 17, // 36 bit page size extension
+    PSN = 1 << 18, // Processor serial number
+    CLF = 1 << 19, // CLFLUSH instruction
+    DTES = 1 << 21, // Debug store available
+    ACPI_THERMAL = 1 << 22, // on-board thermal control MSRs
+    MMX = 1 << 23, // MMX instructions
+    FXSR = 1 << 24, // FXSAVE, FXRESTOR instructions
+    SSE = 1 << 25, // Streaming SIMD Extensions
+    SSE2 = 1 << 26, // Streaming SIMD Extensions 2
+    SS = 1 << 27, // CPU cache supports self-snoop
+    HTT = 1 << 28, // Hyperthreading
+    TM1 = 1 << 29, // Thermal monitor auto-limits temperature
+    IA64 = 1 << 30, // Processor is IA64 that emulates x86
+    PBE = 1 << 31, // Pending break enable wakeup support
 };
 
 /**
@@ -68,32 +66,31 @@ enum class g_cpuid_standard_edx_feature
  */
 enum class g_cpuid_extended_ecx_feature
 {
-
-	SSE3 = 1 << 0,
-	PCLMUL = 1 << 1,
-	DTES64 = 1 << 2,
-	MONITOR = 1 << 3,
-	DS_CPL = 1 << 4,
-	VMX = 1 << 5,
-	SMX = 1 << 6,
-	EST = 1 << 7,
-	TM2 = 1 << 8,
-	SSSE3 = 1 << 9,
-	CID = 1 << 10,
-	FMA = 1 << 12,
-	CX16 = 1 << 13,
-	ETPRD = 1 << 14,
-	PDCM = 1 << 15,
-	DCA = 1 << 18,
-	SSE4_1 = 1 << 19,
-	SSE4_2 = 1 << 20,
-	x2APIC = 1 << 21,
-	MOVBE = 1 << 22,
-	POPCNT = 1 << 23,
-	AES = 1 << 25,
-	XSAVE = 1 << 26,
-	OSXSAVE = 1 << 27,
-	AVX = 1 << 28
+    SSE3 = 1 << 0,
+    PCLMUL = 1 << 1,
+    DTES64 = 1 << 2,
+    MONITOR = 1 << 3,
+    DS_CPL = 1 << 4,
+    VMX = 1 << 5,
+    SMX = 1 << 6,
+    EST = 1 << 7,
+    TM2 = 1 << 8,
+    SSSE3 = 1 << 9,
+    CID = 1 << 10,
+    FMA = 1 << 12,
+    CX16 = 1 << 13,
+    ETPRD = 1 << 14,
+    PDCM = 1 << 15,
+    DCA = 1 << 18,
+    SSE4_1 = 1 << 19,
+    SSE4_2 = 1 << 20,
+    x2APIC = 1 << 21,
+    MOVBE = 1 << 22,
+    POPCNT = 1 << 23,
+    AES = 1 << 25,
+    XSAVE = 1 << 26,
+    OSXSAVE = 1 << 27,
+    AVX = 1 << 28
 };
 
 /**
@@ -105,11 +102,11 @@ enum class g_cpuid_extended_ecx_feature
 
 struct g_processor
 {
-	uint32_t id;
-	uint32_t hardwareId;
-	uint32_t apicId;
-	g_processor* next;
-	bool bsp;
+    uint32_t id;
+    uint32_t hardwareId;
+    uint32_t apicId;
+    g_processor* next;
+    bool bsp;
 };
 
 /**
@@ -138,10 +135,9 @@ extern "C" void _enableSSE();
 void processorInitializeBsp();
 
 /**
- * Initializes an application processor. Is called for each application processor
- * in the system.
+ * Finalizes the processor setup, initializing coprocessors like the FPU.
  */
-void processorInitializeAp();
+void processorFinalizeSetup();
 
 /**
  * Adds a processor to the list of processors. This is called when the MADT
@@ -200,11 +196,6 @@ bool processorHasFeature(g_cpuid_extended_ecx_feature feature);
  * Prints information about the processor.
  */
 void processorPrintInformation();
-
-/**
- * Enables SSE on the processor.
- */
-void processorEnableSSE();
 
 /**
  * Returns the CPU's vendor. "out" must be a pointer to a

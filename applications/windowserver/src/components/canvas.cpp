@@ -189,12 +189,6 @@ void canvas_t::blit(graphics_t* out, const g_rectangle& clip, const g_point& pos
 		g_mutex_acquire(bufferLock);
 		if(bufferReady && buffer.surface)
 		{
-			/**
-			 * TODO
-			 * For some reason, this blitting sometimes does not work, maybe due
-			 * to race conditions? I'm absolutely not sure why, maybe it is related
-			 * to issues with cairo and multithreading (or SIMD?)
-			 */
 			cairo_surface_mark_dirty(buffer.surface);
 			cairo_save(cr);
 			cairo_set_source_surface(cr, buffer.surface, positionOnParent.x, positionOnParent.y);

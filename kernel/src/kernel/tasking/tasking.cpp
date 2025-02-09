@@ -269,6 +269,25 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 	mutexRelease(&local->lock);
 }
 
+void taskingSaveState(g_task* task, g_processor_state* state)
+{
+	task->state = state;
+
+	// Save SSE registers
+	if(task->sse.state)
+	{
+		asm volatile (
+			"clts\n\t" // Clear TS bit to avoid #NM exception
+			"fxsave (%0)\n\t" // Save SSE state
+			:
+			: "r" (task->sse.state)
+			: "memory" // Tell compiler fxsave modifies memory
+		);
+		task->sse.stored = true;
+	}
+}
+
+
 void taskingApplySwitch()
 {
 	g_task* task = taskingGetCurrentTask();
@@ -292,6 +311,19 @@ void taskingApplySwitch()
 
 	// Set TSS ESP0 for ring 3 tasks to return onto
 	gdtSetTssEsp0(task->interruptStack.end);
+
+	// Restore SSE registers
+	if(task->sse.stored)
+	{
+		asm volatile (
+			"clts\n\t" // Clear TS bit before using SSE
+			"fxrstor (%0)\n\t" // Restore SSE state
+			:
+			: "r" (task->sse.state)
+			: "memory"
+		);
+		task->sse.stored = false;
+	}
 }
 
 void taskingSchedule()
@@ -359,9 +391,8 @@ g_task* taskingCreateTask(g_virtual_address eip, g_process* process, g_security_
 
 	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(task->process->pageDirectory);
 
-	taskingMemoryCreateStacks(task);
+	taskingMemoryInitialize(task);
 	taskingStateReset(task, eip, level);
-	taskingMemoryInitializeTls(task);
 
 	taskingMemoryTemporarySwitchBack(returnDirectory);
 
@@ -379,11 +410,10 @@ g_task* taskingCreateTaskVm86(g_process* process, uint32_t intr, g_vm86_register
 
 	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(task->process->pageDirectory);
 
-	taskingMemoryCreateStacks(task);
+	taskingMemoryInitialize(task);
 	taskingStateResetVm86(task, in, intr);
 	task->vm86Data = (g_task_information_vm86*) heapAllocateClear(sizeof(g_task_information_vm86));
 	task->vm86Data->out = out;
-	taskingMemoryInitializeTls(task);
 
 	taskingMemoryTemporarySwitchBack(returnDirectory);
 
@@ -404,9 +434,7 @@ void taskingDestroyTask(g_task* task)
 	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(task->process->pageDirectory);
 
 	messageTaskRemoved(task->id);
-	// TODO cleanup other misc memory
-	taskingMemoryDestroyStacks(task);
-	taskingMemoryDestroyThreadLocalStorage(task);
+	taskingMemoryDestroy(task);
 
 	taskingMemoryTemporarySwitchBack(returnDirectory);
 

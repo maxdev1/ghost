@@ -177,13 +177,10 @@ void taskingProcessRemoveFromTaskList(g_task* task);
 void taskingSchedule();
 
 /**
- * Stores the registers from the given state pointer (pointing to the top of the
- * kernel stack) to the state structure of the current task.
- *
- * If there is no current task (because we just initialized the system) then it
- * switches to the first task and returns false.
+ * Saves the state pointer that points to the stored state on the tasks kernel
+ * stack. Also stores additional registers like for SSE.
  */
-bool taskingStore(g_virtual_address esp);
+void taskingSaveState(g_task* task, g_processor_state* state);
 
 /**
  * Applies the context switch to the task which is the current one for this core. This sets

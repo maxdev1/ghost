@@ -26,6 +26,8 @@
 #include "shared/logger/logger.hpp"
 #include "shared/panic.hpp"
 
+#define G_SSE_STATE_SIZE 512
+
 bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 {
 	g_process* process = task->process;
@@ -88,7 +90,35 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 	return success;
 }
 
-void taskingMemoryCreateStacks(g_task* task)
+void taskingMemoryInitialize(g_task* task)
+{
+	taskingMemoryInitializeStacks(task);
+	taskingMemoryInitializeUtility(task);
+	taskingMemoryInitializeTls(task);
+}
+
+void taskingMemoryInitializeUtility(g_task* task)
+{
+	// Create storage for SSE registers if necessary
+	if(processorHasFeature(g_cpuid_standard_edx_feature::SSE))
+	{
+		uint8_t sseAlignment = 0x10;
+		// TODO Our allocator is currently not capable of aligned allocation so
+		// we just allocate a bit more and remember both pointers for freeing:
+		task->sse.stateMem = (uint8_t*) heapAllocate(G_SSE_STATE_SIZE + sseAlignment);
+		auto stateAddr = (g_address) task->sse.stateMem;
+		stateAddr = G_ALIGN_UP(stateAddr, sseAlignment);
+		task->sse.state = (uint8_t*) stateAddr;
+	}
+	else
+	{
+		task->sse.stateMem = nullptr;
+		task->sse.state = nullptr;
+	}
+	task->sse.stored = false;
+}
+
+void taskingMemoryInitializeStacks(g_task* task)
 {
 	// Interrupt stack for ring 3 & VM86 tasks
 	if(task->securityLevel != G_SECURITY_LEVEL_KERNEL || task->type == G_TASK_TYPE_VM86)
@@ -136,6 +166,22 @@ g_stack taskingMemoryCreateStack(g_address_range_pool* addressRangePool, uint32_
 	stack.start = stackVirt;
 	stack.end = stackEnd;
 	return stack;
+}
+
+void taskingMemoryDestroy(g_task* task)
+{
+	taskingMemoryDestroyStacks(task);
+	taskingMemoryDestroyUtility(task);
+	taskingMemoryDestroyTls(task);
+}
+
+void taskingMemoryDestroyUtility(g_task* task)
+{
+	if(task->sse.stateMem)
+	{
+		heapFree(task->sse.stateMem);
+		task->sse.stateMem = nullptr;
+	}
 }
 
 void taskingMemoryDestroyStacks(g_task* task)
@@ -294,7 +340,7 @@ void taskingMemoryInitializeTls(g_task* task)
 	}
 }
 
-void taskingMemoryDestroyThreadLocalStorage(g_task* task)
+void taskingMemoryDestroyTls(g_task* task)
 {
 	if(task->threadLocal.start)
 	{
