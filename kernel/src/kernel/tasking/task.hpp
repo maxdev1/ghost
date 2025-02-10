@@ -23,6 +23,7 @@
 
 #include "kernel/memory/address_range_pool.hpp"
 #include "kernel/system/processor/processor_state.hpp"
+#include "kernel/utils/wait_queue.hpp"
 #include "shared/system/mutex.hpp"
 
 #include <ghost/tasks/types.h>
@@ -59,8 +60,6 @@ struct g_kernel_threadlocal
 {
     uint32_t processor;
 };
-
-struct g_wait_queue_entry;
 
 /**
  * A task is a single thread executing either in user or kernel level.
@@ -156,7 +155,7 @@ struct g_task
     /**
      * List of tasks that wait for this task to die.
      */
-    g_wait_queue_entry* waitersJoin;
+    g_wait_queue waitersJoin;
 };
 
 /**
@@ -266,7 +265,7 @@ struct g_process
     /**
      * List of tasks that wait for the result of spawning.
      */
-    g_wait_queue_entry* waitersSpawn;
+    g_wait_queue waitersSpawn;
 
     /**
      * List of on-demand file-to-memory mappings.

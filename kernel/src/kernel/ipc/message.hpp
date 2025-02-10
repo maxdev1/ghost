@@ -34,7 +34,7 @@ struct g_message_queue
 	uint32_t size;
 
 	g_tid task;
-	g_wait_queue_entry* waitersSend;
+	g_wait_queue waitersSend;
 };
 
 /**

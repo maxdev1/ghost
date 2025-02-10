@@ -45,6 +45,8 @@ g_fs_pipe_status pipeCreate(g_fs_phys_id* outPipeId)
 	pipe->buffer = (uint8_t*) memoryAllocateKernelRange(G_PAGE_ALIGN_UP(pipe->capacity) / G_PAGE_SIZE);
 	pipe->readPosition = pipe->buffer;
 	pipe->writePosition = pipe->buffer;
+	waitQueueInitialize(&pipe->waitersRead);
+	waitQueueInitialize(&pipe->waitersWrite);
 
 	g_fs_phys_id pipeId = pipeGetNextId();
 	hashmapPut<g_fs_phys_id, g_pipeline*>(pipeMap, pipeId, pipe);

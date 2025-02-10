@@ -20,19 +20,32 @@
 
 #include "kernel/utils/wait_queue.hpp"
 #include "kernel/memory/heap.hpp"
+#include "kernel/tasking/tasking.hpp"
 
-void waitQueueAdd(g_wait_queue_entry** queue, g_tid task)
+void waitQueueInitialize(g_wait_queue* queue)
 {
-	g_wait_queue_entry* waiter = (g_wait_queue_entry*) heapAllocate(sizeof(g_wait_queue_entry));
-	waiter->task = task;
-	waiter->next = *queue;
-	*queue = waiter;
+	mutexInitialize(&queue->lock);
+	queue->head = nullptr;
 }
 
-void waitQueueRemove(g_wait_queue_entry** queue, g_tid task)
+void waitQueueAdd(g_wait_queue* queue, g_tid task)
 {
+	mutexAcquire(&queue->lock);
+
+	auto entry = (g_wait_queue_entry*) heapAllocate(sizeof(g_wait_queue_entry));
+	entry->task = task;
+	entry->next = queue->head;
+	queue->head = entry;
+
+	mutexRelease(&queue->lock);
+}
+
+void waitQueueRemove(g_wait_queue* queue, g_tid task)
+{
+	mutexAcquire(&queue->lock);
+
 	g_wait_queue_entry* prev = nullptr;
-	g_wait_queue_entry* waiter = *queue;
+	g_wait_queue_entry* waiter = queue->head;
 	while(waiter)
 	{
 		if(waiter->task == task)
@@ -41,7 +54,7 @@ void waitQueueRemove(g_wait_queue_entry** queue, g_tid task)
 			if(prev)
 				prev->next = next;
 			else
-				*queue = next;
+				queue->head = next;
 
 			heapFree(waiter);
 			break;
@@ -49,11 +62,15 @@ void waitQueueRemove(g_wait_queue_entry** queue, g_tid task)
 		prev = waiter;
 		waiter = waiter->next;
 	}
+
+	mutexRelease(&queue->lock);
 }
 
-void waitQueueWake(g_wait_queue_entry** queue)
+void waitQueueWake(g_wait_queue* queue)
 {
-	auto waiter = *queue;
+	mutexAcquire(&queue->lock);
+
+	auto waiter = queue->head;
 	while(waiter)
 	{
 		g_task* task = taskingGetById(waiter->task);
@@ -69,5 +86,7 @@ void waitQueueWake(g_wait_queue_entry** queue)
 		heapFree(waiter);
 		waiter = next;
 	}
-	*queue = nullptr;
+	queue->head = nullptr;
+
+	mutexRelease(&queue->lock);
 }

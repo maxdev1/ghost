@@ -343,6 +343,8 @@ g_process* taskingCreateProcess(g_security_level securityLevel)
 	process->environment.executablePath = 0;
 	process->environment.workingDirectory = 0;
 
+	waitQueueInitialize(&process->waitersSpawn);
+
 	return process;
 }
 
@@ -446,7 +448,7 @@ void taskingInitializeTask(g_task* task, g_process* process, g_security_level le
 	task->process = process;
 	task->securityLevel = level;
 	task->status = G_TASK_STATUS_RUNNING;
-	task->waitersJoin = nullptr;
+	waitQueueInitialize(&task->waitersJoin);
 	mutexInitializeNonInterruptible(&task->lock, __func__);
 }
 

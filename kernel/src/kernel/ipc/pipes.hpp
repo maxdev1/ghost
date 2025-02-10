@@ -49,8 +49,8 @@ struct g_pipeline
 	uint16_t referencesRead;
 	uint16_t referencesWrite;
 
-	g_wait_queue_entry* waitersRead;
-	g_wait_queue_entry* waitersWrite;
+	g_wait_queue waitersRead;
+	g_wait_queue waitersWrite;
 };
 
 /**

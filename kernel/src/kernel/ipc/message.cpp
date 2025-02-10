@@ -239,7 +239,7 @@ g_message_queue* _messageGetQueue(g_tid receiver)
 		queue->size = 0;
 		queue->head = nullptr;
 		queue->tail = nullptr;
-		queue->waitersSend = nullptr;
+		waitQueueInitialize(&queue->waitersSend);
 		hashmapPut(messageQueues, receiver, queue);
 	}
 	return queue;

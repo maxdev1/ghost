@@ -21,27 +21,40 @@
 #ifndef __UTILS_WAITQUEUE__
 #define __UTILS_WAITQUEUE__
 
-#include "kernel/tasking/tasking.hpp"
+#include "shared/system/mutex.hpp"
+
+#include <ghost/tasks/types.h>
 
 struct g_wait_queue_entry
 {
-	g_tid task;
-	g_wait_queue_entry* next;
+    g_tid task;
+    g_wait_queue_entry* next;
 };
+
+struct g_wait_queue
+{
+    g_wait_queue_entry* head;
+    g_mutex lock;
+};
+
+/**
+ * Initializes a wait-queue.
+ */
+void waitQueueInitialize(g_wait_queue* queue);
 
 /**
  * Adds a task entry to the given wait queue.
  */
-void waitQueueAdd(g_wait_queue_entry** queue, g_tid task);
+void waitQueueAdd(g_wait_queue* queue, g_tid task);
 
 /**
  * Removes the entry for this task id from the wait queue.
  */
-void waitQueueRemove(g_wait_queue_entry** queue, g_tid task);
+void waitQueueRemove(g_wait_queue* queue, g_tid task);
 
 /**
  * Wakes all tasks in the queue.
  */
-void waitQueueWake(g_wait_queue_entry** queue);
+void waitQueueWake(g_wait_queue* queue);
 
 #endif
