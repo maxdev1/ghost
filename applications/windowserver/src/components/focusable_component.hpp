@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,17 +18,40 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <utility>
+#ifndef __WINDOWSERVER_COMPONENTS_FOCUSABLECOMPONENT__
+#define __WINDOWSERVER_COMPONENTS_FOCUSABLECOMPONENT__
 
-#include "libwindow/component.hpp"
-#include "libwindow/bounds_event_component.hpp"
+class component_t;
 
-bool g_bounds_event_component::setBoundsListener(g_bounds_listener* new_listener)
+/**
+ *
+ */
+class focusable_component_t
 {
-	return self->setListener(G_UI_COMPONENT_EVENT_TYPE_BOUNDS, new_listener);
-}
+    component_t* self;
 
-bool g_bounds_event_component::setBoundsListener(g_bounds_listener_func func)
-{
-	return self->setListener(G_UI_COMPONENT_EVENT_TYPE_BOUNDS, new g_bounds_listener_dispatcher(std::move(func)));
-}
+public:
+    explicit focusable_component_t(component_t* self) : self(self)
+    {
+    }
+
+    virtual ~focusable_component_t() = default;
+
+    virtual bool isFocused() const
+    {
+        return false;
+    }
+
+    virtual void setFocusedInternal(bool focused)
+    {
+    }
+
+    virtual bool isFocusable() const
+    {
+        return false;
+    }
+
+    component_t* setFocused(bool focused);
+};
+
+#endif

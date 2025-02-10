@@ -18,25 +18,26 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __WINDOWSERVER_COMPONENTS_BOUNDSEVENTCOMPONENT__
-#define __WINDOWSERVER_COMPONENTS_BOUNDSEVENTCOMPONENT__
+#ifndef __WINDOWSERVER_COMPONENTS_BOUNDINGCOMPONENT__
+#define __WINDOWSERVER_COMPONENTS_BOUNDINGCOMPONENT__
 
 #include <libwindow/metrics/rectangle.hpp>
 
 class component_t;
 
-class bounds_event_component_t
+class bounding_component_t
 {
     component_t* self;
 
 public:
-    explicit bounds_event_component_t(component_t* self) : self(self)
+    explicit bounding_component_t(component_t* self) : self(self)
     {
     }
 
-    virtual ~bounds_event_component_t() = default;
+    virtual ~bounding_component_t() = default;
 
-    virtual void fireBoundsChange(g_rectangle& bounds);
+    virtual void setBounds(const g_rectangle& bounds);
+    virtual void setBoundsInternal(const g_rectangle& bounds) = 0;
 };
 
 #endif

@@ -30,7 +30,7 @@
 #include <libwindow/metrics/insets.hpp>
 #include <string>
 
-class button_t : public component_t, public titled_component_t, public action_component_t
+class button_t : virtual public component_t, virtual public titled_component_t, virtual public action_component_t
 {
     button_state_t state;
     label_t label;
@@ -46,13 +46,16 @@ public:
     void paint() override;
 
     component_t* handleMouseEvent(mouse_event_t& e) override;
-    component_t* handleFocusEvent(focus_event_t& e) override;
 
-    void setTitle(std::string title) override;
+    void setTitleInternal(std::string title) override;
     std::string getTitle() override;
 
     bool getNumericProperty(int property, uint32_t* out) override;
     bool setNumericProperty(int property, uint32_t value) override;
+
+    bool isFocused() const override;
+    bool isFocusable() const override;
+    void setFocusedInternal(bool focused) override;
 
     virtual void setEnabled(bool enabled);
 

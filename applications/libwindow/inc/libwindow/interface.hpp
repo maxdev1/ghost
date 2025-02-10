@@ -66,7 +66,7 @@ typedef uint8_t g_ui_protocol_command_id;
 #define G_UI_PROTOCOL_GET_TITLE					((g_ui_protocol_command_id) 5)
 #define G_UI_PROTOCOL_SET_BOUNDS				((g_ui_protocol_command_id) 6)
 #define G_UI_PROTOCOL_SET_VISIBLE				((g_ui_protocol_command_id) 7)
-#define G_UI_PROTOCOL_SET_LISTENER				((g_ui_protocol_command_id) 8)
+#define G_UI_PROTOCOL_ADD_LISTENER				((g_ui_protocol_command_id) 8)
 #define G_UI_PROTOCOL_SET_NUMERIC_PROPERTY		((g_ui_protocol_command_id) 9)
 #define G_UI_PROTOCOL_GET_NUMERIC_PROPERTY		((g_ui_protocol_command_id) 10)
 #define G_UI_PROTOCOL_GET_BOUNDS				((g_ui_protocol_command_id) 11)
@@ -104,6 +104,7 @@ const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_FOCUS = 4;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_MOUSE = 5;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_CLOSE = 6;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_WINDOWS = 7;
+const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_TITLE = 8;
 
 /**
  *
@@ -327,13 +328,13 @@ typedef struct
     g_ui_component_id id;
     g_ui_component_event_type event_type;
     g_tid target_thread;
-} __attribute__((packed)) g_ui_component_set_listener_request;
+} __attribute__((packed)) g_ui_component_add_listener_request;
 
 typedef struct
 {
     g_ui_message_header header;
     g_ui_protocol_status status;
-} __attribute__((packed)) g_ui_component_set_listener_response;
+} __attribute__((packed)) g_ui_component_add_listener_response;
 
 /**
  * Retrieve screen size
@@ -401,8 +402,13 @@ typedef struct
     g_ui_protocol_status status;
     g_ui_component_id window_id;
     bool present;
-    char title[G_UI_COMPONENT_TITLE_MAXIMUM];
 } __attribute__((packed)) g_ui_windows_event;
+
+typedef struct
+{
+    g_ui_component_event_header header;
+    char title[G_UI_COMPONENT_TITLE_MAXIMUM];
+} __attribute__((packed)) g_ui_component_title_event;
 
 /**
  * Mouse events

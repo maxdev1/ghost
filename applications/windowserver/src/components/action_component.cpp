@@ -30,14 +30,13 @@ void action_component_t::fireAction()
 	}
 
 	// otherwise send message to registered thread
-	event_listener_info_t listenerInfo;
-	if(self->getListener(G_UI_COMPONENT_EVENT_TYPE_ACTION, listenerInfo))
+	this->callForListeners(G_UI_COMPONENT_EVENT_TYPE_ACTION, [](event_listener_info_t& info)
 	{
-		g_ui_component_action_event action_event;
-		action_event.header.type = G_UI_COMPONENT_EVENT_TYPE_ACTION;
-		action_event.header.component_id = listenerInfo.component_id;
-		g_send_message(listenerInfo.target_thread, &action_event, sizeof(g_ui_component_action_event));
-	}
+		g_ui_component_action_event actionEvent;
+		actionEvent.header.type = G_UI_COMPONENT_EVENT_TYPE_ACTION;
+		actionEvent.header.component_id = info.component_id;
+		g_send_message(info.target_thread, &actionEvent, sizeof(g_ui_component_action_event));
+	});
 }
 
 void action_component_t::setInternalActionHandler(internal_action_handler_t* handler)

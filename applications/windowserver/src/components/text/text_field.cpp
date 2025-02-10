@@ -21,7 +21,6 @@
 #include "components/text/text_field.hpp"
 #include "components/cursor.hpp"
 #include "components/text/move/default_caret_move_strategy.hpp"
-#include "events/focus_event.hpp"
 #include "events/key_event.hpp"
 #include "events/mouse_event.hpp"
 
@@ -370,18 +369,16 @@ component_t* text_field_t::handleKeyEvent(key_event_t& ke)
 	return this;
 }
 
-component_t* text_field_t::handleFocusEvent(focus_event_t& fe)
+bool text_field_t::isFocused() const
 {
-	if(fe.type == FOCUS_EVENT_GAINED)
-	{
-		focused = true;
-	}
-	else
-	{
-		focused = false;
-	}
+	return this->focused;
+}
+
+
+void text_field_t::setFocusedInternal(bool focused)
+{
+	this->focused = focused;
 	markFor(COMPONENT_REQUIREMENT_PAINT);
-	return this;
 }
 
 component_t* text_field_t::handleMouseEvent(mouse_event_t& me)

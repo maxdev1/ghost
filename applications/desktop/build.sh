@@ -7,7 +7,8 @@ fi
 
 # Build configuration
 ARTIFACT_NAME="desktop.bin"
-LDFLAGS="-lproperties -lwindow -lcairo -lfreetype -lpixman-1 -lpng -lz"
+CFLAGS_ADD="-I$SYSROOT_SYSTEM_INCLUDE/freetype2"
+LDFLAGS="-lproperties -lfont -lwindow -lcairo -lfreetype -lpixman-1 -lpng -lz"
 
 # Include application build tasks
 . "../applications.sh"

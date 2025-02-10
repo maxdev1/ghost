@@ -22,11 +22,6 @@
 #include <cairo/cairo.h>
 #include <stdlib.h>
 
-background::background(uint32_t id):
-	g_canvas(id), dragItems(false)
-{
-}
-
 background* background::create()
 {
 	auto instance = createCanvasComponent<background>();
@@ -43,7 +38,7 @@ void background::init()
 		paint();
 	});
 
-	this->setMouseListener([this](g_ui_component_mouse_event* e)
+	this->addMouseListener([this](g_ui_component_mouse_event* e)
 	{
 		auto position = e->position;
 		if(e->type == G_MOUSE_EVENT_MOVE)

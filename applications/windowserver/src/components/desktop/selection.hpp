@@ -23,7 +23,7 @@
 
 #include "components/component.hpp"
 
-class selection_t : public component_t
+class selection_t : virtual public component_t
 {
   public:
 	virtual void paint();

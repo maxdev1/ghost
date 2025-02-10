@@ -18,22 +18,28 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef LIBWINDOW_PROPERTIES
-#define LIBWINDOW_PROPERTIES
+#ifndef __LIBWINDOW_FOCUSABLE_COMPONENT__
+#define __LIBWINDOW_FOCUSABLE_COMPONENT__
 
-/**
- * Properties may have a different meaning for each component. They are
- * used to simplify configuring components from a client application.
- */
+#include <bits/std_function.h>
 
-#define G_UI_PROPERTY_MOVABLE			1
-#define G_UI_PROPERTY_RESIZABLE			2
-#define G_UI_PROPERTY_SECURE			3
-#define G_UI_PROPERTY_ENABLED			4
-#define G_UI_PROPERTY_LAYOUT_MANAGER	5
-#define G_UI_PROPERTY_BACKGROUND        6
-#define G_UI_PROPERTY_COLOR             7
-#define G_UI_PROPERTY_ALIGNMENT         8
-#define G_UI_PROPERTY_FOCUSED           9
+#include "interface.hpp"
+#include "component.hpp"
+
+class g_focusable_component : virtual public g_component
+{
+protected:
+    explicit g_focusable_component(g_ui_component_id id) : g_component(id)
+    {
+    }
+
+public:
+    ~g_focusable_component() override = default;
+
+    virtual bool setFocused(bool focused);
+    virtual bool isFocused();
+
+    virtual void addFocusListener(std::function<void(bool)> callback);
+};
 
 #endif

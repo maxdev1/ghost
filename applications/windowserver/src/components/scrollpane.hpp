@@ -24,7 +24,7 @@
 #include "components/component.hpp"
 #include "components/scrollbar.hpp"
 
-class scrollpane_t : public component_t, public scroll_handler_t
+class scrollpane_t : virtual public component_t, public scroll_handler_t
 {
     component_t* content = nullptr;
     g_point scrollPosition = g_point(0, 0);

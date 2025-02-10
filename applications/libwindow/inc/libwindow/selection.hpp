@@ -23,15 +23,14 @@
 
 #include "component.hpp"
 
-class g_selection : public g_component
+class g_selection : virtual public g_component
 {
-  protected:
-	g_selection(uint32_t id) : g_component(id)
-	{
-	}
+public:
+    explicit g_selection(g_ui_component_id id) : g_component(id)
+    {
+    }
 
-  public:
-	static g_selection* create();
+    static g_selection* create();
 };
 
 #endif

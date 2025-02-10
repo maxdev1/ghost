@@ -24,7 +24,7 @@
 #include "components/component.hpp"
 #include <libwindow/color_argb.hpp>
 
-class panel_t : public component_t
+class panel_t : virtual public component_t
 {
     g_color_argb background;
 

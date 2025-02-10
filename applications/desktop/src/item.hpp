@@ -25,17 +25,18 @@
 #include <libwindow/label.hpp>
 #include <cairo/cairo.h>
 
-class item : public g_canvas
+class item : virtual public g_canvas
 {
 protected:
     cairo_surface_t* iconSurface = nullptr;
     g_label* label = nullptr;
     std::string application;
-    explicit item(uint32_t id);
 
     void init(std::string name, std::string icon, std::string application);
 
 public:
+    explicit item(uint32_t id);
+
     bool hover = false;
     bool selected = false;
     g_point dragOffset;

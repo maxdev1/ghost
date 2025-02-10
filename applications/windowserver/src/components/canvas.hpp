@@ -44,7 +44,7 @@ struct async_resizer_info_t
     canvas_t* canvas;
 };
 
-class canvas_t : public component_t
+class canvas_t : virtual public component_t
 {
     g_pid partnerProcess;
     async_resizer_info_t* asyncInfo;

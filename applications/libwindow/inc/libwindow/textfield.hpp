@@ -21,23 +21,20 @@
 #ifndef LIBWINDOW_TEXTFIELD
 #define LIBWINDOW_TEXTFIELD
 
-#include <cstdint>
-
 #include "component.hpp"
 #include "titled_component.hpp"
 
-class g_textfield : public g_component, public g_titled_component
+class g_textfield : virtual public g_component, virtual public g_titled_component
 {
-  protected:
-	g_textfield(uint32_t id) : g_component(id), g_titled_component(id)
-	{
-	}
+public:
+    explicit g_textfield(g_ui_component_id id) : g_component(id), g_titled_component(id)
+    {
+    }
 
-  public:
-	static g_textfield *create();
+    static g_textfield* create();
 
-	void setSecure(bool secure);
-	bool isSecure();
+    void setSecure(bool secure);
+    bool isSecure();
 };
 
 #endif

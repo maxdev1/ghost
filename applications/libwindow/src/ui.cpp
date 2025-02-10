@@ -96,18 +96,42 @@ g_ui_open_status g_ui::open()
 /**
  *
  */
+bool g_ui::addListener(g_ui_component_id id, g_ui_component_event_type eventType)
+{
+	g_message_transaction tx = g_get_message_tx_id();
+
+	g_ui_component_add_listener_request request;
+	request.header.id = G_UI_PROTOCOL_ADD_LISTENER;
+	request.id = id;
+	request.target_thread = g_ui_event_dispatcher_tid;
+	request.event_type = eventType;
+	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_add_listener_request), tx);
+
+	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_add_listener_response);
+	uint8_t buffer[bufferSize];
+	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	{
+		auto response = (g_ui_component_add_listener_response*) G_MESSAGE_CONTENT(buffer);
+		return response->status == G_UI_PROTOCOL_SUCCESS;
+	}
+	return false;
+}
+
+/**
+ *
+ */
 void g_ui::eventDispatchThread()
 {
-	size_t buffer_size = G_UI_MAXIMUM_MESSAGE_SIZE;
-	uint8_t* buffer = new uint8_t[buffer_size];
+	size_t bufLen = G_UI_MAXIMUM_MESSAGE_SIZE;
+	auto buf = new uint8_t[bufLen];
 
 	while(true)
 	{
-		auto stat = g_receive_message(buffer, buffer_size);
+		auto stat = g_receive_message(buf, bufLen);
 		if(stat == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 		{
 			// event message
-			g_ui_component_event_header* event_header = (g_ui_component_event_header*) G_MESSAGE_CONTENT(buffer);
+			auto event_header = (g_ui_component_event_header*) G_MESSAGE_CONTENT(buf);
 			g_component* component = g_component_registry::get(event_header->component_id);
 
 			if(component == nullptr)
@@ -124,7 +148,7 @@ void g_ui::eventDispatchThread()
 		}
 	}
 
-	delete buffer;
+	delete buf;
 }
 
 /**

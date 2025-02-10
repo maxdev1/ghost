@@ -23,8 +23,10 @@
 #include <math.h>
 #include <libfont/text_alignment.hpp>
 #include <libwindow/color_argb.hpp>
+#include <helper.hpp>
 
 item::item(uint32_t id):
+	g_component(id),
 	g_canvas(id)
 {
 	this->setBufferListener([this]()
@@ -58,17 +60,6 @@ void item::init(std::string name, std::string icon, std::string application)
 	this->addChild(label);
 }
 
-static void roundedRectangle(cairo_t* cr, double x, double y, double width, double height, double radius)
-{
-	double degrees = M_PI / 180.0;
-	cairo_new_sub_path(cr);
-	cairo_arc(cr, x + width - radius, y + radius, radius, -90 * degrees, 0 * degrees);
-	cairo_arc(cr, x + width - radius, y + height - radius, radius, 0 * degrees, 90 * degrees);
-	cairo_arc(cr, x + radius, y + height - radius, radius, 90 * degrees, 180 * degrees);
-	cairo_arc(cr, x + radius, y + radius, radius, 180 * degrees, 270 * degrees);
-	cairo_close_path(cr);
-}
-
 void item::paint()
 {
 	auto cr = this->acquireGraphics();
@@ -86,7 +77,7 @@ void item::paint()
 	if(hover || selected)
 	{
 		cairo_save(cr);
-		roundedRectangle(cr, 3, 3, bounds.width - 6, bounds.height - 6, 5);
+		cairo_rounded_rectangle(cr, 3, 3, bounds.width - 6, bounds.height - 6, 5);
 		cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, selected ? 0.5 : 0.3);
 		cairo_fill(cr);
 		cairo_restore(cr);

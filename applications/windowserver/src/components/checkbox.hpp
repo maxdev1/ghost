@@ -27,7 +27,7 @@
 #define DEFAULT_BOX_SIZE 20
 #define DEFAULT_BOX_TEXT_GAP 5
 
-class checkbox_t : public component_t
+class checkbox_t : virtual public component_t
 {
     label_t label;
     bool checked;

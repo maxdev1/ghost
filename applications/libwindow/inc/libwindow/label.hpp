@@ -25,15 +25,14 @@
 #include "titled_component.hpp"
 #include <libfont/text_alignment.hpp>
 
-class g_label : public g_component, public g_titled_component
+class g_label : virtual public g_component, virtual public g_titled_component
 {
-protected:
-    g_label(uint32_t id) :
+public:
+    explicit g_label(g_ui_component_id id) :
         g_component(id), g_titled_component(id)
     {
     }
 
-public:
     static g_label* create();
 
     bool setColor(g_color_argb argb);

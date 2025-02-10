@@ -37,7 +37,7 @@ enum class text_field_visual_status_t : uint8_t
     HOVERED
 };
 
-class text_field_t : public text_component_t, public titled_component_t
+class text_field_t : virtual public text_component_t, virtual public titled_component_t
 {
     std::string text;
     text_field_visual_status_t visualStatus;
@@ -70,13 +70,19 @@ public:
 
     component_t* handleKeyEvent(key_event_t& e) override;
     component_t* handleMouseEvent(mouse_event_t& e) override;
-    component_t* handleFocusEvent(focus_event_t& e) override;
 
     bool getNumericProperty(int property, uint32_t* out) override;
     bool setNumericProperty(int property, uint32_t value) override;
 
     void setText(std::string text) override;
     std::string getText() override;
+
+    bool isFocusable() const override
+    {
+        return true;
+    }
+    bool isFocused() const override;
+    void setFocusedInternal(bool focused) override;
 
     virtual void setSecure(bool secure);
 
@@ -85,7 +91,7 @@ public:
         return secure;
     }
 
-    void setTitle(std::string title) override
+    void setTitleInternal(std::string title) override
     {
         setText(title);
     }

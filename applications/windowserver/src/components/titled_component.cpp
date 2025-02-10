@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,10 +18,21 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "events/focus_event.hpp"
-#include "components/component.hpp"
+#include "titled_component.hpp"
+#include "event_listener_info.hpp"
+#include <cstring>
 
-component_t* focus_event_t::visit(component_t* component)
+void titled_component_t::setTitle(std::string title)
 {
-    return component->handleFocusEvent(*this);
+	setTitleInternal(title);
+
+	this->callForListeners(G_UI_COMPONENT_EVENT_TYPE_TITLE, [title](event_listener_info_t& info)
+	{
+		auto event = new g_ui_component_title_event;
+		event->header.type = G_UI_COMPONENT_EVENT_TYPE_TITLE;
+		event->header.component_id = info.component_id;
+		strncpy(event->title, title.c_str(), G_UI_COMPONENT_TITLE_MAXIMUM);
+		g_send_message(info.target_thread, event, sizeof(g_ui_component_title_event));
+		delete event;
+	});
 }

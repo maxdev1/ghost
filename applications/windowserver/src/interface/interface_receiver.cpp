@@ -228,24 +228,25 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 		responseMessage = response;
 		responseLength = sizeof(g_ui_component_set_visible_response);
 	}
-	else if(requestUiMessage->id == G_UI_PROTOCOL_SET_LISTENER)
+	else if(requestUiMessage->id == G_UI_PROTOCOL_ADD_LISTENER)
 	{
-		auto request = (g_ui_component_set_listener_request*) requestUiMessage;
+		auto request = (g_ui_component_add_listener_request*) requestUiMessage;
 		component_t* component = component_registry_t::get(request->id);
 
-		auto response = new g_ui_component_set_listener_response;
+		auto response = new g_ui_component_add_listener_response;
 		if(component == nullptr)
 		{
+			klog("failed to attach listener since component doesn't exist");
 			response->status = G_UI_PROTOCOL_FAIL;
 		}
 		else
 		{
-			component->setListener(request->event_type, request->target_thread, request->id);
+			component->addListener(request->event_type, request->target_thread, request->id);
 			response->status = G_UI_PROTOCOL_SUCCESS;
 		}
 
 		responseMessage = response;
-		responseLength = sizeof(g_ui_component_set_listener_response);
+		responseLength = sizeof(g_ui_component_add_listener_response);
 	}
 	else if(requestUiMessage->id == G_UI_PROTOCOL_SET_NUMERIC_PROPERTY)
 	{
@@ -394,13 +395,16 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 		{
 			response->status = G_UI_PROTOCOL_SUCCESS;
 
-			auto canvas = (canvas_t*) component;
-			canvas->setZIndex(1);
+			auto canvas = dynamic_cast<canvas_t*>(component);
+			if(canvas)
+			{
+				canvas->setZIndex(1);
 
-			screen_t* screen = windowserver_t::instance()->screen;
-			screen->addChild(canvas);
-			screen->setListener(G_UI_COMPONENT_EVENT_TYPE_WINDOWS, request->target_thread, canvas->id);
-			canvas->setBounds(screen->getBounds());
+				screen_t* screen = windowserver_t::instance()->screen;
+				screen->addChild(canvas);
+				screen->addListener(G_UI_COMPONENT_EVENT_TYPE_WINDOWS, request->target_thread, canvas->id);
+				canvas->setBounds(screen->getBounds());
+			}
 		}
 
 		responseMessage = response;

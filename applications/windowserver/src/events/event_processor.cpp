@@ -24,7 +24,6 @@
 #include "components/text/text_field.hpp"
 #include "components/window.hpp"
 #include "events/event.hpp"
-#include "events/focus_event.hpp"
 #include "events/key_event.hpp"
 #include "events/mouse_event.hpp"
 #include "windowserver.hpp"
@@ -133,54 +132,33 @@ void event_processor_t::processMouseState()
 			// Switch focus
 			if(cursor_t::pressedComponent != cursor_t::focusedComponent)
 			{
-				// Old loses focus
-				auto focusedComponent = component_registry_t::get(cursor_t::focusedComponent);
-				if(focusedComponent)
-				{
-					focus_event_t focusLostEvent;
-					focusLostEvent.type = FOCUS_EVENT_LOST;
-					focusLostEvent.newFocusedComponent = cursor_t::pressedComponent;
-					instance->dispatchUpwards(focusedComponent, focusLostEvent);
-
-					// Post event to client
-					event_listener_info_t listenerInfo;
-					if(focusedComponent->getListener(G_UI_COMPONENT_EVENT_TYPE_FOCUS, listenerInfo))
-					{
-						g_ui_component_focus_event focus_event;
-						focus_event.header.type = G_UI_COMPONENT_EVENT_TYPE_FOCUS;
-						focus_event.header.component_id = listenerInfo.component_id;
-						focus_event.now_focused = false;
-						g_send_message(listenerInfo.target_thread, &focus_event, sizeof(g_ui_component_focus_event));
-					}
-				}
-
-				// Bring hit components window to front
-				window_t* parentWindow = pressedComponent->getWindow();
-				if(parentWindow != 0)
-				{
-					parentWindow->bringToFront();
-				}
+				auto unfocusedComponent = component_registry_t::get(cursor_t::focusedComponent);
+				auto newFocusedComponent = pressedComponent->setFocused(true);
 
 				// New gains focus
-				focus_event_t focusGainedEvent;
-				focusGainedEvent.type = FOCUS_EVENT_GAINED;
-				focusGainedEvent.newFocusedComponent = cursor_t::pressedComponent;
-				auto newFocusedComponent = instance->dispatchUpwards(pressedComponent, focusGainedEvent);
 				if(newFocusedComponent)
 				{
 					cursor_t::focusedComponent = newFocusedComponent->id;
-				}
 
-				// Post event to client
-				event_listener_info_t listenerInfo;
-				if(newFocusedComponent && newFocusedComponent->getListener(
-						   G_UI_COMPONENT_EVENT_TYPE_FOCUS, listenerInfo))
-				{
-					g_ui_component_focus_event focus_event;
-					focus_event.header.type = G_UI_COMPONENT_EVENT_TYPE_FOCUS;
-					focus_event.header.component_id = listenerInfo.component_id;
-					focus_event.now_focused = true;
-					g_send_message(listenerInfo.target_thread, &focus_event, sizeof(g_ui_component_focus_event));
+					window_t* unfocusedWindow = nullptr;
+					// Old loses focus
+					if(unfocusedComponent)
+					{
+						unfocusedComponent->setFocused(false);
+						unfocusedWindow = unfocusedComponent->getWindow();
+					}
+
+					// Window handling
+					window_t* newFocusedWindow = pressedComponent->getWindow();
+					if(unfocusedWindow && newFocusedWindow != unfocusedWindow && unfocusedWindow != unfocusedComponent)
+					{
+						unfocusedWindow->setFocused(false);
+					}
+					if(newFocusedWindow && newFocusedWindow != newFocusedComponent)
+					{
+						newFocusedWindow->bringToFront();
+						newFocusedWindow->setFocused(true);
+					}
 				}
 			}
 		}

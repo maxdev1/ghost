@@ -23,20 +23,26 @@
 
 #include <libwindow/canvas.hpp>
 #include <libwindow/selection.hpp>
+#include <libwindow/window.hpp>
+#include <libfont/text_layouter.hpp>
 #include <vector>
 
 struct taskbar_entry
 {
-    g_ui_component_id window;
+    g_window* window;
     std::string title;
+    bool focused;
+    bool hovered;
+    g_rectangle onView;
 };
 
 class taskbar : public g_canvas
 {
-    std::vector<taskbar_entry> entries;
+    g_user_mutex entriesLock = g_mutex_initialize_r(true);
+    std::vector<taskbar_entry*> entries;
+    g_layouted_text* textLayoutBuffer;
 
 protected:
-    explicit taskbar(g_ui_component_id id);
     void init();
 
     void onMouseMove(const g_point& position);
@@ -44,8 +50,11 @@ protected:
     void onMouseLeftPress(const g_point& position, int clickCount);
     void onMouseDrag(const g_point& position);
     void onMouseRelease(const g_point& position);
+    void onMouseLeave(const g_point& position);
 
 public:
+    explicit taskbar(g_ui_component_id id);
+
     ~taskbar() override = default;
     static taskbar* create();
 

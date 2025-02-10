@@ -26,9 +26,7 @@
 bool g_component::addChild(g_component* child)
 {
 	if(!g_ui_initialized)
-	{
-		return 0;
-	}
+		return false;
 
 	// send initialization request
 	g_message_transaction tx = g_get_message_tx_id();
@@ -45,7 +43,7 @@ bool g_component::addChild(g_component* child)
 
 	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		g_ui_component_add_child_response* response = (g_ui_component_add_child_response*) G_MESSAGE_CONTENT(buffer);
+		auto response = (g_ui_component_add_child_response*) G_MESSAGE_CONTENT(buffer);
 		if(response->status == G_UI_PROTOCOL_SUCCESS)
 		{
 			return true;
@@ -55,12 +53,10 @@ bool g_component::addChild(g_component* child)
 	return false;
 }
 
-bool g_component::setBounds(g_rectangle rect)
+bool g_component::setBounds(const g_rectangle& rect)
 {
 	if(!g_ui_initialized)
-	{
-		return 0;
-	}
+		return false;
 
 	// send initialization request
 	g_message_transaction tx = g_get_message_tx_id();
@@ -73,25 +69,22 @@ bool g_component::setBounds(g_rectangle rect)
 
 	// read response
 	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_set_bounds_response);
-	uint8_t* buffer = new uint8_t[bufferSize];
+	uint8_t buffer[bufferSize];
 
 	bool success = false;
 	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		g_ui_component_set_bounds_response* response = (g_ui_component_set_bounds_response*) G_MESSAGE_CONTENT(buffer);
+		auto response = (g_ui_component_set_bounds_response*) G_MESSAGE_CONTENT(buffer);
 		success = response->status == G_UI_PROTOCOL_SUCCESS;
 	}
 
-	delete buffer;
 	return success;
 }
 
 g_rectangle g_component::getBounds()
 {
 	if(!g_ui_initialized)
-	{
 		return g_rectangle();
-	}
 
 	// send initialization request
 	g_message_transaction tx = g_get_message_tx_id();
@@ -103,27 +96,23 @@ g_rectangle g_component::getBounds()
 
 	// read response
 	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_get_bounds_response);
-	uint8_t* buffer = new uint8_t[bufferSize];
+	uint8_t buffer[bufferSize];
 
 	g_rectangle result;
 	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		g_ui_component_get_bounds_response* response = (g_ui_component_get_bounds_response*) G_MESSAGE_CONTENT(buffer);
+		auto response = (g_ui_component_get_bounds_response*) G_MESSAGE_CONTENT(buffer);
 		if(response->status == G_UI_PROTOCOL_SUCCESS)
 			result = response->bounds;
 	}
 
-	delete buffer;
 	return result;
 }
 
 bool g_component::setVisible(bool visible)
 {
-
 	if(!g_ui_initialized)
-	{
-		return 0;
-	}
+		return false;
 
 	// send initialization request
 	g_message_transaction tx = g_get_message_tx_id();
@@ -140,7 +129,7 @@ bool g_component::setVisible(bool visible)
 
 	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		g_ui_component_set_visible_response* response = (g_ui_component_set_visible_response*)
+		auto response = (g_ui_component_set_visible_response*)
 				G_MESSAGE_CONTENT(buffer);
 		if(response->status == G_UI_PROTOCOL_SUCCESS)
 		{
@@ -153,11 +142,8 @@ bool g_component::setVisible(bool visible)
 
 bool g_component::setNumericProperty(int property, uint32_t value)
 {
-
 	if(!g_ui_initialized)
-	{
 		return false;
-	}
 
 	// send initialization request
 	g_message_transaction tx = g_get_message_tx_id();
@@ -171,27 +157,23 @@ bool g_component::setNumericProperty(int property, uint32_t value)
 
 	// read response
 	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_set_numeric_property_response);
-	uint8_t* buffer = new uint8_t[bufferSize];
+	uint8_t buffer[bufferSize];
 
 	bool success = false;
 	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		g_ui_component_set_numeric_property_response* response = (g_ui_component_set_numeric_property_response*)
+		auto response = (g_ui_component_set_numeric_property_response*)
 				G_MESSAGE_CONTENT(buffer);
 		success = (response->status == G_UI_PROTOCOL_SUCCESS);
 	}
 
-	delete buffer;
 	return success;
 }
 
 bool g_component::getNumericProperty(int property, uint32_t* out)
 {
-
 	if(!g_ui_initialized)
-	{
 		return false;
-	}
 
 	// send initialization request
 	g_message_transaction tx = g_get_message_tx_id();
@@ -204,12 +186,12 @@ bool g_component::getNumericProperty(int property, uint32_t* out)
 
 	// read response
 	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_get_numeric_property_response);
-	uint8_t* buffer = new uint8_t[bufferSize];
+	uint8_t buffer[bufferSize];
 
 	bool success = false;
 	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		g_ui_component_get_numeric_property_response* response = (g_ui_component_get_numeric_property_response*)
+		auto response = (g_ui_component_get_numeric_property_response*)
 				G_MESSAGE_CONTENT(buffer);
 
 		if(response->status == G_UI_PROTOCOL_SUCCESS)
@@ -219,44 +201,22 @@ bool g_component::getNumericProperty(int property, uint32_t* out)
 		}
 	}
 
-	delete buffer;
 	return success;
 }
 
-bool g_component::setListener(g_ui_component_event_type eventType, g_listener* newListener)
+bool g_component::addListener(g_ui_component_event_type eventType, g_listener* newListener)
 {
 	if(!g_ui_initialized)
 		return false;
 
-	g_mutex_acquire(listenersLock);
-	listeners[eventType] = newListener;
-	g_mutex_release(listenersLock);
-
 	if(newListener == nullptr)
 		return false;
 
-	// send request
-	g_message_transaction tx = g_get_message_tx_id();
+	g_mutex_acquire(listenersLock);
+	listeners[eventType].push_back(newListener);
+	g_mutex_release(listenersLock);
 
-	g_ui_component_set_listener_request request;
-	request.header.id = G_UI_PROTOCOL_SET_LISTENER;
-	request.id = this->id;
-	request.target_thread = g_ui_event_dispatcher_tid;
-	request.event_type = eventType;
-	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_set_listener_request), tx);
-
-	// read response
-	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_set_listener_response);
-	uint8_t buffer[bufferSize];
-
-	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
-	{
-		auto response = (g_ui_component_set_listener_response*)
-				G_MESSAGE_CONTENT(buffer);
-		return response->status == G_UI_PROTOCOL_SUCCESS;
-	}
-
-	return false;
+	return g_ui::addListener(this->id, eventType);
 }
 
 void g_component::handle(g_ui_component_event_header* header)
@@ -264,9 +224,13 @@ void g_component::handle(g_ui_component_event_header* header)
 	auto eventType = header->type;
 
 	g_mutex_acquire(listenersLock);
-	if(listeners.count(eventType) > 0)
+	auto it = listeners.find(eventType);
+	if(it != listeners.end())
 	{
-		listeners[eventType]->process(header);
+		for(auto& listener: it->second)
+		{
+			listener->process(header);
+		}
 	}
 	else
 	{
@@ -275,14 +239,14 @@ void g_component::handle(g_ui_component_event_header* header)
 	g_mutex_release(listenersLock);
 }
 
-bool g_component::setMouseListener(g_mouse_listener* listener)
+bool g_component::addMouseListener(g_mouse_listener* listener)
 {
-	return setListener(G_UI_COMPONENT_EVENT_TYPE_MOUSE, listener);
+	return addListener(G_UI_COMPONENT_EVENT_TYPE_MOUSE, listener);
 }
 
-bool g_component::setMouseListener(g_mouse_listener_func func)
+bool g_component::addMouseListener(g_mouse_listener_func func)
 {
-	return setListener(G_UI_COMPONENT_EVENT_TYPE_MOUSE, new g_mouse_listener_dispatcher(std::move(func)));
+	return addListener(G_UI_COMPONENT_EVENT_TYPE_MOUSE, new g_mouse_listener_dispatcher(std::move(func)));
 }
 
 bool g_component::setLayout(g_ui_layout_manager layout)

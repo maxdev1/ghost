@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,31 +18,17 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBWINDOW_BOUNDS_EVENT_COMPONENT__
-#define __LIBWINDOW_BOUNDS_EVENT_COMPONENT__
+#include <utility>
 
-#include "interface.hpp"
-#include "listener/bounds_listener.hpp"
+#include "libwindow/component.hpp"
+#include "libwindow/bounding_component.hpp"
 
-/**
- * Component that is capable of receiving bounds events
- */
-class g_bounds_event_component
+bool g_bounding_component::setBoundsListener(g_bounds_listener* new_listener)
 {
-    g_ui_component_id id;
+	return self->addListener(G_UI_COMPONENT_EVENT_TYPE_BOUNDS, new_listener);
+}
 
-protected:
-    g_component* self;
-
-    g_bounds_event_component(g_component* self, g_ui_component_id id) : self(self), id(id)
-    {
-    }
-
-public:
-    virtual ~g_bounds_event_component() = default;
-
-    bool setBoundsListener(g_bounds_listener* l);
-    bool setBoundsListener(g_bounds_listener_func func);
-};
-
-#endif
+bool g_bounding_component::setBoundsListener(g_bounds_listener_func func)
+{
+	return self->addListener(G_UI_COMPONENT_EVENT_TYPE_BOUNDS, new g_bounds_listener_dispatcher(std::move(func)));
+}

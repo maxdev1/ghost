@@ -45,7 +45,7 @@ struct g_canvas_buffer_info
  * A canvas is a simple component that offers a buffer to the creator for arbitrary painting. This buffer automatically
  * resizes when the bounds of the component change, so it is crucial to always keep track of which buffer to paint to.
  */
-class g_canvas : public g_component
+class g_canvas : virtual public g_component
 {
 protected:
     g_canvas_buffer_info currentBuffer{};
@@ -57,11 +57,6 @@ protected:
      */
     g_canvas_buffer_listener* bufferListener = nullptr;
 
-    explicit g_canvas(g_ui_component_id id) :
-        g_component(id)
-    {
-    }
-
     /**
      * Template method that implementing classes can use to create their own
      * canvas and automatically register all required listeners.
@@ -71,12 +66,17 @@ protected:
     {
         auto instance = createComponent<COMPONENT_TYPE, G_UI_COMPONENT_TYPE_CANVAS>();
         if (instance)
-            instance->setListener(G_UI_COMPONENT_EVENT_TYPE_CANVAS_NEW_BUFFER,
+            instance->addListener(G_UI_COMPONENT_EVENT_TYPE_CANVAS_NEW_BUFFER,
                                   new g_canvas_buffer_listener_internal(instance));
         return instance;
     }
 
 public:
+    explicit g_canvas(g_ui_component_id id) :
+        g_component(id)
+    {
+    }
+
     static g_canvas* create();
 
     void acknowledgeNewBuffer(g_address address, uint16_t width, uint16_t height);
@@ -105,12 +105,12 @@ public:
 
     void setDesktopListener(g_desktop_canvas_listener* l)
     {
-        this->setListener(G_UI_COMPONENT_EVENT_TYPE_WINDOWS, l);
+        this->addListener(G_UI_COMPONENT_EVENT_TYPE_WINDOWS, l);
     }
 
     void setDesktopListener(g_desktop_canvas_listener_func func)
     {
-        this->setListener(G_UI_COMPONENT_EVENT_TYPE_WINDOWS, new g_desktop_canvas_listener_dispatcher(std::move(func)));
+        this->addListener(G_UI_COMPONENT_EVENT_TYPE_WINDOWS, new g_desktop_canvas_listener_dispatcher(std::move(func)));
     }
 };
 

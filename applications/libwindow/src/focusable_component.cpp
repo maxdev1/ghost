@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,33 +18,25 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __WINDOWSERVER_EVENTS_FOCUSEVENT__
-#define __WINDOWSERVER_EVENTS_FOCUSEVENT__
+#include <utility>
 
-#include "events/event.hpp"
-#include <stdint.h>
-#include <libwindow/interface.hpp>
+#include "libwindow/focusable_component.hpp"
+#include "libwindow/properties.hpp"
+#include "libwindow/listener/focus_listener.hpp"
 
-enum focus_event_type_t
+bool g_focusable_component::isFocused()
 {
-    FOCUS_EVENT_NONE,
-    FOCUS_EVENT_GAINED,
-    FOCUS_EVENT_LOST
-};
+	uint32_t out;
+	getNumericProperty(G_UI_PROPERTY_FOCUSED, &out);
+	return out == 1;
+}
 
-class focus_event_t : public event_t
+bool g_focusable_component::setFocused(bool focused)
 {
-  public:
-    focus_event_type_t type;
-    g_ui_component_id newFocusedComponent;
+	return setNumericProperty(G_UI_PROPERTY_FOCUSED, focused ? 1 : 0);
+}
 
-    focus_event_t() : type(FOCUS_EVENT_NONE), newFocusedComponent(-1)
-    {
-    }
-
-    virtual ~focus_event_t() {}
-
-    virtual component_t* visit(component_t* component);
-};
-
-#endif
+void g_focusable_component::addFocusListener(std::function<void(bool)> func)
+{
+	this->addListener(G_UI_COMPONENT_EVENT_TYPE_FOCUS, new g_focus_listener_dispatcher(std::move(func)));
+}

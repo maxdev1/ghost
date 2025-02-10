@@ -121,7 +121,7 @@ void label_t::paint()
 	graphics.releaseContext();
 }
 
-void label_t::setTitle(std::string newText)
+void label_t::setTitleInternal(std::string newText)
 {
 	text = newText;
 	markFor(COMPONENT_REQUIREMENT_UPDATE);

@@ -74,7 +74,7 @@ bool gui_screen_t::createUi()
 	canvas.component = g_canvas::create();
 	canvas.component->setBufferListener(new canvas_buffer_listener_t(this));
 	canvas.component->setBoundsListener(new canvas_resize_bounds_listener_t(this));
-	canvas.component->setListener(G_UI_COMPONENT_EVENT_TYPE_KEY, new input_key_listener_t(this));
+	canvas.component->addListener(G_UI_COMPONENT_EVENT_TYPE_KEY, new input_key_listener_t(this));
 
 	window->setLayout(G_UI_LAYOUT_MANAGER_GRID);
 	window->addChild(canvas.component);
@@ -83,7 +83,7 @@ bool gui_screen_t::createUi()
 	window->setBounds(windowBounds);
 	window->setVisible(true);
 
-	window->setListener(G_UI_COMPONENT_EVENT_TYPE_FOCUS, new terminal_focus_listener_t(this));
+	window->addListener(G_UI_COMPONENT_EVENT_TYPE_FOCUS, new terminal_focus_listener_t(this));
 
 	window->onClose([this]()
 	{

@@ -29,6 +29,8 @@
 #include <bits/std_function.h>
 #include <libwindow/color_argb.hpp>
 
+#include "focusable_component.hpp"
+
 /**
  * constants for border sizes
  */
@@ -55,19 +57,21 @@ enum window_resize_mode_t
 /**
  *
  */
-class window_t : public component_t, public titled_component_t
+class window_t :
+    virtual public component_t,
+    virtual public titled_component_t
 {
     int borderWidth;
     int cornerSize;
     g_color_argb backgroundColor;
     bool resizable;
+    bool focused;
 
     label_t label;
     panel_t panel;
 
     bool crossPressed;
     bool crossHovered;
-    bool focused;
 
     g_point pressPoint;
     g_rectangle pressBounds;
@@ -111,13 +115,20 @@ public:
     void layout() override;
     void paint() override;
 
-    component_t* handleFocusEvent(focus_event_t& e) override;
     component_t* handleMouseEvent(mouse_event_t& e) override;
+
+    bool isFocusable() const override
+    {
+        return true;
+    }
+
+    bool isFocused() const override;
+    void setFocusedInternal(bool focused) override;
 
     bool getNumericProperty(int property, uint32_t* out) override;
     bool setNumericProperty(int property, uint32_t value) override;
 
-    void setTitle(std::string title) override;
+    void setTitleInternal(std::string title) override;
     std::string getTitle() override;
 
     void onTitleChanged(const std::function<void()>& callback)

@@ -22,15 +22,22 @@
 #define LIBWINDOW_WINDOW
 
 #include "component.hpp"
+#include "focusable_component.hpp"
 #include "titled_component.hpp"
 
-class g_window : public g_component, public g_titled_component
+class g_window :
+    virtual public g_component,
+    virtual public g_titled_component,
+    virtual public g_focusable_component
 {
-protected:
-    explicit g_window(uint32_t id);
-
 public:
+    explicit g_window(g_ui_component_id id):
+        g_component(id), g_titled_component(id), g_focusable_component(id)
+    {
+    }
+
     static g_window* create();
+    static g_window* attach(g_ui_component_id id);
 
     bool isResizable();
     void setResizable(bool resizable);

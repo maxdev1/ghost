@@ -88,11 +88,11 @@ void g_text_layouter::layout(cairo_t* cr, const char* text, g_font* font, int si
     // free old buffer
     if(previous_glyph_buffer != nullptr && layout->glyph_buffer != previous_glyph_buffer)
     {
-        free(previous_glyph_buffer);
+        cairo_glyph_free(previous_glyph_buffer);
     }
     if(previous_cluster_buffer != nullptr && layout->cluster_buffer != previous_cluster_buffer)
     {
-        free(previous_cluster_buffer);
+        cairo_text_cluster_free(previous_cluster_buffer);
     }
 
     // clear layout entries

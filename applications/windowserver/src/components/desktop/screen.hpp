@@ -25,7 +25,7 @@
 
 #include <libwindow/metrics/rectangle.hpp>
 
-class screen_t : public component_t
+class screen_t: virtual public component_t
 {
     g_rectangle invalid;
 

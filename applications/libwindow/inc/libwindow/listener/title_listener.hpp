@@ -18,22 +18,42 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef LIBWINDOW_PROPERTIES
-#define LIBWINDOW_PROPERTIES
+#ifndef LIBWINDOW_TITLELISTENER
+#define LIBWINDOW_TITLELISTENER
 
-/**
- * Properties may have a different meaning for each component. They are
- * used to simplify configuring components from a client application.
- */
+#include "libwindow/listener/listener.hpp"
+#include <functional>
+#include <utility>
+#include <bits/std_function.h>
 
-#define G_UI_PROPERTY_MOVABLE			1
-#define G_UI_PROPERTY_RESIZABLE			2
-#define G_UI_PROPERTY_SECURE			3
-#define G_UI_PROPERTY_ENABLED			4
-#define G_UI_PROPERTY_LAYOUT_MANAGER	5
-#define G_UI_PROPERTY_BACKGROUND        6
-#define G_UI_PROPERTY_COLOR             7
-#define G_UI_PROPERTY_ALIGNMENT         8
-#define G_UI_PROPERTY_FOCUSED           9
+typedef std::function<void(std::string)> g_title_listener_func;
+
+class g_title_listener : public g_listener
+{
+public:
+    ~g_title_listener() override = default;
+
+    void process(g_ui_component_event_header* header) override
+    {
+        handleTitleEvent((g_ui_component_title_event*)header);
+    }
+
+    virtual void handleTitleEvent(g_ui_component_title_event* e) = 0;
+};
+
+class g_title_listener_dispatcher : public g_title_listener
+{
+    g_title_listener_func func;
+
+public:
+    explicit g_title_listener_dispatcher(g_title_listener_func func) : func(std::move(func))
+    {
+    };
+
+    void handleTitleEvent(g_ui_component_title_event* e) override
+    {
+        func(std::string(e->title));
+    }
+};
 
 #endif

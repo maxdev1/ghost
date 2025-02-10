@@ -21,7 +21,6 @@
 #include <calculator.hpp>
 #include <libwindow/button.hpp>
 #include <libwindow/label.hpp>
-#include <libwindow/listener/action_listener.hpp>
 #include <libwindow/textfield.hpp>
 #include <libwindow/ui.hpp>
 #include <libwindow/window.hpp>
@@ -29,6 +28,7 @@
 #include <algorithm>
 #include <sstream>
 
+g_window* window;
 g_textfield* display;
 g_button* but1;
 g_button* but2;
@@ -51,14 +51,13 @@ double totalValue = 0;
 double currentValue = 0;
 int previousCommand = COM_NONE;
 
-int main(int argc, char** argv)
+int main()
 {
-
 	g_ui_open_status open_stat = g_ui::open();
 
 	if(open_stat == G_UI_OPEN_STATUS_SUCCESSFUL)
 	{
-		g_window* window = g_window::create();
+		window = g_window::create();
 		window->setTitle("Calculator");
 		window->setResizable(false);
 		window->onClose([]()
@@ -149,6 +148,7 @@ void pad_button_pressed(int num)
 	std::stringstream str;
 	str << currentValue;
 	display->setTitle(str.str());
+	window->setTitle(std::string("Calculator - " + str.str()));
 
 	if(previousCommand == COM_EQ || previousCommand == COM_CLEAR || previousCommand == COM_NONE)
 	{
@@ -161,7 +161,6 @@ void pad_button_pressed(int num)
  */
 void command_pressed(int command)
 {
-
 	butPlus->setEnabled(true);
 	butMinus->setEnabled(true);
 	butMult->setEnabled(true);
@@ -209,6 +208,7 @@ void command_pressed(int command)
 		std::stringstream ss;
 		ss << totalValue;
 		display->setTitle(ss.str());
+		window->setTitle(std::string("Calculator - " + ss.str()));
 	}
 	else if(command == COM_CLEAR)
 	{
@@ -217,6 +217,7 @@ void command_pressed(int command)
 			totalValue = 0;
 		}
 		display->setTitle("0");
+		window->setTitle(std::string("Calculator"));
 	}
 
 	currentValue = 0;

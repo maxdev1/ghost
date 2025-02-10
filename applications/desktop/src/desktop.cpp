@@ -41,15 +41,15 @@ int main()
 	background = background::create();
 	g_ui::registerDesktopCanvas(background);
 
-	// g_dimension screenDimension;
-	// g_ui::getScreenDimension(screenDimension);
-	// taskbar = taskbar::create();
-	// taskbar->setBounds(g_rectangle(0, screenDimension.height - 50, screenDimension.width, 50));
-	// background->addChild(taskbar);
-	// background->setDesktopListener([](g_ui_windows_event* event)
-	// {
-	// 	taskbar->handleDesktopEvent(event);
-	// });
+	g_dimension screenDimension;
+	g_ui::getScreenDimension(screenDimension);
+	taskbar = taskbar::create();
+	taskbar->setBounds(g_rectangle(0, screenDimension.height - 40, screenDimension.width, 40));
+	background->addChild(taskbar);
+	background->setDesktopListener([](g_ui_windows_event* event)
+	{
+		taskbar->handleDesktopEvent(event);
+	});
 
 	desktopLoadItems();
 

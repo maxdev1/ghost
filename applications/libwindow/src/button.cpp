@@ -29,12 +29,12 @@ g_button* g_button::create()
 
 void g_button::setEnabled(bool enabled)
 {
-	g_component::setNumericProperty(G_UI_PROPERTY_ENABLED, enabled);
+	setNumericProperty(G_UI_PROPERTY_ENABLED, enabled);
 }
 
 bool g_button::isEnabled()
 {
 	uint32_t value;
-	g_component::getNumericProperty(G_UI_PROPERTY_ENABLED, &value);
+	getNumericProperty(G_UI_PROPERTY_ENABLED, &value);
 	return value;
 }

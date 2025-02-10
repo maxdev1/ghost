@@ -28,10 +28,9 @@
 #include <libwindow/selection.hpp>
 #include <vector>
 
-class background : public g_canvas
+class background : virtual public g_canvas
 {
 protected:
-    explicit background(uint32_t id);
     void init();
 
     std::vector<item*> items;
@@ -46,6 +45,12 @@ protected:
     void onMouseRelease(const g_point& position);
 
 public:
+    explicit background(g_ui_component_id id):
+        g_component(id),
+        g_canvas(id), dragItems(false)
+    {
+    }
+
     ~background() override = default;
     static background* create();
 

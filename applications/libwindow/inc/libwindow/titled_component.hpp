@@ -21,22 +21,25 @@
 #ifndef __LIBWINDOW_TITLED_COMPONENT__
 #define __LIBWINDOW_TITLED_COMPONENT__
 
+#include <bits/std_function.h>
+
 #include "interface.hpp"
+#include "component.hpp"
 
-class g_titled_component
+class g_titled_component : virtual public g_component
 {
-    uint32_t id;
-
 protected:
-    explicit g_titled_component(uint32_t id) : id(id)
+    explicit g_titled_component(g_ui_component_id id) : g_component(id)
     {
     }
 
 public:
-    virtual ~g_titled_component() = default;
+    ~g_titled_component() override = default;
 
     virtual bool setTitle(std::string title);
     virtual std::string getTitle();
+
+    virtual void addTitleListener(std::function<void(std::string)> callback);
 };
 
 #endif

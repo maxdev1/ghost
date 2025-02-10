@@ -18,18 +18,19 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "components/bounds_event_component.hpp"
+#include "components/bounding_component.hpp"
 #include "components/component.hpp"
 
-void bounds_event_component_t::fireBoundsChange(g_rectangle& bounds)
+void bounding_component_t::setBounds(const g_rectangle& bounds)
 {
-	event_listener_info_t listener_info;
-	if(self->getListener(G_UI_COMPONENT_EVENT_TYPE_BOUNDS, listener_info))
+	setBoundsInternal(bounds);
+
+	self->callForListeners(G_UI_COMPONENT_EVENT_TYPE_BOUNDS, [bounds](event_listener_info_t& info)
 	{
 		g_ui_component_bounds_event bounds_event;
 		bounds_event.header.type = G_UI_COMPONENT_EVENT_TYPE_BOUNDS;
-		bounds_event.header.component_id = listener_info.component_id;
+		bounds_event.header.component_id = info.component_id;
 		bounds_event.bounds = bounds;
-		g_send_message(listener_info.target_thread, &bounds_event, sizeof(g_ui_component_bounds_event));
-	}
+		g_send_message(info.target_thread, &bounds_event, sizeof(g_ui_component_bounds_event));
+	});
 }

@@ -19,22 +19,21 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <cstring>
+#include <utility>
 
 #include "libwindow/titled_component.hpp"
 #include "libwindow/ui.hpp"
+#include "libwindow/listener/title_listener.hpp"
 
 bool g_titled_component::setTitle(std::string title)
 {
-
 	if(!g_ui_initialized)
-	{
-		return 0;
-	}
+		return false;
 
 	// send initialization request
 	g_message_transaction tx = g_get_message_tx_id();
 
-	g_ui_component_set_title_request* request = new g_ui_component_set_title_request();
+	auto request = new g_ui_component_set_title_request();
 	request->header.id = G_UI_PROTOCOL_SET_TITLE;
 	request->id = this->id;
 
@@ -61,7 +60,7 @@ bool g_titled_component::setTitle(std::string title)
 	bool success = false;
 	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		g_ui_component_set_title_response* response = (g_ui_component_set_title_response*) G_MESSAGE_CONTENT(buffer);
+		auto response = (g_ui_component_set_title_response*) G_MESSAGE_CONTENT(buffer);
 		success = (response->status == G_UI_PROTOCOL_SUCCESS);
 	}
 
@@ -71,11 +70,8 @@ bool g_titled_component::setTitle(std::string title)
 
 std::string g_titled_component::getTitle()
 {
-
 	if(!g_ui_initialized)
-	{
-		return 0;
-	}
+		return "";
 
 	// send initialization request
 	g_message_transaction tx = g_get_message_tx_id();
@@ -87,12 +83,12 @@ std::string g_titled_component::getTitle()
 
 	// read response
 	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_get_title_response);
-	uint8_t* buffer = new uint8_t[bufferSize];
+	auto buffer = new uint8_t[bufferSize];
 
 	std::string title = "";
 	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		g_ui_component_get_title_response* response = (g_ui_component_get_title_response*) G_MESSAGE_CONTENT(buffer);
+		auto response = (g_ui_component_get_title_response*) G_MESSAGE_CONTENT(buffer);
 		if(response->status == G_UI_PROTOCOL_SUCCESS)
 		{
 			title = std::string(response->title);
@@ -101,4 +97,9 @@ std::string g_titled_component::getTitle()
 
 	delete buffer;
 	return title;
+}
+
+void g_titled_component::addTitleListener(std::function<void(std::string)> func)
+{
+	this->addListener(G_UI_COMPONENT_EVENT_TYPE_TITLE, new g_title_listener_dispatcher(std::move(func)));
 }

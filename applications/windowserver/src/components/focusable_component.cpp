@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,22 +18,29 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef LIBWINDOW_PROPERTIES
-#define LIBWINDOW_PROPERTIES
+#include "components/focusable_component.hpp"
+#include "components/component.hpp"
 
-/**
- * Properties may have a different meaning for each component. They are
- * used to simplify configuring components from a client application.
- */
+component_t* focusable_component_t::setFocused(bool focused)
+{
+	if(isFocusable())
+	{
+		setFocusedInternal(focused);
 
-#define G_UI_PROPERTY_MOVABLE			1
-#define G_UI_PROPERTY_RESIZABLE			2
-#define G_UI_PROPERTY_SECURE			3
-#define G_UI_PROPERTY_ENABLED			4
-#define G_UI_PROPERTY_LAYOUT_MANAGER	5
-#define G_UI_PROPERTY_BACKGROUND        6
-#define G_UI_PROPERTY_COLOR             7
-#define G_UI_PROPERTY_ALIGNMENT         8
-#define G_UI_PROPERTY_FOCUSED           9
+		self->callForListeners(G_UI_COMPONENT_EVENT_TYPE_FOCUS, [focused](event_listener_info_t& info)
+		{
+			g_ui_component_focus_event event;
+			event.header.type = G_UI_COMPONENT_EVENT_TYPE_FOCUS;
+			event.header.component_id = info.component_id;
+			event.now_focused = focused;
+			g_send_message(info.target_thread, &event, sizeof(g_ui_component_focus_event));
+		});
 
-#endif
+		return self;
+	}
+
+	auto parent = self->getParent();
+	if(parent)
+		return parent->setFocused(focused);
+	return nullptr;
+}

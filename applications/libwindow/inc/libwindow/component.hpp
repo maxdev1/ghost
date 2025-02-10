@@ -22,9 +22,10 @@
 #define LIBWINDOW_COMPONENT
 
 #include <cstdint>
-#include <map>
+#include <unordered_map>
+#include <vector>
 
-#include "bounds_event_component.hpp"
+#include "bounding_component.hpp"
 #include "component_registry.hpp"
 #include "interface.hpp"
 #include "listener/mouse_listener.hpp"
@@ -35,35 +36,21 @@
 /**
  * Template class for all components. Implements the basic component functionalities such as creation and bounds handling.
  */
-class g_component : public g_bounds_event_component
+class g_component : public g_bounding_component
 {
 protected:
     g_ui_component_id id;
 
     g_user_mutex listenersLock = g_mutex_initialize_r(true);
-    std::map<g_ui_component_event_type, g_listener*> listeners;
-
-    g_component(g_ui_component_id id) : id(id), g_bounds_event_component(this, id)
-    {
-    }
+    std::unordered_map<g_ui_component_event_type, std::vector<g_listener*>> listeners;
 
     ~g_component() override = default;
-
-    template <typename T>
-    struct g_concrete : T
-    {
-        explicit g_concrete(g_ui_component_id id) : T(id)
-        {
-        }
-    };
 
     template <typename COMPONENT_TYPE, g_ui_component_type COMPONENT_CONSTANT>
     static COMPONENT_TYPE* createComponent()
     {
         if (!g_ui_initialized)
-        {
-            return 0;
-        }
+            return nullptr;
 
         g_message_transaction tx = g_get_message_tx_id();
         g_ui_create_component_request request;
@@ -74,21 +61,35 @@ protected:
         size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_create_component_response);
         uint8_t buffer[bufferSize];
 
-        g_concrete<COMPONENT_TYPE>* component = nullptr;
+        COMPONENT_TYPE* component = nullptr;
         if (g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
         {
             auto response = (g_ui_create_component_response*)G_MESSAGE_CONTENT(buffer);
 
             if (response->status == G_UI_PROTOCOL_SUCCESS)
             {
-                component = new g_concrete<COMPONENT_TYPE>(response->id);
-                g_component_registry::add(component);
+                component = attachComponent<COMPONENT_TYPE>(response->id);
             }
         }
         return component;
     }
 
+    template <typename COMPONENT_TYPE>
+    static COMPONENT_TYPE* attachComponent(g_ui_component_id id)
+    {
+        if (!g_ui_initialized)
+            return nullptr;
+
+        auto component = new COMPONENT_TYPE(id);
+        g_component_registry::add(component);
+        return component;
+    }
+
 public:
+    explicit g_component(g_ui_component_id id) : id(id), g_bounding_component(this)
+    {
+    }
+
     g_ui_component_id getId() const
     {
         return id;
@@ -96,7 +97,7 @@ public:
 
     bool addChild(g_component* c);
 
-    bool setBounds(g_rectangle rect);
+    bool setBounds(const g_rectangle& rect);
     g_rectangle getBounds();
 
     bool setVisible(bool visible);
@@ -105,9 +106,9 @@ public:
     bool setNumericProperty(int property, uint32_t value);
     bool getNumericProperty(int property, uint32_t* out);
 
-    bool setListener(g_ui_component_event_type eventType, g_listener* listener);
-    bool setMouseListener(g_mouse_listener* listener);
-    bool setMouseListener(g_mouse_listener_func listener);
+    bool addListener(g_ui_component_event_type eventType, g_listener* listener);
+    bool addMouseListener(g_mouse_listener* listener);
+    bool addMouseListener(g_mouse_listener_func listener);
 
     void handle(g_ui_component_event_header* header);
 

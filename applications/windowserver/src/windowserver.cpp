@@ -93,7 +93,7 @@ void windowserver_t::launch()
 	g_rectangle screenBounds(0, 0, resolution.width, resolution.height);
 	createVitalComponents(screenBounds);
 
-	// test_t::createTestComponents();
+	test_t::createTestComponents();
 
 	g_create_task((void*) &interfaceRegistrationThread);
 	g_create_task((void*) &startOtherTasks);
@@ -255,9 +255,7 @@ component_t* windowserver_t::dispatchUpwards(component_t* component, event_t& ev
 	g_point initialPosition;
 	locatable_t* locatable = dynamic_cast<locatable_t*>(&event);
 	if(locatable)
-	{
 		initialPosition = locatable->position;
-	}
 
 	// check upwards until someone accepts the event
 	component_t* acceptor = component;
@@ -265,15 +263,11 @@ component_t* windowserver_t::dispatchUpwards(component_t* component, event_t& ev
 	{
 		acceptor = acceptor->getParent();
 		if(acceptor == nullptr)
-		{
 			break;
-		}
 
 		// restore position on locatable events
 		if(locatable)
-		{
 			locatable->position = initialPosition;
-		}
 	}
 	return acceptor;
 }

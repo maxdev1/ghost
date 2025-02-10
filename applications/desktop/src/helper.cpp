@@ -18,22 +18,16 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef LIBWINDOW_PROPERTIES
-#define LIBWINDOW_PROPERTIES
+#include "helper.hpp"
+#include <math.h>
 
-/**
- * Properties may have a different meaning for each component. They are
- * used to simplify configuring components from a client application.
- */
-
-#define G_UI_PROPERTY_MOVABLE			1
-#define G_UI_PROPERTY_RESIZABLE			2
-#define G_UI_PROPERTY_SECURE			3
-#define G_UI_PROPERTY_ENABLED			4
-#define G_UI_PROPERTY_LAYOUT_MANAGER	5
-#define G_UI_PROPERTY_BACKGROUND        6
-#define G_UI_PROPERTY_COLOR             7
-#define G_UI_PROPERTY_ALIGNMENT         8
-#define G_UI_PROPERTY_FOCUSED           9
-
-#endif
+void cairo_rounded_rectangle(cairo_t* cr, double x, double y, double width, double height, double radius)
+{
+	double degrees = M_PI / 180.0;
+	cairo_new_sub_path(cr);
+	cairo_arc(cr, x + width - radius, y + radius, radius, -90 * degrees, 0 * degrees);
+	cairo_arc(cr, x + width - radius, y + height - radius, radius, 0 * degrees, 90 * degrees);
+	cairo_arc(cr, x + radius, y + height - radius, radius, 90 * degrees, 180 * degrees);
+	cairo_arc(cr, x + radius, y + radius, radius, 180 * degrees, 270 * degrees);
+	cairo_close_path(cr);
+}

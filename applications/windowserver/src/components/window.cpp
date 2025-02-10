@@ -20,7 +20,6 @@
 
 #include "components/window.hpp"
 #include "components/cursor.hpp"
-#include "events/focus_event.hpp"
 #include "events/mouse_event.hpp"
 #include "windowserver.hpp"
 #include "component_registry.hpp"
@@ -34,11 +33,11 @@
 window_t::window_t() :
 	backgroundColor(RGB(244, 244, 248)), borderWidth(DEFAULT_BORDER_WIDTH), cornerSize(DEFAULT_CORNER_SIZE)
 {
+	focused = false;
 	visible = false;
 	resizable = true;
 	crossHovered = false;
 	crossPressed = false;
-	focused = false;
 
 	shadowSize = 5;
 	padding = 5;
@@ -99,7 +98,7 @@ void window_t::paint()
 	double shadowAlpha = 0.003;
 	double shadowAlphaAdd = 0.003;
 	double addIncr;
-	if(focused)
+	if(isFocused())
 	{
 		addIncr = 0.003;
 	}
@@ -123,7 +122,7 @@ void window_t::paint()
 	                      ARGB_FR_FROM(backgroundColor),
 	                      ARGB_FG_FROM(backgroundColor),
 	                      ARGB_FB_FROM(backgroundColor),
-	                      ARGB_FA_FROM(backgroundColor) * (focused ? 1.0 : 0.9));
+	                      ARGB_FA_FROM(backgroundColor) * (isFocused() ? 1.0 : 0.9));
 	cairo_fill(cr);
 
 	// draw cross
@@ -153,19 +152,15 @@ void window_t::paint()
 	graphics.releaseContext();
 }
 
-component_t* window_t::handleFocusEvent(focus_event_t& fe)
+void window_t::setFocusedInternal(bool focused)
 {
-	if(fe.newFocusedComponent != -1)
-	{
-		auto newFocused = component_registry_t::get(fe.newFocusedComponent);
-		this->focused = (this->id == fe.newFocusedComponent) || (newFocused && newFocused->isChildOf(this));
-	}
-	else
-	{
-		this->focused = false;
-	}
+	this->focused = focused;
 	markFor(COMPONENT_REQUIREMENT_PAINT);
-	return this;
+}
+
+bool window_t::isFocused() const
+{
+	return this->focused;
 }
 
 component_t* window_t::handleMouseEvent(mouse_event_t& me)
@@ -435,20 +430,24 @@ component_t* window_t::handleMouseEvent(mouse_event_t& me)
 			return this;
 		}
 	}
+	else if(me.type == G_MOUSE_EVENT_LEAVE)
+	{
+		cursor_t::set("default");
+	}
 
 	return this;
 }
 
 void window_t::close()
 {
-	event_listener_info_t info;
-	if(getListener(G_UI_COMPONENT_EVENT_TYPE_CLOSE, info))
+	this->callForListeners(G_UI_COMPONENT_EVENT_TYPE_CLOSE, [](event_listener_info_t& info)
 	{
 		g_ui_component_close_event posted_event;
 		posted_event.header.type = G_UI_COMPONENT_EVENT_TYPE_CLOSE;
 		posted_event.header.component_id = info.component_id;
 		g_send_message(info.target_thread, &posted_event, sizeof(g_ui_component_close_event));
-	}
+	});
+
 	setVisible(false);
 }
 
@@ -457,6 +456,12 @@ bool window_t::getNumericProperty(int property, uint32_t* out)
 	if(property == G_UI_PROPERTY_RESIZABLE)
 	{
 		*out = resizable;
+		return true;
+	}
+
+	if(property == G_UI_PROPERTY_FOCUSED)
+	{
+		*out = focused ? 1 : 0;
 		return true;
 	}
 
@@ -480,10 +485,17 @@ bool window_t::setNumericProperty(int property, uint32_t value)
 		return true;
 	}
 
+	if(property == G_UI_PROPERTY_FOCUSED)
+	{
+		focused = value == 1;
+		markFor(COMPONENT_REQUIREMENT_PAINT);
+		return true;
+	}
+
 	return component_t::setNumericProperty(property, value);
 }
 
-void window_t::setTitle(std::string title)
+void window_t::setTitleInternal(std::string title)
 {
 	label.setTitle(title);
 

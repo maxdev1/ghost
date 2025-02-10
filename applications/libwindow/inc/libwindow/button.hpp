@@ -25,18 +25,17 @@
 #include "component.hpp"
 #include "titled_component.hpp"
 
-class g_button : public g_component, public g_titled_component, public g_action_component
+class g_button : virtual public g_component, virtual public g_titled_component, virtual public g_action_component
 {
-  protected:
-	g_button(uint32_t id) : g_component(id), g_titled_component(id), g_action_component(this, id)
-	{
-	}
+public:
+    explicit g_button(g_ui_component_id id) : g_component(id), g_titled_component(id), g_action_component(id)
+    {
+    }
 
-  public:
-	static g_button* create();
+    static g_button* create();
 
-	void setEnabled(bool enabled);
-	bool isEnabled();
+    void setEnabled(bool enabled);
+    bool isEnabled();
 };
 
 #endif

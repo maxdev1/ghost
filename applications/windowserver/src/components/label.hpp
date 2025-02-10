@@ -28,9 +28,8 @@
 #include <libfont/text_alignment.hpp>
 #include <libwindow/color_argb.hpp>
 
-class label_t : public component_t, public titled_component_t
+class label_t : virtual public component_t, virtual public titled_component_t
 {
-private:
     g_font* font;
     int fontSize;
     cairo_text_extents_t lastExtents;
@@ -52,7 +51,7 @@ public:
     virtual void setColor(g_color_argb color);
     virtual g_color_argb getColor();
 
-    void setTitle(std::string title) override;
+    void setTitleInternal(std::string title) override;
     std::string getTitle() override;
 
     void setAlignment(g_text_alignment alignment);

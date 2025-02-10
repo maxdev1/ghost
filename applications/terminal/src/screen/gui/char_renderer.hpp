@@ -22,34 +22,34 @@
 #define __TERMINAL_CHAR_RENDERER__
 
 #include <cairo/cairo.h>
-#include <map>
+#include <unordered_map>
 #include <libfont/font.hpp>
 
 #define CHAR_RENDERER_DEFAULT_FONT "consolas"
 
 struct char_layout_t
 {
-	cairo_glyph_t* glyph_buffer = nullptr;
-	int glyph_count = 0;
-	cairo_text_cluster_t* cluster_buffer = nullptr;
-	int cluster_count = 0;
+    cairo_glyph_t* glyph_buffer = nullptr;
+    int glyph_count = 0;
+    cairo_text_cluster_t* cluster_buffer = nullptr;
+    int cluster_count = 0;
 };
 
 
 class char_renderer_t
 {
-	g_font* font;
-	cairo_scaled_font_t* scaledFont = nullptr;
-	cairo_font_options_t* fontOptions = nullptr;
+    g_font* font;
+    cairo_scaled_font_t* scaledFont = nullptr;
+    cairo_font_options_t* fontOptions = nullptr;
 
-	std::map<char, char_layout_t*> charLayoutCache{};
-	char_layout_t* layoutChar(cairo_scaled_font_t* scaledFont, char c);
+    std::unordered_map<char, char_layout_t*> charLayoutCache{};
+    char_layout_t* layoutChar(cairo_scaled_font_t* scaledFont, char c);
 
 public:
-	char_renderer_t();
+    char_renderer_t();
 
-	void prepareContext(cairo_t* cr, double fontSize);
-	void printChar(cairo_t* cr, int x, int y, char c);
+    void prepareContext(cairo_t* cr, double fontSize);
+    void printChar(cairo_t* cr, int x, int y, char c);
 };
 
 

@@ -21,9 +21,9 @@
 #ifndef __WINDOWSERVER_COMPONENTS_COMPONENT__
 #define __WINDOWSERVER_COMPONENTS_COMPONENT__
 
-#include "components/bounds_event_component.hpp"
+#include "components/bounding_component.hpp"
 #include "components/event_listener_info.hpp"
-#include "events/focus_event.hpp"
+#include "focusable_component.hpp"
 #include "events/key_event.hpp"
 #include "events/mouse_event.hpp"
 #include "layout/layout_manager.hpp"
@@ -32,6 +32,8 @@
 #include <libwindow/interface.hpp>
 #include <libwindow/metrics/rectangle.hpp>
 #include <vector>
+#include <bits/std_function.h>
+
 
 // forward declarations
 class window_t;
@@ -74,18 +76,17 @@ public:
 
 struct component_listener_entry_t
 {
-    component_listener_entry_t* previous;
     g_ui_component_event_type type;
     event_listener_info_t info;
-    component_listener_entry_t* next;
 };
 
 /**
  *
  */
-class component_t : public bounds_event_component_t
+class component_t : public bounding_component_t, public focusable_component_t
 {
 protected:
+    g_user_mutex lock = g_mutex_initialize_r(true);
     g_rectangle bounds;
     component_t* parent;
     std::vector<component_child_reference_t> children;
@@ -98,11 +99,9 @@ protected:
     component_requirement_t requirements;
     component_requirement_t childRequirements;
 
-    component_listener_entry_t* listeners = nullptr;
+    std::vector<component_listener_entry_t*> listeners;
 
     int zIndex = 1000;
-
-    g_user_mutex lock = g_mutex_initialize_r(true);
 
     layout_manager_t* layoutManager;
     graphics_t graphics;
@@ -160,7 +159,7 @@ public:
      *
      * @param bounds	the new bounds of the component
      */
-    void setBounds(const g_rectangle& bounds);
+    void setBoundsInternal(const g_rectangle& bounds) override;
 
     /**
      * Returns the bounds of the component.
@@ -259,7 +258,6 @@ public:
 
     virtual component_t* handleMouseEvent(mouse_event_t& event);
     virtual component_t* handleKeyEvent(key_event_t& event);
-    virtual component_t* handleFocusEvent(focus_event_t& event);
 
     virtual void handleBoundChanged(const g_rectangle& oldBounds)
     {
@@ -346,8 +344,8 @@ public:
     virtual bool getNumericProperty(int property, uint32_t* out);
     virtual bool setNumericProperty(int property, uint32_t value);
 
-    void setListener(g_ui_component_event_type eventType, g_tid target_thread, g_ui_component_id id);
-    bool getListener(g_ui_component_event_type eventType, event_listener_info_t& out);
+    void addListener(g_ui_component_event_type eventType, g_tid target_thread, g_ui_component_id id);
+    bool callForListeners(g_ui_component_event_type eventType, const std::function<void(event_listener_info_t&)>& func);
 };
 
 #endif

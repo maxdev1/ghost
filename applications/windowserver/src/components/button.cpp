@@ -20,7 +20,6 @@
 
 #include "components/button.hpp"
 #include "components/window.hpp"
-#include "events/focus_event.hpp"
 #include "events/mouse_event.hpp"
 
 #include <libproperties/parser.hpp>
@@ -29,7 +28,7 @@
 #include <math.h>
 
 button_t::button_t() :
-	insets(g_insets(5, 10, 5, 10)), action_component_t(this)
+	insets(g_insets(5, 10, 5, 10))
 {
 	enabled = true;
 	addChild(&label, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
@@ -164,27 +163,23 @@ component_t* button_t::handleMouseEvent(mouse_event_t& me)
 	return this;
 }
 
-component_t* button_t::handleFocusEvent(focus_event_t& fe)
+void button_t::setFocusedInternal(bool focused)
 {
-	if(enabled)
-	{
-		if(fe.type == FOCUS_EVENT_GAINED)
-		{
-			state.focused = true;
-			markFor(COMPONENT_REQUIREMENT_PAINT);
-			return this;
-		}
-		else if(fe.type == FOCUS_EVENT_LOST)
-		{
-			state.focused = false;
-			markFor(COMPONENT_REQUIREMENT_PAINT);
-			return this;
-		}
-	}
-	return nullptr;
+	state.focused = focused;
+	markFor(COMPONENT_REQUIREMENT_PAINT);
 }
 
-void button_t::setTitle(std::string title)
+bool button_t::isFocusable() const
+{
+	return enabled;
+}
+
+bool button_t::isFocused() const
+{
+	return state.focused;
+}
+
+void button_t::setTitleInternal(std::string title)
 {
 	this->label.setTitle(title);
 }

@@ -25,7 +25,7 @@
 #include "components/text/move/caret_move_strategy.hpp"
 #include <libwindow/metrics/range.hpp>
 
-class text_component_t : public component_t
+class text_component_t : virtual public component_t
 {
 protected:
     caret_move_strategy_t* caretMoveStrategy = nullptr;

@@ -60,13 +60,10 @@ class g_ui
 
 public:
     static g_ui_open_status open();
-
-    static void addListener(g_listener* l);
-    static void removeListener(g_listener* l);
-
     static bool registerDesktopCanvas(g_canvas* c);
-
     static bool getScreenDimension(g_dimension& out);
+
+    static bool addListener(g_ui_component_id id, g_ui_component_event_type eventType);
 };
 
 #endif

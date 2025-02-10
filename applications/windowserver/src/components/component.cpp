@@ -35,9 +35,13 @@
 #include <typeinfo>
 
 component_t::component_t() :
+	bounding_component_t(this),
+	focusable_component_t(this),
 	visible(true),
-	requirements(COMPONENT_REQUIREMENT_ALL), childRequirements(COMPONENT_REQUIREMENT_ALL),
-	parent(nullptr), layoutManager(nullptr), bounds_event_component_t(this)
+	requirements(COMPONENT_REQUIREMENT_ALL),
+	childRequirements(COMPONENT_REQUIREMENT_ALL),
+	parent(nullptr),
+	layoutManager(nullptr)
 {
 	id = component_registry_t::add(this);
 }
@@ -47,7 +51,7 @@ component_t::~component_t()
 	delete layoutManager;
 }
 
-void component_t::setBounds(const g_rectangle& newBounds)
+void component_t::setBoundsInternal(const g_rectangle& newBounds)
 {
 	g_mutex_acquire(lock);
 
@@ -68,9 +72,7 @@ void component_t::setBounds(const g_rectangle& newBounds)
 			graphics.resize(bounds.width, bounds.height);
 		}
 		markFor(COMPONENT_REQUIREMENT_ALL);
-
 		handleBoundChanged(oldBounds);
-		fireBoundsChange(bounds);
 	}
 
 	g_mutex_release(lock);
@@ -251,7 +253,7 @@ component_t* component_t::getComponentAt(g_point p)
 window_t* component_t::getWindow()
 {
 	if(isWindow())
-		return (window_t*) this;
+		return dynamic_cast<window_t*>(this);
 
 	if(parent)
 		return parent->getWindow();
@@ -323,20 +325,22 @@ component_t* component_t::handleMouseEvent(mouse_event_t& event)
 
 	if(!handledByChild)
 	{
-		event_listener_info_t info;
-		if(getListener(G_UI_COMPONENT_EVENT_TYPE_MOUSE, info))
-		{
-			g_ui_component_mouse_event postedEvent;
-			postedEvent.header.type = G_UI_COMPONENT_EVENT_TYPE_MOUSE;
-			postedEvent.header.component_id = info.component_id;
-			postedEvent.position = event.position;
-			postedEvent.type = event.type;
-			postedEvent.buttons = event.buttons;
-			postedEvent.clickCount = event.clickCount;
-			g_send_message(info.target_thread, &postedEvent, sizeof(g_ui_component_mouse_event));
-
-			return component_registry_t::get(info.component_id);
-		}
+		auto handledByListener = this->callForListeners(G_UI_COMPONENT_EVENT_TYPE_MOUSE,
+		                                                [event](event_listener_info_t& info)
+		                                                {
+			                                                g_ui_component_mouse_event postedEvent;
+			                                                postedEvent.header.type = G_UI_COMPONENT_EVENT_TYPE_MOUSE;
+			                                                postedEvent.header.component_id = info.component_id;
+			                                                postedEvent.position = event.position;
+			                                                postedEvent.type = event.type;
+			                                                postedEvent.buttons = event.buttons;
+			                                                postedEvent.clickCount = event.clickCount;
+			                                                g_send_message(
+					                                                info.target_thread, &postedEvent,
+					                                                sizeof(g_ui_component_mouse_event));
+		                                                });
+		if(handledByListener)
+			return this;
 	}
 
 	return handledByChild;
@@ -363,23 +367,23 @@ component_t* component_t::handleKeyEvent(key_event_t& event)
 
 	if(!handledByChild)
 	{
-		event_listener_info_t info;
-		if(getListener(G_UI_COMPONENT_EVENT_TYPE_KEY, info))
-		{
-			g_ui_component_key_event posted_key_event;
-			posted_key_event.header.type = G_UI_COMPONENT_EVENT_TYPE_KEY;
-			posted_key_event.header.component_id = info.component_id;
-			posted_key_event.key_info = event.info;
-			g_send_message(info.target_thread, &posted_key_event, sizeof(g_ui_component_key_event));
-		}
+		auto handledByListener = this->callForListeners(G_UI_COMPONENT_EVENT_TYPE_KEY,
+		                                                [event](event_listener_info_t& info)
+		                                                {
+			                                                g_ui_component_key_event posted_key_event;
+			                                                posted_key_event.header.type =
+					                                                G_UI_COMPONENT_EVENT_TYPE_KEY;
+			                                                posted_key_event.header.component_id = info.component_id;
+			                                                posted_key_event.key_info = event.info;
+			                                                g_send_message(
+					                                                info.target_thread, &posted_key_event,
+					                                                sizeof(g_ui_component_key_event));
+		                                                });
+		if(handledByListener)
+			return this;
 	}
 
 	return handledByChild;
-}
-
-component_t* component_t::handleFocusEvent(focus_event_t& event)
-{
-	return this;
 }
 
 void component_t::setPreferredSize(const g_dimension& size)
@@ -484,39 +488,36 @@ void component_t::resolveRequirement(component_requirement_t req, int lvl)
 	}
 }
 
-void component_t::setListener(g_ui_component_event_type eventType, g_tid target_thread, g_ui_component_id id)
+void component_t::addListener(g_ui_component_event_type eventType, g_tid target_thread, g_ui_component_id id)
 {
-	component_listener_entry_t* entry = new component_listener_entry_t();
+	g_mutex_acquire(lock);
+
+	auto entry = new component_listener_entry_t();
 	entry->info.target_thread = target_thread;
 	entry->info.component_id = id;
-	entry->previous = 0;
 	entry->type = eventType;
+	listeners.push_back(entry);
 
-	if(listeners)
-	{
-		entry->next = listeners;
-		listeners->previous = entry;
-	}
-	else
-	{
-		entry->next = 0;
-	}
-	listeners = entry;
+	g_mutex_release(lock);
 }
 
-bool component_t::getListener(g_ui_component_event_type eventType, event_listener_info_t& out)
+bool component_t::callForListeners(g_ui_component_event_type eventType,
+                                   const std::function<void(event_listener_info_t&)>& func)
 {
-	component_listener_entry_t* entry = listeners;
-	while(entry)
+	g_mutex_acquire(lock);
+
+	bool handled = false;
+	for(auto& entry: listeners)
 	{
 		if(entry->type == eventType)
 		{
-			out = entry->info;
-			return true;
+			func(entry->info);
+			handled = true;
 		}
-		entry = entry->next;
 	}
-	return false;
+
+	g_mutex_release(lock);
+	return handled;
 }
 
 void component_t::clearSurface()

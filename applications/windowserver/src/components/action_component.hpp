@@ -20,8 +20,8 @@
 
 #ifndef __WINDOWSERVER_COMPONENTS_ACTIONCOMPONENT__
 #define __WINDOWSERVER_COMPONENTS_ACTIONCOMPONENT__
+#include "component.hpp"
 
-class component_t;
 class action_component_t;
 
 /**
@@ -40,17 +40,16 @@ public:
  * The component may fire actions which are dispatched to the registered
  * listener for processing.
  */
-class action_component_t
+class action_component_t : virtual public component_t
 {
-    component_t* self;
     internal_action_handler_t* internalHandler;
 
 public:
-    explicit action_component_t(component_t* self) : self(self), internalHandler(nullptr)
+    explicit action_component_t() : internalHandler(nullptr)
     {
     }
 
-    virtual ~action_component_t() = default;
+    ~action_component_t() override = default;
 
     virtual void fireAction();
     virtual void setInternalActionHandler(internal_action_handler_t* handler);
