@@ -94,6 +94,7 @@ void vmsvgaDriverReceiveMessages()
 			{
 				auto updateRequest = (g_vmsvga_update_request*) request;
 				svgaUpdate(updateRequest->x, updateRequest->y, updateRequest->width, updateRequest->height);
+				g_yield();
 			}
 		}
 		else

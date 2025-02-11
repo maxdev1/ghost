@@ -21,6 +21,7 @@
 #include "vmsvga_video_output.hpp"
 #include <libvmsvgadriver/vmsvgadriver.hpp>
 #include <cstdio>
+#include <immintrin.h>
 
 bool g_vmsvga_video_output::initializeWithSettings(uint32_t width, uint32_t height, uint32_t bits)
 {
@@ -40,17 +41,25 @@ void g_vmsvga_video_output::blit(g_rectangle invalid, g_rectangle sourceSize, g_
 	uint16_t bpp = videoModeInformation.bpp;
 	uint8_t* position = ((uint8_t*) videoModeInformation.lfb) + (invalid.y * videoModeInformation.bpsl);
 
-	uint32_t right = invalid.x + invalid.width;
-	uint32_t bottom = invalid.y + invalid.height;
+	int right = invalid.x + invalid.width;
+	int bottom = invalid.y + invalid.height;
 
 	if(bpp == 32)
 	{
 		for(int y = invalid.y; y < bottom; y++)
 		{
+			auto sourceRow = &source[y * sourceSize.width];
+
 			auto position4 = (uint32_t*) position;
-			for(int x = invalid.x; x < right; x++)
+			int x = invalid.x;
+			for(; x < right - 4; x += 4)
 			{
-				position4[x] = source[y * sourceSize.width + x];
+				__m128i data = _mm_loadu_si128((__m128i*) &sourceRow[x]);
+				_mm_storeu_si128((__m128i*) &position4[x], data);
+			}
+			for(; x < right; x++)
+			{
+				position4[x] = sourceRow[x];
 			}
 			position += videoModeInformation.bpsl;
 		}
@@ -71,7 +80,9 @@ void g_vmsvga_video_output::blit(g_rectangle invalid, g_rectangle sourceSize, g_
 	}
 
 	vmsvgaDriverUpdate(invalid.x, invalid.y, invalid.width, invalid.height);
+	g_yield();
 }
+
 
 g_dimension g_vmsvga_video_output::getResolution()
 {

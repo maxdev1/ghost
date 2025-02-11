@@ -204,8 +204,8 @@ void taskbar::paint()
 	}
 	g_mutex_release(entriesLock);
 
-	this->releaseGraphics();
 	this->blit(g_rectangle(0, 0, bounds.width, bounds.height));
+	this->releaseGraphics();
 }
 
 void taskbar::handleDesktopEvent(g_ui_windows_event* event)
@@ -229,6 +229,11 @@ void taskbar::handleDesktopEvent(g_ui_windows_event* event)
 			entry = new taskbar_entry();
 			entry->window = g_window::attach(event->window_id);
 			entry->title = entry->window->getTitle();
+			if(entry->title.length() == 0)
+			{
+				g_sleep(500);
+				entry->title = entry->window->getTitle();
+			}
 			entry->hovered = false;
 			entry->focused = entry->window->isFocused();
 			entry->window->addTitleListener([this, entry](std::string title)

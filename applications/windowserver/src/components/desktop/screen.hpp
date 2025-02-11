@@ -47,12 +47,7 @@ public:
      */
     virtual void markDirty(g_rectangle rect);
 
-    g_rectangle grabInvalid()
-    {
-        g_rectangle ret = invalid;
-        invalid = g_rectangle();
-        return ret;
-    }
+    g_rectangle grabInvalid();
 };
 
 #endif

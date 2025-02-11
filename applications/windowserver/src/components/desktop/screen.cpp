@@ -67,8 +67,9 @@ void screen_t::sendWindowEvent(g_ui_component_id observerId, window_t* window, g
 
 void screen_t::markDirty(g_rectangle rect)
 {
-	// Mark area as invalid
-	if(invalid.x == 0 && invalid.y == 0 && invalid.width == 0 && invalid.height == 0)
+	g_mutex_acquire(lock);
+
+	if(invalid.width == 0 && invalid.height == 0)
 	{
 		invalid = rect;
 	}
@@ -97,4 +98,14 @@ void screen_t::markDirty(g_rectangle rect)
 	{
 		invalid.height = getBounds().height - invalid.y;
 	}
+	g_mutex_release(lock);
+}
+
+g_rectangle screen_t::grabInvalid()
+{
+	g_mutex_acquire(lock);
+	g_rectangle ret = invalid;
+	invalid = g_rectangle();
+	g_mutex_release(lock);
+	return ret;
 }

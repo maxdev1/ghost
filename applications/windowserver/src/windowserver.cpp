@@ -298,7 +298,7 @@ void windowserver_t::fpsCounter()
 {
 	g_task_register_id("windowserver/fps-counter");
 
-	int tenthSeconds = 0;
+	int seconds = 0;
 	for(;;)
 	{
 		if(!debugOn)
@@ -306,14 +306,11 @@ void windowserver_t::fpsCounter()
 			g_sleep(5000);
 			continue;
 		}
-		g_sleep(100);
-		tenthSeconds++;
+
+		g_sleep(1000);
+		seconds++;
 		std::stringstream s;
-		s
-				<< "FPS: " << framesTotal << ", "
-				<< "TIME: "
-				<< "System: " << ((double) g_millis()) / 1000.0 << "s, "
-				<< "Application: " << tenthSeconds / 10;
+		s << "FPS: " << framesTotal << ", Time: " << seconds;
 		instance()->stateLabel->setTitle(s.str());
 		instance()->requestUpdate();
 		framesTotal = 0;
@@ -323,7 +320,7 @@ void windowserver_t::fpsCounter()
 void windowserver_t::setDebug(bool cond)
 {
 	debugOn = cond;
-	// server->stateLabel->setVisible(cond);
+	server->stateLabel->setVisible(cond);
 }
 
 bool windowserver_t::isDebug()
