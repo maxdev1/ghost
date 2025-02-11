@@ -22,7 +22,9 @@
 #define __KERNEL_PROCESSOR__
 
 #include <ghost/stdint.h>
-#include "kernel/tasking/task.hpp"
+
+#define G_SSE_STATE_SIZE       512
+#define G_SSE_STATE_ALIGNMENT  0x10
 
 /**
  * CPUID.1 feature flags
@@ -105,8 +107,17 @@ struct g_processor
     uint32_t id;
     uint32_t hardwareId;
     uint32_t apicId;
-    g_processor* next;
     bool bsp;
+
+    bool sseReady;
+
+    struct
+    {
+        uint8_t* initialStateMem;
+        uint8_t* initialState;
+    } fpu;
+
+    g_processor* next;
 };
 
 /**
@@ -219,10 +230,32 @@ void processorWriteMsr(uint32_t msr, uint32_t lo, uint32_t hi);
 uint32_t processorReadEflags();
 
 /**
+ * Saves the FPU state to the target
  *
+ * @param target the 16-byte aligned target buffer
  */
-void processorSaveFpuState(g_task* task);
+void processorSaveFpuState(uint8_t* target);
 
-void processorRestoreFpuState(g_task* task);
+/**
+ * Restore the FPU state from the source.
+ *
+ * @param source the 16-byte aligned source buffer
+ */
+void processorRestoreFpuState(uint8_t* source);
+
+/**
+ * Checks if a processor feature is available and initialized.
+ *
+ * @param feature the feature to check for
+ * @return whether the feature is available & ready
+ */
+bool processorHasFeatureReady(g_cpuid_standard_edx_feature feature);
+
+/**
+ * Returns a pointer to the FPU state as it was after initialization.
+ *
+ * @return a 16-byte aligned pointer to the buffer
+ */
+const uint8_t* processorGetInitialFpuState();
 
 #endif

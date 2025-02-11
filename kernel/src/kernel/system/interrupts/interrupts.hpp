@@ -21,7 +21,7 @@
 #ifndef __KERNEL_INTERRUPTS__
 #define __KERNEL_INTERRUPTS__
 
-#include "kernel/system/processor/processor.hpp"
+#include "kernel/system/processor/processor_state.hpp"
 
 /**
  * Pauses/resumes interrupts within the same scope.

@@ -21,9 +21,9 @@
 #include "shared/system/mutex.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/system.hpp"
+#include "kernel/system/processor/processor.hpp"
 #include "kernel/tasking/tasking.hpp"
 #include "shared/panic.hpp"
-#include "shared/video/console_video.hpp"
 #include "shared/logger/logger.hpp"
 
 g_spinlock mutexInitializerLock = 0;

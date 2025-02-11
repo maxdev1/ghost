@@ -52,14 +52,22 @@ _checkForCPUID:
 ;
 ; Prepares the necessary CPU flags to enable SSE instructions
 _enableSSE:
-    ctls
+    clts
     fninit
+
     mov eax, cr0
-    and eax, 0xFFFBFFFF
-    or eax, 0x2
+    and eax, ~(1 << 2)  ; clear CR0.EM coprocessor emulation
+    or eax, (1 << 1)    ; set CR0.MP monitor coprocessor
     mov cr0, eax
+
     mov eax, cr4
-    or eax, (3 << 9)
+    or eax, (1 << 9)    ; set CR4.OSFXSR
+    or eax, (1 << 10)   ; set CR4.OSXMMEXCPT
     mov cr4, eax
+
+    push dword 0x1F80
+    ldmxcsr [esp]       ; load default settings to MXCSR
+    add esp, 4
+
 	ret
 

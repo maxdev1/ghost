@@ -22,6 +22,7 @@
 #define __KERNEL_CLOCK__
 
 #include "kernel/filesystem/filesystem.hpp"
+#include "build_config.hpp"
 #include <ghost/tasks/types.h>
 
 struct g_clock_waiter
@@ -43,6 +44,10 @@ struct g_clock_local
 	 * Approximation of milliseconds that this processor has run.
 	 */
 	uint64_t time;
+
+#if G_DEBUG_THREAD_DUMPING
+    uint64_t lastLogTime;
+#endif
 };
 
 /**

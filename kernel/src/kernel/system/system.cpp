@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/system.hpp"
+#include "kernel/calls/syscall.hpp"
 #include "kernel/memory/gdt.hpp"
 #include "kernel/system/acpi/acpi.hpp"
 #include "kernel/system/interrupts/apic/apic.hpp"
@@ -45,6 +46,7 @@ void systemInitializeBsp(g_physical_address initialPdPhys)
 	gdtInitialize();
 
 	interruptsInitializeBsp();
+	syscallRegisterAll();
 	processorFinalizeSetup();
 
 	auto numCores = processorGetNumberOfProcessors();

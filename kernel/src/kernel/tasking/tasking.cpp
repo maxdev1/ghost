@@ -139,6 +139,14 @@ void taskingInitializeLocal()
 
 	mutexInitializeNonInterruptible(&local->lock, __func__);
 
+	schedulerInitializeLocal();
+	taskingCreateEssentialTasks();
+}
+
+void taskingCreateEssentialTasks()
+{
+	g_tasking_local* local = taskingGetLocal();
+
 	g_process* idle = taskingCreateProcess(G_SECURITY_LEVEL_KERNEL);
 	local->scheduling.idleTask =
 			taskingCreateTask((g_virtual_address) taskingIdleThread, idle, G_SECURITY_LEVEL_KERNEL);
@@ -154,8 +162,6 @@ void taskingInitializeLocal()
 	cleanupTask->type = G_TASK_TYPE_VITAL;
 	taskingAssign(taskingGetLocal(), cleanupTask);
 	logInfo("%! core: %i cleanup task: %i", "tasking", processorGetCurrentId(), cleanup->main->id);
-
-	schedulerInitializeLocal();
 }
 
 void taskingProcessAddToTaskList(g_process* process, g_task* task)
@@ -275,7 +281,11 @@ void taskingSaveState(g_task* task, g_processor_state* state)
 	task->state = state;
 
 	// Save FPU state
-	processorSaveFpuState(task);
+	if(task->fpu.state)
+	{
+		processorSaveFpuState(task->fpu.state);
+		task->fpu.stored = true;
+	}
 }
 
 
@@ -304,7 +314,10 @@ void taskingApplySwitch()
 	gdtSetTssEsp0(task->interruptStack.end);
 
 	// Restore FPU state
-	processorRestoreFpuState(task);
+	if(task->fpu.stored)
+	{
+		processorRestoreFpuState(task->fpu.state);
+	}
 }
 
 void taskingSchedule()

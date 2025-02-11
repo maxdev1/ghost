@@ -19,14 +19,13 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/tasking/tasking_memory.hpp"
+#include "kernel/system/system.hpp"
 #include "kernel/memory/lower_heap.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/panic.hpp"
-
-#define G_SSE_STATE_SIZE 512
 
 bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress)
 {
@@ -99,16 +98,21 @@ void taskingMemoryInitialize(g_task* task)
 
 void taskingMemoryInitializeUtility(g_task* task)
 {
-	// Create storage for SSE registers if necessary
 	if(processorHasFeature(g_cpuid_standard_edx_feature::SSE))
 	{
-		uint8_t sseAlignment = 0x10;
-		// TODO Our allocator is currently not capable of aligned allocation so
-		// we just allocate a bit more and remember both pointers for freeing:
-		task->fpu.stateMem = (uint8_t*) heapAllocate(G_SSE_STATE_SIZE + sseAlignment);
-		auto stateAddr = (g_address) task->fpu.stateMem;
-		stateAddr = G_ALIGN_UP(stateAddr, sseAlignment);
-		task->fpu.state = (uint8_t*) stateAddr;
+		// TODO Allocator not capable of aligned allocation
+		task->fpu.stateMem = (uint8_t*) heapAllocate(G_SSE_STATE_SIZE + G_SSE_STATE_ALIGNMENT);
+		task->fpu.state = (uint8_t*) G_ALIGN_UP((g_address) task->fpu.stateMem, G_SSE_STATE_ALIGNMENT);
+
+		if(task->process && task->process->main && task->process->main != task)
+		{
+			memoryCopy(task->fpu.state, task->process->main->fpu.state, G_SSE_STATE_SIZE);
+			task->fpu.stored = true;
+		}
+		else
+		{
+			memoryCopy(task->fpu.state, processorGetInitialFpuState(), G_SSE_STATE_SIZE);
+		}
 	}
 	else
 	{

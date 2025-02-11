@@ -107,6 +107,11 @@ void taskingInitializeAp();
 void taskingInitializeLocal();
 
 /**
+ *
+ */
+void taskingCreateEssentialTasks();
+
+/**
  * Adds a task to the list of scheduled tasks on the given local.
  */
 void taskingAssign(g_tasking_local* local, g_task* task);

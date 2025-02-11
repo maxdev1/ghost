@@ -39,7 +39,8 @@ void _memoryRelocatePhysicalBitmap(g_setup_information* setupInformation)
 	for(uint32_t i = 0; i < bitmapPages; i++)
 	{
 		g_offset off = (i * G_PAGE_SIZE);
-		pagingMapPage(bitmapVirtual + off, setupInformation->bitmapArrayStart + off, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
+		pagingMapPage(bitmapVirtual + off, setupInformation->bitmapArrayStart + off, G_PAGE_TABLE_KERNEL_DEFAULT,
+		              G_PAGE_KERNEL_DEFAULT);
 	}
 	bitmapPageAllocatorRelocate(&memoryPhysicalAllocator, bitmapVirtual);
 }
@@ -114,7 +115,8 @@ void memoryFreeKernelRange(g_virtual_address address)
 	addressRangePoolFree(memoryVirtualRangePool, address);
 }
 
-void memoryOnDemandMapFile(g_process* process, g_fd file, g_offset fileOffset, g_address fileStart, g_ptrsize fileSize, g_ptrsize memorySize)
+void memoryOnDemandMapFile(g_process* process, g_fd file, g_offset fileOffset, g_address fileStart, g_ptrsize fileSize,
+                           g_ptrsize memorySize)
 {
 	g_memory_file_ondemand* mapping = (g_memory_file_ondemand*) heapAllocate(sizeof(g_memory_file_ondemand));
 	mapping->fd = file;

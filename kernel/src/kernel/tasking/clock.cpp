@@ -25,7 +25,7 @@
 #include "kernel/tasking/tasking.hpp"
 #include "shared/panic.hpp"
 
-static g_clock_local* locals = 0;
+static g_clock_local* locals = nullptr;
 
 void clockInitialize()
 {
@@ -36,6 +36,10 @@ void clockInitialize()
 	{
 		mutexInitializeNonInterruptible(&locals[i].lock, __func__);
 		locals[i].waiters = nullptr;
+		locals[i].time = 0;
+#if G_DEBUG_THREAD_DUMPING
+		locals[i].lastLogTime = 0;
+#endif
 	}
 }
 

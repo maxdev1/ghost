@@ -23,6 +23,7 @@
 
 #if G_DEBUG_THREAD_DUMPING
 #include "kernel/tasking/clock.hpp"
+#include "kernel/system/processor/processor.hpp"
 #include "kernel/tasking/tasking_directory.hpp"
 #endif
 
@@ -140,10 +141,9 @@ void schedulerSchedule(g_tasking_local* local)
 	mutexRelease(&local->lock);
 
 #if G_DEBUG_THREAD_DUMPING
-	static int lastLogTime = 0;
-	if((clockGetLocal()->time - lastLogTime) > G_DEBUG_LOG_PAUSE)
+	if((clockGetLocal()->time - clockGetLocal()->lastLogTime) > G_DEBUG_LOG_PAUSE)
 	{
-		lastLogTime = clockGetLocal()->time;
+		clockGetLocal()->lastLogTime = clockGetLocal()->time;
 		schedulerDump();
 	}
 #endif

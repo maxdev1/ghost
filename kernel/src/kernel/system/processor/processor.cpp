@@ -26,10 +26,24 @@
 #include "shared/memory/gdt_macros.hpp"
 #include "shared/panic.hpp"
 
-static g_processor* processors = 0;
+static g_processor* processors = nullptr;
 static uint32_t processorsAvailable = 0;
+static uint32_t* apicIdToProcessorMapping = nullptr;
 
-static uint32_t* apicIdToProcessorMapping = 0;
+/**
+ * @return the current processor structure; only available after all cores have
+ *	been initialized and the system was marked ready
+ */
+g_processor* _processorGetCurrent()
+{
+	auto id = processorGetCurrentId();
+	g_processor* processor = processors;
+	while(processor && id--)
+	{
+		processor = processor->next;
+	}
+	return processor;
+}
 
 void processorInitializeBsp()
 {
@@ -47,12 +61,31 @@ void processorFinalizeSetup()
 	if(processorHasFeature(g_cpuid_standard_edx_feature::SSE))
 	{
 		_enableSSE();
-		logDebug("%! support enabled", "sse");
+		auto core = _processorGetCurrent();
+		core->sseReady = true;
+		logDebug("%! %i: SSE2 support enabled", "cpu", processorGetCurrentId());
+
+		// TODO Allocator not capable of aligned allocation
+		core->fpu.initialStateMem = (uint8_t*) heapAllocate(G_SSE_STATE_SIZE + G_SSE_STATE_ALIGNMENT);
+		core->fpu.initialState = (uint8_t*) G_ALIGN_UP((g_address) core->fpu.initialStateMem, G_SSE_STATE_ALIGNMENT);
+		processorSaveFpuState(core->fpu.initialState);
 	}
 	else
 	{
-		logWarn("%! not supported", "sse");
+		logWarn("%! no SSE support", "cpu");
 	}
+}
+
+bool processorHasFeatureReady(g_cpuid_standard_edx_feature feature)
+{
+	auto processor = _processorGetCurrent();
+	if(!processor)
+		panic("%! tried to check for processor feature while not ready", "cpu");
+
+	if(feature == g_cpuid_standard_edx_feature::SSE || feature == g_cpuid_standard_edx_feature::SSE2)
+		return processor->sseReady;
+
+	return false;
 }
 
 void processorApicIdCreateMappingTable()
@@ -96,7 +129,7 @@ void processorAdd(uint32_t apicId, uint32_t processorHardwareId)
 		existing = existing->next;
 	}
 
-	g_processor* core = (g_processor*) heapAllocate(sizeof(g_processor));
+	auto core = (g_processor*) heapAllocate(sizeof(g_processor));
 	core->id = processorsAvailable;
 	core->hardwareId = processorHardwareId;
 	core->apicId = apicId;
@@ -146,7 +179,7 @@ uint32_t processorGetCurrentIdFromApic()
 
 bool processorListAvailable()
 {
-	return processors != 0;
+	return processors != nullptr;
 }
 
 bool processorSupportsCpuid()
@@ -159,10 +192,6 @@ void processorCpuid(uint32_t code, uint32_t* outA, uint32_t* outB, uint32_t* out
 	asm volatile("cpuid"
 		: "=a"(*outA), "=b"(*outB), "=c"(*outC), "=d"(*outD)
 		: "a"(code));
-}
-
-void processorEnableSSE()
-{
 }
 
 bool processorHasFeature(g_cpuid_standard_edx_feature feature)
@@ -260,29 +289,27 @@ uint32_t processorReadEflags()
 	return eflags;
 }
 
-void processorSaveFpuState(g_task* task)
+void processorSaveFpuState(uint8_t* target)
 {
-	if(task->fpu.state)
-	{
-		asm volatile (
-			"fxsave (%0)"
-			:
-			: "r" (task->fpu.state)
-			: "memory"
-		);
-		task->fpu.stored = true;
-	}
+	asm volatile (
+		"fxsave (%0)"
+		:
+		: "r" (target)
+		: "memory"
+	);
 }
 
-void processorRestoreFpuState(g_task* task)
+void processorRestoreFpuState(uint8_t* source)
 {
-	if(task->fpu.stored)
-	{
-		asm volatile (
-			"fxrstor (%0)"
-			:
-			: "r" (task->fpu.state)
-			: "memory"
-		);
-	}
+	asm volatile (
+		"fxrstor (%0)"
+		:
+		: "r" (source)
+		: "memory"
+	);
+}
+
+const uint8_t* processorGetInitialFpuState()
+{
+	return _processorGetCurrent()->fpu.initialState;
 }

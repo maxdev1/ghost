@@ -20,11 +20,7 @@
 
 #include "kernel/filesystem/filesystem_ramdiskdelegate.hpp"
 #include "kernel/filesystem/ramdisk.hpp"
-
-#include "kernel/kernel.hpp"
 #include "kernel/memory/memory.hpp"
-#include "shared/system/mutex.hpp"
-#include "shared/utils/string.hpp"
 
 g_fs_open_status filesystemRamdiskDelegateOpen(g_fs_node* node, g_file_flag_mode flags)
 {
@@ -58,7 +54,9 @@ g_fs_open_status filesystemRamdiskDelegateDiscover(g_fs_node* parent, const char
 		return G_FS_OPEN_NOT_FOUND;
 	}
 
-	g_fs_node_type nodeType = ramdiskEntry->type == G_RAMDISK_ENTRY_TYPE_FILE ? G_FS_NODE_TYPE_FILE : G_FS_NODE_TYPE_FOLDER;
+	g_fs_node_type nodeType = ramdiskEntry->type == G_RAMDISK_ENTRY_TYPE_FILE
+		                          ? G_FS_NODE_TYPE_FILE
+		                          : G_FS_NODE_TYPE_FOLDER;
 	g_fs_node* newNode = filesystemCreateNode(nodeType, name);
 	newNode->physicalId = ramdiskEntry->id;
 	filesystemAddChild(parent, newNode);
@@ -66,7 +64,8 @@ g_fs_open_status filesystemRamdiskDelegateDiscover(g_fs_node* parent, const char
 	return G_FS_OPEN_SUCCESSFUL;
 }
 
-g_fs_read_status filesystemRamdiskDelegateRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead)
+g_fs_read_status filesystemRamdiskDelegateRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length,
+                                               int64_t* outRead)
 {
 	g_ramdisk_entry* entry = ramdiskFindById(node->physicalId);
 	if(!entry)
@@ -80,7 +79,8 @@ g_fs_read_status filesystemRamdiskDelegateRead(g_fs_node* node, uint8_t* buffer,
 	return G_FS_READ_SUCCESSFUL;
 }
 
-g_fs_write_status filesystemRamdiskDelegateWrite(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote)
+g_fs_write_status filesystemRamdiskDelegateWrite(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length,
+                                                 int64_t* outWrote)
 {
 	g_ramdisk_entry* entry = ramdiskFindById(node->physicalId);
 	if(!entry)
@@ -181,7 +181,9 @@ g_fs_directory_refresh_status filesystemRamdiskDelegateRefreshDir(g_fs_node* dir
 
 		if(!filesystemFindExistingChild(dir, childEntry->name))
 		{
-			g_fs_node_type nodeType = childEntry->type == G_RAMDISK_ENTRY_TYPE_FILE ? G_FS_NODE_TYPE_FILE : G_FS_NODE_TYPE_FOLDER;
+			g_fs_node_type nodeType = childEntry->type == G_RAMDISK_ENTRY_TYPE_FILE
+				                          ? G_FS_NODE_TYPE_FILE
+				                          : G_FS_NODE_TYPE_FOLDER;
 			g_fs_node* newNode = filesystemCreateNode(nodeType, childEntry->name);
 			newNode->physicalId = childEntry->id;
 			filesystemAddChild(dir, newNode);

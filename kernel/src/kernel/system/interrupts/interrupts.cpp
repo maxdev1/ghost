@@ -26,6 +26,7 @@
 #include "kernel/system/interrupts/idt.hpp"
 #include "kernel/system/interrupts/pic.hpp"
 #include "kernel/system/interrupts/requests.hpp"
+#include "kernel/system/processor/processor.hpp"
 #include "kernel/system/timing/pit.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking.hpp"

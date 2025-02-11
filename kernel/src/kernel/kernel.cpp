@@ -26,6 +26,7 @@
 #include "kernel/ipc/pipes.hpp"
 #include "kernel/logger/kernel_logger.hpp"
 #include "kernel/memory/memory.hpp"
+#include "kernel/system/processor/processor.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/system.hpp"
 #include "kernel/tasking/user_mutex.hpp"
@@ -75,14 +76,13 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	mutexAcquire(&bootstrapCoreLock);
 
 	systemInitializeBsp(initialPdPhys);
+	clockInitialize();
 	filesystemInitialize();
 	pipeInitialize();
 	messageInitialize();
 	userMutexInitialize();
-	clockInitialize();
 
 	taskingInitializeBsp();
-	syscallRegisterAll();
 
 	auto initializationProcess = taskingCreateProcess(G_SECURITY_LEVEL_KERNEL);
 	auto initializationTask = taskingCreateTask((g_virtual_address) kernelInitializationThread, initializationProcess,
