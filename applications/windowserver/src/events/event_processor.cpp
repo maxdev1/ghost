@@ -154,10 +154,13 @@ void event_processor_t::processMouseState()
 					{
 						unfocusedWindow->setFocused(false);
 					}
-					if(newFocusedWindow && newFocusedWindow != newFocusedComponent)
+					if(newFocusedWindow)
 					{
 						newFocusedWindow->bringToFront();
-						newFocusedWindow->setFocused(true);
+						if(newFocusedWindow != newFocusedComponent)
+						{
+							newFocusedWindow->setFocused(true);
+						}
 					}
 				}
 			}
