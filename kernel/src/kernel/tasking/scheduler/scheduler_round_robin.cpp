@@ -21,11 +21,9 @@
 #include "kernel/tasking/scheduler/scheduler.hpp"
 #include "shared/logger/logger.hpp"
 
-#if G_DEBUG_THREAD_DUMPING
 #include "kernel/tasking/clock.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/tasking/tasking_directory.hpp"
-#endif
 
 #define G_DEBUG_LOG_PAUSE 5000
 
@@ -151,7 +149,6 @@ void schedulerSchedule(g_tasking_local* local)
 
 #define USAGE(timesScheduled, timesYielded) ((timesScheduled - timesYielded) / (G_DEBUG_LOG_PAUSE / 1000))
 
-#if G_DEBUG_THREAD_DUMPING
 void schedulerDump()
 {
 	g_tasking_local* local = taskingGetLocal();
@@ -196,4 +193,3 @@ void schedulerDump()
 
 	mutexRelease(&local->lock);
 }
-#endif

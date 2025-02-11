@@ -70,4 +70,6 @@ void syscallRegisterTaskIdentifier(g_task* task, g_syscall_task_id_register* dat
 
 void syscallGetTaskForIdentifier(g_task* task, g_syscall_task_id_get* data);
 
+void syscallDump();
+
 #endif

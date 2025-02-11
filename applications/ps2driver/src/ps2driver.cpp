@@ -78,6 +78,11 @@ void ps2MouseCallback(int16_t x, int16_t y, uint8_t flags)
 
 void ps2KeyboardCallback(uint8_t c)
 {
+	if(c == 0x3f) // F5
+	{
+		g_dump();
+	}
+
 	g_write(keyboardWrite, &c, 1);
 
 	if(keyboardPartnerTask != G_TID_NONE)

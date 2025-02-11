@@ -274,3 +274,8 @@ void syscallGetTaskForIdentifier(g_task* task, g_syscall_task_id_get* data)
 {
 	data->resultTaskId = taskingDirectoryGet(data->identifier);
 }
+
+void syscallDump()
+{
+	schedulerDump();
+}

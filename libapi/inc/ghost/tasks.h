@@ -284,6 +284,13 @@ g_get_working_directory_status g_get_working_directory_l(char* buffer, size_t ma
  */
 void g_get_executable_path(char* buffer);
 
+/**
+ * Write a task dump to the kernel log.
+ *
+ * @security-level APPLICATION
+ */
+void g_dump();
+
 __END_C
 
 #endif
