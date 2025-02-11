@@ -139,7 +139,7 @@ void schedulerSchedule(g_tasking_local* local)
 	mutexRelease(&local->lock);
 
 #if G_DEBUG_THREAD_DUMPING
-	if((clockGetLocal()->time - clockGetLocal()->lastLogTime) > G_DEBUG_LOG_PAUSE)
+	if(processorGetCurrentId() == 0 && (clockGetLocal()->time - clockGetLocal()->lastLogTime) > G_DEBUG_LOG_PAUSE)
 	{
 		clockGetLocal()->lastLogTime = clockGetLocal()->time;
 		schedulerDump();
@@ -151,45 +151,61 @@ void schedulerSchedule(g_tasking_local* local)
 
 void schedulerDump()
 {
-	g_tasking_local* local = taskingGetLocal();
-	mutexAcquire(&local->lock);
-
-	auto processorId = processorGetCurrentId();
-	logInfo("%# time on %i: %i", processorId, (uint32_t) clockGetLocal()->time);
-	g_schedule_entry* entry = local->scheduling.list;
-	while(entry)
+	// This only works because the interrupt comes in on CPU0:
+	logInfo("%! printing task dump:", "scheduler");
+	auto firstLocal = taskingGetLocal();
+	auto firstClock = clockGetLocal();
+	for(int i = 0; i < processorGetNumberOfProcessors(); i++)
 	{
-		const char* taskState;
-		if(entry->task->status == G_TASK_STATUS_RUNNING)
+		auto local = &firstLocal[i];
+		auto clock = &firstClock[i];
+		mutexAcquire(&local->lock);
+
+		logInfo("%# processor %i: time %i", i, (uint32_t) clock->time);
+		g_schedule_entry* entry = local->scheduling.list;
+		while(entry)
 		{
-			taskState = "";
-		}
-		else if(entry->task->status == G_TASK_STATUS_DEAD)
-		{
-			taskState = " [dead]";
-		}
-		else if(entry->task->status == G_TASK_STATUS_WAITING)
-		{
-			taskState = " [waiting]";
+			auto task = entry->task;
+			const char* taskState;
+			if(task->status == G_TASK_STATUS_RUNNING)
+			{
+				taskState = "";
+			}
+			else if(task->status == G_TASK_STATUS_DEAD)
+			{
+				taskState = " [dead]";
+			}
+			else if(task->status == G_TASK_STATUS_WAITING)
+			{
+				taskState = " [waiting]";
+			}
+			else
+			{
+				taskState = "?";
+			}
+
+			if(task->status != G_TASK_STATUS_DEAD)
+			{
+				auto identifier = taskingDirectoryGetIdentifier(task->id);
+				logInfo("%# - (%i:%i) usage: %i, %s %s %s", task->process->id, task->id,
+				        USAGE(task->statistics.timesScheduled, task->statistics.timesYielded),
+				        identifier == nullptr ? "" : identifier, taskState,
+				        task->status == G_TASK_STATUS_WAITING ? task->waitsFor : "");
+				task->statistics.timesScheduled = 0;
+				task->statistics.timesYielded = 0;
+			}
+
+			entry = entry->next;
 		}
 
-		if(entry->task->status != G_TASK_STATUS_DEAD)
-		{
-			auto ident = taskingDirectoryGetIdentifier(entry->task->id);
-			logInfo("%# @%i (%i:%i:%s)%s usage: %i", processorId, entry->task->process->id, entry->task->id,
-			        ident == nullptr?"":ident, taskState,
-			        USAGE(entry->task->statistics.timesScheduled, entry->task->statistics.timesYielded));
-			entry->task->statistics.timesScheduled = 0;
-			entry->task->statistics.timesYielded = 0;
-		}
-		entry = entry->next;
+		g_task* idle = local->scheduling.idleTask;
+		logInfo("%# - (%i:%i) usage: %i, idle",
+		        idle->process->id, idle->id,
+		        USAGE(idle->statistics.timesScheduled, idle->statistics.timesYielded)
+				);
+		idle->statistics.timesScheduled = 0;
+		idle->statistics.timesYielded = 0;
+
+		mutexRelease(&local->lock);
 	}
-
-	g_task* idle = local->scheduling.idleTask;
-	logInfo("%# (%i:%i) idle, usage: %i", idle->process->id, idle->id,
-	        USAGE(idle->statistics.timesScheduled, idle->statistics.timesYielded));
-	idle->statistics.timesScheduled = 0;
-	idle->statistics.timesYielded = 0;
-
-	mutexRelease(&local->lock);
 }

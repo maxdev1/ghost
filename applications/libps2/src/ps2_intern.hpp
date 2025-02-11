@@ -41,12 +41,9 @@ ps2_status_t ps2InitializeMouse();
 void ps2WaitForBuffer(ps2_buffer_t mode);
 
 /**
- * IRQ handler that is registered at the kernel to receive interrupt requests.
- *
- * @param value
- * 		value received
+ * Checks for new data from the PS2 device.
  */
-void ps2IrqHandler(uint8_t value);
+void ps2CheckForData();
 
 /**
  * Handles an incoming byte from the mouse.

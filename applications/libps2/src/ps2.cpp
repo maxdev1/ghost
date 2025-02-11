@@ -36,7 +36,7 @@ void (*registeredMouseCallback)(int16_t, int16_t, uint8_t);
 void (*registeredKeyboardCallback)(uint8_t);
 
 ps2_status_t ps2Initialize(void (*mouseCallback)(int16_t, int16_t, uint8_t),
-						   void (*keyboardCallback)(uint8_t))
+                           void (*keyboardCallback)(uint8_t))
 {
 
 	registeredMouseCallback = mouseCallback;
@@ -60,25 +60,37 @@ ps2_status_t ps2Initialize(void (*mouseCallback)(int16_t, int16_t, uint8_t),
 
 void ps2ReadKeyIrq()
 {
+	g_task_register_id("libps2/read-key");
 	uint8_t buf[1];
 	for(;;)
 	{
-		int32_t r = g_read(keyIrqIn, buf, 1);
-		ps2IrqHandler(buf[0]);
+		g_fs_read_status stat;
+		g_read_s(keyIrqIn, buf, 1, &stat);
+		if(stat == G_FS_READ_BUSY)
+		{
+			g_sleep(10);
+		}
+		ps2CheckForData();
 	}
 }
 
 void ps2ReadMouseIrq()
 {
+	g_task_register_id("libps2/read-mouse");
 	uint8_t buf[1];
 	for(;;)
 	{
-		int32_t r = g_read(mouseIrqIn, buf, 1);
-		ps2IrqHandler(buf[0]);
+		g_fs_read_status stat;
+		g_read_s(mouseIrqIn, buf, 1, &stat);
+		if(stat == G_FS_READ_BUSY)
+		{
+			g_sleep(10);
+		}
+		ps2CheckForData();
 	}
 }
 
-void ps2IrqHandler(uint8_t irq)
+void ps2CheckForData()
 {
 	uint8_t status;
 	while(((status = g_io_port_read_byte(G_PS2_STATUS_PORT)) & 0x01) != 0)
@@ -150,48 +162,48 @@ void ps2HandleMouseData(uint8_t value)
 
 	switch(mouse_packet_number)
 	{
-	case 0:
-		mouse_packet_buffer[0] = value;
+		case 0:
+			mouse_packet_buffer[0] = value;
 
-		if((value & 0x08) == 0)
-		{
-			mouse_packet_number = 0; // otherwise restart the cycle
-		}
-		else
-		{
-			mouse_packet_number = 1;
-		}
-		break;
-
-	case 1:
-		mouse_packet_buffer[1] = value;
-		mouse_packet_number = 2;
-		break;
-
-	case 2:
-		mouse_packet_buffer[2] = value;
-
-		int8_t flags = mouse_packet_buffer[0];
-		uint8_t valX = mouse_packet_buffer[1];
-		uint8_t valY = mouse_packet_buffer[2];
-
-		if((flags & (1 << 6)) || (flags & (1 << 7)))
-		{
-			// ignore overflowing values
-		}
-		else
-		{
-			int16_t offX = (valX | ((flags & 0x10) ? 0xFF00 : 0));
-			int16_t offY = (valY | ((flags & 0x20) ? 0xFF00 : 0));
-
-			if(registeredMouseCallback)
+			if((value & 0x08) == 0)
 			{
-				registeredMouseCallback(offX, -offY, flags);
+				mouse_packet_number = 0; // otherwise restart the cycle
 			}
-		}
+			else
+			{
+				mouse_packet_number = 1;
+			}
+			break;
 
-		mouse_packet_number = 0;
-		break;
+		case 1:
+			mouse_packet_buffer[1] = value;
+			mouse_packet_number = 2;
+			break;
+
+		case 2:
+			mouse_packet_buffer[2] = value;
+
+			int8_t flags = mouse_packet_buffer[0];
+			uint8_t valX = mouse_packet_buffer[1];
+			uint8_t valY = mouse_packet_buffer[2];
+
+			if((flags & (1 << 6)) || (flags & (1 << 7)))
+			{
+				// ignore overflowing values
+			}
+			else
+			{
+				int16_t offX = (valX | ((flags & 0x10) ? 0xFF00 : 0));
+				int16_t offY = (valY | ((flags & 0x20) ? 0xFF00 : 0));
+
+				if(registeredMouseCallback)
+				{
+					registeredMouseCallback(offX, -offY, flags);
+				}
+			}
+
+			mouse_packet_number = 0;
+			break;
 	}
 }
 

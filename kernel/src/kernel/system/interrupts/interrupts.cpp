@@ -101,7 +101,10 @@ extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_st
 		_interruptsSendEndOfInterrupt(irq);
 	}
 
-	return taskingGetCurrentTask()->state;
+	auto newTask = taskingGetCurrentTask();
+	if(!newTask || !newTask->state)
+		panic("%! attempted to switch to null task (%x) or state (%x)", "system", newTask, newTask->state);
+	return newTask->state;
 }
 
 void interruptsEnable()

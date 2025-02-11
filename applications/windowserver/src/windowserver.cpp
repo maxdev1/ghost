@@ -111,7 +111,7 @@ void windowserver_t::createVitalComponents(g_rectangle screenBounds)
 	stateLabel = new label_t();
 	stateLabel->setTitle("");
 	stateLabel->setAlignment(g_text_alignment::RIGHT);
-	stateLabel->setVisible(false);
+	stateLabel->setVisible(debugOn);
 	stateLabel->setBounds(g_rectangle(10, screenBounds.height - 100, screenBounds.width - 20, 30));
 	instance()->stateLabel->setColor(RGB(255, 255, 255));
 	screen->addChild(stateLabel);

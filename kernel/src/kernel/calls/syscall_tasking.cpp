@@ -33,8 +33,9 @@
 void syscallSleep(g_task* task, g_syscall_sleep* data)
 {
 	mutexAcquire(&task->lock);
-	clockWaitForTime(task->id, clockGetLocal()->time + data->milliseconds);
 	task->status = G_TASK_STATUS_WAITING;
+	task->waitsFor = "sleeps";
+	clockWaitForTime(task->id, clockGetLocal()->time + data->milliseconds);
 	mutexRelease(&task->lock);
 	taskingYield();
 }
@@ -85,8 +86,9 @@ void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
 void syscallJoin(g_task* task, g_syscall_join* data)
 {
 	mutexAcquire(&task->lock);
-	taskingWaitForExit(data->taskId, task->id);
 	task->status = G_TASK_STATUS_WAITING;
+	task->waitsFor = "sleeps";
+	taskingWaitForExit(data->taskId, task->id);
 	mutexRelease(&task->lock);
 	taskingYield();
 }

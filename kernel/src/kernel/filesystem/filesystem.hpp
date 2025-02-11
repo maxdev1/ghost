@@ -50,8 +50,9 @@ struct g_fs_node
     bool upToDate;
 
     /**
-     * If a note is non-interruptible, it means that during any read or write operations, interrupts will be disabled.
-     * This is important for example for IRQ-device pipes to avoid deadlocking.
+     * If a node is non-interruptible, it means that during any read or write
+     * operations, interrupts will be disabled. This is important for example
+     * for IRQ-device pipes to avoid self-deadlocking.
      */
     bool nonInterruptible;
 };

@@ -523,8 +523,9 @@ g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel)
 	newTask->spawnFinished = false;
 
 	mutexAcquire(&caller->lock);
-	waitQueueAdd(&res.process->waitersSpawn, caller->id);
 	caller->status = G_TASK_STATUS_WAITING;
+	caller->waitsFor = "spawn";
+	waitQueueAdd(&res.process->waitersSpawn, caller->id);
 	taskingAssignBalanced(newTask);
 	mutexRelease(&caller->lock);
 
@@ -532,6 +533,7 @@ g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel)
 	{
 		mutexAcquire(&caller->lock);
 		caller->status = G_TASK_STATUS_WAITING;
+		caller->waitsFor = "spawn-rep";
 		mutexRelease(&caller->lock);
 		taskingYield();
 	}
@@ -581,6 +583,7 @@ void taskingFinalizeSpawn(g_task* task)
 	waitQueueWake(&process->waitersSpawn);
 
 	task->status = G_TASK_STATUS_WAITING;
+	task->waitsFor = "wake-after-spawn";
 	task->spawnFinished = true;
 	taskingSchedule();
 }

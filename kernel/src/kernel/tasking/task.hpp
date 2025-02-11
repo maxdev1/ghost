@@ -156,6 +156,11 @@ struct g_task
      * List of tasks that wait for this task to die.
      */
     g_wait_queue waitersJoin;
+
+    /**
+     * Addition for debugging
+     */
+    const char* waitsFor;
 };
 
 /**

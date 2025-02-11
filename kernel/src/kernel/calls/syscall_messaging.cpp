@@ -30,8 +30,9 @@ void syscallMessageSend(g_task* task, g_syscall_send_message* data)
 	      data->mode == G_MESSAGE_SEND_MODE_BLOCKING)
 	{
 		mutexAcquire(&task->lock);
-		messageWaitForSend(task->id, data->receiver);
 		task->status = G_TASK_STATUS_WAITING;
+		task->waitsFor = "message-send";
+		messageWaitForSend(task->id, data->receiver);
 		mutexRelease(&task->lock);
 		taskingYield();
 	}
@@ -56,6 +57,7 @@ void syscallMessageReceive(g_task* task, g_syscall_receive_message* data)
 
 		mutexAcquire(&task->lock);
 		task->status = G_TASK_STATUS_WAITING;
+		task->waitsFor = "message-recv";
 		mutexRelease(&task->lock);
 		taskingYield();
 	}

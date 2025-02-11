@@ -44,8 +44,9 @@ g_irq_device* requestsGetIrqDevice(uint8_t irq)
 	}
 
 	// Create a pipe if it doesn't exist yet
+	// TODO Not sure if it should be blocking or not...
 	g_fs_node* node;
-	if(filesystemCreatePipe(true, &node, true) != G_FS_PIPE_SUCCESSFUL)
+	if(filesystemCreatePipe(false, &node, true) != G_FS_PIPE_SUCCESSFUL)
 	{
 		logInfo("%! failed to create IO pipe for IRQ %i", "requests", irq);
 		return nullptr;
