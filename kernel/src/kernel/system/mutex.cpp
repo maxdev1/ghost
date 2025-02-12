@@ -91,8 +91,8 @@ void mutexAcquire(g_mutex* mutex)
 	{
 		++deadlock;
 		if(deadlock % 100000 == 0)
-			logInfo("%! long lock on processor %i initialized at %s, owner is: %i", "mutex",
-		        processorGetCurrentId(), mutex->location, mutex->owner);
+			logDebug("%! long lock on processor %i initialized at %s, owner is: %i", "mutex",
+		         processorGetCurrentId(), mutex->location, mutex->owner);
 
 		if(mutex->type == G_MUTEX_TYPE_GLOBAL)
 		{
