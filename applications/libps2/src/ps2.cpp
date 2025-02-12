@@ -93,8 +93,12 @@ void ps2ReadMouseIrq()
 void ps2CheckForData()
 {
 	uint8_t status;
+	int limit = 100;
 	while(((status = g_io_port_read_byte(G_PS2_STATUS_PORT)) & 0x01) != 0)
 	{
+		if(!--limit)
+			break;
+
 		uint8_t value = g_io_port_read_byte(G_PS2_DATA_PORT);
 
 		if((status & 0x20) == 0)
