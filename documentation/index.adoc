@@ -1,6 +1,6 @@
 = Ghost OS
 Max Schlüssel <lokoxe@gmail.com>
-v1.2
+v1.3
 :last-update-label!:
 
 <- link:https://ghostkernel.org/[Back to homepage]
@@ -23,15 +23,16 @@ Contents
 The contents of this documentation are split in sections for each system
 component. On the top of each page there's a link back to this home page.
 
-* *Tooling section*
-	** *<<building#,Building>>* - toolchain & system building instructions
-	** *<<structure#,Project structure>>* - explains the contents of this repository
-* *<<loader#,Loader>>* - initial boot code that loads the kernel to higher memory
-* *Kernel section* - documentation about the kernel itself
+* *Development*
+	** <<building#,Building>> - Toolchain & system building instructions
+	** <<structure#,Project structure>> - Explains the contents of this repository
+	** <<debugging#,Debugging>> - How to debug the kernel
+* *<<loader#,Loader>>* - Initial boot code that loads the kernel to higher memory
+* *Kernel section* - Documentation about the kernel itself
 	** <<tasking#,Tasking>> contains everything about processes and threading
 	** <<memory#,Memory layout>> explains the memory layout
-* *<<libapi#,libapi>>* - documentation for the kernel API wrapper library
-* *<<libc#,libc>>* - documentation for the C library implementation
-* *<<ramdisk-format#,Ramdisk>>* - documentation about the Ramdisk format & generation
-* *<<port#,port.sh>>* - manual for the porting utility
-* *<<spawning#,Spawning>>* - describes process creation
+	** <<spawning#,Spawning>> describes process creation
+* *<<libapi#,libapi>>* - Documentation for the kernel API wrapper library
+* *<<libc#,libc>>* - Documentation for the C library implementation
+* *<<ramdisk-format#,Ramdisk>>* - Documentation about the Ramdisk format & generation
+* *<<port#,port.sh>>* - Manual for the porting utility

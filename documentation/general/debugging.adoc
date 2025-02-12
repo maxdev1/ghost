@@ -1,0 +1,13 @@
+= Debugging
+:toc: left
+include::../common/homelink.adoc[]
+
+== Serial log
+By default, the kernel writes its logs to the serial output 1.
+
+== VirtualBox
+There is a debugger that can be started with VirtualBox:
+
+    VirtualBoxVM.exe --startvm Ghost --debug
+
+Documentation: https://www.virtualbox.org/manual/ch12.html#ts_debugger
