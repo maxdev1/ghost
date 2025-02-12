@@ -28,6 +28,7 @@
 
 g_spinlock mutexInitializerLock = 0;
 #define G_MUTEX_INITIALIZED 0xFEED
+#define G_MUTEX_MAX_PAUSES	1024
 
 #define MUTEX_GUARD                               \
 	if(mutex->initialized != G_MUTEX_INITIALIZED) \
@@ -84,17 +85,27 @@ void mutexAcquire(g_mutex* mutex)
 	}
 
 	int deadlock = 0;
+	uint32_t pauses = 1;
 
 	while(!_mutexTryAcquire(mutex, owner))
 	{
 		++deadlock;
 		if(deadlock % 100000 == 0)
-			logDebug("%! long lock initialized at %s", "mutex", mutex->location);
+			logInfo("%! long lock on processor %i initialized at %s, owner is: %i", "mutex",
+		        processorGetCurrentId(), mutex->location, mutex->owner);
 
 		if(mutex->type == G_MUTEX_TYPE_GLOBAL)
-			asm volatile("pause");
+		{
+			for(uint32_t i = 0; i < pauses; i++)
+				asm volatile("pause");
+			pauses *= 2;
+			if(pauses > G_MUTEX_MAX_PAUSES)
+				pauses = G_MUTEX_MAX_PAUSES;
+		}
 		else
+		{
 			taskingYield();
+		}
 	}
 }
 
