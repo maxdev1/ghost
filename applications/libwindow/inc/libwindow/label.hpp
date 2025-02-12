@@ -23,7 +23,7 @@
 
 #include "component.hpp"
 #include "titled_component.hpp"
-#include <libfont/text_alignment.hpp>
+#include "../../libfont/inc/libfont/text_alignment.hpp" // TODO
 
 class g_label : virtual public g_component, virtual public g_titled_component
 {
