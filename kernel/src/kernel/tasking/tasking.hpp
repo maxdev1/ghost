@@ -191,7 +191,7 @@ void taskingSaveState(g_task* task, g_processor_state* state);
  * Applies the context switch to the task which is the current one for this core. This sets
  * the correct page directory and TLS variables.
  */
-void taskingApplySwitch();
+void taskingRestoreState(g_task* task);
 
 /**
  * Yields control to the next task. This can only be called while no mutexes

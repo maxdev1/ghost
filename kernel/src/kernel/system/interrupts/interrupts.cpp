@@ -104,6 +104,8 @@ extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_st
 	auto newTask = taskingGetCurrentTask();
 	if(!newTask || !newTask->state)
 		panic("%! attempted to switch to null task (%x) or state (%x)", "system", newTask, newTask->state);
+	if(newTask != task)
+		taskingRestoreState(newTask);
 	return newTask->state;
 }
 

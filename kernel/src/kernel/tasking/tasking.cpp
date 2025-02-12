@@ -280,8 +280,11 @@ void taskingSaveState(g_task* task, g_processor_state* state)
 	// Save latest pointer to interrupt stack top
 	task->state = state;
 
+	// Increase interruption counter
+	task->interruptionLevel++;
+
 	// Save FPU state
-	if(task->fpu.state)
+	if(task->interruptionLevel == 0 && task->fpu.state)
 	{
 		processorSaveFpuState(task->fpu.state);
 		task->fpu.stored = true;
@@ -289,13 +292,13 @@ void taskingSaveState(g_task* task, g_processor_state* state)
 }
 
 
-void taskingApplySwitch()
+void taskingRestoreState(g_task* task)
 {
-	g_task* task = taskingGetCurrentTask();
 	if(!task)
-	{
 		panic("%! tried to restore without a current task", "tasking");
-	}
+
+	// Decrease interruption counter
+	task->interruptionLevel--;
 
 	// Switch to process address space
 	if(task->overridePageDirectory)
@@ -314,7 +317,7 @@ void taskingApplySwitch()
 	gdtSetTssEsp0(task->interruptStack.end);
 
 	// Restore FPU state
-	if(task->fpu.stored)
+	if(task->interruptionLevel == 0 && task->fpu.stored)
 	{
 		processorRestoreFpuState(task->fpu.state);
 	}
@@ -322,9 +325,7 @@ void taskingApplySwitch()
 
 void taskingSchedule()
 {
-	auto local = taskingGetLocal();
-	schedulerSchedule(local);
-	taskingApplySwitch();
+	schedulerSchedule(taskingGetLocal());
 }
 
 g_process* taskingCreateProcess(g_security_level securityLevel)
@@ -461,6 +462,7 @@ void taskingInitializeTask(g_task* task, g_process* process, g_security_level le
 	task->process = process;
 	task->securityLevel = level;
 	task->status = G_TASK_STATUS_RUNNING;
+	task->interruptionLevel = 1;
 	waitQueueInitialize(&task->waitersJoin);
 	mutexInitializeNonInterruptible(&task->lock, __func__);
 }

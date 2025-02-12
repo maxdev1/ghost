@@ -19,12 +19,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "shared/logger/logger.hpp"
-#include "kernel/system/interrupts/interrupts.hpp"
-#include "kernel/system/smp.hpp"
-#include "shared/system/mutex.hpp"
 #include "shared/system/spinlock.hpp"
-#include "shared/utils/string.hpp"
-#include "shared/video/console_video.hpp"
+#include "kernel/system/interrupts/interrupts.hpp"
 
 g_spinlock loggerLock = 0;
 
