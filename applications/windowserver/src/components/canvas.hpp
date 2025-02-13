@@ -53,7 +53,7 @@ class canvas_t : virtual public component_t
     buffer_info_t buffer{};
     bool bufferReady = false;
 
-    void createNewBuffer(g_rectangle& bounds, uint32_t size);
+    void createNewBuffer(g_rectangle& bounds, int width, int height);
     void notifyClientAboutNewBuffer();
 
     void checkBuffer();

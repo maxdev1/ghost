@@ -22,8 +22,8 @@
 #include "process_registry.hpp"
 #include "windowserver.hpp"
 
-#include <ghost.h>
 #include <cstring>
+#include <ghost.h>
 
 #define ALIGN_UP(value) (value + value % 100)
 
@@ -67,10 +67,7 @@ void canvas_t::asyncBufferResizer(async_resizer_info_t* asyncInfo)
 /**
  * When the bounds of a canvas are changed, the buffer must be checked.
  */
-void canvas_t::handleBoundChanged(const g_rectangle& oldBounds)
-{
-	g_mutex_release(asyncInfo->checkAtom);
-}
+void canvas_t::handleBoundChanged(const g_rectangle& oldBounds) { g_mutex_release(asyncInfo->checkAtom); }
 
 /**
  * Checks whether the current buffer is still sufficient for the required amount of pixels.
@@ -88,24 +85,26 @@ void canvas_t::checkBuffer()
 	bounds.width = ALIGN_UP(bounds.width);
 	bounds.height = ALIGN_UP(bounds.height);
 
-	int stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, bounds.width);
-	int requiredSize = stride * bounds.height;
-
-	g_mutex_acquire(bufferLock);
-	if(buffer.localMapping == nullptr)
-	{
-		createNewBuffer(bounds, requiredSize);
-	}
-	else if(buffer.pages < G_PAGE_ALIGN_UP(requiredSize) / G_PAGE_SIZE)
-	{
-		createNewBuffer(bounds, requiredSize);
-	}
-	g_mutex_release(bufferLock);
+	createNewBuffer(bounds, bounds.width, bounds.height);
 	g_mutex_release(lock);
 }
 
-void canvas_t::createNewBuffer(g_rectangle& bounds, uint32_t size)
+void canvas_t::createNewBuffer(g_rectangle& bounds, int width, int height)
 {
+	// Check if buffer still large enough
+	int stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, width);
+	int imageSize = stride * height;
+	uint16_t pages = G_PAGE_ALIGN_UP(imageSize) / G_PAGE_SIZE;
+	uint32_t bufferSize = pages * G_PAGE_SIZE;
+
+	g_mutex_acquire(bufferLock);
+	if(!buffer.localMapping || pages < buffer.pages)
+	{
+		g_mutex_release(bufferLock);
+		return;
+	}
+
+	// Destroy old resources
 	if(buffer.surface)
 	{
 		cairo_surface_destroy(buffer.surface);
@@ -118,8 +117,6 @@ void canvas_t::createNewBuffer(g_rectangle& bounds, uint32_t size)
 	}
 
 	// create a new buffer
-	uint16_t pages = G_PAGE_ALIGN_UP(size) / G_PAGE_SIZE;
-	uint32_t bufferSize = pages * G_PAGE_SIZE;
 	buffer.pages = pages;
 	buffer.localMapping = (uint8_t*) g_alloc_mem(bufferSize);
 	buffer.paintableWidth = bounds.width;
@@ -132,8 +129,7 @@ void canvas_t::createNewBuffer(g_rectangle& bounds, uint32_t size)
 	else
 	{
 		memset(buffer.localMapping, 0, bufferSize);
-		buffer.remoteMapping = (uint8_t*) g_share_mem(buffer.localMapping, pages * G_PAGE_SIZE,
-		                                              partnerProcess);
+		buffer.remoteMapping = (uint8_t*) g_share_mem(buffer.localMapping, pages * G_PAGE_SIZE, partnerProcess);
 		if(buffer.remoteMapping == nullptr)
 		{
 			klog("warning: failed to share a buffer for a canvas to proc %i", partnerProcess);
@@ -141,12 +137,8 @@ void canvas_t::createNewBuffer(g_rectangle& bounds, uint32_t size)
 		else
 		{
 			buffer.surface = cairo_image_surface_create_for_data(
-					buffer.localMapping, CAIRO_FORMAT_ARGB32,
-					buffer.paintableWidth,
-					buffer.paintableHeight,
-					cairo_format_stride_for_width(
-							CAIRO_FORMAT_ARGB32,
-							buffer.paintableWidth));
+					buffer.localMapping, CAIRO_FORMAT_ARGB32, buffer.paintableWidth, buffer.paintableHeight,
+					cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, buffer.paintableWidth));
 
 			auto status = cairo_surface_status(buffer.surface);
 			if(status != CAIRO_STATUS_SUCCESS)
@@ -158,6 +150,7 @@ void canvas_t::createNewBuffer(g_rectangle& bounds, uint32_t size)
 	}
 
 	notifyClientAboutNewBuffer();
+	g_mutex_release(bufferLock);
 }
 
 void canvas_t::notifyClientAboutNewBuffer()
@@ -173,7 +166,7 @@ void canvas_t::notifyClientAboutNewBuffer()
 	if(eventDispatcher == G_TID_NONE)
 	{
 		klog("failed to send buffer notification to event dispatcher of process %i since it is not registered",
-		     partnerProcess);
+			 partnerProcess);
 	}
 	else
 	{
