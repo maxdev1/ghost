@@ -83,18 +83,17 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	userMutexInitialize();
 
 	taskingInitializeBsp();
+	logInfo("%! starting on %i cores", "kernel", processorGetNumberOfProcessors());
+	mutexRelease(&bootstrapCoreLock);
+
+	systemWaitForApplicationCores();
+	systemMarkReady();
 
 	auto initializationProcess = taskingCreateProcess(G_SECURITY_LEVEL_KERNEL);
 	auto initializationTask = taskingCreateTask((g_virtual_address) kernelInitializationThread, initializationProcess,
 	                                            G_SECURITY_LEVEL_KERNEL);
 	taskingAssign(taskingGetLocal(), initializationTask);
 
-	logInfo("%! starting on %i cores", "kernel", processorGetNumberOfProcessors());
-	mutexRelease(&bootstrapCoreLock);
-
-	systemWaitForApplicationCores();
-
-	systemMarkReady();
 	interruptsEnable();
 	for(;;)
 		asm("hlt");
