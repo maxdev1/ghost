@@ -45,12 +45,9 @@ static g_tid taskingIdNext = 0;
 
 g_hashmap<g_tid, g_task*>* taskGlobalMap;
 
-void taskingInitializeTask(g_task* task, g_process* process, g_security_level level);
+void _taskingInitializeTask(g_task* task, g_process* process, g_security_level level);
 
-g_tasking_local* taskingGetLocal()
-{
-	return &taskingLocal[processorGetCurrentId()];
-}
+g_tasking_local* taskingGetLocal() { return &taskingLocal[processorGetCurrentId()]; }
 
 g_task* taskingGetCurrentTask()
 {
@@ -68,10 +65,7 @@ g_tid taskingGetNextId()
 	return next;
 }
 
-g_task* taskingGetById(g_tid id)
-{
-	return hashmapGet(taskGlobalMap, id, (g_task*) 0);
-}
+g_task* taskingGetById(g_tid id) { return hashmapGet(taskGlobalMap, id, (g_task*) 0); }
 
 /**
  * When yielding, store the state pointer (on top of the interrupt stack)
@@ -80,16 +74,16 @@ g_task* taskingGetById(g_tid id)
 void taskingYield()
 {
 	if(!systemIsReady())
-	{
 		return;
-	}
+
+	if(taskingGetLocal()->locking.globalLockCount > 0)
+		panic("%! attempted yield while holding global lock", "bug");
 
 	g_task* task = taskingGetCurrentTask();
 	task->statistics.timesYielded++;
 
 	auto previousState = task->state;
-	asm volatile("int $0x81" ::
-		: "cc", "memory");
+	asm volatile("int $0x81" ::: "cc", "memory");
 	task->state = previousState;
 }
 
@@ -104,14 +98,16 @@ void taskingIdleThread()
 void taskingExit()
 {
 	auto task = taskingGetCurrentTask();
+	mutexAcquire(&task->lock);
 	task->status = G_TASK_STATUS_DEAD;
 	waitQueueWake(&task->waitersJoin);
+	mutexRelease(&task->lock);
 	taskingYield();
 }
 
 void taskingInitializeBsp()
 {
-	mutexInitializeNonInterruptible(&taskingIdLock, __func__);
+	mutexInitializeGlobal(&taskingIdLock, __func__);
 
 	auto numProcs = processorGetNumberOfProcessors();
 	taskingLocal = (g_tasking_local*) heapAllocate(sizeof(g_tasking_local) * numProcs);
@@ -121,23 +117,20 @@ void taskingInitializeBsp()
 	taskingDirectoryInitialize();
 }
 
-void taskingInitializeAp()
-{
-	taskingInitializeLocal();
-}
+void taskingInitializeAp() { taskingInitializeLocal(); }
 
 void taskingInitializeLocal()
 {
 	g_tasking_local* local = taskingGetLocal();
-	local->lockCount = 0;
-	local->lockSetIF = false;
+	local->locking.globalLockCount = 0;
+	local->locking.globalLockSetIFAfterRelease = false;
 	local->processor = processorGetCurrentId();
 
 	local->scheduling.current = nullptr;
 	local->scheduling.list = nullptr;
 	local->scheduling.idleTask = nullptr;
 
-	mutexInitializeNonInterruptible(&local->lock, __func__);
+	mutexInitializeGlobal(&local->lock, __func__);
 
 	schedulerInitializeLocal();
 	taskingCreateEssentialTasks();
@@ -323,10 +316,7 @@ void taskingRestoreState(g_task* task)
 	}
 }
 
-void taskingSchedule()
-{
-	schedulerSchedule(taskingGetLocal());
-}
+void taskingSchedule() { schedulerSchedule(taskingGetLocal()); }
 
 g_process* taskingCreateProcess(g_security_level securityLevel)
 {
@@ -337,7 +327,7 @@ g_process* taskingCreateProcess(g_security_level securityLevel)
 	process->main = 0;
 	process->tasks = 0;
 
-	mutexInitializeNonInterruptible(&process->lock, __func__);
+	mutexInitializeGlobal(&process->lock, __func__);
 
 	process->tlsMaster.size = 0;
 	process->tlsMaster.location = 0;
@@ -383,7 +373,7 @@ void taskingDestroyProcess(g_process* process)
 g_task* taskingCreateTask(g_virtual_address eip, g_process* process, g_security_level level)
 {
 	g_task* task = (g_task*) heapAllocateClear(sizeof(g_task));
-	taskingInitializeTask(task, process, level);
+	_taskingInitializeTask(task, process, level);
 	task->type = G_TASK_TYPE_DEFAULT;
 
 	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(task->process->pageDirectory);
@@ -402,7 +392,7 @@ g_task* taskingCreateTask(g_virtual_address eip, g_process* process, g_security_
 g_task* taskingCreateTaskVm86(g_process* process, uint32_t intr, g_vm86_registers in, g_vm86_registers* out)
 {
 	g_task* task = (g_task*) heapAllocateClear(sizeof(g_task));
-	taskingInitializeTask(task, process, G_SECURITY_LEVEL_KERNEL);
+	_taskingInitializeTask(task, process, G_SECURITY_LEVEL_KERNEL);
 	task->type = G_TASK_TYPE_VM86;
 
 	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(task->process->pageDirectory);
@@ -450,10 +440,12 @@ void taskingDestroyTask(g_task* task)
 	hashmapRemove(taskGlobalMap, task->id);
 	if(task->vm86Data)
 		heapFree(task->vm86Data);
+
+	mutexRelease(&task->lock);
 	heapFree(task);
 }
 
-void taskingInitializeTask(g_task* task, g_process* process, g_security_level level)
+void _taskingInitializeTask(g_task* task, g_process* process, g_security_level level)
 {
 	if(process->main == 0)
 		task->id = process->id;
@@ -464,7 +456,7 @@ void taskingInitializeTask(g_task* task, g_process* process, g_security_level le
 	task->status = G_TASK_STATUS_RUNNING;
 	task->interruptionLevel = 1;
 	waitQueueInitialize(&task->waitersJoin);
-	mutexInitializeNonInterruptible(&task->lock, __func__);
+	mutexInitializeGlobal(&task->lock, __func__);
 }
 
 void taskingProcessKillAllTasks(g_pid pid)
@@ -573,8 +565,7 @@ void taskingSpawnEntry()
 	interruptsDisable();
 	taskingMemoryInitializeTls(task);
 	args->entry = loadRes.entry;
-	asm volatile("int $0x82" ::
-		: "cc", "memory");
+	asm volatile("int $0x82" ::: "cc", "memory");
 }
 
 void taskingFinalizeSpawn(g_task* task)
@@ -584,10 +575,12 @@ void taskingFinalizeSpawn(g_task* task)
 	taskingStateReset(task, process->spawnArgs->entry, task->securityLevel);
 	waitQueueWake(&process->waitersSpawn);
 
+	mutexAcquire(&task->lock);
 	task->status = G_TASK_STATUS_WAITING;
 	task->waitsFor = "wake-after-spawn";
 	task->spawnFinished = true;
-	taskingSchedule();
+	mutexRelease(&task->lock);
+	taskingYield();
 }
 
 void taskingWaitForExit(g_tid joinedTid, g_tid waiter)

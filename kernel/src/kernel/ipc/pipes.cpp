@@ -30,7 +30,7 @@ static g_hashmap<g_fs_phys_id, g_pipeline*>* pipeMap;
 
 void pipeInitialize()
 {
-	mutexInitialize(&pipeNextIdLock, __func__);
+	mutexInitializeTask(&pipeNextIdLock, __func__);
 	pipeNextId = 0;
 
 	pipeMap = hashmapCreateNumeric<g_fs_phys_id, g_pipeline*>(128);
@@ -40,7 +40,7 @@ g_fs_pipe_status pipeCreate(g_fs_phys_id* outPipeId)
 {
 	g_pipeline* pipe = (g_pipeline*) heapAllocateClear(sizeof(g_pipeline));
 
-	mutexInitialize(&pipe->lock, __func__);
+	mutexInitializeTask(&pipe->lock, __func__);
 	pipe->capacity = G_PIPE_DEFAULT_CAPACITY;
 	pipe->buffer = (uint8_t*) memoryAllocateKernelRange(G_PAGE_ALIGN_UP(pipe->capacity) / G_PAGE_SIZE);
 	pipe->readPosition = pipe->buffer;

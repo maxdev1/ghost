@@ -29,7 +29,7 @@ static g_mutex devicesLock;
 
 void requestsInitialize()
 {
-	mutexInitializeNonInterruptible(&devicesLock, __func__);
+	mutexInitializeGlobal(&devicesLock, __func__);
 }
 
 g_irq_device* requestsGetIrqDevice(uint8_t irq)

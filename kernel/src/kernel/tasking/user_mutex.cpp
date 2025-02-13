@@ -34,7 +34,7 @@ void _userMutexWakeWaitingTasks(g_user_mutex_entry* entry);
 
 void userMutexInitialize()
 {
-	mutexInitializeNonInterruptible(&globalLock, __func__);
+	mutexInitializeGlobal(&globalLock, __func__);
 	nextMutex = 0;
 	mutexMap = hashmapCreateNumeric<g_user_mutex, g_user_mutex_entry*>(128);
 }
@@ -42,7 +42,7 @@ void userMutexInitialize()
 g_user_mutex userMutexCreate(bool reentrant)
 {
 	g_user_mutex_entry* entry = (g_user_mutex_entry*) heapAllocate(sizeof(g_user_mutex_entry));
-	mutexInitialize(&entry->lock, __func__);
+	mutexInitializeTask(&entry->lock, __func__);
 	entry->value = 0;
 	entry->waiters = nullptr;
 	entry->reentrant = reentrant;

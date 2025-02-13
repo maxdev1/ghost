@@ -43,7 +43,7 @@ static g_hashmap<g_fs_virt_id, g_fs_node*>* filesystemNodes;
 
 void filesystemInitialize()
 {
-	mutexInitialize(&filesystemNextNodeIdLock, __func__);
+	mutexInitializeTask(&filesystemNextNodeIdLock, __func__);
 	filesystemNextNodeId = 0;
 
 	filesystemNodes = hashmapCreateNumeric<g_fs_virt_id, g_fs_node*>(1024);
@@ -105,7 +105,7 @@ g_fs_node* filesystemCreateNode(g_fs_node_type type, const char* name)
 	node->delegate = 0;
 	node->blocking = false;
 	node->upToDate = false;
-	mutexInitialize(&node->lock, __func__);
+	mutexInitializeTask(&node->lock, __func__);
 
 	hashmapPut<g_fs_virt_id, g_fs_node*>(filesystemNodes, node->id, node);
 	return node;
@@ -148,7 +148,7 @@ g_fs_node* filesystemGetRoot()
 g_fs_delegate* filesystemCreateDelegate()
 {
 	g_fs_delegate* delegate = (g_fs_delegate*) heapAllocateClear(sizeof(g_fs_delegate));
-	mutexInitialize(&delegate->lock, __func__);
+	mutexInitializeTask(&delegate->lock, __func__);
 	return delegate;
 }
 

@@ -41,14 +41,15 @@ typedef struct
 } __attribute__((packed)) g_mutex;
 
 /**
- * Initializes a mutex.
+ * Initializes a task mutex. This mutex will yield until it can be acquired.
  */
-void mutexInitialize(g_mutex* mutex, const char* location = "unknown");
+void mutexInitializeTask(g_mutex* mutex, const char* location = "unknown");
 
 /**
- * Initializes a mutex for a critical section. Acquiring such a mutex disables interrupts until it is released.
+ * Initializes a global mutex for a critical section. Acquiring any global
+ * mutex disables interrupts until the last one is released.
  */
-void mutexInitializeNonInterruptible(g_mutex* mutex, const char* location = "unknown");
+void mutexInitializeGlobal(g_mutex* mutex, const char* location = "unknown");
 
 /**
  * Acquires the mutex. Increases the lock count for this processor.

@@ -34,7 +34,7 @@ void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, g_bitmap_
 	g_bitmap_header* bitmap = bitmapArray;
 	while(bitmap)
 	{
-		mutexInitializeNonInterruptible(&bitmap->lock);
+		mutexInitializeGlobal(&bitmap->lock);
 		allocator->freePageCount += bitmap->entryCount * G_BITMAP_PAGES_PER_ENTRY;
 		bitmap = G_BITMAP_NEXT(bitmap);
 	}
@@ -140,7 +140,7 @@ g_physical_address bitmapPageAllocatorAllocate(g_bitmap_page_allocator* allocato
  */
 void bitmapPageAllocatorFastBufferInitialize(g_bitmap_page_allocator* allocator)
 {
-	mutexInitializeNonInterruptible(&allocator->fastBuffer.lock);
+	mutexInitializeGlobal(&allocator->fastBuffer.lock);
 	for(g_physical_address& cell: allocator->fastBuffer.buffer)
 	{
 		cell = 0;

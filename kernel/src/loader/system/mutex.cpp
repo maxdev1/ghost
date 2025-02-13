@@ -26,11 +26,11 @@
  * are not required.
  */
 
-void mutexInitialize(g_mutex* mutex, const char* location)
+void mutexInitializeTask(g_mutex* mutex, const char* location)
 {
 }
 
-void mutexInitializeNonInterruptible(g_mutex* mutex, const char* location)
+void mutexInitializeGlobal(g_mutex* mutex, const char* location)
 {
 }
 

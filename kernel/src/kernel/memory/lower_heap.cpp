@@ -34,7 +34,7 @@ void lowerHeapInitialize(g_virtual_address start, g_virtual_address end)
 	memoryAllocatorInitialize(&lowerHeapAllocator, G_ALLOCATOR_TYPE_LOWERMEM, start, end);
 	lowerHeapStart = start;
 	lowerHeapEnd = end;
-	mutexInitializeNonInterruptible(&lowerHeapMutex);
+	mutexInitializeGlobal(&lowerHeapMutex);
 
 	logDebug("%! initialized with area: %h - %h", "lowerheap", start, end);
 	lowerHeapInitialized = true;

@@ -70,8 +70,8 @@ extern "C" void kernelMain(g_setup_information* setupInformation)
 
 void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 {
-	mutexInitializeNonInterruptible(&bootstrapCoreLock, __func__);
-	mutexInitializeNonInterruptible(&applicationCoreLock, __func__);
+	mutexInitializeGlobal(&bootstrapCoreLock, __func__);
+	mutexInitializeGlobal(&applicationCoreLock, __func__);
 
 	mutexAcquire(&bootstrapCoreLock);
 

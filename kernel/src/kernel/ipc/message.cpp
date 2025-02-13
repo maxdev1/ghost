@@ -38,7 +38,7 @@ g_message_queue* _messageGetQueue(g_tid task);
 void messageInitialize()
 {
 	messageQueues = hashmapCreateNumeric<g_tid, g_message_queue*>(64);
-	mutexInitialize(&messageTxLock);
+	mutexInitializeTask(&messageTxLock);
 }
 
 g_message_send_status messageSend(g_tid sender, g_tid receiver, void* content, uint32_t length,
@@ -234,7 +234,7 @@ g_message_queue* _messageGetQueue(g_tid receiver)
 	else
 	{
 		queue = (g_message_queue*) heapAllocate(sizeof(g_message_queue));
-		mutexInitialize(&queue->lock, __func__);
+		mutexInitializeTask(&queue->lock, __func__);
 		queue->task = receiver;
 		queue->size = 0;
 		queue->head = nullptr;

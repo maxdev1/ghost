@@ -20,21 +20,19 @@
 
 #include "shared/system/mutex.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
-#include "kernel/system/system.hpp"
 #include "kernel/system/processor/processor.hpp"
+#include "kernel/system/system.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "shared/panic.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/panic.hpp"
+
+#define G_MUTEX_INITIALIZED 0xFEED
+#define G_MUTEX_MAX_PAUSES 1024
+#define G_MUTEX_NO_OWNER (-1)
 
 g_spinlock mutexInitializerLock = 0;
-#define G_MUTEX_INITIALIZED 0xFEED
-#define G_MUTEX_MAX_PAUSES	1024
 
-#define MUTEX_GUARD                               \
-	if(mutex->initialized != G_MUTEX_INITIALIZED) \
-		mutexErrorUninitialized(mutex);
-
-bool _mutexTryAcquire(g_mutex* mutex, uint32_t owner);
+bool _mutexTryAcquire(g_mutex* mutex, uint32_t owner, bool hadIF);
 void _mutexInitialize(g_mutex* mutex, g_mutex_type type, const char* location);
 
 void mutexErrorUninitialized(g_mutex* mutex)
@@ -42,12 +40,12 @@ void mutexErrorUninitialized(g_mutex* mutex)
 	panic("%! %i: tried to use uninitialized mutex %h", "mutex", processorGetCurrentId(), mutex);
 }
 
-void mutexInitialize(g_mutex* mutex, const char* location)
+void mutexInitializeTask(g_mutex* mutex, const char* location)
 {
 	_mutexInitialize(mutex, G_MUTEX_TYPE_TASK, location);
 }
 
-void mutexInitializeNonInterruptible(g_mutex* mutex, const char* location)
+void mutexInitializeGlobal(g_mutex* mutex, const char* location)
 {
 	_mutexInitialize(mutex, G_MUTEX_TYPE_GLOBAL, location);
 }
@@ -68,8 +66,10 @@ void _mutexInitialize(g_mutex* mutex, g_mutex_type type, const char* location)
 
 void mutexAcquire(g_mutex* mutex)
 {
-	MUTEX_GUARD;
+	if(mutex->initialized != G_MUTEX_INITIALIZED)
+		mutexErrorUninitialized(mutex);
 
+	// Choose targeted owner value
 	uint32_t owner;
 	if(mutex->type == G_MUTEX_TYPE_GLOBAL || !systemIsReady())
 	{
@@ -81,20 +81,19 @@ void mutexAcquire(g_mutex* mutex)
 		if(currentTask)
 			owner = currentTask->id;
 		else
-			panic("%! early acquire of mutex initialized at %s", "mutex", mutex->location);
+			panic("%! early acquire of task-mutex initialized at <%s>", "mutex", mutex->location);
 	}
+
+	// No interruption during acquiry, only explicit yield allowed
+	bool hadIF = interruptsAreEnabled();
+	interruptsDisable();
 
 	int deadlock = 0;
 	uint32_t pauses = 1;
-
-	while(!_mutexTryAcquire(mutex, owner))
+	while(!_mutexTryAcquire(mutex, owner, hadIF))
 	{
-		++deadlock;
-		if(deadlock % 100000 == 0)
-			logDebug("%! long lock on processor %i initialized at %s, owner is: %i", "mutex",
-		         processorGetCurrentId(), mutex->location, mutex->owner);
-
-		if(mutex->type == G_MUTEX_TYPE_GLOBAL)
+		// As long as any global mutex is locked, we may never yield
+		if(mutex->type == G_MUTEX_TYPE_GLOBAL || taskingGetLocal()->locking.globalLockCount > 0)
 		{
 			for(uint32_t i = 0; i < pauses; i++)
 				asm volatile("pause");
@@ -106,28 +105,40 @@ void mutexAcquire(g_mutex* mutex)
 		{
 			taskingYield();
 		}
+
+		// Check for deadlocks
+		++deadlock;
+		if(deadlock % 100000 == 0)
+			logDebug("%! long lock on processor %i initialized at %s, owner is: %i", "mutex", processorGetCurrentId(),
+					 mutex->location, mutex->owner);
 	}
+
+	// Only for task mutexes (and if previously enabled) interrupts are enabled again
+	if(mutex->type == G_MUTEX_TYPE_TASK && hadIF)
+		interruptsEnable();
 }
 
-bool _mutexTryAcquire(g_mutex* mutex, uint32_t owner)
+bool _mutexTryAcquire(g_mutex* mutex, uint32_t owner, bool hadIF)
 {
-	MUTEX_GUARD;
-
 	bool wasSet = false;
-	bool hadIF = interruptsAreEnabled();
-	interruptsDisable();
 
 	G_SPINLOCK_ACQUIRE(mutex->lock);
 
 	if(mutex->depth == 0 || mutex->owner == owner)
 	{
-		if(systemIsReady() && mutex->depth == 0)
+		// On the first acquire of each global mutex, increase global lock count
+		if(mutex->depth == 0 && mutex->type == G_MUTEX_TYPE_GLOBAL && systemIsReady())
 		{
 			auto local = taskingGetLocal();
-			if(local->lockCount == 0)
-				local->lockSetIF = hadIF;
-			local->lockCount++;
+
+			// Only store IF state if no other global mutex is locked yet
+			if(local->locking.globalLockCount == 0)
+				local->locking.globalLockSetIFAfterRelease = hadIF;
+
+			local->locking.globalLockCount++;
 		}
+
+		// Increase reentrancy depth and update owner
 		++mutex->depth;
 		mutex->owner = owner;
 		wasSet = true;
@@ -135,17 +146,16 @@ bool _mutexTryAcquire(g_mutex* mutex, uint32_t owner)
 
 	G_SPINLOCK_RELEASE(mutex->lock);
 
-	if(mutex->type == G_MUTEX_TYPE_TASK && hadIF)
-		interruptsEnable();
-
 	return wasSet;
 }
 
 void mutexRelease(g_mutex* mutex)
 {
-	MUTEX_GUARD;
+	if(mutex->initialized != G_MUTEX_INITIALIZED)
+		mutexErrorUninitialized(mutex);
 
-	bool hadIF = false;
+	// No interruption allowed during check
+	bool setIF = false;
 	interruptsDisable();
 
 	G_SPINLOCK_ACQUIRE(mutex->lock);
@@ -153,22 +163,28 @@ void mutexRelease(g_mutex* mutex)
 	if(mutex->depth > 0)
 	{
 		--mutex->depth;
+
 		if(mutex->depth == 0)
 		{
-			if(systemIsReady())
+			// On last release of each global mutex, decrease global lock count
+			if(mutex->type == G_MUTEX_TYPE_GLOBAL && systemIsReady())
 			{
 				auto local = taskingGetLocal();
-				local->lockCount--;
-				if(local->lockCount == 0)
-					hadIF = local->lockSetIF;
+				local->locking.globalLockCount--;
+
+				// On last release of the last locked global mutex, restore IF state
+				if(local->locking.globalLockCount == 0)
+					setIF = local->locking.globalLockSetIFAfterRelease;
 			}
 
+			// Remove owner
 			mutex->owner = -1;
 		}
 	}
 
 	G_SPINLOCK_RELEASE(mutex->lock);
 
-	if(hadIF)
+	// Restore IF state according to rules above
+	if(setIF)
 		interruptsEnable();
 }

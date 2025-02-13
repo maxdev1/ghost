@@ -24,7 +24,7 @@
 
 void waitQueueInitialize(g_wait_queue* queue)
 {
-	mutexInitialize(&queue->lock);
+	mutexInitializeTask(&queue->lock);
 	queue->head = nullptr;
 }
 

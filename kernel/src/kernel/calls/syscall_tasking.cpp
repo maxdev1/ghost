@@ -141,9 +141,11 @@ void syscallKill(g_task* task, g_syscall_kill* data)
 	g_task* target = taskingGetById(data->pid);
 	if(target)
 	{
+		mutexAcquire(&target->lock);
 		data->status = G_KILL_STATUS_SUCCESSFUL;
 		target->process->main->status = G_TASK_STATUS_DEAD;
 		waitQueueWake(&target->waitersJoin);
+		mutexRelease(&target->lock);
 		taskingYield();
 	}
 	else
@@ -154,7 +156,7 @@ void syscallKill(g_task* task, g_syscall_kill* data)
 
 void syscallCreateTask(g_task* task, g_syscall_create_task* data)
 {
-	mutexAcquire(&task->process->lock);
+	 mutexAcquire(&task->process->lock);
 
 	g_task* newTask = taskingCreateTask((g_virtual_address) data->initialEntry, task->process,
 	                                    task->process->main->securityLevel);
