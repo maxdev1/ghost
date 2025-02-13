@@ -42,7 +42,7 @@ __BEGIN_C
  *
  * @security-level APPLICATION
  */
-void* g_alloc_mem(int32_t size);
+void* g_alloc_mem(g_size size);
 
 /**
  * Shares a memory area with another process.

@@ -20,7 +20,6 @@
 
 #include "shared/video/pretty_boot.hpp"
 #include "shared/logger/logger.hpp"
-#include "shared/memory/memory.hpp"
 #include "shared/utils/string.hpp"
 #include "shared/video/console_video.hpp"
 

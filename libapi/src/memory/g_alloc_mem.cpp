@@ -25,7 +25,7 @@
 /**
  * @see header
  */
-void* g_alloc_mem(int32_t size)
+void* g_alloc_mem(g_size size)
 {
 	g_syscall_alloc_mem data;
 	data.size = size;

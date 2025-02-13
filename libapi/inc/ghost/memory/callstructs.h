@@ -37,7 +37,7 @@
  */
 typedef struct
 {
-	uint32_t size;
+	g_size size;
 
 	void* virtualResult;
 }__attribute__((packed)) g_syscall_alloc_mem;
