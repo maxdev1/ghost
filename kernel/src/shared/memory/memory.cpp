@@ -24,28 +24,28 @@ g_bitmap_page_allocator memoryPhysicalAllocator;
 
 void* memorySetBytes(void* target, uint8_t value, int32_t length)
 {
-	uint8_t* pos = (uint8_t*) target;
+	auto pos = (uint8_t*) target;
 
 	while(length--)
-		*pos++ = (uint8_t) value;
+		*pos++ = value;
 
 	return target;
 }
 
 void* memorySetWords(void* target, uint16_t value, int32_t length)
 {
-	uint16_t* pos = (uint16_t*) target;
+	auto pos = (uint16_t*) target;
 
 	while(length--)
-		*pos++ = (uint16_t) value;
+		*pos++ =  value;
 
 	return target;
 }
 
 void* memoryCopy(void* target, const void* source, int32_t size)
 {
-	uint8_t* targetPtr = (uint8_t*) target;
-	const uint8_t* sourcePtr = (const uint8_t*) source;
+	auto targetPtr = (uint8_t*) target;
+	auto sourcePtr = (const uint8_t*) source;
 
 	while(size >= 4)
 	{
