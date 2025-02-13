@@ -369,7 +369,7 @@ g_fs_open_status filesystemOpenNode(g_fs_node* file, g_file_flag_mode flags, g_p
 g_fs_open_status filesystemOpenNodeFd(g_fs_node* file, g_file_flag_mode flags, g_pid process, g_fd* outFd,
                                       g_fd optionalTargetFd)
 {
-	g_file_descriptor* descriptor;
+	g_file_descriptor* descriptor = nullptr;
 	auto status = filesystemOpenNode(file, flags, process, &descriptor, optionalTargetFd);
 	if(descriptor)
 		*outFd = descriptor->id;
