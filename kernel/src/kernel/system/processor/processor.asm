@@ -54,6 +54,11 @@ _checkForCPUID:
 _enableSSE:
     clts
     fninit
+    fclex
+
+    push dword 0x037F
+    fldcw [esp]         ; load default control word
+    add esp, 4
 
     mov eax, cr0
     and eax, ~(1 << 2)  ; clear CR0.EM coprocessor emulation
