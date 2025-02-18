@@ -132,37 +132,7 @@ void event_processor_t::processMouseState()
 			// Switch focus
 			if(cursor_t::pressedComponent != cursor_t::focusedComponent)
 			{
-				auto unfocusedComponent = component_registry_t::get(cursor_t::focusedComponent);
-				auto newFocusedComponent = pressedComponent->setFocused(true);
-
-				// New gains focus
-				if(newFocusedComponent)
-				{
-					cursor_t::focusedComponent = newFocusedComponent->id;
-
-					window_t* unfocusedWindow = nullptr;
-					// Old loses focus
-					if(unfocusedComponent)
-					{
-						unfocusedComponent->setFocused(false);
-						unfocusedWindow = unfocusedComponent->getWindow();
-					}
-
-					// Window handling
-					window_t* newFocusedWindow = pressedComponent->getWindow();
-					if(unfocusedWindow && newFocusedWindow != unfocusedWindow && unfocusedWindow != unfocusedComponent)
-					{
-						unfocusedWindow->setFocused(false);
-					}
-					if(newFocusedWindow)
-					{
-						newFocusedWindow->bringToFront();
-						if(newFocusedWindow != newFocusedComponent)
-						{
-							newFocusedWindow->setFocused(true);
-						}
-					}
-				}
+				windowserver_t::instance()->switchFocus(pressedComponent);
 			}
 		}
 		else

@@ -29,20 +29,20 @@
 
 g_font* font = nullptr;
 
-taskbar::taskbar(g_ui_component_id id):
+taskbar_t::taskbar_t(g_ui_component_id id):
 	g_component(id), g_canvas(id)
 {
 	textLayoutBuffer = g_text_layouter::getInstance()->initializeBuffer();
 }
 
-taskbar* taskbar::create()
+taskbar_t* taskbar_t::create()
 {
-	auto instance = createCanvasComponent<taskbar>();
+	auto instance = createCanvasComponent<taskbar_t>();
 	instance->init();
 	return instance;
 }
 
-void taskbar::init()
+void taskbar_t::init()
 {
 	font = g_font_loader::getDefault();
 	this->setBufferListener([this]()
@@ -74,9 +74,12 @@ void taskbar::init()
 			onMouseLeave(position);
 		}
 	});
+
+	this->setFocusable(false);
+	this->setDispatchesFocus(false);
 }
 
-void taskbar::onMouseMove(const g_point& position)
+void taskbar_t::onMouseMove(const g_point& position)
 {
 	g_mutex_acquire(entriesLock);
 	bool changes = false;
@@ -92,19 +95,42 @@ void taskbar::onMouseMove(const g_point& position)
 	g_mutex_release(entriesLock);
 }
 
-void taskbar::onMouseLeftPress(const g_point& position, int clickCount)
+void taskbar_t::onMouseLeftPress(const g_point& position, int clickCount)
+{
+	g_mutex_acquire(entriesLock);
+	for(auto& entry: entries)
+	{
+		if(entry->onView.contains(position))
+		{
+			bool visible = entry->window->isVisible();
+			if(visible)
+			{
+				if(entry->window->isFocused())
+					entry->window->setVisible(false);
+				else
+					entry->window->setFocused(true);
+			}
+			else
+			{
+				entry->window->setVisible(true);
+				entry->window->setFocused(true);
+			}
+			break;
+		}
+	}
+	paint();
+	g_mutex_release(entriesLock);
+}
+
+void taskbar_t::onMouseDrag(const g_point& position)
 {
 }
 
-void taskbar::onMouseDrag(const g_point& position)
+void taskbar_t::onMouseRelease(const g_point& position)
 {
 }
 
-void taskbar::onMouseRelease(const g_point& position)
-{
-}
-
-void taskbar::onMouseLeave(const g_point& position)
+void taskbar_t::onMouseLeave(const g_point& position)
 {
 	g_mutex_acquire(entriesLock);
 	bool changes = false;
@@ -120,7 +146,7 @@ void taskbar::onMouseLeave(const g_point& position)
 	g_mutex_release(entriesLock);
 }
 
-void taskbar::paint()
+void taskbar_t::paint()
 {
 	auto cr = this->acquireGraphics();
 	if(!cr)
@@ -156,7 +182,7 @@ void taskbar::paint()
 			int entryLeft = taskAreaStart + pos++ * taskWidth;
 
 			cairo_save(cr);
-			if(entry->focused)
+			if(entry->focused && entry->visible)
 			{
 				if(entry->hovered)
 				{
@@ -208,11 +234,11 @@ void taskbar::paint()
 	this->releaseGraphics();
 }
 
-void taskbar::handleDesktopEvent(g_ui_windows_event* event)
+void taskbar_t::handleDesktopEvent(g_ui_windows_event* event)
 {
 	g_mutex_acquire(entriesLock);
 
-	taskbar_entry* entry = nullptr;
+	taskbar_entry_t* entry = nullptr;
 	for(auto& existing: entries)
 	{
 		if(existing->window->getId() == event->window_id)
@@ -226,7 +252,7 @@ void taskbar::handleDesktopEvent(g_ui_windows_event* event)
 	{
 		if(!entry)
 		{
-			entry = new taskbar_entry();
+			entry = new taskbar_entry_t();
 			entry->window = g_window::attach(event->window_id);
 			entry->title = entry->window->getTitle();
 			if(entry->title.length() == 0)
@@ -235,6 +261,7 @@ void taskbar::handleDesktopEvent(g_ui_windows_event* event)
 				entry->title = entry->window->getTitle();
 			}
 			entry->hovered = false;
+			entry->visible = entry->window->isVisible();
 			entry->focused = entry->window->isFocused();
 			entry->window->addTitleListener([this, entry](std::string title)
 			{
@@ -244,6 +271,11 @@ void taskbar::handleDesktopEvent(g_ui_windows_event* event)
 			entry->window->addFocusListener([this, entry](bool focused)
 			{
 				entry->focused = focused;
+				this->paint();
+			});
+			entry->window->addVisibleListener([this,entry](bool visible)
+			{
+				entry->visible = visible;
 				this->paint();
 			});
 			entries.push_back(entry);

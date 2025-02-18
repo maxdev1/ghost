@@ -27,19 +27,20 @@
 #include <libfont/text_layouter.hpp>
 #include <vector>
 
-struct taskbar_entry
+struct taskbar_entry_t
 {
     g_window* window;
     std::string title;
     bool focused;
     bool hovered;
+    bool visible;
     g_rectangle onView;
 };
 
-class taskbar : public g_canvas
+class taskbar_t : public g_canvas
 {
     g_user_mutex entriesLock = g_mutex_initialize_r(true);
-    std::vector<taskbar_entry*> entries;
+    std::vector<taskbar_entry_t*> entries;
     g_layouted_text* textLayoutBuffer;
 
 protected:
@@ -53,10 +54,10 @@ protected:
     void onMouseLeave(const g_point& position);
 
 public:
-    explicit taskbar(g_ui_component_id id);
+    explicit taskbar_t(g_ui_component_id id);
 
-    ~taskbar() override = default;
-    static taskbar* create();
+    ~taskbar_t() override = default;
+    static taskbar_t* create();
 
     void handleDesktopEvent(g_ui_windows_event* event);
 

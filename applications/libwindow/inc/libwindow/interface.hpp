@@ -65,7 +65,7 @@ typedef uint8_t g_ui_protocol_command_id;
 #define G_UI_PROTOCOL_SET_TITLE					((g_ui_protocol_command_id) 4)
 #define G_UI_PROTOCOL_GET_TITLE					((g_ui_protocol_command_id) 5)
 #define G_UI_PROTOCOL_SET_BOUNDS				((g_ui_protocol_command_id) 6)
-#define G_UI_PROTOCOL_SET_VISIBLE				((g_ui_protocol_command_id) 7)
+#define G_UI_PROTOCOL_FOCUS        				((g_ui_protocol_command_id) 7)
 #define G_UI_PROTOCOL_ADD_LISTENER				((g_ui_protocol_command_id) 8)
 #define G_UI_PROTOCOL_SET_NUMERIC_PROPERTY		((g_ui_protocol_command_id) 9)
 #define G_UI_PROTOCOL_GET_NUMERIC_PROPERTY		((g_ui_protocol_command_id) 10)
@@ -105,6 +105,7 @@ const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_MOUSE = 5;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_CLOSE = 6;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_WINDOWS = 7;
 const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_TITLE = 8;
+const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_VISIBLE = 9;
 
 /**
  *
@@ -167,6 +168,21 @@ typedef struct
 } __attribute__((packed)) g_ui_create_component_response;
 
 /**
+ * Request/response to focus
+ */
+typedef struct
+{
+    g_ui_message_header header;
+    g_ui_component_id id;
+} __attribute__((packed)) g_ui_component_focus_request;
+
+typedef struct
+{
+    g_ui_message_header header;
+    g_ui_protocol_status status;
+} __attribute__((packed)) g_ui_component_focus_response;
+
+/**
  * Request/response for adding a child
  */
 typedef struct
@@ -213,22 +229,6 @@ typedef struct
     g_ui_protocol_status status;
     g_rectangle bounds;
 } __attribute__((packed)) g_ui_component_get_bounds_response;
-
-/**
- * Request/response for setting components (in)visible
- */
-typedef struct
-{
-    g_ui_message_header header;
-    g_ui_component_id id;
-    bool visible;
-} __attribute__((packed)) g_ui_component_set_visible_request;
-
-typedef struct
-{
-    g_ui_message_header header;
-    g_ui_protocol_status status;
-} __attribute__((packed)) g_ui_component_set_visible_response;
 
 /**
  * Request/response for setting the title on a titled component
@@ -409,6 +409,12 @@ typedef struct
     g_ui_component_event_header header;
     char title[G_UI_COMPONENT_TITLE_MAXIMUM];
 } __attribute__((packed)) g_ui_component_title_event;
+
+typedef struct
+{
+    g_ui_component_event_header header;
+    bool visible;
+} __attribute__((packed)) g_ui_component_visible_event;
 
 /**
  * Mouse events

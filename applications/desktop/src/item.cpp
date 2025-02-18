@@ -25,7 +25,7 @@
 #include <libwindow/color_argb.hpp>
 #include <helper.hpp>
 
-item::item(uint32_t id):
+item_t::item_t(uint32_t id):
 	g_component(id),
 	g_canvas(id)
 {
@@ -35,14 +35,14 @@ item::item(uint32_t id):
 	});
 }
 
-item* item::create(std::string name, std::string icon, std::string application)
+item_t* item_t::create(std::string name, std::string icon, std::string application)
 {
-	auto instance = createCanvasComponent<item>();
+	auto instance = createCanvasComponent<item_t>();
 	instance->init(name, icon, application);
 	return instance;
 }
 
-void item::init(std::string name, std::string icon, std::string application)
+void item_t::init(std::string name, std::string icon, std::string application)
 {
 	this->application = application;
 	iconSurface = cairo_image_surface_create_from_png(icon.c_str());
@@ -60,7 +60,7 @@ void item::init(std::string name, std::string icon, std::string application)
 	this->addChild(label);
 }
 
-void item::paint()
+void item_t::paint()
 {
 	auto cr = this->acquireGraphics();
 	if(!cr)
@@ -99,7 +99,7 @@ void item::paint()
 	this->blit(g_rectangle(0, 0, bounds.width, bounds.height));
 }
 
-void item::onDoubleClick()
+void item_t::onDoubleClick()
 {
 	klog(("Launching: " + this->application).c_str());
 	g_spawn(this->application.c_str(), "", "", G_SECURITY_LEVEL_APPLICATION);

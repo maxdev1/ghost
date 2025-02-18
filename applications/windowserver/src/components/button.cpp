@@ -88,7 +88,7 @@ void button_t::paint()
 	g_color_argb border;
 	if(enabled)
 	{
-		if(state.focused)
+		if(focused)
 		{
 			border = RGB(55, 155, 255);
 		}
@@ -165,18 +165,13 @@ component_t* button_t::handleMouseEvent(mouse_event_t& me)
 
 void button_t::setFocusedInternal(bool focused)
 {
-	state.focused = focused;
+	focusable_component_t::setFocusedInternal(focused);
 	markFor(COMPONENT_REQUIREMENT_PAINT);
 }
 
-bool button_t::isFocusable() const
+bool button_t::isFocusableDefault() const
 {
 	return enabled;
-}
-
-bool button_t::isFocused() const
-{
-	return state.focused;
 }
 
 void button_t::setTitleInternal(std::string title)
@@ -211,7 +206,6 @@ bool button_t::setNumericProperty(int property, uint32_t value)
 	if(property == G_UI_PROPERTY_ENABLED)
 	{
 		enabled = value;
-		state.focused = false;
 		markFor(COMPONENT_REQUIREMENT_ALL);
 		return true;
 	}

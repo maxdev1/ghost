@@ -33,7 +33,27 @@ bool g_focusable_component::isFocused()
 
 bool g_focusable_component::setFocused(bool focused)
 {
-	return setNumericProperty(G_UI_PROPERTY_FOCUSED, focused ? 1 : 0);
+	if(!g_ui_initialized)
+		return false;
+
+	g_message_transaction tx = g_get_message_tx_id();
+
+	g_ui_component_focus_request request;
+	request.header.id = G_UI_PROTOCOL_FOCUS;
+	request.id = this->id;
+	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_focus_request), tx);
+
+	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_focus_response);
+	uint8_t buffer[bufferSize];
+
+	bool success = false;
+	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	{
+		auto response = (g_ui_component_focus_response*) G_MESSAGE_CONTENT(buffer);
+		success = (response->status == G_UI_PROTOCOL_SUCCESS);
+	}
+
+	return success;
 }
 
 void g_focusable_component::addFocusListener(std::function<void(bool)> func)

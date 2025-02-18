@@ -33,10 +33,6 @@ void screen_t::addChild(component_t* comp, component_child_reference_type_t type
 		{
 			auto window = dynamic_cast<window_t*>(comp);
 			sendWindowEvent(info.component_id, window, info.target_thread, true);
-			window->onTitleChanged([this, info, window]()
-			{
-				sendWindowEvent(info.component_id, window, info.target_thread, true);
-			});
 		});
 	}
 }

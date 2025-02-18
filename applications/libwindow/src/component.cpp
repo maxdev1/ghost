@@ -109,37 +109,6 @@ g_rectangle g_component::getBounds()
 	return result;
 }
 
-bool g_component::setVisible(bool visible)
-{
-	if(!g_ui_initialized)
-		return false;
-
-	// send initialization request
-	g_message_transaction tx = g_get_message_tx_id();
-
-	g_ui_component_set_visible_request request;
-	request.header.id = G_UI_PROTOCOL_SET_VISIBLE;
-	request.id = this->id;
-	request.visible = visible;
-	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_set_visible_request), tx);
-
-	// read response
-	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_set_visible_response);
-	uint8_t buffer[bufferSize];
-
-	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
-	{
-		auto response = (g_ui_component_set_visible_response*)
-				G_MESSAGE_CONTENT(buffer);
-		if(response->status == G_UI_PROTOCOL_SUCCESS)
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-
 bool g_component::setNumericProperty(int property, uint32_t value)
 {
 	if(!g_ui_initialized)
@@ -249,6 +218,16 @@ bool g_component::addMouseListener(g_mouse_listener_func func)
 	return addListener(G_UI_COMPONENT_EVENT_TYPE_MOUSE, new g_mouse_listener_dispatcher(std::move(func)));
 }
 
+bool g_component::addVisibleListener(g_visible_listener* listener)
+{
+	return addListener(G_UI_COMPONENT_EVENT_TYPE_VISIBLE, listener);
+}
+
+bool g_component::addVisibleListener(g_visible_listener_func func)
+{
+	return addListener(G_UI_COMPONENT_EVENT_TYPE_VISIBLE, new g_visible_listener_dispatcher(std::move(func)));
+}
+
 bool g_component::setLayout(g_ui_layout_manager layout)
 {
 	return setNumericProperty(G_UI_PROPERTY_LAYOUT_MANAGER, layout);
@@ -257,4 +236,51 @@ bool g_component::setLayout(g_ui_layout_manager layout)
 bool g_component::setBackground(g_color_argb argb)
 {
 	return setNumericProperty(G_UI_PROPERTY_BACKGROUND, argb);
+}
+
+bool g_component::isVisible()
+{
+	uint32_t visible;
+	if(getNumericProperty(G_UI_PROPERTY_VISIBLE, &visible))
+	{
+		return visible == 1;
+	}
+	return false;
+}
+
+bool g_component::setVisible(bool visible)
+{
+	return setNumericProperty(G_UI_PROPERTY_VISIBLE, visible ? 1 : 0);
+}
+
+
+bool g_component::isFocusable()
+{
+	uint32_t focusable;
+	if(getNumericProperty(G_UI_PROPERTY_FOCUSABLE, &focusable))
+	{
+		return focusable == 1;
+	}
+	return false;
+}
+
+bool g_component::setFocusable(bool focusable)
+{
+	return setNumericProperty(G_UI_PROPERTY_FOCUSABLE, focusable ? 1 : 0);
+}
+
+
+bool g_component::isDispatchesFocus()
+{
+	uint32_t d;
+	if(getNumericProperty(G_UI_PROPERTY_DISPATCHES_FOCUS, &d))
+	{
+		return d == 1;
+	}
+	return false;
+}
+
+bool g_component::setDispatchesFocus(bool d)
+{
+	return setNumericProperty(G_UI_PROPERTY_DISPATCHES_FOCUS, d ? 1 : 0);
 }

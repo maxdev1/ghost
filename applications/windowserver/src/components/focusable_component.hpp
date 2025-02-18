@@ -20,6 +20,7 @@
 
 #ifndef __WINDOWSERVER_COMPONENTS_FOCUSABLECOMPONENT__
 #define __WINDOWSERVER_COMPONENTS_FOCUSABLECOMPONENT__
+#include <stdint-gcc.h>
 
 class component_t;
 
@@ -30,6 +31,11 @@ class focusable_component_t
 {
     component_t* self;
 
+protected:
+    bool focused = false;
+    bool focusable = true;
+    bool dispatchesFocus = true;
+
 public:
     explicit focusable_component_t(component_t* self) : self(self)
     {
@@ -39,19 +45,38 @@ public:
 
     virtual bool isFocused() const
     {
-        return false;
+        return focused;
     }
 
     virtual void setFocusedInternal(bool focused)
     {
+        this->focused = focused;
     }
 
     virtual bool isFocusable() const
     {
+        return isFocusableDefault() && focusable;
+    }
+
+    virtual bool isFocusableDefault() const
+    {
         return false;
     }
 
+    void setDispatchesFocus(bool dispatches)
+    {
+        this->dispatchesFocus = dispatchesFocus;
+    }
+
+    bool isDispatchesFocus()
+    {
+        return this->dispatchesFocus;
+    }
+
     component_t* setFocused(bool focused);
+
+    bool getNumericProperty(int property, uint32_t* out);
+    bool setNumericProperty(int property, uint32_t value);
 };
 
 #endif

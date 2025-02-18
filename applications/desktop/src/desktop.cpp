@@ -27,8 +27,8 @@
 
 #define USER_DESKTOP_DIR "/user/desktop/"
 
-background* background = nullptr;
-taskbar* taskbar = nullptr;
+background_t* background = nullptr;
+taskbar_t* taskbar = nullptr;
 
 int main()
 {
@@ -38,14 +38,14 @@ int main()
 		return -1;
 	}
 
-	background = background::create();
+	background = background_t::create();
 	g_ui::registerDesktopCanvas(background);
 
 	g_dimension screenDimension;
 	g_ui::getScreenDimension(screenDimension);
-	taskbar = taskbar::create();
+	taskbar = taskbar_t::create();
 	taskbar->setBounds(g_rectangle(0, screenDimension.height - 40, screenDimension.width, 40));
-	background->addChild(taskbar);
+	background->addTaskbar(taskbar);
 	background->setDesktopListener([](g_ui_windows_event* event)
 	{
 		taskbar->handleDesktopEvent(event);
@@ -73,7 +73,7 @@ void desktopLoadItems()
 		g_properties_parser parser(cfg);
 		auto properties = parser.getProperties();
 
-		auto item = item::create(properties["name"], properties["icon"], properties["application"]);
+		auto item = item_t::create(properties["name"], properties["icon"], properties["application"]);
 		background->addItem(item);
 		item->setBounds(g_rectangle(0, next++ * 100, 100, 100));
 	}

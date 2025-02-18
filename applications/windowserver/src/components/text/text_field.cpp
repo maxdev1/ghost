@@ -30,7 +30,7 @@
 #include <sstream>
 
 text_field_t::text_field_t() :
-	text(""), cursor(0), marker(0), scrollX(0), secure(false), focused(false),
+	text(""), cursor(0), marker(0), scrollX(0), secure(false),
 	visualStatus(text_field_visual_status_t::NORMAL), fontSize(14),
 	textColor(RGB(0, 0, 0)), insets(g_insets(5, 5, 5, 5))
 {
@@ -369,15 +369,9 @@ component_t* text_field_t::handleKeyEvent(key_event_t& ke)
 	return this;
 }
 
-bool text_field_t::isFocused() const
-{
-	return this->focused;
-}
-
-
 void text_field_t::setFocusedInternal(bool focused)
 {
-	this->focused = focused;
+	focusable_component_t::setFocusedInternal(focused);
 	markFor(COMPONENT_REQUIREMENT_PAINT);
 }
 

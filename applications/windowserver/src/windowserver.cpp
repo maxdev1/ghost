@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "windowserver.hpp"
+#include "component_registry.hpp"
 #include "components/button.hpp"
 #include "components/cursor.hpp"
 #include "events/event.hpp"
@@ -293,6 +294,42 @@ component_t* windowserver_t::dispatch(component_t* component, event_t& event)
 
 	return handledBy;
 }
+
+component_t* windowserver_t::switchFocus(component_t* to)
+{
+	auto from = component_registry_t::get(cursor_t::focusedComponent);
+
+	auto actualTo = to->setFocused(true);
+	if(actualTo)
+	{
+		cursor_t::focusedComponent = actualTo->id;
+
+		window_t* fromWindow = nullptr;
+		if(from && from != actualTo)
+		{
+			from->setFocused(false);
+			fromWindow = from->getWindow();
+		}
+
+		window_t* toWindow = actualTo->getWindow();
+		if(fromWindow && toWindow != fromWindow && fromWindow != from)
+		{
+			fromWindow->setFocused(false);
+		}
+
+		if(toWindow)
+		{
+			toWindow->bringToFront();
+			if(toWindow != actualTo)
+			{
+				toWindow->setFocused(true);
+			}
+		}
+		return actualTo;
+	}
+	return nullptr;
+}
+
 
 void windowserver_t::fpsCounter()
 {

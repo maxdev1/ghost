@@ -65,7 +65,6 @@ class window_t :
     int cornerSize;
     g_color_argb backgroundColor;
     bool resizable;
-    bool focused;
 
     label_t label;
     panel_t panel;
@@ -80,8 +79,6 @@ class window_t :
     int shadowSize;
     int padding;
     g_rectangle crossBounds;
-
-    std::function<void()> titleChangedListener{};
 
 public:
     window_t();
@@ -117,12 +114,11 @@ public:
 
     component_t* handleMouseEvent(mouse_event_t& e) override;
 
-    bool isFocusable() const override
+    bool isFocusableDefault() const override
     {
         return true;
     }
 
-    bool isFocused() const override;
     void setFocusedInternal(bool focused) override;
 
     bool getNumericProperty(int property, uint32_t* out) override;
@@ -130,11 +126,6 @@ public:
 
     void setTitleInternal(std::string title) override;
     std::string getTitle() override;
-
-    void onTitleChanged(const std::function<void()>& callback)
-    {
-        titleChangedListener = callback;
-    }
 
     virtual void close();
 

@@ -41,7 +41,6 @@ class text_field_t : virtual public text_component_t, virtual public titled_comp
 {
     std::string text;
     text_field_visual_status_t visualStatus;
-    bool focused;
     bool secure;
 
     g_font* font;
@@ -77,11 +76,10 @@ public:
     void setText(std::string text) override;
     std::string getText() override;
 
-    bool isFocusable() const override
+    bool isFocusableDefault() const override
     {
         return true;
     }
-    bool isFocused() const override;
     void setFocusedInternal(bool focused) override;
 
     virtual void setSecure(bool secure);

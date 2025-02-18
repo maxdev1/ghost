@@ -154,13 +154,8 @@ void window_t::paint()
 
 void window_t::setFocusedInternal(bool focused)
 {
-	this->focused = focused;
+	focusable_component_t::setFocusedInternal(focused);
 	markFor(COMPONENT_REQUIREMENT_PAINT);
-}
-
-bool window_t::isFocused() const
-{
-	return this->focused;
 }
 
 component_t* window_t::handleMouseEvent(mouse_event_t& me)
@@ -465,7 +460,7 @@ bool window_t::getNumericProperty(int property, uint32_t* out)
 		return true;
 	}
 
-	return false;
+	return component_t::getNumericProperty(property, out);
 }
 
 bool window_t::setNumericProperty(int property, uint32_t value)
@@ -485,22 +480,12 @@ bool window_t::setNumericProperty(int property, uint32_t value)
 		return true;
 	}
 
-	if(property == G_UI_PROPERTY_FOCUSED)
-	{
-		focused = value == 1;
-		markFor(COMPONENT_REQUIREMENT_PAINT);
-		return true;
-	}
-
 	return component_t::setNumericProperty(property, value);
 }
 
 void window_t::setTitleInternal(std::string title)
 {
 	label.setTitle(title);
-
-	if(titleChangedListener)
-		titleChangedListener();
 }
 
 std::string window_t::getTitle()

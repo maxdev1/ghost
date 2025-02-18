@@ -18,73 +18,43 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#ifndef LIBWINDOW_VISIBLELISTENER
+#define LIBWINDOW_VISIBLELISTENER
 
-#include "item_organizer.hpp"
+#include "listener.hpp"
+#include <utility>
+#include <bits/std_function.h>
 
-void item_organizer_t::organize(const std::vector<item_t*>& items, const g_rectangle& backgroundBounds) const
+class g_component;
+
+typedef std::function<void(bool)> g_visible_listener_func;
+
+class g_visible_listener : public g_listener
 {
-	std::vector<g_rectangle> allBounds;
-	for(auto& item: items)
-	{
-		auto bounds = item->getBounds();
-		allBounds.push_back(bounds);
-	}
+public:
+    void process(g_ui_component_event_header* header) override
+    {
+        auto e = (g_ui_component_visible_event*)header;
+        handleVisibleChanged(e->visible);
+    }
 
-	int cw = grid.cellWidth;
-	int ch = grid.cellHeight;
-	int maxX = backgroundBounds.width / cw - (backgroundBounds.width % cw == 0 ? 0 : 1);
-	int maxY = backgroundBounds.height / ch - (backgroundBounds.height % ch == 0 ? 0 : 1);
+    virtual void handleVisibleChanged(bool visible) = 0;
+};
 
-	uint8_t taken[(maxX + 1) * (maxY + 1)] = {};
-	std::vector<int> resortIndexes;
+class g_visible_listener_dispatcher : public g_visible_listener
+{
+    g_visible_listener_func func;
 
-	for(int i = 0; i < items.size(); i++)
-	{
-		auto& bounds = allBounds[i];
+public:
+    explicit g_visible_listener_dispatcher(g_visible_listener_func func): func(std::move(func))
+    {
+    }
 
-		int gridX = (bounds.x + cw / 2) / cw;
-		int gridY = (bounds.y + ch / 2) / ch;
+    void handleVisibleChanged(bool visible) override
+    {
+        func(visible);
+    }
+};
 
-		if(gridX < 0)
-			gridX = 0;
-		if(gridY < 0)
-			gridY = 0;
-		if(gridX > maxX)
-			gridX = maxX;
-		if(gridY > maxY)
-			gridY = maxY;
 
-		bounds.x = gridX * cw;
-		bounds.y = gridY * ch;
-
-		if(taken[gridY * maxX + gridX])
-		{
-			resortIndexes.push_back(i);
-		}
-		else
-		{
-			taken[gridY * maxX + gridX] = 1;
-		}
-	}
-
-	for(int r = 0; r < resortIndexes.size(); r++)
-	{
-		int i = resortIndexes[r];
-		for(int t = 0; t < maxX * maxY; t++)
-		{
-			if(!taken[t])
-			{
-				allBounds[i].x = (t % maxX) * cw;
-				allBounds[i].y = (t / maxX) * ch;
-				taken[t] = 1;
-				break;
-			}
-		}
-	}
-
-	for(int i = 0; i < items.size(); i++)
-	{
-		auto& bounds = allBounds[i];
-		items[i]->setBounds(bounds);
-	}
-}
+#endif

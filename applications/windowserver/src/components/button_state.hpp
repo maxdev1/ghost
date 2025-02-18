@@ -23,13 +23,12 @@
 
 struct button_state_t
 {
-    button_state_t() : hovered(false), pressed(false), focused(false)
+    button_state_t() : hovered(false), pressed(false)
     {
     }
 
     bool hovered;
     bool pressed;
-    bool focused;
 };
 
 #endif

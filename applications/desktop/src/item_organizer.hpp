@@ -26,7 +26,7 @@
 
 #include <vector>
 
-class item_organizer
+class item_organizer_t
 {
     struct
     {
@@ -37,12 +37,12 @@ class item_organizer
     } grid;
 
 public:
-    item_organizer(int cellWidth, int cellHeight, int xPadding, int yPadding) :
+    item_organizer_t(int cellWidth, int cellHeight, int xPadding, int yPadding) :
         grid{cellWidth, cellHeight, xPadding, yPadding}
     {
     }
 
-    void organize(const std::vector<item*>& items, const g_rectangle& backgroundBounds) const;
+    void organize(const std::vector<item_t*>& items, const g_rectangle& backgroundBounds) const;
 };
 
 

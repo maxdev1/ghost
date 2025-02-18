@@ -21,6 +21,8 @@
 #ifndef DESKTOP_BACKGROUND
 #define DESKTOP_BACKGROUND
 
+#include <taskbar.hpp>
+
 #include "item.hpp"
 #include "item_organizer.hpp"
 
@@ -28,36 +30,38 @@
 #include <libwindow/selection.hpp>
 #include <vector>
 
-class background : virtual public g_canvas
+class background_t : virtual public g_canvas
 {
 protected:
     void init();
 
-    std::vector<item*> items;
+    taskbar_t* taskbar;
+    std::vector<item_t*> items;
     void onMouseMove(const g_point& position);
     bool dragItems;
     g_point selectionStart;
     g_selection* selection = nullptr;
-    item_organizer* organizer = nullptr;
+    item_organizer_t* organizer = nullptr;
 
     void onMouseLeftPress(const g_point& position, int clickCount);
     void onMouseDrag(const g_point& position);
     void onMouseRelease(const g_point& position);
 
 public:
-    explicit background(g_ui_component_id id):
+    explicit background_t(g_ui_component_id id):
         g_component(id),
         g_canvas(id), dragItems(false)
     {
     }
 
-    ~background() override = default;
-    static background* create();
+    ~background_t() override = default;
+    static background_t* create();
 
+    void addTaskbar(taskbar_t* taskbar);
     virtual void paint();
 
     void organize();
-    void addItem(item* item);
+    void addItem(item_t* item);
 };
 
 #endif

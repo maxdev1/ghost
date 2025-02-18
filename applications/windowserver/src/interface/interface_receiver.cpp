@@ -209,25 +209,6 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 		responseMessage = response;
 		responseLength = sizeof(g_ui_component_get_bounds_response);
 	}
-	else if(requestUiMessage->id == G_UI_PROTOCOL_SET_VISIBLE)
-	{
-		auto request = (g_ui_component_set_visible_request*) requestUiMessage;
-		component_t* component = component_registry_t::get(request->id);
-
-		auto response = new g_ui_component_set_visible_response;
-		if(component == nullptr)
-		{
-			response->status = G_UI_PROTOCOL_FAIL;
-		}
-		else
-		{
-			component->setVisible(request->visible);
-			response->status = G_UI_PROTOCOL_SUCCESS;
-		}
-
-		responseMessage = response;
-		responseLength = sizeof(g_ui_component_set_visible_response);
-	}
 	else if(requestUiMessage->id == G_UI_PROTOCOL_ADD_LISTENER)
 	{
 		auto request = (g_ui_component_add_listener_request*) requestUiMessage;
@@ -299,6 +280,25 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 
 		responseMessage = response;
 		responseLength = sizeof(g_ui_component_get_numeric_property_response);
+	}
+	else if(requestUiMessage->id == G_UI_PROTOCOL_FOCUS)
+	{
+		auto request = (g_ui_component_focus_request*) requestUiMessage;
+		component_t* component = component_registry_t::get(request->id);
+
+		auto response = new g_ui_component_focus_response;
+		if(component == nullptr)
+		{
+			response->status = G_UI_PROTOCOL_FAIL;
+		}
+		else
+		{
+			windowserver_t::instance()->switchFocus(component);
+			response->status = G_UI_PROTOCOL_SUCCESS;
+		}
+
+		responseMessage = response;
+		responseLength = sizeof(g_ui_component_set_numeric_property_response);
 	}
 	else if(requestUiMessage->id == G_UI_PROTOCOL_SET_TITLE)
 	{

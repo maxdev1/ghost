@@ -35,5 +35,8 @@
 #define G_UI_PROPERTY_COLOR             7
 #define G_UI_PROPERTY_ALIGNMENT         8
 #define G_UI_PROPERTY_FOCUSED           9
+#define G_UI_PROPERTY_VISIBLE           10
+#define G_UI_PROPERTY_FOCUSABLE         11
+#define G_UI_PROPERTY_DISPATCHES_FOCUS  12
 
 #endif

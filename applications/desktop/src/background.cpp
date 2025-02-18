@@ -22,16 +22,16 @@
 #include <cairo/cairo.h>
 #include <stdlib.h>
 
-background* background::create()
+background_t* background_t::create()
 {
-	auto instance = createCanvasComponent<background>();
+	auto instance = createCanvasComponent<background_t>();
 	instance->init();
 	return instance;
 }
 
-void background::init()
+void background_t::init()
 {
-	organizer = new item_organizer(100, 100, 5, 5);
+	organizer = new item_organizer_t(100, 100, 5, 5);
 
 	this->setBufferListener([this]()
 	{
@@ -67,7 +67,7 @@ void background::init()
 	this->organize();
 }
 
-void background::onMouseMove(const g_point& position)
+void background_t::onMouseMove(const g_point& position)
 {
 	for(auto item: items)
 	{
@@ -80,9 +80,9 @@ void background::onMouseMove(const g_point& position)
 	}
 }
 
-void background::onMouseLeftPress(const g_point& position, int clickCount)
+void background_t::onMouseLeftPress(const g_point& position, int clickCount)
 {
-	item* pressedItem = nullptr;
+	item_t* pressedItem = nullptr;
 	std::vector<g_rectangle> itemsBounds;
 	for(auto& item: items)
 	{
@@ -107,11 +107,16 @@ void background::onMouseLeftPress(const g_point& position, int clickCount)
 		{
 			for(auto& item: items)
 			{
+				auto wasSelected = item->selected;
 				item->selected = false;
-				item->paint();
+				if(wasSelected != item->selected)
+					item->paint();
 			}
+
+			auto wasSelected = pressedItem->selected;
 			pressedItem->selected = true;
-			pressedItem->paint();
+			if(wasSelected != pressedItem->selected)
+				pressedItem->paint();
 		}
 
 		// Store for each selected item the offset in relation to press point
@@ -129,15 +134,17 @@ void background::onMouseLeftPress(const g_point& position, int clickCount)
 	{
 		for(auto item: items)
 		{
+			auto wasSelected = item->selected;
 			item->selected = false;
-			item->paint();
+			if(wasSelected != item->selected)
+				item->paint();
 		}
 
 		selectionStart = position;
 	}
 }
 
-void background::onMouseDrag(const g_point& position)
+void background_t::onMouseDrag(const g_point& position)
 {
 	if(dragItems)
 	{
@@ -163,19 +170,23 @@ void background::onMouseDrag(const g_point& position)
 			g_rectangle rect = item->getBounds();
 			if(boundsNorm.intersects(rect))
 			{
+				auto wasSelected = item->selected;
 				item->selected = true;
-				item->paint();
+				if(wasSelected != item->selected)
+					item->paint();
 			}
 			else
 			{
+				auto wasSelected = item->selected;
 				item->selected = false;
-				item->paint();
+				if(wasSelected != item->selected)
+					item->paint();
 			}
 		}
 	}
 }
 
-void background::onMouseRelease(const g_point& position)
+void background_t::onMouseRelease(const g_point& position)
 {
 	if(dragItems)
 		dragItems = false;
@@ -183,12 +194,19 @@ void background::onMouseRelease(const g_point& position)
 	organize();
 }
 
-void background::organize()
+void background_t::organize()
 {
 	this->organizer->organize(items, this->getBounds());
 }
 
-void background::paint()
+void background_t::addTaskbar(taskbar_t* taskbar)
+{
+	this->taskbar = taskbar;
+	this->addChild(taskbar);
+}
+
+
+void background_t::paint()
 {
 	auto cr = this->acquireGraphics();
 	if(!cr)
@@ -199,7 +217,7 @@ void background::paint()
 	auto bounds = this->getBounds();
 
 	srand(g_millis());
-	int r = rand() % 128 + 50;
+	static int r = rand() % 128 + 50;
 
 	cairo_pattern_t* gradient = cairo_pattern_create_linear(bounds.width * 0.4, 0, bounds.width * 0.8,
 	                                                        bounds.height);
@@ -223,7 +241,7 @@ void background::paint()
 	this->releaseGraphics();
 }
 
-void background::addItem(item* item)
+void background_t::addItem(item_t* item)
 {
 	items.push_back(item);
 	this->addChild(item);

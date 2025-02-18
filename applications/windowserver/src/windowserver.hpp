@@ -97,6 +97,8 @@ public:
      */
     component_t* dispatchUpwards(component_t* component, event_t& event);
 
+    component_t* switchFocus(component_t* to);
+
     /**
      * Returns the singleton instance of the window server.
      *

@@ -64,6 +64,11 @@ protected:
         return false;
     }
 
+    bool isFocusableDefault() const override
+    {
+        return true;
+    }
+
 public:
     explicit canvas_t(g_tid partnerThread);
     ~canvas_t() override;

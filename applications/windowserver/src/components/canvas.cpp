@@ -166,7 +166,7 @@ void canvas_t::notifyClientAboutNewBuffer()
 	if(eventDispatcher == G_TID_NONE)
 	{
 		klog("failed to send buffer notification to event dispatcher of process %i since it is not registered",
-			 partnerProcess);
+		     partnerProcess);
 	}
 	else
 	{

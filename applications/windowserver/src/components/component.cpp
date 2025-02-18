@@ -28,10 +28,11 @@
 #include "component_registry.hpp"
 #include "windowserver.hpp"
 
-#include <algorithm>
-#include <stdlib.h>
 #include <cairo/cairo.h>
 #include <libwindow/properties.hpp>
+#include <libwindow/interface.hpp>
+#include <algorithm>
+#include <stdlib.h>
 #include <typeinfo>
 
 component_t::component_t() :
@@ -142,6 +143,15 @@ void component_t::setVisible(bool visible)
 	}
 
 	g_mutex_release(lock);
+
+	this->callForListeners(G_UI_COMPONENT_EVENT_TYPE_VISIBLE, [visible](event_listener_info_t& info)
+	{
+		g_ui_component_visible_event e;
+		e.header.type = G_UI_COMPONENT_EVENT_TYPE_VISIBLE;
+		e.header.component_id = info.component_id;
+		e.visible = visible;
+		g_send_message(info.target_thread, &e, sizeof(g_ui_component_visible_event));
+	});
 }
 
 void component_t::markDirty(g_rectangle rect)
@@ -552,6 +562,16 @@ bool component_t::isChildOf(component_t* component)
 
 bool component_t::getNumericProperty(int property, uint32_t* out)
 {
+	if(property == G_UI_PROPERTY_VISIBLE)
+	{
+		*out = this->isVisible() ? 1 : 0;
+		return true;
+	}
+
+	if(focusable_component_t::getNumericProperty(property, out))
+	{
+		return true;
+	}
 	return false;
 }
 
@@ -570,13 +590,21 @@ bool component_t::setNumericProperty(int property, uint32_t value)
 			return true;
 		}
 	}
+	else if(property == G_UI_PROPERTY_VISIBLE)
+	{
+		setVisible(value == 1);
+		return true;
+	}
 
+	if(focusable_component_t::setNumericProperty(property, value))
+	{
+		return true;
+	}
 	return false;
 }
 
 bool component_t::getChildReference(component_t* child, component_child_reference_t& out)
 {
-
 	g_mutex_acquire(childrenLock);
 	for(auto& ref: children)
 	{

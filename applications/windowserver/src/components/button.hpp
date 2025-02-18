@@ -53,8 +53,7 @@ public:
     bool getNumericProperty(int property, uint32_t* out) override;
     bool setNumericProperty(int property, uint32_t value) override;
 
-    bool isFocused() const override;
-    bool isFocusable() const override;
+    bool isFocusableDefault() const override;
     void setFocusedInternal(bool focused) override;
 
     virtual void setEnabled(bool enabled);
