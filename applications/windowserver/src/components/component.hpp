@@ -266,7 +266,7 @@ public:
 
     virtual void setLayoutManager(layout_manager_t* layoutManager);
 
-    layout_manager_t* getLayoutManager() const
+    virtual layout_manager_t* getLayoutManager() const
     {
         return layoutManager;
     }

@@ -21,14 +21,15 @@
 #ifndef __FLOW_LAYOUT_MANAGER__
 #define __FLOW_LAYOUT_MANAGER__
 
-#include <layout/layout_manager.hpp>
+#include "layout_manager.hpp"
 
 /**
  *
  */
-class flow_layout_manager_t: public layout_manager_t {
+class flow_layout_manager_t : public layout_manager_t
+{
 public:
-	virtual void layout();
+    virtual void layout();
 };
 
 #endif

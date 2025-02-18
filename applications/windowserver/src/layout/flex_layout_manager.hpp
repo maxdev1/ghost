@@ -18,58 +18,51 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __WINDOWSERVER_LAYOUT_GRIDLAYOUTMANAGER__
-#define __WINDOWSERVER_LAYOUT_GRIDLAYOUTMANAGER__
+#ifndef __FLEX_LAYOUT_MANAGER__
+#define __FLEX_LAYOUT_MANAGER__
 
 #include "layout_manager.hpp"
+#include <unordered_map>
 #include <libwindow/metrics/insets.hpp>
 
-class grid_layout_manager_t : public layout_manager_t
+struct flex_info_t
 {
-    int columns;
-    int rows;
-    g_insets padding;
-    int rowSpace;
-    int colSpace;
+    float grow;
+    float shrink;
+    int basis;
+};
+
+class flex_layout_manager_t : public layout_manager_t
+{
+    std::unordered_map<component_t*, flex_info_t> flexInfo;
+    bool horizontal = true;
+    g_insets padding = g_insets(0, 0, 0, 0);
+    int gap = 0;
 
 public:
-    grid_layout_manager_t(int columns = 1, int rows = 0, int rowSpace = 0, int columnSpace = 0)
-        : columns(columns), rows(rows), padding(g_insets(0, 0, 0, 0)),
-          rowSpace(rowSpace), colSpace(columnSpace)
+    void layout() override;
+
+    void setLayoutInfo(component_t* child, float grow, float shrink, int basis);
+
+    void setHorizontal(bool horizontal)
     {
+        this->horizontal = horizontal;
     }
 
-    void setPadding(g_insets _padding)
+    int getGap()
     {
-        padding = _padding;
+        return gap;
     }
 
-    g_insets getPadding() const
+    void setGap(int gap)
     {
-        return padding;
+        this->gap = gap;
     }
 
-    void setRowSpace(int _space)
+    void setPadding(g_insets padding)
     {
-        rowSpace = _space;
+        this->padding = padding;
     }
-
-    int getRowSpace() const
-    {
-        return rowSpace;
-    }
-
-    void setColSpace(int _space)
-    {
-        colSpace = _space;
-    }
-
-    int getColSpace() const
-    {
-        return colSpace;
-    }
-
-    virtual void layout();
 };
 
 #endif

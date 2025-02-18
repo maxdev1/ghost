@@ -38,6 +38,8 @@ void flow_layout_manager_t::layout()
 	for(auto& ref: children)
 	{
 		component_t* c = ref.component;
+		if(!c->isVisible())
+			continue;
 
 		g_dimension preferredSize = c->getPreferredSize();
 
@@ -56,6 +58,7 @@ void flow_layout_manager_t::layout()
 			lineHeight = preferredSize.height;
 		}
 	}
-
 	component->releaseChildren();
+
+	component->setPreferredSize(g_dimension(parentBounds.width, y + lineHeight));
 }

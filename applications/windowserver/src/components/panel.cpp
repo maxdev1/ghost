@@ -19,10 +19,11 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "components/panel.hpp"
+#include <libwindow/properties.hpp>
 
 void panel_t::paint()
 {
-	if(background == ARGB(0, 0, 0, 0))
+	if(!hasGraphics())
 		return;
 
 	auto cr = graphics.acquireContext();
@@ -46,4 +47,25 @@ void panel_t::setBackground(g_color_argb color)
 g_color_argb panel_t::getBackground()
 {
 	return background;
+}
+
+bool panel_t::getNumericProperty(int property, uint32_t* out)
+{
+	if(property == G_UI_PROPERTY_BACKGROUND)
+	{
+		*out = background;
+		return true;
+	}
+
+	return component_t::getNumericProperty(property, out);
+}
+
+bool panel_t::setNumericProperty(int property, uint32_t value)
+{
+	if(property == G_UI_PROPERTY_BACKGROUND)
+	{
+		setBackground(value);
+		return true;
+	}
+	return component_t::setNumericProperty(property, value);
 }

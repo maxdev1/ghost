@@ -46,6 +46,8 @@ protected:
     }
 
 public:
+    scrollpane_t();
+
     virtual g_point getPosition() const
     {
         return scrollPosition;

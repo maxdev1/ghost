@@ -73,6 +73,12 @@ typedef uint8_t g_ui_protocol_command_id;
 #define G_UI_PROTOCOL_CANVAS_BLIT				((g_ui_protocol_command_id) 12)
 #define G_UI_PROTOCOL_REGISTER_DESKTOP_CANVAS	((g_ui_protocol_command_id) 13)
 #define G_UI_PROTOCOL_GET_SCREEN_DIMENSION		((g_ui_protocol_command_id) 14)
+#define G_UI_PROTOCOL_FLEX_SET_ORIENTATION		((g_ui_protocol_command_id) 15)
+#define G_UI_PROTOCOL_FLEX_SET_COMPONENT_INFO   ((g_ui_protocol_command_id) 16)
+#define G_UI_PROTOCOL_FLEX_SET_PADDING          ((g_ui_protocol_command_id) 17)
+#define G_UI_PROTOCOL_SCROLLPANE_SET_CONTENT    ((g_ui_protocol_command_id) 18)
+#define G_UI_PROTOCOL_SCROLLPANE_SET_FIXED      ((g_ui_protocol_command_id) 19)
+#define G_UI_PROTOCOL_SET_PREFERRED_SIZE        ((g_ui_protocol_command_id) 20)
 
 /**
  * Common status for requests
@@ -91,6 +97,8 @@ const g_ui_component_type G_UI_COMPONENT_TYPE_LABEL = 2;
 const g_ui_component_type G_UI_COMPONENT_TYPE_TEXTFIELD = 3;
 const g_ui_component_type G_UI_COMPONENT_TYPE_CANVAS = 4;
 const g_ui_component_type G_UI_COMPONENT_TYPE_SELECTION = 5;
+const g_ui_component_type G_UI_COMPONENT_TYPE_PANEL = 6;
+const g_ui_component_type G_UI_COMPONENT_TYPE_SCROLLPANE = 7;
 
 /**
  * Types of events that can be listened to
@@ -113,6 +121,7 @@ const g_ui_component_event_type G_UI_COMPONENT_EVENT_TYPE_VISIBLE = 9;
 typedef uint8_t g_ui_layout_manager;
 #define G_UI_LAYOUT_MANAGER_GRID ((g_ui_layout_manager) 0)
 #define G_UI_LAYOUT_MANAGER_FLOW ((g_ui_layout_manager) 1)
+#define G_UI_LAYOUT_MANAGER_FLEX ((g_ui_layout_manager) 2)
 
 /**
  *
@@ -147,6 +156,15 @@ typedef struct
     g_ui_protocol_status status;
     g_tid window_server_delegate;
 } __attribute__((packed)) g_ui_initialize_response;
+
+/**
+ * Generic response
+ */
+typedef struct
+{
+    g_ui_message_header header;
+    g_ui_protocol_status status;
+} __attribute__((packed)) g_ui_simple_response;
 
 /**
  * Request sent to create a component.
@@ -199,7 +217,7 @@ typedef struct
 } __attribute__((packed)) g_ui_component_add_child_response;
 
 /**
- * Request/response for setting bounds
+ * Setting bounds
  */
 typedef struct
 {
@@ -208,11 +226,15 @@ typedef struct
     g_rectangle bounds;
 } __attribute__((packed)) g_ui_component_set_bounds_request;
 
+/**
+ * Setting preferred size
+ */
 typedef struct
 {
     g_ui_message_header header;
-    g_ui_protocol_status status;
-} __attribute__((packed)) g_ui_component_set_bounds_response;
+    g_ui_component_id id;
+    g_dimension size;
+} __attribute__((packed)) g_ui_component_set_preferred_size_request;
 
 /**
  * Request/response for getting bounds
@@ -349,6 +371,60 @@ typedef struct
     g_ui_message_header header;
     g_dimension size;
 } __attribute__((packed)) g_ui_get_screen_dimension_response;
+
+/**
+ * Setting flex orientation
+ */
+typedef struct
+{
+    g_ui_message_header header;
+    g_ui_component_id id;
+    bool horizontal;
+} __attribute__((packed)) g_ui_flex_set_orientation_request;
+
+/**
+ * Setting flex info for a component
+ */
+typedef struct
+{
+    g_ui_message_header header;
+    g_ui_component_id parent;
+    g_ui_component_id child;
+    float grow;
+    float shrink;
+    int basis;
+} __attribute__((packed)) g_ui_flex_set_component_info;
+
+/**
+ * Setting flex padding
+ */
+typedef struct
+{
+    g_ui_message_header header;
+    g_ui_component_id id;
+    g_insets insets;
+} __attribute__((packed)) g_ui_flex_set_padding;
+
+/**
+ * Scrollpane content
+ */
+typedef struct
+{
+    g_ui_message_header header;
+    g_ui_component_id scrollpane;
+    g_ui_component_id content;
+} __attribute__((packed)) g_ui_scrollpane_set_content;
+
+/**
+ * Scrollpane fixed sizes
+ */
+typedef struct
+{
+    g_ui_message_header header;
+    g_ui_component_id scrollpane;
+    bool width;
+    bool height;
+} __attribute__((packed)) g_ui_scrollpane_set_fixed;
 
 /**
  * Event structures

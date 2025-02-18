@@ -241,12 +241,13 @@ void windowserver_t::output(graphics_t* graphics) const
 
 void windowserver_t::loadCursor()
 {
-	cursor_t::load("/system/graphics/cursor/default.cursor");
-	cursor_t::load("/system/graphics/cursor/text.cursor");
-	cursor_t::load("/system/graphics/cursor/resize-ns.cursor");
-	cursor_t::load("/system/graphics/cursor/resize-ew.cursor");
-	cursor_t::load("/system/graphics/cursor/resize-nesw.cursor");
-	cursor_t::load("/system/graphics/cursor/resize-nwes.cursor");
+	auto dir = g_open_directory("/system/graphics/cursor");
+	g_fs_directory_entry* entry;
+	while((entry = g_read_directory(dir)) != nullptr)
+	{
+		std::string path = std::string("/system/graphics/cursor") + "/" + entry->name;
+		cursor_t::load(path);
+	}
 	cursor_t::set("default");
 }
 

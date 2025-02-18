@@ -26,7 +26,7 @@
 
 void grid_layout_manager_t::layout()
 {
-	if(component == 0)
+	if(component == nullptr)
 		return;
 
 	g_rectangle usedBounds = component->getBounds();
@@ -83,7 +83,7 @@ void grid_layout_manager_t::layout()
 	{
 		addedHeight -= rowSpace;
 	}
-	auto newPref = g_dimension(x, y + addedHeight);
+	auto newPref = g_dimension(x == 0 ? prefPreferred.width : x, y + addedHeight);
 
 	if(prefPreferred != newPref)
 	{

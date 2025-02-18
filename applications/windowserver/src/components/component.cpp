@@ -34,6 +34,7 @@
 #include <algorithm>
 #include <stdlib.h>
 #include <typeinfo>
+#include <layout/flex_layout_manager.hpp>
 
 component_t::component_t() :
 	bounding_component_t(this),
@@ -567,6 +568,17 @@ bool component_t::getNumericProperty(int property, uint32_t* out)
 		*out = this->isVisible() ? 1 : 0;
 		return true;
 	}
+	else if(property == G_UI_PROPERTY_FLEX_GAP)
+	{
+		auto flexManager = dynamic_cast<flex_layout_manager_t*>(getLayoutManager());
+		if(flexManager)
+		{
+			*out = flexManager->getGap();
+			return true;
+		}
+		return false;
+	}
+
 
 	if(focusable_component_t::getNumericProperty(property, out))
 	{
@@ -584,15 +596,30 @@ bool component_t::setNumericProperty(int property, uint32_t value)
 			setLayoutManager(new flow_layout_manager_t());
 			return true;
 		}
-		else if(value == G_UI_LAYOUT_MANAGER_GRID)
+		if(value == G_UI_LAYOUT_MANAGER_GRID)
 		{
 			setLayoutManager(new grid_layout_manager_t(1, 1));
+			return true;
+		}
+		if(value == G_UI_LAYOUT_MANAGER_FLEX)
+		{
+			setLayoutManager(new flex_layout_manager_t());
 			return true;
 		}
 	}
 	else if(property == G_UI_PROPERTY_VISIBLE)
 	{
 		setVisible(value == 1);
+		return true;
+	}
+	else if(property == G_UI_PROPERTY_FLEX_GAP)
+	{
+		auto flexManager = dynamic_cast<flex_layout_manager_t*>(getLayoutManager());
+		if(flexManager)
+		{
+			flexManager->setGap(value);
+			return true;
+		}
 		return true;
 	}
 

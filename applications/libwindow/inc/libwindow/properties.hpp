@@ -38,5 +38,6 @@
 #define G_UI_PROPERTY_VISIBLE           10
 #define G_UI_PROPERTY_FOCUSABLE         11
 #define G_UI_PROPERTY_DISPATCHES_FOCUS  12
+#define G_UI_PROPERTY_FLEX_GAP          13
 
 #endif

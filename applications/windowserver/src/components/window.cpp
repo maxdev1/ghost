@@ -39,14 +39,14 @@ window_t::window_t() :
 	crossHovered = false;
 	crossPressed = false;
 
-	shadowSize = 5;
-	padding = 5;
+	shadowSize = 10;
+	titleHeight = 40;
 
 	graphics.setAverageFactor(250);
 
 	component_t::addChild(&label, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
 	component_t::addChild(&panel, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
-	setMinimumSize(g_dimension(100, 40));
+	setMinimumSize(g_dimension(200, 80));
 
 	panel.setBackground(ARGB(0, 0, 0, 0));
 }
@@ -54,11 +54,10 @@ window_t::window_t() :
 void window_t::layout()
 {
 	g_rectangle bounds = getBounds();
-	int titleHeight = 30;
-	label.setBounds(g_rectangle(padding + 10, padding, bounds.width - padding - 20, titleHeight));
-	panel.setBounds(g_rectangle(padding, padding + titleHeight, bounds.width - padding * 2,
-	                            bounds.height - titleHeight - padding * 2));
-	crossBounds = g_rectangle(bounds.width - 30, 14, 15, 15);
+	label.setBounds(g_rectangle(shadowSize + 12, shadowSize, bounds.width - shadowSize - 20, titleHeight));
+	panel.setBounds(g_rectangle(shadowSize, shadowSize + titleHeight, bounds.width - shadowSize * 2,
+	                            bounds.height - titleHeight - shadowSize * 2));
+	crossBounds = g_rectangle(bounds.width - 40, 25, 15, 15);
 }
 
 /**
@@ -72,6 +71,11 @@ void window_t::addChild(component_t* component, component_child_reference_type_t
 void window_t::setLayoutManager(layout_manager_t* layoutManager)
 {
 	panel.setLayoutManager(layoutManager);
+}
+
+layout_manager_t* window_t::getLayoutManager() const
+{
+	return panel.getLayoutManager();
 }
 
 void roundedRectangle(cairo_t* cr, double x, double y, double width, double height, double radius)
@@ -116,13 +120,14 @@ void window_t::paint()
 	}
 
 	// draw background
+	int borderRadius = 5;
 	roundedRectangle(cr, shadowSize, shadowSize, bounds.width - 2 * shadowSize, bounds.height - 2 * shadowSize,
-	                 shadowSize);
+	                 borderRadius);
 	cairo_set_source_rgba(cr,
 	                      ARGB_FR_FROM(backgroundColor),
 	                      ARGB_FG_FROM(backgroundColor),
 	                      ARGB_FB_FROM(backgroundColor),
-	                      ARGB_FA_FROM(backgroundColor) * (isFocused() ? 1.0 : 0.9));
+	                      ARGB_FA_FROM(backgroundColor));
 	cairo_fill(cr);
 
 	// draw cross
@@ -237,6 +242,7 @@ component_t* window_t::handleMouseEvent(mouse_event_t& me)
 			{
 				newBounds.x = newLocation.x;
 				newBounds.y = newLocation.y;
+				cursor_t::set("drag");
 			}
 
 			// Apply bounds
@@ -405,9 +411,10 @@ component_t* window_t::handleMouseEvent(mouse_event_t& me)
 
 			if(resizeMode == RESIZE_MODE_NONE)
 			{
-				if(pressPoint.y < 40)
+				if(pressPoint.y < titleHeight)
 				{
 					resizeMode = RESIZE_MODE_MOVE;
+					cursor_t::set("drag");
 				}
 			}
 		}
@@ -416,6 +423,7 @@ component_t* window_t::handleMouseEvent(mouse_event_t& me)
 	{
 		crossPressed = false;
 		markFor(COMPONENT_REQUIREMENT_PAINT);
+		cursor_t::set("default");
 	}
 	else if(me.type == G_MOUSE_EVENT_RELEASE)
 	{

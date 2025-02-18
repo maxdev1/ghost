@@ -31,7 +31,7 @@ class panel_t : virtual public component_t
 protected:
     bool hasGraphics() const override
     {
-        return false;
+        return background != ARGB(0, 0, 0, 0);
     }
 
 public:
@@ -43,6 +43,9 @@ public:
 
     void setBackground(g_color_argb color);
     g_color_argb getBackground();
+
+    bool setNumericProperty(int property, uint32_t value) override;
+    bool getNumericProperty(int property, uint32_t* out) override;
 };
 
 #endif

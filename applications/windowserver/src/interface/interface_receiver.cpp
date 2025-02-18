@@ -29,7 +29,9 @@
 #include "components/window.hpp"
 #include "components/desktop/selection.hpp"
 #include "component_registry.hpp"
+#include "components/scrollpane.hpp"
 #include "interface/interface_receiver.hpp"
+#include "layout/flex_layout_manager.hpp"
 
 g_user_mutex eventBufferLock = g_mutex_initialize();
 std::vector<g_message_header*> eventBuffer;
@@ -129,6 +131,14 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 				component = new selection_t();
 				break;
 
+			case G_UI_COMPONENT_TYPE_PANEL:
+				component = new panel_t();
+				break;
+
+			case G_UI_COMPONENT_TYPE_SCROLLPANE:
+				component = new scrollpane_t();
+				break;
+
 			default:
 				klog("don't know how to create a component of type %i", createRequest->type);
 				break;
@@ -176,7 +186,7 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 		auto request = (g_ui_component_set_bounds_request*) requestUiMessage;
 		component_t* component = component_registry_t::get(request->id);
 
-		auto response = new g_ui_component_set_bounds_response;
+		auto response = new g_ui_simple_response;
 		if(component == nullptr)
 		{
 			response->status = G_UI_PROTOCOL_FAIL;
@@ -188,7 +198,7 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 		}
 
 		responseMessage = response;
-		responseLength = sizeof(g_ui_component_set_bounds_response);
+		responseLength = sizeof(g_ui_simple_response);
 	}
 	else if(requestUiMessage->id == G_UI_PROTOCOL_GET_BOUNDS)
 	{
@@ -418,6 +428,118 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 		responseMessage = response;
 		responseLength = sizeof(g_ui_get_screen_dimension_response);
 	}
+	else if(requestUiMessage->id == G_UI_PROTOCOL_FLEX_SET_ORIENTATION)
+	{
+		auto response = new g_ui_simple_response;
+		response->status = G_UI_PROTOCOL_FAIL;
+
+		auto request = (g_ui_flex_set_orientation_request*) requestUiMessage;
+		component_t* component = component_registry_t::get(request->id);
+		if(component)
+		{
+			auto flexLayoutManager = dynamic_cast<flex_layout_manager_t*>(component->getLayoutManager());
+			if(flexLayoutManager)
+			{
+				flexLayoutManager->setHorizontal(request->horizontal);
+				response->status = G_UI_PROTOCOL_SUCCESS;
+			}
+		}
+
+		responseMessage = response;
+		responseLength = sizeof(g_ui_simple_response);
+	}
+	else if(requestUiMessage->id == G_UI_PROTOCOL_FLEX_SET_COMPONENT_INFO)
+	{
+		auto response = new g_ui_simple_response;
+		response->status = G_UI_PROTOCOL_FAIL;
+
+		auto request = (g_ui_flex_set_component_info*) requestUiMessage;
+		component_t* component = component_registry_t::get(request->parent);
+		component_t* child = component_registry_t::get(request->child);
+		if(component && child)
+		{
+			auto flexLayoutManager = dynamic_cast<flex_layout_manager_t*>(component->getLayoutManager());
+			if(flexLayoutManager)
+			{
+				flexLayoutManager->setLayoutInfo(child, request->grow, request->shrink, request->basis);
+				response->status = G_UI_PROTOCOL_SUCCESS;
+			}
+		}
+
+		responseMessage = response;
+		responseLength = sizeof(g_ui_simple_response);
+	}
+	else if(requestUiMessage->id == G_UI_PROTOCOL_FLEX_SET_PADDING)
+	{
+		auto response = new g_ui_simple_response;
+		response->status = G_UI_PROTOCOL_FAIL;
+
+		auto request = (g_ui_flex_set_padding*) requestUiMessage;
+		component_t* component = component_registry_t::get(request->id);
+		if(component)
+		{
+			auto flexLayoutManager = dynamic_cast<flex_layout_manager_t*>(component->getLayoutManager());
+			if(flexLayoutManager)
+			{
+				flexLayoutManager->setPadding(request->insets);
+				response->status = G_UI_PROTOCOL_SUCCESS;
+			}
+		}
+
+		responseMessage = response;
+		responseLength = sizeof(g_ui_simple_response);
+	}
+	else if(requestUiMessage->id == G_UI_PROTOCOL_SCROLLPANE_SET_CONTENT)
+	{
+		auto response = new g_ui_simple_response;
+		response->status = G_UI_PROTOCOL_FAIL;
+
+		auto request = (g_ui_scrollpane_set_content*) requestUiMessage;
+		scrollpane_t* scrollpane = dynamic_cast<scrollpane_t*>(component_registry_t::get(request->scrollpane));
+		component_t* content = component_registry_t::get(request->content);
+		if(scrollpane && content)
+		{
+			scrollpane->setContent(content);
+			response->status = G_UI_PROTOCOL_SUCCESS;
+		}
+
+		responseMessage = response;
+		responseLength = sizeof(g_ui_simple_response);
+	}
+	else if(requestUiMessage->id == G_UI_PROTOCOL_SCROLLPANE_SET_FIXED)
+	{
+		auto response = new g_ui_simple_response;
+		response->status = G_UI_PROTOCOL_FAIL;
+
+		auto request = (g_ui_scrollpane_set_fixed*) requestUiMessage;
+		scrollpane_t* scrollpane = dynamic_cast<scrollpane_t*>(component_registry_t::get(request->scrollpane));
+		if(scrollpane)
+		{
+			scrollpane->setFixedHeight(request->height);
+			scrollpane->setFixedWidth(request->width);
+			response->status = G_UI_PROTOCOL_SUCCESS;
+		}
+
+		responseMessage = response;
+		responseLength = sizeof(g_ui_simple_response);
+	}
+	else if(requestUiMessage->id == G_UI_PROTOCOL_SET_PREFERRED_SIZE)
+	{
+		auto response = new g_ui_simple_response;
+		response->status = G_UI_PROTOCOL_FAIL;
+
+		auto request = (g_ui_component_set_preferred_size_request*) requestUiMessage;
+		component_t* component = component_registry_t::get(request->id);
+		if(component)
+		{
+			component->setPreferredSize(request->size);
+			response->status = G_UI_PROTOCOL_SUCCESS;
+		}
+
+		responseMessage = response;
+		responseLength = sizeof(g_ui_simple_response);
+	}
+
 
 	if(responseMessage)
 		g_send_message_t(requestMessage->sender, responseMessage, responseLength, requestMessage->transaction);

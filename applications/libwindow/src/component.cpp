@@ -68,17 +68,14 @@ bool g_component::setBounds(const g_rectangle& rect)
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_set_bounds_request), tx);
 
 	// read response
-	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_set_bounds_response);
-	uint8_t buffer[bufferSize];
-
-	bool success = false;
-	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_simple_response);
+	uint8_t buffer[buflen];
+	if(g_receive_message_t(buffer, buflen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		auto response = (g_ui_component_set_bounds_response*) G_MESSAGE_CONTENT(buffer);
-		success = response->status == G_UI_PROTOCOL_SUCCESS;
+		auto response = (g_ui_simple_response*) G_MESSAGE_CONTENT(buffer);
+		return response->status == G_UI_PROTOCOL_SUCCESS;
 	}
-
-	return success;
+	return false;
 }
 
 g_rectangle g_component::getBounds()
@@ -283,4 +280,106 @@ bool g_component::isDispatchesFocus()
 bool g_component::setDispatchesFocus(bool d)
 {
 	return setNumericProperty(G_UI_PROPERTY_DISPATCHES_FOCUS, d ? 1 : 0);
+}
+
+bool g_component::setPreferredSize(g_dimension size)
+{
+	if(!g_ui_initialized)
+		return false;
+
+	g_message_transaction tx = g_get_message_tx_id();
+
+	g_ui_component_set_preferred_size_request request;
+	request.header.id = G_UI_PROTOCOL_SET_PREFERRED_SIZE;
+	request.id = this->id;
+	request.size = size;
+	g_send_message_t(g_ui_delegate_tid, &request, sizeof(request), tx);
+
+	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_simple_response);
+	uint8_t buffer[buflen];
+	if(g_receive_message_t(buffer, buflen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	{
+		auto response = (g_ui_simple_response*) G_MESSAGE_CONTENT(buffer);
+		return response->status == G_UI_PROTOCOL_SUCCESS;
+	}
+	return false;
+}
+
+bool g_component::setFlexOrientation(bool horizontal)
+{
+	if(!g_ui_initialized)
+		return false;
+
+	g_message_transaction tx = g_get_message_tx_id();
+
+	g_ui_flex_set_orientation_request request;
+	request.header.id = G_UI_PROTOCOL_FLEX_SET_ORIENTATION;
+	request.id = this->id;
+	request.horizontal = horizontal;
+	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_flex_set_orientation_request), tx);
+
+	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_simple_response);
+	uint8_t buffer[buflen];
+	if(g_receive_message_t(buffer, buflen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	{
+		auto response = (g_ui_simple_response*) G_MESSAGE_CONTENT(buffer);
+		return response->status == G_UI_PROTOCOL_SUCCESS;
+	}
+	return false;
+}
+
+bool g_component::setFlexComponentInfo(g_component* child, float grow, float shrink, int basis)
+{
+	if(!g_ui_initialized)
+		return false;
+
+	g_message_transaction tx = g_get_message_tx_id();
+
+	g_ui_flex_set_component_info request;
+	request.header.id = G_UI_PROTOCOL_FLEX_SET_COMPONENT_INFO;
+	request.parent = this->id;
+	request.child = child->id;
+	request.grow = grow;
+	request.shrink = shrink;
+	request.basis = basis;
+	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_flex_set_component_info), tx);
+
+	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_simple_response);
+	uint8_t buffer[buflen];
+	if(g_receive_message_t(buffer, buflen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	{
+		auto response = (g_ui_simple_response*) G_MESSAGE_CONTENT(buffer);
+		return response->status == G_UI_PROTOCOL_SUCCESS;
+	}
+	return false;
+}
+
+
+bool g_component::setFlexPadding(g_insets padding)
+{
+	if(!g_ui_initialized)
+		return false;
+
+	g_message_transaction tx = g_get_message_tx_id();
+
+	g_ui_flex_set_padding request;
+	request.header.id = G_UI_PROTOCOL_FLEX_SET_PADDING;
+	request.id = this->id;
+	request.insets = padding;
+	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_flex_set_padding), tx);
+
+	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_simple_response);
+	uint8_t buffer[buflen];
+	if(g_receive_message_t(buffer, buflen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	{
+		auto response = (g_ui_simple_response*) G_MESSAGE_CONTENT(buffer);
+		return response->status == G_UI_PROTOCOL_SUCCESS;
+	}
+	return false;
+}
+
+
+bool g_component::setFlexGap(int gap)
+{
+	return setNumericProperty(G_UI_PROPERTY_FLEX_GAP, gap);
 }

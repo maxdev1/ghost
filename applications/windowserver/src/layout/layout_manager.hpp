@@ -25,16 +25,15 @@ class component_t;
 
 class layout_manager_t
 {
-  protected:
+protected:
     component_t* component;
 
-  public:
-    layout_manager_t() : component(0)
+public:
+    layout_manager_t() : component(nullptr)
     {
     }
-    virtual ~layout_manager_t()
-    {
-    }
+
+    virtual ~layout_manager_t() = default;
 
     void setComponent(component_t* newComp)
     {

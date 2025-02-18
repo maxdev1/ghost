@@ -110,6 +110,8 @@ public:
     bool setDispatchesFocus(bool d);
     bool isDispatchesFocus();
 
+    bool setPreferredSize(g_dimension size);
+
     bool setNumericProperty(int property, uint32_t value);
     bool getNumericProperty(int property, uint32_t* out);
 
@@ -118,6 +120,11 @@ public:
     bool addMouseListener(g_mouse_listener_func listener);
     bool addVisibleListener(g_visible_listener* listener);
     bool addVisibleListener(g_visible_listener_func listener);
+
+    bool setFlexOrientation(bool horizontal);
+    bool setFlexComponentInfo(g_component* child, float grow, float shrink, int basis);
+    bool setFlexPadding(g_insets padding);
+    bool setFlexGap(int gap);
 
     void handle(g_ui_component_event_header* header);
 

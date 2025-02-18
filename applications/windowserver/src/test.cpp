@@ -19,6 +19,9 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "test.hpp"
+
+#include <layout/flex_layout_manager.hpp>
+
 #include "components/button.hpp"
 #include "components/checkbox.hpp"
 #include "components/cursor.hpp"
@@ -175,6 +178,30 @@ void createTestWindow2()
 	window->setVisible(true);
 }
 
+void createTestWindow3()
+{
+	window_t* window = new window_t;
+	window->setTitle("Flex layout");
+	window->setBounds(g_rectangle(700, 10, 300, 300));
+
+	auto flex = new flex_layout_manager_t();
+	flex->setHorizontal(false);
+	window->setLayoutManager(flex);
+
+	button_t* button = new button_t();
+	button->setTitle("Button1");
+	window->addChild(button);
+	flex->setLayoutInfo(button, 0.0f, 1.0f, 100);
+
+	button_t* button2 = new button_t();
+	button2->setTitle("Button2");
+	window->addChild(button2);
+	flex->setLayoutInfo(button2, 1.0f, 1.0f, -1);
+
+	windowserver_t::instance()->screen->addChild(window);
+	window->setVisible(true);
+}
+
 void create_test_window_handler_t::handle(action_component_t* source)
 {
 	g_create_task((void*) &createTestWindow);
@@ -182,6 +209,7 @@ void create_test_window_handler_t::handle(action_component_t* source)
 
 void test_t::createTestComponents()
 {
-	createTestWindow();
-	createTestWindow2();
+	// createTestWindow();
+	// createTestWindow2();
+	// createTestWindow3();
 }

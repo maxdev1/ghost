@@ -76,8 +76,8 @@ class window_t :
     g_rectangle pressBounds;
     window_resize_mode_t resizeMode;
 
+    int titleHeight;
     int shadowSize;
-    int padding;
     g_rectangle crossBounds;
 
 public:
@@ -130,6 +130,7 @@ public:
     virtual void close();
 
     void setLayoutManager(layout_manager_t* layoutManager) override;
+    layout_manager_t* getLayoutManager() const override;
 };
 
 #endif

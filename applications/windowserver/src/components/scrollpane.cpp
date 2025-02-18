@@ -22,24 +22,36 @@
 
 #define SCROLLBAR_SIZE 15
 
-void scrollpane_t::setContent(component_t* component)
+scrollpane_t::scrollpane_t()
 {
-	if(this->content)
-		removeChild(this->content);
-
-	this->content = component;
-	addChild(this->content);
-
 	addChild(&horizontalScrollbar, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
+	horizontalScrollbar.setZIndex(100);
 	horizontalScrollbar.setScrollHandler(this);
 
 	addChild(&verticalScrollbar, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
+	verticalScrollbar.setZIndex(101);
 	verticalScrollbar.setScrollHandler(this);
+}
+
+
+void scrollpane_t::setContent(component_t* component)
+{
+	if(component == this->content)
+	{
+		markFor(COMPONENT_REQUIREMENT_LAYOUT);
+	}
+	else
+	{
+		if(this->content)
+			removeChild(this->content);
+
+		this->content = component;
+		addChild(this->content);
+	}
 }
 
 void scrollpane_t::handleScroll(scrollbar_t* bar)
 {
-
 	if(bar == &verticalScrollbar)
 	{
 		scrollPosition.y = -verticalScrollbar.getModelPosition();
