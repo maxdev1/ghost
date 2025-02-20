@@ -740,6 +740,9 @@ g_fs_open_directory_status filesystemOpenDirectory(g_fs_node* dir)
 
 g_fs_read_directory_status filesystemReadDirectory(g_fs_node* dir, uint32_t index, g_fs_node** outChild)
 {
+	if(!dir->children)
+		return G_FS_READ_DIRECTORY_ERROR;
+
 	auto entry = dir->children;
 	while(entry)
 	{

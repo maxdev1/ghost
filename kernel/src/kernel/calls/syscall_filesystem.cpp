@@ -76,7 +76,8 @@ void syscallFsLength(g_task* task, g_syscall_fs_length* data)
 
 void syscallFsCloneFd(g_task* task, g_syscall_fs_clonefd* data)
 {
-	data->status = filesystemProcessCloneDescriptor(data->source_pid, data->source_fd, data->target_pid, data->target_fd, &data->result);
+	data->status = filesystemProcessCloneDescriptor(data->source_pid, data->source_fd, data->target_pid,
+	                                                data->target_fd, &data->result);
 }
 
 void syscallFsTell(g_task* task, g_syscall_fs_tell* data)
@@ -121,7 +122,8 @@ void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 	g_fs_open_status writeOpen = filesystemOpenNodeFd(pipeNode, writeFlags, task->process->id, &data->write_fd);
 	if(writeOpen != G_FS_OPEN_SUCCESSFUL)
 	{
-		logInfo("%! failed to open write end of pipe %i for task %i with status %i", "filesystem", pipeNode->id, task->id, writeOpen);
+		logInfo("%! failed to open write end of pipe %i for task %i with status %i", "filesystem", pipeNode->id,
+		        task->id, writeOpen);
 		data->status = G_FS_PIPE_ERROR;
 		return;
 	}
@@ -132,9 +134,11 @@ void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 	{
 		if(filesystemClose(task->process->id, writeOpen, true) != G_FS_CLOSE_SUCCESSFUL)
 		{
-			logInfo("%! failed to close write end of pipe %i for task %i after failing to open read end", "filesystem", pipeNode->id, task->id);
+			logInfo("%! failed to close write end of pipe %i for task %i after failing to open read end", "filesystem",
+			        pipeNode->id, task->id);
 		}
-		logInfo("%! failed to open read end of pipe %i for task %i with status %i", "filesystem", pipeNode->id, task->id, readOpen);
+		logInfo("%! failed to open read end of pipe %i for task %i with status %i", "filesystem", pipeNode->id,
+		        task->id, readOpen);
 		data->status = G_FS_PIPE_ERROR;
 		return;
 	}
@@ -205,7 +209,13 @@ void syscallFsReadDirectory(g_task* task, g_syscall_fs_read_directory* data)
 		return;
 	}
 
-	g_fs_node* child;
+	if(directory->type == G_FS_NODE_TYPE_FILE)
+	{
+		data->status = G_FS_READ_DIRECTORY_ERROR;
+		return;
+	}
+
+	g_fs_node* child = nullptr;
 	data->status = filesystemReadDirectory(directory, data->iterator->position, &child);
 	if(data->status == G_FS_READ_DIRECTORY_SUCCESSFUL)
 	{
