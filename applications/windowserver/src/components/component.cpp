@@ -400,16 +400,19 @@ component_t* component_t::handleKeyEvent(key_event_t& event)
 void component_t::setPreferredSize(const g_dimension& size)
 {
 	preferredSize = size;
+	markParentFor(COMPONENT_REQUIREMENT_LAYOUT);
 }
 
 void component_t::setMinimumSize(const g_dimension& size)
 {
 	minimumSize = size;
+	markParentFor(COMPONENT_REQUIREMENT_LAYOUT);
 }
 
 void component_t::setMaximumSize(const g_dimension& size)
 {
 	maximumSize = size;
+	markParentFor(COMPONENT_REQUIREMENT_LAYOUT);
 }
 
 void component_t::setLayoutManager(layout_manager_t* newMgr)
