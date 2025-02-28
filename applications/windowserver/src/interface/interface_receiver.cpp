@@ -33,9 +33,6 @@
 #include "interface/interface_receiver.hpp"
 #include "layout/flex_layout_manager.hpp"
 
-g_user_mutex eventBufferLock = g_mutex_initialize();
-std::vector<g_message_header*> eventBuffer;
-
 void interfaceReceiverThread()
 {
 	while(true)
@@ -52,20 +49,8 @@ void interfaceReceiverThread()
 		if(stat == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 		{
 			auto message = (g_message_header*) buf;
-			auto content = (g_ui_message_header*) G_MESSAGE_CONTENT(message);
 
-			if(content->id == G_UI_PROTOCOL_GET_BOUNDS || content->id == G_UI_PROTOCOL_SET_BOUNDS)
-			{
-				interfaceReceiverProcessCommand(message);
-			}
-			else
-			{
-				g_mutex_acquire(eventBufferLock);
-				eventBuffer.push_back(message);
-				g_mutex_release(eventBufferLock);
-				windowserver_t::instance()->requestUpdate();
-				deferred = true;
-			}
+			interfaceReceiverProcessCommand(message);
 		}
 		else if(stat == G_MESSAGE_RECEIVE_STATUS_EXCEEDS_BUFFER_SIZE)
 		{
@@ -79,18 +64,6 @@ void interfaceReceiverThread()
 		if(!deferred)
 			delete buf;
 	}
-}
-
-void interfaceReceiverProcessBufferedCommands()
-{
-	g_mutex_acquire(eventBufferLock);
-	for(auto& entry: eventBuffer)
-	{
-		interfaceReceiverProcessCommand(entry);
-		delete entry;
-	}
-	eventBuffer.clear();
-	g_mutex_release(eventBufferLock);
 }
 
 void interfaceReceiverProcessCommand(g_message_header* requestMessage)
@@ -180,6 +153,19 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 
 		responseMessage = response;
 		responseLength = sizeof(g_ui_component_add_child_response);
+	}
+	else if(requestUiMessage->id == G_UI_PROTOCOL_DESTROY_COMPONENT)
+	{
+		auto request = (g_ui_destroy_component_request*) requestUiMessage;
+		component_t* component = component_registry_t::get(request->id);
+
+		if(component)
+		{
+			auto parent = component->getParent();
+			if(parent)
+				parent->removeChild(component);
+			// TODO deferred component deletion
+		}
 	}
 	else if(requestUiMessage->id == G_UI_PROTOCOL_SET_BOUNDS)
 	{
@@ -540,7 +526,11 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 		responseLength = sizeof(g_ui_simple_response);
 	}
 
+	windowserver_t::instance()->requestUpdate();
 
 	if(responseMessage)
+	{
 		g_send_message_t(requestMessage->sender, responseMessage, responseLength, requestMessage->transaction);
+		g_yield_t(requestMessage->sender);
+	}
 }

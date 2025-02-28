@@ -42,6 +42,7 @@ bool g_focusable_component::setFocused(bool focused)
 	request.header.id = G_UI_PROTOCOL_FOCUS;
 	request.id = this->id;
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_focus_request), tx);
+	g_yield_t(g_ui_delegate_tid);
 
 	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_focus_response);
 	uint8_t buffer[bufferSize];

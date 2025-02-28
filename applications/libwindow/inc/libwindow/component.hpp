@@ -41,11 +41,12 @@ class g_component : public g_bounding_component
 {
 protected:
     g_ui_component_id id;
+    bool destroyed = false;
 
     g_user_mutex listenersLock = g_mutex_initialize_r(true);
     std::unordered_map<g_ui_component_event_type, std::vector<g_listener*>> listeners;
 
-    ~g_component() override = default;
+    ~g_component() override;
 
     template <typename COMPONENT_TYPE, g_ui_component_type COMPONENT_CONSTANT>
     static COMPONENT_TYPE* createComponent()
@@ -58,6 +59,7 @@ protected:
         request.header.id = G_UI_PROTOCOL_CREATE_COMPONENT;
         request.type = COMPONENT_CONSTANT;
         g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_create_component_request), tx);
+	    // g_yield_t(g_ui_delegate_tid);
 
         size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_create_component_response);
         uint8_t buffer[bufferSize];
@@ -96,6 +98,7 @@ public:
         return id;
     }
 
+    void destroy();
     bool addChild(g_component* c);
 
     bool setBounds(const g_rectangle& rect);

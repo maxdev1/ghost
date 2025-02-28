@@ -25,6 +25,5 @@
 
 void interfaceReceiverThread();
 void interfaceReceiverProcessCommand(g_message_header* requestMessage);
-void interfaceReceiverProcessBufferedCommands();
 
 #endif

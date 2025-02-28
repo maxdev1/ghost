@@ -177,7 +177,7 @@ public:
      */
     void extend(const g_point& p)
     {
-        if (width == -1 || height == -1)
+        if (width <= 0 || height <= 0)
         {
             x = p.x;
             y = p.y;

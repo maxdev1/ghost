@@ -155,24 +155,30 @@ void windowserver_t::updateLoop()
 {
 	g_task_register_id("windowserver/updater");
 
+	int timesUpdated = 0;
+
 	g_mutex_acquire(updateLock);
 	while(true)
 	{
+		++timesUpdated;
 		eventProcessor->process();
-		interfaceReceiverProcessBufferedCommands();
+
 		screen->resolveRequirement(COMPONENT_REQUIREMENT_UPDATE, 0);
 		screen->resolveRequirement(COMPONENT_REQUIREMENT_LAYOUT, 0);
 		screen->resolveRequirement(COMPONENT_REQUIREMENT_PAINT, 0);
 
 		requestRender();
-		g_mutex_acquire_to(updateLock, 1000);
+
+		if(!g_mutex_acquire_to(updateLock, 1000))
+		{
+			klog("Times updated: %i", timesUpdated);
+		}
 	}
 }
 
 void windowserver_t::requestUpdate() const
 {
 	g_mutex_release(updateLock);
-	g_yield_t(updateTask);
 }
 
 
@@ -223,7 +229,11 @@ void windowserver_t::output(graphics_t* graphics) const
 			cairo_save(cr);
 			cairo_set_line_width(cr, 2);
 			cairo_rectangle(cr, invalid.x, invalid.y, invalid.width, invalid.height);
-			cairo_set_source_rgba(cr, 0, ((double) (debugBorderCycle + 100)) / 255, 0, 1);
+			cairo_set_source_rgba(cr,
+			                      debugBorderCycle % 3 == 0 ? ((double) (debugBorderCycle + 100)) / 255 : 0,
+			                      debugBorderCycle % 2 == 0 ? ((double) (debugBorderCycle + 100)) / 255 : 0,
+			                      debugBorderCycle % 2 == 1 ? ((double) (debugBorderCycle + 100)) / 255 : 0,
+			                      1);
 			cairo_stroke(cr);
 			cairo_restore(cr);
 			graphics->releaseContext();

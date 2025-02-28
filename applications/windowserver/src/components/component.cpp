@@ -170,6 +170,8 @@ void component_t::blit(graphics_t* out, const g_rectangle& parentClip, const g_p
 	if(!this->visible)
 		return;
 
+	g_mutex_acquire(lock);
+
 	g_rectangle clip = getBounds();
 	clip.x = screenPosition.x;
 	clip.y = screenPosition.y;
@@ -179,6 +181,7 @@ void component_t::blit(graphics_t* out, const g_rectangle& parentClip, const g_p
 	{
 		graphics.blitTo(out, clip, screenPosition);
 	}
+	g_mutex_release(lock);
 
 	this->blitChildren(out, clip, screenPosition);
 }
@@ -466,6 +469,7 @@ void component_t::resolveRequirement(component_requirement_t req, int lvl)
 		g_mutex_release(childrenLock);
 	}
 
+	g_mutex_acquire(lock);
 	if(requirements & req)
 	{
 		if(req == COMPONENT_REQUIREMENT_UPDATE)
@@ -484,6 +488,7 @@ void component_t::resolveRequirement(component_requirement_t req, int lvl)
 
 		requirements &= ~req;
 	}
+	g_mutex_release(lock);
 
 	if((childRequirements & req) && req == COMPONENT_REQUIREMENT_LAYOUT)
 	{

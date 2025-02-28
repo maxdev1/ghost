@@ -69,6 +69,7 @@ g_ui_open_status g_ui::open()
 	request.header.id = G_UI_PROTOCOL_INITIALIZATION;
 	request.event_dispatcher = g_ui_event_dispatcher_tid;
 	g_send_message_t(windowServerRegistrationTask, &request, sizeof(g_ui_initialize_request), init_tx);
+	g_yield_t(g_ui_delegate_tid);
 
 	// receive initialization response
 	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_initialize_response);
@@ -106,6 +107,7 @@ bool g_ui::addListener(g_ui_component_id id, g_ui_component_event_type eventType
 	request.target_thread = g_ui_event_dispatcher_tid;
 	request.event_type = eventType;
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_add_listener_request), tx);
+	g_yield_t(g_ui_delegate_tid);
 
 	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_add_listener_response);
 	uint8_t buffer[bufferSize];
@@ -169,6 +171,7 @@ bool g_ui::registerDesktopCanvas(g_canvas* c)
 	request.canvas_id = c->getId();
 	request.target_thread = g_ui_event_dispatcher_tid;
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_register_desktop_canvas_request), tx);
+	g_yield_t(g_ui_delegate_tid);
 
 	// read response
 	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_register_desktop_canvas_response);
@@ -199,6 +202,7 @@ bool g_ui::getScreenDimension(g_dimension& out)
 	g_ui_get_screen_dimension_request request;
 	request.header.id = G_UI_PROTOCOL_GET_SCREEN_DIMENSION;
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_get_screen_dimension_request), tx);
+	g_yield_t(g_ui_delegate_tid);
 
 	// read response
 	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_get_screen_dimension_response);

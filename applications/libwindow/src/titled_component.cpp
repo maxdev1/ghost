@@ -52,6 +52,7 @@ bool g_titled_component::setTitle(std::string title)
 	request->title[title_len] = 0;
 
 	g_send_message_t(g_ui_delegate_tid, request, sizeof(g_ui_component_set_title_request), tx);
+	g_yield_t(g_ui_delegate_tid);
 
 	// read response
 	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_set_title_response);
@@ -80,6 +81,7 @@ std::string g_titled_component::getTitle()
 	request.header.id = G_UI_PROTOCOL_GET_TITLE;
 	request.id = this->id;
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_get_title_request), tx);
+	g_yield_t(g_ui_delegate_tid);
 
 	// read response
 	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_get_title_response);

@@ -79,6 +79,7 @@ typedef uint8_t g_ui_protocol_command_id;
 #define G_UI_PROTOCOL_SCROLLPANE_SET_CONTENT    ((g_ui_protocol_command_id) 18)
 #define G_UI_PROTOCOL_SCROLLPANE_SET_FIXED      ((g_ui_protocol_command_id) 19)
 #define G_UI_PROTOCOL_SET_PREFERRED_SIZE        ((g_ui_protocol_command_id) 20)
+#define G_UI_PROTOCOL_DESTROY_COMPONENT         ((g_ui_protocol_command_id) 21)
 
 /**
  * Common status for requests
@@ -184,6 +185,15 @@ typedef struct
     g_ui_protocol_status status;
     g_ui_component_id id;
 } __attribute__((packed)) g_ui_create_component_response;
+
+/**
+ * Request sent to destroy a component
+ */
+typedef struct
+{
+    g_ui_message_header header;
+    g_ui_component_id id;
+} __attribute__((packed)) g_ui_destroy_component_request;
 
 /**
  * Request/response to focus

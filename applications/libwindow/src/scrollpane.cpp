@@ -38,6 +38,7 @@ bool g_scrollpane::setContent(g_component* content)
 	request.scrollpane = this->id;
 	request.content = content->getId();
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(request), tx);
+	g_yield_t(g_ui_delegate_tid);
 
 	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_simple_response);
 	uint8_t buffer[buflen];
@@ -62,6 +63,7 @@ bool g_scrollpane::setFixed(bool width, bool height)
 	request.width = width;
 	request.height = height;
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(request), tx);
+	g_yield_t(g_ui_delegate_tid);
 
 	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_simple_response);
 	uint8_t buffer[buflen];

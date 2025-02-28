@@ -124,4 +124,5 @@ void g_canvas::blit(const g_rectangle& rect)
 	request.id = this->id;
 	request.area = rect;
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_canvas_blit_request), tx);
+	g_yield_t(g_ui_delegate_tid);
 }

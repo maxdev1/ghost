@@ -23,6 +23,24 @@
 #include "libwindow/component.hpp"
 #include "libwindow/properties.hpp"
 
+g_component::~g_component()
+{
+	destroy();
+}
+
+void g_component::destroy()
+{
+	if(destroyed)
+		return;
+	destroyed = true;
+
+	g_ui_destroy_component_request request;
+	request.header.id = G_UI_PROTOCOL_DESTROY_COMPONENT;
+	request.id = this->id;
+	g_send_message(g_ui_delegate_tid, &request, sizeof(g_ui_destroy_component_request));
+	g_yield_t(g_ui_delegate_tid);
+}
+
 bool g_component::addChild(g_component* child)
 {
 	if(!g_ui_initialized)
@@ -66,6 +84,7 @@ bool g_component::setBounds(const g_rectangle& rect)
 	request.id = this->id;
 	request.bounds = rect;
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_set_bounds_request), tx);
+	g_yield_t(g_ui_delegate_tid);
 
 	// read response
 	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_simple_response);
@@ -90,6 +109,7 @@ g_rectangle g_component::getBounds()
 	request.header.id = G_UI_PROTOCOL_GET_BOUNDS;
 	request.id = this->id;
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_get_bounds_request), tx);
+	g_yield_t(g_ui_delegate_tid);
 
 	// read response
 	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_get_bounds_response);
@@ -120,6 +140,7 @@ bool g_component::setNumericProperty(int property, uint32_t value)
 	request.property = property;
 	request.value = value;
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_set_numeric_property_request), tx);
+	g_yield_t(g_ui_delegate_tid);
 
 	// read response
 	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_set_numeric_property_response);
@@ -149,6 +170,7 @@ bool g_component::getNumericProperty(int property, uint32_t* out)
 	request.id = this->id;
 	request.property = property;
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_get_numeric_property_request), tx);
+	g_yield_t(g_ui_delegate_tid);
 
 	// read response
 	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_get_numeric_property_response);
@@ -294,6 +316,7 @@ bool g_component::setPreferredSize(g_dimension size)
 	request.id = this->id;
 	request.size = size;
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(request), tx);
+	g_yield_t(g_ui_delegate_tid);
 
 	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_simple_response);
 	uint8_t buffer[buflen];
@@ -317,6 +340,7 @@ bool g_component::setFlexOrientation(bool horizontal)
 	request.id = this->id;
 	request.horizontal = horizontal;
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_flex_set_orientation_request), tx);
+	g_yield_t(g_ui_delegate_tid);
 
 	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_simple_response);
 	uint8_t buffer[buflen];
@@ -343,6 +367,7 @@ bool g_component::setFlexComponentInfo(g_component* child, float grow, float shr
 	request.shrink = shrink;
 	request.basis = basis;
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_flex_set_component_info), tx);
+	g_yield_t(g_ui_delegate_tid);
 
 	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_simple_response);
 	uint8_t buffer[buflen];
@@ -367,6 +392,7 @@ bool g_component::setFlexPadding(g_insets padding)
 	request.id = this->id;
 	request.insets = padding;
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_flex_set_padding), tx);
+	g_yield_t(g_ui_delegate_tid);
 
 	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_simple_response);
 	uint8_t buffer[buflen];
