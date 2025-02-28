@@ -264,9 +264,7 @@ void pipeWaitForRead(g_tid task, g_fs_phys_id pipeId)
 	if(!pipe)
 		return;
 
-	mutexAcquire(&pipe->lock);
 	waitQueueAdd(&pipe->waitersRead, task);
-	mutexRelease(&pipe->lock);
 }
 
 void pipeWaitForWrite(g_tid task, g_fs_phys_id pipeId)
@@ -275,7 +273,5 @@ void pipeWaitForWrite(g_tid task, g_fs_phys_id pipeId)
 	if(!pipe)
 		return;
 
-	mutexAcquire(&pipe->lock);
 	waitQueueAdd(&pipe->waitersWrite, task);
-	mutexRelease(&pipe->lock);
 }

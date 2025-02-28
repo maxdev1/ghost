@@ -258,4 +258,9 @@ bool processorHasFeatureReady(g_cpuid_standard_edx_feature feature);
  */
 const uint8_t* processorGetInitialFpuState();
 
+/**
+ * @return whether this code is running on the BSP
+ */
+bool processorIsBsp();
+
 #endif

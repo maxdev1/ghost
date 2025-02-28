@@ -143,16 +143,16 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 
 	g_virtual_address virtualRangeBase = addressRangePoolAllocate(targetProcess->virtualRangePool, pages,
 	                                                              G_PROC_VIRTUAL_RANGE_FLAG_NONE);
+	mutexRelease(&targetProcess->lock);
+
 	if(virtualRangeBase == 0)
 	{
 		logInfo(
 				"%! task %i was unable to share memory area %h of size %h with task %i because there was no free virtual range",
 				"syscall",
 				task->id, memory, pages * G_PAGE_SIZE, targetProcess->main->id);
-		mutexRelease(&targetProcess->lock);
 		return;
 	}
-	mutexRelease(&targetProcess->lock);
 
 	for(uint32_t i = 0; i < pages; i++)
 	{

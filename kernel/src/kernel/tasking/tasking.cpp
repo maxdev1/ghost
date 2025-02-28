@@ -308,7 +308,12 @@ void taskingRestoreState(g_task* task)
 		processorRestoreFpuState(task->fpu.state);
 }
 
-void taskingSchedule() { schedulerSchedule(taskingGetLocal()); }
+void taskingSchedule(bool resetPreference)
+{
+	if(resetPreference && processorIsBsp())
+		schedulerPrefer(G_TID_NONE);
+	schedulerSchedule(taskingGetLocal());
+}
 
 g_process* taskingCreateProcess(g_security_level securityLevel)
 {
@@ -439,7 +444,7 @@ void taskingDestroyTask(g_task* task)
 
 void _taskingInitializeTask(g_task* task, g_process* process, g_security_level level)
 {
-	if(process->main == 0)
+	if(process->main == nullptr)
 		task->id = process->id;
 	else
 		task->id = taskingGetNextId();
@@ -510,17 +515,19 @@ g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel)
 	mutexAcquire(&caller->lock);
 	caller->status = G_TASK_STATUS_WAITING;
 	caller->waitsFor = "spawn";
+	mutexRelease(&caller->lock);
 	waitQueueAdd(&res.process->waitersSpawn, caller->id);
 	taskingAssignBalanced(newTask);
-	mutexRelease(&caller->lock);
 
 	while(!newTask->spawnFinished)
 	{
+		INTERRUPTS_PAUSE;
 		mutexAcquire(&caller->lock);
 		caller->status = G_TASK_STATUS_WAITING;
 		caller->waitsFor = "spawn-rep";
 		mutexRelease(&caller->lock);
 		taskingYield();
+		INTERRUPTS_RESUME;
 	}
 
 	// Take result
@@ -566,12 +573,14 @@ void taskingFinalizeSpawn(g_task* task)
 	taskingStateReset(task, process->spawnArgs->entry, task->securityLevel);
 	waitQueueWake(&process->waitersSpawn);
 
+	INTERRUPTS_PAUSE;
 	mutexAcquire(&task->lock);
 	task->status = G_TASK_STATUS_WAITING;
 	task->waitsFor = "wake-after-spawn";
 	task->spawnFinished = true;
 	mutexRelease(&task->lock);
 	taskingYield();
+	INTERRUPTS_RESUME;
 }
 
 void taskingWaitForExit(g_tid joinedTid, g_tid waiter)

@@ -313,3 +313,8 @@ const uint8_t* processorGetInitialFpuState()
 {
 	return _processorGetCurrent()->fpu.initialState;
 }
+
+bool processorIsBsp()
+{
+	return processorGetCurrentId() == 0;
+}

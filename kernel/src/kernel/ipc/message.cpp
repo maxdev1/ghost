@@ -161,17 +161,13 @@ void messageTaskRemoved(g_tid task)
 void messageWaitForSend(g_tid sender, g_tid receiver)
 {
 	g_message_queue* queue = _messageGetQueue(receiver);
-	mutexAcquire(&queue->lock);
 	waitQueueAdd(&queue->waitersSend, sender);
-	mutexRelease(&queue->lock);
 }
 
 void messageUnwaitForSend(g_tid sender, g_tid receiver)
 {
 	g_message_queue* queue = _messageGetQueue(receiver);
-	mutexAcquire(&queue->lock);
 	waitQueueRemove(&queue->waitersSend, sender);
-	mutexRelease(&queue->lock);
 }
 
 void _messageWakeWaitingReceiver(g_message_queue* queue)

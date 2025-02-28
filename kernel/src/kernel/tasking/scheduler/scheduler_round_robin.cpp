@@ -50,9 +50,8 @@ g_schedule_entry* schedulerGetNextTask(g_tasking_local* local)
 		return entry;
 	}
 
-	// // Check if there is a global "preferred task" to do next
-	// TODO: This causes rare deadlocks...
-	if(false && preferredTask != G_TID_NONE)
+	// Check if there is a global "preferred task" to do next
+	if(preferredTask != G_TID_NONE)
 	{
 		while(entry)
 		{

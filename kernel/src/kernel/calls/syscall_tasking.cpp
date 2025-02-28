@@ -32,12 +32,14 @@
 
 void syscallSleep(g_task* task, g_syscall_sleep* data)
 {
+	INTERRUPTS_PAUSE;
 	mutexAcquire(&task->lock);
 	task->status = G_TASK_STATUS_WAITING;
 	task->waitsFor = "sleeps";
-	clockWaitForTime(task->id, clockGetLocal()->time + data->milliseconds);
 	mutexRelease(&task->lock);
+	clockWaitForTime(task->id, clockGetLocal()->time + data->milliseconds);
 	taskingYield();
+	INTERRUPTS_RESUME;
 }
 
 void syscallYield(g_task* task, g_syscall_yield* data)
@@ -85,12 +87,14 @@ void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
 
 void syscallJoin(g_task* task, g_syscall_join* data)
 {
+	INTERRUPTS_PAUSE;
 	mutexAcquire(&task->lock);
 	task->status = G_TASK_STATUS_WAITING;
 	task->waitsFor = "sleeps";
-	taskingWaitForExit(data->taskId, task->id);
 	mutexRelease(&task->lock);
+	taskingWaitForExit(data->taskId, task->id);
 	taskingYield();
+	INTERRUPTS_RESUME;
 }
 
 void syscallSpawn(g_task* task, g_syscall_spawn* data)
@@ -141,12 +145,14 @@ void syscallKill(g_task* task, g_syscall_kill* data)
 	g_task* target = taskingGetById(data->pid);
 	if(target)
 	{
+		INTERRUPTS_PAUSE;
 		mutexAcquire(&target->lock);
 		data->status = G_KILL_STATUS_SUCCESSFUL;
 		target->process->main->status = G_TASK_STATUS_DEAD;
-		waitQueueWake(&target->waitersJoin);
 		mutexRelease(&target->lock);
+		waitQueueWake(&target->waitersJoin);
 		taskingYield();
+		INTERRUPTS_RESUME;
 	}
 	else
 	{
@@ -156,8 +162,6 @@ void syscallKill(g_task* task, g_syscall_kill* data)
 
 void syscallCreateTask(g_task* task, g_syscall_create_task* data)
 {
-	 mutexAcquire(&task->process->lock);
-
 	g_task* newTask = taskingCreateTask((g_virtual_address) data->initialEntry, task->process,
 	                                    task->process->main->securityLevel);
 	if(newTask)
@@ -172,8 +176,6 @@ void syscallCreateTask(g_task* task, g_syscall_create_task* data)
 	{
 		data->status = G_CREATE_TASK_STATUS_FAILED;
 	}
-
-	mutexRelease(&task->process->lock);
 }
 
 void syscallGetTaskEntry(g_task* task, g_syscall_get_task_entry* data)

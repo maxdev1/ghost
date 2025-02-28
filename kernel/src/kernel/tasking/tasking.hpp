@@ -31,8 +31,8 @@ extern g_hashmap<g_tid, g_task*>* taskGlobalMap;
 
 struct g_schedule_entry
 {
-	g_task* task;
-	g_schedule_entry* next;
+    g_task* task;
+    g_schedule_entry* next;
 };
 
 /**
@@ -41,42 +41,42 @@ struct g_schedule_entry
  */
 struct g_tasking_local
 {
-	g_mutex lock;
-	uint32_t processor;
+    g_mutex lock;
+    uint32_t processor;
 
-	struct
-	{
-		/**
-		 * Each first acquire of a global mutex increases the count on this
-		 * processor, each release decreases it.
-		 */
-		int globalLockCount;
+    struct
+    {
+        /**
+         * Each first acquire of a global mutex increases the count on this
+         * processor, each release decreases it.
+         */
+        int globalLockCount;
 
-		/**
-		 * As long as a global mutex is held, interrupts are disabled and this
-		 * flag holds the IF state on the first acquire. On the last release,
-		 * this state is restored.
-		 */
-		bool globalLockSetIFAfterRelease;
-	} locking;
+        /**
+         * As long as a global mutex is held, interrupts are disabled and this
+         * flag holds the IF state on the first acquire. On the last release,
+         * this state is restored.
+         */
+        bool globalLockSetIFAfterRelease;
+    } locking;
 
-	/**
-	 * Scheduling information for this processor.
-	 */
-	struct
-	{
-		g_schedule_entry* list;
-		g_task* current;
+    /**
+     * Scheduling information for this processor.
+     */
+    struct
+    {
+        g_schedule_entry* list;
+        g_task* current;
 
-		g_task* idleTask;
-	} scheduling;
+        g_task* idleTask;
+    } scheduling;
 };
 
 struct g_spawn_result
 {
-	g_spawn_status status;
-	g_process* process;
-	g_spawn_validation_details validation;
+    g_spawn_status status;
+    g_process* process;
+    g_spawn_validation_details validation;
 };
 
 /**
@@ -183,7 +183,7 @@ void taskingProcessRemoveFromTaskList(g_task* task);
 /**
  * Schedules and sets the next task as the current. May only be called during interrupt handling!
  */
-void taskingSchedule();
+void taskingSchedule(bool resetPreference = false);
 
 /**
  * Saves the state pointer that points to the stored state on the tasks kernel

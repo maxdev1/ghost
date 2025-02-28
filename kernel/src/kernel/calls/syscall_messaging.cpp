@@ -29,12 +29,14 @@ void syscallMessageSend(g_task* task, g_syscall_send_message* data)
 	      G_MESSAGE_SEND_STATUS_QUEUE_FULL &&
 	      data->mode == G_MESSAGE_SEND_MODE_BLOCKING)
 	{
+		INTERRUPTS_PAUSE;
 		mutexAcquire(&task->lock);
 		task->status = G_TASK_STATUS_WAITING;
 		task->waitsFor = "message-send";
-		messageWaitForSend(task->id, data->receiver);
 		mutexRelease(&task->lock);
+		messageWaitForSend(task->id, data->receiver);
 		taskingYield();
+		INTERRUPTS_RESUME;
 	}
 	messageUnwaitForSend(task->id, data->receiver);
 }
@@ -55,11 +57,13 @@ void syscallMessageReceive(g_task* task, g_syscall_receive_message* data)
 		//	break;
 		// }
 
+		INTERRUPTS_PAUSE;
 		mutexAcquire(&task->lock);
 		task->status = G_TASK_STATUS_WAITING;
 		task->waitsFor = "message-recv";
 		mutexRelease(&task->lock);
 		taskingYield();
+		INTERRUPTS_RESUME;
 	}
 }
 

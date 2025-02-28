@@ -91,7 +91,7 @@ extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_st
 		if(irq == 0) // Timer
 		{
 			clockUpdate();
-			taskingSchedule();
+			taskingSchedule(true);
 		}
 		else
 		{
