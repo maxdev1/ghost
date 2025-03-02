@@ -44,7 +44,6 @@ public:
     ~label_t() override = default;
 
     void paint() override;
-    void layout() override;
     void update() override;
 
     virtual void setFont(g_font* font);

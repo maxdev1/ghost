@@ -65,11 +65,6 @@ void label_t::update()
 
 	graphics.releaseContext();
 
-	markFor(COMPONENT_REQUIREMENT_LAYOUT);
-}
-
-void label_t::layout()
-{
 	g_dimension newPreferred(textExtents.width + 3, fontExtents.height + 3);
 
 	// Set new preferred size
@@ -81,7 +76,6 @@ void label_t::layout()
 	}
 	markFor(COMPONENT_REQUIREMENT_PAINT);
 }
-
 
 void label_t::paint()
 {
