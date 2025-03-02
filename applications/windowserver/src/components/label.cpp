@@ -31,6 +31,7 @@ label_t::label_t()
 	setFont(g_font_loader::getDefault());
 	alignment = g_text_alignment::LEFT;
 	color = RGB(0, 0, 0);
+	graphics.resize(1, 1);
 }
 
 void label_t::setFont(g_font* newFont)
@@ -58,7 +59,8 @@ void label_t::update()
 	cairo_save(cr);
 	cairo_set_font_face(cr, font->getFace());
 	cairo_set_font_size(cr, fontSize);
-	cairo_text_extents(cr, this->text.c_str(), &lastExtents);
+	cairo_text_extents(cr, this->text.c_str(), &textExtents);
+	cairo_font_extents(cr, &fontExtents);
 	cairo_restore(cr);
 
 	graphics.releaseContext();
@@ -68,7 +70,7 @@ void label_t::update()
 
 void label_t::layout()
 {
-	g_dimension newPreferred(lastExtents.width + 3, lastExtents.height + 3);
+	g_dimension newPreferred(textExtents.width + 3, fontExtents.height + 3);
 
 	// Set new preferred size
 	auto oldPreferred = getPreferredSize();
@@ -97,15 +99,15 @@ void label_t::paint()
 	cairo_set_source_rgb(cr, ARGB_FR_FROM(color), ARGB_FB_FROM(color), ARGB_FG_FROM(color));
 
 	int textLeft;
-	int textBot = (bounds.height / 2 - lastExtents.height / 2) + lastExtents.height;
+	int textBot = (bounds.height / 2 - fontExtents.height / 2) + fontExtents.height;
 
 	if(alignment == g_text_alignment::CENTER)
 	{
-		textLeft = bounds.width / 2 - lastExtents.width / 2;
+		textLeft = bounds.width / 2 - textExtents.width / 2;
 	}
 	else if(alignment == g_text_alignment::RIGHT)
 	{
-		textLeft = bounds.width - lastExtents.width;
+		textLeft = bounds.width - textExtents.width;
 	}
 	else
 	{

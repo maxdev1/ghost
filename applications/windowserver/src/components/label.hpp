@@ -32,7 +32,8 @@ class label_t : virtual public component_t, virtual public titled_component_t
 {
     g_font* font;
     int fontSize;
-    cairo_text_extents_t lastExtents;
+    cairo_text_extents_t textExtents;
+    cairo_font_extents_t fontExtents;
 
     std::string text;
     g_text_alignment alignment;

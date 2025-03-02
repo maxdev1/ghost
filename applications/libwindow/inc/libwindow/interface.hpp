@@ -75,11 +75,13 @@ typedef uint8_t g_ui_protocol_command_id;
 #define G_UI_PROTOCOL_GET_SCREEN_DIMENSION		((g_ui_protocol_command_id) 14)
 #define G_UI_PROTOCOL_FLEX_SET_ORIENTATION		((g_ui_protocol_command_id) 15)
 #define G_UI_PROTOCOL_FLEX_SET_COMPONENT_INFO   ((g_ui_protocol_command_id) 16)
-#define G_UI_PROTOCOL_FLEX_SET_PADDING          ((g_ui_protocol_command_id) 17)
+#define G_UI_PROTOCOL_LAYOUT_SET_PADDING        ((g_ui_protocol_command_id) 17)
 #define G_UI_PROTOCOL_SCROLLPANE_SET_CONTENT    ((g_ui_protocol_command_id) 18)
 #define G_UI_PROTOCOL_SCROLLPANE_SET_FIXED      ((g_ui_protocol_command_id) 19)
 #define G_UI_PROTOCOL_SET_PREFERRED_SIZE        ((g_ui_protocol_command_id) 20)
 #define G_UI_PROTOCOL_DESTROY_COMPONENT         ((g_ui_protocol_command_id) 21)
+#define G_UI_PROTOCOL_SET_MINIMUM_SIZE          ((g_ui_protocol_command_id) 22)
+#define G_UI_PROTOCOL_SET_MAXIMUM_SIZE          ((g_ui_protocol_command_id) 23)
 
 /**
  * Common status for requests
@@ -237,14 +239,14 @@ typedef struct
 } __attribute__((packed)) g_ui_component_set_bounds_request;
 
 /**
- * Setting preferred size
+ * Setting size (preferred/minimum/maximum)
  */
 typedef struct
 {
     g_ui_message_header header;
     g_ui_component_id id;
     g_dimension size;
-} __attribute__((packed)) g_ui_component_set_preferred_size_request;
+} __attribute__((packed)) g_ui_component_set_size_request;
 
 /**
  * Request/response for getting bounds
@@ -413,7 +415,7 @@ typedef struct
     g_ui_message_header header;
     g_ui_component_id id;
     g_insets insets;
-} __attribute__((packed)) g_ui_flex_set_padding;
+} __attribute__((packed)) g_ui_layout_set_padding;
 
 /**
  * Scrollpane content

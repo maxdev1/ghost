@@ -59,7 +59,7 @@ public:
         this->gap = gap;
     }
 
-    void setPadding(g_insets padding)
+    void setPadding(g_insets padding) override
     {
         this->padding = padding;
     }

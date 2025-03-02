@@ -31,6 +31,8 @@
 #include "component_registry.hpp"
 #include "components/scrollpane.hpp"
 #include "interface/interface_receiver.hpp"
+
+#include "layout/grid_layout_manager.hpp"
 #include "layout/flex_layout_manager.hpp"
 
 void interfaceReceiverThread()
@@ -455,19 +457,19 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 		responseMessage = response;
 		responseLength = sizeof(g_ui_simple_response);
 	}
-	else if(requestUiMessage->id == G_UI_PROTOCOL_FLEX_SET_PADDING)
+	else if(requestUiMessage->id == G_UI_PROTOCOL_LAYOUT_SET_PADDING)
 	{
 		auto response = new g_ui_simple_response;
 		response->status = G_UI_PROTOCOL_FAIL;
 
-		auto request = (g_ui_flex_set_padding*) requestUiMessage;
+		auto request = (g_ui_layout_set_padding*) requestUiMessage;
 		component_t* component = component_registry_t::get(request->id);
 		if(component)
 		{
-			auto flexLayoutManager = dynamic_cast<flex_layout_manager_t*>(component->getLayoutManager());
-			if(flexLayoutManager)
+			auto layoutManager = component->getLayoutManager();
+			if(layoutManager)
 			{
-				flexLayoutManager->setPadding(request->insets);
+				layoutManager->setPadding(request->insets);
 				response->status = G_UI_PROTOCOL_SUCCESS;
 			}
 		}
@@ -514,11 +516,43 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 		auto response = new g_ui_simple_response;
 		response->status = G_UI_PROTOCOL_FAIL;
 
-		auto request = (g_ui_component_set_preferred_size_request*) requestUiMessage;
+		auto request = (g_ui_component_set_size_request*) requestUiMessage;
 		component_t* component = component_registry_t::get(request->id);
 		if(component)
 		{
 			component->setPreferredSize(request->size);
+			response->status = G_UI_PROTOCOL_SUCCESS;
+		}
+
+		responseMessage = response;
+		responseLength = sizeof(g_ui_simple_response);
+	}
+	else if(requestUiMessage->id == G_UI_PROTOCOL_SET_MINIMUM_SIZE)
+	{
+		auto response = new g_ui_simple_response;
+		response->status = G_UI_PROTOCOL_FAIL;
+
+		auto request = (g_ui_component_set_size_request*) requestUiMessage;
+		component_t* component = component_registry_t::get(request->id);
+		if(component)
+		{
+			component->setMinimumSize(request->size);
+			response->status = G_UI_PROTOCOL_SUCCESS;
+		}
+
+		responseMessage = response;
+		responseLength = sizeof(g_ui_simple_response);
+	}
+	else if(requestUiMessage->id == G_UI_PROTOCOL_SET_MAXIMUM_SIZE)
+	{
+		auto response = new g_ui_simple_response;
+		response->status = G_UI_PROTOCOL_FAIL;
+
+		auto request = (g_ui_component_set_size_request*) requestUiMessage;
+		component_t* component = component_registry_t::get(request->id);
+		if(component)
+		{
+			component->setMaximumSize(request->size);
 			response->status = G_UI_PROTOCOL_SUCCESS;
 		}
 

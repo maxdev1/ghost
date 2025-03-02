@@ -106,13 +106,9 @@ void scrollpane_t::layout()
 
 	auto contentSize = content->getPreferredSize();
 	if(fixedWidth)
-	{
 		contentSize.width = getBounds().width - SCROLLBAR_SIZE;
-	}
 	if(fixedHeight)
-	{
 		contentSize.height = getBounds().height - SCROLLBAR_SIZE;
-	}
 	auto viewportSize = calculateViewport(contentSize);
 
 	auto bounds = getBounds();

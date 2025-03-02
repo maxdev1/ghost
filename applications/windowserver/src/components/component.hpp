@@ -175,6 +175,8 @@ public:
         return preferredSize;
     }
 
+    virtual g_dimension getEffectivePreferredSize();
+
     void setMinimumSize(const g_dimension& size);
 
     g_dimension getMinimumSize() const

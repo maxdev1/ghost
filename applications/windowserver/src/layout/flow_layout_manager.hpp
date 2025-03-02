@@ -28,8 +28,15 @@
  */
 class flow_layout_manager_t : public layout_manager_t
 {
+    g_insets padding;
+
 public:
     virtual void layout();
+
+    void setPadding(g_insets padding) override
+    {
+        this->padding = padding;
+    }
 };
 
 #endif

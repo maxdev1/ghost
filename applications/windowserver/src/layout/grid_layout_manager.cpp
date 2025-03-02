@@ -21,7 +21,6 @@
 #include "layout/grid_layout_manager.hpp"
 #include "components/component.hpp"
 
-#include <typeinfo>
 #include <vector>
 
 void grid_layout_manager_t::layout()
@@ -29,65 +28,81 @@ void grid_layout_manager_t::layout()
 	if(component == nullptr)
 		return;
 
-	g_rectangle usedBounds = component->getBounds();
-
-	usedBounds.x = padding.left;
-	usedBounds.y = padding.top;
-	usedBounds.width -= padding.left + padding.right;
-	usedBounds.height -= padding.top + padding.bottom;
-
-	int rowHeight = 0;
-	int cellWidth = (columns > 0) ? (usedBounds.width / columns) : usedBounds.width;
-	int itemWidth = (columns > 0) ? ((usedBounds.width - (columns - 1) * colSpace) / columns) : usedBounds.width;
-
-	int x = usedBounds.x;
-	int y = usedBounds.y;
-	int curRow = 0;
-	int curCol = 0;
+	if(columns <= 0)
+	{
+		klog("grid layout must have a defined number of columns");
+		return;
+	}
 
 	auto& children = component->acquireChildren();
-	for(auto& ref: children)
+
+	// Get component bounds and apply padding
+	g_rectangle bounds = component->getBounds();
+	bounds.x = padding.left;
+	bounds.y = padding.top;
+	bounds.width = std::max(bounds.width - padding.left - padding.right, 0);
+	bounds.height = std::max(bounds.height - padding.top - padding.bottom, 0);
+
+	// Compute cell dimensions
+	int actualRows = (int) children.size() / columns;
+	int columnWidth = (columns > 0) ? (bounds.width - (columns - 1) * colSpace) / columns : 0;
+	int rowHeight = (rows > 0)
+		                ? (bounds.height - (rows - 1) * rowSpace) / rows
+		                : (bounds.height - (actualRows - 1) * rowSpace) / actualRows;
+
+	// If parent has no width or height, calculate expected size from children
+	if(bounds.width == 0 || bounds.height == 0)
 	{
-		component_t* child = ref.component;
-
-		int itemHeight = ((rows > 0)
-			                  ? ((usedBounds.height - (rows - 1) * rowSpace) / rows)
-			                  : child->getPreferredSize().height);
-
-		int xoff = (columns > 0) ? (((float) curCol / columns) * colSpace) : 0;
-		int yoff = (rows > 0) ? (((float) curRow / rows) * rowSpace) : 0;
-		child->setBounds(g_rectangle(x + xoff, y + yoff, itemWidth, itemHeight));
-
-		x += cellWidth;
-		curCol++;
-
-		int cellHeight = ((rows > 0) ? (usedBounds.height / rows) : (child->getPreferredSize().height + rowSpace));
-		if(cellHeight > rowHeight)
+		for(auto& ref: children)
 		{
-			rowHeight = cellHeight;
-		}
-		if(x + cellWidth > usedBounds.x + usedBounds.width)
-		{
-			x = usedBounds.x;
-			y += rowHeight;
-			rowHeight = 0;
-			curRow++;
-			curCol = 0;
+			auto childSize = ref.component->getEffectivePreferredSize();
+			if(bounds.width == 0)
+				columnWidth = std::max(columnWidth, childSize.width);
+			if(bounds.height == 0)
+				rowHeight = std::max(rowHeight, childSize.height);
 		}
 	}
+
+	// Place each child into the grid
+	int currentRow = 0;
+	int currentColumn = 0;
+
+	for(auto& childRef: children)
+	{
+		component_t* child = childRef.component;
+		if(!child->isVisible())
+			continue;
+		auto childSize = child->getPreferredSize();
+
+		// Use calculated cell size unless zero (in which case use child's preferred size)
+		int cellWidth = (columnWidth > 0) ? columnWidth : childSize.width;
+		int cellHeight = (rowHeight > 0) ? rowHeight : childSize.height;
+
+		// Calculate position based on cell index and spacing
+		int x = bounds.x + currentColumn * (columnWidth + colSpace);
+		int y = bounds.y + currentRow * (rowHeight + rowSpace);
+
+		child->setBounds(g_rectangle(x, y, cellWidth, cellHeight));
+
+		// Advance column
+		currentColumn++;
+		if(currentColumn >= columns)
+		{
+			currentColumn = 0;
+			currentRow++;
+		}
+	}
+
 	component->releaseChildren();
 
-	auto prefPreferred = component->getPreferredSize();
-	int addedHeight = rowHeight + padding.bottom;
-	if(rows == 0)
+	// Set preferred size if parent has no bounds
+	if(bounds.width == 0 || bounds.height == 0)
 	{
-		addedHeight -= rowSpace;
-	}
-	auto newPref = g_dimension(x == 0 ? prefPreferred.width : x, y + addedHeight);
+		int contentWidth = columns * columnWidth + (columns - 1) * colSpace + padding.left + padding.right;
+		int contentHeight = (rows > 0)
+			                    ? rows * rowHeight + (rows - 1) * rowSpace + padding.top + padding.bottom
+			                    : (currentRow + 1) * rowHeight;
 
-	if(prefPreferred != newPref)
-	{
-		component->setPreferredSize(newPref);
-		component->markParentFor(COMPONENT_REQUIREMENT_LAYOUT);
+		component->setPreferredSize(g_dimension(contentWidth, contentHeight));
 	}
 }

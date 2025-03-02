@@ -29,36 +29,41 @@ void flow_layout_manager_t::layout()
 	if(component == nullptr)
 		return;
 
-	int x = 0;
-	int y = 0;
-	int lineHeight = 0;
 
-	g_rectangle parentBounds = component->getBounds();
+	g_rectangle bounds = component->getBounds();
+	bounds.x = padding.left;
+	bounds.y = padding.top;
+	bounds.width -= padding.left + padding.right;
+	bounds.height -= padding.top + padding.bottom;
+
+	int x = bounds.x;
+	int y = bounds.y;
+	int rowHeight = 0;
+
 	auto& children = component->acquireChildren();
-	for(auto& ref: children)
+	for(auto& childRef: children)
 	{
-		component_t* c = ref.component;
-		if(!c->isVisible())
+		component_t* child = childRef.component;
+		if(!child->isVisible())
 			continue;
+		g_dimension childSize = child->getEffectivePreferredSize();
 
-		g_dimension preferredSize = c->getPreferredSize();
-
-		if(x + preferredSize.width > parentBounds.width)
+		// Break when reaching end
+		if(x + childSize.width > bounds.width)
 		{
-			x = 0;
-			y += lineHeight;
-			lineHeight = 0;
+			x = bounds.x;
+			y += rowHeight;
+			rowHeight = 0;
 		}
 
-		c->setBounds(g_rectangle(x, y, preferredSize.width, preferredSize.height));
-		x += preferredSize.width;
+		// Set size
+		child->setBounds(g_rectangle(x, y, childSize.width, childSize.height));
+		x += childSize.width;
 
-		if(preferredSize.height > lineHeight)
-		{
-			lineHeight = preferredSize.height;
-		}
+		if(childSize.height > rowHeight)
+			rowHeight = childSize.height;
 	}
 	component->releaseChildren();
 
-	component->setPreferredSize(g_dimension(parentBounds.width, y + lineHeight));
+	component->setPreferredSize(g_dimension(bounds.width == 0 ? x : bounds.width, y + rowHeight));
 }

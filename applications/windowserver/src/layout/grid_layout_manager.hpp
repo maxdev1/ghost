@@ -39,7 +39,7 @@ public:
     {
     }
 
-    void setPadding(g_insets _padding)
+    void setPadding(g_insets _padding) override
     {
         padding = _padding;
     }

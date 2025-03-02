@@ -96,19 +96,19 @@ void createTestWindow()
 
 	{
 		panel_t* panel = new panel_t();
-		panel->setLayoutManager(new grid_layout_manager_t(1, 0, 10, 10));
+		panel->setLayoutManager(new grid_layout_manager_t(2, 0, 10, 10));
 
 		label_t* info = new label_t();
 		info->setTitle("Buttons:");
 		panel->addChild(info);
 
 		button_t* button1 = new button_t();
-		button1->setMinimumSize(g_dimension(0, 80));
+		button1->setMinimumSize(g_dimension(0, 20));
 		button1->setTitle("Button, enabled");
 		panel->addChild(button1);
 
 		button_t* button2 = new button_t();
-		button2->setMinimumSize(g_dimension(0, 80));
+		button2->setMinimumSize(g_dimension(0, 20));
 		button2->setTitle("Button, disabled");
 		button2->setEnabled(false);
 		panel->addChild(button2);
@@ -116,6 +116,17 @@ void createTestWindow()
 		button_t* button3 = new button_t();
 		button3->setTitle("Button with height from text");
 		panel->addChild(button3);
+
+		{
+			button_t* b = new button_t();
+			b->setTitle("Another button");
+			panel->addChild(b);
+		}
+		{
+			button_t* b = new button_t();
+			b->setTitle("Another button");
+			panel->addChild(b);
+		}
 
 		content->addChild(panel);
 	}
@@ -142,7 +153,7 @@ void createTestWindow()
 
 	{
 		panel_t* panel = new panel_t();
-		panel->setLayoutManager(new grid_layout_manager_t(1, 0, 10, 10));
+		panel->setLayoutManager(new flow_layout_manager_t());
 
 		checkbox_t* check = new checkbox_t();
 		check->getLabel().setTitle("Check me");

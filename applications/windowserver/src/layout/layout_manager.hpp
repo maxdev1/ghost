@@ -21,6 +21,8 @@
 #ifndef __LAYOUT_MANAGER__
 #define __LAYOUT_MANAGER__
 
+#include <libwindow/metrics/insets.hpp>
+
 class component_t;
 
 class layout_manager_t
@@ -41,6 +43,10 @@ public:
     }
 
     virtual void layout() = 0;
+
+    virtual void setPadding(g_insets insets)
+    {
+    }
 };
 
 #endif

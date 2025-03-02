@@ -304,15 +304,30 @@ bool g_component::setDispatchesFocus(bool d)
 	return setNumericProperty(G_UI_PROPERTY_DISPATCHES_FOCUS, d ? 1 : 0);
 }
 
-bool g_component::setPreferredSize(g_dimension size)
+bool g_component::setPreferredSize(const g_dimension& size)
+{
+	return setSize(G_UI_PROTOCOL_SET_PREFERRED_SIZE, size);
+}
+
+bool g_component::setMinimumSize(const g_dimension& size)
+{
+	return setSize(G_UI_PROTOCOL_SET_MINIMUM_SIZE, size);
+}
+
+bool g_component::setMaximumSize(const g_dimension& size)
+{
+	return setSize(G_UI_PROTOCOL_SET_MAXIMUM_SIZE, size);
+}
+
+bool g_component::setSize(g_ui_protocol_command_id command, const g_dimension& size)
 {
 	if(!g_ui_initialized)
 		return false;
 
 	g_message_transaction tx = g_get_message_tx_id();
 
-	g_ui_component_set_preferred_size_request request;
-	request.header.id = G_UI_PROTOCOL_SET_PREFERRED_SIZE;
+	g_ui_component_set_size_request request;
+	request.header.id = command;
 	request.id = this->id;
 	request.size = size;
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(request), tx);
@@ -380,18 +395,18 @@ bool g_component::setFlexComponentInfo(g_component* child, float grow, float shr
 }
 
 
-bool g_component::setFlexPadding(g_insets padding)
+bool g_component::setLayoutPadding(g_insets padding)
 {
 	if(!g_ui_initialized)
 		return false;
 
 	g_message_transaction tx = g_get_message_tx_id();
 
-	g_ui_flex_set_padding request;
-	request.header.id = G_UI_PROTOCOL_FLEX_SET_PADDING;
+	g_ui_layout_set_padding request;
+	request.header.id = G_UI_PROTOCOL_LAYOUT_SET_PADDING;
 	request.id = this->id;
 	request.insets = padding;
-	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_flex_set_padding), tx);
+	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_layout_set_padding), tx);
 	g_yield_t(g_ui_delegate_tid);
 
 	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_simple_response);

@@ -402,8 +402,20 @@ component_t* component_t::handleKeyEvent(key_event_t& event)
 
 void component_t::setPreferredSize(const g_dimension& size)
 {
-	preferredSize = size;
-	markParentFor(COMPONENT_REQUIREMENT_LAYOUT);
+	if(preferredSize != size)
+	{
+		preferredSize = size;
+		markParentFor(COMPONENT_REQUIREMENT_LAYOUT);
+	}
+}
+
+g_dimension component_t::getEffectivePreferredSize()
+{
+	auto preferred = getPreferredSize();
+	auto min = getMinimumSize();
+	preferred.width = std::max(preferred.width, min.width);
+	preferred.height = std::max(preferred.height, min.height);
+	return preferred;
 }
 
 void component_t::setMinimumSize(const g_dimension& size)
@@ -437,6 +449,8 @@ void component_t::markFor(component_requirement_t req)
 
 	if(parent)
 		parent->markChildsFor(req);
+
+	windowserver_t::instance()->requestUpdate();
 }
 
 void component_t::markChildsFor(component_requirement_t req)
@@ -606,7 +620,7 @@ bool component_t::setNumericProperty(int property, uint32_t value)
 		}
 		if(value == G_UI_LAYOUT_MANAGER_GRID)
 		{
-			setLayoutManager(new grid_layout_manager_t(1, 1));
+			setLayoutManager(new grid_layout_manager_t());
 			return true;
 		}
 		if(value == G_UI_LAYOUT_MANAGER_FLEX)
