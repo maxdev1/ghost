@@ -213,10 +213,11 @@ void component_t::addChild(component_t* comp, component_child_reference_type_t t
 
 	g_mutex_acquire(childrenLock);
 	children.push_back(reference);
-	std::sort(children.begin(), children.end(), [](component_child_reference_t& c1, component_child_reference_t& c2)
-	{
-		return c1.component->zIndex < c2.component->zIndex;
-	});
+	std::stable_sort(children.begin(), children.end(),
+	                 [](const component_child_reference_t& c1, const component_child_reference_t& c2)
+	                 {
+		                 return c1.component->zIndex < c2.component->zIndex;
+	                 });
 	g_mutex_release(childrenLock);
 
 	comp->markFor(COMPONENT_REQUIREMENT_ALL);
