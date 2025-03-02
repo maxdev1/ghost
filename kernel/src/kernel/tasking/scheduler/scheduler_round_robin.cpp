@@ -51,7 +51,8 @@ g_schedule_entry* schedulerGetNextTask(g_tasking_local* local)
 	}
 
 	// Check if there is a global "preferred task" to do next
-	if(preferredTask != G_TID_NONE)
+	// TODO The current yield is not "fair" and makes the system slower
+	if(false && preferredTask != G_TID_NONE)
 	{
 		while(entry)
 		{
