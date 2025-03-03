@@ -23,7 +23,6 @@
 
 #include "common.h"
 #include "filesystem/types.h"
-#include "tasks.h"
 #include "memory.h"
 
 __BEGIN_C
@@ -311,6 +310,41 @@ g_fd g_clone_fd_ts(g_fd source_fd, g_pid source_process, g_fd target_fd, g_pid t
  * @security-level DRIVER
  */
 g_open_irq_device_status g_open_irq_device(uint8_t irq, g_fd* outFd);
+
+/**
+ * Resolves the path and returns the real path.
+ *
+ * @param in the input path
+ * @param out pointer to a buffer where the real path is written
+ * @return operation status
+ *
+ * @security-level APPLICATION
+ */
+g_fs_real_path_status g_real_path(const char* in, char* out);
+
+/**
+ * Retrieve stats of a node.
+ *
+ * @param path input path
+ * @param out structure for the stat data
+ * @param-opt follow_symlinks whether to follow symbolic links
+ * @return whether the operation was successful
+ *
+ * @security-level APPLICATION
+ */
+g_fs_stat_status g_fs_stat(const char* path, g_fs_stat_data* out);
+g_fs_stat_status g_fs_stat_l(const char* path, g_fs_stat_data* out, g_bool follow_symlinks);
+
+/**
+ * Retrieve stats of a node behind a file descriptor.
+ *
+ * @param fd file descriptor
+ * @param out structure for the stat data
+ * @return whether the operation was successful
+ *
+ * @security-level APPLICATION
+ */
+g_fs_stat_status g_fs_fstat(g_fd fd, g_fs_stat_data* out);
 
 __END_C
 

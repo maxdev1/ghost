@@ -22,17 +22,38 @@
 #include "ghost/filesystem.h"
 #include "internal.h"
 
-
-/**
- *
- */
-int stat(const char* pathname, struct stat* buf)
+void _stat_from_g_fs_stat(struct stat* to, g_fs_stat_data* from)
 {
-	g_fs_stat_data data;
-	auto status = g_fs_stat(pathname, &data);
-	if(status != G_FS_STAT_SUCCESS)
-		return -1;
+	to->st_dev = from->device;
+	to->st_atime = from->time_last_access;
+	to->st_mtime = from->time_last_modification;
+	to->st_ctime = from->time_creation;
+	to->st_ino = from->virtual_id;
+	to->st_size = from->size;
 
-	_stat_from_g_fs_stat(buf, &data);
-	return 0;
+	mode_t mode = 0;
+	switch(from->type)
+	{
+		case G_FS_NODE_TYPE_FILE:
+			mode |= S_IFREG;
+			break;
+		case G_FS_NODE_TYPE_FOLDER:
+		case G_FS_NODE_TYPE_MOUNTPOINT:
+		case G_FS_NODE_TYPE_ROOT:
+			mode |= S_IFDIR;
+			break;
+		case G_FS_NODE_TYPE_PIPE:
+			mode |= S_IFIFO;
+			break;
+		default:
+			break;
+	}
+	to->st_mode = mode;
+
+	// TODO
+	to->st_blksize = -1;
+	to->st_blocks = -1;
+	to->st_nlink = -1;
+	to->st_uid = -1;
+	to->st_gid = -1;
 }

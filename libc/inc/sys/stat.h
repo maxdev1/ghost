@@ -45,13 +45,22 @@ typedef uint32_t mode_t;
 #define S_IRUSR 0400
 #define S_IRWXU 0700
 
-// TODO dummy macros
-#define S_ISREG(mode)	1
-#define S_ISDIR(mode)	0
-#define S_ISLNK(mode)	0
-#define S_ISBLK(mode)	0
-#define S_ISFIFO(mode)	0
-#define S_ISCHR(mode)	0
+#define S_IFMT  0170000  // Bit mask for the file type
+#define S_IFREG 0100000  // Regular file
+#define S_IFDIR 0040000  // Directory
+#define S_IFLNK 0120000  // Symbolic link
+#define S_IFCHR 0020000  // Character device
+#define S_IFBLK 0060000  // Block device
+#define S_IFIFO 0010000  // FIFO (named pipe)
+#define S_IFSOCK 0140000 // Socket
+
+#define S_ISREG(mode)  (((mode) & S_IFMT) == S_IFREG)
+#define S_ISDIR(mode)  (((mode) & S_IFMT) == S_IFDIR)
+#define S_ISLNK(mode)  (((mode) & S_IFMT) == S_IFLNK)
+#define S_ISCHR(mode)  (((mode) & S_IFMT) == S_IFCHR)
+#define S_ISBLK(mode)  (((mode) & S_IFMT) == S_IFBLK)
+#define S_ISFIFO(mode) (((mode) & S_IFMT) == S_IFIFO)
+#define S_ISSOCK(mode) (((mode) & S_IFMT) == S_IFSOCK)
 
 struct stat {
 	dev_t st_dev;

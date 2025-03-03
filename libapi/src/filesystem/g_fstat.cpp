@@ -18,42 +18,17 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_SYSCALL_FS__
-#define __KERNEL_SYSCALL_FS__
+#include "ghost/syscall.h"
+#include "ghost/filesystem.h"
+#include "ghost/filesystem/callstructs.h"
 
-#include "kernel/tasking/tasking.hpp"
-#include <ghost/filesystem/callstructs.h>
+g_fs_stat_status g_fs_fstat(g_fd fd, g_fs_stat_data* out)
+{
+	g_syscall_fs_fstat data;
+	data.fd = fd;
+	data.out = out;
 
-void syscallFsOpen(g_task* task, g_syscall_fs_open* data);
+	g_syscall(G_SYSCALL_FS_FSTAT, (g_address) &data);
 
-void syscallFsSeek(g_task* task, g_syscall_fs_seek* data);
-
-void syscallFsRead(g_task* task, g_syscall_fs_read* data);
-
-void syscallFsWrite(g_task* task, g_syscall_fs_write* data);
-
-void syscallFsClose(g_task* task, g_syscall_fs_close* data);
-
-void syscallFsLength(g_task* task, g_syscall_fs_length* data);
-
-void syscallFsTell(g_task* task, g_syscall_fs_tell* data);
-
-void syscallFsStat(g_task* task, g_syscall_fs_stat* data);
-
-void syscallFsFstat(g_task* task, g_syscall_fs_fstat* data);
-
-void syscallFsCloneFd(g_task* task, g_syscall_fs_clonefd* data);
-
-void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data);
-
-void syscallOpenIrqDevice(g_task* task, g_syscall_open_irq_device* data);
-
-void syscallFsOpenDirectory(g_task* task, g_syscall_fs_open_directory* data);
-
-void syscallFsReadDirectory(g_task* task, g_syscall_fs_read_directory* data);
-
-void syscallFsCloseDirectory(g_task* task, g_syscall_fs_close_directory* data);
-
-void syscallFsRealPath(g_task* task, g_syscall_fs_real_path* data);
-
-#endif
+	return data.status;
+}

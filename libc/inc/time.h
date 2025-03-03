@@ -29,8 +29,8 @@ __BEGIN_C
 /**
  *
  */
-typedef long time_t;
-typedef long suseconds_t;
+typedef uint64_t time_t;
+typedef uint64_t suseconds_t;
 
 typedef void* timer_t;
 typedef int clockid_t;

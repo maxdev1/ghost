@@ -235,17 +235,18 @@ void syscallSetWorkingDirectory(g_task* task, g_syscall_set_working_directory* d
 	auto findRes = filesystemFind(nullptr, data->path);
 	if(findRes.status == G_FS_OPEN_SUCCESSFUL)
 	{
-		if(findRes.file->type == G_FS_NODE_TYPE_FOLDER || findRes.file->type == G_FS_NODE_TYPE_MOUNTPOINT || findRes.
-		   file->type == G_FS_NODE_TYPE_ROOT)
+		if(findRes.node->type == G_FS_NODE_TYPE_FOLDER ||
+		   findRes.node->type == G_FS_NODE_TYPE_MOUNTPOINT ||
+		   findRes.node->type == G_FS_NODE_TYPE_ROOT)
 		{
 			if(task->process->environment.workingDirectory)
 			{
 				heapFree(task->process->environment.workingDirectory);
 			}
 
-			int length = filesystemGetAbsolutePathLength(findRes.file);
+			int length = filesystemGetAbsolutePathLength(findRes.node);
 			task->process->environment.workingDirectory = (char*) heapAllocate(length + 1);
-			filesystemGetAbsolutePath(findRes.file, task->process->environment.workingDirectory);
+			filesystemGetAbsolutePath(findRes.node, task->process->environment.workingDirectory);
 			data->result = G_SET_WORKING_DIRECTORY_SUCCESSFUL;
 		}
 		else

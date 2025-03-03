@@ -19,13 +19,20 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "sys/stat.h"
-#include "stdint.h"
+#include "ghost/filesystem.h"
+#include "internal.h"
+#include "stdbool.h"
 
 /**
  *
  */
-int lstat(const char *pathname, struct stat *buf) {
+int lstat(const char* pathname, struct stat* buf)
+{
+	g_fs_stat_data data;
+	auto status = g_fs_stat_l(pathname, &data, false);
+	if(status != G_FS_STAT_SUCCESS)
+		return -1;
 
-	klog("warning: lstat(%s, %x) not implemented", pathname, buf);
+	_stat_from_g_fs_stat(buf, &data);
 	return 0;
 }

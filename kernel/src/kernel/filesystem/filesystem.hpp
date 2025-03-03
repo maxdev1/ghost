@@ -90,10 +90,10 @@ struct g_fs_delegate
 struct g_filesystem_find_result
 {
     g_fs_open_status status;
-    g_fs_node* file;
+    g_fs_node* node;
 
     bool foundAllButLast;
-    g_fs_node* lastFoundNode;
+    g_fs_node* lastFoundParent;
     const char* fileNameStart;
 };
 
@@ -247,5 +247,17 @@ g_fs_read_directory_status filesystemReadDirectory(g_fs_node* parent, uint32_t i
  * Reads bytes from a file to a buffer in memory.
  */
 bool filesystemReadToMemory(g_fd fd, size_t offset, uint8_t* buffer, uint64_t len);
+
+/**
+ * Attempts to retrieve the real path of a path in the filesystem.
+ */
+g_fs_real_path_status filesystemRealPath(g_task* task, const char* in, char* out);
+
+/**
+ * Retrieves stats of a path, file descriptor or node.
+ */
+g_fs_stat_status filesystemStat(g_task* task, const char* path, g_fs_stat_data* out);
+g_fs_stat_status filesystemFstat(g_task* task, g_fd fd, g_fs_stat_data* out);
+g_fs_stat_status filesystemStatNode(g_fs_node* node, g_fs_stat_data* out);
 
 #endif

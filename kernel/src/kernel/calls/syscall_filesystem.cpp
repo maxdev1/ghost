@@ -95,16 +95,6 @@ void syscallFsTell(g_task* task, g_syscall_fs_tell* data)
 	data->status = G_FS_TELL_SUCCESSFUL;
 }
 
-void syscallFsStat(g_task* task, g_syscall_fs_stat* data)
-{
-	logInfo("%! stat not implemented", "syscall");
-}
-
-void syscallFsFstat(g_task* task, g_syscall_fs_fstat* data)
-{
-	logInfo("%! fstat not implemented", "syscall");
-}
-
 void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 {
 	g_fs_node* pipeNode;
@@ -186,11 +176,11 @@ void syscallFsOpenDirectory(g_task* task, g_syscall_fs_open_directory* data)
 	auto findRes = filesystemFind(nullptr, data->path);
 	if(findRes.status == G_FS_OPEN_SUCCESSFUL)
 	{
-		data->status = filesystemOpenDirectory(findRes.file);
+		data->status = filesystemOpenDirectory(findRes.node);
 
 		if(data->status == G_FS_OPEN_DIRECTORY_SUCCESSFUL)
 		{
-			data->iterator->node_id = findRes.file->id;
+			data->iterator->node_id = findRes.node->id;
 			data->iterator->position = 0;
 		}
 	}
@@ -228,5 +218,20 @@ void syscallFsReadDirectory(g_task* task, g_syscall_fs_read_directory* data)
 
 void syscallFsCloseDirectory(g_task* task, g_syscall_fs_close_directory* data)
 {
-	// TODO: Is this needed?
+	// TODO
+}
+
+void syscallFsRealPath(g_task* task, g_syscall_fs_real_path* data)
+{
+	data->status = filesystemRealPath(task, data->in, data->out);
+}
+
+void syscallFsStat(g_task* task, g_syscall_fs_stat* data)
+{
+	data->status = filesystemStat(task, data->path, data->out);
+}
+
+void syscallFsFstat(g_task* task, g_syscall_fs_fstat* data)
+{
+	data->status = filesystemFstat(task, data->fd, data->out);
 }

@@ -25,13 +25,13 @@
 #include "../stdint.h"
 
 __BEGIN_C
-
 /**
  * Types
  */
 typedef int32_t g_fd; // a file descriptor
 typedef uint32_t g_fs_virt_id; // a vfs node id
 typedef uint64_t g_fs_phys_id; // a physical filesystem node identifier
+typedef int32_t g_device; // a device id
 
 #define G_FD_NONE		((g_fd) -1)
 
@@ -80,14 +80,6 @@ typedef int g_fs_node_type;
 #define G_FS_NODE_TYPE_FOLDER ((g_fs_node_type) 3)
 #define G_FS_NODE_TYPE_FILE ((g_fs_node_type) 4)
 #define G_FS_NODE_TYPE_PIPE ((g_fs_node_type) 5)
-
-/**
- * Stat attributes
- */
-typedef struct
-{
-	uint32_t mode;
-}__attribute__((packed)) g_fs_stat_attributes;
 
 /**
  * Create delegate status
@@ -254,16 +246,16 @@ typedef int g_fs_directory_refresh_status;
 
 typedef struct
 {
-	g_fs_virt_id node_id;
-	g_fs_node_type type;
-	char* name;
+    g_fs_virt_id node_id;
+    g_fs_node_type type;
+    char* name;
 } g_fs_directory_entry;
 
 typedef struct
 {
-	g_fs_virt_id node_id;
-	int position;
-	g_fs_directory_entry entry_buffer;
+    g_fs_virt_id node_id;
+    int position;
+    g_fs_directory_entry entry_buffer;
 } g_fs_directory_iterator;
 
 // for <g_syscall_open_irq_device>
@@ -271,6 +263,34 @@ typedef uint8_t g_open_irq_device_status;
 #define G_OPEN_IRQ_DEVICE_STATUS_SUCCESSFUL			((g_open_irq_device_status) 0)
 #define G_OPEN_IRQ_DEVICE_STATUS_NOT_PERMITTED		((g_open_irq_device_status) 1)
 #define G_OPEN_IRQ_DEVICE_STATUS_ERROR				((g_open_irq_device_status) 2)
+
+/**
+ * Status codes for getting real path of a node
+ */
+typedef int g_fs_real_path_status;
+#define G_FS_REAL_PATH_SUCCESS ((g_fs_real_path_status) 0)
+#define G_FS_REAL_PATH_NOT_FOUND ((g_fs_real_path_status) 1)
+#define G_FS_REAL_PATH_ERROR ((g_fs_real_path_status) 2)
+
+/**
+ * Status codes for stat
+ */
+typedef int g_fs_stat_status;
+#define G_FS_STAT_SUCCESS ((g_fs_stat_status) 0)
+#define G_FS_STAT_NOT_FOUND ((g_fs_stat_status) 1)
+#define G_FS_STAT_ERROR ((g_fs_stat_status) 2)
+#define G_FS_STAT_INVALID_FD ((g_fs_stat_status) 3)
+
+typedef struct
+{
+    g_device device;
+    g_fs_virt_id virtual_id;
+    g_fs_node_type type;
+    uint64_t size;
+    uint64_t time_last_access;
+    uint64_t time_last_modification;
+    uint64_t time_creation;
+} g_fs_stat_data;
 
 __END_C
 

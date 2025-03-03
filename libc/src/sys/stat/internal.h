@@ -18,21 +18,16 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "sys/stat.h"
-#include "ghost/filesystem.h"
-#include "internal.h"
+#ifndef __GHOST_LIBC_SYS_STAT_INTERNAL__
+#define __GHOST_LIBC_SYS_STAT_INTERNAL__
 
+#include "ghost/common.h"
+#include "sys/types.h"
 
-/**
- *
- */
-int stat(const char* pathname, struct stat* buf)
-{
-	g_fs_stat_data data;
-	auto status = g_fs_stat(pathname, &data);
-	if(status != G_FS_STAT_SUCCESS)
-		return -1;
+__BEGIN_C
 
-	_stat_from_g_fs_stat(buf, &data);
-	return 0;
-}
+void _stat_from_g_fs_stat(struct stat* to, g_fs_stat_data* from);
+
+__END_C
+
+#endif

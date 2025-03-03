@@ -19,13 +19,18 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "sys/stat.h"
-#include "stdint.h"
+#include "internal.h"
 
 /**
  *
  */
-int fstat(int fd, struct stat* buf) {
+int fstat(int fd, struct stat* buf)
+{
+	g_fs_stat_data data;
+	auto status = g_fs_fstat(fd, &data);
+	if(status != G_FS_STAT_SUCCESS)
+		return -1;
 
-	klog("warning: fstat(%i, %x) not implemented", fd, buf);
+	_stat_from_g_fs_stat(buf, &data);
 	return 0;
 }

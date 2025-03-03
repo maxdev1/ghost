@@ -41,6 +41,8 @@ static g_mutex filesystemNextNodeIdLock;
 
 static g_hashmap<g_fs_virt_id, g_fs_node*>* filesystemNodes;
 
+g_fs_open_status _filesystemChooseOrigin(const char* path, g_task* task, g_fs_node*& origin);
+
 void filesystemInitialize()
 {
 	mutexInitializeTask(&filesystemNextNodeIdLock, __func__);
@@ -269,32 +271,19 @@ g_filesystem_find_result filesystemFind(g_fs_node* parent, const char* path)
 
 	return {
 			status: status,
-			file: node,
+			node: node,
 			foundAllButLast: ((nameEnd - nameStart) > 0),
-			lastFoundNode: lastFoundParent,
+			lastFoundParent: lastFoundParent,
 			fileNameStart: nameStart
 	};
 }
 
 g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task* task, g_fd* outFd)
 {
-	// Decide for relative path origin
-	g_fs_node* origin = nullptr;
-	if(path[0] != '/')
-	{
-		const char* cwd = task->process->environment.workingDirectory;
-		if(cwd == nullptr)
-			cwd = "/";
-
-		auto findCwdRes = filesystemFind(0, cwd);
-		if(findCwdRes.status == G_FS_OPEN_SUCCESSFUL)
-			origin = findCwdRes.file;
-		else
-			return findCwdRes.status;
-	}
-
-	if(!origin)
-		origin = filesystemGetRoot();
+	g_fs_node* origin;
+	g_fs_open_status findOriginStatus = _filesystemChooseOrigin(path, task, origin);
+	if(findOriginStatus != G_FS_OPEN_SUCCESSFUL)
+		return findOriginStatus;
 
 	// Try to find existing node
 	auto findRes = filesystemFind(origin, path);
@@ -302,7 +291,7 @@ g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task
 	// Handle different open cases
 	if(findRes.status == G_FS_OPEN_SUCCESSFUL)
 	{
-		if(findRes.file->type == G_FS_NODE_TYPE_FOLDER)
+		if(findRes.node->type == G_FS_NODE_TYPE_FOLDER)
 		{
 			logInfo("%! tried to open folder", "fs");
 			return G_FS_OPEN_ERROR;
@@ -310,9 +299,9 @@ g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task
 
 		if(flags & G_FILE_FLAG_MODE_TRUNCATE)
 		{
-			if(filesystemTruncate(findRes.file) != G_FS_OPEN_SUCCESSFUL)
+			if(filesystemTruncate(findRes.node) != G_FS_OPEN_SUCCESSFUL)
 			{
-				logInfo("%! failed to truncate file %i", "fs", findRes.file->id);
+				logInfo("%! failed to truncate file %i", "fs", findRes.node->id);
 				return G_FS_OPEN_ERROR;
 			}
 		}
@@ -327,7 +316,7 @@ g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task
 				        origin->id);
 				return G_FS_OPEN_ERROR;
 			}
-			else if(filesystemCreateFile(findRes.lastFoundNode, findRes.fileNameStart, &findRes.file) !=
+			else if(filesystemCreateFile(findRes.lastFoundParent, findRes.fileNameStart, &findRes.node) !=
 			        G_FS_OPEN_SUCCESSFUL)
 			{
 				logInfo("%! failed to create file '%s' in parent %i", "fs", path, origin->id);
@@ -345,7 +334,7 @@ g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task
 	}
 
 	// Actually open the file
-	return filesystemOpenNodeFd(findRes.file, flags, task->process->id, outFd);
+	return filesystemOpenNodeFd(findRes.node, flags, task->process->id, outFd);
 }
 
 g_fs_open_status filesystemOpenNode(g_fs_node* file, g_file_flag_mode flags, g_pid process,
@@ -808,4 +797,96 @@ bool filesystemGetFileName(g_fd fd, const char** outName)
 
 	*outName = node->name;
 	return true;
+}
+
+g_fs_real_path_status filesystemRealPath(g_task* task, const char* in, char* out)
+{
+	g_fs_node* origin;
+	auto findOriginStatus = _filesystemChooseOrigin(in, task, origin);
+	if(findOriginStatus != G_FS_OPEN_SUCCESSFUL)
+		return findOriginStatus;
+
+	auto findResult = filesystemFind(origin, in);
+	if(findResult.status == G_FS_OPEN_NOT_FOUND)
+		return G_FS_REAL_PATH_NOT_FOUND;
+	if(findResult.status != G_FS_OPEN_SUCCESSFUL)
+		return G_FS_REAL_PATH_ERROR;
+
+	filesystemGetAbsolutePath(findResult.node, out);
+	return G_FS_REAL_PATH_SUCCESS;
+}
+
+
+g_fs_open_status _filesystemChooseOrigin(const char* path, g_task* task, g_fs_node*& origin)
+{
+	if(path[0] == '/')
+	{
+		origin = filesystemGetRoot();
+	}
+	else
+	{
+		const char* cwd = task->process->environment.workingDirectory;
+		if(cwd == nullptr)
+			cwd = "/";
+
+		origin = nullptr;
+		auto findCwdRes = filesystemFind(nullptr, cwd);
+		if(findCwdRes.status == G_FS_OPEN_SUCCESSFUL)
+			origin = findCwdRes.node;
+		else
+			return findCwdRes.status;
+	}
+
+	return G_FS_OPEN_SUCCESSFUL;
+}
+
+g_fs_stat_status filesystemStat(g_task* task, const char* path, g_fs_stat_data* out)
+{
+
+	g_fs_node* origin;
+	g_fs_open_status findOriginStatus = _filesystemChooseOrigin(path, task, origin);
+	if(findOriginStatus != G_FS_OPEN_SUCCESSFUL)
+		return findOriginStatus;
+
+	auto findRes = filesystemFind(origin, path);
+	if(findRes.status == G_FS_OPEN_NOT_FOUND)
+		return G_FS_STAT_NOT_FOUND;
+	if(findRes.status != G_FS_OPEN_SUCCESSFUL)
+		return G_FS_STAT_ERROR;
+
+	return filesystemStatNode(findRes.node, out);
+}
+
+g_fs_stat_status filesystemFstat(g_task* task, g_fd fd, g_fs_stat_data* out)
+{
+	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(task->process->id, fd);
+	if(!descriptor)
+		return G_FS_STAT_INVALID_FD;
+
+	g_fs_node* node = filesystemGetNode(descriptor->nodeId);
+	if(!node)
+		return G_FS_STAT_INVALID_FD;
+
+	return filesystemStatNode(node, out);
+}
+
+g_fs_stat_status filesystemStatNode(g_fs_node* node, g_fs_stat_data* out)
+{
+	out->virtual_id = node->id;
+	out->type = node->type;
+
+	auto lengthStatus = filesystemGetLength(node, &out->size);
+	if(lengthStatus != G_FS_LENGTH_SUCCESSFUL)
+	{
+		logInfo("%! failed to stat file %i with get-length error %i", "filesystem", node->id, lengthStatus);
+		out->size = -1;
+	}
+
+	// TODO
+	out->device = -1;
+	out->time_last_access = 0;
+	out->time_last_modification = 0;
+	out->time_creation = 0;
+
+	return G_FS_STAT_SUCCESS;
 }

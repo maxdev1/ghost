@@ -128,6 +128,9 @@ typedef struct
  * @field follow_symlinks
  * 		whether to follow symbolic links
  *
+ * @field out
+ * 		stat output struct
+ *
  * @field result
  * 		the call result
  *
@@ -135,19 +138,19 @@ typedef struct
  */
 typedef struct
 {
-    char* path;
-    uint8_t follow_symlinks;
+    const char* path;
+    g_bool follow_symlinks;
+    g_fs_stat_data* out;
 
-    g_fs_stat_attributes stats;
-    int32_t result;
+    g_fs_stat_status status;
 }__attribute__((packed)) g_syscall_fs_stat;
 
 /**
  * @field fd
- * 		file descriptor
+* 		file descriptor
  *
- * @field follow_symlinks
- * 		whether to follow symbolic links
+ * @field out
+ * 		stat output struct
  *
  * @field result
  * 		the call result
@@ -157,9 +160,9 @@ typedef struct
 typedef struct
 {
     g_fd fd;
+    g_fs_stat_data* out;
 
-    g_fs_stat_attributes stats;
-    int32_t result;
+    g_fs_stat_status status;
 }__attribute__((packed)) g_syscall_fs_fstat;
 
 /**
@@ -421,5 +424,22 @@ typedef struct
     g_fd fd;
     g_open_irq_device_status status;
 } __attribute__((packed)) g_syscall_open_irq_device;
+
+
+/**
+ * @field in
+ * 		source path buffer
+ * @field out
+ * 		result buffer
+ * @field status
+ * 		status of the command
+ */
+typedef struct
+{
+    const char* in;
+    char* out;
+
+    g_fs_real_path_status status;
+} __attribute__((packed)) g_syscall_fs_real_path;
 
 #endif

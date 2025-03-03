@@ -509,7 +509,7 @@ g_fd elfObjectOpenDependency(const char* name)
 	}
 
 	g_fd fd;
-	g_fs_open_status openStatus = filesystemOpenNodeFd(findRes.file, G_FILE_FLAG_MODE_BINARY | G_FILE_FLAG_MODE_READ, taskingGetCurrentTask()->process->id, &fd);
+	g_fs_open_status openStatus = filesystemOpenNodeFd(findRes.node, G_FILE_FLAG_MODE_BINARY | G_FILE_FLAG_MODE_READ, taskingGetCurrentTask()->process->id, &fd);
 	if(openStatus != G_FS_OPEN_SUCCESSFUL)
 	{
 		logInfo("%! unable to open dependency %s", "elf", absolutePath);
