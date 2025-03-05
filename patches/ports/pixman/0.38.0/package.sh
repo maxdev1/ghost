@@ -9,7 +9,7 @@ port_unpack() {
 
 port_install() {
 	export PKG_CONFIG=$TARGET-pkg-config.sh
-	./configure --host=$TARGET --prefix=$PREFIX
-	make
+	./configure --host=$TARGET --prefix=$PREFIX --enable-shared=yes --enable-static=no
+	make -j8
 	make DESTDIR=$SYSROOT install
 }

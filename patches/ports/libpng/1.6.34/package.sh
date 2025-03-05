@@ -8,7 +8,7 @@ port_unpack() {
 }
 
 port_install() {
-	./configure --host=$TARGET --prefix=$PREFIX
-	make
+	./configure --host=$TARGET --prefix=$PREFIX --enable-shared=yes --enable-static=no
+	make -j8
 	make DESTDIR=$SYSROOT install
 }

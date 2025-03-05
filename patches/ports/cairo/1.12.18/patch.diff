@@ -1,12 +1,85 @@
-diff -Nur cairo-1.12.18/build/config.sub cairo-1.12.18-ghost/build/config.sub
---- cairo-1.12.18/build/config.sub	2020-02-18 14:43:52.844132000 +0100
-+++ cairo-1.12.18-ghost/build/config.sub	2020-02-18 14:44:10.038776400 +0100
-@@ -1348,7 +1348,7 @@
- 	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
- 	      | -sym* | -kopensolaris* \
- 	      | -amigaos* | -amigados* | -msdos* | -newsos* | -unicos* | -aof* \
--	      | -aos* | -aros* \
-+	      | -aos* | -aros* | -ghost* \
+diff --git a/build/config.sub b/build/config.sub
+index 6205f84..89b8db5 100644
+--- a/build/config.sub
++++ b/build/config.sub
+@@ -1351,6 +1351,7 @@ case $os in
+ 	      | -aos* | -aros* \
  	      | -nindy* | -vxsim* | -vxworks* | -ebmon* | -hms* | -mvs* \
  	      | -clix* | -riscos* | -uniplus* | -iris* | -rtu* | -xenix* \
++	      | -ghost* \
  	      | -hiux* | -386bsd* | -knetbsd* | -mirbsd* | -netbsd* \
+ 	      | -openbsd* | -solidbsd* \
+ 	      | -ekkobsd* | -kfreebsd* | -freebsd* | -riscix* | -lynxos* \
+diff --git a/configure b/configure
+index 41a9be0..4bf5047 100644
+--- a/configure
++++ b/configure
+@@ -6408,6 +6408,10 @@ gnu*)
+   lt_cv_deplibs_check_method=pass_all
+   ;;
+ 
++ghost*)
++  lt_cv_deplibs_check_method=pass_all
++  ;;
++
+ haiku*)
+   lt_cv_deplibs_check_method=pass_all
+   ;;
+@@ -11581,6 +11585,19 @@ gnu*)
+   hardcode_into_libs=yes
+   ;;
+ 
++ghost*)
++  version_type=linux # correct to gnu/linux during the next big refactor
++  need_lib_prefix=no
++  need_version=no
++  dynamic_linker="$host_os runtime_loader"
++  library_names_spec='${libname}${release}${shared_ext}$versuffix ${libname}${release}${shared_ext}${major} ${libname}${shared_ext}'
++  soname_spec='${libname}${release}${shared_ext}$major'
++  shlibpath_var=LIBRARY_PATH
++  shlibpath_overrides_runpath=no
++  sys_lib_dlsearch_path_spec='/system/lib'
++  hardcode_into_libs=yes
++  ;;
++
+ haiku*)
+   version_type=linux # correct to gnu/linux during the next big refactor
+   need_lib_prefix=no
+@@ -12671,7 +12688,6 @@ fi
+ 
+ 
+ 
+-
+   # Report which library types will actually be built
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking if libtool supports shared libraries" >&5
+ $as_echo_n "checking if libtool supports shared libraries... " >&6; }
+@@ -15357,6 +15373,10 @@ fi
+       gnu*)
+         ;;
+ 
++      ghost*)
++        ld_shlibs_CXX=yes
++        ;;
++
+       haiku*)
+         archive_cmds_CXX='$CC -shared $libobjs $deplibs $compiler_flags ${wl}-soname $wl$soname -o $lib'
+         link_all_deplibs_CXX=yes
+@@ -17261,6 +17281,18 @@ gnu*)
+   hardcode_into_libs=yes
+   ;;
+ 
++ghost*)
++  version_type=linux # correct to gnu/linux during the next big refactor
++  need_lib_prefix=no
++  need_version=no
++  library_names_spec='${libname}${release}${shared_ext}$versuffix ${libname}${release}${shared_ext}${major} ${libname}${shared_ext}'
++  soname_spec='${libname}${release}${shared_ext}$major'
++  shlibpath_var=LIBRARY_PATH
++  shlibpath_overrides_runpath=yes
++  sys_lib_dlsearch_path_spec='/system/lib'
++  hardcode_into_libs=yes
++  ;;
++
+ haiku*)
+   version_type=linux # correct to gnu/linux during the next big refactor
+   need_lib_prefix=no

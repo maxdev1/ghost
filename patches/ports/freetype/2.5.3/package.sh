@@ -7,7 +7,7 @@ port_unpack() {
 }
 
 port_install() {
-	../$UNPACKED_DIR/configure --host=$TARGET --prefix=$PREFIX --with-harfbuzz=no
-	make
+	CFLAGS="-fPIC" ../$UNPACKED_DIR/configure --host=$TARGET --prefix=$PREFIX --with-harfbuzz=no --enable-shared=yes --enable-static=no
+	make -j8
 	make DESTDIR=$SYSROOT install
 }
