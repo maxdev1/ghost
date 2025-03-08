@@ -388,23 +388,27 @@ component_t* component_t::handleKeyEvent(key_event_t& event)
 
 	if(!handledByChild)
 	{
-		auto handledByListener = this->callForListeners(G_UI_COMPONENT_EVENT_TYPE_KEY,
-		                                                [event](event_listener_info_t& info)
-		                                                {
-			                                                g_ui_component_key_event posted_key_event;
-			                                                posted_key_event.header.type =
-					                                                G_UI_COMPONENT_EVENT_TYPE_KEY;
-			                                                posted_key_event.header.component_id = info.component_id;
-			                                                posted_key_event.key_info = event.info;
-			                                                g_send_message(
-					                                                info.target_thread, &posted_key_event,
-					                                                sizeof(g_ui_component_key_event));
-		                                                });
-		if(handledByListener)
+		if(sendKeyEventToListener(event))
 			return this;
 	}
 
 	return handledByChild;
+}
+
+bool component_t::sendKeyEventToListener(key_event_t& event)
+{
+	return this->callForListeners(G_UI_COMPONENT_EVENT_TYPE_KEY,
+	                              [event](event_listener_info_t& info)
+	                              {
+		                              g_ui_component_key_event posted_key_event;
+		                              posted_key_event.header.type =
+				                              G_UI_COMPONENT_EVENT_TYPE_KEY;
+		                              posted_key_event.header.component_id = info.component_id;
+		                              posted_key_event.key_info = event.info;
+		                              g_send_message(
+				                              info.target_thread, &posted_key_event,
+				                              sizeof(g_ui_component_key_event));
+	                              });
 }
 
 void component_t::setPreferredSize(const g_dimension& size)
@@ -656,6 +660,16 @@ bool component_t::setNumericProperty(int property, uint32_t value)
 	{
 		return true;
 	}
+	return false;
+}
+
+bool component_t::setStringProperty(int property, std::string text)
+{
+	return false;
+}
+
+bool component_t::getStringProperty(int property, std::string& out)
+{
 	return false;
 }
 

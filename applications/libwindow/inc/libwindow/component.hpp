@@ -30,6 +30,7 @@
 #include "interface.hpp"
 #include "listener/mouse_listener.hpp"
 #include "listener/visible_listener.hpp"
+#include "listener/key_listener.hpp"
 #include "metrics/rectangle.hpp"
 #include "ui.hpp"
 #include "color_argb.hpp"
@@ -123,11 +124,16 @@ public:
     bool setNumericProperty(int property, uint32_t value);
     bool getNumericProperty(int property, uint32_t* out);
 
+    bool setStringProperty(int property, std::string value);
+    bool getStringProperty(int property, std::string& out);
+
     bool addListener(g_ui_component_event_type eventType, g_listener* listener);
     bool addMouseListener(g_mouse_listener* listener);
     bool addMouseListener(g_mouse_listener_func listener);
     bool addVisibleListener(g_visible_listener* listener);
     bool addVisibleListener(g_visible_listener_func listener);
+    bool addKeyListener(g_key_listener* listener);
+    bool addKeyListener(g_key_listener_func listener);
 
     bool setFlexOrientation(bool horizontal);
     bool setFlexComponentInfo(g_component* child, float grow, float shrink, int basis);

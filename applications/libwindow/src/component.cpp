@@ -18,10 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <utility>
-
 #include "libwindow/component.hpp"
 #include "libwindow/properties.hpp"
+
+#include <utility>
+#include <cstring>
 
 g_component::~g_component()
 {
@@ -192,6 +193,67 @@ bool g_component::getNumericProperty(int property, uint32_t* out)
 	return success;
 }
 
+
+bool g_component::setStringProperty(int property, std::string value)
+{
+	if(!g_ui_initialized)
+		return false;
+
+	g_message_transaction tx = g_get_message_tx_id();
+
+	auto request = new g_ui_component_set_string_property_request();
+	request->header.id = G_UI_PROTOCOL_SET_STRING_PROPERTY;
+	request->id = this->id;
+	request->property = property;
+	strncpy(request->value, value.c_str(), G_UI_STRING_PROPERTY_MAXIMUM - 1);
+
+	g_send_message_t(g_ui_delegate_tid, request, sizeof(g_ui_component_set_string_property_request), tx);
+	g_yield_t(g_ui_delegate_tid);
+
+	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_simple_response);
+	uint8_t buffer[bufferSize];
+	bool success = false;
+	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	{
+		auto response = (g_ui_simple_response*) G_MESSAGE_CONTENT(buffer);
+		success = (response->status == G_UI_PROTOCOL_SUCCESS);
+	}
+
+	delete request;
+	return success;
+}
+
+bool g_component::getStringProperty(int property, std::string& out)
+{
+	if(!g_ui_initialized)
+		return false;
+
+	g_message_transaction tx = g_get_message_tx_id();
+
+	g_ui_component_get_string_property_request request;
+	request.header.id = G_UI_PROTOCOL_GET_STRING_PROPERTY;
+	request.id = this->id;
+	request.property = property;
+	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_get_string_property_request), tx);
+	g_yield_t(g_ui_delegate_tid);
+
+	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_get_string_property_response);
+	auto buffer = new uint8_t[bufferSize];
+	bool success = false;
+	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	{
+		auto response = (g_ui_component_get_string_property_response*) G_MESSAGE_CONTENT(buffer);
+		if(response->status == G_UI_PROTOCOL_SUCCESS)
+		{
+			success = true;
+			out = std::string(response->value);
+		}
+	}
+
+	delete buffer;
+	return success;
+}
+
 bool g_component::addListener(g_ui_component_event_type eventType, g_listener* newListener)
 {
 	if(!g_ui_initialized)
@@ -235,6 +297,16 @@ bool g_component::addMouseListener(g_mouse_listener* listener)
 bool g_component::addMouseListener(g_mouse_listener_func func)
 {
 	return addListener(G_UI_COMPONENT_EVENT_TYPE_MOUSE, new g_mouse_listener_dispatcher(std::move(func)));
+}
+
+bool g_component::addKeyListener(g_key_listener* listener)
+{
+	return addListener(G_UI_COMPONENT_EVENT_TYPE_KEY, listener);
+}
+
+bool g_component::addKeyListener(g_key_listener_func func)
+{
+	return addListener(G_UI_COMPONENT_EVENT_TYPE_KEY, new g_key_listener_dispatcher(std::move(func)));
 }
 
 bool g_component::addVisibleListener(g_visible_listener* listener)

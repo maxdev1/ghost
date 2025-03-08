@@ -33,6 +33,7 @@ button_t::button_t() :
 	enabled = true;
 	addChild(&label, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
 	label.setAlignment(g_text_alignment::CENTER);
+	label.setColor(RGB(10, 10, 15));
 }
 
 /**
@@ -66,7 +67,6 @@ void button_t::layout()
 
 void button_t::paint()
 {
-
 	auto cr = graphics.acquireContext();
 	if(!cr)
 		return;
@@ -82,7 +82,7 @@ void button_t::paint()
 	}
 	else
 	{
-		background = RGB(200, 200, 200);
+		background = RGB(220, 220, 220);
 	}
 
 	g_color_argb border;
@@ -187,6 +187,7 @@ std::string button_t::getTitle()
 void button_t::setEnabled(bool enabled)
 {
 	this->enabled = enabled;
+	label.setColor(enabled ? RGB(10, 10, 15) : RGB(50, 50, 50));
 	markFor(COMPONENT_REQUIREMENT_PAINT);
 }
 

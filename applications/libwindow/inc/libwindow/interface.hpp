@@ -38,6 +38,7 @@
  */
 #define G_UI_MAXIMUM_MESSAGE_SIZE 4096
 
+#define G_UI_STRING_PROPERTY_MAXIMUM 1024
 #define G_UI_COMPONENT_TITLE_MAXIMUM 1024
 
 /**
@@ -82,6 +83,8 @@ typedef uint8_t g_ui_protocol_command_id;
 #define G_UI_PROTOCOL_DESTROY_COMPONENT         ((g_ui_protocol_command_id) 21)
 #define G_UI_PROTOCOL_SET_MINIMUM_SIZE          ((g_ui_protocol_command_id) 22)
 #define G_UI_PROTOCOL_SET_MAXIMUM_SIZE          ((g_ui_protocol_command_id) 23)
+#define G_UI_PROTOCOL_SET_STRING_PROPERTY		((g_ui_protocol_command_id) 24)
+#define G_UI_PROTOCOL_GET_STRING_PROPERTY		((g_ui_protocol_command_id) 25)
 
 /**
  * Common status for requests
@@ -102,6 +105,7 @@ const g_ui_component_type G_UI_COMPONENT_TYPE_CANVAS = 4;
 const g_ui_component_type G_UI_COMPONENT_TYPE_SELECTION = 5;
 const g_ui_component_type G_UI_COMPONENT_TYPE_PANEL = 6;
 const g_ui_component_type G_UI_COMPONENT_TYPE_SCROLLPANE = 7;
+const g_ui_component_type G_UI_COMPONENT_TYPE_IMAGE = 8;
 
 /**
  * Types of events that can be listened to
@@ -330,6 +334,37 @@ typedef struct
     g_ui_protocol_status status;
 } __attribute__((packed)) g_ui_component_set_numeric_property_response;
 
+/**
+ * Request for setting a string property
+ */
+typedef struct
+{
+    g_ui_message_header header;
+    g_ui_component_id id;
+    int property;
+    char value[G_UI_STRING_PROPERTY_MAXIMUM];
+} __attribute__((packed)) g_ui_component_set_string_property_request;
+
+/**
+ * Request/response for getting a string property
+ */
+typedef struct
+{
+    g_ui_message_header header;
+    g_ui_component_id id;
+    int property;
+} __attribute__((packed)) g_ui_component_get_string_property_request;
+
+typedef struct
+{
+    g_ui_message_header header;
+    g_ui_protocol_status status;
+    char value[G_UI_STRING_PROPERTY_MAXIMUM];
+} __attribute__((packed)) g_ui_component_get_string_property_response;
+
+/**
+ * Request to blit a canvas
+ */
 typedef struct
 {
     g_ui_message_header header;

@@ -259,7 +259,9 @@ public:
     virtual g_point getLocationOnScreen();
 
     virtual component_t* handleMouseEvent(mouse_event_t& event);
+
     virtual component_t* handleKeyEvent(key_event_t& event);
+    bool sendKeyEventToListener(key_event_t& event);
 
     virtual void handleBoundChanged(const g_rectangle& oldBounds)
     {
@@ -345,6 +347,9 @@ public:
 
     virtual bool getNumericProperty(int property, uint32_t* out);
     virtual bool setNumericProperty(int property, uint32_t value);
+
+    virtual bool getStringProperty(int property, std::string& out);
+    virtual bool setStringProperty(int property, std::string value);
 
     void addListener(g_ui_component_event_type eventType, g_tid target_thread, g_ui_component_id id);
     bool callForListeners(g_ui_component_event_type eventType, const std::function<void(event_listener_info_t&)>& func);

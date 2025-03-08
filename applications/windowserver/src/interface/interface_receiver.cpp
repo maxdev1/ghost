@@ -30,6 +30,7 @@
 #include "components/desktop/selection.hpp"
 #include "component_registry.hpp"
 #include "components/scrollpane.hpp"
+#include "components/image.hpp"
 #include "interface/interface_receiver.hpp"
 
 #include "layout/grid_layout_manager.hpp"
@@ -112,6 +113,10 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 
 			case G_UI_COMPONENT_TYPE_SCROLLPANE:
 				component = new scrollpane_t();
+				break;
+
+			case G_UI_COMPONENT_TYPE_IMAGE:
+				component = new image_t();
 				break;
 
 			default:
@@ -364,6 +369,52 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 
 		responseMessage = response;
 		responseLength = sizeof(g_ui_component_get_title_response);
+	}
+	else if(requestUiMessage->id == G_UI_PROTOCOL_SET_STRING_PROPERTY)
+	{
+		auto request = (g_ui_component_set_string_property_request*) requestUiMessage;
+		component_t* component = component_registry_t::get(request->id);
+
+		auto response = new g_ui_simple_response;
+		if(component == nullptr)
+		{
+			response->status = G_UI_PROTOCOL_FAIL;
+		}
+		else
+		{
+			component->setStringProperty(request->property, std::string(request->value));
+			response->status = G_UI_PROTOCOL_SUCCESS;
+		}
+
+		responseMessage = response;
+		responseLength = sizeof(g_ui_simple_response);
+	}
+	else if(requestUiMessage->id == G_UI_PROTOCOL_GET_STRING_PROPERTY)
+	{
+		auto request = (g_ui_component_get_string_property_request*) requestUiMessage;
+		component_t* component = component_registry_t::get(request->id);
+
+		auto response = new g_ui_component_get_string_property_response;
+		if(component == nullptr)
+		{
+			response->status = G_UI_PROTOCOL_FAIL;
+		}
+		else
+		{
+			std::string value;
+			if(component->getStringProperty(request->property, value))
+			{
+				strncpy(response->value, value.c_str(), G_UI_STRING_PROPERTY_MAXIMUM - 1);
+				response->status = G_UI_PROTOCOL_SUCCESS;
+			}
+			else
+			{
+				response->status = G_UI_PROTOCOL_FAIL;
+			}
+		}
+
+		responseMessage = response;
+		responseLength = sizeof(g_ui_component_get_string_property_response);
 	}
 	else if(requestUiMessage->id == G_UI_PROTOCOL_CANVAS_BLIT)
 	{
