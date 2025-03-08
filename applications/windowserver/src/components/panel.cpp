@@ -42,6 +42,7 @@ void panel_t::setBackground(g_color_argb color)
 {
 	background = color;
 	markFor(COMPONENT_REQUIREMENT_PAINT);
+	recheckGraphics();
 }
 
 g_color_argb panel_t::getBackground()

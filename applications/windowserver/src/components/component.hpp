@@ -348,6 +348,8 @@ public:
 
     void addListener(g_ui_component_event_type eventType, g_tid target_thread, g_ui_component_id id);
     bool callForListeners(g_ui_component_event_type eventType, const std::function<void(event_listener_info_t&)>& func);
+
+    void recheckGraphics();
 };
 
 #endif

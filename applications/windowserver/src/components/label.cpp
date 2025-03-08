@@ -25,6 +25,7 @@
 #include <cairo/cairo.h>
 #include <ghost.h>
 #include <sstream>
+#include <windowserver.hpp>
 
 label_t::label_t()
 {
@@ -42,16 +43,6 @@ void label_t::setFont(g_font* newFont)
 
 void label_t::update()
 {
-	g_rectangle thisBounds(0, 0, getBounds().width, getBounds().height);
-
-	// Check if the component was ever layouted, otherwise set to a high value
-	if(thisBounds.width == 0 && thisBounds.height == 0)
-	{
-		thisBounds.width = 9999;
-		thisBounds.height = 9999;
-	}
-
-	// get text bounds
 	auto cr = graphics.acquireContext();
 	if(!cr)
 		return;
@@ -81,34 +72,29 @@ void label_t::paint()
 {
 	clearSurface();
 
-	auto cr = graphics.acquireContext();
-	if(!cr)
-		return;
-
-	g_mutex_acquire(lock);
 	auto bounds = getBounds();
-	g_mutex_release(lock);
 
-	cairo_save(cr);
-	cairo_set_source_rgb(cr, ARGB_FR_FROM(color), ARGB_FB_FROM(color), ARGB_FG_FROM(color));
-
-	int textLeft;
-	int textBot = (bounds.height / 2 - fontExtents.height / 2) + fontExtents.height;
-
+	int textX;
+	int textY = bounds.height / 2 - fontExtents.height / 2 + fontExtents.ascent;
 	if(alignment == g_text_alignment::CENTER)
 	{
-		textLeft = bounds.width / 2 - textExtents.width / 2;
+		textX = bounds.width / 2 - textExtents.width / 2;
 	}
 	else if(alignment == g_text_alignment::RIGHT)
 	{
-		textLeft = bounds.width - textExtents.width;
+		textX = bounds.width - textExtents.width;
 	}
 	else
 	{
-		textLeft = 0;
+		textX = 0;
 	}
 
-	cairo_move_to(cr, textLeft, textBot);
+	auto cr = graphics.acquireContext();
+	if(!cr)
+		return;
+	cairo_save(cr);
+	cairo_set_source_rgb(cr, ARGB_FR_FROM(color), ARGB_FB_FROM(color), ARGB_FG_FROM(color));
+	cairo_move_to(cr, textX, textY);
 	cairo_set_font_face(cr, font->getFace());
 	cairo_set_font_size(cr, fontSize);
 	cairo_show_text(cr, text.c_str());

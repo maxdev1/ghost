@@ -36,18 +36,17 @@ class windowserver_t
 {
     g_tid updateTask = G_TID_NONE;
     g_tid renderTask = G_TID_NONE;
+
     g_user_mutex updateLock = g_mutex_initialize();
-    g_user_mutex renderLock = g_mutex_initialize();
+    g_user_mutex lazyUpdateLock = g_mutex_initialize();
 
     void initializeVideo();
     void createVitalComponents(g_rectangle screenBounds);
     void loadCursor();
     static void startInputHandlers();
 
-    void renderLoop(g_rectangle screenBounds);
-
-    static void startUpdateLoop(windowserver_t* self);
-    void updateLoop();
+    void updateLoop(const g_rectangle& screenBounds) const;
+    void updateDebounceLoop() const;
 
     static void fpsCounter();
 
@@ -67,15 +66,17 @@ public:
     void launch();
 
     /**
-     * When components have changed, requests the windowserver to perform an
-     * update of all dirty components on the screen.
+     * When components have changed, requests the server to perform an update of
+     * all components. This triggers the update to run immediately.
      */
-    void requestUpdate() const;
+    void requestUpdateImmediately() const;
 
     /**
-     * Requests the windowserver to perform a rendering.
+     * Also requests an update, but debounces requests that come in very quickly.
+     * This is used to avoid that for example a large amount of changes via the
+     * interface cause too many updates.
      */
-    void requestRender() const;
+    void requestUpdateLater() const;
 
     static void setDebug(bool cond);
     static bool isDebug();
@@ -97,6 +98,10 @@ public:
      */
     component_t* dispatchUpwards(component_t* component, event_t& event);
 
+    /**
+     * Switches the focus from the currently focused component to a different
+     * component. Must be used to ensure state is updated correctly.
+     */
     component_t* switchFocus(component_t* to);
 
     /**
@@ -105,6 +110,9 @@ public:
      * @return the instance
      */
     static windowserver_t* instance();
+
+    static void startLazyUpdateLoop();
+    static void startOtherTasks();
 };
 
 #endif

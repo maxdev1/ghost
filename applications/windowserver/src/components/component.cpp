@@ -80,6 +80,12 @@ void component_t::setBoundsInternal(const g_rectangle& newBounds)
 	g_mutex_release(lock);
 }
 
+void component_t::recheckGraphics()
+{
+	if(hasGraphics())
+		graphics.resize(bounds.width, bounds.height);
+}
+
 g_rectangle component_t::getBounds() const
 {
 	g_mutex_acquire(lock);
@@ -451,7 +457,7 @@ void component_t::markFor(component_requirement_t req)
 	if(parent)
 		parent->markChildsFor(req);
 
-	windowserver_t::instance()->requestUpdate();
+	windowserver_t::instance()->requestUpdateLater();
 }
 
 void component_t::markChildsFor(component_requirement_t req)

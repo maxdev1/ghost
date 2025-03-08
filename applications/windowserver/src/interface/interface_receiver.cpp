@@ -560,7 +560,7 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 		responseLength = sizeof(g_ui_simple_response);
 	}
 
-	windowserver_t::instance()->requestUpdate();
+	windowserver_t::instance()->requestUpdateLater();
 
 	if(responseMessage)
 	{

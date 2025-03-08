@@ -72,14 +72,19 @@ void windowserver_t::startInputHandlers()
 	}
 
 	server->loadCursor();
-	server->requestUpdate();
+	server->requestUpdateLater();
 }
 
-void startOtherTasks()
+void windowserver_t::startOtherTasks()
 {
 	g_task_register_id("windowserver/launcher");
 	// TODO not the windowservers job
 	g_spawn("/applications/desktop.bin", "", "", G_SECURITY_LEVEL_APPLICATION);
+}
+
+void windowserver_t::startLazyUpdateLoop()
+{
+	windowserver_t::instance()->updateDebounceLoop();
 }
 
 void windowserver_t::launch()
@@ -98,10 +103,10 @@ void windowserver_t::launch()
 
 	g_create_task((void*) &interfaceRegistrationThread);
 	g_create_task((void*) &startOtherTasks);
+	g_create_task((void*) &startLazyUpdateLoop);
 
-	updateTask = g_create_task_d((void*) startUpdateLoop, this);
 	renderTask = g_get_tid();
-	renderLoop(screenBounds);
+	updateLoop(screenBounds);
 }
 
 void windowserver_t::createVitalComponents(g_rectangle screenBounds)
@@ -146,68 +151,60 @@ void windowserver_t::initializeVideo()
 	}
 }
 
-void windowserver_t::startUpdateLoop(windowserver_t* self)
-{
-	self->updateLoop();
-}
-
-void windowserver_t::updateLoop()
+void windowserver_t::updateLoop(const g_rectangle& screenBounds) const
 {
 	g_task_register_id("windowserver/updater");
-
-	int timesUpdated = 0;
-
-	g_mutex_acquire(updateLock);
-	while(true)
-	{
-		++timesUpdated;
-		eventProcessor->process();
-
-		screen->resolveRequirement(COMPONENT_REQUIREMENT_UPDATE, 0);
-		screen->resolveRequirement(COMPONENT_REQUIREMENT_LAYOUT, 0);
-		screen->resolveRequirement(COMPONENT_REQUIREMENT_PAINT, 0);
-
-		requestRender();
-
-		if(!g_mutex_acquire_to(updateLock, 1000))
-		{
-			klog("Times updated: %i", timesUpdated);
-		}
-	}
-}
-
-void windowserver_t::requestUpdate() const
-{
-	g_mutex_release(updateLock);
-}
-
-
-void windowserver_t::renderLoop(g_rectangle screenBounds)
-{
-	g_task_register_id("windowserver/renderer");
 
 	graphics_t global;
 	global.resize(screenBounds.width, screenBounds.height, false);
 
 	cursor_t::nextPosition = g_point(screenBounds.width / 2, screenBounds.height / 2);
 
-	g_mutex_acquire(renderLock);
+	uint64_t lastUpdate = 0;
+	g_mutex_acquire(updateLock);
 	while(true)
 	{
+		eventProcessor->process();
+
+		screen->resolveRequirement(COMPONENT_REQUIREMENT_UPDATE, 0);
+		screen->resolveRequirement(COMPONENT_REQUIREMENT_LAYOUT, 0);
+		screen->resolveRequirement(COMPONENT_REQUIREMENT_PAINT, 0);
+
 		screen->blit(&global, screenBounds, g_point(0, 0));
 		cursor_t::paint(&global);
 
 		output(&global);
 
 		framesTotal++;
-		g_mutex_acquire_to(renderLock, 1000);
+		if(!g_mutex_acquire_to(updateLock, 1000))
+			klog("Times updated: %i", framesTotal);
+
+		auto now = g_millis();
+		if(now - lastUpdate < 10)
+			g_sleep(5);
+		lastUpdate = now;
 	}
 }
 
-void windowserver_t::requestRender() const
+void windowserver_t::requestUpdateImmediately() const
 {
-	g_mutex_release(renderLock);
-	g_yield_t(renderTask);
+	g_mutex_release(updateLock);
+}
+
+void windowserver_t::requestUpdateLater() const
+{
+	g_mutex_release(lazyUpdateLock);
+}
+
+void windowserver_t::updateDebounceLoop() const
+{
+	g_mutex_acquire(lazyUpdateLock);
+	while(true)
+	{
+		g_sleep(10);
+		g_mutex_acquire_to(lazyUpdateLock, 1000);
+		g_mutex_release(updateLock);
+	}
 }
 
 void windowserver_t::output(graphics_t* graphics) const
@@ -360,7 +357,7 @@ void windowserver_t::fpsCounter()
 		std::stringstream s;
 		s << "FPS: " << framesTotal << ", Time: " << seconds;
 		instance()->stateLabel->setTitle(s.str());
-		instance()->requestUpdate();
+		instance()->requestUpdateLater();
 		framesTotal = 0;
 	}
 }
