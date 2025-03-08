@@ -194,19 +194,21 @@ void text_field_t::paint()
 
 void text_field_t::applyScroll()
 {
-
 	int cursorX = positionToUnscrolledCursorX(cursor);
 	g_rectangle bounds = getBounds();
 
-	// scroll
-	if(scrollX + cursorX > bounds.width - insets.right)
-	{
-		scrollX = bounds.width - cursorX - insets.right;
-	}
+	int textUsableWidth = bounds.width - insets.left - insets.right;
+
+	if(scrollX + cursorX > textUsableWidth)
+		scrollX = textUsableWidth - cursorX;
 	else if(scrollX + cursorX < insets.left)
-	{
-		scrollX = -cursorX + insets.left; // TODO ?? + bounds.width / 2;
-	}
+		scrollX = -cursorX + insets.left;
+
+	if(viewModel->textBounds.width > textUsableWidth)
+		scrollX = std::max(textUsableWidth - viewModel->textBounds.width,
+		                   std::min(scrollX, 0));
+	else
+		scrollX = 0;
 }
 
 int text_field_t::positionToUnscrolledCursorX(int pos)
@@ -335,7 +337,6 @@ component_t* text_field_t::handleKeyEvent(key_event_t& ke)
 
 	if(ke.info.pressed)
 	{
-
 		if(ke.info.key == "KEY_BACKSPACE")
 		{
 			backspace(ke.info);
@@ -366,6 +367,7 @@ component_t* text_field_t::handleKeyEvent(key_event_t& ke)
 			}
 		}
 	}
+	sendKeyEventToListener(ke);
 	return this;
 }
 
@@ -447,7 +449,6 @@ int text_field_t::viewToPosition(g_point p)
 
 g_rectangle text_field_t::glyphToView(g_positioned_glyph& g)
 {
-
 	int yOffset = getBounds().height / 2 - fontSize / 2 - 2;
 	int x = scrollX + g.position.x + insets.left;
 	int y = g.position.y + yOffset;
