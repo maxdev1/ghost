@@ -93,8 +93,8 @@ build_ports() {
 	  print_name ports
 		printf "\n"
 		$SH port.sh zlib/1.2.8 | awk '$0="   "$0'
-		$SH port.sh pixman/0.32.6 | awk '$0="   "$0'
-		$SH port.sh libpng/1.6.18 | awk '$0="   "$0'
+		$SH port.sh pixman/0.38.0 | awk '$0="   "$0'
+		$SH port.sh libpng/1.6.34 | awk '$0="   "$0'
 		$SH port.sh freetype/2.5.3 | awk '$0="   "$0'
 		$SH port.sh cairo/1.12.18 | awk '$0="   "$0'
 	fi
