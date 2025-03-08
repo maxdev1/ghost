@@ -215,5 +215,5 @@ void canvas_t::requestBlit(g_rectangle& area)
 	g_mutex_release(bufferLock);
 
 	markDirty(area);
-	windowserver_t::instance()->requestRender();
+	windowserver_t::instance()->requestUpdateLater();
 }
