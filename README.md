@@ -46,8 +46,7 @@ Afterwards, the `target` folder will contain the bootable ISO image.
 * Multiboot compliance
 * It's also very cool
 
-
-![Screenshot of 0.12.0](https://ghostkernel.org/files/ghost-0.12.0.png)
+![Screenshot of 0.12.0](https://ghostkernel.org/files/ghost-0.22.2.png)
 
 ## Ported software
 * musl (provides libm part of Ghost libc)
