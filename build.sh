@@ -89,7 +89,7 @@ backspace_len() {
 build_ports() {
 	pushd patches/ports
 
-	if [[ $PORTS_ALL != 0 || ! -f $SYSROOT/system/lib/libcairo.a ]]; then
+	if [[ $PORTS_ALL != 0 || ! -f $SYSROOT/system/lib/libcairo.so ]]; then
 	  print_name ports
 		printf "\n"
 		$SH port.sh zlib/1.2.8 | awk '$0="   "$0'
