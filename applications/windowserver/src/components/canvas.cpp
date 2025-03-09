@@ -98,7 +98,7 @@ void canvas_t::createNewBuffer(g_rectangle& bounds, int width, int height)
 	uint32_t bufferSize = pages * G_PAGE_SIZE;
 
 	g_mutex_acquire(bufferLock);
-	if(pages < buffer.pages)
+	if(pages <= buffer.pages)
 	{
 		g_mutex_release(bufferLock);
 		return;
