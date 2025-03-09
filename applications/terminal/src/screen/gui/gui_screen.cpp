@@ -82,9 +82,9 @@ bool gui_screen_t::createUi()
 	g_rectangle windowBounds = g_rectangle(80, 80, 700, 500);
 	window->setBounds(windowBounds);
 	window->setVisible(true);
- 	window->setFocused(true);
 
 	window->addListener(G_UI_COMPONENT_EVENT_TYPE_FOCUS, new terminal_focus_listener_t(this));
+	window->setFocused(true);
 
 	window->onClose([this]()
 	{

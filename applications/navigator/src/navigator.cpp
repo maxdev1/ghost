@@ -120,7 +120,7 @@ int main()
 		navUp = g_button::create();
 		navUp->setTitle("^");
 		navBar->addChild(navUp);
-		navBar->setFlexComponentInfo(navUp, 0, 1, 40);
+		navBar->setFlexComponentInfo(navUp, 0, 1, 50);
 
 		navUp->setActionListener([]()
 		{
@@ -131,7 +131,7 @@ int main()
 		});
 	}
 	window->addChild(navBar);
-	window->setFlexComponentInfo(navBar, 0, 1, 50);
+	window->setFlexComponentInfo(navBar, 0, 1, 40);
 
 	g_panel* centerPanel = g_panel::create();
 	centerPanel->setBackground(RGB(255, 255, 255));

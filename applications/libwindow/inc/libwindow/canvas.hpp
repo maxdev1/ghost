@@ -22,6 +22,7 @@
 #define LIBWINDOW_CANVAS
 
 #include "libwindow/component.hpp"
+#include "libwindow/focusable_component.hpp"
 #include "libwindow/listener/canvas_buffer_listener.hpp"
 #include "libwindow/listener/desktop_canvas_listener.hpp"
 #include "libwindow/listener/canvas_buffer_listener_internal.hpp"
@@ -29,6 +30,7 @@
 #include <cstdint>
 #include <utility>
 #include <cairo/cairo.h>
+
 
 struct g_canvas_buffer_info
 {
@@ -45,7 +47,7 @@ struct g_canvas_buffer_info
  * A canvas is a simple component that offers a buffer to the creator for arbitrary painting. This buffer automatically
  * resizes when the bounds of the component change, so it is crucial to always keep track of which buffer to paint to.
  */
-class g_canvas : virtual public g_component
+class g_canvas : virtual public g_component, virtual public g_focusable_component
 {
 protected:
     g_canvas_buffer_info currentBuffer{};
@@ -73,7 +75,7 @@ protected:
 
 public:
     explicit g_canvas(g_ui_component_id id) :
-        g_component(id)
+        g_component(id), g_focusable_component(id)
     {
     }
 
