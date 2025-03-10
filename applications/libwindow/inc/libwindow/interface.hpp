@@ -566,6 +566,7 @@ typedef struct
     g_mouse_event_type type;
     g_mouse_button buttons;
     int clickCount;
+    int scroll;
 } __attribute__((packed)) g_ui_component_mouse_event;
 
 #endif

@@ -357,6 +357,7 @@ component_t* component_t::handleMouseEvent(mouse_event_t& event)
 		                                                postedEvent.type = event.type;
 		                                                postedEvent.buttons = event.buttons;
 		                                                postedEvent.clickCount = event.clickCount;
+	                                                	postedEvent.scroll = event.scroll;
 		                                                g_send_message(
 				                                                info.target_thread, &postedEvent,
 				                                                sizeof(g_ui_component_mouse_event));
