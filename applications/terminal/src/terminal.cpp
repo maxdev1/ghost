@@ -431,18 +431,22 @@ void terminalProcessSequenceVt100(stream_control_status_t* status)
 	{
 		case 'A': // Cursor up
 			screen->setCursor(screen->getCursorX(), screen->getCursorY() - status->parameters[0]);
+ 			screen->flush();
 			break;
 
 		case 'B': // Cursor down
 			screen->setCursor(screen->getCursorX(), screen->getCursorY() + status->parameters[0]);
+			screen->flush();
 			break;
 
 		case 'C': // Cursor forward
 			screen->setCursor(screen->getCursorX() + status->parameters[0], screen->getCursorY());
+			screen->flush();
 			break;
 
 		case 'D': // Cursor back
 			screen->setCursor(screen->getCursorX() - status->parameters[0], screen->getCursorY());
+			screen->flush();
 			break;
 
 		case 'm': // Mode setting

@@ -97,7 +97,6 @@ class gui_screen_t : public screen_t
     } viewBuffer;
 
     void setCanvasBounds(g_rectangle& bounds);
-    cairo_t* acquireGraphics();
     void repaint() const;
     void setFocused(bool focused);
     void bufferInput(const g_key_info& info);
@@ -144,18 +143,6 @@ public:
     }
 
     void handleBoundsChanged(g_rectangle bounds) override;
-};
-
-class input_key_listener_t : public g_key_listener
-{
-    gui_screen_t* screen;
-
-public:
-    explicit input_key_listener_t(gui_screen_t* screen) : screen(screen)
-    {
-    }
-
-    void handleKeyEvent(g_key_event& e) override;
 };
 
 class canvas_buffer_listener_t : public g_canvas_buffer_listener

@@ -345,6 +345,9 @@ pushd temp/build-gcc
 
 popd
 
+# TODO: Build shared libstdc++-v3
+#  ../gcc-12.2.0/libstdc++-v3/configure --host=i686-ghost --prefix=/system --enable-shared
+# Doesn't work yet
 
 # Finished
 echo "Toolchain successfully built"

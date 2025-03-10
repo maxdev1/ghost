@@ -209,7 +209,6 @@ void canvas_t::blit(graphics_t* out, const g_rectangle& clip, const g_point& pos
 
 void canvas_t::requestBlit(g_rectangle& area)
 {
-	// TODO actually use "area"
 	g_mutex_acquire(bufferLock);
 	bufferReady = true;
 	g_mutex_release(bufferLock);

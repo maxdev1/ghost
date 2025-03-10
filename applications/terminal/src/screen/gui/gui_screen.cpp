@@ -74,7 +74,31 @@ bool gui_screen_t::createUi()
 	canvas.component = g_canvas::create();
 	canvas.component->setBufferListener(new canvas_buffer_listener_t(this));
 	canvas.component->setBoundsListener(new canvas_resize_bounds_listener_t(this));
-	canvas.component->addListener(G_UI_COMPONENT_EVENT_TYPE_KEY, new input_key_listener_t(this));
+	canvas.component->addKeyListener([this](g_key_event& e)
+	{
+		auto info = g_keyboard::fullKeyInfo(e.info);
+		if(info.key == "KEY_PAD_2")
+		{
+			scroll(1);
+		}
+		else if(info.key == "KEY_PAD_8")
+		{
+			scroll(-1);
+		}
+		else
+		{
+			bufferInput(info);
+		}
+		cursor.blink = true;
+	});
+	canvas.component->addMouseListener([this](g_ui_component_mouse_event* event)
+	{
+		if(event->type == G_MOUSE_EVENT_SCROLL)
+		{
+			scroll(-event->scroll);
+		}
+		return this;
+	});
 
 	window->setLayout(G_UI_LAYOUT_MANAGER_GRID);
 	window->addChild(canvas.component);
@@ -103,23 +127,6 @@ void canvas_resize_bounds_listener_t::handleBoundsChanged(g_rectangle bounds)
 {
 	screen->setCanvasBounds(bounds);
 	screen->repaint();
-}
-
-void input_key_listener_t::handleKeyEvent(g_key_event& e)
-{
-	auto info = g_keyboard::fullKeyInfo(e.info);
-	if(info.key == "KEY_PAD_2")
-	{
-		screen->scroll(1);
-	}
-	else if(info.key == "KEY_PAD_8")
-	{
-		screen->scroll(-1);
-	}
-	else
-	{
-		screen->bufferInput(info);
-	}
 }
 
 g_key_info gui_screen_t::readInput()
@@ -153,6 +160,7 @@ void gui_screen_t::bufferInput(const g_key_info& info)
 	lastInputTime = g_millis();
 	g_mutex_release(inputBufferEmpty);
 	g_mutex_release(inputBufferLock);
+	g_yield();
 }
 
 void canvas_buffer_listener_t::handleBufferChanged()
@@ -173,12 +181,13 @@ void gui_screen_t::paint()
 	viewBuffer.max = 300 * 80;
 	viewBuffer.buffer = new char[viewBuffer.max];
 
-	volatile int lastPaintedCursorX = -1;
-	volatile int lastPaintedCursorViewY = -1;
+	int lastPaintedCursorX = -1;
+	int lastPaintedCursorViewY = -1;
+	bool lastPaintedCursorBlink = cursor.blink;
 
 	while(true)
 	{
-		auto cr = acquireGraphics();
+		auto cr = canvas.component->acquireGraphics();
 		if(!cr)
 		{
 			g_sleep(100);
@@ -187,16 +196,16 @@ void gui_screen_t::paint()
 
 		int visibleCols = getColumns();
 		int visibleRows = getRows();
-		g_rectangle changed = g_rectangle(-1, -1, -1, -1);
+		g_rectangle changes = g_rectangle(-1, -1, 0, 0);
 
 		if(fullRepaint)
 		{
 			fullRepaint = false;
 
-			changed.x = 0;
-			changed.y = 0;
-			changed.width = visibleCols;
-			changed.height = visibleRows;
+			changes.x = 0;
+			changes.y = 0;
+			changes.width = visibleCols;
+			changes.height = visibleRows;
 
 			// Clear everything
 			cairo_save(cr);
@@ -225,11 +234,6 @@ void gui_screen_t::paint()
 			memset(viewBuffer.buffer, 0, newLen);
 			viewBuffer.rows = visibleRows;
 			viewBuffer.columns = visibleCols;
-
-			changed.x = 0;
-			changed.y = 0;
-			changed.width = visibleCols;
-			changed.height = visibleRows;
 		}
 
 		// Calculate what is to render into the view buffer
@@ -256,7 +260,7 @@ void gui_screen_t::paint()
 				if(viewBuffer.buffer[y * visibleCols + x] != c)
 				{
 					viewBuffer.buffer[y * visibleCols + x] = c;
-					changed.extend(g_point(x, y));
+					changes.extend(g_point(x, y));
 				}
 			}
 
@@ -267,72 +271,67 @@ void gui_screen_t::paint()
 		int cursorViewY = renderStartRow + cursor.y - 1;
 		int cursorViewX = (cursor.x - 1) % visibleCols + 1;
 
-		if(lastPaintedCursorX != cursor.x || lastPaintedCursorViewY != cursorViewY)
+		if(lastPaintedCursorX != cursor.x || lastPaintedCursorViewY != cursorViewY || lastPaintedCursorBlink != cursor.
+		   blink)
 		{
-			changed.extend(g_point(lastPaintedCursorX, lastPaintedCursorViewY));
+			if(lastPaintedCursorX != -1)
+				changes.extend(g_point(lastPaintedCursorX, lastPaintedCursorViewY));
+			changes.extend(g_point(cursorViewX, cursorViewY));
 			lastPaintedCursorX = cursor.x;
 			lastPaintedCursorViewY = cursorViewY;
+			lastPaintedCursorBlink = cursor.blink;
 		}
 
-
-		// Prepare context for char renderer
-		chars.renderer->prepareContext(cr, chars.fontSize);
-
-		// Clear changed character positions
-		cairo_save(cr);
-		cairo_set_source_rgba(cr, 0, 0, 0, 0);
-		cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-		cairo_rectangle(cr,
-		                changed.x * chars.width + canvas.padding,
-		                changed.y * chars.height + canvas.padding,
-		                changed.width * chars.width,
-		                changed.height * chars.height);
-		cairo_fill(cr);
-		cairo_restore(cr);
-
-		// Paint on screen
-		for(int y = 0; y < visibleRows; y++)
+		if(changes.width && changes.height)
 		{
-			for(int x = 0; x < visibleCols; x++)
-			{
-				auto c = viewBuffer.buffer[y * visibleCols + x];
-				if(c == 0)
-					continue;
+			g_rectangle screenChanges(
+					changes.x * chars.width + canvas.padding,
+					changes.y * chars.height + canvas.padding,
+					changes.width * chars.width,
+					changes.height * chars.height
+					);
 
-				if((x >= changed.x) && (y >= changed.y)
-				   && (x <= changed.x + changed.width)
-				   && (y <= changed.y + changed.height))
-				{
-					chars.renderer->printChar(cr,
-					                          x * chars.width + canvas.padding,
-					                          y * chars.height + chars.height - 3 + canvas.padding,
-					                          c);
-				}
-			}
-		}
+			// Prepare context for char renderer
+			chars.renderer->prepareContext(cr, chars.fontSize);
 
-		// Paint cursor
-		if(focused)
-		{
-			bool cursorVisible = (g_millis() - lastInputTime < 300) || cursor.blink;
-
-			// Clear cursor location
+			// Clear changed character positions
 			cairo_save(cr);
 			cairo_set_source_rgba(cr, 0, 0, 0, 0);
 			cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-			cairo_rectangle(cr,
-			                cursorViewX * chars.width + canvas.padding,
-			                cursorViewY * chars.height + canvas.padding,
-			                cursor.width,
-			                chars.height);
+			cairo_rectangle(cr, screenChanges.x, screenChanges.y, screenChanges.width, screenChanges.height);
 			cairo_fill(cr);
 			cairo_restore(cr);
 
-			// Paint cursor
-			if(cursorVisible)
+			// Paint on screen
+			for(int y = 0; y < visibleRows; y++)
 			{
+				for(int x = 0; x < visibleCols; x++)
+				{
+					auto c = viewBuffer.buffer[y * visibleCols + x];
+					if(c == 0)
+						continue;
+
+					if((x >= changes.x) && (y >= changes.y)
+					   && (x <= changes.x + changes.width)
+					   && (y <= changes.y + changes.height))
+					{
+						chars.renderer->printChar(cr,
+						                          x * chars.width + canvas.padding,
+						                          y * chars.height + chars.height - 3 + canvas.padding,
+						                          c);
+					}
+				}
+			}
+
+			// Paint cursor
+			if(focused)
+			{
+				bool cursorVisible = (g_millis() - lastInputTime < 300) || cursor.blink;
+
+				// Clear cursor location
 				cairo_save(cr);
-				cairo_set_source_rgba(cr, 0.8, 0.8, 0.8, 1);
+				cairo_set_source_rgba(cr, 0, 0, 0, 0);
+				cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
 				cairo_rectangle(cr,
 				                cursorViewX * chars.width + canvas.padding,
 				                cursorViewY * chars.height + canvas.padding,
@@ -340,19 +339,33 @@ void gui_screen_t::paint()
 				                chars.height);
 				cairo_fill(cr);
 				cairo_restore(cr);
+
+				// Paint cursor
+				if(cursorVisible)
+				{
+					cairo_save(cr);
+					cairo_set_source_rgba(cr, 0.8, 0.8, 0.8, 1);
+					cairo_rectangle(cr,
+					                cursorViewX * chars.width + canvas.padding,
+					                cursorViewY * chars.height + canvas.padding,
+					                cursor.width,
+					                chars.height);
+					cairo_fill(cr);
+					cairo_restore(cr);
+				}
 			}
+
+			canvas.component->blit(g_rectangle(
+					std::max(screenChanges.x - 2, 0),
+					std::max(screenChanges.y - 2, 0),
+					screenChanges.width + 4,
+					screenChanges.height + 4
+					));
 		}
 
-		canvas.component->blit(g_rectangle(0, 0, canvas.bounds.width, canvas.bounds.height));
 		canvas.component->releaseGraphics();
-
 		g_mutex_acquire(upToDate);
 	}
-}
-
-cairo_t* gui_screen_t::acquireGraphics()
-{
-	return canvas.component->acquireGraphics();
 }
 
 bool charIsUtf8(char c)
@@ -414,6 +427,7 @@ void gui_screen_t::setCursor(int x, int y)
 {
 	cursor.x = x;
 	cursor.y = y;
+	cursor.blink = true;
 }
 
 int gui_screen_t::getCursorX()
