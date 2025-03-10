@@ -96,22 +96,10 @@ component_t* scrollbar_t::handleMouseEvent(mouse_event_t& me)
 		}
 
 		int hiddenLength = contentLength - viewportLength;
-		modelPosition = (viewPosition * hiddenLength) / knobSpace;
-		if(modelPosition < 0)
-		{
-			modelPosition = 0;
-		}
-		else if(modelPosition > hiddenLength)
-		{
-			modelPosition = hiddenLength;
-		}
+		setModelPosition((viewPosition * hiddenLength) / knobSpace);
 
 		if(scrollHandler)
-		{
 			scrollHandler->handleScroll(this);
-		}
-
-		markFor(COMPONENT_REQUIREMENT_PAINT);
 	}
 	return this;
 }
@@ -128,6 +116,11 @@ void scrollbar_t::setModelPosition(int pos)
 {
 	modelPosition = pos;
 
+	if(modelPosition < 0)
+		modelPosition = 0;
+	else if(modelPosition > contentLength - viewportLength)
+		modelPosition = contentLength - viewportLength;
+
 	markFor(COMPONENT_REQUIREMENT_PAINT);
 }
 
@@ -135,7 +128,6 @@ g_rectangle scrollbar_t::calculateKnob()
 {
 	g_rectangle bounds = getBounds();
 	int knobLength = getKnobLength();
-
 	int knobSpace = getKnobSpace();
 
 	int hiddenLength = contentLength - viewportLength;
@@ -172,7 +164,6 @@ int scrollbar_t::getKnobSpace()
 
 int scrollbar_t::getKnobLength()
 {
-
 	int bounds;
 	if(orientation == scrollbar_orientation_t::VERTICAL)
 	{

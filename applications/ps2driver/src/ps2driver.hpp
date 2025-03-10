@@ -29,7 +29,7 @@ void ps2DriverInitialize();
 
 void ps2DriverReceiveMessages();
 
-void ps2MouseCallback(int16_t x, int16_t y, uint8_t flags);
+void ps2MouseCallback(int16_t x, int16_t y, uint8_t flags, int8_t scroll);
 
 void ps2KeyboardCallback(uint8_t c);
 

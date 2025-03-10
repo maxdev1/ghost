@@ -75,6 +75,7 @@ void event_processor_t::translateKeyEvent(g_key_info& info)
 void event_processor_t::processMouseState()
 {
 	g_point previousPosition = cursor_t::position;
+
 	g_mouse_button previousPressedButtons = cursor_t::pressedButtons;
 
 	windowserver_t* instance = windowserver_t::instance();
@@ -94,6 +95,8 @@ void event_processor_t::processMouseState()
 	baseEvent.screenPosition = cursor_t::position;
 	baseEvent.position = baseEvent.screenPosition;
 	baseEvent.buttons = cursor_t::pressedButtons;
+	baseEvent.scroll = cursor_t::nextScroll;
+	cursor_t::nextScroll = 0;
 
 	// Press
 	if((!(previousPressedButtons & G_MOUSE_BUTTON_1) && (cursor_t::pressedButtons & G_MOUSE_BUTTON_1)) ||
@@ -177,7 +180,7 @@ void event_processor_t::processMouseState()
 
 		// Move or drag
 	}
-	else if(cursor_t::position != previousPosition)
+	else if(cursor_t::position != previousPosition || baseEvent.scroll != 0)
 	{
 		if(cursor_t::draggedComponent != -1)
 		{
@@ -198,6 +201,14 @@ void event_processor_t::processMouseState()
 			moveEvent.type = G_MOUSE_EVENT_MOVE;
 
 			component_t* newHoveredComponent = instance->dispatch(screen, moveEvent);
+
+			// Scrolling
+			if(baseEvent.scroll != 0 && newHoveredComponent)
+			{
+				mouse_event_t scrollEvent = baseEvent;
+				scrollEvent.type = G_MOUSE_EVENT_SCROLL;
+				instance->dispatchUpwards(newHoveredComponent, scrollEvent);
+			}
 
 			// Post enter or leave events
 			if(newHoveredComponent && (newHoveredComponent->id != cursor_t::hoveredComponent) &&

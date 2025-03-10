@@ -103,6 +103,8 @@ void input_receiver_t::startReceiveMouseEvents()
 			cursor_t::nextPressedButtons |= G_MOUSE_BUTTON_3;
 		}
 
+		cursor_t::nextScroll += info.scroll;
+
 		windowserver_t::instance()->requestUpdateImmediately();
 	}
 }

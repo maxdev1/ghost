@@ -24,18 +24,21 @@
 #include <ghost.h>
 #include <stdio.h>
 
-uint8_t mouse_packet_number = 0;
-uint8_t mouse_packet_buffer[4];
+uint8_t mousePacketNumber = 0;
+uint8_t mousePacketBuffer[4];
+bool intelliMouseMode = false; // 4-byte sequences
 
 g_fd keyIrqIn;
 g_fd mouseIrqIn;
 
-uint32_t packets_count = 0;
+uint32_t packetCount = 0;
 
-void (*registeredMouseCallback)(int16_t, int16_t, uint8_t);
+void (*registeredMouseCallback)(int16_t, int16_t, uint8_t, int8_t);
 void (*registeredKeyboardCallback)(uint8_t);
 
-ps2_status_t ps2Initialize(void (*mouseCallback)(int16_t, int16_t, uint8_t),
+void ps2HandlePacket();
+
+ps2_status_t ps2Initialize(void (*mouseCallback)(int16_t, int16_t, uint8_t, int8_t),
                            void (*keyboardCallback)(uint8_t))
 {
 
@@ -113,7 +116,7 @@ void ps2CheckForData()
 			ps2HandleMouseData(value);
 		}
 
-		++packets_count;
+		++packetCount;
 	}
 }
 
@@ -158,56 +161,85 @@ ps2_status_t ps2InitializeMouse()
 		return G_PS2_STATUS_FAILED_INITIALIZE;
 	}
 
+	// enable extended stuff for scrolling
+	if(ps2WriteToMouse(0xF3) ||
+	   ps2WriteToMouse(200) ||
+	   ps2WriteToMouse(0xF3) ||
+	   ps2WriteToMouse(100) ||
+	   ps2WriteToMouse(0xF3) ||
+	   ps2WriteToMouse(80))
+	{
+		intelliMouseMode = false;
+		klog("failed to enable intellimouse mode");
+	}
+	else
+	{
+		intelliMouseMode = true;
+	}
+
 	return G_PS2_STATUS_SUCCESS;
 }
 
 void ps2HandleMouseData(uint8_t value)
 {
-
-	switch(mouse_packet_number)
+	if(mousePacketNumber == 0)
 	{
-		case 0:
-			mouse_packet_buffer[0] = value;
+		mousePacketBuffer[0] = value;
+		// The first byte must always have the 4th bit (0x08) set
+		if((value & 0x08) == 0)
+		{
+			mousePacketNumber = 0; // wait for a valid starting byte
+		}
+		else
+		{
+			mousePacketNumber = 1;
+		}
+	}
+	else if(mousePacketNumber == 1)
+	{
+		mousePacketBuffer[1] = value;
+		mousePacketNumber = 2;
+	}
+	else if(mousePacketNumber == 2)
+	{
+		if(intelliMouseMode)
+		{
+			mousePacketBuffer[2] = value;
+			mousePacketNumber = 3;
+		}
+		else
+		{
+			mousePacketBuffer[2] = value;
+			mousePacketNumber = 0;
+			ps2HandlePacket();
+		}
+	}
+	else if(mousePacketNumber == 3) // IntelliMouse only
+	{
+		mousePacketBuffer[3] = value;
+		mousePacketNumber = 0;
+		ps2HandlePacket();
+	}
+}
 
-			if((value & 0x08) == 0)
-			{
-				mouse_packet_number = 0; // otherwise restart the cycle
-			}
-			else
-			{
-				mouse_packet_number = 1;
-			}
-			break;
+void ps2HandlePacket()
+{
+	int8_t flags = mousePacketBuffer[0];
+	uint8_t valX = mousePacketBuffer[1];
+	uint8_t valY = mousePacketBuffer[2];
+	int8_t scroll = intelliMouseMode ? (int8_t) mousePacketBuffer[3] : 0;
 
-		case 1:
-			mouse_packet_buffer[1] = value;
-			mouse_packet_number = 2;
-			break;
+	if((flags & (1 << 6)) || (flags & (1 << 7)))
+	{
+		// ignore overflowing values
+	}
+	else
+	{
+		int16_t offX = (valX | ((flags & 0x10) ? 0xFF00 : 0));
+		int16_t offY = (valY | ((flags & 0x20) ? 0xFF00 : 0));
 
-		case 2:
-			mouse_packet_buffer[2] = value;
-
-			int8_t flags = mouse_packet_buffer[0];
-			uint8_t valX = mouse_packet_buffer[1];
-			uint8_t valY = mouse_packet_buffer[2];
-
-			if((flags & (1 << 6)) || (flags & (1 << 7)))
-			{
-				// ignore overflowing values
-			}
-			else
-			{
-				int16_t offX = (valX | ((flags & 0x10) ? 0xFF00 : 0));
-				int16_t offY = (valY | ((flags & 0x20) ? 0xFF00 : 0));
-
-				if(registeredMouseCallback)
-				{
-					registeredMouseCallback(offX, -offY, flags);
-				}
-			}
-
-			mouse_packet_number = 0;
-			break;
+		if(registeredMouseCallback)
+			registeredMouseCallback(offX, -offY, flags, scroll);
 	}
 }
 

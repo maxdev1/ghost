@@ -27,7 +27,8 @@
 
 item_t::item_t(uint32_t id):
 	g_component(id),
-	g_canvas(id)
+	g_canvas(id),
+	g_focusable_component(id)
 {
 	this->setBufferListener([this]()
 	{

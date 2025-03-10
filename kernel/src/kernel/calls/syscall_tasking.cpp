@@ -90,7 +90,7 @@ void syscallJoin(g_task* task, g_syscall_join* data)
 	INTERRUPTS_PAUSE;
 	mutexAcquire(&task->lock);
 	task->status = G_TASK_STATUS_WAITING;
-	task->waitsFor = "sleeps";
+	task->waitsFor = "join";
 	mutexRelease(&task->lock);
 	taskingWaitForExit(data->taskId, task->id);
 	taskingYield();

@@ -37,6 +37,7 @@ class mouse_event_t : public event_t, public locatable_t
     g_mouse_event_type type;
     g_mouse_button buttons;
     int clickCount;
+    int scroll;
 
     virtual component_t* visit(component_t* component);
 };

@@ -33,6 +33,8 @@ g_point cursor_t::nextPosition;
 g_mouse_button cursor_t::pressedButtons = G_MOUSE_EVENT_NONE;
 g_mouse_button cursor_t::nextPressedButtons = G_MOUSE_EVENT_NONE;
 
+int cursor_t::nextScroll = 0;
+
 g_ui_component_id cursor_t::pressedComponent = -1;
 g_ui_component_id cursor_t::draggedComponent = -1;
 g_ui_component_id cursor_t::hoveredComponent = -1;

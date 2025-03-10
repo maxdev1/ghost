@@ -557,6 +557,7 @@ typedef uint8_t g_mouse_event_type;
 #define G_MOUSE_EVENT_DRAG ((g_mouse_event_type) 5)
 #define G_MOUSE_EVENT_ENTER ((g_mouse_event_type) 6)
 #define G_MOUSE_EVENT_LEAVE ((g_mouse_event_type) 7)
+#define G_MOUSE_EVENT_SCROLL ((g_mouse_event_type) 8)
 
 typedef struct
 {

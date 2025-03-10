@@ -50,7 +50,8 @@ protected:
 public:
     explicit background_t(g_ui_component_id id):
         g_component(id),
-        g_canvas(id), dragItems(false)
+        g_canvas(id), dragItems(false),
+        g_focusable_component(id)
     {
     }
 

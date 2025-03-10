@@ -57,6 +57,10 @@ void background_t::init()
 		{
 			onMouseRelease(position);
 		}
+		else if(e->type == G_MOUSE_EVENT_LEAVE)
+		{
+			onMouseRelease(position);
+		}
 	});
 
 	selection = g_selection::create();
@@ -217,7 +221,7 @@ void background_t::paint()
 	auto bounds = this->getBounds();
 
 	srand(g_millis());
-	static int r = rand() % 128 + 50;
+	static int r = rand() % 100 + 50;
 
 	cairo_pattern_t* gradient = cairo_pattern_create_linear(bounds.width * 0.4, 0, bounds.width * 0.8,
 	                                                        bounds.height);

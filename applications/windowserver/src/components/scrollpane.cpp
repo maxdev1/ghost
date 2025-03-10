@@ -50,6 +50,17 @@ void scrollpane_t::setContent(component_t* component)
 	}
 }
 
+component_t* scrollpane_t::handleMouseEvent(mouse_event_t& event)
+{
+	if(event.type == G_MOUSE_EVENT_SCROLL)
+	{
+		verticalScrollbar.setModelPosition(verticalScrollbar.getModelPosition() + event.scroll * 50);
+		handleScroll(&verticalScrollbar);
+		return this;
+	}
+	return component_t::handleMouseEvent(event);
+}
+
 void scrollpane_t::handleScroll(scrollbar_t* bar)
 {
 	if(bar == &verticalScrollbar)

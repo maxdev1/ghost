@@ -30,7 +30,7 @@
 g_font* font = nullptr;
 
 taskbar_t::taskbar_t(g_ui_component_id id):
-	g_component(id), g_canvas(id)
+	g_component(id), g_canvas(id), g_focusable_component(id)
 {
 	textLayoutBuffer = g_text_layouter::getInstance()->initializeBuffer();
 }

@@ -344,27 +344,32 @@ component_t* component_t::handleMouseEvent(mouse_event_t& event)
 	}
 	g_mutex_release(childrenLock);
 
-	if(!handledByChild)
-	{
-		auto handledByListener = this->callForListeners(G_UI_COMPONENT_EVENT_TYPE_MOUSE,
-		                                                [event](event_listener_info_t& info)
-		                                                {
-			                                                g_ui_component_mouse_event postedEvent;
-			                                                postedEvent.header.type = G_UI_COMPONENT_EVENT_TYPE_MOUSE;
-			                                                postedEvent.header.component_id = info.component_id;
-			                                                postedEvent.position = event.position;
-			                                                postedEvent.type = event.type;
-			                                                postedEvent.buttons = event.buttons;
-			                                                postedEvent.clickCount = event.clickCount;
-			                                                g_send_message(
-					                                                info.target_thread, &postedEvent,
-					                                                sizeof(g_ui_component_mouse_event));
-		                                                });
-		if(handledByListener)
-			return this;
-	}
+	if(handledByChild)
+		return handledByChild;
 
-	return handledByChild;
+	auto handledByListener = this->callForListeners(G_UI_COMPONENT_EVENT_TYPE_MOUSE,
+	                                                [event](event_listener_info_t& info)
+	                                                {
+		                                                g_ui_component_mouse_event postedEvent;
+		                                                postedEvent.header.type = G_UI_COMPONENT_EVENT_TYPE_MOUSE;
+		                                                postedEvent.header.component_id = info.component_id;
+		                                                postedEvent.position = event.position;
+		                                                postedEvent.type = event.type;
+		                                                postedEvent.buttons = event.buttons;
+		                                                postedEvent.clickCount = event.clickCount;
+		                                                g_send_message(
+				                                                info.target_thread, &postedEvent,
+				                                                sizeof(g_ui_component_mouse_event));
+	                                                });
+
+	// TODO Temporary fix so scroll-events still go to parents
+	if(event.type == G_MOUSE_EVENT_SCROLL)
+		return nullptr;
+
+	if(handledByListener)
+		return this;
+
+	return nullptr;
 }
 
 component_t* component_t::handleKeyEvent(key_event_t& event)

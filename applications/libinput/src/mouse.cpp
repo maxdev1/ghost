@@ -35,6 +35,7 @@ g_mouse_info g_mouse::readMouse(g_fd in)
 		e.button1 = (packet.flags & (1 << 0));
 		e.button2 = (packet.flags & (1 << 1));
 		e.button3 = (packet.flags & (1 << 2));
+		e.scroll = packet.scroll;
 	}
 	return e;
 }

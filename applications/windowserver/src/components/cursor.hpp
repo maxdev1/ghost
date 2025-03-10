@@ -44,6 +44,7 @@ public:
     static g_point nextPosition;
     static g_mouse_button pressedButtons;
     static g_mouse_button nextPressedButtons;
+    static int nextScroll;
 
     static g_ui_component_id pressedComponent;
     static g_ui_component_id draggedComponent;

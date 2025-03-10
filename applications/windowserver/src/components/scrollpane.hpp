@@ -55,6 +55,7 @@ public:
 
     void layout() override;
 
+    component_t* handleMouseEvent(mouse_event_t& event) override;
     void handleScroll(scrollbar_t* bar) override;
 
     virtual void setContent(component_t* content);

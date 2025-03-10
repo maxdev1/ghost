@@ -73,19 +73,19 @@ public:
         scrollHandler = handler;
     }
 
-    virtual scroll_handler_t* gettScrollHandler()
+    virtual scroll_handler_t* getScrollHandler()
     {
         return scrollHandler;
     }
 
     void setViewLengths(int visibleArea, int totalArea);
 
-    int getviewportLength() const
+    int getViewportLength() const
     {
         return viewportLength;
     }
 
-    int getcontentLength() const
+    int getContentLength() const
     {
         return contentLength;
     }

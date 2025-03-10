@@ -32,6 +32,7 @@ struct g_mouse_info
 	bool button1 = false;
 	bool button2 = false;
 	bool button3 = false;
+	int scroll = 0;
 };
 
 class g_mouse

@@ -64,12 +64,13 @@ void ps2DriverInitialize()
 	ps2Initialize(ps2MouseCallback, ps2KeyboardCallback);
 }
 
-void ps2MouseCallback(int16_t x, int16_t y, uint8_t flags)
+void ps2MouseCallback(int16_t x, int16_t y, uint8_t flags, int8_t scroll)
 {
 	g_ps2_mouse_packet packet;
 	packet.x = x;
 	packet.y = y;
 	packet.flags = flags;
+	packet.scroll = scroll;
 	g_write(mouseWrite, &packet, sizeof(g_ps2_mouse_packet));
 
 	if(mousePartnerTask != G_TID_NONE)

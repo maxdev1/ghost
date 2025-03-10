@@ -35,6 +35,6 @@ typedef uint8_t ps2_status_t;
 /**
  * Initializes the PS2 handling.
  */
-ps2_status_t ps2Initialize(void(*mouseCallback)(int16_t, int16_t, uint8_t), void(*keyboardCallback)(uint8_t));
+ps2_status_t ps2Initialize(void(*mouseCallback)(int16_t, int16_t, uint8_t, int8_t), void(*keyboardCallback)(uint8_t));
 
 #endif
