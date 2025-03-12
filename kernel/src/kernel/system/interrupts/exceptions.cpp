@@ -28,6 +28,7 @@
 #include "kernel/tasking/tasking.hpp"
 #include "kernel/tasking/tasking_memory.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/panic.hpp"
 
 #define DEBUG_PRINT_STACK_TRACE 1
 
@@ -235,6 +236,9 @@ bool exceptionsKillTask(g_task* task)
 void exceptionsHandle(g_task* task)
 {
 	bool resolved = false;
+
+	if(!task)
+		panic("%! unresolved exception before initializing tasking system", "exceptions");
 
 	switch(task->state->intr)
 	{
