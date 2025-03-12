@@ -41,7 +41,7 @@ g_acpi_entry* acpiGetEntryWithSignature(const char* signature)
 		}
 		cur = cur->next;
 	}
-	return 0;
+	return nullptr;
 }
 
 void acpiInitialize()

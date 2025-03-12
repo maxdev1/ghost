@@ -19,7 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/tasking/tasking.hpp"
-
+#include "kernel/tasking/clock.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/ipc/message.hpp"
 #include "kernel/memory/gdt.hpp"
@@ -317,32 +317,16 @@ void taskingSchedule(bool resetPreference)
 
 g_process* taskingCreateProcess(g_security_level securityLevel)
 {
-	// logInfo("heap used before process creation: %i", heapGetUsedAmount());
-
-	g_process* process = (g_process*) heapAllocateClear(sizeof(g_process));
+	auto process = (g_process*) heapAllocateClear(sizeof(g_process));
 	process->id = taskingGetNextId();
-	process->main = 0;
-	process->tasks = 0;
 
 	mutexInitializeGlobal(&process->lock, __func__);
-
-	process->tlsMaster.size = 0;
-	process->tlsMaster.location = 0;
-	process->tlsMaster.userThreadOffset = 0;
 
 	process->pageDirectory = taskingMemoryCreatePageDirectory(securityLevel);
 
 	process->virtualRangePool = (g_address_range_pool*) heapAllocate(sizeof(g_address_range_pool));
 	addressRangePoolInitialize(process->virtualRangePool);
 	addressRangePoolAddRange(process->virtualRangePool, G_USER_VIRTUAL_RANGES_START, G_USER_VIRTUAL_RANGES_END);
-
-	process->heap.brk = 0;
-	process->heap.start = 0;
-	process->heap.pages = 0;
-
-	process->environment.arguments = 0;
-	process->environment.executablePath = 0;
-	process->environment.workingDirectory = 0;
 
 	waitQueueInitialize(&process->waitersSpawn);
 

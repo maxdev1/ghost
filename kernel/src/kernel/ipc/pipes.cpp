@@ -42,7 +42,7 @@ g_fs_pipe_status pipeCreate(g_fs_phys_id* outPipeId)
 
 	mutexInitializeTask(&pipe->lock, __func__);
 	pipe->capacity = G_PIPE_DEFAULT_CAPACITY;
-	pipe->buffer = (uint8_t*) memoryAllocateKernelRange(G_PAGE_ALIGN_UP(pipe->capacity) / G_PAGE_SIZE);
+	pipe->buffer = (uint8_t*) memoryAllocateKernel(G_PAGE_ALIGN_UP(pipe->capacity) / G_PAGE_SIZE);
 	pipe->readPosition = pipe->buffer;
 	pipe->writePosition = pipe->buffer;
 	waitQueueInitialize(&pipe->waitersRead);

@@ -26,6 +26,7 @@
 #include "kernel/tasking/scheduler/scheduler.hpp"
 #include "kernel/tasking/tasking_directory.hpp"
 #include "kernel/tasking/clock.hpp"
+#include "kernel/system/timing/hpet.hpp"
 #include "kernel/utils/wait_queue.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/utils/string.hpp"
@@ -197,6 +198,14 @@ void syscallGetParentProcessId(g_task* task, g_syscall_get_parent_pid* data)
 void syscallGetMilliseconds(g_task* task, g_syscall_millis* data)
 {
 	data->millis = clockGetLocal()->time;
+}
+
+void syscallGetNanoseconds(g_task* task, g_syscall_nanos* data)
+{
+	if(hpetIsAvailable())
+		data->nanos = hpetGetNanos();
+	else
+		data->nanos = clockGetLocal()->time * 1000000LL;
 }
 
 void syscallGetExecutablePath(g_task* task, g_syscall_get_executable_path* data)

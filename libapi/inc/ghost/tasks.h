@@ -235,14 +235,18 @@ void g_yield();
 void g_yield_t(g_tid target);
 
 /**
- * TODO: currently returns the number of milliseconds that one
- * of the schedulers is running.
- *
- * @return the number of milliseconds
+ * @return local clock time in milliseconds
  *
  * @security-level APPLICATION
  */
 uint64_t g_millis();
+
+/**
+ * @return elapsed time from HPET
+ *
+ * @security-level APPLICATION
+ */
+uint64_t g_nanos();
 
 /**
  * Sets the working directory for the current process.

@@ -24,6 +24,7 @@
 #include "kernel/system/acpi/acpi.hpp"
 #include "kernel/system/interrupts/apic/apic.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
+#include "kernel/system/timing/hpet.hpp"
 #include "kernel/system/smp.hpp"
 #include "shared/panic.hpp"
 #include "shared/logger/logger.hpp"
@@ -38,6 +39,7 @@ void systemInitializeBsp(g_physical_address initialPdPhys)
 
 	acpiInitialize();
 	apicDetect();
+	hpetInitialize();
 
 	if(!processorListAvailable())
 		panic("%! no processors found", "system");

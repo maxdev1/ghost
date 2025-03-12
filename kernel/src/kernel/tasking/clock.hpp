@@ -21,15 +21,21 @@
 #ifndef __KERNEL_CLOCK__
 #define __KERNEL_CLOCK__
 
-#include "kernel/filesystem/filesystem.hpp"
+#include "shared/system/mutex.hpp"
 #include "build_config.hpp"
 #include <ghost/tasks/types.h>
 
+/**
+ * Number of milliseconds on how often a high-precision clock source should be
+ * checked to keep millisecond time accurate.
+ */
+#define G_CLOCK_RECALIBRATION_INTERVAL   1000
+
 struct g_clock_waiter
 {
-	g_tid task;
-	uint64_t wakeTime;
-	g_clock_waiter* next;
+    g_tid task;
+    uint64_t wakeTime;
+    g_clock_waiter* next;
 };
 
 /**
@@ -37,13 +43,19 @@ struct g_clock_waiter
  */
 struct g_clock_local
 {
-	g_clock_waiter* waiters;
-	g_mutex lock;
+    g_clock_waiter* waiters;
+    g_mutex lock;
 
-	/**
-	 * Approximation of milliseconds that this processor has run.
-	 */
-	uint64_t time;
+    /**
+     * Milliseconds that this processor has run.
+     */
+    uint64_t time;
+
+    /**
+     * Data used for clock recalibiration
+     */
+    uint64_t lastNanoTime;
+    uint64_t lastRecalibrateMilliTime;
 
 #if G_DEBUG_THREAD_DUMPING
     uint64_t lastLogTime;

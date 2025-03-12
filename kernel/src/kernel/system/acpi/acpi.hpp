@@ -28,27 +28,46 @@
 // Set a maximum for SDTs to avoid problems with possible junk tables
 #define	G_SDT_MAXIMUM_BYTES		0x10000
 
+/**
+ * Header of an ACPI table
+ */
 struct g_acpi_table_header
 {
-	uint8_t signature[4];
-	uint32_t length;
-	uint8_t revision;
-	uint8_t checksum;
-	uint8_t oemId[6];
-	uint8_t oemTableId[8];
-	uint32_t oemRevision;
-	uint32_t creatorId;
-	uint32_t creatorRevision;
+    uint8_t signature[4];
+    uint32_t length;
+    uint8_t revision;
+    uint8_t checksum;
+    uint8_t oemId[6];
+    uint8_t oemTableId[8];
+    uint32_t oemRevision;
+    uint32_t creatorId;
+    uint32_t creatorRevision;
 }__attribute__((packed));
 
+
+/**
+ * Generic address structure
+ */
+struct g_acpi_gas
+{
+    uint8_t addressSpace;
+    uint8_t bitWidth;
+    uint8_t bitOffset;
+    uint8_t accessSize;
+    uint64_t address;
+}__attribute__((packed));
+
+/**
+ * Internal listing structure
+ */
 struct g_acpi_entry
 {
-	g_acpi_table_header* header;
-	g_acpi_entry* next;
+    g_acpi_table_header* header;
+    g_acpi_entry* next;
 };
 
 /**
- *
+ * Initializes ACPI by reading the tables
  */
 void acpiInitialize();
 

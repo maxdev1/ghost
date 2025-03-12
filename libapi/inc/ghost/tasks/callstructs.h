@@ -134,13 +134,22 @@ typedef struct
 } __attribute__((packed)) g_syscall_task_id_get;
 
 /**
- * @field code
- * 		the exit code
+ * @field millis
+ * 		local clock time in milliseconds
  */
 typedef struct
 {
 	uint64_t millis;
 } __attribute__((packed)) g_syscall_millis;
+
+/**
+ * @field nanos
+ * 		HPET time in nanoseconds
+ */
+typedef struct
+{
+    uint64_t nanos;
+} __attribute__((packed)) g_syscall_nanos;
 
 /**
  * @field forkedId

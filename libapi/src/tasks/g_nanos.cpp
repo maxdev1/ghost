@@ -18,58 +18,18 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_MEMORY__
-#define __KERNEL_MEMORY__
-
-#include "kernel/filesystem/filesystem.hpp"
-#include "kernel/memory/address_range_pool.hpp"
-#include "kernel/memory/paging.hpp"
-#include "shared/memory/memory.hpp"
-#include "shared/setup_information.hpp"
-
-class g_task;
-class g_process;
-
-extern g_address_range_pool* memoryVirtualRangePool;
-
-void memoryInitialize(g_setup_information* setupInformation);
-
-void memoryUnmapSetupMemory();
+#include "ghost/syscall.h"
+#include "ghost/tasks.h"
+#include "ghost/tasks/callstructs.h"
 
 /**
- * Allocates a physical memory page.
+ *
  */
-g_physical_address memoryPhysicalAllocate(bool untracked = false);
+uint64_t g_nanos()
+{
+	g_syscall_nanos data;
 
-/**
- * Frees a physical memory page.
- */
-void memoryPhysicalFree(g_physical_address page);
+	g_syscall(G_SYSCALL_GET_NANOSECONDS, (g_address) &data);
 
-/**
- * Allocates and maps a memory range with the given number of pages.
- */
- g_virtual_address memoryAllocateKernel(int32_t pages);
-
-/**
- * Frees a memory range allocated with <memoryAllocateKernelRange>.
- */
-void memoryFreeKernelRange(g_virtual_address address);
-
-/**
- * Creates an on-demand mapping for a file in memory.
- */
-void memoryOnDemandMapFile(g_process* process, g_fd file, g_offset fileOffset, g_address fileStart, g_ptrsize fileSize,
-                           g_ptrsize memorySize);
-
-/**
- * Searches for an on-demand mapping containing the given address.
- */
-g_memory_file_ondemand* memoryOnDemandFindMapping(g_task* task, g_address address);
-
-/**
- * Handles loading of the on-demand mapped file content.
- */
-bool memoryOnDemandHandlePageFault(g_task* task, g_address accessed);
-
-#endif
+	return data.nanos;
+}

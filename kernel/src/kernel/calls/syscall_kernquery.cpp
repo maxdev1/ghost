@@ -28,57 +28,62 @@ void syscallKernQuery(g_task* task, g_syscall_kernquery* data)
 {
 	if(data->command == G_KERNQUERY_TASK_LIST)
 	{
-		g_kernquery_task_list_data* kdata = (g_kernquery_task_list_data*) data->buffer;
+		auto out = (g_kernquery_task_list_data*) data->buffer;
 
-		uint32_t rem = kdata->id_buffer_size;
-		kdata->filled_ids = 0;
+		uint32_t rem = out->id_buffer_size;
+		out->filled_ids = 0;
 		auto iter = hashmapIteratorStart(taskGlobalMap);
 		while(rem-- && hashmapIteratorHasNext(&iter))
 		{
 			auto next = hashmapIteratorNext(&iter)->value;
-			kdata->id_buffer[kdata->filled_ids++] = next->id;
+			out->id_buffer[out->filled_ids++] = next->id;
 		}
 		data->status = G_KERNQUERY_STATUS_SUCCESSFUL;
 		hashmapIteratorEnd(&iter);
 	}
 	else if(data->command == G_KERNQUERY_TASK_COUNT)
 	{
-		g_kernquery_task_count_data* kdata = (g_kernquery_task_count_data*) data->buffer;
+		auto out = (g_kernquery_task_count_data*) data->buffer;
 
 		data->status = G_KERNQUERY_STATUS_SUCCESSFUL;
-		kdata->count = hashmapSize(taskGlobalMap);
+		out->count = hashmapSize(taskGlobalMap);
 	}
 	else if(data->command == G_KERNQUERY_TASK_GET_BY_ID)
 	{
-		g_kernquery_task_get_data* kdata = (g_kernquery_task_get_data*) data->buffer;
+		auto out = (g_kernquery_task_get_data*) data->buffer;
 
-		g_task* ktask = taskingGetById(kdata->id);
-		if(!ktask || ktask->status == G_TASK_STATUS_DEAD)
+		g_task* target = taskingGetById(out->id);
+		mutexAcquire(&target->lock);
+
+		if(!target || target->status == G_TASK_STATUS_DEAD)
 		{
 			data->status = G_KERNQUERY_STATUS_UNKNOWN_ID;
-			kdata->id = -1;
+			out->id = -1;
 		}
 		else
 		{
 			data->status = G_KERNQUERY_STATUS_SUCCESSFUL;
-			kdata->found = true;
-			kdata->id = ktask->id;
-			kdata->parent = ktask->process->id;
-			kdata->type = ktask->type;
+			out->found = true;
+			out->id = target->id;
+			out->parent = target->process->id;
+			out->type = target->type;
 
-			if(ktask->process->environment.executablePath)
-				stringCopy(kdata->source_path, ktask->process->environment.executablePath);
+			if(target->process->environment.executablePath)
+				stringCopy(out->source_path, target->process->environment.executablePath);
 			else
-				kdata->source_path[0] = 0;
+				out->source_path[0] = 0;
 
-			const char* identifier = taskingDirectoryGetIdentifier(ktask->id);
+			const char* identifier = taskingDirectoryGetIdentifier(target->id);
 			if(identifier)
-				stringCopy(kdata->identifier, identifier);
+				stringCopy(out->identifier, identifier);
 			else
-				kdata->identifier[0] = 0;
+				out->identifier[0] = 0;
 
-			kdata->memory_used = 0; // TODO
+			out->cpu_time = target->statistics.timesScheduled;
+			out->memory_used = 0; // TODO
 		}
+
+		mutexRelease(&target->lock);
 	}
 	else
 	{

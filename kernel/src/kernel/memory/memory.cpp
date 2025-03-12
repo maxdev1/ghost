@@ -84,7 +84,7 @@ void memoryPhysicalFree(g_physical_address page)
 		bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, page);
 }
 
-g_virtual_address memoryAllocateKernelRange(int32_t pages)
+g_virtual_address memoryAllocateKernel(int32_t pages)
 {
 	g_virtual_address virt = addressRangePoolAllocate(memoryVirtualRangePool, pages);
 	for(int32_t i = 0; i < pages; i++)

@@ -22,8 +22,10 @@
 #include "kernel/memory/heap.hpp"
 #include "kernel/system/configuration.hpp"
 #include "kernel/system/processor/processor.hpp"
+#include "kernel/system/timing/hpet.hpp"
 #include "kernel/tasking/tasking.hpp"
 #include "shared/panic.hpp"
+#include "shared/logger/logger.hpp"
 
 static g_clock_local* locals = nullptr;
 
@@ -37,6 +39,8 @@ void clockInitialize()
 		mutexInitializeGlobal(&locals[i].lock, __func__);
 		locals[i].waiters = nullptr;
 		locals[i].time = 0;
+		locals[i].lastNanoTime = 0;
+		locals[i].lastRecalibrateMilliTime = 0;
 #if G_DEBUG_THREAD_DUMPING
 		locals[i].lastLogTime = 0;
 #endif
@@ -94,15 +98,8 @@ void clockWaitForTime(g_tid task, uint64_t wakeTime)
 	mutexRelease(&local->lock);
 }
 
-void clockUpdate()
+void clockWakeWaiters(g_clock_local* local)
 {
-	auto local = clockGetLocal();
-	mutexAcquire(&local->lock);
-
-	// Update local time
-	local->time += (1000 / G_TIMER_FREQUENCY);
-
-	// Wake waiters
 	while(local->waiters && local->time >= local->waiters->wakeTime)
 	{
 		g_task* task = taskingGetById(local->waiters->task);
@@ -117,7 +114,34 @@ void clockUpdate()
 		heapFree(local->waiters);
 		local->waiters = next;
 	}
+}
 
+void clockUpdateTime(g_clock_local* local)
+{
+	local->time += (1000 / G_TIMER_FREQUENCY);
+
+	// Use HPET timing if available
+	if(hpetIsAvailable())
+	{
+		// Recalibrate milliseconds with HPET every second
+		if(local->time - local->lastRecalibrateMilliTime > G_CLOCK_RECALIBRATION_INTERVAL)
+		{
+			uint64_t now = hpetGetNanos();
+			uint64_t elapsedNanos = now - local->lastNanoTime;
+			uint64_t elapsedMillis = ((double) elapsedNanos / 1000000);
+			local->time = local->lastRecalibrateMilliTime + elapsedMillis;
+			local->lastNanoTime = now;
+			local->lastRecalibrateMilliTime = local->time;
+		}
+	}
+}
+
+void clockUpdate()
+{
+	auto local = clockGetLocal();
+	mutexAcquire(&local->lock);
+	clockUpdateTime(local);
+	clockWakeWaiters(local);
 	mutexRelease(&local->lock);
 }
 

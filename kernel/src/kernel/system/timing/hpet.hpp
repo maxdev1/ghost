@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,70 +18,65 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef GHOST_API_KERNQUERY_TYPES
-#define GHOST_API_KERNQUERY_TYPES
+#ifndef __KERNEL_HPET__
+#define __KERNEL_HPET__
 
-#include "../common.h"
-#include "../tasks.h"
-#include "../filesystem.h"
-#include "../stdint.h"
-
-__BEGIN_C
+#include "kernel/system/acpi/acpi.hpp"
+#include <ghost/stdint.h>
 
 /**
- *
+ * High-precision event timer
  */
-typedef int g_kernquery_status;
-#define G_KERNQUERY_STATUS_SUCCESSFUL ((g_kernquery_status) 0)
-#define G_KERNQUERY_STATUS_UNKNOWN_ID ((g_kernquery_status) 1)
-#define G_KERNQUERY_STATUS_ERROR ((g_kernquery_status) 2)
-
-/**
- * Command IDs
- */
-#define G_KERNQUERY_TASK_COUNT 0x600
-#define G_KERNQUERY_TASK_LIST 0x601
-#define G_KERNQUERY_TASK_GET_BY_ID 0x602
-
-/**
- * Used in the {G_KERNQUERY_TASK_COUNT} query to retrieve the number
- * of existing tasks.
- */
-typedef struct
+struct g_acpi_hpet
 {
-	uint32_t count;
-} __attribute__((packed)) g_kernquery_task_count_data;
+    g_acpi_table_header header;
+    uint8_t hardwareRevId;
+    uint8_t comparatorCount : 5;
+    uint8_t counterSize : 1;
+    uint8_t resreved : 1;
+    uint8_t legacyReplacement : 1;
+    uint16_t pciVendorId;
+    g_acpi_gas baseAddress;
+    uint8_t hpetNumber;
+    uint16_t minTick;
+    uint8_t pageProtection;
+} __attribute__((packed));
+
+// General Capabilities and Configuration Registers
+#define HPET_GEN_CAP_REG        0x00
+#define HPET_GEN_CONFIG_REG     0x10
+
+// Main Counter
+#define HPET_MAIN_COUNTER_REG   0xF0
+
+// Timer Registers
+#define HPET_TIMER0_CONFIG_REG  0x100
+#define HPET_TIMER1_CONFIG_REG  0x110
+#define HPET_TIMER2_CONFIG_REG  0x120
+#define HPET_TIMER3_CONFIG_REG  0x130
+
+// Interrupt Status and Enable Registers
+#define HPET_IRQ_STATUS_REG     0x80
+#define HPET_IRQ_ENABLE_REG     0x90
+
+// Tick Period
+#define HPET_MIN_TICK_REG       0x3C
+
+#define HPET_DEFAULT_FREQUENCY  14318180
 
 /**
- * Used in the {G_KERNQUERY_TASK_LIST} query to retrieve a list that
- * contains the id of each existing task.
+ * Attempts to detect and initialize the High-Precision Event Timer (HPET).
  */
-typedef struct
-{
-	g_tid* id_buffer;
-	uint32_t id_buffer_size;
-
-	uint32_t filled_ids;
-} __attribute__((packed)) g_kernquery_task_list_data;
+void hpetInitialize();
 
 /**
- * Used in the {G_KERNQUERY_TASK_GET_BY_ID} query to retrieve
- * information about a specific task.
+ * @return whether the HPET is available
  */
-typedef struct
-{
-	g_tid id;
-	uint8_t found;
+bool hpetIsAvailable();
 
-	g_tid parent;
-	g_task_type type;
-	char identifier[512];
-	char source_path[G_PATH_MAX];
-
-	g_virtual_address memory_used;
-	uint64_t cpu_time;
-} __attribute__((packed)) g_kernquery_task_get_data;
-
-__END_C
+/**
+ * @return the nano time
+ */
+uint64_t hpetGetNanos();
 
 #endif
