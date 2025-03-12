@@ -202,14 +202,13 @@ void ps2HandleMouseData(uint8_t value)
 	}
 	else if(mousePacketNumber == 2)
 	{
+		mousePacketBuffer[2] = value;
 		if(intelliMouseMode)
 		{
-			mousePacketBuffer[2] = value;
 			mousePacketNumber = 3;
 		}
 		else
 		{
-			mousePacketBuffer[2] = value;
 			mousePacketNumber = 0;
 			ps2HandlePacket();
 		}
@@ -222,6 +221,7 @@ void ps2HandleMouseData(uint8_t value)
 	}
 }
 
+
 void ps2HandlePacket()
 {
 	int8_t flags = mousePacketBuffer[0];
@@ -232,6 +232,7 @@ void ps2HandlePacket()
 	if((flags & (1 << 6)) || (flags & (1 << 7)))
 	{
 		// ignore overflowing values
+		klog("ignoring overflowing value");
 	}
 	else
 	{
