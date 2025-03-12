@@ -24,6 +24,8 @@ size_t strlen(const char* s) {
 
 	__G_DEBUG_TRACE(strlen);
 
+	if(!s) return 0;
+
 	size_t len = 0;
 	while (s[len]) {
 		++len;
