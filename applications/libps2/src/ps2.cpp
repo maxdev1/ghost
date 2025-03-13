@@ -82,12 +82,8 @@ void ps2ReadMouseIrq()
 void ps2CheckForData()
 {
 	uint8_t status;
-	int limit = 100;
 	while(((status = g_io_port_read_byte(G_PS2_STATUS_PORT)) & 0x01) != 0)
 	{
-		if(!--limit)
-			break;
-
 		uint8_t value = g_io_port_read_byte(G_PS2_DATA_PORT);
 
 		if((status & 0x20) == 0)
@@ -224,19 +220,16 @@ void ps2HandlePacket()
 	uint8_t valY = mousePacketBuffer[2];
 	int8_t scroll = intelliMouseMode ? (int8_t) mousePacketBuffer[3] : 0;
 
+	int16_t offX = (valX | ((flags & 0x10) ? 0xFF00 : 0));
+	int16_t offY = (valY | ((flags & 0x20) ? 0xFF00 : 0));
 	if((flags & (1 << 6)) || (flags & (1 << 7)))
 	{
-		// ignore overflowing values
-		klog("ignoring overflowing value");
+		offX = 0;
+		offY = 0;
 	}
-	else
-	{
-		int16_t offX = (valX | ((flags & 0x10) ? 0xFF00 : 0));
-		int16_t offY = (valY | ((flags & 0x20) ? 0xFF00 : 0));
 
-		if(registeredMouseCallback)
-			registeredMouseCallback(offX, -offY, flags, scroll);
-	}
+	if(registeredMouseCallback)
+		registeredMouseCallback(offX, -offY, flags, scroll);
 }
 
 void ps2WaitForBuffer(ps2_buffer_t buffer)
