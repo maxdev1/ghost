@@ -134,10 +134,10 @@ void syscallAwaitIrq(g_task* task, g_syscall_await_irq* data)
 	task->status = G_TASK_STATUS_WAITING;
 	task->waitsFor = "irq";
 	mutexRelease(&task->lock);
-	taskingYield();
 
 	if(data->timeout)
 		clockWaitForTime(task->id, clockGetLocal()->time + data->timeout);
 
+	taskingYield();
 	INTERRUPTS_RESUME;
 }
