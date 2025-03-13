@@ -19,17 +19,22 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost/syscall.h"
-#include "ghost/filesystem.h"
-#include "ghost/filesystem/callstructs.h"
+#include "ghost/system.h"
+#include "ghost/system/callstructs.h"
+
+// redirect
+void g_await_irq(uint8_t irq)
+{
+	g_await_irq_t(irq, 0);
+}
 
 /**
  *
  */
-g_open_irq_device_status g_open_irq_device(uint8_t irq, g_fd* outFd)
+void g_await_irq_t(uint8_t irq, uint32_t timeout)
 {
-	g_syscall_open_irq_device data;
+	g_syscall_await_irq data;
 	data.irq = irq;
-	g_syscall(G_SYSCALL_OPEN_IRQ_DEVICE, (g_address) &data);
-	*outFd = data.fd;
-	return data.status;
+	data.timeout = timeout;
+	g_syscall(G_SYSCALL_AWAIT_IRQ, (g_address) &data);
 }

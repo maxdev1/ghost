@@ -209,9 +209,9 @@ void taskingAssignBalanced(g_task* task)
 	int lowestTaskCount = -1;
 	g_tasking_local* assignTo;
 
-	for(uint32_t proc = 0; proc < processorGetNumberOfProcessors(); proc++)
+	for(uint32_t core = 0; core < processorGetNumberOfProcessors(); core++)
 	{
-		g_tasking_local* local = &taskingLocal[proc];
+		g_tasking_local* local = &taskingLocal[core];
 		mutexAcquire(&local->lock);
 
 		int taskCount = 0;
@@ -233,6 +233,18 @@ void taskingAssignBalanced(g_task* task)
 	}
 
 	taskingAssign(assignTo, task);
+}
+
+void taskingAssignOnCore(uint8_t core, g_task* task)
+{
+	if(core < processorGetNumberOfProcessors())
+	{
+		taskingAssign(&taskingLocal[core], task);
+	}
+	else
+	{
+		logInfo("%! failed to assign task to core %i since it exceeds number of processors", "tasking", core);
+	}
 }
 
 void taskingAssign(g_tasking_local* local, g_task* task)
@@ -313,6 +325,11 @@ void taskingSchedule(bool resetPreference)
 	if(resetPreference && processorIsBsp())
 		schedulerPrefer(G_TID_NONE);
 	schedulerSchedule(taskingGetLocal());
+}
+
+void taskingSetCurrent(g_task* task)
+{
+	schedulerSetCurrent(taskingGetLocal(), task);
 }
 
 g_process* taskingCreateProcess(g_security_level securityLevel)

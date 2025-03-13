@@ -213,6 +213,9 @@ typedef struct
  * @field userData
  * 		user-defined
  *
+ * @field coreAffinity
+ *      which core this task may run on (-1 being any)
+ *
  * @field status
  * 		result of thread creation
  */
@@ -221,6 +224,7 @@ typedef struct
 	void* initialEntry;
 	void* userEntry;
 	void* userData;
+    uint8_t coreAffinity;
 
 	g_create_task_status status;
 	g_tid threadId;

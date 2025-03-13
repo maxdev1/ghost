@@ -263,4 +263,9 @@ const uint8_t* processorGetInitialFpuState();
  */
 bool processorIsBsp();
 
+/**
+ * @return the timestamp counter value
+ */
+uint64_t processorReadTsc();
+
 #endif

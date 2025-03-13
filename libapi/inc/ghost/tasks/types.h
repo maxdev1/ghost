@@ -76,6 +76,8 @@ typedef uint8_t g_task_priority;
  */
 #define G_TASK_USER_STACK_RESERVED_VIRTUAL_PAGES 16
 
+#define G_TASK_CORE_AFFINITY_NONE ((uint8_t) -1)
+
 /**
  * Task states
  */

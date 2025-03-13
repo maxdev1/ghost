@@ -90,8 +90,7 @@ __BEGIN_C
 #define G_SYSCALL_FS_OPEN_DIRECTORY				94
 #define G_SYSCALL_FS_READ_DIRECTORY				95
 #define G_SYSCALL_FS_CLOSE_DIRECTORY			96
-#define G_SYSCALL_OPEN_IRQ_DEVICE   			97
-#define G_SYSCALL_FS_REAL_PATH					98
+#define G_SYSCALL_FS_REAL_PATH					97
 
 // System
 #define G_SYSCALL_CALL_VM86						120
@@ -99,6 +98,7 @@ __BEGIN_C
 #define G_SYSCALL_SET_VIDEO_LOG					122
 #define G_SYSCALL_TEST							123
 #define G_SYSCALL_IRQ_CREATE_REDIRECT           124
+#define G_SYSCALL_AWAIT_IRQ         			125
 
 // Kernquery
 #define G_SYSCALL_KERNQUERY						129

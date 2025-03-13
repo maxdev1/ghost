@@ -26,7 +26,6 @@
 #include "system/types.h"
 
 __BEGIN_C
-
 // not implemented warning
 #define __G_NOT_IMPLEMENTED_WARN(name)		g_log("'" #name "' is not implemented");
 #define __G_NOT_IMPLEMENTED(name)		    __G_NOT_IMPLEMENTED_WARN(name) g_exit(0);
@@ -80,6 +79,20 @@ uint32_t g_test(uint32_t test);
  * @security-level DRIVER
  */
 void g_irq_create_redirect(uint32_t source, uint32_t irq);
+
+/**
+ * Awaits a specific IRQ. This may only be used on core 0.
+ *
+ * @param irq
+ *     the IRQ
+ *
+ * @param-opt timeout
+ *     timeout in milliseconds
+ *
+ * @security-level DRIVER
+ */
+void g_await_irq(uint8_t irq);
+void g_await_irq_t(uint8_t irq, uint32_t timeout);
 
 uint8_t g_io_port_read_byte(uint16_t port);
 uint16_t g_io_port_read_word(uint16_t port);

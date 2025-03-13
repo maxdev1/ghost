@@ -98,7 +98,7 @@ void syscallFsTell(g_task* task, g_syscall_fs_tell* data)
 void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 {
 	g_fs_node* pipeNode;
-	data->status = filesystemCreatePipe(data->blocking, &pipeNode, false);
+	data->status = filesystemCreatePipe(data->blocking, &pipeNode);
 
 	if(data->status != G_FS_PIPE_SUCCESSFUL)
 	{
@@ -134,41 +134,6 @@ void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 	}
 
 	data->status = G_FS_PIPE_SUCCESSFUL;
-}
-
-void syscallOpenIrqDevice(g_task* task, g_syscall_open_irq_device* data)
-{
-	if(task->securityLevel <= G_SECURITY_LEVEL_DRIVER)
-	{
-		g_irq_device* irqDevice = requestsGetIrqDevice(data->irq);
-		if(!irqDevice)
-		{
-			data->status = G_OPEN_IRQ_DEVICE_STATUS_ERROR;
-			logInfo("%! task %i: failed to retrieve device for irq %i", "irq", task->id, data->irq);
-			return;
-		}
-
-		irqDevice->task = task->id;
-
-		g_fd fd;
-		g_file_flag_mode readFlags = (G_FILE_FLAG_MODE_READ | G_FILE_FLAG_MODE_BLOCKING);
-		if(filesystemOpenNodeFd(irqDevice->node, readFlags, task->process->id, &fd) == G_FS_OPEN_SUCCESSFUL)
-		{
-			data->status = G_OPEN_IRQ_DEVICE_STATUS_SUCCESSFUL;
-			data->fd = fd;
-			logDebug("%! task %i: opened device for IRQ %i", "irq", task->id, data->irq);
-		}
-		else
-		{
-			data->status = G_OPEN_IRQ_DEVICE_STATUS_ERROR;
-			logInfo("%! task %i: failed to open device for IRQ %i", "irq", task->id, data->irq);
-		}
-	}
-	else
-	{
-		data->status = G_OPEN_IRQ_DEVICE_STATUS_NOT_PERMITTED;
-		logInfo("%! task %i: not permitted to open device for irq %i", "irq", task->id, data->irq);
-	}
 }
 
 void syscallFsOpenDirectory(g_task* task, g_syscall_fs_open_directory* data)

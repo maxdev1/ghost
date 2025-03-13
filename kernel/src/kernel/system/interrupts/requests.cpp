@@ -19,64 +19,55 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 
-#include "kernel/filesystem/filesystem.hpp"
+#include "kernel/tasking/scheduler/scheduler.hpp"
 #include "kernel/system/interrupts/requests.hpp"
 #include "kernel/system/processor/processor.hpp"
-#include "shared/logger/logger.hpp"
 
-static g_irq_device* devices[256] = {0};
-static g_mutex devicesLock;
+static g_tid registrations[256] = {};
+static g_mutex registrationsLock;
 
 void requestsInitialize()
 {
-	mutexInitializeGlobal(&devicesLock, __func__);
+	mutexInitializeGlobal(&registrationsLock, __func__);
+	for(int i = 0; i < 256; i++)
+	{
+		registrations[i] = G_TID_NONE;
+	}
 }
 
-g_irq_device* requestsGetIrqDevice(uint8_t irq)
+void requestsSetHandlerTask(uint8_t irq, g_tid task)
 {
-	mutexAcquire(&devicesLock);
-	g_irq_device* device = devices[irq];
-
-	if(device)
-	{
-		mutexRelease(&devicesLock);
-		return device;
-	}
-
-	// Create a pipe if it doesn't exist yet
-	// TODO Not sure if it should be blocking or not...
-	g_fs_node* node;
-	if(filesystemCreatePipe(false, &node, true) != G_FS_PIPE_SUCCESSFUL)
-	{
-		logInfo("%! failed to create IO pipe for IRQ %i", "requests", irq);
-		return nullptr;
-	}
-
-	// Kernel holds write-end of the pipe
-	g_fd writeFd;
-	g_fs_open_status openStatus = filesystemOpenNodeFd(node, G_FILE_FLAG_MODE_WRITE, G_PID_NONE, &writeFd);
-	if(openStatus != G_FS_OPEN_SUCCESSFUL)
-	{
-		logWarn("%! failed to open IO pipe write end in kernel for IRQ %i", "requests", irq);
-	}
-
-	device = (g_irq_device*) heapAllocate(sizeof(g_irq_device));
-	device->node = node;
-	devices[irq] = device;
-
-	mutexRelease(&devicesLock);
-	return device;
+	mutexAcquire(&registrationsLock);
+	registrations[irq] = task;
+	mutexRelease(&registrationsLock);
 }
 
-void requestsWriteToIrqDevice(uint8_t irq)
+g_tid requestsGetHandlerTask(uint8_t irq)
 {
-	g_irq_device* device = requestsGetIrqDevice(irq);
-	if(!device)
+	mutexAcquire(&registrationsLock);
+	g_tid task = registrations[irq];
+	mutexRelease(&registrationsLock);
+	return task;
+}
+
+void requestsHandle(g_task* currentTask, uint8_t irq)
+{
+	g_tid handlerTid = requestsGetHandlerTask(irq);
+	if(handlerTid == G_TID_NONE)
 		return;
 
-	uint8_t buf[1];
-	buf[0] = irq;
-	int64_t len;
+	auto handlerTask = taskingGetById(handlerTid);
+	if(!handlerTask)
+		return;
 
-	filesystemWrite(device->node, buf, 0, 1, &len);
+	mutexAcquire(&handlerTask->lock);
+	if(handlerTask->status == G_TASK_STATUS_WAITING)
+		handlerTask->status = G_TASK_STATUS_RUNNING;
+	mutexRelease(&handlerTask->lock);
+
+	taskingSetCurrent(handlerTask);
+
+	// Once the handler has finished, let the scheduler go back to interrupted task
+	if(currentTask)
+		schedulerPrefer(currentTask->id);
 }

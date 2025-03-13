@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/interrupts/interrupts.hpp"
+#include "shared/logger/logger.hpp"
 #include "kernel/calls/syscall.hpp"
 #include "kernel/system/interrupts/apic/ioapic.hpp"
 #include "kernel/system/interrupts/apic/lapic.hpp"
@@ -95,9 +96,8 @@ extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_st
 		}
 		else
 		{
-			requestsWriteToIrqDevice(irq);
+			requestsHandle(task, irq);
 		}
-
 		_interruptsSendEndOfInterrupt(irq);
 	}
 

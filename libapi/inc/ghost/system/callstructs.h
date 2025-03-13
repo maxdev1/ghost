@@ -40,12 +40,13 @@ __BEGIN_C
  * @field status
  * 		status of the call
  */
-typedef struct {
-	uint32_t interrupt;
-	g_vm86_registers in;
-	g_vm86_registers* out;
+typedef struct
+{
+    uint32_t interrupt;
+    g_vm86_registers in;
+    g_vm86_registers* out;
 
-	g_vm86_call_status status;
+    g_vm86_call_status status;
 }__attribute__((packed)) g_syscall_call_vm86;
 
 
@@ -53,16 +54,18 @@ typedef struct {
  * @field message
  * 		the message
  */
-typedef struct {
-	char* message;
+typedef struct
+{
+    char* message;
 }__attribute__((packed)) g_syscall_log;
 
 /**
  * @field enabled
  * 		whether or not to enable the video log
  */
-typedef struct {
-	uint8_t enabled;
+typedef struct
+{
+    uint8_t enabled;
 }__attribute__((packed)) g_syscall_set_video_log;
 
 /**
@@ -72,10 +75,11 @@ typedef struct {
  * @field result
  * 		test result
  */
-typedef struct {
-	uint32_t test;
+typedef struct
+{
+    uint32_t test;
 
-	uint32_t result;
+    uint32_t result;
 }__attribute__((packed)) g_syscall_test;
 
 /**
@@ -83,9 +87,21 @@ typedef struct {
  */
 typedef struct
 {
-  uint32_t source;
-  uint32_t irq;
+    uint32_t source;
+    uint32_t irq;
 } __attribute__((packed)) g_syscall_irq_create_redirect;
+
+/**
+ * @field irq
+ * 		irq to wait for
+ * @field timeout
+ *      timeout in milliseconds
+ */
+typedef struct
+{
+    uint8_t irq;
+    uint32_t timeout;
+} __attribute__((packed)) g_syscall_await_irq;
 
 __END_C
 

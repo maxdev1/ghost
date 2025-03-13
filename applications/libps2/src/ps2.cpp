@@ -54,25 +54,17 @@ ps2_status_t ps2Initialize(void (*mouseCallback)(int16_t, int16_t, uint8_t, int8
 	g_irq_create_redirect(1, 1);
 	g_irq_create_redirect(12, 12);
 
-	g_open_irq_device(1, &keyIrqIn);
-	g_create_task((void*) &ps2ReadKeyIrq);
-	g_open_irq_device(12, &mouseIrqIn);
-	g_create_task((void*) &ps2ReadMouseIrq);
+	g_create_task_a((void*) &ps2ReadKeyIrq, 0);
+	g_create_task_a((void*) &ps2ReadMouseIrq, 0);
 	return G_PS2_STATUS_SUCCESS;
 }
 
 void ps2ReadKeyIrq()
 {
 	g_task_register_id("libps2/read-key");
-	uint8_t buf[1];
 	for(;;)
 	{
-		g_fs_read_status stat;
-		g_read_s(keyIrqIn, buf, 1, &stat);
-		if(stat == G_FS_READ_BUSY)
-		{
-			g_sleep(10);
-		}
+		g_await_irq_t(1, 1000);
 		ps2CheckForData();
 	}
 }
@@ -80,15 +72,9 @@ void ps2ReadKeyIrq()
 void ps2ReadMouseIrq()
 {
 	g_task_register_id("libps2/read-mouse");
-	uint8_t buf[1];
 	for(;;)
 	{
-		g_fs_read_status stat;
-		g_read_s(mouseIrqIn, buf, 1, &stat);
-		if(stat == G_FS_READ_BUSY)
-		{
-			g_sleep(10);
-		}
+		g_await_irq_t(12, 1000);
 		ps2CheckForData();
 	}
 }
@@ -182,6 +168,15 @@ ps2_status_t ps2InitializeMouse()
 
 void ps2HandleMouseData(uint8_t value)
 {
+	static uint64_t lastPacketTime = 0;
+	uint64_t now = g_millis();
+
+	// Reset packet state if too much time has passed
+	if(mousePacketNumber > 0 && (now - lastPacketTime > 50))
+		mousePacketNumber = 0;
+
+	lastPacketTime = now;
+
 	if(mousePacketNumber == 0)
 	{
 		mousePacketBuffer[0] = value;

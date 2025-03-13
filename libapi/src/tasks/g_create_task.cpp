@@ -43,28 +43,47 @@ void __g_task_setup_routine()
 // redirect
 g_tid g_create_task(void* function)
 {
-	return g_create_task_d(function, 0);
+	return g_create_task_das(function, nullptr, G_TASK_CORE_AFFINITY_NONE, nullptr);
 }
 
 // redirect
 g_tid g_create_task_d(void* function, void* userData)
 {
-	return g_create_task_ds(function, userData, 0);
+	return g_create_task_das(function, userData, G_TASK_CORE_AFFINITY_NONE, nullptr);
+}
+
+// redirect
+g_tid g_create_task_a(void* function, uint8_t coreAffinity)
+{
+	return g_create_task_das(function, nullptr, coreAffinity, nullptr);
+}
+
+// redirect
+g_tid g_create_task_da(void* function, void* userData, uint8_t coreAffinity)
+{
+	return g_create_task_das(function, userData, coreAffinity, nullptr);
+}
+
+// redirect
+g_tid g_create_task_ds(void* function, void* userData, g_create_task_status* outStatus)
+{
+	return g_create_task_das(function, userData, G_TASK_CORE_AFFINITY_NONE, outStatus);
 }
 
 /**
  *
  */
-g_tid g_create_task_ds(void* function, void* userData, g_create_task_status* out_status)
+g_tid g_create_task_das(void* function, void* userData, uint8_t coreAffinity, g_create_task_status* outStatus)
 {
 	g_syscall_create_task data;
 	data.initialEntry = (void*) __g_task_setup_routine;
 	data.userEntry = function;
 	data.userData = userData;
+	data.coreAffinity = coreAffinity;
+
 	g_syscall(G_SYSCALL_CREATE_TASK, (g_address) &data);
-	if(out_status)
-	{
-		*out_status = data.status;
-	}
+	if(outStatus)
+		*outStatus = data.status;
+
 	return data.threadId;
 }

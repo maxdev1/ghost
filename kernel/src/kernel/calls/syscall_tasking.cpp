@@ -171,7 +171,14 @@ void syscallCreateTask(g_task* task, g_syscall_create_task* data)
 		newTask->userEntry.data = data->userData;
 		data->threadId = newTask->id;
 		data->status = G_CREATE_TASK_STATUS_SUCCESSFUL;
-		taskingAssignBalanced(newTask);
+
+		if(data->coreAffinity == G_TASK_CORE_AFFINITY_NONE)
+		{
+			taskingAssignBalanced(newTask);
+		} else
+		{
+			taskingAssignOnCore(data->coreAffinity, newTask);
+		}
 	}
 	else
 	{

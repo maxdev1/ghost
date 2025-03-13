@@ -297,21 +297,6 @@ g_fd g_clone_fd_ts(g_fd source_fd, g_pid source_process, g_fd target_fd, g_pid t
                    g_fs_clonefd_status* out_status);
 
 /**
- * Opens the IO device for an IRQ.
- *
- * @param irq
- * 		IRQ number
- *
- * @param outFd
- * 		output for the file descriptor
- *
- * @return one of the {g_open_irq_device_status} codes
- *
- * @security-level DRIVER
- */
-g_open_irq_device_status g_open_irq_device(uint8_t irq, g_fd* outFd);
-
-/**
  * Resolves the path and returns the real path.
  *
  * @param in the input path

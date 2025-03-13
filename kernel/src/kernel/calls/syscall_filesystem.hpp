@@ -46,8 +46,6 @@ void syscallFsCloneFd(g_task* task, g_syscall_fs_clonefd* data);
 
 void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data);
 
-void syscallOpenIrqDevice(g_task* task, g_syscall_open_irq_device* data);
-
 void syscallFsOpenDirectory(g_task* task, g_syscall_fs_open_directory* data);
 
 void syscallFsReadDirectory(g_task* task, g_syscall_fs_read_directory* data);

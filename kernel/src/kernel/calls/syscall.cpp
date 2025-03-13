@@ -146,7 +146,6 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_FS_OPEN_DIRECTORY, (g_syscall_handler) syscallFsOpenDirectory, true);
 	_syscallRegister(G_SYSCALL_FS_READ_DIRECTORY, (g_syscall_handler) syscallFsReadDirectory, true);
 	_syscallRegister(G_SYSCALL_FS_CLOSE_DIRECTORY, (g_syscall_handler) syscallFsCloseDirectory, true);
-	_syscallRegister(G_SYSCALL_OPEN_IRQ_DEVICE, (g_syscall_handler) syscallOpenIrqDevice, true);
 	_syscallRegister(G_SYSCALL_FS_REAL_PATH, (g_syscall_handler) syscallFsRealPath, true);
 
 	// System
@@ -155,6 +154,7 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_TEST, (g_syscall_handler) syscallTest);
 	_syscallRegister(G_SYSCALL_CALL_VM86, (g_syscall_handler) syscallCallVm86);
 	_syscallRegister(G_SYSCALL_IRQ_CREATE_REDIRECT, (g_syscall_handler) syscallIrqCreateRedirect);
+	_syscallRegister(G_SYSCALL_AWAIT_IRQ, (g_syscall_handler) syscallAwaitIrq, true);
 
 	// Kernquery
 	_syscallRegister(G_SYSCALL_KERNQUERY, (g_syscall_handler) syscallKernQuery);

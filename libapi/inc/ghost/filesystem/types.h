@@ -258,12 +258,6 @@ typedef struct
     g_fs_directory_entry entry_buffer;
 } g_fs_directory_iterator;
 
-// for <g_syscall_open_irq_device>
-typedef uint8_t g_open_irq_device_status;
-#define G_OPEN_IRQ_DEVICE_STATUS_SUCCESSFUL			((g_open_irq_device_status) 0)
-#define G_OPEN_IRQ_DEVICE_STATUS_NOT_PERMITTED		((g_open_irq_device_status) 1)
-#define G_OPEN_IRQ_DEVICE_STATUS_ERROR				((g_open_irq_device_status) 2)
-
 /**
  * Status codes for getting real path of a node
  */

@@ -85,12 +85,19 @@ g_pid g_get_pid_for_tid(uint32_t tid);
  * @param-opt userData
  * 		a pointer to user data that should be passed
  * 		to the entry function
+ * @param-opt coreAffinity
+ *      core affinity of this task, use G_TASK_CORE_AFFINITY_NONE for any
+ * @param-opt outStatus
+ *      outputs the status
  *
  * @security-level APPLICATION
  */
 g_tid g_create_task(void* function);
 g_tid g_create_task_d(void* function, void* userData);
-g_tid g_create_task_ds(void* function, void* userData, g_create_task_status* out_status);
+g_tid g_create_task_a(void* function, uint8_t coreAffinity);
+g_tid g_create_task_ds(void* function, void* userData, g_create_task_status* outStatus);
+g_tid g_create_task_da(void* function, void* userData, uint8_t coreAffinity);
+g_tid g_create_task_das(void* function, void* userData, uint8_t coreAffinity, g_create_task_status* outStatus);
 
 /**
  * Exits a thread.

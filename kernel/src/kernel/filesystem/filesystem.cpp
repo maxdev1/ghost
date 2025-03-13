@@ -379,17 +379,6 @@ g_fs_read_status filesystemRead(g_task* task, g_fd fd, uint8_t* buffer, uint64_t
 		return G_FS_READ_INVALID_FD;
 	}
 
-	if(node->nonInterruptible)
-	{
-		// TODO I don't have a better idea right now, but sometimes the PS/2
-		// device does not seem to fire an interrupt even though data is available
-		// or maybe not, because we are reading in a loop. But this causes the
-		// ps2driver to freeze because it has nothing to read from the blocking
-		// pipe, so to avoid this we wake after some time:
-		clockWaitForTime(task->id, clockGetLocal()->time + 1000);
-		interruptsDisable();
-	}
-
 	int64_t read;
 	g_fs_read_status status;
 	while((status = filesystemRead(node, buffer, descriptor->offset, length, &read)) == G_FS_READ_BUSY
@@ -408,18 +397,11 @@ g_fs_read_status filesystemRead(g_task* task, g_fd fd, uint8_t* buffer, uint64_t
 		delegate->waitForRead(task->id, node);
 		taskingYield();
 		INTERRUPTS_RESUME;
+	}
 
-		// TODO
-		if(node->nonInterruptible && clockHasTimedOut(task->id))
-		{
-			status = G_FS_READ_BUSY;
-			break;
-		}
-	}
 	if(read > 0)
-	{
 		descriptor->offset += read;
-	}
+
 	*outRead = read;
 	return status;
 }
@@ -470,9 +452,6 @@ g_fs_write_status filesystemWrite(g_task* task, g_fd fd, uint8_t* buffer, uint64
 	g_fs_node* node = filesystemGetNode(descriptor->nodeId);
 	if(!node)
 		return G_FS_WRITE_INVALID_FD;
-
-	if(node->nonInterruptible)
-		interruptsDisable();
 
 	uint64_t startOffset = descriptor->offset;
 	if(descriptor->openFlags & G_FILE_FLAG_MODE_APPEND)
@@ -538,7 +517,7 @@ g_fs_open_status filesystemTruncate(g_fs_node* file)
 	return delegate->truncate(file);
 }
 
-g_fs_pipe_status filesystemCreatePipe(g_bool blocking, g_fs_node** outPipeNode, bool nonInterruptible)
+g_fs_pipe_status filesystemCreatePipe(g_bool blocking, g_fs_node** outPipeNode)
 {
 	g_fs_phys_id pipeId;
 	g_fs_pipe_status status = pipeCreate(&pipeId);
@@ -558,7 +537,6 @@ g_fs_pipe_status filesystemCreatePipe(g_bool blocking, g_fs_node** outPipeNode, 
 	g_fs_node* pipeNode = filesystemCreateNode(G_FS_NODE_TYPE_PIPE, pipeName);
 	pipeNode->physicalId = pipeId;
 	pipeNode->blocking = true; // TODO Why does using the parameter freeze everything?
-	pipeNode->nonInterruptible = nonInterruptible;
 	filesystemAddChild(pipesFolder, pipeNode);
 	*outPipeNode = pipeNode;
 	return G_FS_PIPE_SUCCESSFUL;

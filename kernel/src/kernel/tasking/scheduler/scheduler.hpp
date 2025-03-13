@@ -34,6 +34,11 @@ void schedulerInitializeLocal();
 void schedulerPrepareEntry(g_schedule_entry* entry);
 
 /**
+ * Applies the given task as the current one.
+ */
+void schedulerSetCurrent(g_tasking_local* local, g_task* task);
+
+/**
  * Schedules to the next task.
  */
 void schedulerSchedule(g_tasking_local* local);

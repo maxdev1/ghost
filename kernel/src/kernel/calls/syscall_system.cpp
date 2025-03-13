@@ -19,6 +19,10 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/calls/syscall_system.hpp"
+#include "kernel/system/interrupts/interrupts.hpp"
+#include "kernel/system/interrupts/requests.hpp"
+#include "kernel/system/processor/processor.hpp"
+#include "kernel/tasking/clock.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/system/interrupts/apic/ioapic.hpp"
 #include "shared/logger/logger.hpp"
@@ -107,4 +111,33 @@ void syscallIrqCreateRedirect(g_task* task, g_syscall_irq_create_redirect* data)
 	}
 
 	ioapicCreateRedirectionEntry(data->source, data->irq, 0);
+}
+
+void syscallAwaitIrq(g_task* task, g_syscall_await_irq* data)
+{
+	if(task->securityLevel > G_SECURITY_LEVEL_DRIVER)
+		return;
+
+	if(processorGetCurrentId() != 0)
+	{
+		logWarn("%! awaiting IRQs only possible on core 0", "call");
+		return taskingExit();
+	}
+
+	requestsSetHandlerTask(data->irq, task->id);
+
+	if(data->timeout)
+		clockUnwaitForTime(task->id);
+
+	INTERRUPTS_PAUSE;
+	mutexAcquire(&task->lock);
+	task->status = G_TASK_STATUS_WAITING;
+	task->waitsFor = "irq";
+	mutexRelease(&task->lock);
+	taskingYield();
+
+	if(data->timeout)
+		clockWaitForTime(task->id, clockGetLocal()->time + data->timeout);
+
+	INTERRUPTS_RESUME;
 }

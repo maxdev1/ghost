@@ -176,8 +176,7 @@ void windowserver_t::updateLoop(const g_rectangle& screenBounds) const
 		output(&global);
 
 		framesTotal++;
-		if(!g_mutex_acquire_to(updateLock, 1000))
-			klog("Times updated: %i", framesTotal);
+		g_mutex_acquire_to(updateLock, 1000);
 
 		auto now = g_millis();
 		if(now - lastUpdate < 10)

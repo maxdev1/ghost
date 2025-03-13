@@ -411,22 +411,6 @@ typedef struct
 }__attribute__((packed)) g_syscall_fs_close_directory;
 
 /**
- * @field irq
- * 		irq to register for
- * @field fd
- * 		file descriptor to read from
- * @field status
- * 		result of the command
- */
-typedef struct
-{
-    uint8_t irq;
-    g_fd fd;
-    g_open_irq_device_status status;
-} __attribute__((packed)) g_syscall_open_irq_device;
-
-
-/**
  * @field in
  * 		source path buffer
  * @field out

@@ -21,25 +21,23 @@
 #ifndef __KERNEL_REQUESTS__
 #define __KERNEL_REQUESTS__
 
-#include "kernel/filesystem/filesystem.hpp"
-
-struct g_irq_device
-{
-    g_fs_node* node;
-    g_tid task;
-};
+#include "kernel/tasking/task.hpp"
 
 void requestsInitialize();
 
 /**
- * Calls the user-space handler for an IRQ if there is one registered
- * on the given task.
+ * @return the IRQ handler task
  */
-void requestsWriteToIrqDevice(uint8_t irq);
+g_tid requestsGetHandlerTask(uint8_t irq);
 
 /**
- * Retrieves (or creates) the IO device for the IRQ.
+ * Sets the registered task for an IRQ.
  */
-g_irq_device* requestsGetIrqDevice(uint8_t irq);
+void requestsSetHandlerTask(uint8_t irq, g_tid task);
+
+/**
+ * Wakes a registered IRQ handler.
+ */
+void requestsHandle(g_task* currentTask, uint8_t irq);
 
 #endif

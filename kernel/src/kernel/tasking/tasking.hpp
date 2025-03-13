@@ -121,9 +121,14 @@ void taskingCreateEssentialTasks();
 void taskingAssign(g_tasking_local* local, g_task* task);
 
 /**
- * Assignes the task to the processor with the lowest load.
+ * Assign a task to any core with the least load.
  */
 void taskingAssignBalanced(g_task* task);
+
+/**
+ * Assigns a task to a specific core.
+ */
+void taskingAssignOnCore(uint8_t core, g_task* task);
 
 /**
  * Creates an empty process. Creates a new page directory with the kernel areas
@@ -184,6 +189,12 @@ void taskingProcessRemoveFromTaskList(g_task* task);
  * Schedules and sets the next task as the current. May only be called during interrupt handling!
  */
 void taskingSchedule(bool resetPreference = false);
+
+/**
+ * Immediately sets a given task as the next one to execute. Dangerous because this only
+ * works on the core that this task actually runs on right now.
+ */
+void taskingSetCurrent(g_task* task);
 
 /**
  * Saves the state pointer that points to the stored state on the tasks kernel

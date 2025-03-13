@@ -85,6 +85,13 @@ g_schedule_entry* schedulerGetNextTask(g_tasking_local* local)
 	return entry;
 }
 
+void schedulerSetCurrent(g_tasking_local* local, g_task* task)
+{
+	mutexAcquire(&local->lock);
+	local->scheduling.current = task;
+	mutexRelease(&local->lock);
+}
+
 void schedulerPrefer(g_tid task)
 {
 	preferredTask = task;
