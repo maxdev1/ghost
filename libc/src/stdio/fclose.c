@@ -28,11 +28,15 @@
 /**
  *
  */
-int fclose(FILE* stream) {
+int fclose(FILE* stream)
+{
+	if(!stream)
+		return EOF;
 
 	// close file
 	int res = __fclose_static(stream);
-	if (res != 0) {
+	if(res != 0)
+	{
 		return EOF;
 	}
 

@@ -26,7 +26,10 @@
 /**
  *
  */
-size_t fread(const void* ptr, size_t size, size_t nmemb, FILE* stream) {
+size_t fread(const void* ptr, size_t size, size_t nmemb, FILE* stream)
+{
+	if(!stream)
+		return EOF;
 
 	g_mutex_acquire(stream->lock);
 	size_t len = __fread_unlocked(ptr, size, nmemb, stream);

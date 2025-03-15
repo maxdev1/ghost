@@ -24,13 +24,19 @@
 /**
  *
  */
-int ferror(FILE* stream) {
+int ferror(FILE* stream)
+{
+	if(!stream)
+		return EOF;
 
 	g_mutex_acquire(stream->lock);
 	int res;
-	if (stream->impl_error) {
+	if(stream->impl_error)
+	{
 		res = stream->impl_error(stream);
-	} else {
+	}
+	else
+	{
 		errno = ENOTSUP;
 		res = EOF;
 	}
