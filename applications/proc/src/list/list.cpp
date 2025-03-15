@@ -24,6 +24,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unordered_map>
+
+#include <libterminal/terminal.hpp>
 
 int countTasks()
 {
@@ -68,10 +71,13 @@ int procListCompareByParent(const void* a, const void* b)
 		return 1;
 }
 
+
+std::unordered_map<g_tid, uint64_t> lastCpuTimes;
+
 /**
  *
  */
-int procList(int argc, char** argv)
+int procList(int argc, char** argv, bool top)
 {
 	bool threads = false;
 	for(int i = 0; i < argc; i++)
@@ -105,14 +111,42 @@ int procList(int argc, char** argv)
 	qsort(taskData, taskCount, sizeof(g_kernquery_task_get_data), procListCompareByParent);
 
 	// print information
-	println("%5s %5s %6s %-20s %-38s", "pid", "tid", "mem", "id", "path");
+	if(top)
+	{
+		g_terminal::clear();
+		g_terminal::setCursor(g_term_cursor_position(0, 0));
+	}
+
+	println("%4s %4s %-20s %-38s %5s %5s", "pid", "tid", "id", "path", "mem", top ? "cpu" : "");
 	for(uint32_t pos = 0; pos < taskCount; pos++)
 	{
 		g_kernquery_task_get_data* entry = &taskData[pos];
 
-		if(entry->id != -1 && (entry->type == G_TASK_TYPE_DEFAULT || entry->type == G_TASK_TYPE_VM86) && (threads || entry->id == entry->parent))
+		if(entry->id != -1 && (entry->type == G_TASK_TYPE_DEFAULT || entry->type == G_TASK_TYPE_VM86) && (
+			   threads || entry->id == entry->parent))
 		{
-			println("%5i %5i %6i %-20s %-38s", entry->parent, entry->id, entry->memory_used / 1024, entry->identifier, entry->source_path);
+			if(top)
+			{
+				uint64_t cpuTimeTaken = entry->cpu_time - lastCpuTimes[entry->id];
+				lastCpuTimes[entry->id] = entry->cpu_time;;
+
+				println("%4i %4i %-20s %-38s %5i %5i",
+				        entry->parent,
+				        entry->id,
+				        entry->identifier,
+				        entry->source_path,
+				        entry->memory_used / 1024,
+				        cpuTimeTaken / 1000000);
+			}
+			else
+			{
+				println("%4i %4i %-20s %-38s %5i",
+				        entry->parent,
+				        entry->id,
+				        entry->identifier,
+				        entry->source_path,
+				        entry->memory_used / 1024);
+			}
 		}
 	}
 

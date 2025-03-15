@@ -7,6 +7,7 @@ fi
 
 # Build configuration
 ARTIFACT_NAME="proc.bin"
+LDFLAGS="-lterminal"
 
 # Include application build tasks
 . "../applications.sh"

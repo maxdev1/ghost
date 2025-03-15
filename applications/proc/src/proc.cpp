@@ -42,6 +42,14 @@ int main(int argc, char** argv)
 		{
 			return procList(argc, argv);
 		}
+		else if(strcmp(command, "--top") == 0)
+		{
+			while(true)
+			{
+				procList(argc, argv, true);
+				g_sleep(1000);
+			}
+		}
 		else if(strcmp(command, "-k") == 0 || strcmp(command, "--kill") == 0)
 		{
 			if(argc > 2)
