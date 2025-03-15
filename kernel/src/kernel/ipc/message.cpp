@@ -45,17 +45,17 @@ g_message_send_status messageSend(g_tid sender, g_tid receiver, void* content, u
                                   g_message_transaction tx)
 {
 	if(length > G_MESSAGE_MAXIMUM_LENGTH)
-	{
 		return G_MESSAGE_SEND_STATUS_EXCEEDS_MAXIMUM;
-	}
-
-	auto queue = _messageGetQueue(receiver);
-
-	mutexAcquire(&queue->lock);
 
 	g_message_send_status status;
 	uint32_t len = sizeof(g_message_header) + length;
-	if(queue->size + len > G_MESSAGE_MAXIMUM_QUEUE_CONTENT)
+
+	auto queue = _messageGetQueue(receiver);
+	mutexAcquire(&queue->lock);
+	bool queueFull = queue->size + len > G_MESSAGE_MAXIMUM_QUEUE_CONTENT;
+	mutexRelease(&queue->lock);
+
+	if(queueFull)
 	{
 		status = G_MESSAGE_SEND_STATUS_QUEUE_FULL;
 	}
@@ -71,7 +71,6 @@ g_message_send_status messageSend(g_tid sender, g_tid receiver, void* content, u
 		status = G_MESSAGE_SEND_STATUS_SUCCESSFUL;
 	}
 
-	mutexRelease(&queue->lock);
 	return status;
 }
 
@@ -90,7 +89,6 @@ g_message_receive_status messageReceive(g_tid receiver, g_message_header* out, u
 	}
 
 	mutexAcquire(&queue->lock);
-
 	g_message_header* message = queue->head;
 	while(message)
 	{
@@ -99,18 +97,19 @@ g_message_receive_status messageReceive(g_tid receiver, g_message_header* out, u
 
 		message = message->next;
 	}
+	mutexRelease(&queue->lock);
 
 	g_message_receive_status status;
 	if(message)
 	{
-		uint32_t len = sizeof(g_message_header) + message->length;
+		int32_t len = sizeof(g_message_header) + message->length;
 		if(len > max)
 		{
 			status = G_MESSAGE_RECEIVE_STATUS_EXCEEDS_BUFFER_SIZE;
 		}
 		else
 		{
-			memoryCopy((void*) out, message, len);
+			memoryCopy(out, message, len);
 			_messageRemoveFromQueue(queue, message);
 			heapFree(message);
 			waitQueueWake(&queue->waitersSend);
@@ -122,7 +121,6 @@ g_message_receive_status messageReceive(g_tid receiver, g_message_header* out, u
 		status = G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY;
 	}
 
-	mutexRelease(&queue->lock);
 	return status;
 }
 
@@ -184,6 +182,8 @@ void _messageWakeWaitingReceiver(g_message_queue* queue)
 
 void _messageRemoveFromQueue(g_message_queue* queue, g_message_header* message)
 {
+	mutexAcquire(&queue->lock);
+
 	queue->size -= sizeof(g_message_header) + message->length;
 
 	if(message == queue->head)
@@ -197,25 +197,32 @@ void _messageRemoveFromQueue(g_message_queue* queue, g_message_header* message)
 
 	if(message->previous)
 		message->previous->next = message->next;
+
+	mutexRelease(&queue->lock);
 }
 
 void _messageAddToQueueTail(g_message_queue* queue, g_message_header* message)
 {
+	mutexAcquire(&queue->lock);
+
 	queue->size += sizeof(g_message_header) + message->length;
 
 	message->next = 0;
-	if(!queue->head)
+	if(queue->head)
+	{
+		message->previous = queue->tail;
+		queue->tail->next = message;
+		queue->tail = message;
+	}
+	else
 	{
 		queue->head = message;
 		queue->tail = message;
 		message->previous = 0;
 		message->next = 0;
-		return;
 	}
 
-	message->previous = queue->tail;
-	queue->tail->next = message;
-	queue->tail = message;
+	mutexRelease(&queue->lock);
 }
 
 g_message_queue* _messageGetQueue(g_tid receiver)
