@@ -60,11 +60,7 @@ void requestsHandle(g_task* currentTask, uint8_t irq)
 	if(!handlerTask)
 		return;
 
-	mutexAcquire(&handlerTask->lock);
-	if(handlerTask->status == G_TASK_STATUS_WAITING)
-		handlerTask->status = G_TASK_STATUS_RUNNING;
-	mutexRelease(&handlerTask->lock);
-
+	taskingWake(handlerTask);
 	taskingSetCurrent(handlerTask);
 
 	// Once the handler has finished, let the scheduler go back to interrupted task

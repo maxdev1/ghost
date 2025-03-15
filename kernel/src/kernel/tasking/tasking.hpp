@@ -252,4 +252,9 @@ void taskingFinalizeSpawn(g_task* task);
  */
 void taskingWaitForExit(g_tid task, g_tid waiter);
 
+/**
+ * Wakes the task.
+ */
+void taskingWake(g_task* task);
+
 #endif

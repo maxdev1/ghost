@@ -103,12 +103,7 @@ void clockWakeWaiters(g_clock_local* local)
 	while(local->waiters && local->time >= local->waiters->wakeTime)
 	{
 		g_task* task = taskingGetById(local->waiters->task);
-		if(task)
-		{
-			mutexAcquire(&task->lock);
-			task->status = G_TASK_STATUS_RUNNING;
-			mutexRelease(&task->lock);
-		}
+		taskingWake(task);
 
 		auto next = local->waiters->next;
 		heapFree(local->waiters);

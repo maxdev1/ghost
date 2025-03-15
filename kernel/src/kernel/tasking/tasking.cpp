@@ -370,7 +370,10 @@ void taskingDestroyProcess(g_process* process)
 
 g_task* taskingCreateTask(g_virtual_address eip, g_process* process, g_security_level level)
 {
-	g_task* task = (g_task*) heapAllocateClear(sizeof(g_task));
+	auto task = (g_task*) heapAllocateClear(sizeof(g_task));
+	if(!task)
+		return nullptr;
+
 	_taskingInitializeTask(task, process, level);
 	task->type = G_TASK_TYPE_DEFAULT;
 
@@ -479,13 +482,13 @@ void taskingProcessKillAllTasks(g_pid pid)
 
 g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel)
 {
-	g_task* caller = taskingGetCurrentTask();
+	g_task* parent = taskingGetCurrentTask();
 
 	// Create target process & task
-	g_spawn_result res;
+	g_spawn_result res{};
 	res.process = taskingCreateProcess(securityLevel);
-	g_task* newTask = taskingCreateTask(0, res.process, securityLevel);
-	if(!newTask)
+	g_task* child = taskingCreateTask(0, res.process, securityLevel);
+	if(!child)
 	{
 		logInfo("%! failed to create main thread to spawn binary", "elf");
 		res.status = G_SPAWN_STATUS_TASKING_ERROR;
@@ -494,42 +497,35 @@ g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel)
 
 	// Clone FD to target process
 	g_fd targetFd;
-	auto cloneStat = filesystemProcessCloneDescriptor(caller->process->id, fd, res.process->id, G_FD_NONE, &targetFd);
+	auto cloneStat = filesystemProcessCloneDescriptor(parent->process->id, fd, res.process->id, G_FD_NONE, &targetFd);
 	if(cloneStat != G_FS_CLONEFD_SUCCESSFUL)
 	{
-		logInfo("%! failed to clone executable FD to target process", "elf");
+		logInfo("%! failed to clone binary FD to target process", "elf");
 		res.status = G_SPAWN_STATUS_IO_ERROR;
 		return res;
 	}
 
 	// Provide spawn arguments
 	res.process->spawnArgs = (g_process_spawn_arguments*) heapAllocateClear(sizeof(g_process_spawn_arguments));
+	res.process->spawnArgs->parent = parent->id;
 	res.process->spawnArgs->fd = targetFd;
 	res.process->spawnArgs->securityLevel = securityLevel;
 
 	// Set kernel-level entry
-	taskingStateReset(newTask, (g_address) &taskingSpawnEntry, G_SECURITY_LEVEL_KERNEL);
+	taskingStateReset(child, (g_address) &taskingSpawnEntry, G_SECURITY_LEVEL_KERNEL);
 
 	// Start thread & wait for spawn to finish
-	newTask->spawnFinished = false;
+	INTERRUPTS_PAUSE;
+	child->spawnFinished = false;
 
-	mutexAcquire(&caller->lock);
-	caller->status = G_TASK_STATUS_WAITING;
-	caller->waitsFor = "spawn";
-	mutexRelease(&caller->lock);
-	waitQueueAdd(&res.process->waitersSpawn, caller->id);
-	taskingAssignBalanced(newTask);
+	mutexAcquire(&parent->lock);
+	parent->status = G_TASK_STATUS_WAITING;
+	parent->waitsFor = "spawn";
+	mutexRelease(&parent->lock);
 
-	while(!newTask->spawnFinished)
-	{
-		INTERRUPTS_PAUSE;
-		mutexAcquire(&caller->lock);
-		caller->status = G_TASK_STATUS_WAITING;
-		caller->waitsFor = "spawn-rep";
-		mutexRelease(&caller->lock);
-		taskingYield();
-		INTERRUPTS_RESUME;
-	}
+	taskingAssignBalanced(child);
+	taskingYield();
+	INTERRUPTS_RESUME;
 
 	// Take result
 	res.status = res.process->spawnArgs->status;
@@ -556,7 +552,8 @@ void taskingSpawnEntry()
 	if(loadRes.status != G_SPAWN_STATUS_SUCCESSFUL)
 	{
 		logInfo("%! failed to load binary to current address space", "elf");
-		waitQueueWake(&process->waitersSpawn);
+		auto parent = taskingGetById(process->spawnArgs->parent);
+		taskingWake(parent);
 		taskingExit();
 	}
 
@@ -569,16 +566,18 @@ void taskingSpawnEntry()
 
 void taskingFinalizeSpawn(g_task* task)
 {
+	INTERRUPTS_PAUSE;
 	auto process = task->process;
 	task->securityLevel = process->spawnArgs->securityLevel;
 	taskingStateReset(task, process->spawnArgs->entry, task->securityLevel);
-	waitQueueWake(&process->waitersSpawn);
 
-	INTERRUPTS_PAUSE;
+	task->spawnFinished = true;
+	auto parent = taskingGetById(process->spawnArgs->parent);
+	taskingWake(parent);
+
 	mutexAcquire(&task->lock);
 	task->status = G_TASK_STATUS_WAITING;
 	task->waitsFor = "wake-after-spawn";
-	task->spawnFinished = true;
 	mutexRelease(&task->lock);
 	taskingYield();
 	INTERRUPTS_RESUME;
@@ -593,4 +592,15 @@ void taskingWaitForExit(g_tid joinedTid, g_tid waiter)
 	mutexAcquire(&task->process->lock);
 	waitQueueAdd(&task->waitersJoin, waiter);
 	mutexRelease(&task->process->lock);
+}
+
+void taskingWake(g_task* task)
+{
+	if(task)
+	{
+		mutexAcquire(&task->lock);
+		if(task->status == G_TASK_STATUS_WAITING)
+			task->status = G_TASK_STATUS_RUNNING;
+		mutexRelease(&task->lock);
+	}
 }

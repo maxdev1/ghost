@@ -182,6 +182,7 @@ struct g_task_entry
 
 struct g_process_spawn_arguments
 {
+    g_tid parent;
     g_fd fd;
     g_security_level securityLevel;
     g_address entry;
@@ -267,11 +268,6 @@ struct g_process
      * Arguments for the spawning of this process.
      */
     g_process_spawn_arguments* spawnArgs;
-
-    /**
-     * List of tasks that wait for the result of spawning.
-     */
-    g_wait_queue waitersSpawn;
 
     /**
      * List of on-demand file-to-memory mappings.

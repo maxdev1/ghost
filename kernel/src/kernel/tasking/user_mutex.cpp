@@ -255,13 +255,7 @@ void _userMutexWakeWaitingTasks(g_user_mutex_entry* entry)
 	while(waiter)
 	{
 		g_task* wakeTask = taskingGetById(waiter->task);
-		if(wakeTask)
-		{
-			mutexAcquire(&wakeTask->lock);
-			if(wakeTask->status == G_TASK_STATUS_WAITING)
-				wakeTask->status = G_TASK_STATUS_RUNNING;
-			mutexRelease(&wakeTask->lock);
-		}
+		taskingWake(wakeTask);
 
 		auto next = waiter->next;
 		heapFree(waiter);
