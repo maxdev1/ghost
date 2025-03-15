@@ -27,6 +27,7 @@
 uint8_t mousePacketNumber = 0;
 uint8_t mousePacketBuffer[4];
 bool intelliMouseMode = false; // 4-byte sequences
+g_user_mutex packetLock = g_mutex_initialize();
 
 g_fd keyIrqIn;
 g_fd mouseIrqIn;
@@ -64,7 +65,7 @@ void ps2ReadKeyIrq()
 	g_task_register_id("libps2/read-key");
 	for(;;)
 	{
-		g_await_irq_t(1, 1000);
+		g_await_irq_t(1, 50);
 		ps2CheckForData();
 	}
 }
@@ -74,13 +75,14 @@ void ps2ReadMouseIrq()
 	g_task_register_id("libps2/read-mouse");
 	for(;;)
 	{
-		g_await_irq_t(12, 1000);
+		g_await_irq_t(12, 50);
 		ps2CheckForData();
 	}
 }
 
 void ps2CheckForData()
 {
+	g_mutex_acquire(packetLock);
 	uint8_t status;
 	while(((status = g_io_port_read_byte(G_PS2_STATUS_PORT)) & 0x01) != 0)
 	{
@@ -100,6 +102,7 @@ void ps2CheckForData()
 
 		++packetCount;
 	}
+	g_mutex_release(packetLock);
 }
 
 ps2_status_t ps2InitializeMouse()
@@ -221,12 +224,14 @@ void ps2HandlePacket()
 	int8_t scroll = intelliMouseMode ? (int8_t) mousePacketBuffer[3] : 0;
 
 	int16_t offX = (valX | ((flags & 0x10) ? 0xFF00 : 0));
+	bool overflowX = flags & (1 << 6);
+	if(overflowX)
+		offX = offX < 0 ? INT8_MIN : INT8_MAX;
+
 	int16_t offY = (valY | ((flags & 0x20) ? 0xFF00 : 0));
-	if((flags & (1 << 6)) || (flags & (1 << 7)))
-	{
-		offX = 0;
-		offY = 0;
-	}
+	bool overflowY = (flags & (1 << 7));
+	if(overflowY)
+		offY = offY < 0 ? INT8_MIN : INT8_MAX;
 
 	if(registeredMouseCallback)
 		registeredMouseCallback(offX, -offY, flags, scroll);
