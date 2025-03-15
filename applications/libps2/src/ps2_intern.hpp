@@ -61,13 +61,13 @@ void ps2HandleMouseData(uint8_t value);
 int ps2WriteToMouse(uint8_t value);
 
 /**
- * Reads IRQs from the key IRQ device.
+ * Awaits IRQs from the key IRQ device.
  */
-void ps2ReadKeyIrq();
+void ps2AwaitKeyIrq();
 
 /**
- * Reads IRQs from the mouse IRQ device.
+ * Awaits IRQs from the mouse IRQ device.
  */
-void ps2ReadMouseIrq();
+void ps2AwaitMouseIrq();
 
 #endif

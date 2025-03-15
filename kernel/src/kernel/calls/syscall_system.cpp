@@ -126,9 +126,6 @@ void syscallAwaitIrq(g_task* task, g_syscall_await_irq* data)
 
 	requestsSetHandlerTask(data->irq, task->id);
 
-	if(data->timeout)
-		clockUnwaitForTime(task->id);
-
 	INTERRUPTS_PAUSE;
 	mutexAcquire(&task->lock);
 	task->status = G_TASK_STATUS_WAITING;
@@ -136,7 +133,10 @@ void syscallAwaitIrq(g_task* task, g_syscall_await_irq* data)
 	mutexRelease(&task->lock);
 
 	if(data->timeout)
+	{
+		clockUnwaitForTime(task->id);
 		clockWaitForTime(task->id, clockGetLocal()->time + data->timeout);
+	}
 
 	taskingYield();
 	INTERRUPTS_RESUME;

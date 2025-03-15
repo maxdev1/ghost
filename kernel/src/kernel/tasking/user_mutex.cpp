@@ -44,7 +44,7 @@ g_user_mutex userMutexCreate(bool reentrant)
 	g_user_mutex_entry* entry = (g_user_mutex_entry*) heapAllocate(sizeof(g_user_mutex_entry));
 	mutexInitializeTask(&entry->lock, __func__);
 	entry->value = 0;
-	entry->waiters = nullptr;
+	waitQueueInitialize(&entry->waiters);
 	entry->reentrant = reentrant;
 	entry->owner = -1;
 
@@ -206,14 +206,7 @@ void userMutexWaitForAcquire(g_user_mutex mutex, g_tid task)
 		return;
 	}
 
-	mutexAcquire(&entry->lock);
-
-	auto waiter = (g_user_mutex_waiter*) heapAllocate(sizeof(g_user_mutex_waiter));
-	waiter->task = task;
-	waiter->next = entry->waiters;
-	entry->waiters = waiter;
-
-	mutexRelease(&entry->lock);
+	waitQueueAdd(&entry->waiters, task);
 }
 
 void userMutexUnwaitForAcquire(g_user_mutex mutex, g_tid task)
@@ -225,41 +218,10 @@ void userMutexUnwaitForAcquire(g_user_mutex mutex, g_tid task)
 		return;
 	}
 
-	mutexAcquire(&entry->lock);
-
-	g_user_mutex_waiter* prev = nullptr;
-	g_user_mutex_waiter* waiter = entry->waiters;
-	while(waiter)
-	{
-		if(waiter->task == task)
-		{
-			auto next = waiter->next;
-			if(prev)
-				prev->next = next;
-			else
-				entry->waiters = next;
-
-			heapFree(waiter);
-			break;
-		}
-		prev = waiter;
-		waiter = waiter->next;
-	}
-
-	mutexRelease(&entry->lock);
+	waitQueueRemove(&entry->waiters, task);
 }
 
 void _userMutexWakeWaitingTasks(g_user_mutex_entry* entry)
 {
-	auto waiter = entry->waiters;
-	while(waiter)
-	{
-		g_task* wakeTask = taskingGetById(waiter->task);
-		taskingWake(wakeTask);
-
-		auto next = waiter->next;
-		heapFree(waiter);
-		waiter = next;
-	}
-	entry->waiters = nullptr;
+	waitQueueWake(&entry->waiters);
 }

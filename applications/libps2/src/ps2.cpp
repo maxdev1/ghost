@@ -55,14 +55,14 @@ ps2_status_t ps2Initialize(void (*mouseCallback)(int16_t, int16_t, uint8_t, int8
 	g_irq_create_redirect(1, 1);
 	g_irq_create_redirect(12, 12);
 
-	g_create_task_a((void*) &ps2ReadKeyIrq, 0);
-	g_create_task_a((void*) &ps2ReadMouseIrq, 0);
+	g_create_task_a((void*) &ps2AwaitKeyIrq, 0);
+	g_create_task_a((void*) &ps2AwaitMouseIrq, 0);
 	return G_PS2_STATUS_SUCCESS;
 }
 
-void ps2ReadKeyIrq()
+void ps2AwaitKeyIrq()
 {
-	g_task_register_id("libps2/read-key");
+	g_task_register_id("libps2/await-key");
 	for(;;)
 	{
 		g_await_irq_t(1, 50);
@@ -70,9 +70,9 @@ void ps2ReadKeyIrq()
 	}
 }
 
-void ps2ReadMouseIrq()
+void ps2AwaitMouseIrq()
 {
-	g_task_register_id("libps2/read-mouse");
+	g_task_register_id("libps2/await-mouse");
 	for(;;)
 	{
 		g_await_irq_t(12, 50);

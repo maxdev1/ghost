@@ -26,12 +26,6 @@
 #include <ghost/tasks/types.h>
 #include <ghost/mutex/types.h>
 
-struct g_user_mutex_waiter
-{
-    g_tid task;
-    g_user_mutex_waiter* next;
-};
-
 struct g_user_mutex_entry
 {
     g_mutex lock;
@@ -40,7 +34,7 @@ struct g_user_mutex_entry
     bool reentrant;
     g_tid owner;
 
-    g_user_mutex_waiter* waiters;
+    g_wait_queue waiters;
 };
 
 typedef uint32_t g_user_mutex_status;
