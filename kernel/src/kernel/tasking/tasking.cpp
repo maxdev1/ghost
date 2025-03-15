@@ -345,8 +345,6 @@ g_process* taskingCreateProcess(g_security_level securityLevel)
 	addressRangePoolInitialize(process->virtualRangePool);
 	addressRangePoolAddRange(process->virtualRangePool, G_USER_VIRTUAL_RANGES_START, G_USER_VIRTUAL_RANGES_END);
 
-	waitQueueInitialize(&process->waitersSpawn);
-
 	return process;
 }
 
