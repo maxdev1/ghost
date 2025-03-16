@@ -513,17 +513,11 @@ g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel)
 	taskingStateReset(child, (g_address) &taskingSpawnEntry, G_SECURITY_LEVEL_KERNEL);
 
 	// Start thread & wait for spawn to finish
-	INTERRUPTS_PAUSE;
-	child->spawnFinished = false;
-
-	mutexAcquire(&parent->lock);
-	parent->status = G_TASK_STATUS_WAITING;
-	parent->waitsFor = "spawn";
-	mutexRelease(&parent->lock);
-
-	taskingAssignBalanced(child);
-	taskingYield();
-	INTERRUPTS_RESUME;
+	taskingWait(parent, __func__, [child]()
+	{
+		child->spawnFinished = false;
+		taskingAssignBalanced(child);
+	});
 
 	// Take result
 	res.status = res.process->spawnArgs->status;
@@ -569,16 +563,12 @@ void taskingFinalizeSpawn(g_task* task)
 	task->securityLevel = process->spawnArgs->securityLevel;
 	taskingStateReset(task, process->spawnArgs->entry, task->securityLevel);
 
-	task->spawnFinished = true;
-	auto parent = taskingGetById(process->spawnArgs->parent);
-	taskingWake(parent);
-
-	mutexAcquire(&task->lock);
-	task->status = G_TASK_STATUS_WAITING;
-	task->waitsFor = "wake-after-spawn";
-	mutexRelease(&task->lock);
-	taskingYield();
-	INTERRUPTS_RESUME;
+	taskingWait(task, __func__, [task, process]()
+	{
+		task->spawnFinished = true;
+		auto parent = taskingGetById(process->spawnArgs->parent);
+		taskingWake(parent);
+	});
 }
 
 void taskingWaitForExit(g_tid joinedTid, g_tid waiter)
@@ -601,4 +591,17 @@ void taskingWake(g_task* task)
 			task->status = G_TASK_STATUS_RUNNING;
 		mutexRelease(&task->lock);
 	}
+}
+
+void taskingWait(g_task* task, const char* debugName, const std::function<void ()>& beforeYield)
+{
+	INTERRUPTS_PAUSE;
+	mutexAcquire(&task->lock);
+	task->status = G_TASK_STATUS_WAITING;
+	task->waitsFor = debugName;
+	mutexRelease(&task->lock);
+	if(beforeYield)
+		beforeYield();
+	taskingYield();
+	INTERRUPTS_RESUME;
 }

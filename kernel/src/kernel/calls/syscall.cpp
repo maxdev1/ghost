@@ -110,6 +110,7 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_GET_MILLISECONDS, (g_syscall_handler) syscallGetMilliseconds);
 	_syscallRegister(G_SYSCALL_DUMP, (g_syscall_handler) syscallDump);
 	_syscallRegister(G_SYSCALL_GET_NANOSECONDS, (g_syscall_handler) syscallGetNanoseconds);
+	_syscallRegister(G_SYSCALL_AWAIT_TASK_BY_IDENTIFIER, (g_syscall_handler) syscallAwaitTaskByIdentifier);
 
 	// Memory
 	_syscallRegister(G_SYSCALL_LOWER_MEMORY_ALLOCATE, (g_syscall_handler) syscallLowerMemoryAllocate, true);
@@ -129,7 +130,7 @@ void syscallRegisterAll()
 	// Messages
 	_syscallRegister(G_SYSCALL_MESSAGE_SEND, (g_syscall_handler) syscallMessageSend);
 	_syscallRegister(G_SYSCALL_MESSAGE_RECEIVE, (g_syscall_handler) syscallMessageReceive);
-	_syscallRegister(G_SYSCALL_MESSAGE_NEXT_TXID, (g_syscall_handler) syscallMessageNextTxid);
+	_syscallRegister(G_SYSCALL_MESSAGE_NEXT_TXID, (g_syscall_handler) syscallMessageNextTxId);
 
 	// Filesystem
 	_syscallRegister(G_SYSCALL_FS_OPEN, (g_syscall_handler) syscallFsOpen, true);

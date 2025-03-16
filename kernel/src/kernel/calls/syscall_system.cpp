@@ -19,7 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/calls/syscall_system.hpp"
-#include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/interrupts/requests.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/tasking/clock.hpp"
@@ -125,19 +124,12 @@ void syscallAwaitIrq(g_task* task, g_syscall_await_irq* data)
 	}
 
 	requestsSetHandlerTask(data->irq, task->id);
-
-	INTERRUPTS_PAUSE;
-	mutexAcquire(&task->lock);
-	task->status = G_TASK_STATUS_WAITING;
-	task->waitsFor = "irq";
-	mutexRelease(&task->lock);
-
-	if(data->timeout)
+	taskingWait(task, __func__, [data, task]()
 	{
-		clockUnwaitForTime(task->id);
-		clockWaitForTime(task->id, clockGetLocal()->time + data->timeout);
-	}
-
-	taskingYield();
-	INTERRUPTS_RESUME;
+		if(data->timeout)
+		{
+			clockUnwaitForTime(task->id);
+			clockWaitForTime(task->id, clockGetLocal()->time + data->timeout);
+		}
+	});
 }

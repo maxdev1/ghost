@@ -108,26 +108,6 @@ uint32_t heapGetUsedAmount()
 	return heapAmountInUse;
 }
 
-void* operator new(size_t size)
-{
-	return heapAllocate(size);
-}
-
-void* operator new[](size_t size)
-{
-	return heapAllocate(size);
-}
-
-void operator delete(void* m)
-{
-	heapFree(m);
-}
-
-void operator delete[](void* m)
-{
-	heapFree(m);
-}
-
 bool _heapExpand()
 {
 	if(heapEnd + G_KERNEL_HEAP_EXPAND_STEP > G_KERNEL_HEAP_END)

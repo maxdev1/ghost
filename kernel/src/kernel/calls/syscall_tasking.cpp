@@ -33,14 +33,10 @@
 
 void syscallSleep(g_task* task, g_syscall_sleep* data)
 {
-	INTERRUPTS_PAUSE;
-	mutexAcquire(&task->lock);
-	task->status = G_TASK_STATUS_WAITING;
-	task->waitsFor = "sleeps";
-	mutexRelease(&task->lock);
-	clockWaitForTime(task->id, clockGetLocal()->time + data->milliseconds);
-	taskingYield();
-	INTERRUPTS_RESUME;
+	taskingWait(task, __func__, [task, data]()
+	{
+		clockWaitForTime(task->id, clockGetLocal()->time + data->milliseconds);
+	});
 }
 
 void syscallYield(g_task* task, g_syscall_yield* data)
@@ -88,14 +84,10 @@ void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
 
 void syscallJoin(g_task* task, g_syscall_join* data)
 {
-	INTERRUPTS_PAUSE;
-	mutexAcquire(&task->lock);
-	task->status = G_TASK_STATUS_WAITING;
-	task->waitsFor = "join";
-	mutexRelease(&task->lock);
-	taskingWaitForExit(data->taskId, task->id);
-	taskingYield();
-	INTERRUPTS_RESUME;
+	taskingWait(task, __func__, [task ,data]()
+	{
+		taskingWaitForExit(data->taskId, task->id);
+	});
 }
 
 void syscallSpawn(g_task* task, g_syscall_spawn* data)
@@ -175,7 +167,8 @@ void syscallCreateTask(g_task* task, g_syscall_create_task* data)
 		if(data->coreAffinity == G_TASK_CORE_AFFINITY_NONE)
 		{
 			taskingAssignBalanced(newTask);
-		} else
+		}
+		else
 		{
 			taskingAssignOnCore(data->coreAffinity, newTask);
 		}
@@ -291,6 +284,21 @@ void syscallReleaseCliArguments(g_task* task, g_syscall_cli_args_release* data)
 void syscallRegisterTaskIdentifier(g_task* task, g_syscall_task_id_register* data)
 {
 	data->successful = taskingDirectoryRegister(data->identifier, task->id, task->securityLevel);
+}
+
+void syscallAwaitTaskByIdentifier(g_task* task, g_syscall_task_await_by_id* data)
+{
+	g_tid target;
+	while((target = taskingDirectoryGet(data->identifier)) == G_TID_NONE)
+	{
+		taskingWait(task, __func__, [data, task]()
+		{
+			clockWaitForTime(task->id, clockGetLocal()->time + 100);
+			taskingDirectoryWaitForRegister(data->identifier, task->id);
+		});
+		clockUnwaitForTime(task->id);
+	}
+	data->task = target;
 }
 
 void syscallGetTaskForIdentifier(g_task* task, g_syscall_task_id_get* data)

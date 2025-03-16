@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *                                                                           *
+*                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
  *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
@@ -18,43 +18,14 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_TASKING_DIRECTORY__
-#define __KERNEL_TASKING_DIRECTORY__
+#ifndef __ITANIUM_CXX_ABI_SUPPORT__
+#define __ITANIUM_CXX_ABI_SUPPORT__
 
-#include "kernel/tasking/tasking.hpp"
+#include <bits/std_function.h>
 
-struct g_task_directory_entry
-{
-    g_tid task;
-    g_security_level priority;
-    g_wait_queue waitQueue;
-};
-
-/**
- * Initializes the task directory.
- */
-void taskingDirectoryInitialize();
-
-/**
- * Registers the given task in the directory. The priority decides if registering is valid,
- * a task with a stronger security level always overrides weaker, and weaker can't override
- * stronger entries.
- */
-bool taskingDirectoryRegister(const char* name, g_tid tid, g_security_level priority);
-
-/**
- * @return task for the name or G_TID_NONE
- */
-g_tid taskingDirectoryGet(const char* name);
-
-/**
- * @return name for the task or nullptr
- */
-const char* taskingDirectoryGetIdentifier(g_tid tid);
-
-/**
- * Adds the task to the wait queue for when another task registers with this identifier.
- */
-void taskingDirectoryWaitForRegister(const char* name, g_tid task);
+// Must be defined because we use -ffreestanding which causes these to not be
+// available when trying to use std::function
+void* operator new(size_t size, void* ptr) noexcept;
+void* operator new[](size_t size, void* ptr) noexcept;
 
 #endif

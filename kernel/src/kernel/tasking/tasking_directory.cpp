@@ -23,48 +23,76 @@
 #include "shared/logger/logger.hpp"
 #include "shared/utils/string.hpp"
 
-static g_hashmap<const char*, g_task_directory_entry>* tasksByIdentifier = 0;
-static g_hashmap<g_tid, const char*>* identifiersByTask = 0;
+static g_mutex entryLock;
+static g_hashmap<const char*, g_task_directory_entry*>* entryMap = nullptr;
+static g_hashmap<g_tid, const char*>* reverseMap = nullptr;
 
 void taskingDirectoryInitialize()
 {
-	tasksByIdentifier = hashmapCreateString<g_task_directory_entry>(64);
-	identifiersByTask = hashmapCreateNumeric<g_tid, const char*>(64);
+	mutexInitializeGlobal(&entryLock, __func__);
+	entryMap = hashmapCreateString<g_task_directory_entry*>(64);
+	reverseMap = hashmapCreateNumeric<g_tid, const char*>(64);
+}
+
+g_task_directory_entry* _taskingDirectoryGetOrCreateEntry(const char* name)
+{
+	auto entry = hashmapGet(entryMap, name, (g_task_directory_entry*) nullptr);
+	if(!entry)
+	{
+		entry = (g_task_directory_entry*) heapAllocate(sizeof(g_task_directory_entry));
+		entry->task = G_TID_NONE;
+		entry->priority = G_SECURITY_LEVEL_APPLICATION;
+		waitQueueInitialize(&entry->waitQueue);
+		hashmapPut(entryMap, name, entry);
+	}
+	return entry;
+}
+
+void taskingDirectoryWaitForRegister(const char* name, g_tid task)
+{
+	mutexAcquire(&entryLock);
+
+	auto entry = _taskingDirectoryGetOrCreateEntry(name);
+	waitQueueAdd(&entry->waitQueue, task);
+
+	mutexRelease(&entryLock);
 }
 
 bool taskingDirectoryRegister(const char* name, g_tid tid, g_security_level priority)
 {
-	auto entry = hashmapGetEntry(tasksByIdentifier, name);
-	if(entry && entry->value.priority > priority)
+	bool success = false;
+	mutexAcquire(&entryLock);
+
+	auto entry = _taskingDirectoryGetOrCreateEntry(name);
+	if(priority > entry->priority)
 	{
 		logInfo("%! tried to override task %s with weaker security level", "taskdir", name);
-		return false;
+	}
+	else
+	{
+		success = true;
+		entry->task = tid;
+		entry->priority = priority;
+
+		auto existingReverseName = hashmapGet(reverseMap, tid, (const char*) nullptr);
+		if(existingReverseName)
+			heapFree((void*) existingReverseName);
+		hashmapPut(reverseMap, tid, (const char*) stringDuplicate(name));
+
+		waitQueueWake(&entry->waitQueue);
 	}
 
-	g_task_directory_entry dirEntry;
-	dirEntry.task = tid;
-	dirEntry.priority = priority;
-	hashmapPut(tasksByIdentifier, name, dirEntry);
-
-	auto existingMappedName = hashmapGet(identifiersByTask, tid, (const char*) nullptr);
-	if(existingMappedName)
-		heapFree((void*) existingMappedName);
-	hashmapPut(identifiersByTask, tid, (const char*) stringDuplicate(name));
-
-	logDebug("%! task %i known as %s", "taskdir", tid, name);
-
-	return true;
+	mutexRelease(&entryLock);
+	return success;
 }
 
 g_tid taskingDirectoryGet(const char* name)
 {
-	auto entry = hashmapGetEntry(tasksByIdentifier, name);
-	if(entry)
-		return entry->value.task;
-	return G_TID_NONE;
+	auto entry = hashmapGet(entryMap, name, (g_task_directory_entry*) nullptr);
+	return entry ? entry->task : G_TID_NONE;
 }
 
 const char* taskingDirectoryGetIdentifier(g_tid tid)
 {
-	return hashmapGet(identifiersByTask, tid, (const char*) nullptr);
+	return hashmapGet(reverseMap, tid, (const char*) nullptr);
 }

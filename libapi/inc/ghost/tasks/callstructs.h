@@ -123,6 +123,20 @@ typedef struct
  * @field identifier
  * 		the identifier
  *
+ * @field tid
+ * 		task id, or G_TID_NONE
+ */
+typedef struct
+{
+    char* identifier;
+
+    g_tid task;
+} __attribute__((packed)) g_syscall_task_await_by_id;
+
+/**
+ * @field identifier
+ * 		the identifier
+ *
  * @field resultTaskId
  * 		the task id, or G_TID_NONE if not successful
  */

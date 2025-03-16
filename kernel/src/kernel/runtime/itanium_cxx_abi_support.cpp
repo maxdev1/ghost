@@ -18,43 +18,47 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_TASKING_DIRECTORY__
-#define __KERNEL_TASKING_DIRECTORY__
+#include "kernel/memory/heap.hpp"
+#include "shared/panic.hpp"
 
-#include "kernel/tasking/tasking.hpp"
+// The functions in this file are implemented as defined in the Itanium C++ ABI
+// standard. These functions are required by GCC for special cases, see the
+// individual documentation for details.
 
-struct g_task_directory_entry
+namespace std
 {
-    g_tid task;
-    g_security_level priority;
-    g_wait_queue waitQueue;
-};
+	[[noreturn]] void __throw_bad_function_call()
+	{
+		panic("bad function call");
+	}
+}
 
-/**
- * Initializes the task directory.
- */
-void taskingDirectoryInitialize();
+void* operator new(size_t size, void* ptr) noexcept
+{
+	return ptr;
+}
 
-/**
- * Registers the given task in the directory. The priority decides if registering is valid,
- * a task with a stronger security level always overrides weaker, and weaker can't override
- * stronger entries.
- */
-bool taskingDirectoryRegister(const char* name, g_tid tid, g_security_level priority);
+void* operator new[](size_t size, void* ptr) noexcept
+{
+	return ptr;
+}
 
-/**
- * @return task for the name or G_TID_NONE
- */
-g_tid taskingDirectoryGet(const char* name);
+void* operator new(size_t size)
+{
+	return heapAllocate(size);
+}
 
-/**
- * @return name for the task or nullptr
- */
-const char* taskingDirectoryGetIdentifier(g_tid tid);
+void* operator new[](size_t size)
+{
+	return heapAllocate(size);
+}
 
-/**
- * Adds the task to the wait queue for when another task registers with this identifier.
- */
-void taskingDirectoryWaitForRegister(const char* name, g_tid task);
+void operator delete(void* m)
+{
+	heapFree(m);
+}
 
-#endif
+void operator delete[](void* m)
+{
+	heapFree(m);
+}

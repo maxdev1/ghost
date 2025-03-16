@@ -18,43 +18,19 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_TASKING_DIRECTORY__
-#define __KERNEL_TASKING_DIRECTORY__
+#include "ghost/syscall.h"
+#include "ghost/tasks.h"
+#include "ghost/tasks/callstructs.h"
 
-#include "kernel/tasking/tasking.hpp"
-
-struct g_task_directory_entry
+/**
+ *
+ */
+g_tid g_task_await_by_id(const char* identifier)
 {
-    g_tid task;
-    g_security_level priority;
-    g_wait_queue waitQueue;
-};
+	g_syscall_task_await_by_id data;
+	data.identifier = (char*) identifier;
 
-/**
- * Initializes the task directory.
- */
-void taskingDirectoryInitialize();
+	g_syscall(G_SYSCALL_AWAIT_TASK_BY_IDENTIFIER, (g_address) &data);
 
-/**
- * Registers the given task in the directory. The priority decides if registering is valid,
- * a task with a stronger security level always overrides weaker, and weaker can't override
- * stronger entries.
- */
-bool taskingDirectoryRegister(const char* name, g_tid tid, g_security_level priority);
-
-/**
- * @return task for the name or G_TID_NONE
- */
-g_tid taskingDirectoryGet(const char* name);
-
-/**
- * @return name for the task or nullptr
- */
-const char* taskingDirectoryGetIdentifier(g_tid tid);
-
-/**
- * Adds the task to the wait queue for when another task registers with this identifier.
- */
-void taskingDirectoryWaitForRegister(const char* name, g_tid task);
-
-#endif
+	return data.task;
+}

@@ -21,7 +21,6 @@
 #include "kernel/calls/syscall_messaging.hpp"
 #include "kernel/ipc/message.hpp"
 #include "kernel/tasking/user_mutex.hpp"
-#include "kernel/system/interrupts/interrupts.hpp"
 
 void syscallMessageSend(g_task* task, g_syscall_send_message* data)
 {
@@ -29,14 +28,10 @@ void syscallMessageSend(g_task* task, g_syscall_send_message* data)
 	      G_MESSAGE_SEND_STATUS_QUEUE_FULL &&
 	      data->mode == G_MESSAGE_SEND_MODE_BLOCKING)
 	{
-		INTERRUPTS_PAUSE;
-		mutexAcquire(&task->lock);
-		task->status = G_TASK_STATUS_WAITING;
-		task->waitsFor = "message-send";
-		mutexRelease(&task->lock);
-		messageWaitForSend(task->id, data->receiver);
-		taskingYield();
-		INTERRUPTS_RESUME;
+		taskingWait(task, __func__, [task, data]()
+		{
+			messageWaitForSend(task->id, data->receiver);
+		});
 	}
 	messageUnwaitForSend(task->id, data->receiver);
 }
@@ -47,27 +42,17 @@ void syscallMessageReceive(g_task* task, g_syscall_receive_message* data)
 	      G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY &&
 	      data->mode == G_MESSAGE_RECEIVE_MODE_BLOCKING)
 	{
-		/**
-		 * TODO: "Break condition" doesn't work anymore since there is no connection between mutexes and
-		 * the message wait queues. This must be somehow connected and the task waken when required.
-		 */
+		// TODO: "Break condition" can't work anymore:
 		// if(data->break_condition && userMutexAcquire(task, data->break_condition, true, false))
 		//{
 		//	data->status = G_MESSAGE_RECEIVE_STATUS_INTERRUPTED;
 		//	break;
 		// }
-
-		INTERRUPTS_PAUSE;
-		mutexAcquire(&task->lock);
-		task->status = G_TASK_STATUS_WAITING;
-		task->waitsFor = "message-recv";
-		mutexRelease(&task->lock);
-		taskingYield();
-		INTERRUPTS_RESUME;
+		taskingWait(task, __func__);
 	}
 }
 
-void syscallMessageNextTxid(g_task* task, g_syscall_message_next_txid* data)
+void syscallMessageNextTxId(g_task* task, g_syscall_message_next_txid* data)
 {
 	data->transaction = messageNextTxId();
 }

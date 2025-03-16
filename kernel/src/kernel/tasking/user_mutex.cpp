@@ -128,17 +128,11 @@ g_user_mutex_status userMutexAcquire(g_task* task, g_user_mutex mutex, uint64_t 
 			break;
 		}
 
-		INTERRUPTS_PAUSE;
-		mutexAcquire(&task->lock);
-		task->status = G_TASK_STATUS_WAITING;
-		task->waitsFor = "user-mutex";
-		mutexRelease(&task->lock);
-		userMutexWaitForAcquire(mutex, task->id);
-
-		mutexRelease(&entry->lock);
-
-		taskingYield();
-		INTERRUPTS_RESUME;
+		taskingWait(task, __func__, [mutex, entry, task]()
+		{
+			userMutexWaitForAcquire(mutex, task->id);
+			mutexRelease(&entry->lock);
+		});
 	}
 
 	if(useTimeout)

@@ -28,6 +28,6 @@ void syscallMessageSend(g_task* task, g_syscall_send_message* data);
 
 void syscallMessageReceive(g_task* task, g_syscall_receive_message* data);
 
-void syscallMessageNextTxid(g_task * task, g_syscall_message_next_txid * data);
+void syscallMessageNextTxId(g_task* task, g_syscall_message_next_txid* data);
 
 #endif

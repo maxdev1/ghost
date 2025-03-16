@@ -23,6 +23,7 @@
 
 #include "kernel/tasking/task.hpp"
 #include "kernel/utils/hashmap.hpp"
+#include "kernel/runtime/itanium_cxx_abi_support.hpp"
 
 #include <ghost/system/types.h>
 #include <ghost/tasks/types.h>
@@ -256,5 +257,11 @@ void taskingWaitForExit(g_tid task, g_tid waiter);
  * Wakes the task.
  */
 void taskingWake(g_task* task);
+
+/**
+ * Sets the task waiting and executes the function before yielding. The lambda
+ * should attach wake-up for the task.
+ */
+void taskingWait(g_task* task, const char* debugName, const std::function<void ()>& beforeYield = nullptr);
 
 #endif

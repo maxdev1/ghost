@@ -120,6 +120,16 @@ void g_exit_task();
 uint8_t g_task_register_id(const char* identifier);
 
 /**
+ * Waits until a task registers with the given identifier and then returns the task id.
+ *
+ * @param identifier
+ *      the expected identifier
+ *
+ * @security-level APPLICATION
+ */
+g_tid g_task_await_by_id(const char* identifier);
+
+/**
  * Returns the id of the task that is registered for the given identifier.
  *
  * @param identifier
