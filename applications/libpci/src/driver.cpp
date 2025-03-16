@@ -21,62 +21,161 @@
 #include "libpci/driver.hpp"
 #include <cstdio>
 #include <cstring>
+#include <ghost/malloc.h>
 
-bool pciDriverIdentifyAhciController(g_pci_identify_ahci_controller_entry** outEntries, int* outCount)
+bool pciDriverListDevices(int* outCount, g_pci_device_data** outData)
 {
-	g_tid driverTid = g_task_get_id(G_PCI_DRIVER_IDENTIFIER);
-	if(driverTid == -1)
+	g_tid driverTid = g_task_await_by_id(G_PCI_DRIVER_IDENTIFIER);
+
+	g_message_transaction tx = g_get_message_tx_id();
+
+	g_pci_list_devices_request request{};
+	request.header.command = G_PCI_LIST_DEVICES;
+	g_send_message_t(driverTid, &request, sizeof(request), tx);
+
+	size_t bufLen = sizeof(g_message_header) + sizeof(g_pci_list_devices_count_response);
+	uint8_t buf[bufLen];
+	if(g_receive_message_t(buf, bufLen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		return false;
-	}
+		auto response = (g_pci_list_devices_count_response*) G_MESSAGE_CONTENT(buf);
 
-	g_message_transaction transaction = g_get_message_tx_id();
-
-	g_pci_identify_ahci_controller_request request{};
-	request.header.command = G_PCI_IDENTIFY_AHCI_CONTROLLER;
-	g_send_message_t(driverTid, &request, sizeof(g_pci_identify_ahci_controller_request), transaction);
-
-	size_t buflen = sizeof(g_message_header) + sizeof(g_pci_identify_ahci_controller_response);
-	uint8_t buf[buflen];
-	auto status = g_receive_message_t(buf, buflen, transaction);
-	auto response = (g_pci_identify_ahci_controller_response*) G_MESSAGE_CONTENT(buf);
-
-	if(status == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
-	{
-		*outCount = response->count;
-		*outEntries = new g_pci_identify_ahci_controller_entry[response->count];
-		memcpy(*outEntries, response->entries,
-		       sizeof(g_pci_identify_ahci_controller_entry) * G_PCI_IDENTIFY_AHCI_CONTROLLER_ENTRIES);
-		return true;
+		size_t dataBufLen = sizeof(g_message_header) + response->numDevices * sizeof(g_pci_device_data);
+		void* dataBuf = malloc(dataBufLen);
+		if(g_receive_message_t(dataBuf, dataBufLen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+		{
+			*outCount = response->numDevices;
+			*outData = (g_pci_device_data*) G_MESSAGE_CONTENT(dataBuf);
+			return true;
+		}
 	}
 
 	return false;
 }
 
-bool pciDriverIdentifyVmSvgaController(g_pci_identify_vmsvga_controller_response* outResult)
+void pciDriverFreeDeviceList(g_pci_device_data* deviceList)
 {
-	g_tid driverTid = g_task_get_id(G_PCI_DRIVER_IDENTIFIER);
-	if(driverTid == -1)
+	free(((uint8_t*) deviceList - sizeof(g_message_header)));
+}
+
+bool pciDriverReadConfig(g_pci_device_address address, uint8_t offset, int bytes, uint32_t* outValue)
+{
+	g_tid driverTid = g_task_await_by_id(G_PCI_DRIVER_IDENTIFIER);
+
+	g_message_transaction tx = g_get_message_tx_id();
+
+	g_pci_read_config_request request{};
+	request.header.command = G_PCI_READ_CONFIG;
+	request.deviceAddress = address;
+	request.offset = offset;
+	request.bytes = bytes;
+	g_send_message_t(driverTid, &request, sizeof(request), tx);
+
+	bool success = false;
+	size_t bufLen = sizeof(g_message_header) + sizeof(g_pci_read_config_response);
+	uint8_t buf[bufLen];
+	if(g_receive_message_t(buf, bufLen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		return false;
+		auto response = (g_pci_read_config_response*) G_MESSAGE_CONTENT(buf);
+		success = response->successful;
+		*outValue = response->value;
 	}
 
-	g_message_transaction transaction = g_get_message_tx_id();
+	return success;
+}
 
-	g_pci_identify_vmsvga_controller_request request{};
-	request.header.command = G_PCI_IDENTIFY_VMSVGA_CONTROLLER;
-	g_send_message_t(driverTid, &request, sizeof(g_pci_identify_vmsvga_controller_request), transaction);
+bool pciDriverWriteConfig(g_pci_device_address address, uint8_t offset, int bytes, uint32_t value)
+{
+	g_tid driverTid = g_task_await_by_id(G_PCI_DRIVER_IDENTIFIER);
 
-	size_t buflen = sizeof(g_message_header) + sizeof(g_pci_identify_vmsvga_controller_response);
-	uint8_t buf[buflen];
-	auto status = g_receive_message_t(buf, buflen, transaction);
-	auto response = (g_pci_identify_vmsvga_controller_response*) G_MESSAGE_CONTENT(buf);
+	g_message_transaction tx = g_get_message_tx_id();
 
-	if(status == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	g_pci_write_config_request request{};
+	request.header.command = G_PCI_WRITE_CONFIG;
+	request.deviceAddress = address;
+	request.offset = offset;
+	request.bytes = bytes;
+	request.value = value;
+	g_send_message_t(driverTid, &request, sizeof(request), tx);
+
+	bool success = false;
+	size_t bufLen = sizeof(g_message_header) + sizeof(g_pci_write_config_response);
+	uint8_t buf[bufLen];
+	if(g_receive_message_t(buf, bufLen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		*outResult = *response;
-		return true;
+		auto response = (g_pci_read_config_response*) G_MESSAGE_CONTENT(buf);
+		success = response->successful;
 	}
 
-	return false;
+	return success;
+}
+
+bool pciDriverEnableResourceAccess(g_pci_device_address address, bool enabled)
+{
+	g_tid driverTid = g_task_await_by_id(G_PCI_DRIVER_IDENTIFIER);
+
+	g_message_transaction tx = g_get_message_tx_id();
+
+	g_pci_enable_resource_access_request request{};
+	request.header.command = G_PCI_ENABLE_RESOURCE_ACCESS;
+	request.deviceAddress = address;
+	request.enabled = enabled;
+	g_send_message_t(driverTid, &request, sizeof(request), tx);
+
+	bool success = false;
+	size_t bufLen = sizeof(g_message_header) + sizeof(g_pci_enable_resource_access_response);
+	uint8_t buf[bufLen];
+	if(g_receive_message_t(buf, bufLen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	{
+		auto response = (g_pci_enable_resource_access_response*) G_MESSAGE_CONTENT(buf);
+		success = response->successful;
+	}
+	return success;
+}
+
+bool pciDriverReadBAR(g_pci_device_address address, uint8_t bar, uint32_t* outValue)
+{
+	g_tid driverTid = g_task_await_by_id(G_PCI_DRIVER_IDENTIFIER);
+
+	g_message_transaction tx = g_get_message_tx_id();
+
+	g_pci_read_bar_request request{};
+	request.header.command = G_PCI_READ_BAR;
+	request.deviceAddress = address;
+	request.bar = bar;
+	g_send_message_t(driverTid, &request, sizeof(request), tx);
+
+	bool success = false;
+	size_t bufLen = sizeof(g_message_header) + sizeof(g_pci_read_bar_response);
+	uint8_t buf[bufLen];
+	if(g_receive_message_t(buf, bufLen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	{
+		auto response = (g_pci_read_bar_response*) G_MESSAGE_CONTENT(buf);
+		success = response->successful;
+		*outValue = response->value;
+	}
+	return success;
+}
+
+bool pciDriverReadBARSize(g_pci_device_address address, uint8_t bar, uint32_t* outValue)
+{
+	g_tid driverTid = g_task_await_by_id(G_PCI_DRIVER_IDENTIFIER);
+
+	g_message_transaction tx = g_get_message_tx_id();
+
+	g_pci_read_bar_size_request request{};
+	request.header.command = G_PCI_READ_BAR_SIZE;
+	request.deviceAddress = address;
+	request.bar = bar;
+	g_send_message_t(driverTid, &request, sizeof(request), tx);
+
+	bool success = false;
+	size_t bufLen = sizeof(g_message_header) + sizeof(g_pci_read_bar_size_response);
+	uint8_t buf[bufLen];
+	if(g_receive_message_t(buf, bufLen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	{
+		auto response = (g_pci_read_bar_size_response*) G_MESSAGE_CONTENT(buf);
+		success = response->successful;
+		*outValue = response->value;
+	}
+	return success;
 }

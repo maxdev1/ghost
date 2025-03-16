@@ -55,9 +55,7 @@ void vmsvgaDriverReceiveMessages()
 	{
 		auto status = g_receive_message(buf, buflen);
 		if(status != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
-		{
 			continue;
-		}
 
 		auto header = (g_message_header*) buf;
 		auto request = (g_vmsvga_request_header*) G_MESSAGE_CONTENT(buf);

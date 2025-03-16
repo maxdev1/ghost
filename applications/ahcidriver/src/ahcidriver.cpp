@@ -22,20 +22,25 @@
 #include <cstdio>
 #include <libahci/ahci.hpp>
 #include <libahci/driver.hpp>
+#include <libpci/driver.hpp>
+
+static uint32_t controllerBar;
+static uint8_t controllerIntrLine;
 
 int main()
 {
 	g_task_register_id(G_AHCI_DRIVER_IDENTIFIER);
 
-	g_pci_identify_ahci_controller_entry* entries;
-	if((entries = ahciDriverIdentifyController()) == nullptr)
+	if(!ahciDriverIdentifyController())
+	{
+		klog("Failed to identify AHCI controller");
 		return -1;
+	}
 
-	auto ahciController = entries[0];
-	g_irq_create_redirect(ahciController.interruptLine, 2);
+	g_irq_create_redirect(controllerIntrLine, 2);
 
-	auto ahciControllerVirt = g_map_mmio((void*) ahciController.baseAddress, 0x1000);
-	klog("mapped AHCI controller at %x to virtual %x", ahciController.baseAddress, ahciControllerVirt);
+	auto ahciControllerVirt = g_map_mmio((void*) controllerBar, 0x1000);
+	klog("mapped AHCI controller at %x to virtual %x", controllerBar, ahciControllerVirt);
 
 	auto ahciGhc = (volatile g_ahci_hba_ghc*) ahciControllerVirt;
 	ahciGhc->ghc.ahciEnable = 1;
@@ -53,31 +58,49 @@ int main()
 	g_sleep(999999);
 }
 
-g_pci_identify_ahci_controller_entry* ahciDriverIdentifyController()
+bool ahciDriverIdentifyController()
 {
-	g_pci_identify_ahci_controller_entry* entries = nullptr;
-	while(true)
+	int count;
+	g_pci_device_data* devices;
+	if(!pciDriverListDevices(&count, &devices))
 	{
-		int count;
-		// TODO avoid this loop
-		if(pciDriverIdentifyAhciController(&entries, &count))
+		klog("failed to list PCI devices");
+		return false;
+	}
+
+	bool found = false;
+	for(int i = 0; i < count; i++)
+	{
+		if(devices[i].classCode == PCI_BASE_CLASS_MASS_STORAGE &&
+		   devices[i].subclassCode == PCI_01_SUBCLASS_SATA &&
+		   devices[i].progIf == PCI_01_06_PROGIF_AHCI)
 		{
-			if(count < 1)
+			uint32_t bar;
+			if(!pciDriverReadBAR(devices[i].deviceAddress, 5, &bar))
 			{
-				klog("no AHCI controllers were reported by PCI driver, exiting");
-				return nullptr;
+				klog("Failed to read BAR5 from PCI device %x", devices[i].deviceAddress);
+				continue;
 			}
 
+			uint32_t interruptLine;
+			if(!pciDriverReadConfig(devices[i].deviceAddress, PCI_CONFIG_OFF_INTR, 1, &interruptLine))
+			{
+				klog("Failed to read interrupt line from PCI device %x", devices[i].deviceAddress);
+				continue;
+			}
+
+			controllerBar = bar;
+			controllerIntrLine = interruptLine;
+			klog("AHCI controller at bar %x, intr line %x", bar, interruptLine);
+			found = true;
 			break;
 		}
-		else
-		{
-			klog("failed to identify AHCI controller, retrying soon...");
-		}
-		g_sleep(5000);
 	}
-	return entries;
+	pciDriverFreeDeviceList(devices);
+
+	return found;
 }
+
 
 void ahciIdentifyDevice(uint8_t portNumber, volatile g_ahci_hba_port* port)
 {

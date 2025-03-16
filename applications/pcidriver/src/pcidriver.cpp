@@ -24,10 +24,11 @@
 #include <libpci/pci.hpp>
 #include <libpci/driver.hpp>
 #include <ghost.h>
+#include <malloc.h>
 
-g_user_mutex pciLock = g_mutex_initialize();
-
+g_user_mutex configSpaceLock = g_mutex_initialize();
 g_pci_device* deviceList = nullptr;
+int deviceCount = 0;
 g_user_mutex deviceListLock = g_mutex_initialize();
 
 int main()
@@ -59,116 +60,196 @@ void pciDriverReceiveMessages()
 		auto header = (g_message_header*) buf;
 		auto request = (g_pci_request_header*) G_MESSAGE_CONTENT(buf);
 
-		if(request->command == G_PCI_IDENTIFY_AHCI_CONTROLLER)
+		if(request->command == G_PCI_LIST_DEVICES)
 		{
-			pciDriverIdentifyAhciController(header->sender, header->transaction);
+			pciDriverHandleListDevices(header->sender, header->transaction);
 		}
-		else if(request->command == G_PCI_IDENTIFY_VMSVGA_CONTROLLER)
+		else if(request->command == G_PCI_READ_CONFIG)
 		{
-			pciDriverIdentifyVmSvgaController(header->sender, header->transaction);
+			pciDriverHandleReadConfig(header->sender, header->transaction, (g_pci_read_config_request*) request);
+		}
+		else if(request->command == G_PCI_WRITE_CONFIG)
+		{
+			pciDriverHandleWriteConfig(header->sender, header->transaction, (g_pci_write_config_request*) request);
+		}
+		else if(request->command == G_PCI_ENABLE_RESOURCE_ACCESS)
+		{
+			pciDriverHandleEnableResourceAccess(header->sender, header->transaction,
+			                                (g_pci_enable_resource_access_request*) request);
+		}
+		else if(request->command == G_PCI_READ_BAR)
+		{
+			pciDriverHandleReadBar(header->sender, header->transaction, (g_pci_read_bar_request*) request);
+		}
+		else if(request->command == G_PCI_READ_BAR_SIZE)
+		{
+			pciDriverHandleReadBarSize(header->sender, header->transaction, (g_pci_read_bar_size_request*) request);
 		}
 	}
 }
 
-void pciDriverIdentifyAhciController(g_tid sender, g_message_transaction transaction)
+g_pci_device* _pciDriverGetDevice(g_pci_device_address deviceAddress)
 {
-	g_pci_identify_ahci_controller_response response{};
-	response.count = 0;
+	g_pci_device* device = nullptr;
 
 	g_mutex_acquire(deviceListLock);
-	g_pci_device* dev = deviceList;
-	while(dev)
+	g_pci_device* current = deviceList;
+	while(current)
 	{
-		if(dev->classCode == PCI_BASE_CLASS_MASS_STORAGE
-		   && dev->subclassCode == PCI_01_SUBCLASS_SATA
-		   && dev->progIf == PCI_01_06_PROGIF_AHCI)
+		if(G_PCI_DEVICE_ADDRESS_BUILD(current->bus, current->device, current->function) == deviceAddress)
 		{
-			uint32_t bar = pciConfigReadDword(dev, PCI_CONFIG_OFF_BAR5);
-			uint8_t interruptLine = pciConfigReadByte(dev, PCI_CONFIG_OFF_INTR);
-
-			response.entries[response.count].baseAddress = bar & ~0xF;
-			response.entries[response.count].interruptLine = interruptLine;
-
-			++response.count;
+			device = current;
+			break;
 		}
 
-		dev = dev->next;
+		current = current->next;
 	}
 	g_mutex_release(deviceListLock);
 
-	g_send_message_t(sender, &response, sizeof(g_pci_identify_ahci_controller_response), transaction);
+	return device;
 }
 
-void pciDriverIdentifyVboxSvgaController(g_tid sender, g_message_transaction transaction)
+void pciDriverHandleListDevices(g_tid sender, g_message_transaction transaction)
 {
 	g_mutex_acquire(deviceListLock);
-	g_pci_device* dev = deviceList;
-	while(dev)
+
+	g_pci_list_devices_count_response response{};
+	response.numDevices = deviceCount;
+	g_send_message_t(sender, &response, sizeof(response), transaction);
+
+	size_t dataSize = deviceCount * sizeof(g_pci_device_data);
+	auto data = (g_pci_device_data*) malloc(dataSize);
+	int pos = 0;
+	g_pci_device* current = deviceList;
+	while(current)
 	{
-		if(dev->classCode == PCI_BASE_CLASS_DISPLAY
-		   && dev->subclassCode == PCI_03_SUBCLASS_VGA
-		   && dev->progIf == PCI_03_00_PROGIF_VGA_COMPATIBLE)
-		{
-			uint16_t vendor = pciConfigReadWord(dev, PCI_CONFIG_OFF_VENDOR_ID);
-			uint16_t device = pciConfigReadWord(dev, PCI_CONFIG_OFF_DEVICE_ID);
+		auto& entry = data[pos++];
+		entry.deviceAddress = G_PCI_DEVICE_ADDRESS_BUILD(current->bus, current->device, current->function);
+		entry.classCode = current->classCode;
+		entry.subclassCode = current->subclassCode;
+		entry.progIf = current->progIf;
 
-			if(vendor == 0x80EE /* VBox */ && device == 0xBEEF /* SVGA */)
-			{
-				uint32_t bar0 = pciConfigReadDword(dev, PCI_CONFIG_OFF_BAR0) & ~0xF;
-				pciConfigWriteDword(dev, PCI_CONFIG_OFF_BAR0, 0xFFFFFFFF);
-				uint32_t bar0size = ~(pciConfigReadDword(dev, PCI_CONFIG_OFF_BAR0) & ~
-				                      0xF) + 1;
-				pciConfigWriteDword(dev, PCI_CONFIG_OFF_BAR0, bar0);
-				klog("Found BAR0 %x with size %x", bar0, bar0size);
-				// I can't find documentation how to properly implement this controller...
-			}
-		}
-
-		dev = dev->next;
+		current = current->next;
 	}
+
 	g_mutex_release(deviceListLock);
+
+	g_send_message_t(sender, data, dataSize, transaction);
+	free(data);
 }
 
-void pciDriverIdentifyVmSvgaController(g_tid sender, g_message_transaction transaction)
+void pciDriverHandleReadConfig(g_tid sender, g_message_transaction transaction, g_pci_read_config_request* request)
 {
-	bool found = false;
-	g_mutex_acquire(deviceListLock);
-	g_pci_device* dev = deviceList;
-	while(dev)
+	g_pci_read_config_response response{};
+	auto device = _pciDriverGetDevice(request->deviceAddress);
+	if(!device)
 	{
-		if(dev->classCode == PCI_BASE_CLASS_DISPLAY
-		   && dev->subclassCode == PCI_03_SUBCLASS_VGA
-		   && dev->progIf == PCI_03_00_PROGIF_VGA_COMPATIBLE)
-		{
-			uint16_t vendor = pciConfigReadWord(dev, PCI_CONFIG_OFF_VENDOR_ID);
-			uint16_t device = pciConfigReadWord(dev, PCI_CONFIG_OFF_DEVICE_ID);
-
-			if(vendor == 0x15AD /* VMWare */ && device == 0x0405 /* SVGA2 */)
-			{
-				pciEnableResourceAccess(dev, true);
-
-				g_pci_identify_vmsvga_controller_response response;
-				response.found = true;
-				response.ioBase = pciConfigGetBAR(dev, 0);
-				response.fbBase = pciConfigGetBAR(dev, 1);
-				response.fifoBase = pciConfigGetBAR(dev, 2);
-				g_send_message_t(sender, &response, sizeof(g_pci_identify_vmsvga_controller_response), transaction);
-
-				found = true;
-				break;
-			}
-		}
-
-		dev = dev->next;
+		response.successful = false;
+		g_send_message_t(sender, &response, sizeof(response), transaction);
+		return;
 	}
-	g_mutex_release(deviceListLock);
 
-	if(!found)
+	if(request->bytes == 1)
 	{
-		g_pci_identify_vmsvga_controller_response response;
-		response.found = false;
-		g_send_message_t(sender, &response, sizeof(g_pci_identify_vmsvga_controller_response), transaction);
+		response.value = pciConfigReadByte(device, request->offset);
+		response.successful = true;
 	}
+	else if(request->bytes == 2)
+	{
+		response.value = pciConfigReadWord(device, request->offset);
+		response.successful = true;
+	}
+	else if(request->bytes == 4)
+	{
+		response.value = pciConfigReadDword(device, request->offset);
+		response.successful = true;
+	}
+	else
+	{
+		klog("failed to read %i bytes from offset %i", request->bytes, request->offset);
+		response.successful = false;
+	}
+	g_send_message_t(sender, &response, sizeof(response), transaction);
+}
+
+void pciDriverHandleWriteConfig(g_tid sender, g_message_transaction transaction, g_pci_write_config_request* request)
+{
+	g_pci_write_config_response response{};
+	auto device = _pciDriverGetDevice(request->deviceAddress);
+	if(!device)
+	{
+		response.successful = false;
+		g_send_message_t(sender, &response, sizeof(response), transaction);
+		return;
+	}
+
+	if(request->bytes == 1)
+	{
+		pciConfigWriteByte(device, request->offset, request->value);
+		response.successful = true;
+	}
+	else if(request->bytes == 2)
+	{
+		pciConfigWriteWord(device, request->offset, request->value);
+		response.successful = true;
+	}
+	else if(request->bytes == 4)
+	{
+		pciConfigWriteDword(device, request->offset, request->value);
+		response.successful = true;
+	}
+	else
+	{
+		klog("failed to write %i bytes to offset %i", request->bytes, request->offset);
+		response.successful = false;
+	}
+	g_send_message_t(sender, &response, sizeof(response), transaction);
+}
+
+void pciDriverHandleEnableResourceAccess(g_tid sender, g_message_transaction transaction,
+                                     g_pci_enable_resource_access_request* request)
+{
+	g_pci_enable_resource_access_response response{};
+	response.successful = false;
+
+	auto device = _pciDriverGetDevice(request->deviceAddress);
+	if(device)
+	{
+		pciEnableResourceAccess(device, request->deviceAddress);
+		response.successful = true;
+	}
+
+	g_send_message_t(sender, &response, sizeof(response), transaction);
+}
+
+void pciDriverHandleReadBar(g_tid sender, g_message_transaction transaction, g_pci_read_bar_request* request)
+{
+	g_pci_read_bar_response response{};
+	response.successful = false;
+
+	auto device = _pciDriverGetDevice(request->deviceAddress);
+	if(device)
+	{
+		response.value = pciConfigGetBAR(device, request->bar);
+		response.successful = true;
+	}
+
+	g_send_message_t(sender, &response, sizeof(response), transaction);
+}
+
+void pciDriverHandleReadBarSize(g_tid sender, g_message_transaction transaction, g_pci_read_bar_size_request* request)
+{
+	g_pci_read_bar_size_response response{};
+	response.successful = false;
+
+	auto device = _pciDriverGetDevice(request->deviceAddress);
+	if(device)
+	{
+		response.value = pciConfigGetBAR(device, request->bar);
+		response.successful = true;
+	}
+
+	g_send_message_t(sender, &response, sizeof(response), transaction);
 }
 
 void pciDriverScanBus()
@@ -197,6 +278,7 @@ void pciDriverScanBus()
 					device->progIf = progIf;
 					device->next = deviceList;
 					deviceList = device;
+					deviceCount++;
 					g_mutex_release(deviceListLock);
 
 					++total;
@@ -261,10 +343,10 @@ uint32_t pciConfigReadDword(g_pci_device* dev, uint8_t offset)
 
 uint32_t pciConfigReadDwordAt(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset)
 {
-	g_mutex_acquire(pciLock);
+	g_mutex_acquire(configSpaceLock);
 	g_io_port_write_dword(PCI_CONFIG_PORT_ADDR, PCI_CONFIG_OFF(bus, device, function, offset));
 	auto result = g_io_port_read_dword(PCI_CONFIG_PORT_DATA);
-	g_mutex_release(pciLock);
+	g_mutex_release(configSpaceLock);
 	return result;
 }
 
@@ -293,8 +375,8 @@ void pciConfigWriteDword(g_pci_device* dev, uint8_t offset, uint32_t value)
 
 void pciConfigWriteDwordAt(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint32_t value)
 {
-	g_mutex_acquire(pciLock);
+	g_mutex_acquire(configSpaceLock);
 	g_io_port_write_dword(PCI_CONFIG_PORT_ADDR, PCI_CONFIG_OFF(bus, device, function, offset));
 	g_io_port_write_dword(PCI_CONFIG_PORT_DATA, value);
-	g_mutex_release(pciLock);
+	g_mutex_release(configSpaceLock);
 }

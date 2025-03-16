@@ -21,7 +21,8 @@
 #include <ghost.h>
 #include <libvmsvgadriver/vmsvgadriver.hpp>
 #include <cstdio>
-g_tid driverTid = -1;
+
+g_tid driverTid = G_TID_NONE;
 
 bool vmsvgaDriverSetMode(uint16_t width, uint16_t height, uint8_t bpp, g_vmsvga_mode_info& out)
 {

@@ -21,30 +21,83 @@
 #include "svga.hpp"
 #include <libpci/driver.hpp>
 #include <cstdio>
+#include <malloc.h>
 #include <libwindow/color_argb.hpp>
 
 svga_device_t device;
 
-bool svgaInitializeDevice()
+bool svgaGetPciControllerData()
 {
-	g_pci_identify_vmsvga_controller_response response{};
-	while(true)
+	int count;
+	g_pci_device_data* devices;
+	if(!pciDriverListDevices(&count, &devices))
 	{
-		// TODO: Implement something that allows a task to wait until a task with a specific identifier registers
-		if(pciDriverIdentifyVmSvgaController(&response))
-		{
-			break;
-		}
-		g_sleep(500);
-	}
-	if(!response.found)
-	{
-		klog("no VMSVGA controller present");
+		klog("failed to list PCI devices");
 		return false;
 	}
-	device.ioBase = response.ioBase;
-	device.fb.physical = response.fbBase;
-	device.fifo.physical = response.fifoBase;
+
+	g_pci_device_address address;
+	bool found = false;
+	for(int i = 0; i < count; i++)
+	{
+		if(devices[i].classCode == PCI_BASE_CLASS_DISPLAY &&
+		   devices[i].subclassCode == PCI_03_SUBCLASS_VGA &&
+		   devices[i].progIf == PCI_03_00_PROGIF_VGA_COMPATIBLE)
+		{
+			uint32_t vendorId;
+			if(!pciDriverReadConfig(devices[i].deviceAddress, PCI_CONFIG_OFF_VENDOR_ID, 2, &vendorId))
+			{
+				klog("Failed to read vendor ID from PCI device %x", devices[i].deviceAddress);
+				continue;
+			}
+
+			uint32_t deviceId;
+			if(!pciDriverReadConfig(devices[i].deviceAddress, PCI_CONFIG_OFF_DEVICE_ID, 2, &deviceId))
+			{
+				klog("Failed to read device ID from PCI device %x", devices[i].deviceAddress);
+				continue;
+			}
+
+			if(vendorId == 0x15AD /* VMWare */ && deviceId == 0x0405 /* SVGA2 */)
+			{
+				address = devices[i].deviceAddress;
+				found = true;
+				break;
+			}
+		}
+	}
+	pciDriverFreeDeviceList(devices);
+
+	if(found)
+	{
+		if(!pciDriverEnableResourceAccess(address, true))
+		{
+			klog("failed to enable resource access of VMSVGA controller");
+			return false;
+		}
+		if(!pciDriverReadBAR(address, 0, &device.ioBase))
+		{
+			klog("failed to read BAR0 of VMSVGA controller");
+			return false;
+		}
+		if(!pciDriverReadBAR(address, 1, &device.fb.physical))
+		{
+			klog("failed to read BAR1 of VMSVGA controller");
+			return false;
+		}
+		if(!pciDriverReadBAR(address, 2, &device.fifo.physical))
+		{
+			klog("failed to read BAR2 of VMSVGA controller");
+			return false;
+		}
+	}
+	return found;
+}
+
+bool svgaInitializeDevice()
+{
+	if(!svgaGetPciControllerData())
+		return false;
 	device.vramSize = svgaReadReg(SVGA_REG_VRAM_SIZE);
 
 	if(!svgaIdentifyVersion())

@@ -92,11 +92,21 @@ void syscallJoin(g_task* task, g_syscall_join* data)
 
 void syscallSpawn(g_task* task, g_syscall_spawn* data)
 {
+	if((task->securityLevel == G_SECURITY_LEVEL_APPLICATION && data->securityLevel < G_SECURITY_LEVEL_APPLICATION) ||
+	   (task->securityLevel == G_SECURITY_LEVEL_DRIVER && data->securityLevel < G_SECURITY_LEVEL_DRIVER))
+	{
+		data->status = G_SPAWN_STATUS_TASKING_ERROR;
+		logInfo("%! task %i doesn't have privilege to spawn '%s' as security level %i", "kernel", task->id, data->path,
+		        data->securityLevel);
+		return;
+	}
+
+
 	g_fd fd;
 	g_fs_open_status open = filesystemOpen(data->path, G_FILE_FLAG_MODE_READ, task, &fd);
 	if(open == G_FS_OPEN_SUCCESSFUL)
 	{
-		auto target = taskingSpawn(fd, G_SECURITY_LEVEL_APPLICATION);
+		auto target = taskingSpawn(fd, data->securityLevel);
 		data->status = target.status;
 		data->validationDetails = target.validation;
 

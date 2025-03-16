@@ -24,9 +24,8 @@
 #include <stdint.h>
 #include <ghost.h>
 #include <libahci/ahci.hpp>
-#include <libpci/driver.hpp>
 
-g_pci_identify_ahci_controller_entry* ahciDriverIdentifyController();
+bool ahciDriverIdentifyController();
 bool ahciPortStartCommands(volatile g_ahci_hba_port* port);
 bool ahciPortStopCommands(volatile g_ahci_hba_port* port);
 int ahciFindFreeCommandSlot(volatile g_ahci_hba_port* port);

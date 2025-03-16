@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,34 +18,4 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "libps2driver/ps2driver.hpp"
-#include <ghost.h>
-
-bool ps2DriverInitialize(g_fd* keyboardReadOut, g_fd* mouseReadOut, g_tid keyboardPartnerTask, g_tid mousePartnerTask)
-{
-	g_tid driverTid = g_task_await_by_id(G_PS2_DRIVER_IDENTIFIER);
-	g_message_transaction transaction = g_get_message_tx_id();
-
-	g_ps2_initialize_request request{};
-	request.header.command = G_PS2_COMMAND_INITIALIZE;
-	request.keyboardPartnerTask = keyboardPartnerTask;
-	request.mousePartnerTask = mousePartnerTask;
-	g_send_message_t(driverTid, &request, sizeof(request), transaction);
-
-	size_t buflen = sizeof(g_message_header) + sizeof(g_ps2_initialize_response);
-	uint8_t buf[buflen];
-	auto status = g_receive_message_t(buf, buflen, transaction);
-	auto response = (g_ps2_initialize_response*) G_MESSAGE_CONTENT(buf);
-
-	if(status == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
-	{
-		if(response->status == G_PS2_INITIALIZE_SUCCESS)
-		{
-			*keyboardReadOut = response->keyboardRead;
-			*mouseReadOut = response->mouseRead;
-			return true;
-		}
-	}
-
-	return false;
-}
+#include "libdevice/manager.hpp"

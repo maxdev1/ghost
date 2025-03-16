@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 #include <ghost.h>
+#include <libpci/driver.hpp>
 
 struct g_pci_device
 {
@@ -74,17 +75,11 @@ void pciEnableResourceAccess(g_pci_device* dev, bool enabled);
  * Receives incoming messages.
  */
 void pciDriverReceiveMessages();
-
-/**
- * Identifies AHCI controllers
- */
-void pciDriverIdentifyAhciController(g_tid sender, g_message_transaction transaction);
-
-/**
- * Identifies VBox SVGA controllers
- */
-void pciDriverIdentifyVboxSvgaController(g_tid sender, g_message_transaction transaction);
-void pciDriverIdentifyVmSvgaController(g_tid sender, g_message_transaction transaction);
-
+void pciDriverHandleListDevices(g_tid sender, g_message_transaction transaction);
+void pciDriverHandleWriteConfig(g_tid sender, g_message_transaction transaction, g_pci_write_config_request* request);
+void pciDriverHandleReadConfig(g_tid sender, g_message_transaction transaction, g_pci_read_config_request* request);
+void pciDriverHandleEnableResourceAccess(g_tid sender, g_message_transaction transaction, g_pci_enable_resource_access_request* request);
+void pciDriverHandleReadBar(g_tid sender, g_message_transaction transaction, g_pci_read_bar_request* request);
+void pciDriverHandleReadBarSize(g_tid sender, g_message_transaction transaction, g_pci_read_bar_size_request* request);
 
 #endif

@@ -150,12 +150,10 @@ void kernelInitializationThread()
 
 	G_PRETTY_BOOT_STATUS_P(20);
 	kernelSpawnService("/applications/pcidriver.bin", "", G_SECURITY_LEVEL_DRIVER);
+	G_PRETTY_BOOT_STATUS_P(20);
+	kernelSpawnService("/applications/devicemanager.bin", "", G_SECURITY_LEVEL_DRIVER);
 	G_PRETTY_BOOT_STATUS_P(40);
 	kernelSpawnService("/applications/ps2driver.bin", "", G_SECURITY_LEVEL_DRIVER);
-	G_PRETTY_BOOT_STATUS_P(50);
-	kernelSpawnService("/applications/vbedriver.bin", "", G_SECURITY_LEVEL_DRIVER);
-	G_PRETTY_BOOT_STATUS_P(60);
-	kernelSpawnService("/applications/vmsvgadriver.bin", "", G_SECURITY_LEVEL_DRIVER);
 
 	G_PRETTY_BOOT_STATUS_P(80);
 	kernelSpawnService("/applications/windowserver.bin", "", G_SECURITY_LEVEL_APPLICATION);

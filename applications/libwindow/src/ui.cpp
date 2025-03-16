@@ -52,8 +52,8 @@ g_ui_open_status g_ui::open()
 	}
 
 	// get window managers id
-	g_tid windowServerRegistrationTask = g_task_get_id(G_UI_REGISTRATION_THREAD_IDENTIFIER);
-	if(windowServerRegistrationTask == -1)
+	g_tid windowServerRegistrationTask = g_task_await_by_id(G_UI_REGISTRATION_THREAD_IDENTIFIER);
+	if(windowServerRegistrationTask == G_TID_NONE)
 	{
 		klog("failed to retrieve task id of window server with identifier '%s'", G_UI_REGISTRATION_THREAD_IDENTIFIER);
 		return G_UI_OPEN_STATUS_COMMUNICATION_FAILED;
