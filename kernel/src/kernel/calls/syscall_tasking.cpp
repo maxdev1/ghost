@@ -297,6 +297,12 @@ void syscallAwaitTaskByIdentifier(g_task* task, g_syscall_task_await_by_id* data
 			taskingDirectoryWaitForRegister(data->identifier, task->id);
 		});
 		clockUnwaitForTime(task->id);
+		taskingDirectoryUnwaitForRegister(data->identifier, task->id);
+
+		taskingWait(task, __func__, [data, task]()
+		{
+			clockWaitForTime(task->id, clockGetLocal()->time + 500);
+		});
 	}
 	data->task = target;
 }

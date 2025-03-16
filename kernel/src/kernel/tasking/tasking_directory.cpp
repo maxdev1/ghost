@@ -58,6 +58,16 @@ void taskingDirectoryWaitForRegister(const char* name, g_tid task)
 	mutexRelease(&entryLock);
 }
 
+void taskingDirectoryUnwaitForRegister(const char* name, g_tid task)
+{
+	mutexAcquire(&entryLock);
+
+	auto entry = _taskingDirectoryGetOrCreateEntry(name);
+	waitQueueRemove(&entry->waitQueue, task);
+
+	mutexRelease(&entryLock);
+}
+
 bool taskingDirectoryRegister(const char* name, g_tid tid, g_security_level priority)
 {
 	bool success = false;
