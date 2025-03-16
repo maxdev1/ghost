@@ -103,5 +103,5 @@ void item_t::paint()
 void item_t::onDoubleClick()
 {
 	klog(("Launching: " + this->application).c_str());
-	g_spawn(this->application.c_str(), "", "", G_SECURITY_LEVEL_APPLICATION);
+	g_spawn(this->application.c_str(), "", "/applications", G_SECURITY_LEVEL_APPLICATION);
 }
