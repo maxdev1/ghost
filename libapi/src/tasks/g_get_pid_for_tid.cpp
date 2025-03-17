@@ -25,7 +25,7 @@
 /**
  *
  */
-g_pid g_get_pid_for_tid(uint32_t tid)
+g_pid g_get_pid_for_tid(g_tid tid)
 {
 	g_syscall_get_pid_for_tid data;
 	data.tid = tid;

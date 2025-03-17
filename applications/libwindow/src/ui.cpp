@@ -52,10 +52,10 @@ g_ui_open_status g_ui::open()
 	}
 
 	// get window managers id
-	g_tid windowServerRegistrationTask = g_task_await_by_id(G_UI_REGISTRATION_THREAD_IDENTIFIER);
-	if(windowServerRegistrationTask == G_TID_NONE)
+	g_tid windowserverRegistryTask = g_task_await_by_name(G_UI_REGISTRY_NAME);
+	if(windowserverRegistryTask == G_TID_NONE)
 	{
-		klog("failed to retrieve task id of window server with identifier '%s'", G_UI_REGISTRATION_THREAD_IDENTIFIER);
+		klog("failed to retrieve task id of window server with identifier '%s'", G_UI_REGISTRY_NAME);
 		return G_UI_OPEN_STATUS_COMMUNICATION_FAILED;
 	}
 
@@ -68,7 +68,7 @@ g_ui_open_status g_ui::open()
 	g_ui_initialize_request request;
 	request.header.id = G_UI_PROTOCOL_INITIALIZATION;
 	request.event_dispatcher = g_ui_event_dispatcher_tid;
-	g_send_message_t(windowServerRegistrationTask, &request, sizeof(g_ui_initialize_request), init_tx);
+	g_send_message_t(windowserverRegistryTask, &request, sizeof(g_ui_initialize_request), init_tx);
 	g_yield_t(g_ui_delegate_tid);
 
 	// receive initialization response

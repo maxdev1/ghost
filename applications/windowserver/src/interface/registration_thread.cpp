@@ -28,9 +28,9 @@
 
 void interfaceRegistrationThread()
 {
-	if(!g_task_register_id(G_UI_REGISTRATION_THREAD_IDENTIFIER))
+	if(!g_task_register_name(G_UI_REGISTRY_NAME))
 	{
-		klog("failed to register as \"%s\"", G_UI_REGISTRATION_THREAD_IDENTIFIER);
+		klog("failed to register as \"%s\"", G_UI_REGISTRY_NAME);
 		return;
 	}
 

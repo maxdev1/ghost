@@ -18,19 +18,49 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ghost/syscall.h"
-#include "ghost/tasks.h"
-#include "ghost/tasks/callstructs.h"
+#include <ghost.h>
+#include <libvideo/videodriver.hpp>
+#include <cstdio>
 
-/**
- *
- */
-g_tid g_task_await_by_id(const char* identifier)
+bool videoDriverSetMode(g_tid driverTid, g_device_id device, uint16_t width, uint16_t height, uint8_t bpp,
+                        g_video_mode_info& out)
 {
-	g_syscall_task_await_by_id data;
-	data.identifier = (char*) identifier;
+	g_message_transaction transaction = g_get_message_tx_id();
 
-	g_syscall(G_SYSCALL_AWAIT_TASK_BY_IDENTIFIER, (g_address) &data);
+	g_video_set_mode_request request{};
+	request.header.command = G_VIDEO_COMMAND_SET_MODE;
+	request.header.device = device;
+	request.width = width;
+	request.height = height;
+	request.bpp = bpp;
+	g_send_message_t(driverTid, &request, sizeof(g_video_set_mode_request), transaction);
 
-	return data.task;
+	size_t buflen = sizeof(g_message_header) + sizeof(g_video_set_mode_response);
+	uint8_t buf[buflen];
+	auto status = g_receive_message_t(buf, buflen, transaction);
+	auto response = (g_video_set_mode_response*) G_MESSAGE_CONTENT(buf);
+
+	if(status == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	{
+		if(response->status == G_VIDEO_SET_MODE_STATUS_SUCCESS)
+		{
+			out = response->mode_info;
+			return true;
+		}
+	}
+	return false;
+}
+
+void videoDriverUpdate(g_tid driverTid, g_device_id device, uint16_t x, uint16_t y, uint16_t width, uint16_t height)
+{
+	g_message_transaction transaction = g_get_message_tx_id();
+
+	g_video_update_request request{};
+	request.header.command = G_VIDEO_COMMAND_UPDATE;
+	request.header.device = device;
+	request.x = x;
+	request.y = y;
+	request.width = width;
+	request.height = height;
+	g_send_message_t(driverTid, &request, sizeof(g_video_update_request), transaction);
 }

@@ -18,17 +18,17 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "vmsvga_video_output.hpp"
-#include <libvmsvgadriver/vmsvgadriver.hpp>
+#include "generic_video_output.hpp"
+#include <libvideo/videodriver.hpp>
 #include <cstdio>
 #include <immintrin.h>
 
-bool g_vmsvga_video_output::initializeWithSettings(uint32_t width, uint32_t height, uint32_t bits)
+bool g_generic_video_output::initializeWithSettings(uint32_t width, uint32_t height, uint32_t bits)
 {
 	int tries = 3;
-	while(!vmsvgaDriverSetMode(width, height, bits, videoModeInformation))
+	while(!videoDriverSetMode(driverTid, deviceId, width, height, bits, videoModeInformation))
 	{
-		klog("failed to initialize VMSVGA video... retrying");
+		klog("failed to initialize generic video... retrying");
 		if(tries-- == 0)
 			return false;
 		g_sleep(1000);
@@ -36,7 +36,7 @@ bool g_vmsvga_video_output::initializeWithSettings(uint32_t width, uint32_t heig
 	return true;
 }
 
-void g_vmsvga_video_output::blit(g_rectangle invalid, g_rectangle sourceSize, g_color_argb* source)
+void g_generic_video_output::blit(g_rectangle invalid, g_rectangle sourceSize, g_color_argb* source)
 {
 	uint16_t bpp = videoModeInformation.bpp;
 	uint8_t* position = ((uint8_t*) videoModeInformation.lfb) + (invalid.y * videoModeInformation.bpsl);
@@ -79,12 +79,15 @@ void g_vmsvga_video_output::blit(g_rectangle invalid, g_rectangle sourceSize, g_
 		}
 	}
 
-	vmsvgaDriverUpdate(invalid.x, invalid.y, invalid.width, invalid.height);
-	g_yield();
+	if(videoModeInformation.explicit_update)
+	{
+		videoDriverUpdate(driverTid, deviceId, invalid.x, invalid.y, invalid.width, invalid.height);
+		g_yield();
+	}
 }
 
 
-g_dimension g_vmsvga_video_output::getResolution()
+g_dimension g_generic_video_output::getResolution()
 {
 	return {videoModeInformation.resX, videoModeInformation.resY};
 }

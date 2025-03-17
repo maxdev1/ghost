@@ -26,17 +26,16 @@
 #include "events/locatable.hpp"
 #include "input/input_receiver.hpp"
 #include "interface/registration_thread.hpp"
-#include "video/vbe_video_output.hpp"
-#include "video/vmsvga_video_output.hpp"
+#include "video/generic_video_output.hpp"
+#include "components/window.hpp"
+#include "components/text/text_field.hpp"
+#include "interface/interface_receiver.hpp"
+#include "test.hpp"
 
 #include <cairo/cairo.h>
 #include <iostream>
 #include <cstdio>
-#include <test.hpp>
-#include <components/window.hpp>
-#include <components/text/text_field.hpp>
-#include <interface/interface_receiver.hpp>
-#include <layout/grid_layout_manager.hpp>
+#include <libdevice/interface.hpp>
 
 static windowserver_t* server;
 static g_user_mutex dispatchLock = g_mutex_initialize_r(true);
@@ -77,7 +76,7 @@ void windowserver_t::startInputHandlers()
 
 void windowserver_t::startOtherTasks()
 {
-	g_task_register_id("windowserver/launcher");
+	g_task_register_name("windowserver/launcher");
 	// TODO not the windowservers job
 	g_spawn("/applications/desktop.bin", "", "", G_SECURITY_LEVEL_APPLICATION);
 }
@@ -89,7 +88,7 @@ void windowserver_t::startLazyUpdateLoop()
 
 void windowserver_t::launch()
 {
-	g_task_register_id("windowserver");
+	g_task_register_name("windowserver");
 
 	initializeVideo();
 
@@ -125,35 +124,50 @@ void windowserver_t::createVitalComponents(g_rectangle screenBounds)
 	g_create_task((void*) &windowserver_t::fpsCounter);
 }
 
+g_video_output* windowserver_t::findVideoOutput()
+{
+	klog("waiting for a video device to be present...");
+
+	auto tx = G_MESSAGE_TOPIC_TRANSACTION_START;
+	size_t bufLen = 1024;
+	uint8_t buf[bufLen];
+	while(true)
+	{
+		auto status = g_receive_topic_message(G_DEVICE_EVENT_TOPIC, buf, bufLen, tx);
+		if(status == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+		{
+			auto message = (g_message_header*) buf;
+			tx = message->transaction;
+			auto content = (g_device_event_header*) G_MESSAGE_CONTENT(message);
+
+			if(content->event == G_DEVICE_EVENT_DEVICE_REGISTERED)
+			{
+				auto deviceEvent = (g_device_event_device_registered*) content;
+
+				if(deviceEvent->type == G_DEVICE_TYPE_VIDEO)
+				{
+					return new g_generic_video_output(deviceEvent->driver, deviceEvent->id);
+				}
+			}
+		}
+	}
+}
+
 void windowserver_t::initializeVideo()
 {
+	videoOutput = findVideoOutput();
+
 	g_set_video_log(false);
-
-	auto vmsvgaOutput = new g_vmsvga_video_output();
-	if(vmsvgaOutput->initialize())
+	if(!videoOutput->initialize())
 	{
-		videoOutput = vmsvgaOutput;
-	}
-	else
-	{
-		klog("failed to initialize VMSVGA video output, trying VESA");
-
-		auto vbeOutput = new g_vbe_video_output();
-		if(vbeOutput->initialize())
-		{
-			videoOutput = vbeOutput;
-		}
-		else
-		{
-			klog("failed to initialize VBE output, exiting");
-			g_exit(0);
-		}
+		klog("failed to initialize generic video output");
+		g_exit(-1);
 	}
 }
 
 void windowserver_t::updateLoop(const g_rectangle& screenBounds) const
 {
-	g_task_register_id("windowserver/updater");
+	g_task_register_name("windowserver/updater");
 
 	graphics_t global;
 	global.resize(screenBounds.width, screenBounds.height, false);
@@ -340,7 +354,7 @@ component_t* windowserver_t::switchFocus(component_t* to)
 
 void windowserver_t::fpsCounter()
 {
-	g_task_register_id("windowserver/fps-counter");
+	g_task_register_name("windowserver/fps-counter");
 
 	int seconds = 0;
 	for(;;)

@@ -21,26 +21,32 @@
 #include "vmsvgadriver.hpp"
 #include "svga.hpp"
 
-#include <libvmsvgadriver/vmsvgadriver.hpp>
+#include <libdevice/manager.hpp>
 #include <ghost.h>
 #include <cstdio>
+#include <libvideo/videodriver.hpp>
 
 bool initialized = false;
+g_device_id deviceId;
 
 int main()
 {
-	klog("vmsvgadriver");
-	if(!g_task_register_id(G_VMSVGA_DRIVER_IDENTIFIER))
-	{
-		klog("vmsvgadriver: could not register with task identifier '%s'", (char*) G_VMSVGA_DRIVER_IDENTIFIER);
-		return -1;
-	}
+	g_task_register_name("vmsvgadriver");
+	klog("started");
 
 	initialized = svgaInitializeDevice();
 	if(!initialized)
 	{
 		klog("failed to initialize SVGA controller");
+		return -1;
 	}
+
+	if(!deviceManagerRegisterDevice(G_DEVICE_TYPE_VIDEO, g_get_tid(), &deviceId))
+	{
+		klog("failed to register device with device manager");
+		return -1;
+	}
+	klog("registered VMSVGA device %i", deviceId);
 
 	vmsvgaDriverReceiveMessages();
 	return 0;
@@ -58,13 +64,13 @@ void vmsvgaDriverReceiveMessages()
 			continue;
 
 		auto header = (g_message_header*) buf;
-		auto request = (g_vmsvga_request_header*) G_MESSAGE_CONTENT(buf);
+		auto request = (g_video_request_header*) G_MESSAGE_CONTENT(buf);
 
-		if(request->command == G_VMSVGA_COMMAND_SET_MODE)
+		if(request->command == G_VIDEO_COMMAND_SET_MODE)
 		{
-			auto modeSetRequest = (g_vmsvga_set_mode_request*) request;
+			auto modeSetRequest = (g_video_set_mode_request*) request;
 
-			g_vmsvga_set_mode_response response;
+			g_video_set_mode_response response{};
 			if(initialized)
 			{
 				klog("vmsvgadriver: setting video mode to %ix%i@%i", modeSetRequest->width, modeSetRequest->height,
@@ -73,24 +79,25 @@ void vmsvgaDriverReceiveMessages()
 
 				void* addressInRequestersSpace = g_share_mem(svgaGetFb(), svgaGetFbSize(), header->sender);
 
-				response.status = G_VMSVGA_SET_MODE_STATUS_SUCCESS;
+				response.status = G_VIDEO_SET_MODE_STATUS_SUCCESS;
 				response.mode_info.lfb = (uint32_t) addressInRequestersSpace;
 				response.mode_info.resX = modeSetRequest->width; // TODO read back from SVGA registers
 				response.mode_info.resY = modeSetRequest->height;
 				response.mode_info.bpp = (uint8_t) modeSetRequest->bpp;
 				response.mode_info.bpsl = (uint16_t) (modeSetRequest->width * 4); // TODO
+				response.mode_info.explicit_update = true;
 			}
 			else
 			{
-				response.status = G_VMSVGA_SET_MODE_STATUS_FAILED;
+				response.status = G_VIDEO_SET_MODE_STATUS_FAILED;
 			}
-			g_send_message_t(header->sender, &response, sizeof(g_vmsvga_set_mode_response), header->transaction);
+			g_send_message_t(header->sender, &response, sizeof(response), header->transaction);
 		}
-		else if(request->command == G_VMSVGA_COMMAND_UPDATE)
+		else if(request->command == G_VIDEO_COMMAND_UPDATE)
 		{
 			if(initialized)
 			{
-				auto updateRequest = (g_vmsvga_update_request*) request;
+				auto updateRequest = (g_video_update_request*) request;
 				svgaUpdate(updateRequest->x, updateRequest->y, updateRequest->width, updateRequest->height);
 				g_yield();
 			}

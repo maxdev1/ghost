@@ -35,9 +35,9 @@ int main()
 {
 	pciDriverScanBus();
 
-	if(!g_task_register_id(G_PCI_DRIVER_IDENTIFIER))
+	if(!g_task_register_name(G_PCI_DRIVER_NAME))
 	{
-		klog("PCI driver failed to register with identifier '%s'", G_PCI_DRIVER_IDENTIFIER);
+		klog("PCI driver failed to register with identifier '%s'", G_PCI_DRIVER_NAME);
 		return -1;
 	}
 

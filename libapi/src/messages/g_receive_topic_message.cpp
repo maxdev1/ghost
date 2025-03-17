@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,20 +18,31 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __VMSVGA_VIDEO_OUTPUT__
-#define __VMSVGA_VIDEO_OUTPUT__
+#include "ghost/syscall.h"
+#include "ghost/messages.h"
+#include "ghost/messages/callstructs.h"
 
-#include "configuration_based_video_output.hpp"
-#include <libvmsvgadriver/vmsvgadriver.hpp>
-
-class g_vmsvga_video_output : public g_configuration_based_video_output
+// redirect
+g_message_send_status g_receive_topic_message(const char* topic, void* buf, size_t len,
+                                              g_message_transaction start_after)
 {
-    g_vmsvga_mode_info videoModeInformation{};
+	return g_receive_topic_message_m(topic, buf, len, start_after, G_MESSAGE_RECEIVE_MODE_BLOCKING);
+}
 
-public:
-    bool initializeWithSettings(uint32_t width, uint32_t height, uint32_t bits) override;
-    void blit(g_rectangle invalid, g_rectangle sourceSize, g_color_argb* source) override;
-    g_dimension getResolution() override;
-};
+/**
+ *
+ */
+g_message_send_status g_receive_topic_message_m(const char* topic, void* buf, size_t len,
+                                                g_message_transaction start_after, g_message_receive_mode mode)
+{
+	g_syscall_receive_topic_message data;
+	data.topic = topic;
+	data.buffer = (g_message_header*) buf;
+	data.maximum = len;
+	data.mode = mode;
+	data.start_after = start_after;
 
-#endif
+	g_syscall(G_SYSCALL_MESSAGE_TOPIC_RECEIVE, (g_address) &data);
+
+	return data.status;
+}

@@ -29,7 +29,11 @@ static uint8_t controllerIntrLine;
 
 int main()
 {
-	g_task_register_id(G_AHCI_DRIVER_IDENTIFIER);
+	if(!g_task_register_name(G_AHCI_DRIVER_NAME))
+	{
+		klog("failed to register as %s", G_AHCI_DRIVER_NAME);
+		return -1;
+	}
 
 	if(!ahciDriverIdentifyController())
 	{

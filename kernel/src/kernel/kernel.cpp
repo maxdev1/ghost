@@ -22,7 +22,8 @@
 #include "kernel/calls/syscall.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/filesystem/ramdisk.hpp"
-#include "kernel/ipc/message.hpp"
+#include "kernel/ipc/message_queues.hpp"
+#include "kernel/ipc/message_topics.hpp"
 #include "kernel/ipc/pipes.hpp"
 #include "kernel/logger/kernel_logger.hpp"
 #include "kernel/memory/memory.hpp"
@@ -79,7 +80,8 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	clockInitialize();
 	filesystemInitialize();
 	pipeInitialize();
-	messageInitialize();
+	messageQueuesInitialize();
+	messageTopicsInitialize();
 	userMutexInitialize();
 
 	taskingInitializeBsp();

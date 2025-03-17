@@ -7,7 +7,7 @@ fi
 
 # Build configuration
 ARTIFACT_NAME="tester.bin"
-LDFLAGS="-lvbedriver -lps2driver"
+LDFLAGS="-lps2driver"
 
 # Include application build tasks
 . "../applications.sh"

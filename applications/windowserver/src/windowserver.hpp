@@ -42,6 +42,7 @@ class windowserver_t
 
     void initializeVideo();
     void createVitalComponents(g_rectangle screenBounds);
+    g_video_output* findVideoOutput();
     void loadCursor();
     static void startInputHandlers();
 

@@ -19,27 +19,29 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/calls/syscall_messaging.hpp"
-#include "kernel/ipc/message.hpp"
+#include "kernel/ipc/message_queues.hpp"
+#include "kernel/ipc/message_topics.hpp"
 #include "kernel/tasking/user_mutex.hpp"
+#include "shared/logger/logger.hpp"
 
 void syscallMessageSend(g_task* task, g_syscall_send_message* data)
 {
-	while((data->status = messageSend(task->id, data->receiver, data->buffer, data->length, data->transaction)) ==
-	      G_MESSAGE_SEND_STATUS_QUEUE_FULL &&
+	while((data->status = messageQueueSend(task->id, data->receiver, data->buffer, data->length, data->transaction)) ==
+	      G_MESSAGE_SEND_STATUS_FULL &&
 	      data->mode == G_MESSAGE_SEND_MODE_BLOCKING)
 	{
 		taskingWait(task, __func__, [task, data]()
 		{
-			messageWaitForSend(task->id, data->receiver);
+			messageQueueWaitForSend(task->id, data->receiver);
 		});
 	}
-	messageUnwaitForSend(task->id, data->receiver);
+	messageQueueUnwaitForSend(task->id, data->receiver);
 }
 
 void syscallMessageReceive(g_task* task, g_syscall_receive_message* data)
 {
-	while((data->status = messageReceive(task->id, data->buffer, data->maximum, data->transaction)) ==
-	      G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY &&
+	while((data->status = messageQueueReceive(task->id, data->buffer, data->maximum, data->transaction)) ==
+	      G_MESSAGE_RECEIVE_STATUS_EMPTY &&
 	      data->mode == G_MESSAGE_RECEIVE_MODE_BLOCKING)
 	{
 		// TODO: "Break condition" can't work anymore:
@@ -54,5 +56,32 @@ void syscallMessageReceive(g_task* task, g_syscall_receive_message* data)
 
 void syscallMessageNextTxId(g_task* task, g_syscall_message_next_txid* data)
 {
-	data->transaction = messageNextTxId();
+	data->transaction = messageQueueNextTxId();
+}
+
+void syscallMessageTopicSend(g_task* task, g_syscall_send_topic_message* data)
+{
+	while((data->status = messageTopicsPost(data->topic, task->id, data->buffer, data->length)) ==
+	      G_MESSAGE_SEND_STATUS_FULL &&
+	      data->mode == G_MESSAGE_SEND_MODE_BLOCKING)
+	{
+		// TODO topics can never go full at the moment
+		logInfo("%# bug: message queues should never be full");
+		break;
+	}
+	// TODO unwait
+}
+
+void syscallMessageTopicReceive(g_task* task, g_syscall_receive_topic_message* data)
+{
+	while((data->status = messageTopicsReceive(data->topic, data->start_after, data->buffer, data->maximum)) ==
+	      G_MESSAGE_RECEIVE_STATUS_EMPTY &&
+	      data->mode == G_MESSAGE_RECEIVE_MODE_BLOCKING)
+	{
+		taskingWait(task, __func__, [data, task]()
+		{
+			messageTopicsWaitForReceive(data->topic, task->id);
+		});
+	}
+	messageTopicsUnwaitForReceive(data->topic, task->id);
 }

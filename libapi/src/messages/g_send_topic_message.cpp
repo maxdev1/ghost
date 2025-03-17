@@ -19,18 +19,27 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost/syscall.h"
-#include "ghost/tasks.h"
-#include "ghost/tasks/callstructs.h"
+#include "ghost/messages.h"
+#include "ghost/messages/callstructs.h"
+
+// redirect
+g_message_send_status g_send_topic_message(const char* topic, void* buf, size_t len)
+{
+	return g_send_topic_message_m(topic, buf, len, G_MESSAGE_SEND_MODE_BLOCKING);
+}
 
 /**
  *
  */
-uint8_t g_task_register_id(const char* newIdentifier)
+g_message_send_status g_send_topic_message_m(const char* topic, void* buf, size_t len, g_message_send_mode mode)
 {
-	g_syscall_task_id_register data;
-	data.identifier = (char*) newIdentifier;
+	g_syscall_send_topic_message data;
+	data.topic = topic;
+	data.buffer = buf;
+	data.length = len;
+	data.mode = mode;
 
-	g_syscall(G_SYSCALL_REGISTER_TASK_IDENTIFIER, (g_address) &data);
+	g_syscall(G_SYSCALL_MESSAGE_TOPIC_SEND, (g_address) &data);
 
-	return data.successful;
+	return data.status;
 }

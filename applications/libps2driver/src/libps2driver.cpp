@@ -23,7 +23,7 @@
 
 bool ps2DriverInitialize(g_fd* keyboardReadOut, g_fd* mouseReadOut, g_tid keyboardPartnerTask, g_tid mousePartnerTask)
 {
-	g_tid driverTid = g_task_await_by_id(G_PS2_DRIVER_IDENTIFIER);
+	g_tid driverTid = g_task_await_by_name(G_PS2_DRIVER_NAME);
 	g_message_transaction transaction = g_get_message_tx_id();
 
 	g_ps2_initialize_request request{};

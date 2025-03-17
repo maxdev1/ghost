@@ -25,12 +25,12 @@
 /**
  *
  */
-g_tid g_task_get_id(const char* identifier)
+g_bool g_task_register_name(const char* newName)
 {
-	g_syscall_task_id_get data;
-	data.identifier = (char*) identifier;
+	g_syscall_task_register_name data;
+	data.name = (char*) newName;
 
-	g_syscall(G_SYSCALL_GET_TASK_FOR_IDENTIFIER, (g_address) &data);
+	g_syscall(G_SYSCALL_TASK_REGISTER_NAME, (g_address) &data);
 
-	return data.resultTaskId;
+	return data.successful;
 }

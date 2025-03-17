@@ -7,7 +7,7 @@ fi
 
 # Build configuration
 ARTIFACT_NAME="vbedriver.bin"
-LDFLAGS="-lvbedriver"
+LDFLAGS="-ldevice"
 
 # Include application build tasks
 . "../applications.sh"

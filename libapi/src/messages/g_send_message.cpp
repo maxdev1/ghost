@@ -28,17 +28,13 @@ g_message_send_status g_send_message(g_tid tid, void* buf, size_t len)
 	return g_send_message_tm(tid, buf, len, G_MESSAGE_TRANSACTION_NONE, G_MESSAGE_SEND_MODE_BLOCKING);
 }
 
-/**
- *
- */
+// redirect
 g_message_send_status g_send_message_m(g_tid tid, void* buf, size_t len, g_message_send_mode mode)
 {
 	return g_send_message_tm(tid, buf, len, G_MESSAGE_TRANSACTION_NONE, mode);
 }
 
-/**
- *
- */
+// redirect
 g_message_send_status g_send_message_t(g_tid tid, void* buf, size_t len, g_message_transaction tx)
 {
 	return g_send_message_tm(tid, buf, len, tx, G_MESSAGE_SEND_MODE_BLOCKING);

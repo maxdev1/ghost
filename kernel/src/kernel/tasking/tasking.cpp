@@ -21,7 +21,7 @@
 #include "kernel/tasking/tasking.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
-#include "kernel/ipc/message.hpp"
+#include "kernel/ipc/message_queues.hpp"
 #include "kernel/memory/gdt.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
@@ -421,7 +421,7 @@ void taskingDestroyTask(g_task* task)
 	// Switch to task space
 	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(task->process->pageDirectory);
 
-	messageTaskRemoved(task->id);
+	messageQueueTaskRemoved(task->id);
 	taskingMemoryDestroy(task);
 
 	taskingMemoryTemporarySwitchBack(returnDirectory);

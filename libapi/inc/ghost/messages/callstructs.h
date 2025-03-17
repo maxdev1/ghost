@@ -95,4 +95,45 @@ typedef struct
 	g_message_transaction transaction;
 }__attribute__((packed)) g_syscall_message_next_txid;
 
+
+/**
+ * @field topic target topic
+ * @field buffer message buffer
+ * @field length message length
+ * @field mode sending mode
+ * @field status one of the {g_message_send_status} codes
+ * @security-level APPLICATION
+ */
+typedef struct
+{
+	const char* topic;
+	void* buffer;
+	size_t length;
+	g_message_send_mode mode;
+
+	g_message_send_status status;
+}__attribute__((packed)) g_syscall_send_topic_message;
+
+/**
+ * @field topic source topic
+ * @field buffer target buffer
+ * @field maximum buffer maximum length
+ * @field mode receiving mode
+ * @field start_after id of the last received topic message
+ * @field status one of the {g_message_receive_status} codes
+ *
+ * @security-level APPLICATION
+ */
+typedef struct
+{
+	const char* topic;
+	g_message_header* buffer;
+	size_t maximum;
+	g_message_receive_mode mode;
+	g_message_transaction start_after;
+
+	g_message_receive_status status;
+}__attribute__((packed)) g_syscall_receive_topic_message;
+
+
 #endif

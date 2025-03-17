@@ -27,9 +27,10 @@
 
 __BEGIN_C
 // message transactions
-typedef uint32_t g_message_transaction;
-#define G_MESSAGE_TRANSACTION_NONE			0
-#define G_MESSAGE_TRANSACTION_FIRST			1
+typedef int32_t g_message_transaction;
+#define G_MESSAGE_TRANSACTION_NONE					(-1)
+#define G_MESSAGE_QUEUE_TRANSACTION_START			1
+#define G_MESSAGE_TOPIC_TRANSACTION_START			(-1)
 
 // message header
 typedef struct _g_message_header
@@ -41,11 +42,11 @@ typedef struct _g_message_header
     struct _g_message_header* next;
 }__attribute__((packed)) g_message_header;
 
-#define G_MESSAGE_CONTENT(message)			(((uint8_t*) message) + sizeof(g_message_header))
+#define G_MESSAGE_CONTENT(message)					(((uint8_t*) message) + sizeof(g_message_header))
 
 // messaging bounds
-#define G_MESSAGE_MAXIMUM_LENGTH			(2048)
-#define G_MESSAGE_MAXIMUM_QUEUE_CONTENT		(2048 * 32)
+#define G_MESSAGE_MAXIMUM_MESSAGE_LENGTH			(2048)
+#define G_MESSAGE_MAXIMUM_QUEUE_CONTENT				(2048 * 32)
 
 // modes for message sending
 typedef int g_message_send_mode;
@@ -60,14 +61,14 @@ typedef int g_message_receive_mode;
 // status for message sending
 typedef int g_message_send_status;
 #define G_MESSAGE_SEND_STATUS_SUCCESSFUL ((g_message_send_status) 1)
-#define G_MESSAGE_SEND_STATUS_QUEUE_FULL ((g_message_send_status) 2)
+#define G_MESSAGE_SEND_STATUS_FULL ((g_message_send_status) 2)
 #define G_MESSAGE_SEND_STATUS_FAILED ((g_message_send_status) 3)
 #define G_MESSAGE_SEND_STATUS_EXCEEDS_MAXIMUM ((g_message_send_status) 4)
 
 // status for message receiving
 typedef int g_message_receive_status;
 #define G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL ((g_message_receive_status) 1)
-#define G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY ((g_message_receive_status) 2)
+#define G_MESSAGE_RECEIVE_STATUS_EMPTY ((g_message_receive_status) 2)
 #define G_MESSAGE_RECEIVE_STATUS_FAILED ((g_message_receive_status) 3)
 #define G_MESSAGE_RECEIVE_STATUS_FAILED_NOT_PERMITTED ((g_message_receive_status) 4)
 #define G_MESSAGE_RECEIVE_STATUS_EXCEEDS_BUFFER_SIZE ((g_message_receive_status) 5)

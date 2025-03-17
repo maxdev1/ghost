@@ -42,24 +42,19 @@ g_message_transaction g_get_message_tx_id();
 /**
  * Sends a message to the given task. This means that <len> bytes from the
  * buffer <buf> are copied to a message that is then sent to the <target> task.
- * The message may be no longer than {G_MESSAGE_MAXIMUM_LENGTH}.
+ * The message may be no longer than {G_MESSAGE_MAXIMUM_MESSAGE_LENGTH}.
  *
  * The mode specifies how the function shall block:
  * - {G_MESSAGE_SEND_MODE_BLOCKING} the executing task will bock if the target tasks
  * 		message queue is full
- * - {G_MESSAGE_SEND_MODE_NON_BLOCKING} the function will return {G_MESSAGE_SEND_STATUS_QUEUE_FULL}
+ * - {G_MESSAGE_SEND_MODE_NON_BLOCKING} the function will return {G_MESSAGE_SEND_STATUS_FULL}
  * 		if the target tasks message queue is full
  *
- * @param target
- * 		id of the target task
- * @param buf
- * 		message content buffer
- * @param len
- * 		number of bytes to copy from the buffer
- * @param-opt mode
- * 		determines how the function blocks when given, default is {G_MESSAGE_SEND_MODE_BLOCKING}
- * @param-opt tx
- * 		transaction id
+ * @param target id of the target task
+ * @param buf message content buffer
+ * @param len number of bytes to copy from the buffer
+ * @param-opt mode determines how the function blocks when given, default is {G_MESSAGE_SEND_MODE_BLOCKING}
+ * @param-opt tx transaction id
  *
  * @return one of the <g_message_send_status> codes
  *
@@ -67,8 +62,8 @@ g_message_transaction g_get_message_tx_id();
  */
 g_message_send_status g_send_message(g_tid target, void* buf, size_t len);
 g_message_send_status g_send_message_m(g_tid target, void* buf, size_t len, g_message_send_mode mode);
-g_message_send_status g_send_message_t(g_tid tid, void* buf, size_t len, g_message_transaction tx);
-g_message_send_status g_send_message_tm(g_tid tid, void* buf, size_t len, g_message_transaction tx,
+g_message_send_status g_send_message_t(g_tid target, void* buf, size_t len, g_message_transaction tx);
+g_message_send_status g_send_message_tm(g_tid target, void* buf, size_t len, g_message_transaction tx,
                                         g_message_send_mode mode);
 
 /**
@@ -85,22 +80,17 @@ g_message_send_status g_send_message_tm(g_tid tid, void* buf, size_t len, g_mess
  * The mode specifies how the function shall block:
  * - {G_MESSAGE_RECEIVE_MODE_BLOCKING} the executing task will block if no messages
  * 		are available
- * - {G_MESSAGE_RECEIVE_MODE_NON_BLOCKING} the function will return {G_MESSAGE_RECEIVE_STATUS_QUEUE_EMPTY}
+ * - {G_MESSAGE_RECEIVE_MODE_NON_BLOCKING} the function will return {G_MESSAGE_RECEIVE_STATUS_EMPTY}
  * 		if the executing tasks message queue is empty
  *
  * When a transaction ID is given, only messages that were sent with the same
  * transaction ID will be received.
  *
- * @param buf
- * 		output buffer
- * @param max
- * 		maximum number of bytes to copy to the buffer
- * @param-opt mode
- * 		determines how the function blocks when given, default is {G_MESSAGE_RECEIVE_MODE_BLOCKING}
- * @param-opt tx
- * 		transaction id
- * @param break_condition
- * 		can be used to break the waiting process by setting its value to 1
+ * @param buf output buffer
+ * @param max maximum number of bytes to copy to the buffer
+ * @param-opt mode determines how the function blocks when given, default is {G_MESSAGE_RECEIVE_MODE_BLOCKING}
+ * @param-opt tx transaction id
+ * @param-opt break_condition can be used to break the waiting process by setting its value to 1
  *
  * @security-level APPLICATION
  */
@@ -112,6 +102,30 @@ g_message_receive_status g_receive_message_tm(void* buf, size_t max, g_message_t
 g_message_receive_status g_receive_message_tmb(void* buf, size_t max, g_message_transaction tx,
                                                g_message_receive_mode mode, g_user_mutex break_condition);
 
+/**
+ * Sends a message to a topic.
+ *
+ * @param topic the target topic name
+ * @param buf content buffer
+ * @param len message length
+ * @param-opt mode the send mode
+ * @return send status
+ */
+g_message_send_status g_send_topic_message(const char* topic, void* buf, size_t len);
+g_message_send_status g_send_topic_message_m(const char* topic, void* buf, size_t len, g_message_send_mode mode);
+
+/**
+ * Receives a message from a topic.
+ *
+ * @param topic the source topic name
+ * @param buf output buffer
+ * @param max maximum message length
+ * @param start_after transaction number of the last received message or {G_MESSAGE_TOPIC_TRANSACTION_START}
+ * @param-opt mode the reception mode
+ * @return send status
+ */
+g_message_send_status g_receive_topic_message(const char* topic, void* buf, size_t max, g_message_transaction start_after);
+g_message_send_status g_receive_topic_message_m(const char* topic, void* buf, size_t max, g_message_transaction start_after, g_message_receive_mode mode);
 
 __END_C
 

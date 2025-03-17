@@ -24,7 +24,7 @@
 #include <stdint.h>
 #include <ghost.h>
 
-#define G_PS2_DRIVER_IDENTIFIER		"ps2driver"
+#define G_PS2_DRIVER_NAME		"ps2driver"
 
 /**
  *

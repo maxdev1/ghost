@@ -291,23 +291,23 @@ void syscallReleaseCliArguments(g_task* task, g_syscall_cli_args_release* data)
 		data->buffer[0] = 0;
 }
 
-void syscallRegisterTaskIdentifier(g_task* task, g_syscall_task_id_register* data)
+void syscallTaskRegisterName(g_task* task, g_syscall_task_register_name* data)
 {
-	data->successful = taskingDirectoryRegister(data->identifier, task->id, task->securityLevel);
+	data->successful = taskingDirectoryRegister(data->name, task->id, task->securityLevel);
 }
 
-void syscallAwaitTaskByIdentifier(g_task* task, g_syscall_task_await_by_id* data)
+void syscallTaskAwaitByName(g_task* task, g_syscall_task_await_by_name* data)
 {
 	g_tid target;
-	while((target = taskingDirectoryGet(data->identifier)) == G_TID_NONE)
+	while((target = taskingDirectoryGet(data->name)) == G_TID_NONE)
 	{
 		taskingWait(task, __func__, [data, task]()
 		{
 			clockWaitForTime(task->id, clockGetLocal()->time + 100);
-			taskingDirectoryWaitForRegister(data->identifier, task->id);
+			taskingDirectoryWaitForRegister(data->name, task->id);
 		});
 		clockUnwaitForTime(task->id);
-		taskingDirectoryUnwaitForRegister(data->identifier, task->id);
+		taskingDirectoryUnwaitForRegister(data->name, task->id);
 
 		taskingWait(task, __func__, [data, task]()
 		{
@@ -317,9 +317,9 @@ void syscallAwaitTaskByIdentifier(g_task* task, g_syscall_task_await_by_id* data
 	data->task = target;
 }
 
-void syscallGetTaskForIdentifier(g_task* task, g_syscall_task_id_get* data)
+void syscallGetTaskByName(g_task* task, g_syscall_task_get_by_name* data)
 {
-	data->resultTaskId = taskingDirectoryGet(data->identifier);
+	data->resultTaskId = taskingDirectoryGet(data->name);
 }
 
 void syscallDump()

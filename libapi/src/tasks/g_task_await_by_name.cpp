@@ -18,66 +18,19 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBVBEDRIVER_VBEDRIVER__
-#define __LIBVBEDRIVER_VBEDRIVER__
-
-#include <stdint.h>
-
-#define G_VBE_DRIVER_IDENTIFIER			"vbedriver"
+#include "ghost/syscall.h"
+#include "ghost/tasks.h"
+#include "ghost/tasks/callstructs.h"
 
 /**
  *
  */
-struct g_vbe_mode_info {
-	uint16_t resX;
-	uint16_t resY;
-	uint16_t bpp;
-	uint16_t bpsl;
-	uint32_t lfb;
-}__attribute__((packed));
+g_tid g_task_await_by_name(const char* name)
+{
+	g_syscall_task_await_by_name data;
+	data.name = (char*) name;
 
-/**
- *
- */
-typedef int g_vbe_command;
-#define G_VBE_COMMAND_SET_MODE	((g_vbe_command) 0)
+	g_syscall(G_SYSCALL_TASK_AWAIT_BY_NAME, (g_address) &data);
 
-/**
- *
- */
-struct g_vbe_request_header {
-	g_vbe_command command;
-}__attribute__((packed));
-
-/**
- *
- */
-typedef int g_vbe_set_mode_status;
-#define G_VBE_SET_MODE_STATUS_SUCCESS		((g_vbe_set_mode_status) 0)
-#define G_VBE_SET_MODE_STATUS_FAILED		((g_vbe_set_mode_status) 1)
-
-/**
- *
- */
-struct g_vbe_set_mode_request {
-	g_vbe_request_header header;
-	uint16_t width;
-	uint16_t height;
-	uint8_t bpp;
-}__attribute__((packed));
-
-/**
- *
- */
-struct g_vbe_set_mode_response {
-	g_vbe_set_mode_status status;
-	g_vbe_mode_info mode_info;
-}__attribute__((packed));
-
-/**
- * Sends a request to the VBE driver and attempts to set the best matching available
- * video mode using the VESA graphics interface.
- */
-bool vbeDriverSetMode(uint16_t width, uint16_t height, uint8_t bpp, g_vbe_mode_info& out);
-
-#endif
+	return data.task;
+}

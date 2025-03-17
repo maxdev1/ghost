@@ -18,67 +18,66 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBVMSVGADRIVER_VMSVGADRIVER__
-#define __LIBVMSVGADRIVER_VMSVGADRIVER__
+#ifndef __LIBVIDEO_VIDEODRIVER__
+#define __LIBVIDEO_VIDEODRIVER__
 
 #include <stdint.h>
+#include <ghost/tasks/types.h>
+#include <libdevice/interface.hpp>
 
-#define G_VMSVGA_DRIVER_IDENTIFIER			"vmsvgadriver"
-
-struct g_vmsvga_mode_info
+struct g_video_mode_info
 {
     uint16_t resX;
     uint16_t resY;
     uint16_t bpp;
     uint16_t bpsl;
     uint32_t lfb;
+    bool explicit_update;
 }__attribute__((packed));
 
-typedef int g_vmsvga_command;
-#define G_VMSVGA_COMMAND_SET_MODE	((g_vmsvga_command) 0)
-#define G_VMSVGA_COMMAND_UPDATE 	((g_vmsvga_command) 1)
+typedef int g_video_command;
+#define G_VIDEO_COMMAND_SET_MODE	((g_video_command) 0)
+#define G_VIDEO_COMMAND_UPDATE 	    ((g_video_command) 1)
 
 /**
  *
  */
-struct g_vmsvga_request_header
+struct g_video_request_header
 {
-    g_vmsvga_command command;
+    g_video_command command;
+    g_device_id device;
 }__attribute__((packed));
 
-typedef int g_vmsvga_set_mode_status;
-#define G_VMSVGA_SET_MODE_STATUS_SUCCESS		((g_vmsvga_set_mode_status) 0)
-#define G_VMSVGA_SET_MODE_STATUS_FAILED		    ((g_vmsvga_set_mode_status) 1)
+typedef int g_video_set_mode_status;
+#define G_VIDEO_SET_MODE_STATUS_SUCCESS		    ((g_video_set_mode_status) 0)
+#define G_VIDEO_SET_MODE_STATUS_FAILED		    ((g_video_set_mode_status) 1)
 
 /**
  *
  */
-struct g_vmsvga_set_mode_request
+struct g_video_set_mode_request
 {
-    g_vmsvga_request_header header;
+    g_video_request_header header;
     uint16_t width;
     uint16_t height;
     uint8_t bpp;
 }__attribute__((packed));
 
-struct g_vmsvga_set_mode_response
+struct g_video_set_mode_response
 {
-    g_vmsvga_set_mode_status status;
-    g_vmsvga_mode_info mode_info;
+    g_video_set_mode_status status;
+    g_video_mode_info mode_info;
 }__attribute__((packed));
 
-/**
- * Sends a request to the VBE driver and attempts to set the best matching available
- * video mode using the VESA graphics interface.
- */
-bool vmsvgaDriverSetMode(uint16_t width, uint16_t height, uint8_t bpp, g_vmsvga_mode_info& out);
+bool videoDriverSetMode(g_tid driverTid, g_device_id device, uint16_t width, uint16_t height, uint8_t bpp,
+                        g_video_mode_info& out);
 
 /**
  *
  */
-struct g_vmsvga_update_request
+struct g_video_update_request
 {
-    g_vmsvga_request_header header;
+    g_video_request_header header;
     uint16_t x;
     uint16_t y;
     uint16_t width;
@@ -86,8 +85,8 @@ struct g_vmsvga_update_request
 }__attribute__((packed));
 
 /**
- * Sends the instruction to update a screen region to the driver.
+ * If the video driver requires explicit updates, calls the driver to perform an update of the given area.
  */
-void vmsvgaDriverUpdate(uint16_t x, uint16_t y, uint16_t width, uint16_t height);
+void videoDriverUpdate(g_tid driverTid, g_device_id device, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
 
 #endif

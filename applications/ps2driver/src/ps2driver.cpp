@@ -36,9 +36,9 @@ g_tid mousePartnerTask = G_TID_NONE;
 
 int main()
 {
-	if(!g_task_register_id(G_PS2_DRIVER_IDENTIFIER))
+	if(!g_task_register_name(G_PS2_DRIVER_NAME))
 	{
-		klog("ps2driver: could not register with task identifier '%s'", (char*) G_PS2_DRIVER_IDENTIFIER);
+		klog("ps2driver: could not register with task name '%s'", (char*) G_PS2_DRIVER_NAME);
 		return -1;
 	}
 

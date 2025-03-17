@@ -62,7 +62,7 @@ ps2_status_t ps2Initialize(void (*mouseCallback)(int16_t, int16_t, uint8_t, int8
 
 void ps2AwaitKeyIrq()
 {
-	g_task_register_id("libps2/await-key");
+	g_task_register_name("libps2/await-key");
 	for(;;)
 	{
 		g_await_irq_t(1, 50);
@@ -72,7 +72,7 @@ void ps2AwaitKeyIrq()
 
 void ps2AwaitMouseIrq()
 {
-	g_task_register_id("libps2/await-mouse");
+	g_task_register_name("libps2/await-mouse");
 	for(;;)
 	{
 		g_await_irq_t(12, 50);

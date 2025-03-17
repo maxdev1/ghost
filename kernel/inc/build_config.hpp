@@ -47,7 +47,7 @@
 
 // version
 #define G_VERSION_MAJOR 0
-#define G_VERSION_MINOR 24
+#define G_VERSION_MINOR 25
 #define G_VERSION_PATCH 0
 
 #define G_LOADER_VERSION_MAJOR 1

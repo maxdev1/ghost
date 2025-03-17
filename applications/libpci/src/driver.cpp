@@ -25,7 +25,7 @@
 
 bool pciDriverListDevices(int* outCount, g_pci_device_data** outData)
 {
-	g_tid driverTid = g_task_await_by_id(G_PCI_DRIVER_IDENTIFIER);
+	g_tid driverTid = g_task_await_by_name(G_PCI_DRIVER_NAME);
 
 	g_message_transaction tx = g_get_message_tx_id();
 
@@ -59,7 +59,7 @@ void pciDriverFreeDeviceList(g_pci_device_data* deviceList)
 
 bool pciDriverReadConfig(g_pci_device_address address, uint8_t offset, int bytes, uint32_t* outValue)
 {
-	g_tid driverTid = g_task_await_by_id(G_PCI_DRIVER_IDENTIFIER);
+	g_tid driverTid = g_task_await_by_name(G_PCI_DRIVER_NAME);
 
 	g_message_transaction tx = g_get_message_tx_id();
 
@@ -85,7 +85,7 @@ bool pciDriverReadConfig(g_pci_device_address address, uint8_t offset, int bytes
 
 bool pciDriverWriteConfig(g_pci_device_address address, uint8_t offset, int bytes, uint32_t value)
 {
-	g_tid driverTid = g_task_await_by_id(G_PCI_DRIVER_IDENTIFIER);
+	g_tid driverTid = g_task_await_by_name(G_PCI_DRIVER_NAME);
 
 	g_message_transaction tx = g_get_message_tx_id();
 
@@ -111,7 +111,7 @@ bool pciDriverWriteConfig(g_pci_device_address address, uint8_t offset, int byte
 
 bool pciDriverEnableResourceAccess(g_pci_device_address address, bool enabled)
 {
-	g_tid driverTid = g_task_await_by_id(G_PCI_DRIVER_IDENTIFIER);
+	g_tid driverTid = g_task_await_by_name(G_PCI_DRIVER_NAME);
 
 	g_message_transaction tx = g_get_message_tx_id();
 
@@ -134,7 +134,7 @@ bool pciDriverEnableResourceAccess(g_pci_device_address address, bool enabled)
 
 bool pciDriverReadBAR(g_pci_device_address address, uint8_t bar, uint32_t* outValue)
 {
-	g_tid driverTid = g_task_await_by_id(G_PCI_DRIVER_IDENTIFIER);
+	g_tid driverTid = g_task_await_by_name(G_PCI_DRIVER_NAME);
 
 	g_message_transaction tx = g_get_message_tx_id();
 
@@ -158,7 +158,7 @@ bool pciDriverReadBAR(g_pci_device_address address, uint8_t bar, uint32_t* outVa
 
 bool pciDriverReadBARSize(g_pci_device_address address, uint8_t bar, uint32_t* outValue)
 {
-	g_tid driverTid = g_task_await_by_id(G_PCI_DRIVER_IDENTIFIER);
+	g_tid driverTid = g_task_await_by_name(G_PCI_DRIVER_NAME);
 
 	g_message_transaction tx = g_get_message_tx_id();
 

@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-*                                                                           *
+ *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
  *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
@@ -18,23 +18,31 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include "manager.hpp"
 #include <ghost.h>
 #include <libpci/driver.hpp>
+#include <libdevice/interface.hpp>
 #include <cstdio>
+#include <unordered_map>
 
-// TODO:
-// This is the device manager that is responsible to keep track of devices in
-// the system, give each an ID and manage access to them. It also starts the
-// right drivers once it knows which devices exist.
+void _deviceManagerCheckPciDevices();
+void _deviceManagerAwaitCommands();
+void _deviceManagerHandleRegisterDevice(g_tid sender, g_message_transaction tx,
+                                        g_device_manager_register_device_request* content);
 
-void deviceManagerCheckPciDevices();
+static g_user_mutex devicesLock = g_mutex_initialize_r(true);
+static std::unordered_map<g_device_id, device_t*> devices;
+static g_device_id nextDeviceId = 1;
 
 int main()
 {
-	deviceManagerCheckPciDevices();
+	g_tid comHandler = g_create_task((void*) _deviceManagerAwaitCommands);
+	_deviceManagerCheckPciDevices();
+
+	g_join(comHandler);
 }
 
-void deviceManagerCheckPciDevices()
+void _deviceManagerCheckPciDevices()
 {
 	int num;
 	g_pci_device_data* devices;
@@ -84,4 +92,58 @@ void deviceManagerCheckPciDevices()
 		klog("starting VBE driver");
 		g_spawn("/applications/vbedriver.bin", "", "", G_SECURITY_LEVEL_DRIVER);
 	}
+}
+
+void _deviceManagerAwaitCommands()
+{
+	if(!g_task_register_name(G_DEVICE_MANAGER_NAME))
+	{
+		klog("failed to register as %s", G_DEVICE_MANAGER_NAME);
+		g_exit(-1);
+	}
+
+	size_t bufLen = 1024;
+	uint8_t buf[bufLen];
+
+	while(true)
+	{
+		auto status = g_receive_message(buf, bufLen);
+		if(status != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+			continue;
+		auto message = (g_message_header*) buf;
+		auto content = (g_device_manager_header*) G_MESSAGE_CONTENT(message);
+
+		if(content->command == G_DEVICE_MANAGER_REGISTER_DEVICE)
+		{
+			_deviceManagerHandleRegisterDevice(message->sender, message->transaction,
+			                                   (g_device_manager_register_device_request*) content);
+		}
+	}
+}
+
+void _deviceManagerHandleRegisterDevice(g_tid sender, g_message_transaction tx,
+                                        g_device_manager_register_device_request* content)
+{
+	g_mutex_acquire(devicesLock);
+	auto id = nextDeviceId++;
+	auto device = new device_t();
+	device->id = id;
+	device->handler = content->handler;
+	device->type = content->type;
+	devices[id] = device;
+	g_mutex_release(devicesLock);
+
+	// Respond to registerer
+	g_device_manager_register_device_response response{};
+	response.status = G_DEVICE_MANAGER_SUCCESS;
+	response.id = id;
+	g_send_message_t(sender, &response, sizeof(response), tx);
+
+	// Post to topic
+	g_device_event_device_registered event{};
+	event.header.event = G_DEVICE_EVENT_DEVICE_REGISTERED;
+	event.id = device->id;
+	event.type = content->type;
+	event.driver = device->handler;
+	g_send_topic_message(G_DEVICE_EVENT_TOPIC, &event, sizeof(event));
 }

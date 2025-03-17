@@ -24,7 +24,7 @@
 #include "pci.hpp"
 #include <ghost.h>
 
-#define G_PCI_DRIVER_IDENTIFIER		"pcidriver"
+#define G_PCI_DRIVER_NAME		"pcidriver"
 
 /**
  * Packed type to more easily pass device id

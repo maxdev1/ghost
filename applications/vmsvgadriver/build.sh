@@ -7,7 +7,7 @@ fi
 
 # Build configuration
 ARTIFACT_NAME="vmsvgadriver.bin"
-LDFLAGS="-lpci"
+LDFLAGS="-lpci -ldevice"
 
 # Include application build tasks
 . "../applications.sh"

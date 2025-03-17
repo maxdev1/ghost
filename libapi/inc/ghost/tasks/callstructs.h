@@ -28,8 +28,7 @@
 __BEGIN_C
 
 /**
- * @field code
- * 		the exit code
+ * @field code the exit code
  */
 typedef struct
 {
@@ -37,8 +36,7 @@ typedef struct
 } __attribute__((packed)) g_syscall_exit;
 
 /**
- * @field pid
- * 		id of the process to kill
+ * @field pid id of the process to kill
  */
 typedef struct
 {
@@ -48,8 +46,7 @@ typedef struct
 } __attribute__((packed)) g_syscall_kill;
 
 /**
- * @field id
- * 		the resulting id
+ * @field id the resulting id
  */
 typedef struct
 {
@@ -57,8 +54,7 @@ typedef struct
 } __attribute__((packed)) g_syscall_get_pid;
 
 /**
- * @field id
- * 		the resulting id
+ * @field id the resulting id
  */
 typedef struct
 {
@@ -68,8 +64,7 @@ typedef struct
 } __attribute__((packed)) g_syscall_get_parent_pid;
 
 /**
- * @field id
- * 		the resulting id
+ * @field id the resulting id
  */
 typedef struct
 {
@@ -77,8 +72,7 @@ typedef struct
 } __attribute__((packed)) g_syscall_get_tid;
 
 /**
- * @field id
- * 		the resulting id
+ * @field id the resulting id
  */
 typedef struct
 {
@@ -88,8 +82,7 @@ typedef struct
 } __attribute__((packed)) g_syscall_get_pid_for_tid;
 
 /**
- * @field milliseconds
- * 		the number of milliseconds to sleep
+ * @field milliseconds the number of milliseconds to sleep
  */
 typedef struct
 {
@@ -97,8 +90,7 @@ typedef struct
 } __attribute__((packed)) g_syscall_sleep;
 
 /**
- * @field irq
- * 		the IRQ to wait for
+ * @field irq the IRQ to wait for
  */
 typedef struct
 {
@@ -106,50 +98,40 @@ typedef struct
 } __attribute__((packed)) g_syscall_wait_for_irq;
 
 /**
- * @field identifier
- * 		the identifier
- *
- * @field successful
- * 		whether the registration was successful
+ * @field name the name
+ * @field successful whether the registration was successful
  */
 typedef struct
 {
-	char* identifier;
+	char* name;
 
 	uint8_t successful;
-} __attribute__((packed)) g_syscall_task_id_register;
+} __attribute__((packed)) g_syscall_task_register_name;
 
 /**
- * @field identifier
- * 		the identifier
- *
- * @field tid
- * 		task id, or G_TID_NONE
+ * @field name the name
+ * @field tid task id, or G_TID_NONE
  */
 typedef struct
 {
-    char* identifier;
+    char* name;
 
     g_tid task;
-} __attribute__((packed)) g_syscall_task_await_by_id;
+} __attribute__((packed)) g_syscall_task_await_by_name;
 
 /**
- * @field identifier
- * 		the identifier
- *
- * @field resultTaskId
- * 		the task id, or G_TID_NONE if not successful
+ * @field name the name
+ * @field resultTaskId the task id, or G_TID_NONE if not successful
  */
 typedef struct
 {
-	char* identifier;
+	char* name;
 
 	g_tid resultTaskId;
-} __attribute__((packed)) g_syscall_task_id_get;
+} __attribute__((packed)) g_syscall_task_get_by_name;
 
 /**
- * @field millis
- * 		local clock time in milliseconds
+ * @field millis local clock time in milliseconds
  */
 typedef struct
 {
@@ -157,8 +139,7 @@ typedef struct
 } __attribute__((packed)) g_syscall_millis;
 
 /**
- * @field nanos
- * 		HPET time in nanoseconds
+ * @field nanos HPET time in nanoseconds
  */
 typedef struct
 {
@@ -166,8 +147,7 @@ typedef struct
 } __attribute__((packed)) g_syscall_nanos;
 
 /**
- * @field forkedId
- * 		id of the forked process
+ * @field forkedId id of the forked process
  */
 typedef struct
 {
@@ -175,8 +155,7 @@ typedef struct
 } __attribute__((packed)) g_syscall_fork;
 
 /**
- * @field taskId
- * 		id of the task to wait for
+ * @field taskId id of the task to wait for
  */
 typedef struct
 {
@@ -185,8 +164,7 @@ typedef struct
 
 
 /**
- * @field processInfo
- * 		pointer to the process info
+ * @field processInfo pointer to the process info
  */
 typedef struct
 {
@@ -194,14 +172,11 @@ typedef struct
 } __attribute__((packed)) g_syscall_process_get_info;
 
 /**
- * @field path
- * 		absolute path of the binary
+ * @field path absolute path of the binary
  *
- * @field securityLevel
- * 		target process security level
+ * @field securityLevel target process security level
  *
- * @field status
- * 		result of spawning
+ * @field status result of spawning
  */
 typedef struct
 {
@@ -218,20 +193,13 @@ typedef struct
 }__attribute__((packed)) g_syscall_spawn;
 
 /**
- * @field initialEntry
- * 		the initial thread entry
- *
- * @field userEntry
- * 		user-defined
- *
- * @field userData
- * 		user-defined
- *
+ * @field initialEntry the initial thread entry
+ * @field userEntry user-defined
+ * @field userData user-defined
  * @field coreAffinity
  *      which core this task may run on (-1 being any)
  *
- * @field status
- * 		result of thread creation
+ * @field status result of thread creation
  */
 typedef struct
 {
@@ -245,11 +213,8 @@ typedef struct
 }__attribute__((packed)) g_syscall_create_task;
 
 /**
- * @field userEntry
- * 		the user entry
- *
- * @field userData
- * 		the user data
+ * @field userEntry the user entry
+ * @field userData the user data
  */
 typedef struct
 {
@@ -266,9 +231,7 @@ typedef struct
 }__attribute__((packed)) g_process_configuration;
 
 /**
- * @field buffer
- * 		target buffer, with a size of at least
- * 		{PROCESS_COMMAND_LINE_ARGUMENTS_BUFFER_LENGTH}
+ * @field buffer target buffer, with a size of at least {PROCESS_COMMAND_LINE_ARGUMENTS_BUFFER_LENGTH}
  */
 typedef struct
 {
@@ -276,8 +239,7 @@ typedef struct
 }__attribute__((packed)) g_syscall_cli_args_release;
 
 /**
- * @field userThreadLocal
- * 		pointer to the user thread object in TLS
+ * @field userThreadLocal pointer to the user thread object in TLS
  */
 typedef struct
 {
@@ -285,11 +247,8 @@ typedef struct
 }__attribute__((packed)) g_syscall_task_get_tls;
 
 /**
- * @field path
- * 		buffer containing the path
- *
- * @field result
- * 		one of the {g_set_working_directory_status} codes
+ * @field path buffer containing the path
+ * @field result one of the {g_set_working_directory_status} codes
  *
  * @security-level APPLICATION
  */
@@ -301,11 +260,8 @@ typedef struct
 }__attribute__((packed)) g_syscall_set_working_directory;
 
 /**
- * @field buffer
- * 		buffer with the given size
- *
- * @field maxlen
- * 		maximum number of bytes to write to the buffer
+ * @field buffer buffer with the given size
+ * @field maxlen maximum number of bytes to write to the buffer
  *
  * @security-level APPLICATION
  */
@@ -317,8 +273,7 @@ typedef struct
 }__attribute__((packed)) g_syscall_get_working_directory;
 
 /**
- * @field buffer
- * 		buffer with a size of at least {G_PATH_MAX} bytes
+ * @field buffer buffer with a size of at least {G_PATH_MAX} bytes
  *
  * @security-level APPLICATION
  */
@@ -328,8 +283,7 @@ typedef struct
 }__attribute__((packed)) g_syscall_get_executable_path;
 
 /**
- * @field target
- * 		yield target task
+ * @field target yield target task
  *
  * @security-level APPLICATION
  */

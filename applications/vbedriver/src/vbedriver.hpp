@@ -21,7 +21,7 @@
 #ifndef __VBEDRIVER__
 #define __VBEDRIVER__
 
-#include <libvbedriver/vbedriver.hpp>
+#include <libvideo/videodriver.hpp>
 
 #include <cstdint>
 #include <ghost.h>
@@ -133,7 +133,7 @@ void vbeReceiveMessages();
 /**
  * Handles a set-mode command.
  */
-void vbeHandleCommandSetMode(g_vbe_set_mode_request *request, g_tid requestingTaskId, g_message_transaction requestTransaction);
+void vbeHandleCommandSetMode(g_video_set_mode_request *request, g_tid requestingTaskId, g_message_transaction requestTransaction);
 
 /**
  * Attempts to set the video mode to the specified parameters.

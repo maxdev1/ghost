@@ -21,7 +21,7 @@
 #ifndef __LIBAHCI_AHCIDRIVER__
 #define __LIBAHCI_AHCIDRIVER__
 
-#define G_AHCI_DRIVER_IDENTIFIER		"ahcidriver"
+#define G_AHCI_DRIVER_NAME		"ahcidriver"
 
 
 #endif

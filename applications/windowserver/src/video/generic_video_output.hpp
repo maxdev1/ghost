@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-*                                                                           *
+ *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
  *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
@@ -18,15 +18,28 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LIBDEVICE_MANAGER__
-#define __LIBDEVICE_MANAGER__
+#ifndef __GENERIC_VIDEO_OUTPUT__
+#define __GENERIC_VIDEO_OUTPUT__
 
-#include "interface.hpp"
+#include "configuration_based_video_output.hpp"
+#include <libvideo/videodriver.hpp>
+#include <ghost/tasks/types.h>
 
-/**
- * Tells the device manager that a new device should be added and which task
- * is responsible for handling interaction with the device.
- */
-bool deviceManagerRegisterDevice(g_device_type type, g_tid handler, g_device_id* outId);
+class g_generic_video_output : public g_configuration_based_video_output
+{
+    g_video_mode_info videoModeInformation{};
+
+    g_tid driverTid;
+    g_device_id deviceId;
+
+public:
+    explicit g_generic_video_output(g_tid driverTid, g_device_id deviceId): driverTid(driverTid), deviceId(deviceId)
+    {
+    }
+
+    bool initializeWithSettings(uint32_t width, uint32_t height, uint32_t bits) override;
+    void blit(g_rectangle invalid, g_rectangle sourceSize, g_color_argb* source) override;
+    g_dimension getResolution() override;
+};
 
 #endif

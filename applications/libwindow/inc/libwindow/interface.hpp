@@ -31,7 +31,7 @@
  * This UI interface specification defines the messages
  * that the active window manager must understand.
  */
-#define G_UI_REGISTRATION_THREAD_IDENTIFIER "windowserver/registration"
+#define G_UI_REGISTRY_NAME "windowserver/registration"
 
 /**
  * Size of the largest expected message

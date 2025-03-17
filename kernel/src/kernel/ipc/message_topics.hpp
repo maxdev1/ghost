@@ -18,39 +18,55 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "libdevice/manager.hpp"
-#include <ghost/messages.h>
-#include <ghost/tasks.h>
-#include <cstdio>
+#ifndef __KERNEL_IPC_MESSAGE_TOPICS__
+#define __KERNEL_IPC_MESSAGE_TOPICS__
 
-bool deviceManagerRegisterDevice(g_device_type type, g_tid handler, g_device_id* outId)
+#include "kernel/utils/wait_queue.hpp"
+#include "shared/system/mutex.hpp"
+#include <ghost/messages/callstructs.h>
+
+/**
+ * A message topic is identified by a name and persists posted message.
+ * The transaction is always counted up for each posted message. Receiving tasks
+ * must always use the previous transaction number for receiving.
+ */
+struct g_message_topic
 {
-	g_tid managerId = g_task_await_by_name(G_DEVICE_MANAGER_NAME);
-	auto tx = g_get_message_tx_id();
+    const char* name;
+    g_mutex lock;
+    g_message_header* head;
+    g_message_header* tail;
+    uint32_t size;
 
-	g_device_manager_register_device_request request{};
-	request.type = G_DEVICE_MANAGER_REGISTER_DEVICE;
-	request.handler = handler;
-	request.type = type;
-	g_send_message_t(managerId, &request, sizeof(request), tx);
+    g_message_transaction nextTransaction;
 
-	bool success = false;
-	size_t bufLen = sizeof(g_message_header) + sizeof(g_device_manager_register_device_response);
-	uint8_t buf[bufLen];
-	if(g_receive_message_t(buf, bufLen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
-	{
-		auto content = (g_device_manager_register_device_response*) G_MESSAGE_CONTENT(buf);
+    g_wait_queue waitersReceive;
+};
 
-		if(content->status == G_DEVICE_MANAGER_SUCCESS)
-		{
-			*outId = content->id;
-			success = true;
-		}
-		else
-		{
-			klog("failed to register device with status %i", content->status);
-		}
-	}
+/**
+* Initializes message topics.
+ */
+void messageTopicsInitialize();
 
-	return success;
-}
+/**
+ * Posts a message to the topic.
+ */
+g_message_send_status messageTopicsPost(const char* topicName, g_tid sender, void* content, uint32_t length);
+
+/**
+ * Receives the next message from the topic, starting at the given transaction index.
+ */
+g_message_receive_status messageTopicsReceive(const char* topicName, g_message_transaction startAfter, void* out,
+                                              uint32_t max);
+
+/**
+ * Adds the task to the receive-wait queue of the topic.
+ */
+void messageTopicsWaitForReceive(const char* topicName, g_tid receiver);
+
+/**
+ * Removes the task from the receive-wait queue of the topic.
+ */
+void messageTopicsUnwaitForReceive(const char* topicName, g_tid receiver);
+
+#endif

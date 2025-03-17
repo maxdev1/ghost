@@ -38,7 +38,7 @@ void input_receiver_t::initialize()
 
 void input_receiver_t::startReceiveKeyEvents()
 {
-	g_task_register_id("windowserver/key-receiver");
+	g_task_register_name("windowserver/key-receiver");
 
 	event_processor_t* event_queue = windowserver_t::instance()->eventProcessor;
 
@@ -60,7 +60,7 @@ void input_receiver_t::startReceiveKeyEvents()
 
 void input_receiver_t::startReceiveMouseEvents()
 {
-	g_task_register_id("windowserver/mouse-receiver");
+	g_task_register_name("windowserver/mouse-receiver");
 
 	windowserver_t* instance = windowserver_t::instance();
 	g_dimension resolution = instance->videoOutput->getResolution();

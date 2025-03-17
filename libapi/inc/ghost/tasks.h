@@ -28,8 +28,7 @@ __BEGIN_C
 /**
  * Quits the process with the given status code.
  *
- * @param status
- * 		the status code
+ * @param status the status code
  *
  * @security-level APPLICATION
  */
@@ -47,8 +46,7 @@ g_pid g_get_pid();
 /**
  * Retrieves the id of the parent process for a given process.
  *
- * @param pid
- * 		id of the process
+ * @param pid id of the process
  *
  * @return the id of the executing process
  *
@@ -75,20 +73,15 @@ g_tid g_get_tid();
  *
  * @security-level APPLICATION
  */
-g_pid g_get_pid_for_tid(uint32_t tid);
+g_pid g_get_pid_for_tid(g_tid tid);
 
 /**
  * Creates a thread.
  *
- * @param function
- * 		the entry function
- * @param-opt userData
- * 		a pointer to user data that should be passed
- * 		to the entry function
- * @param-opt coreAffinity
- *      core affinity of this task, use G_TASK_CORE_AFFINITY_NONE for any
- * @param-opt outStatus
- *      outputs the status
+ * @param function the entry function
+ * @param-opt userData a pointer to user data that should be passed to the entry function
+ * @param-opt coreAffinity core affinity of this task, use G_TASK_CORE_AFFINITY_NONE for any
+ * @param-opt outStatus outputs the status
  *
  * @security-level APPLICATION
  */
@@ -110,36 +103,33 @@ void g_exit_task();
 /**
  * Registers the executing task for the given identifier.
  *
- * @param identifier
- * 		the identifier to set
+ * @param name the identifier to set
  *
  * @return if it was successful true, if the identifier is taken false
  *
  * @security-level APPLICATION
  */
-uint8_t g_task_register_id(const char* identifier);
+g_bool g_task_register_name(const char* name);
 
 /**
  * Waits until a task registers with the given identifier and then returns the task id.
  *
- * @param identifier
- *      the expected identifier
+ * @param name the expected identifier
  *
  * @security-level APPLICATION
  */
-g_tid g_task_await_by_id(const char* identifier);
+g_tid g_task_await_by_name(const char* name);
 
 /**
  * Returns the id of the task that is registered for the given identifier.
  *
- * @param identifier
- * 		the identifier
+ * @param name the identifier
  *
  * @return the id of the task, or -1 if no task has this identifier
  *
  * @security-level APPLICATION
  */
-g_tid g_task_get_id(const char* identifier);
+g_tid g_task_get_by_name(const char* name);
 
 /**
  * Spawns a program binary.
@@ -148,12 +138,9 @@ g_tid g_task_get_id(const char* identifier);
  * @param args unparsed arguments
  * @param workdir working directory for the execution
  * @param securityLevel security level to spawn the process to
- * @param outProcessId is filled with the process id
- * @param outStdio is filled with stdio file descriptors, 0 is write end of stdin,
- * 		1 is read end of stdout, 2 is read end of stderr
- * @param inStdio if supplied, the given descriptors which are valid for the executing process
- * 		are used as the stdin/out/err for the spawned process; an entry might be -1
- * 		to be ignored and default behaviour being applied
+ * @param outPid is filled with the process id
+ * @param outStdio is filled with stdio file descriptors, 0 is write end of stdin, 1 is read end of stdout, 2 is read end of stderr
+ * @param inStdio if supplied, the given descriptors which are valid for the executing process are used as the stdin/out/err for the spawned process; an entry might be -1 to be ignored and default behaviour being applied
  *
  * @return one of the {g_spawn_status} codes
  *
@@ -161,13 +148,13 @@ g_tid g_task_get_id(const char* identifier);
  */
 g_spawn_status g_spawn(const char* path, const char* args, const char* workdir, g_security_level securityLevel);
 g_spawn_status g_spawn_p(const char* path, const char* args, const char* workdir, g_security_level securityLevel,
-                         g_pid* pid);
+                         g_pid* outPid);
 g_spawn_status g_spawn_po(const char* path, const char* args, const char* workdir, g_security_level securityLevel,
-                          g_pid* pid, g_fd outStdio[3]);
+                          g_pid* outPid, g_fd outStdio[3]);
 g_spawn_status g_spawn_poi(const char* path, const char* args, const char* workdir, g_security_level securityLevel,
-                           g_pid* pid, g_fd outStdio[3], g_fd inStdio[3]);
+                           g_pid* outPid, g_fd outStdio[3], g_fd inStdio[3]);
 g_spawn_status g_spawn_poid(const char* path, const char* args, const char* workdir, g_security_level securityLevel,
-                            g_pid* pid, g_fd outStdio[3], const g_fd inStdio[3],
+                            g_pid* outPid, g_fd outStdio[3], const g_fd inStdio[3],
                             g_spawn_validation_details* outValidationDetails);
 
 /**
@@ -175,8 +162,7 @@ g_spawn_status g_spawn_poid(const char* path, const char* args, const char* work
  * This buffer must have a length of at least {PROCESS_COMMAND_LINE_ARGUMENTS_BUFFER_LENGTH} bytes.
  * If no arguments were supplied for the executing process, the buffer is null-terminated only.
  *
- * @param buffer
- * 		target buffer to store the arguments to
+ * @param buffer target buffer to store the arguments to
  *
  * @security-level KERNEL
  */
@@ -185,8 +171,7 @@ void g_cli_args_release(char* buffer);
 /**
  * Kills a process.
  *
- * @param pid
- * 		the process id
+ * @param pid the process id
  *
  * @security-level APPLICATION
  */
@@ -208,8 +193,7 @@ g_process_info* g_process_get_info();
 /**
  * Forks the current process. Only works from the main thread.
  *
- * @return within the executing process the forked processes id is returned,
- * 		within the forked process 0 is returned
+ * @return within the executing process the forked processes id is returned, within the forked process 0 is returned
  *
  * @security-level APPLICATION
  */
@@ -219,8 +203,7 @@ g_tid g_fork();
  * Joins the task with the given id, making the executing task
  * wait until this task has died.
  *
- * @param tid
- * 		id of the task to join
+ * @param tid id of the task to join
  *
  * @security-level APPLICATION
  */
@@ -229,8 +212,7 @@ void g_join(g_tid tid);
 /**
  * Sleeps for the given amount of milliseconds.
  *
- * @param ms
- * 		the milliseconds to sleep
+ * @param ms the milliseconds to sleep
  *
  * @security-level APPLICATION
  */
@@ -268,9 +250,7 @@ uint64_t g_nanos();
 /**
  * Sets the working directory for the current process.
  *
- * @param path
- * 		buffer of at least {G_PATH_MAX} bytes size
- * 		containing the new working directory
+ * @param path buffer of at least {G_PATH_MAX} bytes size containing the new working directory
  *
  * @return one of the {g_set_working_directory_status} codes
  *
@@ -281,11 +261,8 @@ g_set_working_directory_status g_set_working_directory(const char* path);
 /**
  * Retrieves the working directory for the current process.
  *
- * @param path
- * 		buffer of at least <maxlen> or {G_PATH_MAX} bytes size
- *
- * @param maxlen
- * 		length of the buffer in bytes
+ * @param path buffer of at least <maxlen> or {G_PATH_MAX} bytes size
+ * @param maxlen length of the buffer in bytes
  *
  * @return whether the action was successful
  *
@@ -298,8 +275,7 @@ g_get_working_directory_status g_get_working_directory_l(char* buffer, size_t ma
  * Retrieves the directory of the executable when available, otherwise an empty
  * string is written to the buffer.
  *
- * @param path
- * 		buffer of at least {G_PATH_MAX} bytes size
+ * @param path buffer of at least {G_PATH_MAX} bytes size
  *
  * @security-level APPLICATION
  */

@@ -21,7 +21,6 @@
 #include "ghost/syscall.h"
 #include "ghost/messages.h"
 #include "ghost/messages/callstructs.h"
-#include "ghost/mutex.h"
 
 // redirect
 g_message_receive_status g_receive_message(void* buf, size_t max)
@@ -54,13 +53,14 @@ g_message_receive_status g_receive_message_tm(void* buf, size_t max, g_message_t
 g_message_receive_status g_receive_message_tmb(void* buf, size_t max, g_message_transaction tx,
                                                g_message_receive_mode mode, g_user_mutex break_condition)
 {
-
 	g_syscall_receive_message data;
 	data.buffer = (g_message_header*) buf;
 	data.maximum = max;
 	data.mode = mode;
 	data.transaction = tx;
 	data.break_condition = break_condition;
+
 	g_syscall(G_SYSCALL_MESSAGE_RECEIVE, (g_address) &data);
+
 	return data.status;
 }

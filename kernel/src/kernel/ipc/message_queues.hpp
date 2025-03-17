@@ -26,42 +26,65 @@
 
 #include <ghost/messages/callstructs.h>
 
+/**
+ * A message queue exists per task and removes messages once they are read by
+ * the receiving task.
+ */
 struct g_message_queue
 {
-	g_mutex lock;
-	g_message_header* head;
-	g_message_header* tail;
-	uint32_t size;
+    g_mutex lock;
+    g_message_header* head;
+    g_message_header* tail;
+    uint32_t size;
 
-	g_tid task;
-	g_wait_queue waitersSend;
+    g_tid task;
+    g_wait_queue waitersSend;
 };
 
 /**
- * Initializes basic structures required for messaging.
+ * Initializes the messaging system.
  */
-void messageInitialize();
+void messageQueuesInitialize();
 
 /**
  * Sends a message.
  */
-g_message_send_status messageSend(g_tid sender, g_tid receiver, void* content, uint32_t length, g_message_transaction tx);
+g_message_send_status messageQueueSend(g_tid sender, g_tid receiver, void* content, uint32_t length,
+                                  g_message_transaction tx);
 
 /**
  * Receives a message.
  */
-g_message_receive_status messageReceive(g_tid receiver, g_message_header* out, uint32_t max, g_message_transaction tx);
-
-g_message_transaction messageNextTxId();
+g_message_receive_status messageQueueReceive(g_tid receiver, g_message_header* out, uint32_t max, g_message_transaction tx);
 
 /**
- * When a task is removed, this function is called to cleanup any occupied memory.
+ * @return the next free message transaction ID in the system
  */
-void messageTaskRemoved(g_tid task);
+g_message_transaction messageQueueNextTxId();
 
-void messageWaitForSend(g_tid sender, g_tid receiver);
-void messageUnwaitForSend(g_tid sender, g_tid receiver);
-void messageWaitForReceive(g_tid receiver);
-void messageUnwaitForReceive(g_tid receiver);
+/**
+ * Cleans up messages when a task is removed.
+ */
+void messageQueueTaskRemoved(g_tid task);
+
+/**
+ * Adds the sender to the list of waiters that wait for free space in the receivers queue.
+ */
+void messageQueueWaitForSend(g_tid sender, g_tid receiver);
+
+/**
+ * Removes the sender from the send-wait queue.
+ */
+void messageQueueUnwaitForSend(g_tid sender, g_tid receiver);
+
+/**
+ * Adds the receiver to the list of waiters that wait for new messages in the receivers queue.
+ */
+void messageQueueWaitForReceive(g_tid receiver);
+
+/**
+ * Removes the receiver from the receive-wait queue.
+ */
+void messageQueueUnwaitForReceive(g_tid receiver);
 
 #endif

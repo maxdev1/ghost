@@ -24,29 +24,29 @@
 
 g_spawn_status g_spawn(const char* path, const char* args, const char* workdir, g_security_level securityLevel)
 {
-	return g_spawn_poid(path, args, workdir, securityLevel, 0, 0, 0, 0);
+	return g_spawn_poid(path, args, workdir, securityLevel, nullptr, nullptr, nullptr, nullptr);
 }
 
 g_spawn_status g_spawn_p(const char* path, const char* args, const char* workdir, g_security_level securityLevel,
-                         g_pid* pid)
+                         g_pid* outPid)
 {
-	return g_spawn_poid(path, args, workdir, securityLevel, pid, 0, 0, 0);
+	return g_spawn_poid(path, args, workdir, securityLevel, outPid, nullptr, nullptr, nullptr);
 }
 
 g_spawn_status g_spawn_po(const char* path, const char* args, const char* workdir, g_security_level securityLevel,
-                          g_pid* pid, g_fd outStdio[3])
+                          g_pid* outPid, g_fd outStdio[3])
 {
-	return g_spawn_poid(path, args, workdir, securityLevel, pid, outStdio, 0, 0);
+	return g_spawn_poid(path, args, workdir, securityLevel, outPid, outStdio, nullptr, nullptr);
 }
 
 g_spawn_status g_spawn_poi(const char* path, const char* args, const char* workdir, g_security_level securityLevel,
-                           g_pid* pid, g_fd outStdio[3], g_fd inStdio[3])
+                           g_pid* outPid, g_fd outStdio[3], g_fd inStdio[3])
 {
-	return g_spawn_poid(path, args, workdir, securityLevel, pid, outStdio, inStdio, 0);
+	return g_spawn_poid(path, args, workdir, securityLevel, outPid, outStdio, inStdio, nullptr);
 }
 
 g_spawn_status g_spawn_poid(const char* path, const char* args, const char* workdir, g_security_level securityLevel,
-                            g_pid* pid, g_fd outStdio[3],
+                            g_pid* outPid, g_fd outStdio[3],
                             const g_fd inStdio[3], g_spawn_validation_details* outValidationDetails)
 {
 	g_syscall_spawn data;
@@ -76,8 +76,8 @@ g_spawn_status g_spawn_poid(const char* path, const char* args, const char* work
 		outStdio[1] = data.outStdio[1];
 		outStdio[2] = data.outStdio[2];
 	}
-	if(pid)
-		*pid = data.pid;
+	if(outPid)
+		*outPid = data.pid;
 	if(outValidationDetails)
 		*outValidationDetails = data.validationDetails;
 	return data.status;

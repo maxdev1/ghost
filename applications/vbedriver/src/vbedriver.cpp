@@ -20,20 +20,26 @@
 
 #include "vbedriver.hpp"
 
+#include <libdevice/manager.hpp>
 #include <ghost.h>
+
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
 
+g_device_id deviceId;
+
 int main()
 {
-	klog("vbedriver");
-	uint32_t tid = g_get_tid();
-	if (!g_task_register_id(G_VBE_DRIVER_IDENTIFIER))
+	g_task_register_name("vbedriver");
+	klog("started");
+
+	if(!deviceManagerRegisterDevice(G_DEVICE_TYPE_VIDEO, g_get_tid(), &deviceId))
 	{
-		klog("vbedriver: could not register with task identifier '%s'", (char *)G_VBE_DRIVER_IDENTIFIER);
+		klog("failed to register device with device manager");
 		return -1;
 	}
+	klog("registered VBE device %i", deviceId);
 
 	vbeReceiveMessages();
 	return 0;
@@ -41,23 +47,23 @@ int main()
 
 void vbeReceiveMessages()
 {
-	size_t buflen = sizeof(g_message_header) + sizeof(g_vbe_set_mode_request) /*TODO*/;
+	size_t buflen = sizeof(g_message_header) + 1024;
 	uint8_t buf[buflen];
 
-	for (;;)
+	for(;;)
 	{
 		auto status = g_receive_message(buf, buflen);
-		if (status != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+		if(status != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 		{
 			continue;
 		}
 
-		g_message_header *header = (g_message_header *)buf;
-		g_vbe_request_header *request = (g_vbe_request_header *)G_MESSAGE_CONTENT(buf);
+		g_message_header* header = (g_message_header*) buf;
+		g_video_request_header* request = (g_video_request_header*) G_MESSAGE_CONTENT(buf);
 
-		if (request->command == G_VBE_COMMAND_SET_MODE)
+		if(request->command == G_VIDEO_COMMAND_SET_MODE)
 		{
-			vbeHandleCommandSetMode((g_vbe_set_mode_request *)request, header->sender, header->transaction);
+			vbeHandleCommandSetMode((g_video_set_mode_request*) request, header->sender, header->transaction);
 		}
 		else
 		{
@@ -66,10 +72,11 @@ void vbeReceiveMessages()
 	}
 }
 
-void vbeHandleCommandSetMode(g_vbe_set_mode_request *request, g_tid requestingTaskId, g_message_transaction requestTransaction)
+void vbeHandleCommandSetMode(g_video_set_mode_request* request, g_tid requestingTaskId,
+                             g_message_transaction requestTransaction)
 {
 	// create response
-	g_vbe_set_mode_response response;
+	g_video_set_mode_response response;
 
 	// switch video mode
 	g_vbe_vesa_video_info result;
@@ -78,43 +85,44 @@ void vbeHandleCommandSetMode(g_vbe_set_mode_request *request, g_tid requestingTa
 	uint8_t bpp = request->bpp;
 
 	klog("vbedriver: attempting to set video mode to %ix%i@%i", resX, resY, bpp);
-	if (vbeSetVideoMode(resX, resY, bpp, result))
+	if(vbeSetVideoMode(resX, resY, bpp, result))
 	{
 		uint32_t lfbSize = result.bytesPerScanline * result.resolutionY;
-		void *addressInRequestersSpace = g_share_mem(result.lfb, lfbSize, requestingTaskId);
+		void* addressInRequestersSpace = g_share_mem(result.lfb, lfbSize, requestingTaskId);
 
-		response.status = G_VBE_SET_MODE_STATUS_SUCCESS;
-		response.mode_info.lfb = (uint32_t)addressInRequestersSpace;
+		response.status = G_VIDEO_SET_MODE_STATUS_SUCCESS;
+		response.mode_info.lfb = (uint32_t) addressInRequestersSpace;
 		response.mode_info.resX = result.resolutionX;
 		response.mode_info.resY = result.resolutionY;
-		response.mode_info.bpp = (uint8_t)result.bpp;
-		response.mode_info.bpsl = (uint16_t)result.bytesPerScanline;
+		response.mode_info.bpp = (uint8_t) result.bpp;
+		response.mode_info.bpsl = (uint16_t) result.bytesPerScanline;
+		response.mode_info.explicit_update = false;
 	}
 	else
 	{
 		klog("vbedriver: unable to switch to video resolution %ix%i@%i", resX, resY, bpp);
-		response.status = G_VBE_SET_MODE_STATUS_FAILED;
+		response.status = G_VIDEO_SET_MODE_STATUS_FAILED;
 	}
 
 	// send response
-	g_send_message_t(requestingTaskId, &response, sizeof(g_vbe_set_mode_response), requestTransaction);
+	g_send_message_t(requestingTaskId, &response, sizeof(g_video_set_mode_response), requestTransaction);
 }
 
-bool vbeSetVideoMode(uint16_t width, uint16_t height, uint8_t bpp, g_vbe_vesa_video_info &result)
+bool vbeSetVideoMode(uint16_t width, uint16_t height, uint8_t bpp, g_vbe_vesa_video_info& result)
 {
 	bool success = false;
-	g_vbe_info_block *vbeInfoBlock = (g_vbe_info_block *)g_lower_malloc(
-		VBE_INFO_BLOCK_SIZE);
+	g_vbe_info_block* vbeInfoBlock = (g_vbe_info_block*) g_lower_malloc(
+			VBE_INFO_BLOCK_SIZE);
 
-	if (vm86LoadVbeInfo(vbeInfoBlock))
+	if(vm86LoadVbeInfo(vbeInfoBlock))
 	{
-		klog("vbedriver: version %x", (uint32_t)vbeInfoBlock->version);
+		klog("vbedriver: version %x", (uint32_t) vbeInfoBlock->version);
 
-		g_vbe_mode_info_block *modeInfoBlock = (g_vbe_mode_info_block *)g_lower_malloc(VBE_MODE_INFO_BLOCK_SIZE);
+		g_vbe_mode_info_block* modeInfoBlock = (g_vbe_mode_info_block*) g_lower_malloc(VBE_MODE_INFO_BLOCK_SIZE);
 		uint32_t mode = vbeFindBestMatchingVideoMode(vbeInfoBlock, modeInfoBlock, width, height, bpp);
-		if (mode)
+		if(mode)
 		{
-			if (vbeApplyVideoMode(mode, modeInfoBlock, result))
+			if(vbeApplyVideoMode(mode, modeInfoBlock, result))
 			{
 				success = true;
 			}
@@ -131,60 +139,63 @@ bool vbeSetVideoMode(uint16_t width, uint16_t height, uint8_t bpp, g_vbe_vesa_vi
 	return success;
 }
 
-uint32_t vbeFindBestMatchingVideoMode(g_vbe_info_block *vbeInfoBlock, g_vbe_mode_info_block *modeInfoBlock,
-									  uint16_t width, uint16_t height, uint8_t bpp)
+uint32_t vbeFindBestMatchingVideoMode(g_vbe_info_block* vbeInfoBlock, g_vbe_mode_info_block* modeInfoBlock,
+                                      uint16_t width, uint16_t height, uint8_t bpp)
 {
 	uint32_t bestMatchingMode = 0;
 	uint32_t bestFoundDepthDiff = -1;
 	uint32_t bestFoundResolutionDiff = -1;
 	uint32_t wantedResolution = width * height;
 
-	uint16_t *modes = (uint16_t *)G_FP_TO_LINEAR(vbeInfoBlock->videoModeFarPtr);
-	for (uint32_t i = 0;; ++i)
+	uint16_t* modes = (uint16_t*) G_FP_TO_LINEAR(vbeInfoBlock->videoModeFarPtr);
+	for(uint32_t i = 0;; ++i)
 	{
 		uint16_t mode = modes[i];
-		if (mode == 0xFFFF)
+		if(mode == 0xFFFF)
 		{
 			break;
 		}
 
-		if (!vm86LoadModeInfo(mode, modeInfoBlock))
+		if(!vm86LoadModeInfo(mode, modeInfoBlock))
 		{
 			klog("vbedriver: mode %i: could not load mode info block, skipping", mode);
 			continue;
 		}
 
 		// Must be supported by hardware
-		if ((modeInfoBlock->modeAttributes & 0x1) != 0x1)
+		if((modeInfoBlock->modeAttributes & 0x1) != 0x1)
 		{
 			continue;
 		}
 
 		// Need LFB support
-		if ((modeInfoBlock->modeAttributes & 0x90) != 0x90)
+		if((modeInfoBlock->modeAttributes & 0x90) != 0x90)
 		{
 			continue;
 		}
 
 		// Need direct color mode
-		if (modeInfoBlock->memoryModel != 6)
+		if(modeInfoBlock->memoryModel != 6)
 		{
 			continue;
 		}
 
 		// Check if it's matching better
 		uint32_t resolution = modeInfoBlock->resolutionX * modeInfoBlock->resolutionY;
-		uint32_t resolutionDiff = (resolution > wantedResolution) ? (resolution - wantedResolution) : (wantedResolution - resolution);
+		uint32_t resolutionDiff = (resolution > wantedResolution)
+			                          ? (resolution - wantedResolution)
+			                          : (wantedResolution - resolution);
 		uint32_t depthDiff = (modeInfoBlock->bpp > bpp) ? (modeInfoBlock->bpp - bpp) : (bpp - modeInfoBlock->bpp);
 
-		if (resolutionDiff < bestFoundResolutionDiff || (resolutionDiff == bestFoundResolutionDiff && depthDiff < bestFoundDepthDiff))
+		if(resolutionDiff < bestFoundResolutionDiff || (
+			   resolutionDiff == bestFoundResolutionDiff && depthDiff < bestFoundDepthDiff))
 		{
 			bestMatchingMode = mode;
 			bestFoundDepthDiff = depthDiff;
 			bestFoundResolutionDiff = resolutionDiff;
 
 			// Break on perfect match
-			if (depthDiff == 0 && resolutionDiff == 0)
+			if(depthDiff == 0 && resolutionDiff == 0)
 			{
 				break;
 			}
@@ -194,13 +205,14 @@ uint32_t vbeFindBestMatchingVideoMode(g_vbe_info_block *vbeInfoBlock, g_vbe_mode
 	return bestMatchingMode;
 }
 
-bool vbeApplyVideoMode(uint32_t mode, g_vbe_mode_info_block *modeInfoBlock, g_vbe_vesa_video_info &result)
+bool vbeApplyVideoMode(uint32_t mode, g_vbe_mode_info_block* modeInfoBlock, g_vbe_vesa_video_info& result)
 {
 	klog("vbedriver: switching to video mode %i", mode);
 
-	if (vm86SwitchVideoMode(mode) && vm86LoadModeInfo(mode, modeInfoBlock))
+	if(vm86SwitchVideoMode(mode) && vm86LoadModeInfo(mode, modeInfoBlock))
 	{
-		void *area = g_map_mmio((void *)modeInfoBlock->lfbPhysicalBase, modeInfoBlock->linBytesPerScanline * modeInfoBlock->resolutionY);
+		void* area = g_map_mmio((void*) modeInfoBlock->lfbPhysicalBase,
+		                        modeInfoBlock->linBytesPerScanline * modeInfoBlock->resolutionY);
 		result.resolutionX = modeInfoBlock->resolutionX;
 		result.resolutionY = modeInfoBlock->resolutionY;
 		result.bpp = modeInfoBlock->bpp;
@@ -211,7 +223,7 @@ bool vbeApplyVideoMode(uint32_t mode, g_vbe_mode_info_block *modeInfoBlock, g_vb
 	return false;
 }
 
-bool vm86LoadVbeInfo(g_vbe_info_block *target)
+bool vm86LoadVbeInfo(g_vbe_info_block* target)
 {
 	g_vm86_registers out;
 	g_vm86_registers in;
@@ -232,7 +244,7 @@ bool vm86LoadVbeInfo(g_vbe_info_block *target)
 	return (out.ax == 0x4F);
 }
 
-bool vm86LoadModeInfo(uint16_t mode, g_vbe_mode_info_block *target)
+bool vm86LoadModeInfo(uint16_t mode, g_vbe_mode_info_block* target)
 {
 	g_vm86_registers out;
 	g_vm86_registers regs;

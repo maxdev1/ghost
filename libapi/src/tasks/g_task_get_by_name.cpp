@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,20 +18,19 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __VBE_VIDEO_OUTPUT__
-#define __VBE_VIDEO_OUTPUT__
+#include "ghost/syscall.h"
+#include "ghost/tasks.h"
+#include "ghost/tasks/callstructs.h"
 
-#include "configuration_based_video_output.hpp"
-#include <libvbedriver/vbedriver.hpp>
-
-class g_vbe_video_output : public g_configuration_based_video_output
+/**
+ *
+ */
+g_tid g_task_get_by_name(const char* name)
 {
-    g_vbe_mode_info videoModeInformation{};
+	g_syscall_task_get_by_name data;
+	data.name = (char*) name;
 
-public:
-    bool initializeWithSettings(uint32_t width, uint32_t height, uint32_t bits) override;
-    void blit(g_rectangle invalid, g_rectangle sourceSize, g_color_argb* source) override;
-    g_dimension getResolution() override;
-};
+	g_syscall(G_SYSCALL_GET_TASK_BY_NAME, (g_address) &data);
 
-#endif
+	return data.resultTaskId;
+}

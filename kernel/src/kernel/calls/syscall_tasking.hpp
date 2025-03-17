@@ -68,11 +68,11 @@ void syscallGetWorkingDirectory(g_task* task, g_syscall_get_working_directory* d
 
 void syscallSetWorkingDirectory(g_task* task, g_syscall_set_working_directory* data);
 
-void syscallRegisterTaskIdentifier(g_task* task, g_syscall_task_id_register* data);
+void syscallTaskRegisterName(g_task* task, g_syscall_task_register_name* data);
 
-void syscallAwaitTaskByIdentifier(g_task* task, g_syscall_task_await_by_id* data);
+void syscallTaskAwaitByName(g_task* task, g_syscall_task_await_by_name* data);
 
-void syscallGetTaskForIdentifier(g_task* task, g_syscall_task_id_get* data);
+void syscallGetTaskByName(g_task* task, g_syscall_task_get_by_name* data);
 
 void syscallDump();
 
