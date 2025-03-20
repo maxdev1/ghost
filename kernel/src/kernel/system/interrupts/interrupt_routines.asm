@@ -32,6 +32,7 @@ interruptRoutine:
     ; The processor has pushed registers to the stack.
     ; We'll save the registers that are typically pushed on interrupt, including
     ; the general-purpose registers and the instruction pointer (RIP) registers.
+    cld
 
     ; Store registers
     push rdi
@@ -51,12 +52,29 @@ interruptRoutine:
     push r14
     push r15
 
+    ; Store segments
+    mov rax, ds
+    push rax
+    mov rax, es
+    push rax
+
+	; Switch to kernel segments
+	mov ax, 0x10
+	mov ds, ax
+	mov es, ax
+
     ; Stack pointer argument
     mov rdi, rsp
     ; Call handler
     call _interruptHandler
     ; Set stack pointer from return value
     mov rsp, rax
+
+    ; Restore segments
+    pop rax
+    mov ds, rax
+    pop rax
+    mov es, rax
 
     ; Restore registers
     pop r15
@@ -77,7 +95,7 @@ interruptRoutine:
     pop rdi
 
     ; Skip over the interrupt error code (this was pushed before the handler call)
-    add rsp, 8
+    add rsp, 16
 
     ; Now we return with IRET, the processor will pop specific registers
     ; IRET in x86_64 pops RIP, CS, and EFLAGS from the stack
