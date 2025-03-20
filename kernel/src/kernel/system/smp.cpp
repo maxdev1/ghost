@@ -24,7 +24,7 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/filesystem/ramdisk.hpp"
 #include "kernel/kernel.hpp"
-
+#include "shared/memory/constants.hpp"
 #include "shared/logger/logger.hpp"
 
 bool smpInitialized = false;

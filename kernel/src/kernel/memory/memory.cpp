@@ -23,49 +23,42 @@
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/kernel.hpp"
 #include "kernel/memory/heap.hpp"
-#include "kernel/memory/lower_heap.hpp"
+#include "shared/memory/constants.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/memory/paging.hpp"
 #include "kernel/tasking/task.hpp"
 #include "shared/logger/logger.hpp"
 
-g_address_range_pool* memoryVirtualRangePool = 0;
+g_address_range_pool* memoryVirtualRangePool = nullptr;
 
-void _memoryRelocatePhysicalBitmap(g_setup_information* setupInformation)
+// TODO Not sure why this is necessary. Why are kernel pages mapped with user flag initially?
+void pagingRemoveUserPermissions()
 {
-	uint32_t bitmapPages = ((setupInformation->bitmapArrayEnd - setupInformation->bitmapArrayStart) / G_PAGE_SIZE);
-	g_virtual_address bitmapVirtual = addressRangePoolAllocate(memoryVirtualRangePool, bitmapPages);
-
-	for(uint32_t i = 0; i < bitmapPages; i++)
+	auto pml4 = (g_address*) G_MEM_PHYS_TO_VIRT(pagingGetCurrentSpace());
+	for(int i = 0; i < 512; i++)
 	{
-		g_offset off = (i * G_PAGE_SIZE);
-		pagingMapPage(bitmapVirtual + off, setupInformation->bitmapArrayStart + off, G_PAGE_TABLE_KERNEL_DEFAULT,
-		              G_PAGE_KERNEL_DEFAULT);
+		if(pml4[i])
+			pml4[i] &= ~G_PAGE_USER_FLAG;
 	}
-	bitmapPageAllocatorRelocate(&memoryPhysicalAllocator, bitmapVirtual);
 }
 
-void memoryInitialize(g_setup_information* setupInformation)
+void memoryInitialize(limine_memmap_response* memoryMap)
 {
-	bitmapPageAllocatorInitialize(&memoryPhysicalAllocator, (g_bitmap_header*) setupInformation->bitmapArrayStart);
+	logInfo("%! initializing kernel memory with map at %x", "mem", memoryMap);
+
+	logInfo("%! initial data", "paging");
+	pagingRemoveUserPermissions();
+
+	bitmapPageAllocatorInitialize(&memoryPhysicalAllocator, memoryMap);
 	logInfo("%! available: %i MiB", "memory", (memoryPhysicalAllocator.freePageCount * G_PAGE_SIZE) / 1024 / 1024);
 
-	heapInitialize(setupInformation->heapStart, setupInformation->heapEnd);
-	lowerHeapInitialize(G_LOWER_HEAP_MEMORY_START, G_LOWER_HEAP_MEMORY_END);
+	heapInitialize();
 
 	memoryVirtualRangePool = (g_address_range_pool*) heapAllocate(sizeof(g_address_range_pool));
 	addressRangePoolInitialize(memoryVirtualRangePool);
-	addressRangePoolAddRange(memoryVirtualRangePool, G_KERNEL_VIRTUAL_RANGES_START, G_KERNEL_VIRTUAL_RANGES_END);
+	addressRangePoolAddRange(memoryVirtualRangePool, G_MEM_KERN_VIRT_RANGES_START, G_MEM_KERN_VIRT_RANGES_END);
 
 	pageReferenceTrackerInitialize();
-
-	_memoryRelocatePhysicalBitmap(setupInformation);
-}
-
-void memoryUnmapSetupMemory()
-{
-	for(g_virtual_address addr = G_LOWER_MEMORY_END; addr < G_KERNEL_AREA_START; addr += G_PAGE_SIZE)
-		pagingUnmapPage(addr);
 }
 
 g_physical_address memoryPhysicalAllocate(bool untracked)

@@ -15,7 +15,6 @@ with TARGET "all"
 INC=inc
 BIN=bin
 SRC=src
-SRC_LOADER=$SRC/loader
 SRC_KERNEL=$SRC/kernel
 SRC_SHARED=$SRC/shared
 
@@ -23,22 +22,19 @@ SRC_SHARED=$SRC/shared
 # Compiler flags
 #
 LDFLAGS="-nostdlib -nostartfiles"
-CFLAGS="-std=c++11 -D_GHOST_KERNEL_=1 -Wall -Wno-unused-but-set-variable -ffreestanding -fno-exceptions -fno-rtti"
+CFLAGS="-mcmodel=large -std=c++11 -D_GHOST_KERNEL_=1 -Wall -Wno-unused-but-set-variable -ffreestanding -fno-exceptions -fno-rtti"
 
 #
 # Object output folders
 #
 OBJ_SHARED=$BIN/obj-shared
-OBJ_LOADER=$BIN/obj-loader
 OBJ_KERNEL=$BIN/obj-kernel
 
 
 #
 # Generated artifacts & linker scripts
 #
-ARTIFACT_LOADER=loader
 ARTIFACT_KERNEL=kernel
-LINKSCRIPT_LOADER=extra/link-loader.ld
 LINKSCRIPT_KERNEL=extra/link-kernel.ld
 
 
@@ -59,11 +55,9 @@ target_headline $TARGET
 target_clean() {
 	
 	headline "cleaning"
-	remove $ARTIFACT_LOADER
 	remove $ARTIFACT_KERNEL
 	cleanDirectory $BIN
 	cleanDirectory $OBJ_SHARED
-	cleanDirectory $OBJ_LOADER
 	cleanDirectory $OBJ_KERNEL
 	changes --clear
 }
@@ -122,7 +116,7 @@ target_compile() {
 		if ( [ $headers_have_changed -eq 1 ] || [ $changed -eq 1 ] ); then
 			out=`sourceToObject $file`
 			list $out
-			$NASM -f elf -s $file -o "$objdir/$out"
+			$NASM -f elf64 -s $file -o "$objdir/$out"
 			failOnError
 			changes -s $file
 		fi
@@ -138,7 +132,8 @@ target_link() {
 	script=$2
 	objects=$3
 	headline "linking $artifact"
-	
+
+	echo $CROSS_LD $LD_FLAGS -o $artifact -T $script $objects
 	$CROSS_LD $LD_FLAGS -o $artifact -T $script $objects
 	failOnError
 }
@@ -149,9 +144,7 @@ target_link() {
 target_all() {
 	target_compile_ap_startup
 	target_compile $SRC_SHARED $OBJ_SHARED "-I$INC -I$SRC"
-	target_compile $SRC_LOADER $OBJ_LOADER "-I$INC -I$SRC"
 	target_compile $SRC_KERNEL $OBJ_KERNEL "-I$INC -I$SRC"
-	target_link $ARTIFACT_LOADER $LINKSCRIPT_LOADER "$OBJ_LOADER/* $OBJ_SHARED/*"
 	target_link $ARTIFACT_KERNEL $LINKSCRIPT_KERNEL "$OBJ_KERNEL/* $OBJ_SHARED/*"
 }
 

@@ -25,27 +25,25 @@
 #include <ghost/ramdisk.h>
 
 #include "kernel/filesystem/ramdisk_entry.hpp"
-#include "shared/multiboot/multiboot.hpp"
+#include <limine.h>
 
 struct g_ramdisk
 {
-	g_ramdisk_entry* firstEntry;
-	g_ramdisk_entry* root;
-	uint32_t nextUnusedId = 0;
+    g_ramdisk_entry* firstEntry;
+    g_ramdisk_entry* root;
+    uint32_t nextUnusedId = 0;
 };
 
 extern g_ramdisk* ramdiskMain;
 
 /**
- * Creates a ramdisk instance for a multiboot module. The contents of the
- * ramdisk are relocated into kernel memory.
+ * Creates a ramdisk instance from the file loaded by the bootloader.
  *
- * @param module source multiboot module
+ * @param file file provided by bootloader
  * @return a ramdisk instance
  */
-void ramdiskLoadFromModule(g_multiboot_module* module);
-
-void ramdiskParseContents(g_multiboot_module* module);
+void ramdiskLoadFromBootloaderFile(limine_file* file);
+void ramdiskParseContents(limine_file* file);
 
 /**
  * Searches in the folder parent for a file/folder with the given name

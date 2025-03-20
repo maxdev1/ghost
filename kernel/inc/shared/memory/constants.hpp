@@ -29,24 +29,25 @@
 #define G_SMP_STARTUP_AREA_CODE_START		    	0x00001000	// must be 000XX000, used for SIPI
 #define G_SMP_STARTUP_AREA_END				        0x00007BFF
 
-#define G_LOWER_HEAP_MEMORY_START				    0x00007E00	// area used by the lower memory allocator
-#define G_LOWER_HEAP_MEMORY_END				        0x000CFFFF	// for vm86 and other 16bit stuff
-#define G_LOWER_MEMORY_END					        0x00100000
-
+// TODO change values
 #define G_USER_MAXIMUM_HEAP_BREAK				    0xA0000000
 #define G_USER_VIRTUAL_RANGES_START			        0xA0000000
 #define G_USER_VIRTUAL_RANGES_END				    0xC0000000
 
 #define G_KERNEL_AREA_START					        0xC0000000
-#define G_KERNEL_HEAP_INIT_SIZE                     0x01000000
-#define G_KERNEL_HEAP_EXPAND_STEP			    	0x00100000
-#define G_KERNEL_HEAP_END				    		0xF0000000
 
-#define G_KERNEL_VIRTUAL_RANGES_START			    0xF0000000
-#define G_KERNEL_VIRTUAL_RANGES_END			        0xFFC00000
 
-#define G_RECURSIVE_PAGE_DIRECTORY_AREA		        0xFFC00000
-#define G_RECURSIVE_PAGE_DIRECTORY_ADDRESS	        0xFFFFF000
-#define G_RECURSIVE_PAGE_TABLE(ti)                  (((g_page_table) G_RECURSIVE_PAGE_DIRECTORY_AREA) + (0x400 * ti))
+// TODO new constants
+#define G_MEM_LOWER_END                             0x0000000000100000
+#define G_MEM_LOWER_HALF_END                        0x00007fffffffffff
+#define G_MEM_HIGHER_HALF_DIRECT_MAP_OFFSET         0xffff800000000000
+#define G_MEM_PHYS_TO_VIRT(phys)                    ((G_MEM_HIGHER_HALF_DIRECT_MAP_OFFSET) + (g_address) phys)
+
+#define G_MEM_KERN_VIRT_RANGES_START			    0x00000009f0000000
+#define G_MEM_KERN_VIRT_RANGES_END			        0x00000009ffc00000
+#define G_MEM_HEAP_START                            0x0000000a00000000
+#define G_MEM_HEAP_INITIAL_SIZE                     0x0000000000100000
+#define G_KERNEL_HEAP_EXPAND_STEP			    	0x0000000000100000
+
 
 #endif

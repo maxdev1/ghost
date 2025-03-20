@@ -23,7 +23,7 @@
 #include "kernel/tasking/elf/elf_loader.hpp"
 #include "shared/logger/logger.hpp"
 
-g_spawn_status elfTlsLoadData(g_fd file, Elf32_Phdr phdr, g_elf_object* object)
+g_spawn_status elfTlsLoadData(g_fd file, Elf64_Phdr phdr, g_elf_object* object)
 {
 	uint32_t bytesToCopy = phdr.p_filesz;
 

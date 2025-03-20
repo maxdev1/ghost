@@ -39,6 +39,12 @@ documentation/out/*
 target/iso/boot/kernel
 target/iso/boot/loader
 target/iso/boot/ramdisk
+target/iso/boot/limine/limine-*.sys
+target/iso/boot/limine/limine-*.bin
+target/limine-*/*
+target/limine-*.tar.gz
+
+node_modules
 
 sysroot/system/include
 sysroot/system/lib/*

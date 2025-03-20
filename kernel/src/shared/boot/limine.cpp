@@ -18,27 +18,16 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LOADER_PHYSICALALLOCATOR__
-#define __LOADER_PHYSICALALLOCATOR__
+#include "shared/boot/limine.hpp"
+#include "shared/utils/string.hpp"
 
-#include "shared/memory/bitmap.hpp"
-#include <ghost/memory/types.h>
-
-/**
- * Reads the GRUB memory map to find out which memory areas are usable and free.
- * Everything after "startAfter" is excluded.
- *
- * This function is run twice; the first time, the memory map is interpreted to
- * determine how large all bitmaps in the bitmap array will be. In the second
- * run, a sufficient physical space was allocated and the bitmaps are written
- * to the given address.
- */
-uint32_t memoryPhysicalReadMemoryMap(g_address startAfter, g_address bitmapArrayStart);
-
-/**
- * Before the bitmap allocator is initialized, this simple allocation function
- * searches and allocates free pages, starting after the given address.
- */
-g_address memoryPhysicalAllocateInitial(g_address startAfter, int pages);
-
-#endif
+limine_file* limineFindModule(limine_module_response* info, const char* path)
+{
+	for(uint64_t i = 0; i < info->module_count; i++)
+	{
+		auto module = info->modules[i];
+		if(stringEquals(module->path, path))
+			return module;
+	}
+	return nullptr;
+}

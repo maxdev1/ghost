@@ -24,6 +24,7 @@
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/tasking/tasking_memory.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
+#include "shared/memory/constants.hpp"
 
 #include "shared/logger/logger.hpp"
 
@@ -78,7 +79,8 @@ void syscallAllocateMemory(g_task* task, g_syscall_alloc_mem* data)
 			failedPhysical = true;
 			break;
 		}
-		pagingMapPage(mapped + i * G_PAGE_SIZE, page, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
+		pagingMapPage(mapped + i * G_PAGE_SIZE, page, G_PAGE_TABLE_USER_DEFAULT,G_PAGE_TABLE_USER_DEFAULT,
+		              G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 	}
 
 	if(failedPhysical)
@@ -134,10 +136,10 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 
 	g_virtual_address memory = (g_virtual_address) data->memory;
 	uint32_t pages = G_PAGE_ALIGN_UP(data->size) / G_PAGE_SIZE;
-	if(memory > G_KERNEL_AREA_START || (memory + pages * G_PAGE_SIZE) > G_KERNEL_AREA_START)
+	if(memory > G_MEM_LOWER_HALF_END || (memory + pages * G_PAGE_SIZE) > G_MEM_LOWER_HALF_END)
 	{
 		logInfo("%! task %i was unable to share memory because addresses above %h are not allowed", "syscall", task->id,
-		        G_KERNEL_AREA_START);
+		        G_MEM_LOWER_HALF_END);
 		return;
 	}
 
@@ -169,7 +171,7 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 		mutexAcquire(&targetProcess->lock);
 		targetProcess = targetTask->process;
 
-		g_physical_address back = taskingMemoryTemporarySwitchTo(targetProcess->pageDirectory);
+		g_physical_address back = taskingMemoryTemporarySwitchTo(targetProcess->pageSpace);
 		pagingMapPage(virtualRangeBase + i * G_PAGE_SIZE, physicalAddr, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 		taskingMemoryTemporarySwitchBack(back);
 		mutexRelease(&targetProcess->lock);

@@ -24,38 +24,31 @@
 #include <ghost/memory/types.h>
 #include <ghost/stdint.h>
 
-#define G_PAGE_TABLE_PRESENT        (1)
-#define G_PAGE_TABLE_READWRITE      (1 << 1)
-#define G_PAGE_TABLE_USERSPACE      (1 << 2)
-#define G_PAGE_TABLE_WRITETHROUGH   (1 << 3)
-#define G_PAGE_TABLE_CACHE_DISABLED (1 << 4)
-#define G_PAGE_TABLE_ACCESSED       (1 << 5)
-#define G_PAGE_TABLE_SIZE           (1 << 6)
-
-#define G_PAGE_PRESENT              (1)
-#define G_PAGE_READWRITE            (1 << 1)
-#define G_PAGE_USERSPACE            (1 << 2)
-#define G_PAGE_WRITETHROUGH         (1 << 3)
-#define G_PAGE_CACHE_DISABLED       (1 << 4)
-#define G_PAGE_ACCESSED             (1 << 5)
-#define G_PAGE_DIRTY                (1 << 6)
-#define G_PAGE_GLOBAL               (1 << 7)
+#define G_PAGE_PRESENT          (1ULL << 0)  // Page is present
+#define G_PAGE_WRITABLE_FLAG    (1ULL << 1)  // Page is writable
+#define G_PAGE_USER_FLAG        (1ULL << 2)  // Page is accessible from user mode
+#define G_PAGE_WRITE_THROUGH    (1ULL << 3)  // Write-through caching
+#define G_PAGE_CACHE_DISABLE    (1ULL << 4)  // Disable caching
+#define G_PAGE_ACCESSED_FLAG    (1ULL << 5)  // Page has been accessed
+#define G_PAGE_DIRTY_FLAG       (1ULL << 6)  // Page has been written to (only for PT entries)
+#define G_PAGE_LARGE_PAGE_FLAG  (1ULL << 7)  // Page is a large page (2MB or 1GB)
+#define G_PAGE_GLOBAL_FLAG      (1ULL << 8)  // Page is global (only for PT entries)
+#define G_PAGE_NX_FLAG          (1ULL << 63) // No-execute flag (if supported)
 
 /**
  * Default flag definitions
  */
-#define G_PAGE_TABLE_KERNEL_DEFAULT (G_PAGE_TABLE_PRESENT | G_PAGE_TABLE_READWRITE)
-#define G_PAGE_TABLE_USER_DEFAULT   (G_PAGE_TABLE_PRESENT | G_PAGE_TABLE_READWRITE | G_PAGE_TABLE_USERSPACE)
+#define G_PAGE_TABLE_KERNEL_DEFAULT (G_PAGE_PRESENT | G_PAGE_WRITABLE_FLAG)
+#define G_PAGE_TABLE_USER_DEFAULT   (G_PAGE_PRESENT | G_PAGE_WRITABLE_FLAG | G_PAGE_USER_FLAG)
 
-#define G_PAGE_KERNEL_DEFAULT       (G_PAGE_PRESENT | G_PAGE_READWRITE | G_PAGE_GLOBAL)
-#define G_PAGE_KERNEL_UNCACHED      (G_PAGE_KERNEL_DEFAULT | G_PAGE_CACHE_DISABLED)
-#define G_PAGE_USER_DEFAULT         (G_PAGE_PRESENT | G_PAGE_READWRITE | G_PAGE_USERSPACE)
+#define G_PAGE_KERNEL_DEFAULT       (G_PAGE_PRESENT | G_PAGE_WRITABLE_FLAG | G_PAGE_GLOBAL_FLAG)
+#define G_PAGE_KERNEL_UNCACHED      (G_PAGE_KERNEL_DEFAULT | G_PAGE_CACHE_DISABLE)
+#define G_PAGE_USER_DEFAULT         (G_PAGE_PRESENT | G_PAGE_WRITABLE_FLAG | G_PAGE_USER_FLAG)
 
-/**
- * Type definitions for pointers to a directory or table
- */
-typedef volatile uint32_t* g_page_directory;
-typedef volatile uint32_t* g_page_table;
+#define G_PML4_INDEX(addr) (((addr) >> 39) & 0x1FF)
+#define G_PDPT_INDEX(addr) (((addr) >> 30) & 0x1FF)
+#define G_PD_INDEX(addr)   (((addr) >> 21) & 0x1FF)
+#define G_PT_INDEX(addr)   (((addr) >> 12) & 0x1FF)
 
 /**
  * Switches to the given page directory.
@@ -80,10 +73,15 @@ void pagingSwitchToSpace(g_physical_address dir);
  * 		whether an existing entry may be overriden
  *
  *
- */
+*/
 bool pagingMapPage(g_virtual_address virt, g_physical_address phys,
-                   uint32_t tableFlags = G_PAGE_TABLE_KERNEL_DEFAULT,
-                   uint32_t pageFlags = G_PAGE_KERNEL_DEFAULT, bool allowOverride = false);
+                   uint64_t tableFlags, uint64_t ptFlags,
+                   bool allowOverride = false);
+
+bool pagingMapPage(g_virtual_address virt, g_physical_address phys,
+                   uint64_t pdptFlags, uint64_t pdFlags,
+                   uint64_t ptFlags, uint64_t pageFlags,
+                   bool allowOverride = false);
 
 /**
  * Unmaps the given virtual page in the current address space.

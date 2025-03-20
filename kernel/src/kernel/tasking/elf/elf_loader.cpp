@@ -80,7 +80,7 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* roo
 	uint32_t totalRequired = sizeof(g_process_info) + sizeof(g_object_info) * objectCount + stringTableSize;
 
 	// Map required memory all loaded objects
-	uint32_t areaStart = imageEnd;
+	g_address areaStart = imageEnd;
 	uint32_t pages = G_PAGE_ALIGN_UP(totalRequired) / G_PAGE_SIZE;
 	for(uint32_t i = 0; i < pages; i++)
 	{
@@ -127,9 +127,9 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* roo
 	return imageEnd + G_PAGE_ALIGN_UP(totalRequired);
 }
 
-g_spawn_validation_details elfReadAndValidateHeader(g_fd file, Elf32_Ehdr* headerBuffer, bool root)
+g_spawn_validation_details elfReadAndValidateHeader(g_fd file, Elf64_Ehdr* headerBuffer, bool root)
 {
-	if(!filesystemReadToMemory(file, 0, (uint8_t*) headerBuffer, sizeof(Elf32_Ehdr)))
+	if(!filesystemReadToMemory(file, 0, (uint8_t*) headerBuffer, sizeof(Elf64_Ehdr)))
 	{
 		logInfo("%! failed to spawn file %i due to io error", "elf", file);
 		return G_SPAWN_VALIDATION_ELF32_IO_ERROR;
@@ -137,7 +137,7 @@ g_spawn_validation_details elfReadAndValidateHeader(g_fd file, Elf32_Ehdr* heade
 	return elfValidateHeader(headerBuffer, root);
 }
 
-g_spawn_validation_details elfValidateHeader(Elf32_Ehdr* header, bool root)
+g_spawn_validation_details elfValidateHeader(Elf64_Ehdr* header, bool root)
 {
 	if((header->e_ident[EI_MAG0] != ELFMAG0) || // 0x7F
 	   (header->e_ident[EI_MAG1] != ELFMAG1) || // E

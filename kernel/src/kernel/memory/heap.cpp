@@ -22,7 +22,7 @@
 #include "kernel/memory/allocator.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/paging.hpp"
-#include "kernel/system/interrupts/interrupts.hpp"
+#include "shared/memory/constants.hpp"
 #include "shared/panic.hpp"
 #include "shared/system/mutex.hpp"
 
@@ -35,20 +35,33 @@ static bool heapInitialized = false;
 static g_mutex heapLock;
 
 bool _heapExpand();
+void _heapMapInitialArea();
 
-void heapInitialize(g_virtual_address start, g_virtual_address end)
+void heapInitialize()
 {
 	if(heapInitialized)
 		panic("%! tried to initialized kernel heap twice", "kernheap");
 
+	_heapMapInitialArea();
 	mutexInitializeGlobal(&heapLock, __func__);
+	memoryAllocatorInitialize(&heapAllocator, G_ALLOCATOR_TYPE_HEAP, heapStart, heapEnd);
 
-	memoryAllocatorInitialize(&heapAllocator, G_ALLOCATOR_TYPE_HEAP, start, end);
-	heapStart = start;
-	heapEnd = end;
-
-	logDebug("%! initialized with area: %h - %h", "kernheap", start, end);
+	logDebug("%! initialized with area: %h - %h", "heap", heapStart, heapEnd);
 	heapInitialized = true;
+}
+
+void _heapMapInitialArea()
+{
+	heapStart = G_MEM_HEAP_START;
+	heapEnd = heapStart + G_MEM_HEAP_INITIAL_SIZE;
+
+	g_address virt = heapStart;
+	while(virt < heapEnd)
+	{
+		g_physical_address addr = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+		pagingMapPage(virt, addr, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
+		virt += G_PAGE_SIZE;
+	}
 }
 
 void* heapAllocate(uint32_t size)
@@ -68,7 +81,7 @@ void* heapAllocate(uint32_t size)
 		}
 
 		panic("%! failed to allocate kernel memory", "kernheap");
-		return 0;
+		return nullptr;
 	}
 
 	heapAmountInUse += size;
@@ -110,12 +123,6 @@ uint32_t heapGetUsedAmount()
 
 bool _heapExpand()
 {
-	if(heapEnd + G_KERNEL_HEAP_EXPAND_STEP > G_KERNEL_HEAP_END)
-	{
-		logDebug("%! out of virtual memory area to map", "kernheap");
-		return false;
-	}
-
 	for(g_virtual_address virt = heapEnd; virt < heapEnd + G_KERNEL_HEAP_EXPAND_STEP; virt += G_PAGE_SIZE)
 	{
 		g_physical_address phys = memoryPhysicalAllocate(true);

@@ -23,23 +23,22 @@
 
 #include <stdarg.h>
 #include <ghost/stdint.h>
-
-#define G_CONSOLE_VIDEO_MEMORY			0xB8000
-#define G_CONSOLE_VIDEO_WIDTH			80
-#define G_CONSOLE_VIDEO_HEIGHT			25
-#define G_CONSOLE_VIDEO_LINE_BYTES		(G_CONSOLE_VIDEO_WIDTH * 2)
-#define G_CONSOLE_VIDEO_SCREEN_BYTES	(G_CONSOLE_VIDEO_HEIGHT * G_CONSOLE_VIDEO_LINE_BYTES)
+#include <limine.h>
 
 #define G_CONSOLE_VIDEO_DEFAULT_COLOR	0x07
 #define G_CONSOLE_VIDEO_HEADER_COLOR	0x0F
 
+void consoleVideoInitialize(limine_framebuffer* framebuffer);
+
 void consoleVideoPrint(char c);
 
-void consoleVideoPutChar(uint16_t x, uint16_t y, char c, uint8_t color);
+void consoleVideoPutChar(uint16_t x, uint16_t y, char c, uint32_t color);
 
-void consoleVideoPutString(uint16_t x, uint16_t y, const char *c, uint8_t color);
+void consoleVideoPutString(uint16_t x, uint16_t y, const char* c, uint32_t color);
 
-void consoleVideoSetColor(uint8_t color);
+void consoleVideoSetColor(uint32_t color);
+
+uint32_t consoleVideoGetColor();
 
 void consoleVideoClear();
 

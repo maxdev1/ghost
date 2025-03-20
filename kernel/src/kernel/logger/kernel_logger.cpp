@@ -26,13 +26,13 @@
 #include "shared/system/bios_data_area.hpp"
 #include "shared/debug/debug_interface.hpp"
 
-void kernelLoggerInitialize(g_setup_information* info)
+void kernelLoggerInitialize()
 {
 	kernelLoggerInitializeComPorts();
-	kernelLoggerPrintHeader(info);
+	kernelLoggerPrintHeader();
 }
 
-void kernelLoggerPrintHeader(g_setup_information* info)
+void kernelLoggerPrintHeader()
 {
 	if(!G_PRETTY_BOOT)
 		consoleVideoClear();
@@ -40,11 +40,10 @@ void kernelLoggerPrintHeader(g_setup_information* info)
 	logInfon("");
 	logInfon("");
 	logInfon("");
-	consoleVideoSetColor(0x90);
+	consoleVideoSetColor(0xFF4444FF);
 	logInfon("Ghost Kernel");
-	consoleVideoSetColor(0x0F);
+	consoleVideoSetColor(0xFFFFFFFF);
 	logInfo(" Version %i.%i.%i", G_VERSION_MAJOR, G_VERSION_MINOR, G_VERSION_PATCH);
-	logInfo("");
 	logInfo("  Copyright (C) 2022, Max Schl\x81ssel <lokoxe@gmail.com>");
 	logInfo("");
 	logInfo("%! initializing core services", "kernel");
@@ -61,14 +60,10 @@ void kernelLoggerPrintHeader(g_setup_information* info)
 
 void kernelLoggerInitializeComPorts()
 {
-	g_com_port_information comPortInfo = biosDataArea->comPortInfo;
-	if(comPortInfo.com1 == 0)
+	if(serialPortIsAvailable(G_SERIAL_DEFAULT_COM1))
 	{
-		logInfo("%! COM1 port not available for serial debug output", "logger");
-		return;
+		serialPortInitialize(G_SERIAL_DEFAULT_COM1, false); // Initialize in poll mode
+		loggerEnableSerial(true);
+		debugInterfaceInitialize(G_SERIAL_DEFAULT_COM1);
 	}
-
-	serialPortInitialize(comPortInfo.com1, false);
-	loggerEnableSerial(true);
-	debugInterfaceInitialize(comPortInfo.com1);
 }

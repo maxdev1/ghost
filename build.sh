@@ -25,6 +25,9 @@ APPS_ALL=0
 
 EVERYTHING=1
 
+# Targets
+requireTool mtools
+
 # Define some helpers
 pushd() {
 	command pushd "$@" >/dev/null
@@ -85,7 +88,27 @@ backspace_len() {
 	printf "%0.s\b" $(seq 1 $@)
 }
 
-# Targets
+# Build limine if required
+verify_limine() {
+  pushd target
+	print_name "bootloader-limine"
+	printf "\n"
+
+  # TODO: Maybe move this all to toolchain setup
+  if [ ! -d "limine-$LIMINE_VERSION" ]; then
+    curl "$LIMINE_SOURCE" -k -o "limine-$LIMINE_VERSION.tar.gz"
+    tar -xf "limine-$LIMINE_VERSION.tar.gz"
+    pushd "limine-$LIMINE_VERSION"
+    ./configure --enable-bios-cd --enable-uefi-cd
+    make
+    popd
+  fi
+
+  cp "limine-$LIMINE_VERSION/limine.h" "$SYSROOT/system/include/limine.h"
+
+  popd
+}
+
 build_ports() {
 	pushd patches/ports
 
@@ -280,6 +303,9 @@ echo ""
 if [ ! -f "$SYSROOT/system/lib/libgcc_s.so.1" ]; then
   FIRST_RUN=1
 fi
+
+# Always check limine
+verify_limine
 
 # Parse arguments
 NEXT_ARGS_APPS=0

@@ -61,9 +61,9 @@ static const char* EXCEPTION_NAMES[] = {
 		"reserved exception", "reserved exception" // reserved exceptions
 };
 
-uint32_t exceptionsGetCR2()
+g_address exceptionsGetCR2()
 {
-	uint32_t addr;
+	g_address addr;
 	asm volatile("mov %%cr2, %0"
 		: "=r"(addr));
 	return addr;
@@ -71,9 +71,9 @@ uint32_t exceptionsGetCR2()
 
 bool exceptionsHandleDivideError(g_task* task)
 {
-	uint8_t* faulting_instruction = (uint8_t*) task->state->eip;
+	uint8_t* faultyInstruction = (uint8_t*) task->state->rip;
 
-	uint8_t opcode = faulting_instruction[0];
+	uint8_t opcode = faultyInstruction[0];
 	int skip = 1;
 
 	if(
@@ -82,7 +82,7 @@ bool exceptionsHandleDivideError(g_task* task)
 	)
 	{
 		skip = 2;
-		uint8_t modrm = faulting_instruction[1];
+		uint8_t modrm = faultyInstruction[1];
 		uint8_t mod = (modrm >> 6) & 0x3;
 		if(mod == 1)
 			skip += 1;
@@ -90,9 +90,10 @@ bool exceptionsHandleDivideError(g_task* task)
 			skip += 4;
 	}
 
-	task->state->eip += skip;
+	task->state->rip += skip;
 
-	logInfo("%! Divide error in task %i, skipping to EIP: %x", "exception", task->id, task->state->eip);
+	logInfo("%! divide error in task %i at %x, skipping to EIP: %x", "exception", task->id, faultyInstruction,
+	        task->state->rip);
 	return true;
 }
 
@@ -110,10 +111,10 @@ void exceptionsDumpTask(g_task* task)
 		// Page fault
 		logInfo("%#    accessed address: %h", exceptionsGetCR2());
 	}
-	logInfo("%#    eip: %h   eflags: %h", state->eip, state->eflags);
-	logInfo("%#    eax: %h      ebx: %h", state->eax, state->ebx);
-	logInfo("%#    ecx: %h      edx: %h", state->ecx, state->edx);
-	logInfo("%#    esp: %h      ebp: %h", state->esp, state->ebp);
+	logInfo("%#    rip: %h   eflags: %h", state->rip, state->eflags);
+	logInfo("%#    rax: %h      rbx: %h", state->rax, state->rbx);
+	logInfo("%#    rcx: %h      rdx: %h", state->rcx, state->rdx);
+	logInfo("%#    rsp: %h      rbp: %h", state->rsp, state->rbp);
 	logInfo("%#   intr: %h    error: %h", state->intr, state->error);
 	logInfo("%#   task stack: %h - %h", task->stack.start, task->stack.end);
 	logInfo("%#   intr stack: %h - %h", task->interruptStack.start, task->interruptStack.end);
@@ -125,7 +126,7 @@ void exceptionsDumpTask(g_task* task)
 
 		logInfo("%# obj %x-%x: %s", object->startAddress, object->endAddress, object->name);
 
-		if(state->eip >= object->startAddress && state->eip < object->endAddress)
+		if(state->rip >= object->startAddress && state->rip < object->endAddress)
 		{
 			if(object == task->process->object)
 			{
@@ -133,7 +134,7 @@ void exceptionsDumpTask(g_task* task)
 			}
 			else
 			{
-				logInfo("%# caused in object '%s' at offset %x", object->name, state->eip - object->baseAddress);
+				logInfo("%# caused in object '%s' at offset %x", object->name, state->rip - object->baseAddress);
 			}
 			break;
 		}
@@ -141,17 +142,17 @@ void exceptionsDumpTask(g_task* task)
 	hashmapIteratorEnd(&iter);
 
 #if DEBUG_PRINT_STACK_TRACE
-	g_address* ebp = reinterpret_cast<g_address*>(state->ebp);
+	g_address* rbp = reinterpret_cast<g_address*>(state->rbp);
 	logInfo("%# stack trace:");
 	for(int frame = 0; frame < 8; ++frame)
 	{
-		g_address eip = ebp[1];
-		if(eip < 0x1000)
+		g_address rip = rbp[1];
+		if(rip < 0x1000)
 		{
 			break;
 		}
-		ebp = reinterpret_cast<g_address*>(ebp[0]);
-		logInfo("%#  %h", eip);
+		rbp = reinterpret_cast<g_address*>(rbp[0]);
+		logInfo("%#  %h", rip);
 	}
 #endif
 }
@@ -168,7 +169,7 @@ bool exceptionsHandlePageFault(g_task* task)
 
 	g_physical_address physPage = pagingVirtualToPhysical(G_PAGE_ALIGN_DOWN(accessed));
 	logInfo("%! task %i (core %i) EIP: %x (accessed %h, mapped page %h)", "pagefault", task->id,
-	        processorGetCurrentId(), task->state->eip, accessed, physPage);
+	        processorGetCurrentId(), task->state->rip, accessed, physPage);
 
 	exceptionsDumpTask(task);
 
@@ -218,7 +219,7 @@ bool exceptionsHandleGeneralProtectionFault(g_task* task)
 	exceptionsDumpTask(task);
 
 	logInfo("%! #%i task %i killed due to general protection fault at EIP %h", "exception", processorGetCurrentId(),
-	        task->id, task->state->eip);
+	        task->id, task->state->rip);
 	task->status = G_TASK_STATUS_DEAD;
 	taskingSchedule();
 	return true;
@@ -227,7 +228,7 @@ bool exceptionsHandleGeneralProtectionFault(g_task* task)
 bool exceptionsKillTask(g_task* task)
 {
 	logInfo("%! task %i killed due to exception %i (error %i) at EIP %h", "exception", task->id, task->state->intr,
-	        task->state->error, task->state->eip);
+	        task->state->error, task->state->rip);
 	task->status = G_TASK_STATUS_DEAD;
 	taskingSchedule();
 	return true;
@@ -272,7 +273,7 @@ void exceptionsHandle(g_task* task)
 	{
 		logInfo("%*%! task %i caused unresolved exception %i (error %i) at EIP: %h ESP: %h", 0x0C, "exception",
 		        task->id, task->state->intr,
-		        task->state->error, task->state->eip, task->state->esp);
+		        task->state->error, task->state->rip, task->state->rsp);
 		for(;;)
 		{
 			asm("hlt");

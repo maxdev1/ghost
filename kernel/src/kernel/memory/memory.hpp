@@ -25,16 +25,14 @@
 #include "kernel/memory/address_range_pool.hpp"
 #include "kernel/memory/paging.hpp"
 #include "shared/memory/memory.hpp"
-#include "shared/setup_information.hpp"
+#include <limine.h>
 
 class g_task;
 class g_process;
 
 extern g_address_range_pool* memoryVirtualRangePool;
 
-void memoryInitialize(g_setup_information* setupInformation);
-
-void memoryUnmapSetupMemory();
+void memoryInitialize(limine_memmap_response* memoryMap);
 
 /**
  * Allocates a physical memory page.
@@ -49,7 +47,7 @@ void memoryPhysicalFree(g_physical_address page);
 /**
  * Allocates and maps a memory range with the given number of pages.
  */
- g_virtual_address memoryAllocateKernel(int32_t pages);
+g_virtual_address memoryAllocateKernel(int32_t pages);
 
 /**
  * Frees a memory range allocated with <memoryAllocateKernelRange>.

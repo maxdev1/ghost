@@ -21,6 +21,19 @@
 #include "shared/system/serial_port.hpp"
 #include "shared/system/io_port.hpp"
 
+// Check if the COM1 port is available
+bool serialPortIsAvailable(uint16_t port)
+{
+	// Try writing to the Line Control Register (LCR)
+	ioPortWriteByte(port + 3, 0x80); // Set DLAB (Divisor Latch Access Bit)
+
+	// Read back the value
+	uint8_t lcr = ioPortReadByte(port + 3);
+
+	// If we read back the same value, the port is likely present
+	return lcr == 0x80;
+}
+
 void serialPortInitialize(uint16_t port, bool interruptsEnabled)
 {
 	// Disable the interrupts
@@ -42,7 +55,7 @@ void serialPortInitialize(uint16_t port, bool interruptsEnabled)
 	// 5: 0  ^
 	ioPortWriteByte(port + G_SERIAL_PORT_OFFSET_LINE_CONTROL, 0x03);
 
-	if (interruptsEnabled)
+	if(interruptsEnabled)
 	{
 		// Enable FIFO
 		ioPortWriteByte(port + G_SERIAL_PORT_OFFSET_INT_FIFO, 0xC7);
@@ -70,7 +83,7 @@ void serialPortInitialize(uint16_t port, bool interruptsEnabled)
 uint8_t serialPortRead(uint16_t port)
 {
 	// Wait byte available
-	while ((ioPortReadByte(port + G_SERIAL_PORT_OFFSET_LINE_STATUS) & 0x01) == 0)
+	while((ioPortReadByte(port + G_SERIAL_PORT_OFFSET_LINE_STATUS) & 0x01) == 0)
 	{
 	}
 
@@ -81,11 +94,10 @@ uint8_t serialPortRead(uint16_t port)
 void serialPortWrite(uint16_t port, uint8_t value)
 {
 	// Wait until ready
-	while ((ioPortReadByte(port + G_SERIAL_PORT_OFFSET_LINE_STATUS) & 0x20) == 0)
+	while((ioPortReadByte(port + G_SERIAL_PORT_OFFSET_LINE_STATUS) & 0x20) == 0)
 	{
 	}
 
 	// Write byte
 	ioPortWriteByte(port + G_SERIAL_PORT_OFFSET_DATA_REGISTER, value);
 }
-

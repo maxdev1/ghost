@@ -1,47 +1,50 @@
-ENTRY (kernelMain)
+OUTPUT_FORMAT(elf64-x86-64)
+
+ENTRY(kernelMain)
+
+PHDRS
+{
+    limine_requests PT_LOAD;
+    text PT_LOAD;
+    rodata PT_LOAD;
+    data PT_LOAD;
+}
 
 SECTIONS
 {
-	/* Start at this address*/
-	. = 0xC0000000;
-	
-	/* Text section */
-	textSectionStart = .;
-	.text BLOCK(4K) : ALIGN(4K)
-	{
-		*(.text)
-	}
-	textSectionEnd = .;
-	
-	/* Read-only section */
-	rodataSectionStart = .;
-	.rodata BLOCK(4K) : ALIGN(4K)
-	{
-        startConstructors = .;
-        *(SORT(.ctors*))
-        endConstructors = .;
-        
-		*(.rodata)
-	}
-	rodataSectionEnd = .;
-	
-	/* Data section */
-	dataSectionStart = .;
-	.data BLOCK(4K) : ALIGN(4K)
-	{
-		*(.data)
-	}
-	dataSectionEnd = .;
-	
-	/* BSS section */
-	bssSectionStart = .;
-	.bss BLOCK(4K) : ALIGN(4K)
-	{
-		*(COMMON)
-		*(.bss)
-	}
-	bssSectionEnd = .;
-	   
-	/* Align the end of the kernel to 0x1000 */
-	endKernel = ALIGN(4K);
+    . = 0xffffffff80000000;
+
+    .limine_requests : {
+        KEEP(*(.limine_requests_start))
+        KEEP(*(.limine_requests))
+        KEEP(*(.limine_requests_end))
+    } :limine_requests
+
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
+
+    .text : {
+        *(.text .text.*)
+    } :text
+
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
+
+    .rodata : {
+        *(.rodata .rodata.*)
+    } :rodata
+
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
+
+    .data : {
+        *(.data .data.*)
+    } :data
+
+    .bss : {
+        *(.bss .bss.*)
+        *(COMMON)
+    } :data
+
+    /DISCARD/ : {
+        *(.eh_frame*)
+        *(.note .note.*)
+    }
 }

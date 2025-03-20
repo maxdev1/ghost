@@ -34,34 +34,35 @@
 #define G_IDT_FLAGS_PRIVILEGE_RING3          0b01100000
 
 #define G_IDT_FLAGS_GATE_TYPE_TASK           0b00000101
-#define G_IDT_FLAGS_GATE_TYPE_INTERRUPT_16   0b00000110
-#define G_IDT_FLAGS_GATE_TYPE_INTERRUPT_32   0b00001110
-#define G_IDT_FLAGS_GATE_TYPE_TRAP_16        0b00000111
-#define G_IDT_FLAGS_GATE_TYPE_TRAP_32        0b00001111
 
+#define G_IDT_FLAGS_GATE_TYPE_INTERRUPT_64   0b00001110
+#define G_IDT_FLAGS_GATE_TYPE_TRAP_64        0b00001111
 
-#define G_IDT_FLAGS_INTERRUPT_GATE_KERNEL   (G_IDT_FLAGS_SEGMENT_PRESENT | G_IDT_FLAGS_GATE_TYPE_INTERRUPT_32 | G_IDT_FLAGS_PRIVILEGE_RING0)
-#define G_IDT_FLAGS_INTERRUPT_GATE_USER     (G_IDT_FLAGS_SEGMENT_PRESENT | G_IDT_FLAGS_GATE_TYPE_INTERRUPT_32 | G_IDT_FLAGS_PRIVILEGE_RING3)
+// Combined flags for common uses
+#define G_IDT_FLAGS_INTERRUPT_GATE_KERNEL   (G_IDT_FLAGS_SEGMENT_PRESENT | G_IDT_FLAGS_GATE_TYPE_INTERRUPT_64 | G_IDT_FLAGS_PRIVILEGE_RING0)
+#define G_IDT_FLAGS_INTERRUPT_GATE_USER     (G_IDT_FLAGS_SEGMENT_PRESENT | G_IDT_FLAGS_GATE_TYPE_INTERRUPT_64 | G_IDT_FLAGS_PRIVILEGE_RING3)
 
 /**
- * Structure of the IDT pointer
+ * Structure of the IDT pointer for x86_64
  */
 struct g_idt_pointer
 {
-	uint16_t limit;
-	uint32_t base;
+    uint16_t limit;
+    uint64_t base;
 }__attribute__((packed));
 
 /**
- * Structure of an IDT entry
+ * Structure of an IDT entry for x86_64
  */
 struct g_idt_entry
 {
-	uint16_t baseLow;
-	uint16_t kernelSegment;
-	uint8_t zero;
-	uint8_t flags;
-	uint16_t baseHigh;
+    uint16_t baseLow;
+    uint16_t kernelSegment;
+    uint8_t ist;
+    uint8_t flags;
+    uint16_t baseMid;
+    uint32_t baseHigh;
+    uint32_t reserved;
 }__attribute__((packed));
 
 /**
@@ -75,14 +76,14 @@ extern "C" void _loadIdt(uint32_t idtPointerAddress);
 /**
  * Installs the interrupt descriptor table.
  */
-void idtPrepare();
+void idtInitialize();
 
 /**
  * Installs the interrupt descriptor table.
  *
  * @reentrancy the same table is loaded on each core, therefore no locking necessary
  */
-void idtLoad();
+void idtInitializeLocal();
 
 /**
  * Fills the given values into the given IDT entry

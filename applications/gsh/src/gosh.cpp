@@ -28,6 +28,8 @@
 #include <string.h>
 #include <string>
 
+#include <ghost/tasks/types.h>
+
 char* cwdbuf = 0;
 
 std::vector<std::string> gshAutocomplete(std::string toComplete)
@@ -303,6 +305,12 @@ bool gshHandleBuiltin(program_call_t* call)
 		{
 			std::cerr << std::endl << "Usage:\tcd /path/to/target";
 		}
+		return true;
+	}
+
+	if(call->program == "bg")
+	{
+		g_spawn(call->arguments.at(0).c_str(), "", "", G_SECURITY_LEVEL_APPLICATION);
 		return true;
 	}
 

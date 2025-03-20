@@ -19,17 +19,21 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/memory/paging.hpp"
+
+#include <shared/panic.hpp>
+
 #include "shared/memory/constants.hpp"
 
 g_physical_address pagingVirtualToPhysical(g_virtual_address addr)
 {
-	uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(addr);
-	uint32_t pi = G_PAGE_IN_TABLE_INDEX(addr);
-
-	g_page_directory directory = (g_page_directory) G_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
-	if(directory[ti] == 0)
-		return 0;
-
-	g_page_table table = ((g_page_table) G_RECURSIVE_PAGE_DIRECTORY_AREA) + (0x400 * ti);
-	return table[pi] & ~G_PAGE_ALIGN_MASK;
+	panic("pagingVirtualToPhysical not implemented");
+	// uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(addr);
+	// uint32_t pi = G_PAGE_IN_TABLE_INDEX(addr);
+	//
+	// g_address* directory = (g_address*) G_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
+	// if(directory[ti] == 0)
+	// 	return 0;
+	//
+	// g_address* table = ((g_address*) G_RECURSIVE_PAGE_DIRECTORY_AREA) + (0x400 * ti);
+	// return table[pi] & ~G_PAGE_ALIGN_MASK;
 }

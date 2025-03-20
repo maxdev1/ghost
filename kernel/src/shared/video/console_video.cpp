@@ -19,87 +19,148 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "shared/video/console_video.hpp"
-#include "shared/memory/memory.hpp"
-#include "shared/system/io_port.hpp"
+#include "shared/logger/logger.hpp"
+#include "shared/video/bitmap_font.hpp"
 
-static uint8_t* videoMemory = (uint8_t*) G_CONSOLE_VIDEO_MEMORY;
-static uint8_t color = G_CONSOLE_VIDEO_DEFAULT_COLOR;
+static volatile uint32_t* videoMemory = nullptr;
+static int videoWidth = 0;
+static int videoHeight = 0;
+static uint64_t videoPitch = 0;
+
+static uint32_t color = G_CONSOLE_VIDEO_DEFAULT_COLOR;
 static uint32_t offset = 0;
+
+void consoleVideoInitialize(limine_framebuffer* framebuffer)
+{
+	videoMemory = static_cast<volatile uint32_t*>(framebuffer->address);
+	videoWidth = framebuffer->width;
+	videoHeight = framebuffer->height;
+	videoPitch = framebuffer->pitch / (framebuffer->bpp / 8);
+}
 
 void consoleVideoPrint(char c)
 {
+	int charColumns = videoWidth / bitmapFontCharWidth;
+	int charRows = videoHeight / bitmapFontCharHeight;
+
 	if(c == '\n')
 	{
-		if(offset % (G_CONSOLE_VIDEO_WIDTH * 2) == 0)
-			consoleVideoPrint(' ');
-
-		while(offset % (G_CONSOLE_VIDEO_WIDTH * 2) != 0)
-			consoleVideoPrint(' ');
-
-	} else
+		offset += charColumns - (offset % charColumns);
+	}
+	else
 	{
-		videoMemory[offset++] = c;
-		videoMemory[offset++] = color;
-
-		if(offset >= (G_CONSOLE_VIDEO_WIDTH * 2 * G_CONSOLE_VIDEO_HEIGHT))
-		{
+		if(offset >= charColumns * charRows)
 			consoleVideoScrollUp();
+
+		int x = offset % charColumns;
+		int y = (offset / charColumns) % charRows;
+
+		consoleVideoPutChar(x, y, c, color);
+
+		offset++;
+	}
+}
+
+void consoleVideoPutChar(uint16_t x, uint16_t y, char c, uint32_t color)
+{
+	uint8_t* fontChar = bitmapFontGetChar(c);
+
+	int onScreenX = x * bitmapFontCharWidth;
+	if(onScreenX > videoWidth - bitmapFontCharWidth)
+		return;
+
+	int onScreenY = y * bitmapFontCharHeight;;
+	if(onScreenY > videoHeight - bitmapFontCharHeight)
+		return;
+
+	for(int cy = 0; cy < bitmapFontCharHeight; cy++)
+	{
+		for(int cx = 0; cx < bitmapFontCharWidth; cx++)
+		{
+			videoMemory[(onScreenY + cy) * videoPitch + (onScreenX + cx)] =
+					(fontChar && fontChar[cy * bitmapFontCharWidth + cx] > 0) ? color : 0;
 		}
 	}
 }
 
-void consoleVideoPutChar(uint16_t x, uint16_t y, char c, uint8_t color)
-{
-	videoMemory[y * (G_CONSOLE_VIDEO_WIDTH * 2) + x * 2] = c;
-	videoMemory[y * (G_CONSOLE_VIDEO_WIDTH * 2) + x * 2 + 1] = color;
-}
-
-void consoleVideoPutString(uint16_t x, uint16_t y, const char* c, uint8_t color)
+void consoleVideoPutString(uint16_t x, uint16_t y, const char* c, uint32_t color)
 {
 	while(*c)
 	{
 		consoleVideoPutChar(x++, y, *c, color);
-		if(x > G_CONSOLE_VIDEO_WIDTH)
-		{
-			x = 0;
-			y++;
-		}
-		if(y > G_CONSOLE_VIDEO_HEIGHT)
-		{
-			y = 0;
-		}
+		// TODO
+		// if(x > G_CONSOLE_VIDEO_WIDTH)
+		// {
+		// 	x = 0;
+		// 	y++;
+		// }
+		// if(y > G_CONSOLE_VIDEO_HEIGHT)
+		// {
+		// 	y = 0;
+		// }
 		++c;
 	}
 }
 
 void consoleVideoScrollUp()
 {
-	uint32_t screenBytesWithoutLastLine = G_CONSOLE_VIDEO_SCREEN_BYTES - G_CONSOLE_VIDEO_LINE_BYTES;
-	memoryCopy(videoMemory, videoMemory + G_CONSOLE_VIDEO_LINE_BYTES, screenBytesWithoutLastLine);
-	offset -= G_CONSOLE_VIDEO_LINE_BYTES;
-	memorySetWords(videoMemory + screenBytesWithoutLastLine, ((G_CONSOLE_VIDEO_DEFAULT_COLOR << 8) | ' '), G_CONSOLE_VIDEO_WIDTH);
+	for(int y = 0; y < videoHeight; y++)
+	{
+		for(int x = 0; x < videoWidth; x++)
+		{
+			videoMemory[y * videoPitch + x] = 0;
+		}
+	}
+	offset = 0;
+
+	// TODO this is quite slow:
+	// int charColumns = videoWidth / bitmapFontCharWidth;
+	// int charRows = videoHeight / bitmapFontCharHeight;
+	//
+	// for(int y = 0; y < (charRows - 1) * bitmapFontCharHeight; y++)
+	// {
+	// 	for(int x = 0; x < videoWidth; x++)
+	// 	{
+	// 		videoMemory[y * videoPitch + x] = videoMemory[(y + bitmapFontCharHeight) * videoPitch + x];
+	// 	}
+	// }
+	//
+	// for(int y = (charRows - 1) * bitmapFontCharHeight; y < videoHeight; y++)
+	// {
+	// 	for(int x = 0; x < videoWidth; x++)
+	// 	{
+	// 		videoMemory[y * videoPitch + x] = 0;
+	// 	}
+	// }
+	//
+	// offset -= charColumns;
+	// if(offset < 0)
+	// 	offset = 0;
 }
 
 void consoleVideoClear()
 {
-	for(uint32_t i = 0; i < 25; i++)
+	for(int y = 0; y < videoHeight; y++)
 	{
-		consoleVideoPrint('\n');
+		for(int x = 0; x < videoWidth; x++)
+		{
+			videoMemory[y * videoPitch + x] = 0;
+		}
 	}
 	offset = 0;
 }
 
-void consoleVideoSetColor(uint8_t newColor)
+void consoleVideoSetColor(uint32_t newColor)
 {
 	color = newColor;
 }
 
+uint32_t consoleVideoGetColor()
+{
+	return color;
+}
+
 void consoleVideoSetVisualCursor(int x, int y)
 {
-
-	uint16_t position = (y * G_CONSOLE_VIDEO_WIDTH) + x;
-	ioPortWriteByte(0x3D4, 0x0F);
-	ioPortWriteByte(0x3D5, (uint8_t) (position & 0xFF));
-	ioPortWriteByte(0x3D4, 0x0E);
-	ioPortWriteByte(0x3D5, (uint8_t) ((position >> 8) & 0xFF));
+	// TODO: Do we need it?
 }

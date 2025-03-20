@@ -143,21 +143,21 @@ g_fs_read_status pipeRead(g_fs_phys_id pipeId, uint8_t* buffer, uint64_t offset,
 
 	length = (pipe->size >= length) ? length : pipe->size;
 
-	uint32_t lengthToEnd = ((uint32_t) pipe->buffer + pipe->capacity) - (uint32_t) pipe->readPosition;
+	size_t lengthToEnd = ((g_address) pipe->buffer + pipe->capacity) - (size_t) pipe->readPosition;
 	if(length > lengthToEnd)
 	{
 		memoryCopy(buffer, pipe->readPosition, lengthToEnd);
 
-		uint32_t remaining = length - lengthToEnd;
+		size_t remaining = length - lengthToEnd;
 		memoryCopy(&buffer[lengthToEnd], pipe->buffer, remaining);
 
-		pipe->readPosition = (uint8_t*) ((uint32_t) pipe->buffer + remaining);
+		pipe->readPosition = (uint8_t*) ((g_address) pipe->buffer + remaining);
 	}
 	else
 	{
 		memoryCopy(buffer, pipe->readPosition, length);
 
-		pipe->readPosition = (uint8_t*) ((uint32_t) pipe->readPosition + length);
+		pipe->readPosition = (uint8_t*) ((g_address) pipe->readPosition + length);
 	}
 
 	if(pipe->readPosition == pipe->buffer + pipe->capacity)
@@ -190,28 +190,28 @@ g_fs_write_status pipeWrite(g_fs_phys_id pipeId, uint8_t* buffer, uint64_t offse
 
 	mutexAcquire(&pipe->lock);
 
-	uint32_t space = (pipe->capacity - pipe->size);
+	size_t space = (pipe->capacity - pipe->size);
 
 	g_fs_write_status status;
 	if(space > 0)
 	{
 		length = (space >= length) ? length : space;
 
-		uint32_t lengthToEnd = ((uint32_t) pipe->buffer + pipe->capacity) - (uint32_t) pipe->writePosition;
+		size_t lengthToEnd = ((g_address) pipe->buffer + pipe->capacity) - (size_t) pipe->writePosition;
 		if(length > lengthToEnd)
 		{
 			memoryCopy(pipe->writePosition, buffer, lengthToEnd);
 
-			uint32_t remaining = length - lengthToEnd;
+			size_t remaining = length - lengthToEnd;
 			memoryCopy(pipe->buffer, &buffer[lengthToEnd], remaining);
 
-			pipe->writePosition = (uint8_t*) ((uint32_t) pipe->buffer + remaining);
+			pipe->writePosition = (uint8_t*) ((g_address) pipe->buffer + remaining);
 		}
 		else
 		{
 			memoryCopy(pipe->writePosition, buffer, length);
 
-			pipe->writePosition = (uint8_t*) ((uint32_t) pipe->writePosition + length);
+			pipe->writePosition = (uint8_t*) ((g_address) pipe->writePosition + length);
 		}
 
 		if(pipe->writePosition == pipe->buffer + pipe->capacity)
