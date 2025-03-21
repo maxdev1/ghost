@@ -124,7 +124,6 @@ void ramdiskParseContents(limine_file* file)
 
 g_ramdisk_entry* ramdiskFindChild(g_ramdisk_entry* parent, const char* childName)
 {
-
 	g_ramdisk_entry* current = ramdiskMain->firstEntry;
 	while(current)
 	{

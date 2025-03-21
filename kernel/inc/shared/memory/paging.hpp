@@ -101,7 +101,7 @@ g_physical_address pagingGetCurrentSpace();
 /**
  * Invalidates the translation lookaside buffer (TLB) entries for a given page.
  */
-static inline void pagingInvalidatePage(uint32_t addr)
+static inline void pagingInvalidatePage(g_address addr)
 {
     __asm__ __volatile__("invlpg (%0)" : : "r"(addr) : "memory");
 }

@@ -62,21 +62,21 @@ void loggerPrintFormatted(const char* message_const, va_list valist)
 		{
 			// integer
 			int64_t val = va_arg(valist, int64_t);
-			loggerPrintNumber(val, 10);
+			loggerPrintNumber(val, 10, false);
 		}
 		else if(*message == 'h' || *message == 'x')
 		{
 			// positive hex number
 			uint64_t val = va_arg(valist, uint64_t);
 			loggerPrintPlain("0x");
-			loggerPrintNumber(val, 16);
+			loggerPrintNumber(val, 16, *message == 'h');
 		}
 		else if(*message == 'b')
 		{
 			// boolean
 			int64_t val = va_arg(valist, int64_t);
 			loggerPrintPlain("0b");
-			loggerPrintNumber(val, 2);
+			loggerPrintNumber(val, 2, false);
 		}
 		else if(*message == 'c')
 		{
@@ -132,7 +132,7 @@ void loggerPrintFormatted(const char* message_const, va_list valist)
 	}
 }
 
-void loggerPrintNumber(uint64_t number, uint16_t base)
+void loggerPrintNumber(uint64_t number, uint16_t base, bool shortened)
 {
 
 	// Remember if negative
@@ -160,7 +160,7 @@ void loggerPrintNumber(uint64_t number, uint16_t base)
 	} while(number);
 
 	// If base is 16, write 0's until 8
-	if(base == 16)
+	if(!shortened && base == 16)
 	{
 		while(len < 16)
 		{

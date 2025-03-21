@@ -28,14 +28,14 @@ __BEGIN_C
 
 /**
  * ELF64 types
- */
-typedef uint32_t Elf64_Addr;
+*/
+typedef uint64_t Elf64_Addr;
+typedef uint64_t Elf64_Off;
 typedef uint16_t Elf64_Half;
-typedef uint32_t Elf64_Off;
-typedef int32_t Elf64_Sword;
 typedef uint32_t Elf64_Word;
-typedef int64_t Elf64_Sxword;
+typedef int32_t Elf64_Sword;
 typedef uint64_t Elf64_Xword;
+typedef int64_t Elf64_Sxword;
 
 /**
  * Ident header
@@ -55,13 +55,15 @@ typedef uint64_t Elf64_Xword;
 #define ELFMAG2			'L'
 #define ELFMAG3			'F'
 
-#define ELFCLASSNONE	0
 #define ELFCLASS32		1
 #define ELFCLASS64		2
 
-#define ELFDATANONE		0
 #define ELFDATA2LSB		1
 #define ELFDATA2MSB		2
+
+#define ELFOSABI_SYSV	0
+#define ELFOSABI_HPUX	1
+#define ELFOSABI_STANDALONE	255
 
 /**
  * ELF header
@@ -71,6 +73,8 @@ typedef uint64_t Elf64_Xword;
 #define ET_EXEC			2
 #define ET_DYN			3
 #define ET_CORE			4
+#define ET_LOOS			0xFE00
+#define ET_HIOS			0xFEFF
 #define ET_LOPROC		0xFF00
 #define ET_HIPROC		0xFFFF
 
@@ -82,6 +86,7 @@ typedef uint64_t Elf64_Xword;
 #define EM_88K			5
 #define EM_860			6
 #define EM_MIPS			8
+#define EM_X86_64		62
 
 #define EV_NONE			0
 #define EV_CURRENT		1
@@ -127,13 +132,13 @@ typedef struct
 typedef struct
 {
 	Elf64_Word p_type; // Type of the segment
+	Elf64_Word p_flags; // Segment flags
 	Elf64_Off p_offset; // Offset of the segment in the binary file
 	Elf64_Addr p_vaddr; // Virtual address
 	Elf64_Addr p_paddr; // Not relevant for System V
-	Elf64_Word p_filesz; // Size of the segment in the binary file
-	Elf64_Word p_memsz; // Size of the segment in memory
-	Elf64_Word p_flags; // Segment flags
-	Elf64_Word p_align; // Alignment information
+	Elf64_Xword p_filesz; // Size of the segment in the binary file
+	Elf64_Xword p_memsz; // Size of the segment in memory
+	Elf64_Xword p_align; // Alignment information
 } __attribute__((packed)) Elf64_Phdr;
 
 /**
@@ -141,10 +146,10 @@ typedef struct
  */
 typedef struct
 {
-	Elf64_Sword d_tag; // Controls interpretation of d_un, see DT_*
+	Elf64_Sxword d_tag; // Controls interpretation of d_un, see DT_*
 	union
 	{
-		Elf64_Word d_val;
+		Elf64_Xword d_val;
 		Elf64_Addr d_ptr;
 	} d_un;
 } __attribute__((packed)) Elf64_Dyn;
@@ -195,11 +200,11 @@ typedef struct
 typedef struct
 {
 	Elf64_Word st_name; // Index to symbol string name
-	Elf64_Addr st_value; // Value of associated symbol
-	Elf64_Word st_size; // Size of the symbol
 	uint8_t st_info; // Type and binding attributes
-	uint8_t st_other; // Undefined
+	uint8_t st_other; // Visibility
 	Elf64_Half st_shndx; // Section header table index
+	Elf64_Addr st_value; // Value of associated symbol
+	Elf64_Xword st_size; // Size of the symbol
 } Elf64_Sym;
 
 #define ELF64_ST_BIND(i)	((i) >> 4)
@@ -229,14 +234,14 @@ typedef struct
 {
 	Elf64_Word sh_name;
 	Elf64_Word sh_type;
-	Elf64_Word sh_flags;
+	Elf64_Xword sh_flags;
 	Elf64_Addr sh_addr;
 	Elf64_Off sh_offset;
-	Elf64_Word sh_size;
+	Elf64_Xword sh_size;
 	Elf64_Word sh_link;
 	Elf64_Word sh_info;
-	Elf64_Word sh_addralign;
-	Elf64_Word sh_entsize;
+	Elf64_Xword sh_addralign;
+	Elf64_Xword sh_entsize;
 } Elf64_Shdr;
 
 #define SHT_NULL		0
@@ -251,6 +256,8 @@ typedef struct
 #define SHT_REL			9
 #define SHT_SHLIB		10
 #define SHT_DYNSYM		11
+#define SHT_LOOS		0x60000000
+#define SHT_HIOS		0x6fffffff
 #define SHT_LOPROC		0x70000000
 #define SHT_HIPROC		0x7fffffff
 #define SHT_LOUSER		0x80000000
@@ -262,13 +269,13 @@ typedef struct
 typedef struct
 {
 	Elf64_Addr r_offset;
-	Elf64_Word r_info;
+	Elf64_Xword r_info;
 } Elf64_Rel;
 
 typedef struct
 {
 	Elf64_Addr r_offset;
-	Elf64_Word r_info;
+	Elf64_Xword r_info;
 	Elf64_Sxword r_addend;
 } Elf64_Rela;
 

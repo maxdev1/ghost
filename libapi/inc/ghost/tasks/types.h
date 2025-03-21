@@ -51,7 +51,7 @@ typedef uint8_t g_security_level;
  */
 typedef struct _g_user_threadlocal
 {
-    struct _g_user_threadlocal* self;
+	struct _g_user_threadlocal* self;
 } g_user_threadlocal;
 
 /**
@@ -102,16 +102,16 @@ typedef uint8_t g_create_task_status;
  */
 typedef struct _g_object_info
 {
-    const char* name;
+	const char* name;
 
-    void (*init)(void);
-    void (*fini)(void);
-    void (**preinitArray)(void);
-    uint32_t preinitArraySize;
-    void (**initArray)(void);
-    uint32_t initArraySize;
-    void (**finiArray)(void);
-    uint32_t finiArraySize;
+	void (*init)(void);
+	void (*fini)(void);
+	void (**preinitArray)(void);
+	uint32_t preinitArraySize;
+	void (**initArray)(void);
+	uint32_t initArraySize;
+	void (**finiArray)(void);
+	uint32_t finiArraySize;
 } __attribute__((packed)) g_object_info;
 
 /**
@@ -120,17 +120,17 @@ typedef struct _g_object_info
  */
 typedef struct
 {
-    /**
-     * Information about all loaded ELF objects.
-     */
-    g_object_info* objectInfos;
-    uint32_t objectInfosSize;
+	/**
+	 * Information about all loaded ELF objects.
+	 */
+	g_object_info* objectInfos;
+	uint32_t objectInfosSize;
 
-    /**
-     * Provides a pointer to the "syscall" function of the kernel, required when attempting
-     * to use a system call while within a user-space interrupt service routine.
-     */
-    void (*syscallKernelEntry)(uint32_t, void*);
+	/**
+	 * Provides a pointer to the "syscall" function of the kernel, required when attempting
+	 * to use a system call while within a user-space interrupt service routine.
+	 */
+	void (*syscallKernelEntry)(uint32_t, void*);
 } __attribute__((packed)) g_process_info;
 
 /**
@@ -161,40 +161,40 @@ typedef uint8_t g_spawn_status;
 
 typedef uint8_t g_spawn_validation_details;
 #define G_SPAWN_VALIDATION_SUCCESSFUL				((g_spawn_validation_details) 0)
-#define G_SPAWN_VALIDATION_ELF32_NOT_ELF			((g_spawn_validation_details) 1)
-#define G_SPAWN_VALIDATION_ELF32_NOT_EXECUTABLE		((g_spawn_validation_details) 2)
-#define G_SPAWN_VALIDATION_ELF32_NOT_I386			((g_spawn_validation_details) 3)
-#define G_SPAWN_VALIDATION_ELF32_NOT_32BIT			((g_spawn_validation_details) 4)
-#define G_SPAWN_VALIDATION_ELF32_NOT_LITTLE_ENDIAN	((g_spawn_validation_details) 5)
-#define G_SPAWN_VALIDATION_ELF32_NOT_STANDARD_ELF	((g_spawn_validation_details) 6)
-#define G_SPAWN_VALIDATION_ELF32_IO_ERROR			((g_spawn_validation_details) 7)
+#define G_SPAWN_VALIDATION_ELF_NOT_ELF				((g_spawn_validation_details) 1)
+#define G_SPAWN_VALIDATION_ELF_NOT_EXECUTABLE		((g_spawn_validation_details) 2)
+#define G_SPAWN_VALIDATION_ELF_NOT_I386				((g_spawn_validation_details) 3)
+#define G_SPAWN_VALIDATION_ELF_NOT_64BIT			((g_spawn_validation_details) 4)
+#define G_SPAWN_VALIDATION_ELF_NOT_LITTLE_ENDIAN	((g_spawn_validation_details) 5)
+#define G_SPAWN_VALIDATION_ELF_NOT_STANDARD_ELF		((g_spawn_validation_details) 6)
+#define G_SPAWN_VALIDATION_ELF_IO_ERROR				((g_spawn_validation_details) 7)
 
 // command structs
 typedef struct
 {
-    int command;
+	int command;
 }__attribute__((packed)) g_spawn_command_header;
 
 typedef struct
 {
-    g_spawn_command_header header;
-    g_security_level security_level;
-    size_t path_bytes;
-    size_t args_bytes;
-    size_t workdir_bytes;
-    g_fd stdin;
-    g_fd stdout;
-    g_fd stderr;
-    // followed by: path, args, workdir
+	g_spawn_command_header header;
+	g_security_level security_level;
+	size_t path_bytes;
+	size_t args_bytes;
+	size_t workdir_bytes;
+	g_fd stdin;
+	g_fd stdout;
+	g_fd stderr;
+	// followed by: path, args, workdir
 }__attribute__((packed)) g_spawn_command_spawn_request;
 
 typedef struct
 {
-    g_spawn_status status;
-    g_pid spawned_process_id;
-    g_fd stdin_write;
-    g_fd stdout_read;
-    g_fd stderr_read;
+	g_spawn_status status;
+	g_pid spawned_process_id;
+	g_fd stdin_write;
+	g_fd stdout_read;
+	g_fd stderr_read;
 }__attribute__((packed)) g_spawn_command_spawn_response;
 
 // process configuration buffer lengths

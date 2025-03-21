@@ -73,6 +73,6 @@ void loggerPrintFormatted(const char *message, va_list va);
  * 					- if the base is 10 then signs are added
  * 					- if the base is 16 a preceding '0x' is added
  */
-void loggerPrintNumber(uint64_t number, uint16_t base);
+void loggerPrintNumber(uint64_t number, uint16_t base, bool shortened);
 
 #endif

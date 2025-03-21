@@ -108,6 +108,7 @@ bool pagingMapPage(g_virtual_address virt, g_physical_address phys,
 		return true;
 	}
 
+	logInfo("%! failed to write paging entry for %x since it is already set to: %x", "paging", virt, pt[ptIndex]);
 	return false;
 }
 

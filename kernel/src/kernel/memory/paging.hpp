@@ -36,4 +36,6 @@
  */
 g_physical_address pagingVirtualToPhysical(g_virtual_address addr);
 
+g_physical_address pagingVirtualToPageEntry(g_virtual_address addr);
+
 #endif

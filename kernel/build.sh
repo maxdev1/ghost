@@ -22,7 +22,7 @@ SRC_SHARED=$SRC/shared
 # Compiler flags
 #
 LDFLAGS="-nostdlib -nostartfiles"
-CFLAGS="-mcmodel=large -std=c++11 -D_GHOST_KERNEL_=1 -Wall -Wno-unused-but-set-variable -ffreestanding -fno-exceptions -fno-rtti"
+CFLAGS="-mcmodel=large -mno-sse -mno-sse2 -mno-mmx -mno-avx -mno-red-zone -std=c++11 -D_GHOST_KERNEL_=1 -Wall -Wno-unused-but-set-variable -ffreestanding -fno-exceptions -fno-rtti"
 
 #
 # Object output folders

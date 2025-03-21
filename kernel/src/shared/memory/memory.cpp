@@ -47,6 +47,8 @@ void* memoryCopy(void* target, const void* source, int32_t size)
 	auto targetPtr = (uint8_t*) target;
 	auto sourcePtr = (const uint8_t*) source;
 
+	// TODO qword copying
+
 	while(size >= 4)
 	{
 		*(uint32_t*) targetPtr = *(const uint32_t*) sourcePtr;

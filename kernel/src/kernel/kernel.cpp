@@ -160,7 +160,6 @@ void kernelRunBootstrapCore()
 	systemWaitForApplicationCores();
 	systemMarkReady();
 
-	logInfo("jumping from BSP");
 	interruptsEnable();
 	for(;;)
 		asm("hlt");
@@ -216,11 +215,12 @@ void kernelInitializationThread()
 {
 	logInfo("%! loading system services", "init");
 
-	logInfo("%! we are in a thread!", "success");
-	asm("cli; hlt;");
-
 	G_PRETTY_BOOT_STATUS_P(20);
 	kernelSpawnService("/applications/pcidriver.bin", "", G_SECURITY_LEVEL_DRIVER);
+
+	logInfo("%! init finished, exiting %i", "init", taskingGetCurrentTask()->id);
+	taskingExit();
+
 	G_PRETTY_BOOT_STATUS_P(20);
 	kernelSpawnService("/applications/devicemanager.bin", "", G_SECURITY_LEVEL_DRIVER);
 	G_PRETTY_BOOT_STATUS_P(40);

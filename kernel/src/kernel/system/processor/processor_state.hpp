@@ -29,6 +29,9 @@
 struct g_processor_state
 {
 	// Pushed by the interrupt request/routine handler
+	uint64_t es;
+	uint64_t ds;
+
 	uint64_t r15;
 	uint64_t r14;
 	uint64_t r13;
@@ -38,13 +41,13 @@ struct g_processor_state
 	uint64_t r9;
 	uint64_t r8;
 
-	uint64_t rax;
-	uint64_t rcx;
-	uint64_t rdx;
-	uint64_t rbx;
-	uint64_t rbp;
-	uint64_t rsi;
 	uint64_t rdi;
+	uint64_t rsi;
+	uint64_t rbp;
+	uint64_t rbx;
+	uint64_t rdx;
+	uint64_t rcx;
+	uint64_t rax;
 
 	// Pushed by ISR handler if available
 	uint64_t intr;
@@ -53,7 +56,7 @@ struct g_processor_state
 	// Pushed by the processor
 	uint64_t rip;
 	uint64_t cs;
-	uint64_t eflags;
+	uint64_t rflags;
 
 	// Only pushed/popped on Ring 3 <-> Ring 0 switches
 	uint64_t rsp;

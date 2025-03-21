@@ -24,24 +24,18 @@ BITS 64
 ; C handler functions
 ;
 extern _interruptHandler
-
 ;
 ; Handler routine
 ;
 interruptRoutine:
-    ; The processor has pushed registers to the stack.
-    ; We'll save the registers that are typically pushed on interrupt, including
-    ; the general-purpose registers and the instruction pointer (RIP) registers.
-    cld
-
-    ; Store registers
-    push rdi
-    push rsi
-    push rbp
-    push rbx
-    push rdx
-    push rcx
+    ; Save all registers
     push rax
+    push rcx
+    push rdx
+    push rbx
+    push rbp
+    push rsi
+    push rdi
 
     push r8
     push r9
@@ -52,31 +46,30 @@ interruptRoutine:
     push r14
     push r15
 
-    ; Store segments
-    mov rax, ds
+    ; Save segment registers if needed
+    mov ax, ds
     push rax
-    mov rax, es
+    mov ax, es
     push rax
 
-	; Switch to kernel segments
-	mov ax, 0x10
-	mov ds, ax
-	mov es, ax
+    ; Switch to kernel segments
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
 
-    ; Stack pointer argument
+    ; Call C handler with pointer to stack frame
     mov rdi, rsp
-    ; Call handler
     call _interruptHandler
     ; Set stack pointer from return value
     mov rsp, rax
 
     ; Restore segments
     pop rax
-    mov ds, rax
+    mov ds, ax
     pop rax
-    mov es, rax
+    mov es, ax
 
-    ; Restore registers
+    ; Restore all registers
     pop r15
     pop r14
     pop r13
@@ -86,19 +79,18 @@ interruptRoutine:
     pop r9
     pop r8
 
-    pop rax
-    pop rcx
-    pop rdx
-    pop rbx
-    pop rbp
-    pop rsi
     pop rdi
+    pop rsi
+    pop rbp
+    pop rbx
+    pop rdx
+    pop rcx
+    pop rax
 
-    ; Skip over the interrupt error code (this was pushed before the handler call)
+    ; Skip past the error code and interrupt number
     add rsp, 16
 
-    ; Now we return with IRET, the processor will pop specific registers
-    ; IRET in x86_64 pops RIP, CS, and EFLAGS from the stack
+    ; Return from interrupt
     iretq
 
 

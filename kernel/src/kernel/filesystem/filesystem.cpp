@@ -226,7 +226,10 @@ g_filesystem_find_result filesystemFind(g_fs_node* parent, const char* path)
 	g_fs_node* lastFoundParent = node;
 	g_fs_open_status status = G_FS_OPEN_SUCCESSFUL;
 
-	char* nameStart = (char*) path;
+	char* buf = (char*) heapAllocate(G_PATH_MAX); // TODO SLOW
+	stringCopy(buf, path);
+
+	char* nameStart = buf;
 	char* nameEnd = nameStart;
 
 	while(nameStart)
@@ -268,19 +271,20 @@ g_filesystem_find_result filesystemFind(g_fs_node* parent, const char* path)
 
 		nameStart = nameEnd;
 	}
+	heapFree(buf);
 
 	return {
 			status: status,
 			node: node,
 			foundAllButLast: ((nameEnd - nameStart) > 0),
 			lastFoundParent: lastFoundParent,
-			fileNameStart: nameStart
+			fileNameStart: path + (nameStart - buf)
 	};
 }
 
 g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task* task, g_fd* outFd)
 {
-	g_fs_node* origin;
+	g_fs_node* origin = nullptr;
 	g_fs_open_status findOriginStatus = _filesystemChooseOrigin(path, task, origin);
 	if(findOriginStatus != G_FS_OPEN_SUCCESSFUL)
 		return findOriginStatus;

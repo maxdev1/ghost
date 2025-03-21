@@ -24,14 +24,15 @@
 #include "kernel/tasking/elf/elf_tls.hpp"
 #include "shared/utils/string.hpp"
 #include "shared/logger/logger.hpp"
+#include "kernel/utils/debug.hpp"
 
 g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* name, g_fd file, g_virtual_address base)
 {
-	g_elf_object_load_result res;
-	res.status = G_SPAWN_STATUS_SUCCESSFUL;
+	g_elf_object_load_result result{};
+	result.status = G_SPAWN_STATUS_SUCCESSFUL;
 
 	// Create ELF object
-	g_elf_object* object = (g_elf_object*) heapAllocateClear(sizeof(g_elf_object));
+	auto object = (g_elf_object*) heapAllocateClear(sizeof(g_elf_object));
 	object->name = stringDuplicate(name);
 	object->parent = parentObject;
 	object->baseAddress = base;
@@ -44,18 +45,19 @@ g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* n
 		object->nextObjectId = 0;
 		object->symbolLookupOrderList = 0;
 	}
-	res.object = object;
+	result.object = object;
 
-	logDebug("%! loading object '%s' (%i) to %h (fd %i)", "elf", name, object->id, base, file);
+	logInfo("%! loading object '%s' (%i) to %h (fd %i)", "elf", name, object->id, base, file);
 
 	// Check ELF header
-	res.validation = elfReadAndValidateHeader(file, &object->header, object->root);
-	if(res.validation != G_SPAWN_VALIDATION_SUCCESSFUL)
+	result.validation = elfReadAndValidateHeader(file, &object->header, object->root);
+	if(result.validation != G_SPAWN_VALIDATION_SUCCESSFUL)
 	{
-		logInfo("%! validation failed with status %i when loading object %s", "elf", res.validation, name);
-		res.status = object->root ? G_SPAWN_STATUS_FORMAT_ERROR : G_SPAWN_STATUS_DEPENDENCY_ERROR;
-		return res;
+		logInfo("%! validation failed with status %i when loading object %s", "elf", result.validation, name);
+		result.status = object->root ? G_SPAWN_STATUS_FORMAT_ERROR : G_SPAWN_STATUS_DEPENDENCY_ERROR;
+		return result;
 	}
+	logInfo("%# ELF header info %i", object->header.e_phnum);
 
 	// Add to list of already loaded dependencies
 	g_elf_object* rootObject = object;
@@ -70,15 +72,15 @@ g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* n
 	rootObject->symbolLookupOrderList = object;
 
 	// Load each program header
-	for(uint32_t p = 0; p < object->header.e_phnum; p++)
+	for(Elf64_Half p = 0; p < object->header.e_phnum; p++)
 	{
 		Elf64_Phdr phdr;
-		uint32_t phdrOffset = object->header.e_phoff + object->header.e_phentsize * p;
+		g_address phdrOffset = object->header.e_phoff + object->header.e_phentsize * p;
 
 		if(!filesystemReadToMemory(file, phdrOffset, (uint8_t*) &phdr, sizeof(Elf64_Phdr)))
 		{
 			logInfo("%! failed to read segment header from file %i", "elf", file);
-			res.status = G_SPAWN_STATUS_IO_ERROR;
+			result.status = G_SPAWN_STATUS_IO_ERROR;
 			break;
 		}
 
@@ -93,7 +95,7 @@ g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* n
 				auto loadResult = elfObjectLoadLoadSegment(file, phdr, base);
 				if(loadResult != G_SPAWN_STATUS_SUCCESSFUL)
 				{
-					res.status = loadResult;
+					result.status = loadResult;
 					logInfo("%! unable to load PT_LOAD segment from file", "elf");
 					break;
 				}
@@ -112,8 +114,8 @@ g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* n
 		}
 		else if(phdr.p_type == PT_TLS)
 		{
-			res.status = elfTlsLoadData(file, phdr, object);
-			if(res.status != G_SPAWN_STATUS_SUCCESSFUL)
+			result.status = elfTlsLoadData(file, phdr, object);
+			if(result.status != G_SPAWN_STATUS_SUCCESSFUL)
 			{
 				logInfo("%! unable to load PT_TLS segment from file", "elf");
 				break;
@@ -127,25 +129,25 @@ g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* n
 	}
 
 	// Do analyzation and linking
-	if(res.status == G_SPAWN_STATUS_SUCCESSFUL)
+	if(result.status == G_SPAWN_STATUS_SUCCESSFUL)
 	{
 		elfObjectInspect(object);
 
 		auto depRes = elfObjectLoadDependencies(object);
 		if(depRes.status == G_SPAWN_STATUS_SUCCESSFUL)
 		{
-			res.nextFreeBase = depRes.nextFreeBase;
+			result.nextFreeBase = depRes.nextFreeBase;
 		}
 		else
 		{
-			res.status = depRes.status;
-			return res;
+			result.status = depRes.status;
+			return result;
 		}
 
 		elfObjectApplyRelocations(file, object);
 	}
 
-	return res;
+	return result;
 }
 
 g_spawn_status elfObjectLoadLoadSegment(g_fd file, Elf64_Phdr phdr, g_virtual_address base)
@@ -238,16 +240,16 @@ void elfObjectInspect(g_elf_object* object)
 	}
 
 	// Read dependencies
-	object->dependencies = 0;
+	object->dependencies = nullptr;
 	it = object->dynamicSection;
 	while(it->d_tag)
 	{
 		if(it->d_tag == DT_NEEDED)
 		{
-			g_elf_dependency* dep = (g_elf_dependency*) heapAllocate(sizeof(g_elf_dependency));
-			dep->name = stringDuplicate(object->dynamicStringTable + it->d_un.d_val);
-			dep->next = object->dependencies;
-			object->dependencies = dep;
+			auto dependency = (g_elf_dependency*) heapAllocate(sizeof(g_elf_dependency));
+			dependency->name = stringDuplicate(object->dynamicStringTable + it->d_un.d_val);
+			dependency->next = object->dependencies;
+			object->dependencies = dependency;
 		}
 		it++;
 	}
@@ -260,23 +262,25 @@ void elfObjectInspect(g_elf_object* object)
 			rootObject = rootObject->parent;
 
 		uint32_t pos = 0;
-		Elf64_Sym* it = object->dynamicSymbolTable;
+		Elf64_Sym* symbol = object->dynamicSymbolTable;
 		while(pos < object->dynamicSymbolTableSize)
 		{
-			const char* symbol = (const char*) (object->dynamicStringTable + it->st_name);
-			if(it->st_shndx)
-			{
-				g_elf_symbol_info symbolInfo;
-				symbolInfo.object = object;
-				symbolInfo.absolute = object->baseAddress + it->st_value;
-				symbolInfo.value = it->st_value;
-				hashmapPut<const char*, g_elf_symbol_info>(object->localSymbols, symbol, symbolInfo);
+			const char* symbolName = object->dynamicStringTable + symbol->st_name;
 
-				if(hashmapGetEntry<const char*, g_elf_symbol_info>(rootObject->globalSymbols, symbol) == 0)
-					hashmapPut<const char*, g_elf_symbol_info>(rootObject->globalSymbols, symbol, symbolInfo);
+			if(symbol->st_shndx)
+			{
+				g_elf_symbol_info symbolInfo{};
+				symbolInfo.object = object;
+				symbolInfo.absolute = object->baseAddress + symbol->st_value;
+				symbolInfo.value = symbol->st_value;
+
+				hashmapPut<const char*, g_elf_symbol_info>(object->localSymbols, symbolName, symbolInfo);
+
+				if(hashmapGetEntry<const char*, g_elf_symbol_info>(rootObject->globalSymbols, symbolName) == nullptr)
+					hashmapPut<const char*, g_elf_symbol_info>(rootObject->globalSymbols, symbolName, symbolInfo);
 			}
 
-			it++;
+			symbol++;
 			pos++;
 		}
 	}
@@ -284,9 +288,9 @@ void elfObjectInspect(g_elf_object* object)
 
 g_elf_object_load_result elfObjectLoadDependencies(g_elf_object* object)
 {
-	g_elf_object_load_result res;
-	res.status = G_SPAWN_STATUS_SUCCESSFUL;
-	res.nextFreeBase = object->endAddress;
+	g_elf_object_load_result result{};
+	result.status = G_SPAWN_STATUS_SUCCESSFUL;
+	result.nextFreeBase = object->endAddress;
 
 	for(g_elf_dependency* dependency = object->dependencies;
 	    dependency;
@@ -295,18 +299,19 @@ g_elf_object_load_result elfObjectLoadDependencies(g_elf_object* object)
 		if(elfObjectIsDependencyLoaded(object, dependency->name))
 			continue;
 
-		auto depRes = elfObjectLoadDependency(object, dependency->name, res.nextFreeBase);
-		res.nextFreeBase = depRes.nextFreeBase;
+		auto dependencyResult = elfObjectLoadDependency(object, dependency->name, result.nextFreeBase);
+		result.nextFreeBase = dependencyResult.nextFreeBase;
 
-		if(depRes.status != G_SPAWN_STATUS_SUCCESSFUL)
+		if(dependencyResult.status != G_SPAWN_STATUS_SUCCESSFUL)
 		{
-			res.status = depRes.status;
-			logInfo("%!   -> failed to load dependency %s with status %i", "elf", dependency->name, depRes.status);
+			result.status = dependencyResult.status;
+			logInfo("%!   -> failed to load dependency %s with status %i", "elf", dependency->name,
+			        dependencyResult.status);
 			break;
 		}
 	}
 
-	return res;
+	return result;
 }
 
 void elfObjectApplyRelocations(g_fd file, g_elf_object* object)
@@ -329,7 +334,7 @@ void elfObjectApplyRelocations(g_fd file, g_elf_object* object)
 			continue;
 		}
 
-		Elf64_Rel* entry = (Elf64_Rel*) (object->baseAddress + shdr.sh_addr);
+		auto entry = (Elf64_Rel*) (object->baseAddress + shdr.sh_addr);
 		while(entry < (Elf64_Rel*) (object->baseAddress + shdr.sh_addr + shdr.sh_size))
 		{
 			uint32_t symbolIndex = ELF64_R_SYM(entry->r_info);
@@ -339,8 +344,8 @@ void elfObjectApplyRelocations(g_fd file, g_elf_object* object)
 			g_address cP = object->baseAddress + entry->r_offset;
 
 			Elf64_Word symbolSize;
-			const char* symbolName = 0;
-			g_elf_symbol_info symbolInfo;
+			const char* symbolName = nullptr;
+			g_elf_symbol_info symbolInfo{};
 
 			// Symbol lookup
 			if(type == R_X86_64_32 || type == R_X86_64_PC32 ||

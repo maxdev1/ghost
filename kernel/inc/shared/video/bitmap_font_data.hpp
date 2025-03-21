@@ -5,6 +5,6 @@
 #define __BITMAP_FONT_DATA__
 #include <stdint.h>
 
-extern uint8_t bitmapFontCharSet[100][190];
+extern uint8_t bitmapFontCharSet[130][190];
 #endif
     

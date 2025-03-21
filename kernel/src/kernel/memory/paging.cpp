@@ -19,21 +19,35 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/memory/paging.hpp"
-
-#include <shared/panic.hpp>
-
+#include "shared/logger/logger.hpp"
 #include "shared/memory/constants.hpp"
+
+g_physical_address pagingVirtualToPageEntry(g_virtual_address addr)
+{
+	auto pml4 = (g_address*) G_MEM_PHYS_TO_VIRT(pagingGetCurrentSpace());
+	uint64_t pml4Index = G_PML4_INDEX(addr);
+	uint64_t pdptAddr = pml4[pml4Index] & ~G_PAGE_ALIGN_MASK;
+	if(!pdptAddr)
+		return 0;
+
+	auto pdpt = (g_address*) G_MEM_PHYS_TO_VIRT(pdptAddr);
+	uint64_t pdptIndex = G_PDPT_INDEX(addr);
+	uint64_t pdAddr = pdpt[pdptIndex] & ~G_PAGE_ALIGN_MASK;
+	if(!pdAddr)
+		return 0;
+
+	auto pd = (g_address*) G_MEM_PHYS_TO_VIRT(pdAddr);
+	uint64_t pdIndex = G_PD_INDEX(addr);
+	uint64_t ptAddr = pd[pdIndex] & ~G_PAGE_ALIGN_MASK;
+	if(!ptAddr)
+		return 0;
+
+	auto pt = (g_address*) G_MEM_PHYS_TO_VIRT(ptAddr);
+	uint64_t ptIndex = G_PT_INDEX(addr);
+	return pt[ptIndex];
+}
 
 g_physical_address pagingVirtualToPhysical(g_virtual_address addr)
 {
-	panic("pagingVirtualToPhysical not implemented");
-	// uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(addr);
-	// uint32_t pi = G_PAGE_IN_TABLE_INDEX(addr);
-	//
-	// g_address* directory = (g_address*) G_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
-	// if(directory[ti] == 0)
-	// 	return 0;
-	//
-	// g_address* table = ((g_address*) G_RECURSIVE_PAGE_DIRECTORY_AREA) + (0x400 * ti);
-	// return table[pi] & ~G_PAGE_ALIGN_MASK;
+	return pagingVirtualToPageEntry(addr) & ~G_PAGE_ALIGN_MASK;
 }

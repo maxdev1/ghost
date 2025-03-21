@@ -91,11 +91,11 @@ backspace_len() {
 # Build limine if required
 verify_limine() {
   pushd target
-	print_name "bootloader-limine"
-	printf "\n"
 
   # TODO: Maybe move this all to toolchain setup
   if [ ! -d "limine-$LIMINE_VERSION" ]; then
+    print_name "limine-prepare"
+    printf "\n"
     curl "$LIMINE_SOURCE" -k -o "limine-$LIMINE_VERSION.tar.gz"
     tar -xf "limine-$LIMINE_VERSION.tar.gz"
     pushd "limine-$LIMINE_VERSION"

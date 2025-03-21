@@ -71,8 +71,10 @@ g_address exceptionsGetCR2()
 
 bool exceptionsHandleDivideError(g_task* task)
 {
-	uint8_t* faultyInstruction = (uint8_t*) task->state->rip;
+	if(!task)
+		return false;
 
+	auto faultyInstruction = (uint8_t*) task->state->rip;
 	uint8_t opcode = faultyInstruction[0];
 	int skip = 1;
 
@@ -92,7 +94,7 @@ bool exceptionsHandleDivideError(g_task* task)
 
 	task->state->rip += skip;
 
-	logInfo("%! divide error in task %i at %x, skipping to EIP: %x", "exception", task->id, faultyInstruction,
+	logInfo("%! divide error in task %i at %x, skipping to RIP: %x", "exception", task->id, faultyInstruction,
 	        task->state->rip);
 	return true;
 }
@@ -100,46 +102,50 @@ bool exceptionsHandleDivideError(g_task* task)
 /**
  * Dumps the current CPU state to the log file
  */
-void exceptionsDumpTask(g_task* task)
+void exceptionsDumpState(g_task* task, volatile g_processor_state* state)
 {
-	auto state = task->state;
-	g_process* process = task->process;
-	logInfo("%! %s in task %i (process %i)", "exception", EXCEPTION_NAMES[state->intr], task->id, process->main->id);
+	g_process* process = task ? task->process : nullptr;
+	logInfo("%! (task %i, process %i) %s", "exception", task ? task->id : G_TID_NONE,
+	        process ? process->main->id : G_TID_NONE, EXCEPTION_NAMES[state->intr]);
 
 	if(state->intr == 0x0E)
 	{
 		// Page fault
 		logInfo("%#    accessed address: %h", exceptionsGetCR2());
 	}
-	logInfo("%#    rip: %h   eflags: %h", state->rip, state->eflags);
-	logInfo("%#    rax: %h      rbx: %h", state->rax, state->rbx);
-	logInfo("%#    rcx: %h      rdx: %h", state->rcx, state->rdx);
-	logInfo("%#    rsp: %h      rbp: %h", state->rsp, state->rbp);
-	logInfo("%#   intr: %h    error: %h", state->intr, state->error);
-	logInfo("%#   task stack: %h - %h", task->stack.start, task->stack.end);
-	logInfo("%#   intr stack: %h - %h", task->interruptStack.start, task->interruptStack.end);
-
-	auto iter = hashmapIteratorStart(task->process->object->loadedObjects);
-	while(hashmapIteratorHasNext(&iter))
+	logInfo("%#    RIP: %h   RFLAGS: %h", state->rip, state->rflags);
+	logInfo("%#    RAX: %h      RBX: %h", state->rax, state->rbx);
+	logInfo("%#    RCX: %h      RDX: %h", state->rcx, state->rdx);
+	logInfo("%#    RSP: %h      RBP: %h", state->rsp, state->rbp);
+	logInfo("%#    CS:  %h       SS: %h", state->cs, state->ss);
+	logInfo("%#   INTR: %h    ERROR: %h", state->intr, state->error);
+	if(task)
 	{
-		auto object = hashmapIteratorNext(&iter)->value;
+		logInfo("%#   task stack: %h - %h", task->stack.start, task->stack.end);
+		logInfo("%#   intr stack: %h - %h", task->interruptStack.start, task->interruptStack.end);
 
-		logInfo("%# obj %x-%x: %s", object->startAddress, object->endAddress, object->name);
-
-		if(state->rip >= object->startAddress && state->rip < object->endAddress)
+		auto iter = hashmapIteratorStart(task->process->object->loadedObjects);
+		while(hashmapIteratorHasNext(&iter))
 		{
-			if(object == task->process->object)
+			auto object = hashmapIteratorNext(&iter)->value;
+
+			logInfo("%# obj %x-%x: %s", object->startAddress, object->endAddress, object->name);
+
+			if(state->rip >= object->startAddress && state->rip < object->endAddress)
 			{
-				logInfo("%# caused in executable object");
+				if(object == task->process->object)
+				{
+					logInfo("%# caused in executable object");
+				}
+				else
+				{
+					logInfo("%# caused in object '%s' at offset %x", object->name, state->rip - object->baseAddress);
+				}
+				break;
 			}
-			else
-			{
-				logInfo("%# caused in object '%s' at offset %x", object->name, state->rip - object->baseAddress);
-			}
-			break;
 		}
+		hashmapIteratorEnd(&iter);
 	}
-	hashmapIteratorEnd(&iter);
 
 #if DEBUG_PRINT_STACK_TRACE
 	g_address* rbp = reinterpret_cast<g_address*>(state->rbp);
@@ -157,66 +163,48 @@ void exceptionsDumpTask(g_task* task)
 #endif
 }
 
-bool exceptionsHandlePageFault(g_task* task)
+bool exceptionsHandlePageFault(g_task* task, volatile g_processor_state* state)
 {
 	g_virtual_address accessed = exceptionsGetCR2();
-
-	if(taskingMemoryHandleStackOverflow(task, accessed))
-		return true;
-
-	if(memoryOnDemandHandlePageFault(task, accessed))
-		return true;
-
 	g_physical_address physPage = pagingVirtualToPhysical(G_PAGE_ALIGN_DOWN(accessed));
-	logInfo("%! task %i (core %i) EIP: %x (accessed %h, mapped page %h)", "pagefault", task->id,
-	        processorGetCurrentId(), task->state->rip, accessed, physPage);
 
-	exceptionsDumpTask(task);
+	if(task)
+	{
+		if(taskingMemoryHandleStackOverflow(task, accessed))
+			return true;
 
-	if(task->type == G_TASK_TYPE_VITAL)
-	{
-		return false;
+		if(memoryOnDemandHandlePageFault(task, accessed))
+			return true;
+
+		logInfo("%! (task %i, core %i) RIP: %x (accessed %h, mapped page %h)", "pagefault", task->id,
+		        processorGetCurrentId(), state->rip, accessed, physPage);
+
+		exceptionsDumpState(task, state);
+
+		if(task->type == G_TASK_TYPE_VITAL)
+			return false;
+
+		if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
+			task->status = G_TASK_STATUS_DEAD;
+		else
+			// TODO Somehow give the user task a chance to do something
+			task->status = G_TASK_STATUS_DEAD;
+
+		taskingSchedule();
+		return true;
 	}
-	if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
-	{
-		task->status = G_TASK_STATUS_DEAD;
-	}
-	else
-	{
-		// TODO Somehow give the user task a chance to do something
-		task->status = G_TASK_STATUS_DEAD;
-	}
-	taskingSchedule();
-	return true;
+
+	logInfo("%! RIP: %x (accessed %h, mapped page %h)", "pagefault", processorGetCurrentId(), state->rip, accessed,
+	        physPage);
+	return false;
 }
 
-bool exceptionsHandleGeneralProtectionFault(g_task* task)
+bool exceptionsHandleGeneralProtectionFault(g_task* task, volatile g_processor_state* state)
 {
-	if(task->type == G_TASK_TYPE_VM86)
-	{
+	exceptionsDumpState(task, state);
 
-		g_virtual_monitor_handling_result result = vm86MonitorHandleGpf(task);
-
-		if(result == VIRTUAL_MONITOR_HANDLING_RESULT_SUCCESSFUL)
-		{
-			return true;
-		}
-		else if(result == VIRTUAL_MONITOR_HANDLING_RESULT_FINISHED)
-		{
-			task->status = G_TASK_STATUS_DEAD;
-			taskingSchedule();
-			return true;
-		}
-		else if(result == VIRTUAL_MONITOR_HANDLING_RESULT_UNHANDLED_OPCODE)
-		{
-			logInfo("%! %i unable to handle gpf for vm86 task", "exception", processorGetCurrentId());
-			task->status = G_TASK_STATUS_DEAD;
-			taskingSchedule();
-			return true;
-		}
-	}
-
-	exceptionsDumpTask(task);
+	if(!task)
+		return false;
 
 	logInfo("%! #%i task %i killed due to general protection fault at EIP %h", "exception", processorGetCurrentId(),
 	        task->id, task->state->rip);
@@ -234,14 +222,11 @@ bool exceptionsKillTask(g_task* task)
 	return true;
 }
 
-void exceptionsHandle(g_task* task)
+void exceptionsHandle(g_task* task, volatile g_processor_state* state)
 {
 	bool resolved = false;
 
-	if(!task)
-		panic("%! unresolved exception before initializing tasking system", "exceptions");
-
-	switch(task->state->intr)
+	switch(state->intr)
 	{
 		case 0x00:
 		{
@@ -252,13 +237,13 @@ void exceptionsHandle(g_task* task)
 		case 0x0E:
 		{
 			// Page fault
-			resolved = exceptionsHandlePageFault(task);
+			resolved = exceptionsHandlePageFault(task, state);
 			break;
 		}
 		case 0x0D:
 		{
 			// General protection fault
-			resolved = exceptionsHandleGeneralProtectionFault(task);
+			resolved = exceptionsHandleGeneralProtectionFault(task, state);
 			break;
 		}
 		case 0x06:
@@ -271,9 +256,9 @@ void exceptionsHandle(g_task* task)
 
 	if(!resolved)
 	{
-		logInfo("%*%! task %i caused unresolved exception %i (error %i) at EIP: %h ESP: %h", 0x0C, "exception",
-		        task->id, task->state->intr,
-		        task->state->error, task->state->rip, task->state->rsp);
+		logInfo("%*%! (task %i) unresolved exception %i (error %i) at RIP: %h RSP: %h", 0x0C, "exception",
+		        task ? task->id : G_TID_NONE, state->intr,
+		        state->error, state->rip, state->rsp);
 		for(;;)
 		{
 			asm("hlt");

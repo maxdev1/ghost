@@ -40,6 +40,11 @@
 // TODO new constants
 #define G_MEM_LOWER_END                             0x0000000000100000
 #define G_MEM_LOWER_HALF_END                        0x00007fffffffffff
+
+/**
+ * Due to the Higher Half Direct Map feature, every physical address is mapped
+ * to this higher-half offset in virtual memory by default.
+ */
 #define G_MEM_HIGHER_HALF_DIRECT_MAP_OFFSET         0xffff800000000000
 #define G_MEM_PHYS_TO_VIRT(phys)                    ((G_MEM_HIGHER_HALF_DIRECT_MAP_OFFSET) + (g_address) phys)
 

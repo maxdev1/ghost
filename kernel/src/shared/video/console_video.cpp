@@ -85,19 +85,20 @@ void consoleVideoPutChar(uint16_t x, uint16_t y, char c, uint32_t color)
 
 void consoleVideoPutString(uint16_t x, uint16_t y, const char* c, uint32_t color)
 {
+	int charColumns = videoWidth / bitmapFontCharWidth;
+	int charRows = videoHeight / bitmapFontCharHeight;
 	while(*c)
 	{
 		consoleVideoPutChar(x++, y, *c, color);
-		// TODO
-		// if(x > G_CONSOLE_VIDEO_WIDTH)
-		// {
-		// 	x = 0;
-		// 	y++;
-		// }
-		// if(y > G_CONSOLE_VIDEO_HEIGHT)
-		// {
-		// 	y = 0;
-		// }
+		if(x > charColumns)
+		{
+			x = 0;
+			y++;
+		}
+		if(y > charRows)
+		{
+			y = 0;
+		}
 		++c;
 	}
 }

@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,26 +18,15 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __GDT_TSS__
-#define __GDT_TSS__
+#ifndef __UTILS_DEBUG__
+#define __UTILS_DEBUG__
 
 #include <ghost/stdint.h>
 
-/**
- * Structure of the x86_64 task state segment.
- */
-struct g_tss
-{
-    uint32_t reserved0;
-    uint64_t rsp0;
-    uint64_t rsp1;
-    uint64_t rsp2;
-    uint64_t reserved1;
-    uint64_t ist[7];
-    uint64_t reserved2;
-    uint16_t reserved3;
-    uint16_t iomapBase;
-}__attribute__((packed));
+void debugHardSleep(uint64_t millis);
 
+void hexDump8(void* location, int minus = 0, int plus = 0);
+
+void hexDump64(void* location, int minus = 0, int plus = 0);
 
 #endif

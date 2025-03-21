@@ -132,7 +132,7 @@ g_spawn_validation_details elfReadAndValidateHeader(g_fd file, Elf64_Ehdr* heade
 	if(!filesystemReadToMemory(file, 0, (uint8_t*) headerBuffer, sizeof(Elf64_Ehdr)))
 	{
 		logInfo("%! failed to spawn file %i due to io error", "elf", file);
-		return G_SPAWN_VALIDATION_ELF32_IO_ERROR;
+		return G_SPAWN_VALIDATION_ELF_IO_ERROR;
 	}
 	return elfValidateHeader(headerBuffer, root);
 }
@@ -144,38 +144,28 @@ g_spawn_validation_details elfValidateHeader(Elf64_Ehdr* header, bool root)
 	   (header->e_ident[EI_MAG2] != ELFMAG2) || // L
 	   (header->e_ident[EI_MAG3] != ELFMAG3)) // F
 	{
-		return G_SPAWN_VALIDATION_ELF32_NOT_ELF;
+		return G_SPAWN_VALIDATION_ELF_NOT_ELF;
 	}
 
 	// Check executable flag
 	if(root && header->e_type != ET_EXEC)
-	{
-		return G_SPAWN_VALIDATION_ELF32_NOT_EXECUTABLE;
-	}
+		return G_SPAWN_VALIDATION_ELF_NOT_EXECUTABLE;
 
 	// Must be i386 architecture compatible
-	if(header->e_machine != EM_386)
-	{
-		return G_SPAWN_VALIDATION_ELF32_NOT_I386;
-	}
+	if(header->e_machine != EM_X86_64)
+		return G_SPAWN_VALIDATION_ELF_NOT_I386;
 
-	// Must be 32 bit
-	if(header->e_ident[EI_CLASS] != ELFCLASS32)
-	{
-		return G_SPAWN_VALIDATION_ELF32_NOT_32BIT;
-	}
+	// Must be 64 bit
+	if(header->e_ident[EI_CLASS] != ELFCLASS64)
+		return G_SPAWN_VALIDATION_ELF_NOT_64BIT;
 
 	// Must be little endian
 	if(header->e_ident[EI_DATA] != ELFDATA2LSB)
-	{
-		return G_SPAWN_VALIDATION_ELF32_NOT_LITTLE_ENDIAN;
-	}
+		return G_SPAWN_VALIDATION_ELF_NOT_LITTLE_ENDIAN;
 
 	// Must comply to current ELF standard
 	if(header->e_version != EV_CURRENT)
-	{
-		return G_SPAWN_VALIDATION_ELF32_NOT_STANDARD_ELF;
-	}
+		return G_SPAWN_VALIDATION_ELF_NOT_STANDARD_ELF;
 
 	return G_SPAWN_VALIDATION_SUCCESSFUL;
 }

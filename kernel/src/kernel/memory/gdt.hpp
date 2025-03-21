@@ -74,6 +74,14 @@
 #define G_ACCESS_BYTE__TSS_386_SEGMENT       G_ACCESS_BYTE__FOR__GATE_OR_TSS(0x9, 0, 1)
 
 /**
+ * Granularity bits
+ */
+#define G_GDT_GRANULARITY_4KB           (1 << 7)  // 1 = 4KB granularity, 0 = byte granularity
+#define G_GDT_GRANULARITY_32BIT         (1 << 6)  // 1 = 32-bit protected mode, 0 = 16-bit
+#define G_GDT_GRANULARITY_64BIT         (1 << 5)  // 1 = 64-bit mode, 0 = compatibility mode
+#define G_GDT_GRANULARITY_AVAILABLE     (1 << 4)  // Available for system use
+
+/**
  * Constants for our defined descriptor indexes
  */
 #define G_GDT_DESCRIPTOR_KERNEL_CODE        0x08
@@ -81,13 +89,14 @@
 #define G_GDT_DESCRIPTOR_USER_CODE          0x18
 #define G_GDT_DESCRIPTOR_USER_DATA          0x20
 #define G_GDT_DESCRIPTOR_TSS                0x28
-#define G_GDT_DESCRIPTOR_USERTHREADLOCAL    0x38
-#define G_GDT_DESCRIPTOR_KERNELTHREADLOCAL  0x40
 
 #define G_SEGMENT_SELECTOR_RING0            0 // 00
 #define G_SEGMENT_SELECTOR_RING3            3 // 11
 
-#define G_GDT_LENGTH 7
+/**
+ * Number of entries in the GDT, not including the additional TSS part
+ */
+#define G_GDT_BASE_LEN 5
 
 /**
  * Structure of a GDT entry
@@ -102,14 +111,9 @@ struct g_gdt_descriptor
     uint8_t baseHigh;
 } __attribute__((packed));
 
-struct g_gdt_descriptor_64
+struct g_gdt_tss_descriptor
 {
-    uint16_t limitLow;
-    uint16_t baseLow;
-    uint8_t baseMiddle;
-    uint8_t access;
-    uint8_t granularity;
-    uint8_t baseHigh;
+    g_gdt_descriptor main;
     uint32_t baseUpper;
     uint32_t reserved0;
 } __attribute__((packed));
@@ -129,8 +133,10 @@ struct g_gdt_pointer
 struct g_gdt
 {
     g_gdt_pointer ptr;
-    g_gdt_descriptor entry[G_GDT_LENGTH];
-    g_tss tss;
+    __attribute__((aligned(16))) g_gdt_descriptor entry[G_GDT_BASE_LEN];
+    g_gdt_tss_descriptor entryTss;
+
+    __attribute__((aligned(16))) g_tss tss;
 } __attribute__((packed));
 
 /**
@@ -148,6 +154,7 @@ void gdtInitializeLocal();
  * When switching from Ring 3 to Ring 0, this ESP is used as the new stack.
  */
 void gdtSetTssRsp0(g_virtual_address rsp0);
+g_address gdtGetTssRsp0();
 
 /**
  * For thread local storage, it is necessary to write two addresses into our GDT so that we can do

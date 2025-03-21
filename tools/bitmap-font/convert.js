@@ -6,7 +6,14 @@ const headerHeight = 10;
 const charWidth = 10;
 const charHeight = 19;
 const spacing = 1;
-const asciiOffset = 33;
+
+/**
+ * The first character in the bitmap will be treated as this value. For example
+ * if 33 is set, the first character in the bitmap shall be the '!'.
+ *
+ * @type {number}
+ */
+const asciiOffset = 0;
 
 
 const topComment = `/*

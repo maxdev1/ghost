@@ -239,33 +239,21 @@ void taskingMemoryDestroyStack(g_address_range_pool* addressRangePool, g_stack& 
 	addressRangePoolFree(addressRangePool, stack.start);
 }
 
-g_physical_address taskingMemoryCreatePageSpace(g_security_level securityLevel)
+g_physical_address taskingMemoryCreatePageSpace()
 {
-	g_address* currentPml4 = (g_address*) G_MEM_PHYS_TO_VIRT(pagingGetCurrentSpace());
+	auto currentPml4 = (g_address*) G_MEM_PHYS_TO_VIRT(pagingGetCurrentSpace());
 
 	g_physical_address newPml4Phys = memoryPhysicalAllocate();
-	g_virtual_address newPml4Virt = G_MEM_PHYS_TO_VIRT(newPml4Phys);
-	pagingMapPage(newPml4Virt, newPml4Phys, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_UNCACHED);
-
-	g_address* newPml4 = (g_address*) newPml4Virt;
+	auto newPml4 = (g_address*) G_MEM_PHYS_TO_VIRT(newPml4Phys);
 
 	// Copy all kernel privilege mappings
 	for(size_t i = 0; i < 512; i++)
 	{
 		if((currentPml4[i] & G_PAGE_USER_FLAG) == 0)
-		{
 			newPml4[i] = currentPml4[i];
-		}
 		else
 			newPml4[i] = 0;
 	}
-
-	// Copy mappings for the lowest 4 MiB
-	// TODO I think we don't need this anymore
-	// if(securityLevel < G_SECURITY_LEVEL_APPLICATION)
-	// 	directory[0] = directoryCurrent[0];
-	// else
-	// 	directory[0] = 0;
 
 	return newPml4Phys;
 }
@@ -276,7 +264,7 @@ void taskingMemoryDestroyPageSpace(g_physical_address directory)
 
 	// Clear mappings and free physical space above 4 MiB
 	// TODO
-	panic("not implemented");
+	logInfo("%! taskingMemoryDestroyPageSpace not implemented", "todo");
 	// g_page_directory directoryCurrent = (g_page_directory) G_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
 	// for(uint32_t ti = 1; ti < 1024; ti++)
 	// {
@@ -307,7 +295,7 @@ void taskingMemoryInitializeTls(g_task* task)
 	// Kernel thread-local storage
 	if(!task->threadLocal.kernelThreadLocal)
 	{
-		g_kernel_threadlocal* kernelThreadLocal = (g_kernel_threadlocal*) heapAllocate(sizeof(g_kernel_threadlocal));
+		auto kernelThreadLocal = (g_kernel_threadlocal*) heapAllocate(sizeof(g_kernel_threadlocal));
 		kernelThreadLocal->processor = processorGetCurrentId();
 		task->threadLocal.kernelThreadLocal = kernelThreadLocal;
 	}
@@ -321,6 +309,7 @@ void taskingMemoryInitializeTls(g_task* task)
 			// Allocate required virtual range
 			uint32_t requiredSize = process->tlsMaster.size;
 			uint32_t requiredPages = G_PAGE_ALIGN_UP(requiredSize) / G_PAGE_SIZE;
+			if(requiredPages < 1) requiredPages = 1;
 
 			g_virtual_address tlsStart = addressRangePoolAllocate(process->virtualRangePool, requiredPages);
 			g_virtual_address tlsEnd = tlsStart + requiredPages * G_PAGE_SIZE;
