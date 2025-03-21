@@ -227,7 +227,7 @@ void processorWriteMsr(uint32_t msr, uint32_t lo, uint32_t hi);
 /**
  * Reads the EFLAGS register.
  */
-uint32_t processorReadEflags();
+uint64_t processorReadEflags();
 
 /**
  * Saves the FPU state to the target

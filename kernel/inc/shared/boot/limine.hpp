@@ -18,11 +18,18 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __LOADER_SETUPINFORMATION__
-#define __LOADER_SETUPINFORMATION__
+#ifndef __BOOT_LIMINE__
+#define __BOOT_LIMINE__
 
-#include "shared/setup_information.hpp"
+#include <limine.h>
 
-extern g_setup_information setupInformation;
+/**
+ * Looks for the module with the given path.
+ *
+ * @param info bootloader information structure
+ * @param path module path
+ * @return the file or null
+ */
+limine_file* limineFindModule(limine_module_response* info, const char* path);
 
 #endif

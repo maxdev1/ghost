@@ -30,7 +30,7 @@
 /**
  * Extends the heap of the task by an amount.
  */
-bool taskingMemoryExtendHeap(g_task* task, int32_t amount, uint32_t* outAddress);
+bool taskingMemoryExtendHeap(g_task* task, int32_t amount, g_address* outAddress);
 
 /**
  * Creates the stacks and other utility memory for a newly created task.
@@ -81,20 +81,17 @@ void taskingMemoryDestroyUtility(g_task* task);
 void taskingMemoryDestroyStack(g_address_range_pool* addressRangePool, g_stack& stack);
 
 /**
- * Creates a new page directory to use for a new process. Clones the kernel space
- * into the page directory, maps the lower memory and adds recursive mapping.
+ * Creates a new paging space to use for a new process. Clones the kernel space
+ * into the address space.
  *
- * @param securityLevel
- *   security level to apply to the process address space
- *
- * @return the physical address of the directory
+ * @return the physical address of the PML4
  */
-g_physical_address taskingMemoryCreatePageDirectory(g_security_level securityLevel);
+g_physical_address taskingMemoryCreatePageSpace();
 
 /**
  * Destory the page directory of a process.
  */
-void taskingMemoryDestroyPageDirectory(g_physical_address directory);
+void taskingMemoryDestroyPageSpace(g_physical_address directory);
 
 /**
  * Initializes the tasks thread-local-storage. Creates a copy of the master TLS for this task.

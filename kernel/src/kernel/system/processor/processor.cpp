@@ -23,7 +23,7 @@
 #include "kernel/system/interrupts/apic/lapic.hpp"
 #include "kernel/system/system.hpp"
 #include "shared/logger/logger.hpp"
-#include "shared/memory/gdt_macros.hpp"
+#include "kernel/memory/gdt.hpp"
 #include "shared/panic.hpp"
 
 static g_processor* processors = nullptr;
@@ -160,13 +160,10 @@ uint32_t processorGetCurrentId()
 	if(!systemIsReady())
 		return processorGetCurrentIdFromApic();
 
-	// Kernel thread-local data is in segment 0x38
-	// GS:0x0 is relative address within <g_kernel_threadlocal>
-	uint32_t processor;
-	asm volatile("mov $" STR(G_GDT_DESCRIPTOR_KERNELTHREADLOCAL) ", %%eax\n"
-		"mov %%eax, %%gs\n"
-		"mov %%gs:0x0, %0"
-		: "=r"(processor)::"eax");
+	// GS points to valid <g_kernel_threadlocal>
+	// 0x0 is relative address within struct
+	uint64_t processor;
+	asm volatile("mov %%gs:0x0, %0" : "=r" (processor));
 	return processor;
 }
 
@@ -280,9 +277,9 @@ void processorWriteMsr(uint32_t msr, uint32_t lo, uint32_t hi)
 		: "a"(lo), "d"(hi), "c"(msr));
 }
 
-uint32_t processorReadEflags()
+uint64_t processorReadEflags()
 {
-	uint32_t eflags;
+	uint64_t eflags;
 	asm volatile("pushf\n"
 		"pop %0"
 		: "=g"(eflags));

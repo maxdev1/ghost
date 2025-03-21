@@ -1,6 +1,6 @@
 ;* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 ;*                                                                           *
-;*  Ghost, a micro-kernel based operating system for the x86 architecture    *
+;*  Ghost, a micro-kernel based operating system for the x86_64 architecture *
 ;*  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
 ;*                                                                           *
 ;*  This program is free software: you can redistribute it and/or modify     *
@@ -16,14 +16,14 @@
 ;*  You should have received a copy of the GNU General Public License        *
 ;*  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
 ;*                                                                           *
-;* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+;* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
 
 ; ############################################################################
 ;
 ;                                  NOTE
 ;
-;   At this point, no stack is a available, don't use PUSH or POP!
+;   At this point, no stack is available, don't use PUSH or POP!
 ;
 ;   This file is compiled to the ramdisk and loaded by the SMP mechanism to
 ;   start up APs.
@@ -49,13 +49,13 @@ startup:
     mov cr0, eax
 
 	; Far-JMP into protected mode code
-    jmp 0x8:protectedStart
+    jmp 0x08:protectedStart
 
 
-; Protected mode
-BITS 32
+; Protected mode for 64-bit (transition to 64-bit long mode)
+BITS 64
 protectedStart:
-	; Code segments were set by far JMP, set data segments
+	; Set up code segments for 64-bit mode
     mov ax, 0x10
     mov ds, ax
     mov es, ax
@@ -65,34 +65,34 @@ protectedStart:
 
 	; Lock all cores
 	acquireLock:
-    lock bts dword [interlock], 0
+    lock bts qword [interlock], 0
     jc acquireLock
 
 	    ; Set page directory
-	    mov eax, [0x500]
-	    mov cr3, eax
+	    mov rax, [0x500]
+	    mov cr3, rax
 
 		; Enable paging
-	    mov eax, cr0
-	    or eax, 0x80000000
-	    mov cr0, eax
+	    mov rax, cr0
+	    or rax, 0x80000000
+	    mov cr0, rax
 
 	    ; Set "global pages" flag
-	    mov eax, cr4
-	    or eax, 80
-	    mov cr4, eax
+	    mov rax, cr4
+	    or rax, 0x80
+	    mov cr4, rax
 
 		; Load stack from stack array
-		mov eax, [0x508]		; current index
-		shl eax, 2				; multiply by 4 (size of one entry)
-		mov esp, [0x50C + eax]	; move entry to ESP
-		mov ebp, esp
+		mov rax, [0x508]		; current index
+		shl rax, 2				; multiply by 4 (size of one entry)
+		mov rsp, [0x50C + rax]	; move entry to RSP
+		mov rbp, rsp
 
 		; Increment AP counter
-		inc dword [0x508]
+		inc qword [0x508]
 
 	; Release lock
-    lock btr dword [interlock], 0
+    lock btr qword [interlock], 0
 
 	; Jump to kernel
 	call [0x504]
@@ -113,22 +113,21 @@ gdtPointer:
 	dw 24
 	dd gdt
 
-; Basic setup GDT
+; Basic setup GDT for x86_64
 gdt:
 	; null descriptor
-	dw 0x0000
-	dw 0x0000
-	dw 0x0000
-	dw 0x0000
+	dq 0x0000000000000000
 
-	; code descriptor
+	; code descriptor (64-bit)
 	dw 0xFFFF
 	dw 0x0000
-	dw 0x9800
+	dw 0x9A00
 	dw 0x00CF
+	dq 0x0000000000000000
 
-	; data descriptor
+	; data descriptor (64-bit)
 	dw 0xFFFF
 	dw 0x0000
 	dw 0x9200
 	dw 0x00CF
+	dq 0x0000000000000000

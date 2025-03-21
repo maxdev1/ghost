@@ -19,6 +19,9 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/system.hpp"
+
+#include <shared/memory/paging.hpp>
+
 #include "kernel/calls/syscall.hpp"
 #include "kernel/memory/gdt.hpp"
 #include "kernel/system/acpi/acpi.hpp"
@@ -33,27 +36,32 @@ static int applicationCoresWaiting;
 static bool bspInitialized = false;
 static bool systemReady = false;
 
-void systemInitializeBsp(g_physical_address initialPdPhys)
+void systemInitializeBsp(g_physical_address rsdp)
 {
 	processorInitializeBsp();
 
-	acpiInitialize();
+	acpiInitialize(rsdp);
 	apicDetect();
 	hpetInitialize();
 
 	if(!processorListAvailable())
 		panic("%! no processors found", "system");
 
-	gdtPrepare();
+	logInfo("%# initialize GDT");
 	gdtInitialize();
+	gdtInitializeLocal();
 
+	logInfo("%# initialize IDT");
 	interruptsInitializeBsp();
 	syscallRegisterAll();
+
+	logInfo("%# finalize processor setup");
 	processorFinalizeSetup();
 
+	logInfo("%# initialize SMP");
 	auto numCores = processorGetNumberOfProcessors();
 	if(numCores > 1)
-		smpInitialize(initialPdPhys);
+		smpInitialize(pagingGetCurrentSpace());
 
 	applicationCoresWaiting = numCores - 1;
 	bspInitialized = true;
@@ -61,7 +69,7 @@ void systemInitializeBsp(g_physical_address initialPdPhys)
 
 void systemInitializeAp()
 {
-	gdtInitialize();
+	gdtInitializeLocal();
 	interruptsInitializeAp();
 	processorFinalizeSetup();
 }

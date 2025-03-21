@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *                                                                           *
+*                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
  *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
@@ -18,6 +18,13 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "loader/setup_information.hpp"
+#include "shared/video/bitmap_font.hpp"
+#include "shared/logger/logger.hpp"
 
-g_setup_information setupInformation;
+uint8_t* bitmapFontGetChar(char c)
+{
+	uint16_t offset = c - bitmapFontAsciiOffset;
+	if(offset >= bitmapFontCharCount)
+		return nullptr;
+	return bitmapFontCharSet[offset];
+}

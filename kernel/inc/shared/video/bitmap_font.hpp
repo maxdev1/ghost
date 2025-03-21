@@ -1,7 +1,7 @@
-#/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,22 +18,18 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "shared/logger/logger.hpp"
+#ifndef __VIDEO_BITMAPFONT__
+#define __VIDEO_BITMAPFONT__
 
-void loggerPrintLocked(const char* message, ...)
-{
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
-}
+#include <ghost/stdint.h>
 
-void loggerPrintlnLocked(const char* message, ...)
-{
-	va_list valist;
-	va_start(valist, message);
-	loggerPrintFormatted(message, valist);
-	va_end(valist);
-	loggerPrintCharacter('\n');
-}
+#include "bitmap_font_data.hpp"
 
+extern uint8_t bitmapFontCharWidth;
+extern uint8_t bitmapFontCharHeight;
+extern uint16_t bitmapFontCharCount;
+extern uint8_t bitmapFontAsciiOffset;
+
+uint8_t* bitmapFontGetChar(char c);
+
+#endif

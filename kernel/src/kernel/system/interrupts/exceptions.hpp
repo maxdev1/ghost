@@ -23,6 +23,6 @@
 
 #include "kernel/tasking/tasking.hpp"
 
-void exceptionsHandle(g_task* task);
+void exceptionsHandle(g_task* task, volatile g_processor_state* state);
 
 #endif

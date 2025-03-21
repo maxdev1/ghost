@@ -19,6 +19,11 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/interrupts/interrupts.hpp"
+
+#include <kernel/memory/gdt.hpp>
+#include <kernel/memory/paging.hpp>
+#include <kernel/utils/debug.hpp>
+
 #include "shared/logger/logger.hpp"
 #include "kernel/calls/syscall.hpp"
 #include "kernel/system/interrupts/apic/ioapic.hpp"
@@ -37,8 +42,8 @@ void _interruptsSendEndOfInterrupt(uint8_t irq);
 
 void interruptsInitializeBsp()
 {
-	idtPrepare();
-	idtLoad();
+	idtInitialize();
+	idtInitializeLocal();
 	interruptsInstallRoutines();
 	requestsInitialize();
 
@@ -60,7 +65,7 @@ void interruptsInitializeBsp()
 
 void interruptsInitializeAp()
 {
-	idtLoad();
+	idtInitializeLocal();
 	lapicInitialize();
 }
 
@@ -72,7 +77,7 @@ extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_st
 
 	if(state->intr < 0x20) // Exception
 	{
-		exceptionsHandle(task);
+		exceptionsHandle(task, state);
 	}
 	else if(state->intr == 0x80) // Syscall
 	{
@@ -106,6 +111,7 @@ extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_st
 		panic("%! attempted to switch to null task (%x) or state (%x)", "system", newTask, newTask->state);
 	if(newTask != task)
 		taskingRestoreState(newTask);
+
 	return newTask->state;
 }
 

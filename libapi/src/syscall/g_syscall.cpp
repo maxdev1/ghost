@@ -22,8 +22,9 @@
 
 void g_syscall(uint32_t call, g_address data)
 {
-	asm volatile("int $0x80"
-				 :
-				 : "a"(call), "b"(data)
-				 : "cc", "memory");
+	asm volatile (
+		"int $0x80"
+		:: "a" (call), "D" (data)
+		: "memory"
+	);
 }

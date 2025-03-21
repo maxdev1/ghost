@@ -45,7 +45,7 @@ void loggerPrintFormatted(const char* message_const, va_list valist)
 {
 	char* message = (char*) message_const;
 
-	uint16_t headerColor = 0x07;
+	uint16_t headerColor = 0xFF888888;
 
 	int max = 500;
 	while(*message && --max)
@@ -59,41 +59,48 @@ void loggerPrintFormatted(const char* message_const, va_list valist)
 
 		++message;
 		if(*message == 'i')
-		{ // integer
-			int32_t val = va_arg(valist, int32_t);
-			loggerPrintNumber(val, 10);
+		{
+			// integer
+			int64_t val = va_arg(valist, int64_t);
+			loggerPrintNumber(val, 10, false);
 		}
 		else if(*message == 'h' || *message == 'x')
-		{ // positive hex number
-			uint32_t val = va_arg(valist, uint32_t);
+		{
+			// positive hex number
+			uint64_t val = va_arg(valist, uint64_t);
 			loggerPrintPlain("0x");
-			loggerPrintNumber(val, 16);
+			loggerPrintNumber(val, 16, *message == 'h');
 		}
 		else if(*message == 'b')
-		{ // boolean
-			uint32_t val = va_arg(valist, uint32_t);
+		{
+			// boolean
+			int64_t val = va_arg(valist, int64_t);
 			loggerPrintPlain("0b");
-			loggerPrintNumber(val, 2);
+			loggerPrintNumber(val, 2, false);
 		}
 		else if(*message == 'c')
-		{ // char
+		{
+			// char
 			int val = va_arg(valist, int);
 			loggerPrintCharacter((char) val);
 		}
 		else if(*message == 's')
-		{ // string
+		{
+			// string
 			char* val = va_arg(valist, char*);
 			loggerPrintPlain(val);
 		}
 		else if(*message == '#')
-		{ // indented printing
+		{
+			// indented printing
 			for(uint32_t i = 0; i < LOGGER_HEADER_WIDTH + 3; i++)
 			{
 				loggerPrintCharacter(' ');
 			}
 		}
 		else if(*message == '!')
-		{ // indented header printing
+		{
+			// indented header printing
 			char* val = va_arg(valist, char*);
 			uint32_t headerlen = stringLength(val);
 
@@ -105,24 +112,27 @@ void loggerPrintFormatted(const char* message_const, va_list valist)
 				}
 			}
 
+			auto lastColor = consoleVideoGetColor();
 			consoleVideoSetColor(headerColor);
 			loggerPrintPlain(val);
-			consoleVideoSetColor(0x0F);
+			consoleVideoSetColor(lastColor);
 			loggerPrintCharacter(' ');
 		}
 		else if(*message == '%')
-		{ // escaped %
+		{
+			// escaped %
 			loggerPrintCharacter(*message);
 		}
 		else if(*message == '*')
-		{ // header color change
+		{
+			// header color change
 			headerColor = (uint16_t) (va_arg(valist, int));
 		}
 		++message;
 	}
 }
 
-void loggerPrintNumber(uint32_t number, uint16_t base)
+void loggerPrintNumber(uint64_t number, uint16_t base, bool shortened)
 {
 
 	// Remember if negative
@@ -150,9 +160,9 @@ void loggerPrintNumber(uint32_t number, uint16_t base)
 	} while(number);
 
 	// If base is 16, write 0's until 8
-	if(base == 16)
+	if(!shortened && base == 16)
 	{
-		while(len < 8)
+		while(len < 16)
 		{
 			*cbufp++ = '0';
 			++len;

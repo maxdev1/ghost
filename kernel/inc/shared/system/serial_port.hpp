@@ -23,6 +23,8 @@
 
 #include <ghost/stdint.h>
 
+#define G_SERIAL_DEFAULT_COM1 0x3F8
+
 #define G_SERIAL_PORT_OFFSET_DATA_REGISTER		0 // without DLAB, register for receiving and writing
 #define G_SERIAL_PORT_OFFSET_INTERRUPT_ENABLE	1 // without DLAB, interrupt enable register
 #define G_SERIAL_PORT_OFFSET_DIVISOR_LEAST		0 // with DLAB, least significant divisor byte
@@ -33,6 +35,8 @@
 #define G_SERIAL_PORT_OFFSET_LINE_STATUS		5 // line status register
 #define G_SERIAL_PORT_OFFSET_MODEM_STATUS		6 // modem status register
 #define G_SERIAL_PORT_OFFSET_SCRATCH			7 // scratch register
+
+bool serialPortIsAvailable(uint16_t port);
 
 void serialPortInitialize(uint16_t port, bool interruptsEnabled);
 

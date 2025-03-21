@@ -80,10 +80,10 @@ void vmsvgaDriverReceiveMessages()
 				void* addressInRequestersSpace = g_share_mem(svgaGetFb(), svgaGetFbSize(), header->sender);
 
 				response.status = G_VIDEO_SET_MODE_STATUS_SUCCESS;
-				response.mode_info.lfb = (uint32_t) addressInRequestersSpace;
+				response.mode_info.lfb = (g_address) addressInRequestersSpace;
 				response.mode_info.resX = modeSetRequest->width; // TODO read back from SVGA registers
 				response.mode_info.resY = modeSetRequest->height;
-				response.mode_info.bpp = (uint8_t) modeSetRequest->bpp;
+				response.mode_info.bpp = modeSetRequest->bpp;
 				response.mode_info.bpsl = (uint16_t) (modeSetRequest->width * 4); // TODO
 				response.mode_info.explicit_update = true;
 			}

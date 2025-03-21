@@ -26,9 +26,9 @@
 /**
  * Sets up all the basic system components that are required to initialize
  * higher level parts of the kernel. If multiple cores are available, the
- * initial physical page directory address is passed to their bootstrap code.
+ * initialization of these is started.
  */
-void systemInitializeBsp(g_physical_address initialPdPhys);
+void systemInitializeBsp(g_physical_address rsdp);
 
 /**
  * Sets up the remaining components which need local initialization on each core.

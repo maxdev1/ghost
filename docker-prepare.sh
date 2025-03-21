@@ -17,6 +17,7 @@ apt-get install -y \
     autoconf2.69 pkg-config xorriso grub-pc-bin \
     make texinfo flex bison gcc g++ nasm \
     asciidoc asciidoctor \
+    mtools \
     patch curl
 
 # Clean up

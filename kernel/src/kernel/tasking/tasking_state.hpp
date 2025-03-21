@@ -23,8 +23,6 @@
 
 #include "kernel/tasking/tasking.hpp"
 
-void taskingStateReset(g_task* task, g_address eip, g_security_level entryLevel);
-
-void taskingStateResetVm86(g_task* task, g_vm86_registers in, uint32_t intr);
+void taskingStateReset(g_task* task, g_address rip, g_security_level entryLevel);
 
 #endif

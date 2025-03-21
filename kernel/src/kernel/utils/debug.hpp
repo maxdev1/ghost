@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,30 +18,15 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "loader/memory/gdt.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/memory/gdt.hpp"
+#ifndef __UTILS_DEBUG__
+#define __UTILS_DEBUG__
 
-void gdtInitialize(g_address gdtPage)
-{
-	g_address gdtAddress = gdtPage + sizeof(g_gdt_pointer);
+#include <ghost/stdint.h>
 
-	g_gdt_pointer* gdtPointer = (g_gdt_pointer*) gdtPage;
-	gdtPointer->limit = (sizeof(g_gdt_entry) * 3) - 1;
-	gdtPointer->base = gdtAddress;
-	g_gdt_entry* gdt = (g_gdt_entry*) gdtAddress;
+void debugHardSleep(uint64_t millis);
 
-	// Null descriptor, position 0x00
-	gdtCreateGate(&gdt[0], 0, 0, 0, 0);
+void hexDump8(void* location, int minus = 0, int plus = 0);
 
-	// Kernel code segment descriptor, position 0x08
-	gdtCreateGate(&gdt[1], 0, 0xFFFFFFFF, G_ACCESS_BYTE__KERNEL_CODE_SEGMENT, 0xCF);
+void hexDump64(void* location, int minus = 0, int plus = 0);
 
-	// Kernel data segment descriptor, position 0x10
-	gdtCreateGate(&gdt[2], 0, 0xFFFFFFFF, G_ACCESS_BYTE__KERNEL_DATA_SEGMENT, 0xCF);
-
-	logDebug("%! descriptor table created at %h", "initgdt", gdtAddress);
-	logDebug("%! pointer at %h with base %h and limit %h", "initgdt", gdtPointer, gdtPointer->base, gdtPointer->limit);
-	_loadGdt(gdtPage);
-	logDebug("%! initialized", "initgdt");
-}
+#endif

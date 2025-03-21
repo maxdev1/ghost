@@ -46,11 +46,11 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* exe
 /**
  * Reads and validates an ELF header from a file.
  */
-g_spawn_validation_details elfReadAndValidateHeader(g_fd file, Elf32_Ehdr* headerBuffer, bool executable);
+g_spawn_validation_details elfReadAndValidateHeader(g_fd file, Elf64_Ehdr* headerBuffer, bool executable);
 
 /**
  * Validates the given ELF header.
  */
-g_spawn_validation_details elfValidateHeader(Elf32_Ehdr* header, bool executable);
+g_spawn_validation_details elfValidateHeader(Elf64_Ehdr* header, bool executable);
 
 #endif

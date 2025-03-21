@@ -37,8 +37,8 @@ g_syscall_registration* syscallRegistrations = 0;
 
 void syscallHandle(g_task* task)
 {
-	uint32_t callId = task->state->eax;
-	void* syscallData = (void*) task->state->ebx;
+	uint64_t callId = task->state->rax;
+	void* syscallData = (void*) task->state->rbx;
 
 	syscall(callId, syscallData);
 }

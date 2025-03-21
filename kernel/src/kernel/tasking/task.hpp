@@ -229,7 +229,7 @@ struct g_process
     g_task* main;
     g_task_entry* tasks;
 
-    g_physical_address pageDirectory;
+    g_physical_address pageSpace;
     g_address_range_pool* virtualRangePool;
 
     struct

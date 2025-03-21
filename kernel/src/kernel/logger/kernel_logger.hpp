@@ -21,11 +21,9 @@
 #ifndef __KERNEL_LOGGER__
 #define __KERNEL_LOGGER__
 
-#include "shared/setup_information.hpp"
+void kernelLoggerInitialize();
 
-void kernelLoggerInitialize(g_setup_information* info);
-
-void kernelLoggerPrintHeader(g_setup_information* info);
+void kernelLoggerPrintHeader();
 
 void kernelLoggerInitializeComPorts();
 

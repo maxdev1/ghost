@@ -132,7 +132,7 @@ bool pciDriverEnableResourceAccess(g_pci_device_address address, bool enabled)
 	return success;
 }
 
-bool pciDriverReadBAR(g_pci_device_address address, uint8_t bar, uint32_t* outValue)
+bool pciDriverReadBAR(g_pci_device_address address, uint8_t bar, g_address* outValue)
 {
 	g_tid driverTid = g_task_await_by_name(G_PCI_DRIVER_NAME);
 
@@ -156,7 +156,7 @@ bool pciDriverReadBAR(g_pci_device_address address, uint8_t bar, uint32_t* outVa
 	return success;
 }
 
-bool pciDriverReadBARSize(g_pci_device_address address, uint8_t bar, uint32_t* outValue)
+bool pciDriverReadBARSize(g_pci_device_address address, uint8_t bar, g_address* outValue)
 {
 	g_tid driverTid = g_task_await_by_name(G_PCI_DRIVER_NAME);
 
