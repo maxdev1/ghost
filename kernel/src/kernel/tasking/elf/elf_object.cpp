@@ -329,13 +329,11 @@ void elfObjectApplyRelocations(g_fd file, g_elf_object* object)
 			break;
 		}
 
-		if(shdr.sh_type != SHT_REL)
-		{
+		if(shdr.sh_type != SHT_RELA)
 			continue;
-		}
 
-		auto entry = (Elf64_Rel*) (object->baseAddress + shdr.sh_addr);
-		while(entry < (Elf64_Rel*) (object->baseAddress + shdr.sh_addr + shdr.sh_size))
+		auto entry = (Elf64_Rela*) (object->baseAddress + shdr.sh_addr);
+		while(entry < (Elf64_Rela*) (object->baseAddress + shdr.sh_addr + shdr.sh_size))
 		{
 			uint32_t symbolIndex = ELF64_R_SYM(entry->r_info);
 			uint8_t type = ELF64_R_TYPE(entry->r_info);
@@ -392,7 +390,7 @@ void elfObjectApplyRelocations(g_fd file, g_elf_object* object)
 				{
 					if(ELF64_ST_BIND(symbol->st_info) != STB_WEAK)
 						logDebug("%!     missing symbol '%s' (%h, bind: %i)", "elf", symbolName, cP,
-					         ELF64_ST_BIND(symbol->st_info));
+					        ELF64_ST_BIND(symbol->st_info));
 
 					cS = 0;
 				}
@@ -420,7 +418,7 @@ void elfObjectApplyRelocations(g_fd file, g_elf_object* object)
 			else if(type == R_X86_64_RELATIVE)
 			{
 				uint64_t cB = object->baseAddress;
-				int32_t cA = *((int32_t*) cP);
+				int64_t cA = *((int64_t*) cP);
 				*((uint64_t*) cP) = cB + cA;
 			}
 			else if(type == R_X86_64_64)
