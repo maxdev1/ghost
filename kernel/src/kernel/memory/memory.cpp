@@ -31,23 +31,9 @@
 
 g_address_range_pool* memoryVirtualRangePool = nullptr;
 
-// TODO Not sure why this is necessary. Why are kernel pages mapped with user flag initially?
-void pagingRemoveUserPermissions()
-{
-	auto pml4 = (g_address*) G_MEM_PHYS_TO_VIRT(pagingGetCurrentSpace());
-	for(int i = 0; i < 512; i++)
-	{
-		if(pml4[i])
-			pml4[i] &= ~G_PAGE_USER_FLAG;
-	}
-}
-
 void memoryInitialize(limine_memmap_response* memoryMap)
 {
 	logInfo("%! initializing kernel memory with map at %x", "mem", memoryMap);
-
-	logInfo("%! initial data", "paging");
-	pagingRemoveUserPermissions();
 
 	bitmapPageAllocatorInitialize(&memoryPhysicalAllocator, memoryMap);
 	logInfo("%! available: %i MiB", "memory", (memoryPhysicalAllocator.freePageCount * G_PAGE_SIZE) / 1024 / 1024);

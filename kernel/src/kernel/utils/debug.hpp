@@ -29,4 +29,6 @@ void hexDump8(void* location, int minus = 0, int plus = 0);
 
 void hexDump64(void* location, int minus = 0, int plus = 0);
 
+void debugDumpPageSpace();
+
 #endif

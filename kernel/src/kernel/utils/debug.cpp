@@ -21,6 +21,8 @@
 #include "kernel/utils/debug.hpp"
 #include "kernel/system/timing/pit.hpp"
 #include "shared/logger/logger.hpp"
+#include "kernel/memory/paging.hpp"
+#include "shared/memory/constants.hpp"
 
 void debugHardSleep(uint64_t millis)
 {
@@ -69,4 +71,54 @@ void hexDump8(void* location, int minus, int plus)
 void hexDump64(void* location, int minus, int plus)
 {
 	hexDump(location, minus, plus, 8);
+}
+
+void debugDumpPageSpace()
+{
+	logInfo("%! debug logging initial space:", "paging");
+	auto pml4 = (g_address*) G_MEM_PHYS_TO_VIRT(pagingGetCurrentSpace());
+	for(int first = 0; first < 512; first++)
+	{
+		if(!pml4[first])
+			continue;
+
+		logInfo("%# %i: %h -> %h %s", first, G_PML4_VIRT_ADDRESS(first, 0, 0, 0), pml4[first],
+		        pml4[first] & G_PAGE_USER_FLAG ? "user" :"kernel");
+		auto pdpt = (g_address*) G_MEM_PHYS_TO_VIRT(G_PAGE_ALIGN_DOWN(pml4[first]));
+		for(int second = 0; second < 512; second++)
+		{
+			if(!pdpt[second])
+				continue;
+
+			logInfo("%# %i > %i: %h -> %h %s", first, second, G_PML4_VIRT_ADDRESS(first, second, 0, 0), pdpt[second],
+			        pdpt[second]& G_PAGE_USER_FLAG ? "user":"kernel");
+			auto pd = (g_address*) G_MEM_PHYS_TO_VIRT(G_PAGE_ALIGN_DOWN(pdpt[second]));
+			for(int third = 0; third < 512; third++)
+			{
+				if(!pd[third])
+					continue;
+
+				logInfo("%# %i > %i > %i: %h -> %h %s", first, second, third,
+				        G_PML4_VIRT_ADDRESS(first, second, third, 0),
+				        pd[third], pd[third]& G_PAGE_USER_FLAG ? "user":"kernel");
+				if(pd[third] & G_PAGE_LARGE_PAGE_FLAG)
+				{
+					logInfo("%#    up to %h", G_PML4_VIRT_ADDRESS(first, second, third, 0) + 0x200000);
+				}
+				else
+				{
+					auto pt = (g_address*) G_MEM_PHYS_TO_VIRT(G_PAGE_ALIGN_DOWN(pd[third]));
+					for(int fourth = 0; fourth < 512; fourth++)
+					{
+						if(!pt[fourth])
+							continue;
+
+						logInfo("%# %i > %i > %i > %i: %h -> %h %s", first, second, third, fourth,
+						        G_PML4_VIRT_ADDRESS(first, second, third, fourth),
+						        pt[fourth], pt[fourth]& G_PAGE_USER_FLAG ? "user":"kernel");
+					}
+				}
+			}
+		}
+	}
 }

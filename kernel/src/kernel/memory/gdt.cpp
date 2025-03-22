@@ -53,19 +53,19 @@ void gdtInitializeLocal()
 	_gdtWriteEntry(&localGdt->entry[0], 0, 0, 0, 0);
 
 	// Kernel code segment descriptor, position 0x08
-	_gdtWriteEntry(&localGdt->entry[1], 0, 0, G_ACCESS_BYTE__KERNEL_CODE_SEGMENT,
+	_gdtWriteEntry(&localGdt->entry[1], 0, 0xFFFFFFFF, G_ACCESS_BYTE__KERNEL_CODE_SEGMENT,
 	               G_GDT_GRANULARITY_4KB | G_GDT_GRANULARITY_64BIT);
 
 	// Kernel data segment descriptor, position 0x10
-	_gdtWriteEntry(&localGdt->entry[2], 0, 0, G_ACCESS_BYTE__KERNEL_DATA_SEGMENT,
+	_gdtWriteEntry(&localGdt->entry[2], 0, 0xFFFFFFFF, G_ACCESS_BYTE__KERNEL_DATA_SEGMENT,
 	               G_GDT_GRANULARITY_4KB | G_GDT_GRANULARITY_64BIT);
 
 	// User code segment descriptor, position 0x18
-	_gdtWriteEntry(&localGdt->entry[3], 0, 0, G_ACCESS_BYTE__USER_CODE_SEGMENT,
+	_gdtWriteEntry(&localGdt->entry[3], 0, 0xFFFFFFFF, G_ACCESS_BYTE__USER_CODE_SEGMENT,
 	               G_GDT_GRANULARITY_4KB | G_GDT_GRANULARITY_64BIT);
 
 	// User data segment descriptor, position 0x20
-	_gdtWriteEntry(&localGdt->entry[4], 0, 0, G_ACCESS_BYTE__USER_DATA_SEGMENT,
+	_gdtWriteEntry(&localGdt->entry[4], 0, 0xFFFFFFFF, G_ACCESS_BYTE__USER_DATA_SEGMENT,
 	               G_GDT_GRANULARITY_4KB | G_GDT_GRANULARITY_64BIT);
 
 	// TSS descriptor, position 0x28

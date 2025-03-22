@@ -38,8 +38,8 @@
 
 
 // TODO new constants
-#define G_MEM_LOWER_END                             0x0000000000100000
-#define G_MEM_LOWER_HALF_END                        0x00007fffffffffff
+#define G_MEM_LOWER_END                             0x100000
+#define G_MEM_LOWER_HALF_END                        0x7fffffffffff
 
 /**
  * Due to the Higher Half Direct Map feature, every physical address is mapped
@@ -48,11 +48,11 @@
 #define G_MEM_HIGHER_HALF_DIRECT_MAP_OFFSET         0xffff800000000000
 #define G_MEM_PHYS_TO_VIRT(phys)                    ((G_MEM_HIGHER_HALF_DIRECT_MAP_OFFSET) + (g_address) phys)
 
-#define G_MEM_KERN_VIRT_RANGES_START			    0x00000009f0000000
-#define G_MEM_KERN_VIRT_RANGES_END			        0x00000009ffc00000
-#define G_MEM_HEAP_START                            0x0000000a00000000
-#define G_MEM_HEAP_INITIAL_SIZE                     0x0000000000100000
-#define G_KERNEL_HEAP_EXPAND_STEP			    	0x0000000000100000
+#define G_MEM_KERN_VIRT_RANGES_START			    0xffffff8090000000
+#define G_MEM_KERN_VIRT_RANGES_END			        0xffffff89ffc00000
+#define G_MEM_HEAP_START                            0xffffff8a00000000
+#define G_MEM_HEAP_INITIAL_SIZE                     0x100000
+#define G_MEM_KERN_HEAP_EXPAND_STEP			    	0x100000
 
 
 #endif

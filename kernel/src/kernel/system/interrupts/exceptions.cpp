@@ -166,7 +166,7 @@ void exceptionsDumpState(g_task* task, volatile g_processor_state* state)
 bool exceptionsHandlePageFault(g_task* task, volatile g_processor_state* state)
 {
 	g_virtual_address accessed = exceptionsGetCR2();
-	g_physical_address physPage = pagingVirtualToPhysical(G_PAGE_ALIGN_DOWN(accessed));
+	g_physical_address pageEntryValue = pagingVirtualToPageEntry(G_PAGE_ALIGN_DOWN(accessed));
 
 	if(task)
 	{
@@ -176,8 +176,8 @@ bool exceptionsHandlePageFault(g_task* task, volatile g_processor_state* state)
 		if(memoryOnDemandHandlePageFault(task, accessed))
 			return true;
 
-		logInfo("%! (task %i, core %i) RIP: %x (accessed %h, mapped page %h)", "pagefault", task->id,
-		        processorGetCurrentId(), state->rip, accessed, physPage);
+		logInfo("%! (task %i, core %i) RIP: %x (accessed %h, mapping value: %h)", "pagefault", task->id,
+		        processorGetCurrentId(), state->rip, accessed, pageEntryValue);
 
 		exceptionsDumpState(task, state);
 
@@ -194,8 +194,8 @@ bool exceptionsHandlePageFault(g_task* task, volatile g_processor_state* state)
 		return true;
 	}
 
-	logInfo("%! RIP: %x (accessed %h, mapped page %h)", "pagefault", processorGetCurrentId(), state->rip, accessed,
-	        physPage);
+	logInfo("%! RIP: %x (accessed %h, mapping value: %h)", "pagefault", processorGetCurrentId(), state->rip, accessed,
+	        pageEntryValue);
 	return false;
 }
 

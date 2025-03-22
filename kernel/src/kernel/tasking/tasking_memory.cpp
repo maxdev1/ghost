@@ -129,7 +129,7 @@ void taskingMemoryInitializeUtility(g_task* task)
 void taskingMemoryInitializeStacks(g_task* task)
 {
 	// Interrupt stack for ring 3 & VM86 tasks
-	if(task->securityLevel != G_SECURITY_LEVEL_KERNEL || task->type == G_TASK_TYPE_VM86)
+	if(task->securityLevel != G_SECURITY_LEVEL_KERNEL)
 	{
 		task->interruptStack = taskingMemoryCreateStack(memoryVirtualRangePool, G_PAGE_TABLE_KERNEL_DEFAULT,
 		                                                G_PAGE_KERNEL_DEFAULT, G_TASKING_MEMORY_INTERRUPT_STACK_PAGES);
@@ -246,10 +246,10 @@ g_physical_address taskingMemoryCreatePageSpace()
 	g_physical_address newPml4Phys = memoryPhysicalAllocate();
 	auto newPml4 = (g_address*) G_MEM_PHYS_TO_VIRT(newPml4Phys);
 
-	// Copy all kernel privilege mappings
+	// Copy all higher-level mappings
 	for(size_t i = 0; i < 512; i++)
 	{
-		if((currentPml4[i] & G_PAGE_USER_FLAG) == 0)
+		if(i >= 256 && currentPml4[i])
 			newPml4[i] = currentPml4[i];
 		else
 			newPml4[i] = 0;
@@ -309,7 +309,8 @@ void taskingMemoryInitializeTls(g_task* task)
 			// Allocate required virtual range
 			uint32_t requiredSize = process->tlsMaster.size;
 			uint32_t requiredPages = G_PAGE_ALIGN_UP(requiredSize) / G_PAGE_SIZE;
-			if(requiredPages < 1) requiredPages = 1;
+			if(requiredPages < 1)
+				requiredPages = 1;
 
 			g_virtual_address tlsStart = addressRangePoolAllocate(process->virtualRangePool, requiredPages);
 			g_virtual_address tlsEnd = tlsStart + requiredPages * G_PAGE_SIZE;

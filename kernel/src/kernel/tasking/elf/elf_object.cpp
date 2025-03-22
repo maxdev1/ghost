@@ -349,9 +349,9 @@ void elfObjectApplyRelocations(g_fd file, g_elf_object* object)
 
 			// Symbol lookup
 			if(type == R_X86_64_32 || type == R_X86_64_PC32 ||
-			   type == R_X86_64_GLOB_DAT || type == R_X86_64_JMP_SLOT ||
-			   type == R_X86_64_GOT32 || type == R_X86_64_TLS_TPOFF ||
-			   type == R_X86_64_TLS_DTPMOD32 || type == R_X86_64_TLS_DTPOFF32 ||
+			   type == R_X86_64_GLOB_DAT || type == R_X86_64_JUMP_SLOT ||
+			   type == R_X86_64_GOT32 || type == R_X86_64_TPOFF64 ||
+			   type == R_X86_64_DTPMOD64 || type == R_X86_64_DTPOFF64 ||
 			   type == R_X86_64_COPY)
 			{
 				Elf64_Sym* symbol = &object->dynamicSymbolTable[symbolIndex];
@@ -401,59 +401,65 @@ void elfObjectApplyRelocations(g_fd file, g_elf_object* object)
 			if(type == R_X86_64_32)
 			{
 				int32_t cA = *((int32_t*) cP);
-				*((uint32_t*) cP) = cS + cA;
+				*((uint32_t*) cP) = (uint32_t) (cS + cA);
 			}
 			else if(type == R_X86_64_PC32)
 			{
 				int32_t cA = *((int32_t*) cP);
-				*((uint32_t*) cP) = cS + cA - cP;
+				*((uint32_t*) cP) = (uint32_t) ((uint64_t) cS + cA - (uint64_t) cP);
 			}
 			else if(type == R_X86_64_COPY)
 			{
 				if(cS)
 					memoryCopy((void*) cP, (void*) cS, symbolSize);
 			}
-			else if(type == R_X86_64_GLOB_DAT)
+			else if(type == R_X86_64_GLOB_DAT || type == R_X86_64_JUMP_SLOT)
 			{
-				*((uint32_t*) cP) = cS;
-			}
-			else if(type == R_X86_64_JMP_SLOT)
-			{
-				*((uint32_t*) cP) = cS;
+				*((uint64_t*) cP) = cS;
 			}
 			else if(type == R_X86_64_RELATIVE)
 			{
-				uint32_t cB = object->baseAddress;
+				uint64_t cB = object->baseAddress;
 				int32_t cA = *((int32_t*) cP);
-				*((uint32_t*) cP) = cB + cA;
+				*((uint64_t*) cP) = cB + cA;
 			}
-			else if(type == R_X86_64_TLS_TPOFF)
+			else if(type == R_X86_64_64)
 			{
-				/**
-				 * For TLS_TPOFF we insert the offset relative to the g_user_threadlocal which is put
-				 * into the segment referenced in GS.
-				 */
+				int64_t cA = *((int64_t*) cP);
+				*((uint64_t*) cP) = cS + cA;
+			}
+			else if(type == R_X86_64_TPOFF64)
+			{
 				if(cS)
-					*((uint32_t*) cP) = symbolInfo.object->tlsPart.offset - rootObject->tlsMaster.userThreadOffset +
+					*((uint64_t*) cP) = symbolInfo.object->tlsPart.offset - rootObject->tlsMaster.userThreadOffset +
 					                    symbolInfo.value;
 			}
-			else if(type == R_X86_64_TLS_DTPMOD32)
+			else if(type == R_X86_64_TPOFF32)
 			{
-				/**
-				 * DTPMOD32 expects the module ID to be written which will be passed to ___tls_get_addr.
-				 */
 				if(cS)
-					*((uint32_t*) cP) = symbolInfo.object->id;
+					*((uint32_t*) cP) = (uint32_t) (
+						symbolInfo.object->tlsPart.offset - rootObject->tlsMaster.userThreadOffset +
+						symbolInfo.value);
 			}
-			else if(type == R_X86_64_TLS_DTPOFF32)
+			else if(type == R_X86_64_DTPMOD64)
 			{
-				/**
-				 * DTPOFF32 expects the symbol offset to be written which will be passed to ___tls_get_addr.
-				 */
 				if(cS)
-					*((uint32_t*) cP) = symbolInfo.object->tlsPart.offset - rootObject->tlsMaster.userThreadOffset +
+					*((uint64_t*) cP) = symbolInfo.object->id;
+			}
+			else if(type == R_X86_64_DTPOFF64)
+			{
+				if(cS)
+					*((uint64_t*) cP) = symbolInfo.object->tlsPart.offset - rootObject->tlsMaster.userThreadOffset +
 					                    symbolInfo.value;
 			}
+			else if(type == R_X86_64_DTPOFF32)
+			{
+				if(cS)
+					*((uint32_t*) cP) = (uint32_t) (
+						symbolInfo.object->tlsPart.offset - rootObject->tlsMaster.userThreadOffset +
+						symbolInfo.value);
+			}
+
 
 			entry++;
 		}

@@ -123,7 +123,7 @@ uint32_t heapGetUsedAmount()
 
 bool _heapExpand()
 {
-	for(g_virtual_address virt = heapEnd; virt < heapEnd + G_KERNEL_HEAP_EXPAND_STEP; virt += G_PAGE_SIZE)
+	for(g_virtual_address virt = heapEnd; virt < heapEnd + G_MEM_KERN_HEAP_EXPAND_STEP; virt += G_PAGE_SIZE)
 	{
 		g_physical_address phys = memoryPhysicalAllocate(true);
 		if(phys == 0)
@@ -135,8 +135,8 @@ bool _heapExpand()
 		pagingMapPage(virt, phys, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
 	}
 
-	memoryAllocatorExpand(&heapAllocator, G_KERNEL_HEAP_EXPAND_STEP);
-	heapEnd += G_KERNEL_HEAP_EXPAND_STEP;
+	memoryAllocatorExpand(&heapAllocator, G_MEM_KERN_HEAP_EXPAND_STEP);
+	heapEnd += G_MEM_KERN_HEAP_EXPAND_STEP;
 
 	logDebug("%! expanded to end %h (%ikb in use)", "kernheap", heapEnd, heapAmountInUse / 1024);
 

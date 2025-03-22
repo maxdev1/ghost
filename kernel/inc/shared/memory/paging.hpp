@@ -49,6 +49,9 @@
 #define G_PDPT_INDEX(addr) (((addr) >> 30) & 0x1FF)
 #define G_PD_INDEX(addr)   (((addr) >> 21) & 0x1FF)
 #define G_PT_INDEX(addr)   (((addr) >> 12) & 0x1FF)
+#define G_PML4_VIRT_ADDRESS(pml4, pdpt, pd, pt) \
+    ((((uint64_t)(pml4) << 39) | ((uint64_t)(pdpt) << 30) | ((uint64_t)(pd) << 21) | ((uint64_t)(pt) << 12)) | \
+    ((((uint64_t)(pml4) & 0x100) ? 0xFFFF000000000000ULL : 0)))
 
 /**
  * Switches to the given page directory.
