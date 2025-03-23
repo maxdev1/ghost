@@ -19,6 +19,9 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/interrupts/exceptions.hpp"
+
+#include <shared/utils/string.hpp>
+
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/memory/paging.hpp"
@@ -28,9 +31,6 @@
 #include "kernel/tasking/tasking.hpp"
 #include "kernel/tasking/tasking_memory.hpp"
 #include "shared/logger/logger.hpp"
-#include "shared/panic.hpp"
-
-#define DEBUG_PRINT_STACK_TRACE 1
 
 /**
  * Names of the exceptions
@@ -99,6 +99,98 @@ bool exceptionsHandleDivideError(g_task* task)
 	return true;
 }
 
+g_elf_object* exceptionsFindResponsibleObject(g_task* task, g_address rip)
+{
+	g_elf_object* object = nullptr;
+
+	auto iter = hashmapIteratorStart(task->process->object->loadedObjects);
+	while(hashmapIteratorHasNext(&iter))
+	{
+		auto nextObject = hashmapIteratorNext(&iter)->value;
+		if(rip >= nextObject->startAddress && rip < nextObject->endAddress)
+		{
+			object = nextObject;
+			break;
+		}
+	}
+	hashmapIteratorEnd(&iter);
+
+	return object;
+}
+
+Elf64_Sym* exceptionsFindFunctionSymbol(g_elf_object* object, g_address rip)
+{
+	if(object->root)
+	{
+		// TODO: Symbol lookup only works well for shared libs so far, for some reason
+		return nullptr;
+	}
+
+	Elf64_Sym* bestMatch = nullptr;
+	g_address localRip = rip - object->baseAddress;
+
+	for(uint64_t symbolIndex = 0; symbolIndex < object->dynamicSymbolTableSize; symbolIndex++)
+	{
+		auto& symbol = object->dynamicSymbolTable[symbolIndex];
+
+		if(ELF64_ST_TYPE(symbol.st_info) == STT_FUNC)
+		{
+			if(localRip >= symbol.st_value &&
+			   localRip < symbol.st_value + symbol.st_size)
+			{
+				return &symbol;
+			}
+
+			if(localRip >= symbol.st_value &&
+			   (!bestMatch || symbol.st_value > bestMatch->st_value))
+			{
+				bestMatch = &symbol;
+			}
+		}
+	}
+
+	return bestMatch;
+}
+
+void exceptionsPrintCallAtRip(g_task* task, g_address rip)
+{
+	auto object = exceptionsFindResponsibleObject(task, rip);
+	auto function = object ? exceptionsFindFunctionSymbol(object, rip) : nullptr;
+
+	if(object && function)
+	{
+		auto functionName = function->st_name ? &object->dynamicStringTable[function->st_name] : "?";
+		logInfo("%#   %h (%s <%s> %h)", rip, object->name, functionName, rip - object->baseAddress);
+	}
+	else if(object)
+	{
+		logInfo("%#   %h (%s %h)", rip, object->name, rip - object->baseAddress);
+	}
+	else
+	{
+		logInfo("%#   %h", rip);
+	}
+}
+
+void exceptionsPrintStackTrace(g_task* task, volatile g_processor_state* state)
+{
+	logInfo("%# stack trace:");
+	exceptionsPrintCallAtRip(task, state->rip);
+
+	auto rbp = reinterpret_cast<g_address*>(state->rbp);
+	for(int frame = 0; frame < 25; ++frame)
+	{
+		g_address rip = rbp[1];
+		if(rip < 0x1000)
+		{
+			break;
+		}
+		rbp = reinterpret_cast<g_address*>(rbp[0]);
+
+		exceptionsPrintCallAtRip(task, rip);
+	}
+}
+
 /**
  * Dumps the current CPU state to the log file
  */
@@ -113,54 +205,28 @@ void exceptionsDumpState(g_task* task, volatile g_processor_state* state)
 		// Page fault
 		logInfo("%#    accessed address: %h", exceptionsGetCR2());
 	}
-	logInfo("%#    RIP: %h   RFLAGS: %h", state->rip, state->rflags);
-	logInfo("%#    RAX: %h      RBX: %h", state->rax, state->rbx);
-	logInfo("%#    RCX: %h      RDX: %h", state->rcx, state->rdx);
-	logInfo("%#    RSP: %h      RBP: %h", state->rsp, state->rbp);
-	logInfo("%#    CS:  %h       SS: %h", state->cs, state->ss);
 	logInfo("%#   INTR: %h    ERROR: %h", state->intr, state->error);
+	logInfo("%#    RIP: %h   RFLAGS: %h", state->rip, state->rflags);
+	logInfo("%#    CS:  %h       SS: %h", state->cs, state->ss);
+	logInfo("%#    RSP: %h      RBP: %h", state->rbp, state->rbp);
+	logInfo("%#    RAX: %h  RBX: %h  %RCX: %h  RDX: %h", state->rax, state->rbx, state->rcx, state->rdx);
 	if(task)
 	{
 		logInfo("%#   task stack: %h - %h", task->stack.start, task->stack.end);
 		logInfo("%#   intr stack: %h - %h", task->interruptStack.start, task->interruptStack.end);
 
+		logInfo("%# loaded objects:");
 		auto iter = hashmapIteratorStart(task->process->object->loadedObjects);
 		while(hashmapIteratorHasNext(&iter))
 		{
 			auto object = hashmapIteratorNext(&iter)->value;
 
-			logInfo("%# obj %x-%x: %s", object->startAddress, object->endAddress, object->name);
-
-			if(state->rip >= object->startAddress && state->rip < object->endAddress)
-			{
-				if(object == task->process->object)
-				{
-					logInfo("%# caused in executable object");
-				}
-				else
-				{
-					logInfo("%# caused in object '%s' at offset %x", object->name, state->rip - object->baseAddress);
-				}
-				break;
-			}
+			logInfo("%#   %x-%x: %s", object->startAddress, object->endAddress, object->name);
 		}
 		hashmapIteratorEnd(&iter);
 	}
 
-#if DEBUG_PRINT_STACK_TRACE
-	g_address* rbp = reinterpret_cast<g_address*>(state->rbp);
-	logInfo("%# stack trace:");
-	for(int frame = 0; frame < 8; ++frame)
-	{
-		g_address rip = rbp[1];
-		if(rip < 0x1000)
-		{
-			break;
-		}
-		rbp = reinterpret_cast<g_address*>(rbp[0]);
-		logInfo("%#  %h", rip);
-	}
-#endif
+	exceptionsPrintStackTrace(task, state);
 }
 
 bool exceptionsHandlePageFault(g_task* task, volatile g_processor_state* state)

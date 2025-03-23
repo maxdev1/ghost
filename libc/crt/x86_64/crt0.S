@@ -27,7 +27,15 @@
 
 # The <_start> function is where the kernel starts the execution.
 _start:
-	call __g_main
+    mov %rsp, %rax
+    and $0xf, %rax
+    jz _skipAlignment
+
+    sub %rax, %rsp
+    add $16, %rsp
+
+_skipAlignment:
+    call __g_main
 
 # Endless loop, for the case that bad things happen
 wait:
