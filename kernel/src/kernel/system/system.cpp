@@ -19,9 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/system.hpp"
-
-#include <shared/memory/paging.hpp>
-
 #include "kernel/calls/syscall.hpp"
 #include "kernel/memory/gdt.hpp"
 #include "kernel/system/acpi/acpi.hpp"
@@ -31,6 +28,7 @@
 #include "kernel/system/smp.hpp"
 #include "shared/panic.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/memory/paging.hpp"
 
 static int applicationCoresWaiting;
 static bool bspInitialized = false;
@@ -47,18 +45,14 @@ void systemInitializeBsp(g_physical_address rsdp)
 	if(!processorListAvailable())
 		panic("%! no processors found", "system");
 
-	logInfo("%# initialize GDT");
 	gdtInitialize();
 	gdtInitializeLocal();
 
-	logInfo("%# initialize IDT");
 	interruptsInitializeBsp();
 	syscallRegisterAll();
 
-	logInfo("%# finalize processor setup");
 	processorFinalizeSetup();
 
-	logInfo("%# initialize SMP");
 	auto numCores = processorGetNumberOfProcessors();
 	if(numCores > 1)
 		smpInitialize(pagingGetCurrentSpace());

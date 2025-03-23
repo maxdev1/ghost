@@ -19,14 +19,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/tasking/tasking_memory.hpp"
-
-#include <shared/memory/constants.hpp>
-
 #include "kernel/system/system.hpp"
 #include "kernel/memory/lower_heap.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/system/processor/processor.hpp"
+#include "shared/memory/constants.hpp"
 #include "shared/logger/logger.hpp"
 #include "shared/panic.hpp"
 

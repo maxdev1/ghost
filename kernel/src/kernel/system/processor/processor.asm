@@ -57,21 +57,22 @@ _enableSSE:
     fclex
 
     push qword 0x037F
-    fldcw [rsp]             ; load default FPU control word
+    fldcw [rsp]         ; load default control word
     add rsp, 8
 
     mov rax, cr0
-    and rax, ~(1 << 2)      ; clear CR0.EM coprocessor emulation
-    or rax, (1 << 1)        ; set CR0.MP monitor coprocessor
+    and rax, ~(1 << 2)  ; clear CR0.EM coprocessor emulation
+    or rax, (1 << 1)    ; set CR0.MP monitor coprocessor
     mov cr0, rax
 
     mov rax, cr4
-    or rax, (1 << 9)        ; set CR4.OSFXSR
-    or rax, (1 << 10)       ; set CR4.OSXMMEXCPT
+    or rax, (1 << 9)    ; set CR4.OSFXSR
+    or rax, (1 << 10)   ; set CR4.OSXMMEXCPT
     mov cr4, rax
 
     push qword 0x1F80
-    ldmxcsr [rsp]           ; load default settings to MXCSR
+    ldmxcsr [rsp]       ; load default settings to MXCSR
     add rsp, 8
 
     ret
+

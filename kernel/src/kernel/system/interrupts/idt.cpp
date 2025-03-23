@@ -21,8 +21,7 @@
 #include "kernel/system/interrupts/idt.hpp"
 #include "shared/logger/logger.hpp"
 #include "kernel/memory/gdt.hpp"
-#include <ghost/memory/types.h>
-#include <kernel/system/processor/processor.hpp>
+#include "ghost/memory/types.h"
 
 /**
  * IDT pointer structure

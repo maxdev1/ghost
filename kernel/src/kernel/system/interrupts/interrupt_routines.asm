@@ -28,7 +28,29 @@ extern _interruptHandler
 ; Handler routine
 ;
 interruptRoutine:
-    ; Save all registers
+	;
+	; The processor has now pushed registers to the stack. If it was an actual
+	; context switch, then SS and ESP are also pushed. For a same-ring switch
+	; it will not push them. Roughly equivalent to these instructions:
+	;
+	; [Ring 3 -> Ring 0]
+	;	push ss
+	;	push rsp
+	;	push rflags
+	;	push cs
+	;	push rip
+	;
+	; [Ring 0 -> Ring 0]
+	;	push rflags
+	;	push cs
+	;	push rip
+	;
+	; This is the reason we give the stack pointer to our interrupt handler.
+	; The interrupt handler will then return the stack that we can pop the
+	; registers from.
+	;
+
+	; Store general purpose
     push rax
     push rcx
     push rdx
@@ -46,7 +68,7 @@ interruptRoutine:
     push r14
     push r15
 
-    ; Save segment registers if needed
+	; Store segments
     mov ax, ds
     push rax
     mov ax, es
@@ -57,8 +79,9 @@ interruptRoutine:
     mov ds, ax
     mov es, ax
 
-    ; Call C handler with pointer to stack frame
+    ; Stack pointer argument
     mov rdi, rsp
+    ; Call handler
     call _interruptHandler
     ; Set stack pointer from return value
     mov rsp, rax
@@ -90,7 +113,22 @@ interruptRoutine:
     ; Skip past the error code and interrupt number
     add rsp, 16
 
-    ; Return from interrupt
+	;
+	; Now we return and on IRETQ the processor again pops specific registers.
+	; If we switch to a kernel-level task, RSP and SS will not be popped.
+	;
+	; [Ring 0 -> Ring 0]
+	;		pop rip
+	;		pop cs
+	;		pop rflags
+	;
+	; [Ring 0 -> Ring 3]
+	;		pop rip
+	;		pop cs
+	;		pop rflags
+	;		pop rsp
+	;		pop ss
+	;
     iretq
 
 
