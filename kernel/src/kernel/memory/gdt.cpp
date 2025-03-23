@@ -74,11 +74,6 @@ void gdtInitializeLocal()
 	memorySetBytes(&localGdt->tss, 0, sizeof(g_tss));
 	localGdt->tss.rsp0 = 0;
 
-	logInfo("gdt last entry: %x", &localGdt->entry[4]);
-	logInfo("gdt tss entry:  %x", &localGdt->entryTss);
-	logInfo("tss:            %x", &localGdt->tss);
-	hexDump8(&localGdt->tss);
-
 	// Load the GDT & TSS
 	asm volatile("lgdt %0" : : "m" (localGdt->ptr));
 	asm volatile(
