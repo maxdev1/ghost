@@ -25,16 +25,19 @@
 void taskingStateReset(g_task* task, g_address rip, g_security_level entryLevel)
 {
 	g_processor_state* state;
-	if(entryLevel == G_SECURITY_LEVEL_KERNEL && task->securityLevel > G_SECURITY_LEVEL_KERNEL)
+	if(task->securityLevel > G_SECURITY_LEVEL_KERNEL)
 		state = (g_processor_state*) (task->interruptStack.end - sizeof(g_processor_state));
 	else
 		state = (g_processor_state*) (task->stack.end - sizeof(g_processor_state));
-
 	task->state = state;
 
 	memorySetBytes((void*) task->state, 0, sizeof(g_processor_state));
 	state->rflags = 0x20202;
-	state->rsp = (g_virtual_address) task->state;
+
+	if(entryLevel > G_SECURITY_LEVEL_KERNEL)
+		state->rsp = task->stack.end - 0x8; // TODO Find out why BOTH this and alignment in crt0 is required
+	else
+		state->rsp = (g_virtual_address) task->state;
 
 	if(entryLevel == G_SECURITY_LEVEL_KERNEL)
 	{

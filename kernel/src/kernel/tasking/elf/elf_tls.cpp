@@ -94,5 +94,5 @@ void elfTlsCreateMasterImage(g_fd file, g_process* process, g_elf_object* rootOb
 	process->tlsMaster.location = tlsStart;
 	process->tlsMaster.size = size;
 	process->tlsMaster.userThreadOffset = rootObject->tlsMaster.userThreadOffset;
-	logInfo("%!   created TLS master: %h, size: %h, uTO: %x", "elf", process->tlsMaster.location, process->tlsMaster.size, process->tlsMaster.userThreadOffset);
+	logDebug("%!   created TLS master: %h, size: %h, uTO: %x", "elf", process->tlsMaster.location, process->tlsMaster.size, process->tlsMaster.userThreadOffset);
 }
