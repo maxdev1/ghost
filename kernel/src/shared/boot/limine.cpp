@@ -21,6 +21,8 @@
 #include "shared/boot/limine.hpp"
 #include "shared/utils/string.hpp"
 
+static limine_framebuffer* fb = nullptr;
+
 limine_file* limineFindModule(limine_module_response* info, const char* path)
 {
 	for(uint64_t i = 0; i < info->module_count; i++)
@@ -30,4 +32,14 @@ limine_file* limineFindModule(limine_module_response* info, const char* path)
 			return module;
 	}
 	return nullptr;
+}
+
+void limineStoreFramebuffer(limine_framebuffer* framebuffer)
+{
+	fb = framebuffer;
+}
+
+limine_framebuffer* limineGetFramebuffer()
+{
+	return fb;
 }

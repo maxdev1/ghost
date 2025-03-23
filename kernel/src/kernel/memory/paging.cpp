@@ -38,9 +38,13 @@ g_physical_address pagingVirtualToPageEntry(g_virtual_address addr)
 
 	auto pd = (g_address*) G_MEM_PHYS_TO_VIRT(pdAddr);
 	uint64_t pdIndex = G_PD_INDEX(addr);
-	uint64_t ptAddr = pd[pdIndex] & ~G_PAGE_ALIGN_MASK;
+	uint64_t pdValue = pd[pdIndex];
+	uint64_t ptAddr = pdValue & ~G_PAGE_ALIGN_MASK;
 	if(!ptAddr)
 		return 0;
+
+	if(pdValue & G_PAGE_LARGE_PAGE_FLAG)
+		return pdValue & ~G_PAGE_ALIGN_MASK;
 
 	auto pt = (g_address*) G_MEM_PHYS_TO_VIRT(ptAddr);
 	uint64_t ptIndex = G_PT_INDEX(addr);

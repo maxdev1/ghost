@@ -36,4 +36,6 @@ void syscallIrqCreateRedirect(g_task* task, g_syscall_irq_create_redirect* data)
 
 void syscallAwaitIrq(g_task* task, g_syscall_await_irq* data);
 
+void syscallGetEfiFramebuffer(g_task* task, g_syscall_get_efi_framebuffer* data);
+
 #endif

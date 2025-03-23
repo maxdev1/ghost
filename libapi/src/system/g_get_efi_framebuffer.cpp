@@ -18,22 +18,22 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __BOOT_LIMINE__
-#define __BOOT_LIMINE__
-
-#include <limine.h>
+#include "ghost/syscall.h"
+#include "ghost/system.h"
+#include "ghost/system/callstructs.h"
 
 /**
- * Looks for the module with the given path.
  *
- * @param info bootloader information structure
- * @param path module path
- * @return the file or null
  */
-limine_file* limineFindModule(limine_module_response* info, const char* path);
+void g_get_efi_framebuffer(g_address* outFramebuffer, uint16_t* outWidth, uint16_t* outHeight, uint16_t* outBpp, uint32_t* outPitch)
+{
+	g_syscall_get_efi_framebuffer data;
 
-void limineStoreFramebuffer(limine_framebuffer* framebuffer);
+	g_syscall(G_SYSCALL_GET_EFI_FRAMEBUFFER, (g_address) &data);
 
-limine_framebuffer* limineGetFramebuffer();
-
-#endif
+	*outFramebuffer = data.address;
+	*outWidth = data.width;
+	*outHeight = data.height;
+	*outBpp = data.bpp;
+	*outPitch = data.pitch;
+}

@@ -6,7 +6,7 @@ fi
 . "$ROOT/ghost.sh"
 
 # Build configuration
-ARTIFACT_NAME="vbedriver.bin"
+ARTIFACT_NAME="efifbdriver.bin"
 LDFLAGS="-ldevice"
 
 # Include application build tasks

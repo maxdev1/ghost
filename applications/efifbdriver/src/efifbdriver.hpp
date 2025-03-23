@@ -18,22 +18,23 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __BOOT_LIMINE__
-#define __BOOT_LIMINE__
+#ifndef __EFIFBDRIVER__
+#define __EFIFBDRIVER__
 
-#include <limine.h>
+#include <libvideo/videodriver.hpp>
+
+#include <cstdint>
+#include <ghost.h>
 
 /**
- * Looks for the module with the given path.
- *
- * @param info bootloader information structure
- * @param path module path
- * @return the file or null
+ * Main loop receiving messages from other processes to do something.
  */
-limine_file* limineFindModule(limine_module_response* info, const char* path);
+void efifbDriverReceiveMessages();
 
-void limineStoreFramebuffer(limine_framebuffer* framebuffer);
-
-limine_framebuffer* limineGetFramebuffer();
+/**
+ * Handles a set-mode command.
+ */
+void efifbDriverHandleCommandSetMode(g_video_set_mode_request* request, g_tid requestingTaskId,
+                                     g_message_transaction requestTransaction);
 
 #endif

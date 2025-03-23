@@ -103,7 +103,9 @@ extern "C" void kernelMain()
 	if(framebufferRequest.response == nullptr || framebufferRequest.response->framebuffer_count < 1)
 		failEarly();
 
-	consoleVideoInitialize(framebufferRequest.response->framebuffers[0]);
+	auto framebuffer = framebufferRequest.response->framebuffers[0];
+	limineStoreFramebuffer(framebuffer);
+	consoleVideoInitialize(framebuffer);
 	if(G_PRETTY_BOOT)
 		prettyBootEnable(false);
 	else

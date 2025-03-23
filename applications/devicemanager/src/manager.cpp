@@ -89,8 +89,8 @@ void _deviceManagerCheckPciDevices()
 	}
 	else
 	{
-		klog("starting VBE driver");
-		g_spawn("/applications/vbedriver.bin", "", "", G_SECURITY_LEVEL_DRIVER);
+		klog("starting EFI FB driver");
+		g_spawn("/applications/efifbdriver.bin", "", "", G_SECURITY_LEVEL_DRIVER);
 	}
 }
 
