@@ -31,15 +31,14 @@ g_device_id deviceId;
 
 int main()
 {
-	g_task_register_name("vbedriver");
-	klog("started");
+	g_task_register_name("efifbdriver");
 
 	if(!deviceManagerRegisterDevice(G_DEVICE_TYPE_VIDEO, g_get_tid(), &deviceId))
 	{
 		klog("failed to register device with device manager");
 		return -1;
 	}
-	klog("registered VBE device %i", deviceId);
+	klog("registered EFI FB device %i", deviceId);
 
 	efifbDriverReceiveMessages();
 	return 0;
