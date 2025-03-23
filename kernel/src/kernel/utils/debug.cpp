@@ -122,3 +122,33 @@ void debugDumpPageSpace()
 		}
 	}
 }
+
+void debugPagingPrintValues(g_virtual_address addr)
+{
+	logInfo("%! debug output for %x", "paging", addr);
+
+	auto pml4 = (g_address*) G_MEM_PHYS_TO_VIRT(pagingGetCurrentSpace());
+	uint64_t pml4Index = G_PML4_INDEX(addr);
+	logInfo("%# in PML4: %x (NX? %i)", pml4[pml4Index], ((1ULL << 63) & pml4[pml4Index]));
+	uint64_t pdptAddr = pml4[pml4Index] & ~G_PAGE_ALIGN_MASK;
+	if(!pdptAddr)
+		return;
+
+	auto pdpt = (g_address*) G_MEM_PHYS_TO_VIRT(pdptAddr);
+	uint64_t pdptIndex = G_PDPT_INDEX(addr);
+	logInfo("%# in PDPT: %x (NX? %i)", pdpt[pdptIndex], ((1ULL << 63) & pdpt[pdptIndex]));
+	uint64_t pdAddr = pdpt[pdptIndex] & ~G_PAGE_ALIGN_MASK;
+	if(!pdAddr)
+		return;
+
+	auto pd = (g_address*) G_MEM_PHYS_TO_VIRT(pdAddr);
+	uint64_t pdIndex = G_PD_INDEX(addr);
+	logInfo("%# in PD:   %x (NX? %i)", pd[pdIndex], ((1ULL << 63) & pd[pdIndex]));
+	uint64_t ptAddr = pd[pdIndex] & ~G_PAGE_ALIGN_MASK;
+	if(!ptAddr)
+		return;
+
+	auto pt = (g_address*) G_MEM_PHYS_TO_VIRT(ptAddr);
+	uint64_t ptIndex = G_PT_INDEX(addr);
+	logInfo("%# in PT:   %x (NX? %i)", pt[ptIndex], ((1ULL << 63) & pt[ptIndex]));
+}

@@ -47,7 +47,7 @@ g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* n
 	}
 	result.object = object;
 
-	logInfo("%! loading object '%s' (%i) to %h (fd %i)", "elf", name, object->id, base, file);
+	logDebug("%! loading object '%s' (%i) to %h (fd %i)", "elf", name, object->id, base, file);
 
 	// Check ELF header
 	result.validation = elfReadAndValidateHeader(file, &object->header, object->root);
@@ -57,7 +57,6 @@ g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* n
 		result.status = object->root ? G_SPAWN_STATUS_FORMAT_ERROR : G_SPAWN_STATUS_DEPENDENCY_ERROR;
 		return result;
 	}
-	logInfo("%# ELF header info %i", object->header.e_phnum);
 
 	// Add to list of already loaded dependencies
 	g_elf_object* rootObject = object;

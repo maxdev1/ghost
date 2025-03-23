@@ -351,7 +351,7 @@ g_process* taskingCreateProcess(g_security_level securityLevel)
 	addressRangePoolInitialize(process->virtualRangePool);
 	addressRangePoolAddRange(process->virtualRangePool, G_USER_VIRTUAL_RANGES_START, G_USER_VIRTUAL_RANGES_END);
 
-	logInfo("%! new process %i, address space %x", "tasking", process->id, process->pageSpace);
+	logDebug("%! new process %i, address space %x", "tasking", process->id, process->pageSpace);
 	return process;
 }
 
@@ -387,9 +387,9 @@ g_task* taskingCreateTask(g_virtual_address eip, g_process* process, g_security_
 	taskingMemoryInitialize(task);
 	taskingStateReset(task, eip, level);
 
-	logInfo("%! created task %i, intr stack: %x-%x, stack: %x-%x", "tasking", task->id, task->interruptStack.start,
+	logDebug("%! created task %i, intr stack: %x-%x, stack: %x-%x", "tasking", task->id, task->interruptStack.start,
 			task->interruptStack.end, task->stack.start, task->stack.end);
-	logInfo("%# state: RIP: %x, RSP: %x, CS: %h, SS: %h, RFLAGS: %h", task->state->rip, task->state->rsp, task->state->cs, task->state->ss, task->state->rflags);
+	logDebug("%# state: RIP: %x, RSP: %x, CS: %h, SS: %h, RFLAGS: %h", task->state->rip, task->state->rsp, task->state->cs, task->state->ss, task->state->rflags);
 
 	taskingMemoryTemporarySwitchBack(returnSpace);
 

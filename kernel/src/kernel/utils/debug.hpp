@@ -22,6 +22,7 @@
 #define __UTILS_DEBUG__
 
 #include <ghost/stdint.h>
+#include <ghost/memory/types.h>
 
 void debugHardSleep(uint64_t millis);
 
@@ -30,5 +31,7 @@ void hexDump8(void* location, int minus = 0, int plus = 0);
 void hexDump64(void* location, int minus = 0, int plus = 0);
 
 void debugDumpPageSpace();
+
+void debugPagingPrintValues(g_virtual_address addr);
 
 #endif

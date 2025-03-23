@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 #include <ghost/tasks/types.h>
+#include <ghost/memory/types.h>
 #include <libdevice/interface.hpp>
 
 struct g_video_mode_info

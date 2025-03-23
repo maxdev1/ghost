@@ -218,16 +218,13 @@ void kernelInitializationThread()
 	G_PRETTY_BOOT_STATUS_P(20);
 	kernelSpawnService("/applications/pcidriver.bin", "", G_SECURITY_LEVEL_DRIVER);
 
-	logInfo("%! init finished, exiting %i", "init", taskingGetCurrentTask()->id);
-	taskingExit();
-
 	G_PRETTY_BOOT_STATUS_P(20);
 	kernelSpawnService("/applications/devicemanager.bin", "", G_SECURITY_LEVEL_DRIVER);
 	G_PRETTY_BOOT_STATUS_P(40);
 	kernelSpawnService("/applications/ps2driver.bin", "", G_SECURITY_LEVEL_DRIVER);
 
-	// G_PRETTY_BOOT_STATUS_P(80);
-	// kernelSpawnService("/applications/windowserver.bin", "", G_SECURITY_LEVEL_APPLICATION);
+	G_PRETTY_BOOT_STATUS_P(80);
+	kernelSpawnService("/applications/windowserver.bin", "", G_SECURITY_LEVEL_APPLICATION);
 	// G_PRETTY_BOOT_STATUS_P(80);
 	// kernelSpawnService("/applications/terminal.bin", "--headless", G_SECURITY_LEVEL_DRIVER);
 

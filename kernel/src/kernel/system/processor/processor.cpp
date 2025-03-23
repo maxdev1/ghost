@@ -148,6 +148,9 @@ void processorAdd(uint32_t apicId, uint32_t processorHardwareId)
 
 uint16_t processorGetNumberOfProcessors()
 {
+	if(!G_SMP_ENABLED)
+		return 1;
+
 	if(!processors)
 		panic("%! tried to retrieve number of cores before initializing system on BSP", "kern");
 	return processorsAvailable;

@@ -45,6 +45,9 @@
 // mode for the debug interface
 #define G_DEBUG_INTERFACE_MODE G_DEBUG_INTERFACE_MODE_PLAIN_LOG
 
+// whether SMP should be used
+#define G_SMP_ENABLED true
+
 // version
 #define G_VERSION_MAJOR 0
 #define G_VERSION_MINOR 25
