@@ -33,12 +33,12 @@
 
 #include <ghost/syscall.h>
 
-g_syscall_registration* syscallRegistrations = 0;
+g_syscall_registration* syscallRegistrations = nullptr;
 
 void syscallHandle(g_task* task)
 {
 	uint64_t callId = task->state->rax;
-	void* syscallData = (void*) task->state->rbx;
+	void* syscallData = (void*) task->state->rdi;
 
 	syscall(callId, syscallData);
 }
@@ -54,7 +54,7 @@ void syscall(uint32_t callId, void* syscallData)
 	}
 
 	g_syscall_registration* reg = &syscallRegistrations[callId];
-	if(reg->handler == 0)
+	if(reg->handler == nullptr)
 	{
 		logInfo("%! task %i tried to use unknown syscall %i", "syscall", task->id, callId);
 		return;
