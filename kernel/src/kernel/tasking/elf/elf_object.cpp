@@ -345,11 +345,12 @@ void elfObjectApplyRelocations(g_fd file, g_elf_object* object)
 			g_elf_symbol_info symbolInfo{};
 
 			// Symbol lookup
-			if(type == R_X86_64_32 || type == R_X86_64_PC32 ||
+			if(type == R_X86_64_32 || type == R_X86_64_64 || type == R_X86_64_PC32 ||
 			   type == R_X86_64_GLOB_DAT || type == R_X86_64_JUMP_SLOT ||
 			   type == R_X86_64_GOT32 || type == R_X86_64_TPOFF64 ||
-			   type == R_X86_64_DTPMOD64 || type == R_X86_64_DTPOFF64 ||
-			   type == R_X86_64_COPY)
+			   type == R_X86_64_DTPMOD64 || type == R_X86_64_DTPOFF32 || type == R_X86_64_DTPOFF64 || type ==
+			   R_X86_64_RELATIVE ||
+			   type == R_X86_64_COPY || type == R_X86_64_TPOFF32)
 			{
 				Elf64_Sym* symbol = &object->dynamicSymbolTable[symbolIndex];
 				symbolName = &object->dynamicStringTable[symbol->st_name];
@@ -389,7 +390,7 @@ void elfObjectApplyRelocations(g_fd file, g_elf_object* object)
 				{
 					if(ELF64_ST_BIND(symbol->st_info) != STB_WEAK)
 						logDebug("%!     missing symbol '%s' (%h, bind: %i)", "elf", symbolName, cP,
-					        ELF64_ST_BIND(symbol->st_info));
+					         ELF64_ST_BIND(symbol->st_info));
 
 					cS = 0;
 				}
