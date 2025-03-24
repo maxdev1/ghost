@@ -95,6 +95,4 @@ void efifbDriverHandleCommandSetMode(g_video_set_mode_request* request, g_tid re
 	response.mode_info.bpsl = (uint16_t) pitch;
 	response.mode_info.explicit_update = false;
 	g_send_message_t(requestingTaskId, &response, sizeof(g_video_set_mode_response), requestTransaction);
-
-	klog("width %i, pitch %i, /8: %i", resX, pitch, pitch/8);
 }
