@@ -21,13 +21,13 @@
 #ifndef __MEMORY_CONSTANTS__
 #define __MEMORY_CONSTANTS__
 
-#define G_SMP_STARTUP_AREA				            0x00000500
-#define G_SMP_STARTUP_AREA_PAGEDIR		            0x00000500	// initial page directory address is put here
-#define G_SMP_STARTUP_AREA_AP_ENTRY	                0x00000504	// kernel entry point for AP
-#define G_SMP_STARTUP_AREA_AP_COUNTER		      	0x00000508	// counter for stack array indexing
-#define G_SMP_STARTUP_AREA_AP_STACK_ARRAY	    	0x0000050C	// array of stacks
-#define G_SMP_STARTUP_AREA_CODE_START		    	0x00001000	// must be 000XX000, used for SIPI
-#define G_SMP_STARTUP_AREA_END				        0x00007BFF
+#define G_SMP_STARTUP_AREA				            0x500
+#define G_SMP_STARTUP_AREA_PAGEDIR		            0x500	// initial page directory address is put here
+#define G_SMP_STARTUP_AREA_AP_ENTRY	                0x508	// kernel entry point for AP
+#define G_SMP_STARTUP_AREA_AP_COUNTER		      	0x510	// counter for stack pointer array indexing
+#define G_SMP_STARTUP_AREA_AP_STACK_ARRAY	    	0x518	// array of stack pointers
+#define G_SMP_STARTUP_AREA_CODE_START		    	0x1000	// must be 000XX000, used for SIPI
+#define G_SMP_STARTUP_AREA_END				        0x7BFF
 
 // TODO change values
 #define G_USER_MAXIMUM_HEAP_BREAK				    0xA0000000

@@ -70,7 +70,7 @@ target_compile_ap_startup() {
 
 	$NASM -f bin -o "$AP_STARTUP_OBJ" -s "$AP_STARTUP_SRC"
 	failOnError
-	mv "$AP_STARTUP_OBJ" "$AP_STARTUP_TGT"
+	cp "$AP_STARTUP_OBJ" "$AP_STARTUP_TGT"
 	list $AP_STARTUP_OBJ
 }
 

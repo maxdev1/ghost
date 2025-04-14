@@ -37,7 +37,7 @@
 ; Loaded by the kernel to this location
 org 0x1000
 
-; Initial setup
+; Real mode
 BITS 16
 startup:
 	; Load the GDT
@@ -49,13 +49,13 @@ startup:
     mov cr0, eax
 
 	; Far-JMP into protected mode code
-    jmp 0x08:protectedStart
+    jmp 0x8:protectedStart
 
 
-; Protected mode for 64-bit (transition to 64-bit long mode)
-BITS 64
+; Protected mode
+BITS 32
 protectedStart:
-	; Set up code segments for 64-bit mode
+	; Code segments were set by far JMP, set data segments
     mov ax, 0x10
     mov ds, ax
     mov es, ax
@@ -64,70 +64,97 @@ protectedStart:
     mov ss, ax
 
 	; Lock all cores
-	acquireLock:
-    lock bts qword [interlock], 0
+    acquireLock:
+    lock bts dword [interlock], 0
     jc acquireLock
 
-	    ; Set page directory
-	    mov rax, [0x500]
-	    mov cr3, rax
+    ; Enable PAE
+    mov eax, cr4
+    or eax, 1 << 5
+    mov cr4, eax
 
-		; Enable paging
-	    mov rax, cr0
-	    or rax, 0x80000000
-	    mov cr0, rax
+    ; Set page directory
+    mov eax, [0x500]
+    mov cr3, eax
 
-	    ; Set "global pages" flag
-	    mov rax, cr4
-	    or rax, 0x80
-	    mov cr4, rax
+    ; Enable PGE
+    mov eax, cr4
+    or eax, 1 << 7
+    mov cr4, eax
 
-		; Load stack from stack array
-		mov rax, [0x508]		; current index
-		shl rax, 2				; multiply by 4 (size of one entry)
-		mov rsp, [0x50C + rax]	; move entry to RSP
-		mov rbp, rsp
+    ; Set up EFER MSR to enable long mode (EFER.LME)
+    mov ecx, 0xC0000080
+    rdmsr
+    or eax, 1 << 8
+    wrmsr
 
-		; Increment AP counter
-		inc qword [0x508]
+    ; Enable paging
+    mov eax, cr0
+    or eax, 1 << 31
+    mov cr0, eax
+
+    ; Get index of this AP and increment counter
+    mov eax, [0x510]
+    inc dword [0x510]
 
 	; Release lock
-    lock btr qword [interlock], 0
+    lock btr dword [interlock], 0
 
-	; Jump to kernel
-	call [0x504]
+	; Far-jump to 64 bits
+	jmp 0x18:longStart
 
-	; AP should never exit, just for safety
-	hang:
-	hlt
-	jmp hang
+; Long mode
+[BITS 64]
+longStart:
+    ; Set data segments
+    mov bx, 0x10
+    mov ds, bx
+    mov ss, bx
 
+    ; 32-bit code provides AP index in EAX
+    ; From the stack array, take the entry at offset multiplied by 8
+    shl rax, 3
+    mov rsp, [0x518 + rax]
+    mov rbp, rsp
+
+	; Jump into kernel code
+    mov rax, [0x508]
+    jmp rax
 
 ; Inter-core synchronization
 interlock:
-	dd 0x00000000
+	dd 0
 
 
 ; Pointer to the GDT
 gdtPointer:
-	dw 24
+	dw 31
 	dd gdt
 
-; Basic setup GDT for x86_64
+; Basic setup GDT
 gdt:
 	; null descriptor
-	dq 0x0000000000000000
+	dw 0x0000
+	dw 0x0000
+	dw 0x0000
+	dw 0x0000
+
+	; code descriptor
+	dw 0xFFFF
+	dw 0x0000
+	dw 0x9800
+	dw 0x00CF
+
+	; data descriptor
+	dw 0xFFFF
+	dw 0x0000
+	dw 0x9200
+	dw 0x00CF
 
 	; code descriptor (64-bit)
 	dw 0xFFFF
 	dw 0x0000
 	dw 0x9A00
-	dw 0x00CF
-	dq 0x0000000000000000
+	dw 0x00A0
 
-	; data descriptor (64-bit)
-	dw 0xFFFF
-	dw 0x0000
-	dw 0x9200
-	dw 0x00CF
-	dq 0x0000000000000000
+    ; TODO 64 bit data segment?
