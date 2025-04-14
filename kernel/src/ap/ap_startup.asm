@@ -107,7 +107,7 @@ protectedStart:
 [BITS 64]
 longStart:
     ; Set data segments
-    mov bx, 0x10
+    mov bx, 0x20
     mov ds, bx
     mov ss, bx
 
@@ -128,7 +128,7 @@ interlock:
 
 ; Pointer to the GDT
 gdtPointer:
-	dw 31
+	dw 39
 	dd gdt
 
 ; Basic setup GDT
@@ -142,7 +142,7 @@ gdt:
 	; code descriptor
 	dw 0xFFFF
 	dw 0x0000
-	dw 0x9800
+	dw 0x9A00
 	dw 0x00CF
 
 	; data descriptor
@@ -157,4 +157,8 @@ gdt:
 	dw 0x9A00
 	dw 0x00A0
 
-    ; TODO 64 bit data segment?
+	; data descriptor (64-bit)
+    dw 0xFFFF
+    dw 0x0000
+    dw 0x9200
+    dw 0x00A0
