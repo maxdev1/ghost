@@ -40,6 +40,13 @@ org 0x1000
 ; Real mode
 BITS 16
 startup:
+    ; No interrupts & clear segments
+    cli
+    xor ax, ax
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+
 	; Load the GDT
     lgdt [gdtPointer]
 
@@ -68,19 +75,14 @@ protectedStart:
     lock bts dword [interlock], 0
     jc acquireLock
 
-    ; Enable PAE
+    ; Enable PAE and PGE
     mov eax, cr4
-    or eax, 1 << 5
+    or eax, (1 << 5) | (1 << 7)
     mov cr4, eax
 
     ; Set page directory
     mov eax, [0x500]
     mov cr3, eax
-
-    ; Enable PGE
-    mov eax, cr4
-    or eax, 1 << 7
-    mov cr4, eax
 
     ; Set up EFER MSR to enable long mode (EFER.LME)
     mov ecx, 0xC0000080
@@ -106,16 +108,19 @@ protectedStart:
 ; Long mode
 [BITS 64]
 longStart:
-    ; Set data segments
-    mov bx, 0x20
-    mov ds, bx
-    mov ss, bx
-
     ; 32-bit code provides AP index in EAX
     ; From the stack array, take the entry at offset multiplied by 8
     shl rax, 3
-    mov rsp, [0x518 + rax]
+    mov rsp,  [0x518 + rax]
     mov rbp, rsp
+
+    ; Set data segments
+    mov bx, 0x20
+    mov ds, bx
+    mov es, bx
+    mov fs, bx
+    mov gs, bx
+    mov ss, bx
 
 	; Jump into kernel code
     mov rax, [0x508]
@@ -124,12 +129,6 @@ longStart:
 ; Inter-core synchronization
 interlock:
 	dd 0
-
-
-; Pointer to the GDT
-gdtPointer:
-	dw 39
-	dd gdt
 
 ; Basic setup GDT
 gdt:
@@ -151,14 +150,21 @@ gdt:
 	dw 0x9200
 	dw 0x00CF
 
-	; code descriptor (64-bit)
-	dw 0xFFFF
-	dw 0x0000
-	dw 0x9A00
-	dw 0x00A0
+    ; 64-bit code descriptor
+    dw 0x0000
+    dw 0x0000
+    dw 0x9A00
+    dw 0x0020
 
-	; data descriptor (64-bit)
-    dw 0xFFFF
+    ; 64-bit data descriptor
+    dw 0x0000
     dw 0x0000
     dw 0x9200
-    dw 0x00A0
+    dw 0x0000
+
+gdtEnd:
+
+align 4
+gdtPointer:
+    dw gdtEnd - gdt - 1
+    dd gdt

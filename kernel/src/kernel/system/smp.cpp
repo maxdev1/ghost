@@ -38,7 +38,6 @@ void smpInitialize(g_physical_address initialPageDirectoryPhysical)
 	for(g_address phys = 0; phys < G_SMP_STARTUP_AREA_END; phys += G_PAGE_SIZE)
 	{
 		pagingMapPage(phys, phys, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
-		logInfo("Identitiy map %x to %x: %x", phys, phys, pagingVirtualToPhysical(phys));
 	}
 
 	// Map it so we can write it here
@@ -62,7 +61,7 @@ void smpInitialize(g_physical_address initialPageDirectoryPhysical)
 
 	// Create enough stacks for all APs
 	auto stackArray = (g_physical_address*) (mappedLower + G_SMP_STARTUP_AREA_AP_STACK_ARRAY);
-	for(uint32_t i = 0; i < processorGetNumberOfProcessors(); i++)
+	for(uint32_t i = 0; i < processorGetNumberOfProcessors() - 1; i++)
 	{
 		g_physical_address stackPhysical = memoryPhysicalAllocate();
 		if(stackPhysical == 0)
@@ -72,7 +71,7 @@ void smpInitialize(g_physical_address initialPageDirectoryPhysical)
 		}
 
 		g_virtual_address stackVirtual = addressRangePoolAllocate(memoryVirtualRangePool, 1);
-		if(stackPhysical == 0)
+		if(stackVirtual == 0)
 		{
 			logInfo("%*%! could not allocate virtual range for AP stack", 0x0C, "smp");
 			return;
