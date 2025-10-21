@@ -174,7 +174,6 @@ void kernelRunApplicationCore()
 
 	mutexAcquire(&applicationCoreLock);
 
-	logInfo("AP core running");
 	systemInitializeAp();
 	taskingInitializeAp();
 
