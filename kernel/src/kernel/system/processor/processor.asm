@@ -21,31 +21,7 @@
 
 BITS 64
 
-global _checkForCPUID
 global _enableSSE
-
-;
-; bool checkForCPUID()
-;
-; Checks if the CPUID instruction is available. This is implemented in
-; pure assembly, because C/C++ could cause race conditions due to the
-; ability of the compiler to modify the RFLAGS when it needs to.
-;
-_checkForCPUID:
-    pushfq
-    pop rax
-    mov rcx, rax
-    xor rax, 0x200000
-    push rax
-    popfq
-    pushfq
-    pop rax
-    xor rax, rcx
-    shr rax, 21
-    and rax, 1
-    push rcx
-    popfq
-    ret
 
 ;
 ; void enableSSE()

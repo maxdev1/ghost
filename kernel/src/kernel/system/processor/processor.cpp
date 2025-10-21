@@ -47,9 +47,6 @@ g_processor* _processorGetCurrent()
 
 void processorInitializeBsp()
 {
-	if(!processorSupportsCpuid())
-		panic("%! processor has no CPUID support", "cpu");
-
 	processorPrintInformation();
 
 	if(!processorHasFeature(g_cpuid_standard_edx_feature::APIC))
@@ -180,11 +177,6 @@ uint32_t processorGetCurrentIdFromApic()
 bool processorListAvailable()
 {
 	return processors != nullptr;
-}
-
-bool processorSupportsCpuid()
-{
-	return _checkForCPUID();
 }
 
 void processorCpuid(uint32_t code, uint32_t* outA, uint32_t* outB, uint32_t* outC, uint32_t* outD)

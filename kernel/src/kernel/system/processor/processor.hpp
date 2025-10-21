@@ -121,16 +121,6 @@ struct g_processor
 };
 
 /**
- * Checks whether the CPU supports the CPUID instruction.
- */
-extern "C" bool _checkForCPUID();
-
-/**
- * Checks if the processor supports CPUID.
- */
-bool processorSupportsCpuid();
-
-/**
  * Performs a CPUID call and returns values in the out parameters.
  */
 void processorCpuid(uint32_t code, uint32_t* outA, uint32_t* outB, uint32_t* outC, uint32_t* outD);

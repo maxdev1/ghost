@@ -58,7 +58,6 @@ struct g_processor_state
 	uint64_t cs;
 	uint64_t rflags;
 
-	// Only pushed/popped on Ring 3 <-> Ring 0 switches
 	uint64_t rsp;
 	uint64_t ss;
 }__attribute__((packed));
