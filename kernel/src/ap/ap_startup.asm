@@ -84,10 +84,10 @@ protectedStart:
     mov eax, [0x500]
     mov cr3, eax
 
-    ; Set up EFER MSR to enable long mode (EFER.LME)
+    ; Set up EFER.LME & EFER.NXE
     mov ecx, 0xC0000080
     rdmsr
-    or eax, 1 << 8
+    or eax, (1 << 8) | (1 << 11)
     wrmsr
 
     ; Enable paging
