@@ -21,8 +21,8 @@
 #ifndef __BUILD_CONFIG__
 #define __BUILD_CONFIG__
 
-#include "shared/debug/debug_interface_mode.hpp"
-#include "shared/logger/logger_level.hpp"
+#include "kernel/debug/debug_interface_mode.hpp"
+#include "kernel/logger/logger_level.hpp"
 
 #define STR_(x) #x
 #define STR(x) STR_(x)

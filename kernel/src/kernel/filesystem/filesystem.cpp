@@ -26,10 +26,10 @@
 #include "kernel/ipc/pipes.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "shared/system/mutex.hpp"
-#include "shared/panic.hpp"
-#include "shared/utils/string.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/system/mutex.hpp"
+#include "kernel/panic.hpp"
+#include "kernel/utils/string.hpp"
+#include "kernel/logger/logger.hpp"
 #include "kernel/tasking/clock.hpp"
 
 static g_fs_node* filesystemRoot;

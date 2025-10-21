@@ -25,8 +25,8 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/elf/elf_tls.hpp"
 #include "kernel/tasking/tasking_memory.hpp"
-#include "shared/utils/string.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/utils/string.hpp"
+#include "kernel/logger/logger.hpp"
 
 g_load_executable_result elfLoadExecutable(g_fd fd, g_security_level securityLevel)
 {

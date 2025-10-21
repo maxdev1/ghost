@@ -21,7 +21,7 @@
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/elf/elf_loader.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 
 g_spawn_status elfTlsLoadData(g_fd file, Elf64_Phdr phdr, g_elf_object* object)
 {

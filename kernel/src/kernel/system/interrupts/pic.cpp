@@ -19,7 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/interrupts/pic.hpp"
-#include "shared/system/io_port.hpp"
+#include "kernel/system/io_port.hpp"
 
 void picSendEndOfInterrupt(uint8_t irq)
 {

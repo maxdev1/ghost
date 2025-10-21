@@ -22,9 +22,9 @@
 #include "kernel/memory/allocator.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/paging.hpp"
-#include "shared/memory/constants.hpp"
-#include "shared/panic.hpp"
-#include "shared/system/mutex.hpp"
+#include "kernel/memory/constants.hpp"
+#include "kernel/panic.hpp"
+#include "kernel/system/mutex.hpp"
 
 static g_allocator heapAllocator;
 static g_virtual_address heapStart = 0;

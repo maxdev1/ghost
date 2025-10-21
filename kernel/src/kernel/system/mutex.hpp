@@ -18,15 +18,47 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-// The functions in this file are implemented as defined in the Itanium C++ ABI
-// standard. These functions are required by GCC for special cases, see the
-// individual documentation for details.
+#ifndef __SYSTEM_MUTEX__
+#define __SYSTEM_MUTEX__
+
+#include "kernel/system/spinlock.hpp"
+
+#include <ghost/stdint.h>
+
+typedef int g_mutex_type;
+#define G_MUTEX_TYPE_GLOBAL   ((g_mutex_type) 0)
+#define G_MUTEX_TYPE_TASK     ((g_mutex_type) 1)
+
+typedef struct
+{
+    volatile int initialized;
+    g_spinlock lock;
+
+    const char* location;
+    g_mutex_type type;
+    int depth;
+    uint32_t owner;
+} __attribute__((packed)) g_mutex;
 
 /**
- * This method is called by the GCC if a pure virtual method is called.
+ * Initializes a task mutex. This mutex will yield until it can be acquired.
  */
-extern "C" void __cxa_pure_virtual()
-{
-	// We can't fix this, so we just do nothing
-}
+void mutexInitializeTask(g_mutex* mutex, const char* location = "unknown");
 
+/**
+ * Initializes a global mutex for a critical section. Acquiring any global
+ * mutex disables interrupts until the last one is released.
+ */
+void mutexInitializeGlobal(g_mutex* mutex, const char* location = "unknown");
+
+/**
+ * Acquires the mutex. Increases the lock count for this processor.
+ */
+void mutexAcquire(g_mutex* mutex);
+
+/**
+ * Releases the mutex. Decreases the lock count for this processor.
+ */
+void mutexRelease(g_mutex* mutex);
+
+#endif

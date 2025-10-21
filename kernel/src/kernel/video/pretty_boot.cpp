@@ -18,10 +18,10 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "shared/video/pretty_boot.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/utils/string.hpp"
-#include "shared/video/console_video.hpp"
+#include "kernel/video/pretty_boot.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/utils/string.hpp"
+#include "kernel/video/console_video.hpp"
 
 void prettyBootEnable(bool clearScreen)
 {

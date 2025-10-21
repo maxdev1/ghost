@@ -18,41 +18,35 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "shared/system/io_port.hpp"
+#ifndef __PRETTY_BOOT__
+#define __PRETTY_BOOT__
 
-uint8_t ioPortReadByte(uint16_t port)
-{
-	uint8_t value;
-	asm volatile("inb %1, %0" : "=a" (value) : "dN" (port));
-	return value;
-}
+#include "kernel/build_config.hpp"
+#include <ghost/stdint.h>
+#include <stdarg.h>
 
-void ioPortWriteByte(uint16_t port, uint8_t value)
-{
-	asm volatile("outb %1, %0" : : "dN" (port), "a" (value));
-}
+#define G_PRETTY_BOOT_PROGRESS_BAR_Y_POS 15
+#define G_PRETTY_BOOT_LOGO_X_POS 29
+#define G_PRETTY_BOOT_LOGO_Y_POS 8
 
-uint16_t ioPortReadShort(uint16_t port)
-{
-	uint16_t value;
-	asm volatile("inw %1, %0" : "=a" (value) : "dN" (port));
-	return value;
-}
+#if G_PRETTY_BOOT
+#define G_PRETTY_BOOT_STATUS(text, percent) prettyBootUpdateStatus(text, percent)
+#define G_PRETTY_BOOT_STATUS_P(percent) prettyBootUpdateStatus(nullptr, percent)
+#define G_PRETTY_BOOT_FAIL(text) prettyBootFail(text)
+#else
+#define G_PRETTY_BOOT_STATUS(text, percent)
+#define G_PRETTY_BOOT_STATUS_P(percent)
+#define G_PRETTY_BOOT_FAIL(text)
+#endif
 
-void ioPortWriteShort(uint16_t port, uint16_t value)
-{
-	asm volatile("outw %1, %0" : : "dN" (port), "a" (value));
-}
+void prettyBootEnable(bool clear_screen = true);
 
-uint32_t ioPortReadInt(uint16_t port)
-{
-	uint32_t value;
-	asm volatile("inl %1, %0" : "=a" (value) : "dN" (port));
-	return value;
-}
+void prettyBootPrintProgressBar(int percent, uint8_t color);
 
-void ioPortWriteInt(uint16_t port, uint32_t value)
-{
-	asm volatile("outl %1, %0" : : "dN" (port), "a" (value));
-}
+void prettyBootPrintCentered(const char* string, int y, uint8_t color);
 
+void prettyBootUpdateStatus(const char* string, int percent);
+
+void prettyBootFail(const char* string);
+
+#endif

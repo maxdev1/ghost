@@ -20,7 +20,7 @@
 
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/memory/paging.hpp"
-#include "shared/system/mutex.hpp"
+#include "kernel/system/mutex.hpp"
 
 static g_pp_reference_count_directory directory;
 static g_mutex lock;

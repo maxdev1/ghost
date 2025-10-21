@@ -19,9 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/interrupts/exceptions.hpp"
-
-#include <shared/utils/string.hpp>
-
+#include "kernel/utils/string.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/memory/paging.hpp"
@@ -30,7 +28,7 @@
 #include "kernel/tasking/elf/elf_loader.hpp"
 #include "kernel/tasking/tasking.hpp"
 #include "kernel/tasking/tasking_memory.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 
 /**
  * Names of the exceptions

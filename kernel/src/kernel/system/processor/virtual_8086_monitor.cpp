@@ -20,9 +20,9 @@
 
 #include "kernel/system/processor/virtual_8086_monitor.hpp"
 #include "kernel/memory/memory.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "shared/system/io_port.hpp"
+#include "kernel/system/io_port.hpp"
 #include "kernel/system/interrupts/ivt.hpp"
 
 

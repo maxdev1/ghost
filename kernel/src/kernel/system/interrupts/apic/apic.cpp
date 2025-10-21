@@ -22,7 +22,7 @@
 #include "kernel/system/acpi/acpi.hpp"
 #include "kernel/system/acpi/madt.hpp"
 #include "kernel/system/processor/processor.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 
 void apicDetect()
 {

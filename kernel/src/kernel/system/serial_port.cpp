@@ -18,8 +18,8 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "shared/system/serial_port.hpp"
-#include "shared/system/io_port.hpp"
+#include "kernel/system/serial_port.hpp"
+#include "kernel/system/io_port.hpp"
 
 // Check if the COM1 port is available
 bool serialPortIsAvailable(uint16_t port)

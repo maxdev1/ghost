@@ -18,8 +18,8 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "shared/video/bitmap_font.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/video/bitmap_font.hpp"
+#include "kernel/logger/logger.hpp"
 
 uint8_t* bitmapFontGetChar(char c)
 {

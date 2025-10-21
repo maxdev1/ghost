@@ -21,8 +21,8 @@
 #ifndef __BITMAP_PAGE_ALLOCATOR__
 #define __BITMAP_PAGE_ALLOCATOR__
 
-#include "shared/memory/paging.hpp"
-#include "shared/system/mutex.hpp"
+#include "kernel/memory/paging.hpp"
+#include "kernel/system/mutex.hpp"
 #include <limine.h>
 
 #include <ghost/stdint.h>

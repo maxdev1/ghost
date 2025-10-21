@@ -18,13 +18,13 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "shared/system/mutex.hpp"
+#include "kernel/system/mutex.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/system/system.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/panic.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/panic.hpp"
 
 #define G_MUTEX_INITIALIZED 0xFEED
 #define G_MUTEX_MAX_PAUSES 1024

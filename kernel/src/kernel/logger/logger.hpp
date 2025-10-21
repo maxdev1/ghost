@@ -18,33 +18,61 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __GHOST_DEBUG_INTERFACE__
-#define __GHOST_DEBUG_INTERFACE__
+#ifndef __LOGGER__
+#define __LOGGER__
 
+#include "stdarg.h"
 #include <ghost/stdint.h>
-#include "build_config.hpp"
 
-#include "shared/debug/debug_protocol.hpp"
-#include "shared/debug/debug_interface_mode.hpp"
+#include "kernel/logger/logger_macros.hpp"
 
-extern bool debugInterfaceInitialized;
+void loggerPrintLocked(const char *message, ...);
 
-void debugInterfaceInitialize(uint16_t port);
+void loggerPrintlnLocked(const char *message, ...);
 
-void debugInterfaceWriteLogCharacter(char c);
+void loggerPrintUnlocked(const char *message, ...);
 
-void debugInterfaceWriteByte(uint8_t value);
+void loggerPrintlnUnlocked(const char *message, ...);
 
-void debugInterfaceWriteShort(uint16_t value);
+void loggerEnableSerial(bool enable);
 
-void debugInterfaceWriteInt(uint32_t value);
+void loggerEnableVideo(bool video);
 
-void debugInterfaceWriteLong(uint64_t value);
+void loggerPrintPlain(const char *message);
 
-void debugInterfaceWriteString(const char *string);
+void loggerPrintCharacter(char c);
 
-#if G_DEBUG_INTERFACE_MODE == G_DEBUG_INTERFACE_MODE_FULL
-void debugInterfaceFullWriteLogCharacter(char c);
-#endif
+/**
+ * Prints the given message, using the arguments from the given variable
+ * argument list, formatting the values as:
+ *
+ * %i		as a value with base 10 using printNumber
+ * %h		as a value with base 16 using printNumber
+ * %b		true or false
+ * %s		a plain string
+ * %%		a '%' character
+ *
+ * The following options are also available and should be added only at
+ * the start of the pattern:
+ *
+ * %!		adds the respective value as an header to the line
+ * %*		allows changing the color of the header to the respective value
+ * %#		indents the following message by the width of an header
+ * 			(this option does not require a value!)
+ *
+ * @param message	the message pattern
+ * @param va		the list of arguments
+ */
+void loggerPrintFormatted(const char *message, va_list va);
+
+/**
+ * Prints a number with a base.
+ *
+ * @param number	the number to print
+ * @param base		the base to use
+ * 					- if the base is 10 then signs are added
+ * 					- if the base is 16 a preceding '0x' is added
+ */
+void loggerPrintNumber(uint64_t number, uint16_t base, bool shortened);
 
 #endif

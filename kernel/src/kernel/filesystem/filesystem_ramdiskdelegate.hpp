@@ -22,7 +22,7 @@
 #define __KERNEL_FILESYSTEM_RAMDISK_DELEGATE__
 
 #include "kernel/filesystem/filesystem.hpp"
-#include "shared/system/mutex.hpp"
+#include "kernel/system/mutex.hpp"
 #include <ghost/filesystem/types.h>
 
 g_fs_open_status filesystemRamdiskDelegateOpen(g_fs_node* node, g_file_flag_mode flags);

@@ -18,47 +18,45 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __SYSTEM_MUTEX__
-#define __SYSTEM_MUTEX__
+#ifndef __LOGGER_MACROS__
+#define __LOGGER_MACROS__
 
-#include "shared/system/spinlock.hpp"
+#include "kernel/build_config.hpp"
 
-#include <ghost/stdint.h>
+#if G_LOG_LEVEL <= G_LOG_LEVEL_INFO
+#define logInfo(msg...)			loggerPrintlnLocked(msg)
+#define logInfon(msg...)		loggerPrintLocked(msg)
+#define G_LOGGING_INFO			true
+#define G_IF_LOG_INFO(s)		s
+#else
+#define logInfo(msg...)			;
+#define logInfon(msg...)		;
+#define G_LOGGING_INFO			false
+#define G_IF_LOG_INFO(s)
+#endif
 
-typedef int g_mutex_type;
-#define G_MUTEX_TYPE_GLOBAL   ((g_mutex_type) 0)
-#define G_MUTEX_TYPE_TASK     ((g_mutex_type) 1)
+#if G_LOG_LEVEL <= G_LOG_LEVEL_WARN
+#define logWarn(msg...)			loggerPrintlnLocked(msg)
+#define logWarnn(msg...)		loggerPrintLocked(msg)
+#define G_LOGGING_WARN			true
+#define G_IF_LOG_WARN(s)		s
+#else
+#define logWarn(msg...)			;
+#define logWarnn(msg...)		;
+#define G_LOGGING_WARN			false
+#define G_IF_LOG_WARN(s)
+#endif
 
-typedef struct
-{
-    volatile int initialized;
-    g_spinlock lock;
-
-    const char* location;
-    g_mutex_type type;
-    int depth;
-    uint32_t owner;
-} __attribute__((packed)) g_mutex;
-
-/**
- * Initializes a task mutex. This mutex will yield until it can be acquired.
- */
-void mutexInitializeTask(g_mutex* mutex, const char* location = "unknown");
-
-/**
- * Initializes a global mutex for a critical section. Acquiring any global
- * mutex disables interrupts until the last one is released.
- */
-void mutexInitializeGlobal(g_mutex* mutex, const char* location = "unknown");
-
-/**
- * Acquires the mutex. Increases the lock count for this processor.
- */
-void mutexAcquire(g_mutex* mutex);
-
-/**
- * Releases the mutex. Decreases the lock count for this processor.
- */
-void mutexRelease(g_mutex* mutex);
+#if G_LOG_LEVEL <= G_LOG_LEVEL_DEBUG
+#define logDebug(msg...)		loggerPrintlnLocked(msg)
+#define logDebugn(msg...)		loggerPrintLocked(msg)
+#define G_LOGGING_DEBUG			true
+#define G_IF_LOG_DEBUG(s)		s
+#else
+#define logDebug(msg...)		;
+#define logDebugn(msg...)		;
+#define G_LOGGING_DEBUG			false
+#define G_IF_LOG_DEBUG(s)
+#endif
 
 #endif

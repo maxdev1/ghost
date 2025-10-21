@@ -20,9 +20,9 @@
 
 #include "kernel/memory/allocator.hpp"
 #include "kernel/utils/math.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/panic.hpp"
-#include "shared/utils/string.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/panic.hpp"
+#include "kernel/utils/string.hpp"
 
 /**
  * This memory allocator uses a combination of buckets and linked-lists. For all allocations that are

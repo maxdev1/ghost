@@ -19,7 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/tasking/tasking.hpp"
-#include "shared/memory/constants.hpp"
+#include "kernel/memory/constants.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/ipc/message_queues.hpp"
@@ -37,8 +37,8 @@
 #include "kernel/tasking/tasking_state.hpp"
 #include "kernel/utils/hashmap.hpp"
 #include "kernel/utils/wait_queue.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/panic.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/panic.hpp"
 
 static g_tasking_local* taskingLocal = 0;
 static g_mutex taskingIdLock;

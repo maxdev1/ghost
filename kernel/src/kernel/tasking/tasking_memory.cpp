@@ -24,9 +24,9 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/system/processor/processor.hpp"
-#include "shared/memory/constants.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/panic.hpp"
+#include "kernel/memory/constants.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/panic.hpp"
 
 bool taskingMemoryExtendHeap(g_task* task, int32_t amount, g_address* outAddress)
 {

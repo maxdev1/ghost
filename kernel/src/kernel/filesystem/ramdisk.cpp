@@ -22,10 +22,10 @@
 #include "kernel/memory/heap.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/paging.hpp"
-#include "shared/memory/memory.hpp"
-#include "shared/panic.hpp"
-#include "shared/utils/string.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/memory/memory.hpp"
+#include "kernel/panic.hpp"
+#include "kernel/utils/string.hpp"
+#include "kernel/logger/logger.hpp"
 
 g_ramdisk* ramdiskMain = nullptr;
 

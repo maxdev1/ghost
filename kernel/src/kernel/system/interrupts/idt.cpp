@@ -19,7 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/interrupts/idt.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 #include "kernel/memory/gdt.hpp"
 #include "ghost/memory/types.h"
 

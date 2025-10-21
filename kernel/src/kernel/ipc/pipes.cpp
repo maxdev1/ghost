@@ -22,7 +22,7 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/utils/hashmap.hpp"
 
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 
 static g_fs_phys_id pipeNextId;
 static g_mutex pipeNextIdLock;

@@ -18,11 +18,28 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __SETUP_INFORMATION__
-#define __SETUP_INFORMATION__
+#include "kernel/boot/limine.hpp"
+#include "kernel/utils/string.hpp"
 
-#include <ghost/memory/types.h>
-#include <limine.h>
+static limine_framebuffer* fb = nullptr;
 
+limine_file* limineFindModule(limine_module_response* info, const char* path)
+{
+	for(uint64_t i = 0; i < info->module_count; i++)
+	{
+		auto module = info->modules[i];
+		if(stringEquals(module->path, path))
+			return module;
+	}
+	return nullptr;
+}
 
-#endif
+void limineStoreFramebuffer(limine_framebuffer* framebuffer)
+{
+	fb = framebuffer;
+}
+
+limine_framebuffer* limineGetFramebuffer()
+{
+	return fb;
+}

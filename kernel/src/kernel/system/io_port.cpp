@@ -18,46 +18,41 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __MEMORY__
-#define __MEMORY__
+#include "kernel/system/io_port.hpp"
 
-#include "shared/memory/bitmap_page_allocator.hpp"
-#include <ghost/stdint.h>
-#include <stddef.h>
+uint8_t ioPortReadByte(uint16_t port)
+{
+	uint8_t value;
+	asm volatile("inb %1, %0" : "=a" (value) : "dN" (port));
+	return value;
+}
 
-#define G_ALIGN_UP(value, boundary)    (((value) + ((boundary) - 1)) & ~((boundary) - 1))
-#define G_ALIGN_DOWN(value, boundary)  ((value) & ~((boundary) - 1))
+void ioPortWriteByte(uint16_t port, uint8_t value)
+{
+	asm volatile("outb %1, %0" : : "dN" (port), "a" (value));
+}
 
-/**
- * Reference to the loaders or kernels physical page allocator.
- */
-extern g_bitmap_page_allocator memoryPhysicalAllocator;
+uint16_t ioPortReadShort(uint16_t port)
+{
+	uint16_t value;
+	asm volatile("inw %1, %0" : "=a" (value) : "dN" (port));
+	return value;
+}
 
-/**
- * Sets number bytes at target to value.
- *
- * @param target	the target pointer
- * @param value		the byte value
- * @param number	the number of bytes to set
- */
-void* memorySetBytes(void* target, uint8_t value, int32_t number);
+void ioPortWriteShort(uint16_t port, uint16_t value)
+{
+	asm volatile("outw %1, %0" : : "dN" (port), "a" (value));
+}
 
-/**
- * Sets number words at target to value.
- *
- * @param target	the target pointer
- * @param value		the word value
- * @param number	the number of word to set
- */
-void* memorySetWords(void* target, uint16_t value, int32_t number);
+uint32_t ioPortReadInt(uint16_t port)
+{
+	uint32_t value;
+	asm volatile("inl %1, %0" : "=a" (value) : "dN" (port));
+	return value;
+}
 
-/**
- * Copys size bytes from source to target.
- *
- * @param source	pointer to the source memory location
- * @param target	pointer to the target memory location
- * @param size		number of bytes to copy
- */
-void* memoryCopy(void* target, const void* source, int32_t size);
+void ioPortWriteInt(uint16_t port, uint32_t value)
+{
+	asm volatile("outl %1, %0" : : "dN" (port), "a" (value));
+}
 
-#endif

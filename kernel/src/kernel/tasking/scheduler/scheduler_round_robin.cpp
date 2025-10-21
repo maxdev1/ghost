@@ -19,7 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/tasking/scheduler/scheduler.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 
 #include "kernel/tasking/clock.hpp"
 #include "kernel/system/processor/processor.hpp"

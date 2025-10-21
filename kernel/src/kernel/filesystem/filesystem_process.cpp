@@ -20,7 +20,7 @@
 
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/memory/memory.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 
 static g_hashmap<g_pid, g_filesystem_process*>* filesystemProcessInfo;
 

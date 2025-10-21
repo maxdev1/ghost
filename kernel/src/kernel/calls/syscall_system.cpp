@@ -24,11 +24,11 @@
 #include "kernel/tasking/clock.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/system/interrupts/apic/ioapic.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 #include "kernel/tasking/elf/elf_object.hpp"
-#include "shared/utils/string.hpp"
+#include "kernel/utils/string.hpp"
 #include "kernel/memory/paging.hpp"
-#include "shared/boot/limine.hpp"
+#include "kernel/boot/limine.hpp"
 
 void _getBinaryNameWithoutExtension(g_task* task, char buf[], int len)
 {

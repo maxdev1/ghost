@@ -21,7 +21,7 @@
 #include "kernel/system/timing/hpet.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/system/acpi/acpi.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 
 static volatile uint64_t* mmio = nullptr;
 static bool available = false;

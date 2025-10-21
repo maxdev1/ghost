@@ -20,10 +20,10 @@
 
 #include "kernel/memory/gdt.hpp"
 #include "kernel/utils/debug.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 #include "kernel/memory/heap.hpp"
 #include "kernel/system/processor/processor.hpp"
-#include "shared/memory/memory.hpp"
+#include "kernel/memory/memory.hpp"
 
 static g_gdt** gdtList;
 

@@ -12,11 +12,9 @@ with TARGET "all"
 #
 # Source directories
 #
-INC=inc
 BIN=bin
 SRC=src
 SRC_KERNEL=$SRC/kernel
-SRC_SHARED=$SRC/shared
 
 #
 # Compiler flags
@@ -27,7 +25,6 @@ CFLAGS="-mcmodel=large -mno-sse -mno-sse2 -mno-mmx -mno-avx -mno-red-zone -std=c
 #
 # Object output folders
 #
-OBJ_SHARED=$BIN/obj-shared
 OBJ_KERNEL=$BIN/obj-kernel
 
 
@@ -57,7 +54,6 @@ target_clean() {
 	headline "cleaning"
 	remove $ARTIFACT_KERNEL
 	cleanDirectory $BIN
-	cleanDirectory $OBJ_SHARED
 	cleanDirectory $OBJ_KERNEL
 	changes --clear
 }
@@ -86,7 +82,7 @@ target_compile() {
 	
 	# check if headers have changed
 	headers_have_changed=0
-	for file in $(find "$INC" -iname "*.hpp" -o -iname "*.h"); do
+	for file in $(find "$srcdir" -iname "*.hpp" -o -iname "*.h"); do
 		changes -c $file
 		if [ $? -eq 1 ]; then
 			headers_have_changed=1
@@ -143,9 +139,8 @@ target_link() {
 #
 target_all() {
 	target_compile_ap_startup
-	target_compile $SRC_SHARED $OBJ_SHARED "-I$INC -I$SRC"
-	target_compile $SRC_KERNEL $OBJ_KERNEL "-I$INC -I$SRC"
-	target_link $ARTIFACT_KERNEL $LINKSCRIPT_KERNEL "$OBJ_KERNEL/* $OBJ_SHARED/*"
+	target_compile $SRC_KERNEL $OBJ_KERNEL "-I$SRC"
+	target_link $ARTIFACT_KERNEL $LINKSCRIPT_KERNEL "$OBJ_KERNEL/*"
 }
 
 

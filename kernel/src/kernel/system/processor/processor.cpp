@@ -22,9 +22,9 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/system/interrupts/apic/lapic.hpp"
 #include "kernel/system/system.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 #include "kernel/memory/gdt.hpp"
-#include "shared/panic.hpp"
+#include "kernel/panic.hpp"
 
 static g_processor* processors = nullptr;
 static uint32_t processorsAvailable = 0;

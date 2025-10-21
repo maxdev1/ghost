@@ -18,11 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "shared/memory/bitmap_page_allocator.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/memory/constants.hpp"
-#include "shared/system/mutex.hpp"
-#include "shared/panic.hpp"
+#include "kernel/memory/bitmap_page_allocator.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/memory/constants.hpp"
+#include "kernel/system/mutex.hpp"
+#include "kernel/panic.hpp"
 
 void _bitmapPageAllocatorFastBufferInitialize(g_bitmap_page_allocator* allocator);
 bool _bitmapPageAllocatorFastBufferFree(g_bitmap_page_allocator* allocator, g_physical_address address);

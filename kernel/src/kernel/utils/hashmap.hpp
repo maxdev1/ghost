@@ -22,7 +22,7 @@
 #define __UTILS_HASHMAP__
 
 #include "kernel/memory/heap.hpp"
-#include "shared/system/mutex.hpp"
+#include "kernel/system/mutex.hpp"
 
 template <typename K, typename V>
 struct g_hashmap_entry

@@ -24,9 +24,9 @@
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/tasking/tasking_memory.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
-#include "shared/memory/constants.hpp"
+#include "kernel/memory/constants.hpp"
 
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 
 void syscallSbrk(g_task* task, g_syscall_sbrk* data)
 {

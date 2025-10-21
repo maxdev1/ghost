@@ -24,7 +24,7 @@
 #include "kernel/memory/address_range_pool.hpp"
 #include "kernel/system/processor/processor_state.hpp"
 #include "kernel/utils/wait_queue.hpp"
-#include "shared/system/mutex.hpp"
+#include "kernel/system/mutex.hpp"
 
 #include <ghost/tasks/types.h>
 #include <ghost/system/types.h>

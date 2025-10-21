@@ -23,8 +23,8 @@
 #include "kernel/system/acpi/acpi.hpp"
 #include "kernel/system/configuration.hpp"
 #include "kernel/system/timing/pit.hpp"
-#include "shared/panic.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/panic.hpp"
+#include "kernel/logger/logger.hpp"
 
 static bool available = false;
 

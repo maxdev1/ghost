@@ -22,7 +22,7 @@
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking_directory.hpp"
 #include "kernel/utils/hashmap.hpp"
-#include "shared/utils/string.hpp"
+#include "kernel/utils/string.hpp"
 
 void syscallKernQuery(g_task* task, g_syscall_kernquery* data)
 {

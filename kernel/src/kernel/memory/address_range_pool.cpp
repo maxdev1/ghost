@@ -20,8 +20,8 @@
 
 #include "kernel/memory/address_range_pool.hpp"
 #include "kernel/memory/heap.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/panic.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/panic.hpp"
 
 void addressRangePoolInitialize(g_address_range_pool* pool)
 {

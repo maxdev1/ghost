@@ -19,7 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/kernel.hpp"
-#include <shared/memory/constants.hpp>
+#include "kernel/memory/constants.hpp"
 #include "kernel/calls/syscall.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/filesystem/ramdisk.hpp"
@@ -34,12 +34,12 @@
 #include "kernel/tasking/user_mutex.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "shared/system/mutex.hpp"
-#include "shared/panic.hpp"
-#include "shared/video/console_video.hpp"
-#include "shared/video/pretty_boot.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/boot/limine.hpp"
+#include "kernel/system/mutex.hpp"
+#include "kernel/panic.hpp"
+#include "kernel/video/console_video.hpp"
+#include "kernel/video/pretty_boot.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/boot/limine.hpp"
 
 static g_mutex bootstrapCoreLock;
 static g_mutex applicationCoreLock;

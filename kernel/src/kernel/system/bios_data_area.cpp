@@ -18,28 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "shared/boot/limine.hpp"
-#include "shared/utils/string.hpp"
+#include "kernel/system/bios_data_area.hpp"
 
-static limine_framebuffer* fb = nullptr;
+/**
+ * The BIOS data area is a standardized memory struct at address 0x400,
+ * providing some legacy information like COM-ports.
+ */
+g_bios_data_area* biosDataArea = (g_bios_data_area*) 0x400;
 
-limine_file* limineFindModule(limine_module_response* info, const char* path)
-{
-	for(uint64_t i = 0; i < info->module_count; i++)
-	{
-		auto module = info->modules[i];
-		if(stringEquals(module->path, path))
-			return module;
-	}
-	return nullptr;
-}
-
-void limineStoreFramebuffer(limine_framebuffer* framebuffer)
-{
-	fb = framebuffer;
-}
-
-limine_framebuffer* limineGetFramebuffer()
-{
-	return fb;
-}

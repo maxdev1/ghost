@@ -20,9 +20,9 @@
 
 #include "kernel/utils/debug.hpp"
 #include "kernel/system/timing/pit.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 #include "kernel/memory/paging.hpp"
-#include "shared/memory/constants.hpp"
+#include "kernel/memory/constants.hpp"
 
 void debugHardSleep(uint64_t millis)
 {

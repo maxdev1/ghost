@@ -28,8 +28,8 @@
 #include "kernel/calls/syscall_kernquery.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "shared/panic.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/panic.hpp"
+#include "kernel/logger/logger.hpp"
 
 #include <ghost/syscall.h>
 

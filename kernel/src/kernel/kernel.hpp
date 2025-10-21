@@ -24,7 +24,6 @@
 #include <ghost/memory/types.h>
 
 struct g_bitmap_page_allocator;
-struct g_setup_information;
 
 extern g_bitmap_page_allocator* kernelPhysicalAllocator;
 

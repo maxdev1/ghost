@@ -20,7 +20,7 @@
 
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/memory/gdt.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 #include "kernel/calls/syscall.hpp"
 #include "kernel/system/interrupts/apic/ioapic.hpp"
 #include "kernel/system/interrupts/apic/lapic.hpp"
@@ -32,7 +32,7 @@
 #include "kernel/system/timing/pit.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "shared/panic.hpp"
+#include "kernel/panic.hpp"
 
 void _interruptsSendEndOfInterrupt(uint8_t irq);
 

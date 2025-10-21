@@ -18,9 +18,9 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "shared/video/console_video.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/video/bitmap_font.hpp"
+#include "kernel/video/console_video.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/video/bitmap_font.hpp"
 
 static volatile uint32_t* videoMemory = nullptr;
 static int videoWidth = 0;

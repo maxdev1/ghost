@@ -28,8 +28,8 @@
 #include "kernel/tasking/clock.hpp"
 #include "kernel/system/timing/hpet.hpp"
 #include "kernel/utils/wait_queue.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/utils/string.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/utils/string.hpp"
 
 void syscallSleep(g_task* task, g_syscall_sleep* data)
 {

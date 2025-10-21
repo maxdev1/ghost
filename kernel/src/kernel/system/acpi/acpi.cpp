@@ -21,10 +21,10 @@
 #include "kernel/system/acpi/acpi.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/system/processor/processor.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/panic.hpp"
-#include "shared/utils/string.hpp"
-#include "shared/memory/constants.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/panic.hpp"
+#include "kernel/utils/string.hpp"
+#include "kernel/memory/constants.hpp"
 #include <ghost/memory/types.h>
 
 static g_acpi_table_header* acpiRoot = nullptr;

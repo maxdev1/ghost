@@ -22,8 +22,8 @@
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/system/interrupts/requests.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/utils/string.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/utils/string.hpp"
 
 void syscallFsOpen(g_task* task, g_syscall_fs_open* data)
 {

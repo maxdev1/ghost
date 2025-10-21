@@ -24,8 +24,8 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/filesystem/ramdisk.hpp"
 #include "kernel/kernel.hpp"
-#include "shared/memory/constants.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/memory/constants.hpp"
+#include "kernel/logger/logger.hpp"
 #include "kernel/memory/paging.hpp"
 
 bool smpInitialized = false;
@@ -53,11 +53,11 @@ void smpInitialize(g_physical_address initialPageDirectoryPhysical)
 	*((g_address*) (mappedLower + G_SMP_STARTUP_AREA_AP_ENTRY)) = (g_virtual_address) kernelRunApplicationCore;
 	*((g_size*) (mappedLower + G_SMP_STARTUP_AREA_AP_COUNTER)) = 0;
 
-	logInfo("%! initial page directory for APs: %h, %x", "smp",
+	logDebug("%! initial page directory for APs: %h, %x", "smp",
 	        *((g_address*) (mappedLower+G_SMP_STARTUP_AREA_PAGEDIR)),
 	        initialPageDirectoryPhysical);
-	logInfo("%! kernel entry point for APs: %h", "smp", *((g_address*) (mappedLower+G_SMP_STARTUP_AREA_AP_ENTRY)));
-	logInfo("%! initial AP counter value: %i", "smp", *((uint32_t*) (mappedLower+G_SMP_STARTUP_AREA_AP_COUNTER)));
+	logDebug("%! kernel entry point for APs: %h", "smp", *((g_address*) (mappedLower+G_SMP_STARTUP_AREA_AP_ENTRY)));
+	logDebug("%! initial AP counter value: %i", "smp", *((uint32_t*) (mappedLower+G_SMP_STARTUP_AREA_AP_COUNTER)));
 
 	// Create enough stacks for all APs
 	auto stackArray = (g_physical_address*) (mappedLower + G_SMP_STARTUP_AREA_AP_STACK_ARRAY);
@@ -82,7 +82,7 @@ void smpInitialize(g_physical_address initialPageDirectoryPhysical)
 		g_virtual_address stackTop = (stackVirtual + G_PAGE_SIZE);
 		stackArray[i] = stackTop;
 
-		logInfo("%! created AP stack (%h -> %h) placed at %h", "smp", stackArray[i], stackPhysical,
+		logDebug("%! created AP stack (%h -> %h) placed at %h", "smp", stackArray[i], stackPhysical,
 		        ((g_address)&stackArray[i]) - mappedLower);
 	}
 
@@ -109,7 +109,7 @@ void smpInitialize(g_physical_address initialPageDirectoryPhysical)
 		core = core->next;
 	}
 
-	logInfo("%! initial AP counter value: %i", "smp", *((uint32_t*) (mappedLower+G_SMP_STARTUP_AREA_AP_COUNTER)));
+	logDebug("%! initial AP counter value: %i", "smp", *((uint32_t*) (mappedLower+G_SMP_STARTUP_AREA_AP_COUNTER)));
 }
 
 void smpInitializeCore(g_processor* cpu)

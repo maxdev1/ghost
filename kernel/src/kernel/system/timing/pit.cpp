@@ -20,8 +20,8 @@
 
 #include "kernel/system/timing/pit.hpp"
 #include "kernel/system/configuration.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/system/io_port.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/system/io_port.hpp"
 
 static uint32_t sleepDivisor;
 

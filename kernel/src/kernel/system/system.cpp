@@ -26,9 +26,9 @@
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/timing/hpet.hpp"
 #include "kernel/system/smp.hpp"
-#include "shared/panic.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/memory/paging.hpp"
+#include "kernel/panic.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/memory/paging.hpp"
 
 static int applicationCoresWaiting;
 static bool bspInitialized = false;

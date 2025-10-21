@@ -20,11 +20,11 @@
 
 #include "kernel/logger/kernel_logger.hpp"
 
-#include "shared/logger/logger.hpp"
-#include "shared/video/console_video.hpp"
-#include "shared/system/serial_port.hpp"
-#include "shared/system/bios_data_area.hpp"
-#include "shared/debug/debug_interface.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/video/console_video.hpp"
+#include "kernel/system/serial_port.hpp"
+#include "kernel/system/bios_data_area.hpp"
+#include "kernel/debug/debug_interface.hpp"
 
 void kernelLoggerInitialize()
 {

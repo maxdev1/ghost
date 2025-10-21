@@ -22,7 +22,7 @@
 #define __KERNEL_GDT__
 
 #include "kernel/tasking/tasking.hpp"
-#include "shared/memory/tss.hpp"
+#include "kernel/memory/tss.hpp"
 #include <ghost/stdint.h>
 #include <ghost/tasks/types.h>
 
