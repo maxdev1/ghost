@@ -29,7 +29,7 @@ VMSVGA graphics adapter enabled for better performance.
 Afterwards, the `target` folder will contain the bootable ISO image.
 
 ## Features
-* x86-based micro-kernel
+* x86_64-based micro-kernel
 * SMP multi-processor support
 * Comprehensive kernel interaction library (libapi)
 * Own C standard library (libc)
