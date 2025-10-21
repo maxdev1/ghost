@@ -28,7 +28,7 @@ __BEGIN_C
 /**
  * Page size
  */
-#define G_PAGE_SIZE				0x1000
+#define G_PAGE_SIZE				0x1000ULL
 #define G_PAGE_ALIGN_MASK		(G_PAGE_SIZE - 1)
 
 /**
