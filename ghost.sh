@@ -201,23 +201,3 @@ SYSROOT_SYSTEM_LIB=$SYSROOT_SYSTEM/lib
 export PATH=$PATH:$TOOLCHAIN_BASE/bin
 
 
-#
-# Checks if limine is present and otherwise builds it
-#
-target_verify_limine() {
-  pushd $TOOLCHAIN_BASE/target
-  if [ ! -d "limine-$LIMINE_VERSION" ]; then
-    headline "Prepare bootloader"
-
-    curl -LO $LIMINE_SOURCE
-    tar -xzf limine-$LIMINE_VERSION.tar.gz
-
-    pushd limine-$LIMINE_VERSION
-    ./configure --enable-bios --enable-bios-cd --enable-uefi-cd --enable-uefi-x86-64
-    make -j"$(nproc)"
-    make install
-    popd
-  fi
-  popd
-}
-

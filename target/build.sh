@@ -99,8 +99,6 @@ target_pack() {
 
 
 # execute targets
-target_verify_limine
-
 for var in $TARGET; do
 	if [[ "$var" == "pack" ]]; then
 		target_pack
