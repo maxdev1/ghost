@@ -104,6 +104,7 @@ verify_limine() {
     popd
   fi
 
+  mkdir -p $SYSROOT/system/include
   cp "limine-$LIMINE_VERSION/limine.h" "$SYSROOT/system/include/limine.h"
 
   popd
