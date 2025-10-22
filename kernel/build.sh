@@ -145,6 +145,8 @@ target_all() {
 
 
 # execute targets
+target_verify_limine
+
 for var in $TARGET; do
 	if [[ "$var" == "all" ]]; then
 		target_all
