@@ -1,5 +1,5 @@
 # ABOUT GHOST
-**Ghost** is a hobbyist operating system for the Intel x86 platform.
+**Ghost** is a hobbyist operating system for the x86-64 platform.
 The OS is written from scratch in C/C++ and Assembly.
 
 This is the main development repository.
@@ -38,12 +38,11 @@ Afterwards, the `target` folder will contain the bootable ISO image.
 * Window server & toolkit
 * Support for C++ in kernel & userland
 * Various interprocess-communication methods
-* Driver-level VM86 handling
 * Drivers for
   * VESA/VBE video output
   * PS/2 keyboard & mouse
   * PCI handling
-* Multiboot compliance
+* Limine protocol compliance
 * It's also very cool
 
 ![Screenshot of 0.12.0](https://ghostkernel.org/files/ghost-0.22.2.png)
