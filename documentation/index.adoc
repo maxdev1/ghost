@@ -35,4 +35,5 @@ component. On the top of each page there's a link back to this home page.
 * *<<libapi#,libapi>>* - Documentation for the kernel API wrapper library
 * *<<libc#,libc>>* - Documentation for the C library implementation
 * *<<ramdisk-format#,Ramdisk>>* - Documentation about the Ramdisk format & generation
+* *<<driver-architecture#,Driver architecture>>* - Describes driver architecture
 * *<<port#,port.sh>>* - Manual for the porting utility
