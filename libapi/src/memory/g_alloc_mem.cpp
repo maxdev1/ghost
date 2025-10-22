@@ -34,3 +34,18 @@ void* g_alloc_mem(g_size size)
 
 	return data.virtualResult;
 }
+
+/**
+ * @see header
+ */
+void* g_alloc_mem_p(g_size size, void** out_phys)
+{
+	g_syscall_alloc_mem data;
+	data.size = size;
+
+	g_syscall(G_SYSCALL_ALLOCATE_MEMORY, (g_address) &data);
+
+	if(out_phys)
+		*out_phys = data.physicalResult;
+	return data.virtualResult;
+}

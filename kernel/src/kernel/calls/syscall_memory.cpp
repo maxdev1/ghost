@@ -70,10 +70,11 @@ void syscallAllocateMemory(g_task* task, g_syscall_alloc_mem* data)
 		return;
 	}
 
+	g_physical_address page = 0;
 	bool failedPhysical = false;
 	for(uint32_t i = 0; i < pages; i++)
 	{
-		g_physical_address page = memoryPhysicalAllocate();
+		page = memoryPhysicalAllocate();
 		if(!page)
 		{
 			failedPhysical = true;
@@ -96,6 +97,7 @@ void syscallAllocateMemory(g_task* task, g_syscall_alloc_mem* data)
 	}
 
 	data->virtualResult = (void*) mapped;
+	data->physicalResult = (task->securityLevel <= G_SECURITY_LEVEL_DRIVER && pages == 1) ? (void*) page : nullptr;
 }
 
 void syscallUnmap(g_task* task, g_syscall_unmap* data)

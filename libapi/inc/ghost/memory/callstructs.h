@@ -33,6 +33,11 @@
  * 		address space. this address is page-aligned. if allocation
  * 		fails, this field is 0.
  *
+ * @field physicalResult
+ *		the physical address of the allocated area, only exposed when the
+ *		executing process has security-level DRIVER and only if just one
+ *		page was allocated
+ *
  * @security-level APPLICATION
  */
 typedef struct
@@ -40,6 +45,7 @@ typedef struct
 	g_size size;
 
 	void* virtualResult;
+	void* physicalResult;
 }__attribute__((packed)) g_syscall_alloc_mem;
 
 /**

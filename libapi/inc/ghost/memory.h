@@ -38,11 +38,16 @@ __BEGIN_C
  * @param size
  * 		the size in bytes
  *
+ * @param out_phys
+ *		optionally, the physical output, only for security-level DRIVER and only
+ *		if just one page was allocated
+ *
  * @return a pointer to the allocated memory region, or 0 if failed
  *
  * @security-level APPLICATION
  */
 void* g_alloc_mem(g_size size);
+void* g_alloc_mem_p(g_size size, void** out_phys);
 
 /**
  * Shares a memory area with another process.
