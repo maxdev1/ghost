@@ -19,69 +19,111 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/memory/gdt.hpp"
+#include "kernel/utils/debug.hpp"
+#include "kernel/logger/logger.hpp"
 #include "kernel/memory/heap.hpp"
 #include "kernel/system/processor/processor.hpp"
+#include "kernel/memory/memory.hpp"
 
-static g_gdt_list_entry** gdtList;
+static g_gdt** gdtList;
 
-void gdtPrepare()
-{
-	uint32_t cores = processorGetNumberOfProcessors();
-	gdtList = (g_gdt_list_entry**) heapAllocate(sizeof(g_gdt_list_entry*) * cores);
-
-	for(uint32_t i = 0; i < cores; i++)
-		gdtList[i] = (g_gdt_list_entry*) heapAllocate(sizeof(g_gdt_list_entry));
-}
+void _gdtWriteEntry(g_gdt_descriptor* entry, uint64_t base, uint64_t limit, uint8_t access, uint8_t granularity);
+void _gdtWriteTssEntry(g_gdt_tss_descriptor* entry, uint64_t base, uint64_t limit, uint8_t access, uint8_t granularity);
 
 void gdtInitialize()
 {
-	g_gdt_list_entry* localGdt = gdtList[processorGetCurrentId()];
+	uint32_t cores = processorGetNumberOfProcessors();
+	gdtList = (g_gdt**) heapAllocate(sizeof(g_gdt*) * cores);
 
-	localGdt->ptr.limit = (sizeof(g_gdt_entry) * G_GDT_NUM_ENTRIES) - 1;
-	localGdt->ptr.base = (uint32_t) &localGdt->entry;
-
-	// Null descriptor, position 0x00
-	gdtCreateGate(&localGdt->entry[0], 0, 0, 0, 0);
-
-	// Kernel code segment descriptor, position 0x08
-	gdtCreateGate(&localGdt->entry[1], 0, 0xFFFFFFFF, G_ACCESS_BYTE__KERNEL_CODE_SEGMENT, 0xCF);
-
-	// Kernel data segment descriptor, position 0x10
-	gdtCreateGate(&localGdt->entry[2], 0, 0xFFFFFFFF, G_ACCESS_BYTE__KERNEL_DATA_SEGMENT, 0xCF);
-
-	// User code segment descriptor, position 0x18
-	gdtCreateGate(&localGdt->entry[3], 0, 0xFFFFFFFF, G_ACCESS_BYTE__USER_CODE_SEGMENT, 0xCF);
-
-	// User data segment descriptor, position 0x20
-	gdtCreateGate(&localGdt->entry[4], 0, 0xFFFFFFFF, G_ACCESS_BYTE__USER_DATA_SEGMENT, 0xCF);
-
-	// TSS descriptor, position 0x28
-	gdtCreateGate(&localGdt->entry[5], (uint32_t) &localGdt->tss, sizeof(g_tss), G_ACCESS_BYTE__TSS_386_SEGMENT, 0x40);
-	localGdt->tss.ss0 = G_GDT_DESCRIPTOR_KERNEL_DATA; // kernel data segment
-	localGdt->tss.esp0 = 0;							  // will later be initialized
-
-	// User thread pointer segment 0x30
-	gdtCreateGate(&localGdt->entry[6], 0, 0xFFFFFFFF, G_ACCESS_BYTE__USER_DATA_SEGMENT, 0xCF);
-
-	// Kernel thread pointer segment 0x38
-	gdtCreateGate(&localGdt->entry[7], 0, 0xFFFFFFFF, G_ACCESS_BYTE__KERNEL_DATA_SEGMENT, 0xCF);
-
-	_loadGdt((uint32_t) &localGdt->ptr);
-	_loadTss(G_GDT_DESCRIPTOR_TSS);
+	for(uint32_t i = 0; i < cores; i++)
+	{
+		// TODO still no aligned allocator
+		auto gdtMemory = heapAllocateClear(sizeof(g_gdt) * 2);
+		gdtList[i] = (g_gdt*) G_ALIGN_UP((g_address) gdtMemory, 0x10);
+	}
 }
 
-void gdtSetTssEsp0(uint32_t esp0)
+void gdtInitializeLocal()
 {
-	gdtList[processorGetCurrentId()]->tss.esp0 = esp0;
+	g_gdt* localGdt = gdtList[processorGetCurrentId()];
+	localGdt->ptr.limit = sizeof(g_gdt_descriptor) * G_GDT_BASE_LEN + sizeof(g_gdt_tss_descriptor) - 1;
+	localGdt->ptr.base = (g_address) &localGdt->entry;
+
+	// Null descriptor, position 0x00
+	_gdtWriteEntry(&localGdt->entry[0], 0, 0, 0, 0);
+
+	// Kernel code segment descriptor, position 0x08
+	_gdtWriteEntry(&localGdt->entry[1], 0, 0xFFFFFFFF, G_ACCESS_BYTE__KERNEL_CODE_SEGMENT,
+	               G_GDT_GRANULARITY_4KB | G_GDT_GRANULARITY_64BIT);
+
+	// Kernel data segment descriptor, position 0x10
+	_gdtWriteEntry(&localGdt->entry[2], 0, 0xFFFFFFFF, G_ACCESS_BYTE__KERNEL_DATA_SEGMENT,
+	               G_GDT_GRANULARITY_4KB | G_GDT_GRANULARITY_64BIT);
+
+	// User code segment descriptor, position 0x18
+	_gdtWriteEntry(&localGdt->entry[3], 0, 0xFFFFFFFF, G_ACCESS_BYTE__USER_CODE_SEGMENT,
+	               G_GDT_GRANULARITY_4KB | G_GDT_GRANULARITY_64BIT);
+
+	// User data segment descriptor, position 0x20
+	_gdtWriteEntry(&localGdt->entry[4], 0, 0xFFFFFFFF, G_ACCESS_BYTE__USER_DATA_SEGMENT,
+	               G_GDT_GRANULARITY_4KB | G_GDT_GRANULARITY_64BIT);
+
+	// TSS descriptor, position 0x28
+	_gdtWriteTssEntry(&localGdt->entryTss, (g_address) &localGdt->tss, sizeof(g_tss) - 1,
+	                  G_ACCESS_BYTE__TSS_386_SEGMENT, 0);
+	memorySetBytes(&localGdt->tss, 0, sizeof(g_tss));
+	localGdt->tss.rsp0 = 0;
+
+	// Load the GDT & TSS
+	asm volatile("lgdt %0" : : "m" (localGdt->ptr));
+	asm volatile(
+		"movw $0x10, %%ax;"
+		"movw %%ax, %%ds;"
+		"movw %%ax, %%es;"
+		"movw %%ax, %%fs;"
+		"movw %%ax, %%gs;"
+		"movw %%ax, %%ss;"
+		"pushq $0x08;"
+		"pushq $reloadCS;"
+		"lretq;"
+		"reloadCS:"
+		: : : "ax"
+	);
+	asm volatile("ltr %0"::"r"((uint16_t) G_GDT_DESCRIPTOR_TSS) : "memory");
+}
+
+void gdtSetTssRsp0(g_address rsp0)
+{
+	gdtList[processorGetCurrentId()]->tss.rsp0 = rsp0;
+}
+
+g_address gdtGetTssRsp0()
+{
+	return gdtList[processorGetCurrentId()]->tss.rsp0;
 }
 
 void gdtSetTlsAddresses(g_user_threadlocal* userThreadLocal, g_kernel_threadlocal* kernelThreadLocal)
 {
-	uint32_t processor = processorGetCurrentId();
+	// TODO define constant IA32_FS_Base = 0xC0000100 and IA32_GS_BASE = 0xC0000101
+	auto userAddress = (g_address) userThreadLocal;
+	processorWriteMsr(0xC0000100, userAddress & 0xFFFFFFFF, userAddress >> 32);
 
-	g_gdt_list_entry* userLocalEntry = gdtList[processor];
-	gdtCreateGate(&userLocalEntry->entry[6], (g_virtual_address) userThreadLocal, 0xFFFFFFFF, G_ACCESS_BYTE__USER_DATA_SEGMENT, 0xCF);
+	auto kernelAddress = (g_address) kernelThreadLocal;
+	processorWriteMsr(0xC0000101, kernelAddress & 0xFFFFFFFF, kernelAddress >> 32);
+}
 
-	g_gdt_list_entry* kernelLocalEntry = gdtList[processor];
-	gdtCreateGate(&kernelLocalEntry->entry[7], (g_virtual_address) kernelThreadLocal, 0xFFFFFFFF, G_ACCESS_BYTE__KERNEL_DATA_SEGMENT, 0xCF);
+void _gdtWriteEntry(g_gdt_descriptor* entry, uint64_t base, uint64_t limit, uint8_t access, uint8_t granularity)
+{
+	entry->baseLow = (base & 0xFFFF);
+	entry->baseMiddle = (base >> 16) & 0xFF;
+	entry->baseHigh = (base >> 24) & 0xFF;
+	entry->limitLow = (limit & 0xFFFF);
+	entry->granularity = ((limit >> 16) & 0x0F) | (granularity & 0xF0);
+	entry->access = access;
+}
+
+void _gdtWriteTssEntry(g_gdt_tss_descriptor* entry, uint64_t base, uint64_t limit, uint8_t access, uint8_t granularity)
+{
+	_gdtWriteEntry(&entry->main, base, limit, access, granularity);
+	entry->baseUpper = (base >> 32) & 0xFFFFFFFF;
 }

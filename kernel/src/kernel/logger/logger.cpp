@@ -18,10 +18,18 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "shared/logger/logger.hpp"
-#include "shared/system/spinlock.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/system/spinlock.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
+#include "kernel/build_config.hpp"
+#include "kernel/debug/debug_interface.hpp"
+#include "kernel/utils/string.hpp"
+#include "kernel/video/console_video.hpp"
 
+static const uint32_t LOGGER_HEADER_WIDTH = 14;
+
+static bool logSerial = false;
+static bool logVideo = G_VIDEO_LOG_BOOT;
 g_spinlock loggerLock = 0;
 
 void loggerPrintLocked(const char* message, ...)
@@ -68,4 +76,180 @@ void loggerPrintlnUnlocked(const char* message, ...)
 	loggerPrintFormatted(message, valist);
 	va_end(valist);
 	loggerPrintCharacter('\n');
+}
+
+
+void loggerEnableSerial(bool serial)
+{
+	logSerial = serial;
+}
+
+void loggerEnableVideo(bool video)
+{
+	logVideo = video;
+}
+
+void loggerPrintFormatted(const char* message_const, va_list valist)
+{
+	char* message = (char*) message_const;
+
+	uint16_t headerColor = 0xFF888888;
+
+	int max = 500;
+	while(*message && --max)
+	{
+		if(*message != '%')
+		{
+			loggerPrintCharacter(*message);
+			++message;
+			continue;
+		}
+
+		++message;
+		if(*message == 'i')
+		{
+			// integer
+			int64_t val = va_arg(valist, int64_t);
+			loggerPrintNumber(val, 10, false);
+		}
+		else if(*message == 'h' || *message == 'x')
+		{
+			// positive hex number
+			uint64_t val = va_arg(valist, uint64_t);
+			loggerPrintPlain("0x");
+			loggerPrintNumber(val, 16, *message == 'h');
+		}
+		else if(*message == 'b')
+		{
+			// boolean
+			int64_t val = va_arg(valist, int64_t);
+			loggerPrintPlain("0b");
+			loggerPrintNumber(val, 2, false);
+		}
+		else if(*message == 'c')
+		{
+			// char
+			int val = va_arg(valist, int);
+			loggerPrintCharacter((char) val);
+		}
+		else if(*message == 's')
+		{
+			// string
+			char* val = va_arg(valist, char*);
+			loggerPrintPlain(val);
+		}
+		else if(*message == '#')
+		{
+			// indented printing
+			for(uint32_t i = 0; i < LOGGER_HEADER_WIDTH + 3; i++)
+			{
+				loggerPrintCharacter(' ');
+			}
+		}
+		else if(*message == '!')
+		{
+			// indented header printing
+			char* val = va_arg(valist, char*);
+			uint32_t headerlen = stringLength(val);
+
+			if(headerlen < LOGGER_HEADER_WIDTH)
+			{
+				for(uint32_t i = 0; i < LOGGER_HEADER_WIDTH - headerlen; i++)
+				{
+					loggerPrintCharacter(' ');
+				}
+			}
+
+			auto lastColor = consoleVideoGetColor();
+			consoleVideoSetColor(headerColor);
+			loggerPrintPlain(val);
+			consoleVideoSetColor(lastColor);
+			loggerPrintCharacter(' ');
+		}
+		else if(*message == '%')
+		{
+			// escaped %
+			loggerPrintCharacter(*message);
+		}
+		else if(*message == '*')
+		{
+			// header color change
+			headerColor = (uint16_t) (va_arg(valist, int));
+		}
+		++message;
+	}
+}
+
+void loggerPrintNumber(uint64_t number, uint16_t base, bool shortened)
+{
+
+	// Remember if negative
+	uint8_t negative = 0;
+	if(base == 10)
+	{
+		negative = ((int32_t) number) < 0;
+
+		if(negative)
+		{
+			number = -number;
+		}
+	}
+
+	// Write chars in reverse order, not nullterminated
+	char revbuf[32];
+
+	char* cbufp = revbuf;
+	int len = 0;
+	do
+	{
+		*cbufp++ = "0123456789abcdef"[number % base];
+		++len;
+		number /= base;
+	} while(number);
+
+	// If base is 16, write 0's until 8
+	if(!shortened && base == 16)
+	{
+		while(len < 16)
+		{
+			*cbufp++ = '0';
+			++len;
+		}
+	}
+
+	// Reverse buffer
+	char buf[len + 1];
+	for(int i = 0; i < len; i++)
+	{
+		buf[i] = revbuf[len - i - 1];
+	}
+	buf[len] = 0;
+
+	// Print number
+	if(negative)
+	{
+		loggerPrintCharacter('-');
+	}
+	loggerPrintPlain(buf);
+}
+
+void loggerPrintPlain(const char* message_const)
+{
+	char* message = (char*) message_const;
+	while(*message)
+	{
+		loggerPrintCharacter(*message++);
+	}
+}
+
+void loggerPrintCharacter(char c)
+{
+	if(logVideo)
+	{
+		consoleVideoPrint(c);
+	}
+	if(logSerial)
+	{
+		debugInterfaceWriteLogCharacter(c);
+	}
 }

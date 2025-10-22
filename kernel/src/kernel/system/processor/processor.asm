@@ -1,6 +1,6 @@
 ;* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 ;*                                                                           *
-;*  Ghost, a micro-kernel based operating system for the x86 architecture    *
+;*  Ghost, a micro-kernel based operating system for the x86_64 architecture *
 ;*  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
 ;*                                                                           *
 ;*  This program is free software: you can redistribute it and/or modify     *
@@ -19,33 +19,9 @@
 ;* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 
-BITS 32
+BITS 64
 
-global _checkForCPUID
 global _enableSSE
-
-;
-; bool checkForCPUID()
-;
-; Checks if the CPUID instruction is available. This is implemented in
-; pure assembly, because C/C++ could cause race conditions due to the
-; ability of the compiler to modify the EFLAGS when it needs to.
-;
-_checkForCPUID:
-	pushfd
-	pop eax
-	mov ecx, eax
-	xor eax, 0x200000
-	push eax
-	popfd
-	pushfd
-	pop eax
-	xor eax, ecx
-	shr eax, 21
-	and eax, 1
-	push ecx
-	popfd
-	ret
 
 ;
 ; void enableSSE()
@@ -56,23 +32,23 @@ _enableSSE:
     fninit
     fclex
 
-    push dword 0x037F
-    fldcw [esp]         ; load default control word
-    add esp, 4
+    push qword 0x037F
+    fldcw [rsp]         ; load default control word
+    add rsp, 8
 
-    mov eax, cr0
-    and eax, ~(1 << 2)  ; clear CR0.EM coprocessor emulation
-    or eax, (1 << 1)    ; set CR0.MP monitor coprocessor
-    mov cr0, eax
+    mov rax, cr0
+    and rax, ~(1 << 2)  ; clear CR0.EM coprocessor emulation
+    or rax, (1 << 1)    ; set CR0.MP monitor coprocessor
+    mov cr0, rax
 
-    mov eax, cr4
-    or eax, (1 << 9)    ; set CR4.OSFXSR
-    or eax, (1 << 10)   ; set CR4.OSXMMEXCPT
-    mov cr4, eax
+    mov rax, cr4
+    or rax, (1 << 9)    ; set CR4.OSFXSR
+    or rax, (1 << 10)   ; set CR4.OSXMMEXCPT
+    mov cr4, rax
 
-    push dword 0x1F80
-    ldmxcsr [esp]       ; load default settings to MXCSR
-    add esp, 4
+    push qword 0x1F80
+    ldmxcsr [rsp]       ; load default settings to MXCSR
+    add rsp, 8
 
-	ret
+    ret
 

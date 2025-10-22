@@ -1,0 +1,13 @@
+{
+  "name": "bitmap-font",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "convert": "node convert.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bmp-js": "^0.1.0"
+  }
+}

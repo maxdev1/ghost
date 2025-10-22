@@ -24,35 +24,54 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/filesystem/ramdisk.hpp"
 #include "kernel/kernel.hpp"
-
-#include "shared/logger/logger.hpp"
+#include "kernel/memory/constants.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/memory/paging.hpp"
 
 bool smpInitialized = false;
 
 void smpInitialize(g_physical_address initialPageDirectoryPhysical)
 {
-	// Write values to lower memory for use within startup code
-	*((uint32_t*) G_SMP_STARTUP_AREA_PAGEDIR) = initialPageDirectoryPhysical;
-	*((uint32_t*) G_SMP_STARTUP_AREA_AP_ENTRY) = (g_virtual_address) kernelRunApplicationCore;
-	*((uint32_t*) G_SMP_STARTUP_AREA_AP_COUNTER) = 0;
+	// TODO: For all physical allocations below we must make sure that the memory is in 32 bit address range
 
-	logDebug("%! initial page directory for APs: %h", "smp", *((uint32_t*) G_SMP_STARTUP_AREA_PAGEDIR));
-	logDebug("%! kernel entry point for APs: %h", "smp", *((uint32_t*) G_SMP_STARTUP_AREA_AP_ENTRY));
-	logDebug("%! initial AP counter value: %i", "smp", *((uint32_t*) G_SMP_STARTUP_AREA_AP_COUNTER));
+	// Identity-map lower memory
+	for(g_address phys = 0; phys < G_SMP_STARTUP_AREA_END; phys += G_PAGE_SIZE)
+	{
+		pagingMapPage(phys, phys, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
+	}
+
+	// Map it so we can write it here
+	g_virtual_address mappedLower = addressRangePoolAllocate(memoryVirtualRangePool,
+	                                                         G_PAGE_ALIGN_UP(G_SMP_STARTUP_AREA_END) / G_PAGE_SIZE);
+	for(g_address phys = 0; phys < G_SMP_STARTUP_AREA_END; phys += G_PAGE_SIZE)
+	{
+		pagingMapPage(mappedLower + phys, phys, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
+	}
+
+	// Write values to lower memory for use within startup code
+	*((g_address*) (mappedLower + G_SMP_STARTUP_AREA_PAGEDIR)) = initialPageDirectoryPhysical;
+	*((g_address*) (mappedLower + G_SMP_STARTUP_AREA_AP_ENTRY)) = (g_virtual_address) kernelRunApplicationCore;
+	*((g_size*) (mappedLower + G_SMP_STARTUP_AREA_AP_COUNTER)) = 0;
+
+	logDebug("%! initial page directory for APs: %h, %x", "smp",
+	        *((g_address*) (mappedLower+G_SMP_STARTUP_AREA_PAGEDIR)),
+	        initialPageDirectoryPhysical);
+	logDebug("%! kernel entry point for APs: %h", "smp", *((g_address*) (mappedLower+G_SMP_STARTUP_AREA_AP_ENTRY)));
+	logDebug("%! initial AP counter value: %i", "smp", *((uint32_t*) (mappedLower+G_SMP_STARTUP_AREA_AP_COUNTER)));
 
 	// Create enough stacks for all APs
-	g_physical_address* stackArray = (g_physical_address*) G_SMP_STARTUP_AREA_AP_STACK_ARRAY;
-	for(uint32_t i = 0; i < processorGetNumberOfProcessors(); i++)
+	auto stackArray = (g_physical_address*) (mappedLower + G_SMP_STARTUP_AREA_AP_STACK_ARRAY);
+	for(uint32_t i = 0; i < processorGetNumberOfProcessors() - 1; i++)
 	{
-
 		g_physical_address stackPhysical = memoryPhysicalAllocate();
 		if(stackPhysical == 0)
 		{
 			logInfo("%*%! could not allocate physical page for AP stack", 0x0C, "smp");
 			return;
 		}
+
 		g_virtual_address stackVirtual = addressRangePoolAllocate(memoryVirtualRangePool, 1);
-		if(stackPhysical == 0)
+		if(stackVirtual == 0)
 		{
 			logInfo("%*%! could not allocate virtual range for AP stack", 0x0C, "smp");
 			return;
@@ -63,18 +82,19 @@ void smpInitialize(g_physical_address initialPageDirectoryPhysical)
 		g_virtual_address stackTop = (stackVirtual + G_PAGE_SIZE);
 		stackArray[i] = stackTop;
 
-		logDebug("%! created AP stack (%h) placed at %h", "smp", stackArray[i], &stackArray[i]);
+		logDebug("%! created AP stack (%h -> %h) placed at %h", "smp", stackArray[i], stackPhysical,
+		        ((g_address)&stackArray[i]) - mappedLower);
 	}
 
 	// Copy start object from ramdisk to lower memory
-	const char* ap_startup_location = "system/lib/apstartup.o";
-	g_ramdisk_entry* startupObject = ramdiskFindAbsolute(ap_startup_location);
-	if(startupObject == 0)
+	const char* apStartupPath = "system/lib/apstartup.o";
+	g_ramdisk_entry* startupObject = ramdiskFindAbsolute(apStartupPath);
+	if(startupObject == nullptr)
 	{
-		logInfo("%*%! could not initialize due to missing apstartup object at '%s'", 0x0C, "smp", ap_startup_location);
+		logInfo("%*%! could not initialize due to missing apstartup object at '%s'", 0x0C, "smp", apStartupPath);
 		return;
 	}
-	memoryCopy((uint8_t*) G_SMP_STARTUP_AREA_CODE_START, (uint8_t*) startupObject->data, startupObject->dataSize);
+	memoryCopy((uint8_t*) (mappedLower + G_SMP_STARTUP_AREA_CODE_START), startupObject->data, startupObject->dataSize);
 
 	smpInitialized = true;
 
@@ -88,6 +108,8 @@ void smpInitialize(g_physical_address initialPageDirectoryPhysical)
 		}
 		core = core->next;
 	}
+
+	logDebug("%! initial AP counter value: %i", "smp", *((uint32_t*) (mappedLower+G_SMP_STARTUP_AREA_AP_COUNTER)));
 }
 
 void smpInitializeCore(g_processor* cpu)

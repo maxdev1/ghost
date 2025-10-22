@@ -27,7 +27,9 @@
 
 # The <_start> function is where the kernel starts the execution.
 _start:
-	call __g_main
+    xorq %rbp, %rbp
+    andq $-16, %rsp
+    call __g_main
 
 # Endless loop, for the case that bad things happen
 wait:

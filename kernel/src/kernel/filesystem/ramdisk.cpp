@@ -22,43 +22,29 @@
 #include "kernel/memory/heap.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/paging.hpp"
-#include "shared/memory/memory.hpp"
-#include "shared/panic.hpp"
-#include "shared/utils/string.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/memory/memory.hpp"
+#include "kernel/panic.hpp"
+#include "kernel/utils/string.hpp"
+#include "kernel/logger/logger.hpp"
 
-g_ramdisk* ramdiskMain = 0;
+g_ramdisk* ramdiskMain = nullptr;
 
-void ramdiskLoadFromModule(g_multiboot_module* module)
+void ramdiskLoadFromBootloaderFile(limine_file* file)
 {
 	if(ramdiskMain)
 		panic("%! tried to initialize ramdisk multiple times", "kern");
 
-	int pages = G_PAGE_ALIGN_UP(module->moduleEnd - module->moduleStart) / G_PAGE_SIZE;
-
-	g_virtual_address newLocation = addressRangePoolAllocate(memoryVirtualRangePool, pages);
-	if(newLocation == 0)
-		panic("%! not enough virtual space for ramdisk remapping (%x required)", "kern", module->moduleEnd - module->moduleStart);
-
-	for(int i = 0; i < pages; i++)
-	{
-		g_virtual_address virt = newLocation + i * G_PAGE_SIZE;
-		g_physical_address phys = pagingVirtualToPhysical(module->moduleStart + i * G_PAGE_SIZE);
-		pagingMapPage(virt, phys, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
-	}
-	module->moduleEnd = newLocation + (module->moduleEnd - module->moduleStart);
-	module->moduleStart = newLocation;
-
 	ramdiskMain = (g_ramdisk*) heapAllocate(sizeof(g_ramdisk));
-	ramdiskParseContents(module);
-	logInfo("%! module loaded: %i MB", "ramdisk", (module->moduleEnd - module->moduleStart) / 1024 / 1024);
-	logDebug("%! relocated to kernel space: %h -> %h", "ramdisk", module->moduleStart, G_PAGE_ALIGN_UP(module->moduleEnd));
+	ramdiskParseContents(file);
+	logInfo("%! module loaded: %i MB", "ramdisk", file->size / 1024 / 1024);
+	logDebug("%! relocated to kernel space: %h -> %h", "ramdisk", module->moduleStart,
+	         G_PAGE_ALIGN_UP(module->moduleEnd));
 }
 
-void ramdiskParseContents(g_multiboot_module* module)
+void ramdiskParseContents(limine_file* file)
 {
-	uint8_t* data = (uint8_t*) module->moduleStart;
-	g_address dataEnd = module->moduleEnd;
+	uint8_t* data = (uint8_t*) file->address;
+	g_address dataEnd = (g_address) file->address + file->size;
 
 	ramdiskMain->root = new g_ramdisk_entry;
 	ramdiskMain->root->id = 0;
@@ -138,7 +124,6 @@ void ramdiskParseContents(g_multiboot_module* module)
 
 g_ramdisk_entry* ramdiskFindChild(g_ramdisk_entry* parent, const char* childName)
 {
-
 	g_ramdisk_entry* current = ramdiskMain->firstEntry;
 	while(current)
 	{

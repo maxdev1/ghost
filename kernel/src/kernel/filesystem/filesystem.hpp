@@ -22,7 +22,7 @@
 #define __KERNEL_FILESYSTEM__
 
 #include "kernel/tasking/tasking.hpp"
-#include "shared/system/mutex.hpp"
+#include "kernel/system/mutex.hpp"
 #include <ghost/filesystem/types.h>
 
 struct g_fs_node;

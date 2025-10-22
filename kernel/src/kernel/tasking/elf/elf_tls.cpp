@@ -21,15 +21,15 @@
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/elf/elf_loader.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 
-g_spawn_status elfTlsLoadData(g_fd file, Elf32_Phdr phdr, g_elf_object* object)
+g_spawn_status elfTlsLoadData(g_fd file, Elf64_Phdr phdr, g_elf_object* object)
 {
 	uint32_t bytesToCopy = phdr.p_filesz;
 
 	// Read TLS content to a buffer
-	uint8_t* tlsContentBuffer = (uint8_t*) heapAllocate(bytesToCopy);
-	if(!filesystemReadToMemory(file, phdr.p_offset, (uint8_t*) tlsContentBuffer, bytesToCopy))
+	auto tlsContentBuffer = (uint8_t*) heapAllocate(bytesToCopy);
+	if(!filesystemReadToMemory(file, phdr.p_offset, tlsContentBuffer, bytesToCopy))
 	{
 		logInfo("%! unable to read TLS segment from file", "elf");
 		heapFree(tlsContentBuffer);
@@ -85,7 +85,8 @@ void elfTlsCreateMasterImage(g_fd file, g_process* process, g_elf_object* rootOb
 	{
 		g_elf_object* object = hashmapIteratorNext(&it)->value;
 		if(object->tlsPart.content)
-			memoryCopy((uint8_t*) (tlsStart + object->tlsPart.offset), object->tlsPart.content, object->tlsPart.copysize);
+			memoryCopy((uint8_t*) (tlsStart + object->tlsPart.offset), object->tlsPart.content,
+			           object->tlsPart.copysize);
 	}
 	hashmapIteratorEnd(&it);
 
@@ -93,5 +94,5 @@ void elfTlsCreateMasterImage(g_fd file, g_process* process, g_elf_object* rootOb
 	process->tlsMaster.location = tlsStart;
 	process->tlsMaster.size = size;
 	process->tlsMaster.userThreadOffset = rootObject->tlsMaster.userThreadOffset;
-	logDebug("%!   created TLS master: %h, size: %h", "elf", process->tlsMaster.location, process->tlsMaster.size);
+	logDebug("%!   created TLS master: %h, size: %h, uTO: %x", "elf", process->tlsMaster.location, process->tlsMaster.size, process->tlsMaster.userThreadOffset);
 }

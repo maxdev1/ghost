@@ -21,7 +21,7 @@
 #ifndef __UTILS_WAITQUEUE__
 #define __UTILS_WAITQUEUE__
 
-#include "shared/system/mutex.hpp"
+#include "kernel/system/mutex.hpp"
 
 #include <ghost/tasks/types.h>
 

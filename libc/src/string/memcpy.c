@@ -30,6 +30,8 @@ void* memcpy(void* dest, const void* src, size_t num)
 	uint8_t* targetPtr = (uint8_t*) dest;
 	const uint8_t* sourcePtr = (const uint8_t*) src;
 
+	// TODO qword copying
+
 	while(num >= 4)
 	{
 		*(uint32_t*) targetPtr = *(const uint32_t*) sourcePtr;

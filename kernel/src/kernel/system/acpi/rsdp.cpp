@@ -19,8 +19,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/acpi/rsdp.hpp"
-#include "shared/system/bios_data_area.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/system/bios_data_area.hpp"
+#include "kernel/logger/logger.hpp"
 
 g_rsdp_descriptor* rsdpFindInRange(uint32_t start, uint32_t end)
 {

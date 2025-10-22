@@ -20,8 +20,8 @@
 
 #include "kernel/system/interrupts/apic/ioapic.hpp"
 #include "kernel/memory/memory.hpp"
-#include "shared/panic.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/panic.hpp"
+#include "kernel/logger/logger.hpp"
 
 static g_ioapic* ioapicList = 0;
 

@@ -22,7 +22,7 @@
 #include "kernel/ipc/message_queues.hpp"
 #include "kernel/ipc/message_topics.hpp"
 #include "kernel/tasking/user_mutex.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 
 void syscallMessageSend(g_task* task, g_syscall_send_message* data)
 {

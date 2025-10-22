@@ -69,7 +69,7 @@ struct g_acpi_entry
 /**
  * Initializes ACPI by reading the tables
  */
-void acpiInitialize();
+void acpiInitialize(g_physical_address rsdp);
 
 /**
  * Prepares the root SDT (RSTD or XSDT) by mapping the required

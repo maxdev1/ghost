@@ -42,11 +42,11 @@ __BEGIN_C
  */
 typedef struct
 {
-    uint32_t interrupt;
-    g_vm86_registers in;
-    g_vm86_registers* out;
+	uint32_t interrupt;
+	g_vm86_registers in;
+	g_vm86_registers* out;
 
-    g_vm86_call_status status;
+	g_vm86_call_status status;
 }__attribute__((packed)) g_syscall_call_vm86;
 
 
@@ -56,7 +56,7 @@ typedef struct
  */
 typedef struct
 {
-    char* message;
+	char* message;
 }__attribute__((packed)) g_syscall_log;
 
 /**
@@ -65,7 +65,7 @@ typedef struct
  */
 typedef struct
 {
-    uint8_t enabled;
+	uint8_t enabled;
 }__attribute__((packed)) g_syscall_set_video_log;
 
 /**
@@ -77,9 +77,9 @@ typedef struct
  */
 typedef struct
 {
-    uint32_t test;
+	uint32_t test;
 
-    uint32_t result;
+	uint32_t result;
 }__attribute__((packed)) g_syscall_test;
 
 /**
@@ -87,8 +87,8 @@ typedef struct
  */
 typedef struct
 {
-    uint32_t source;
-    uint32_t irq;
+	uint32_t source;
+	uint32_t irq;
 } __attribute__((packed)) g_syscall_irq_create_redirect;
 
 /**
@@ -99,9 +99,30 @@ typedef struct
  */
 typedef struct
 {
-    uint8_t irq;
-    uint32_t timeout;
+	uint8_t irq;
+	uint32_t timeout;
 } __attribute__((packed)) g_syscall_await_irq;
+
+/**
+ * @field address
+ *		framebuffer address
+ * @field width
+*		framebuffer width
+ * @field height
+*		framebuffer height
+ * @field bpp
+*		framebuffer bpp
+ * @field pitch
+ *		framebuffer pitch
+ */
+typedef struct
+{
+	g_address address;
+	uint16_t width;
+	uint16_t height;
+	uint16_t bpp;
+	uint32_t pitch;
+} __attribute__((packed)) g_syscall_get_efi_framebuffer;
 
 __END_C
 

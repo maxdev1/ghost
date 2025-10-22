@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/kernel.hpp"
+#include "kernel/memory/constants.hpp"
 #include "kernel/calls/syscall.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/filesystem/ramdisk.hpp"
@@ -33,50 +34,115 @@
 #include "kernel/tasking/user_mutex.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "shared/system/mutex.hpp"
-#include "shared/panic.hpp"
-#include "shared/setup_information.hpp"
-#include "shared/video/console_video.hpp"
-#include "shared/video/pretty_boot.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/system/mutex.hpp"
+#include "kernel/panic.hpp"
+#include "kernel/video/console_video.hpp"
+#include "kernel/video/pretty_boot.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/boot/limine.hpp"
 
 static g_mutex bootstrapCoreLock;
 static g_mutex applicationCoreLock;
 
-extern "C" void kernelMain(g_setup_information* setupInformation)
+__attribute__((used, section(".limine_requests")))
+static volatile LIMINE_BASE_REVISION(3);
+
+__attribute__((used, section(".limine_requests")))
+volatile limine_framebuffer_request framebufferRequest = {
+		.id = LIMINE_FRAMEBUFFER_REQUEST,
+		.revision = 0
+};
+
+__attribute__((used, section(".limine_requests")))
+volatile limine_memmap_request memoryMapRequest = {
+		.id = LIMINE_MEMMAP_REQUEST,
+		.revision = 0
+};
+
+__attribute__((used, section(".limine_requests")))
+volatile limine_paging_mode_request pagingModeRequest = {
+		.id = LIMINE_PAGING_MODE_REQUEST,
+		.revision = 0,
+		.mode = LIMINE_PAGING_MODE_X86_64_4LVL
+};
+
+__attribute__((used, section(".limine_requests")))
+volatile limine_module_request moduleRequest = {
+		.id = LIMINE_MODULE_REQUEST,
+		.revision = 0,
+};
+
+__attribute__((used, section(".limine_requests")))
+volatile limine_rsdp_request rsdpRequest = {
+		.id = LIMINE_RSDP_REQUEST,
+		.revision = 0,
+};
+
+__attribute__((used, section(".limine_requests")))
+volatile limine_hhdm_request hhdmRequest = {
+		.id = LIMINE_HHDM_REQUEST,
+		.revision = 0,
+};
+
+__attribute__((used, section(".limine_requests_start")))
+static volatile LIMINE_REQUESTS_START_MARKER;
+
+__attribute__((used, section(".limine_requests_end")))
+static volatile LIMINE_REQUESTS_END_MARKER;
+
+void failEarly()
 {
+	asm("cli; hlt;");
+}
+
+extern "C" void kernelMain()
+{
+	if(LIMINE_BASE_REVISION_SUPPORTED == false)
+		failEarly();
+
+	if(framebufferRequest.response == nullptr || framebufferRequest.response->framebuffer_count < 1)
+		failEarly();
+
+	auto framebuffer = framebufferRequest.response->framebuffers[0];
+	limineStoreFramebuffer(framebuffer);
+	consoleVideoInitialize(framebuffer);
 	if(G_PRETTY_BOOT)
 		prettyBootEnable(false);
 	else
 		consoleVideoClear();
+	kernelLoggerInitialize();
 
-	kernelLoggerInitialize(setupInformation);
+	if(pagingModeRequest.response->mode != LIMINE_PAGING_MODE_X86_64_4LVL)
+		panic("%! bootloader failed to boot in 4-level paging mode", "error");
 
-	memoryInitialize(setupInformation);
+	// TODO Just use the value instead of failing if its different:
+	if(hhdmRequest.response->offset != G_MEM_HIGHER_HALF_DIRECT_MAP_OFFSET)
+		panic("%! higher half mapping not at expected offset %x but %x", "error", G_MEM_HIGHER_HALF_DIRECT_MAP_OFFSET,
+		      hhdmRequest.response->offset);
 
-	g_multiboot_module* ramdiskModule = multibootFindModule(setupInformation->multibootInformation, "/boot/ramdisk");
-	if(!ramdiskModule)
+	memoryInitialize(memoryMapRequest.response);
+
+	auto ramdiskFile = limineFindModule(moduleRequest.response, "/boot/ramdisk");
+	if(!ramdiskFile)
 	{
-		G_PRETTY_BOOT_FAIL("Ramdisk not found (did you supply enough memory?");
-		panic("%! ramdisk not found (did you supply enough memory?)", "kern");
+		G_PRETTY_BOOT_FAIL("Ramdisk file not found");
+		panic("%! ramdisk file not found", "kern");
 	}
-	ramdiskLoadFromModule(ramdiskModule);
+	ramdiskLoadFromBootloaderFile(ramdiskFile);
 
-	g_address initialPdPhys = setupInformation->initialPageDirectoryPhysical;
-	memoryUnmapSetupMemory();
-
-	kernelRunBootstrapCore(initialPdPhys);
+	// TODO unmap loader memory
+	kernelRunBootstrapCore();
 	__builtin_unreachable();
 }
 
-void kernelRunBootstrapCore(g_physical_address initialPdPhys)
+void kernelRunBootstrapCore()
 {
 	mutexInitializeGlobal(&bootstrapCoreLock, __func__);
 	mutexInitializeGlobal(&applicationCoreLock, __func__);
 
 	mutexAcquire(&bootstrapCoreLock);
 
-	systemInitializeBsp(initialPdPhys);
+	systemInitializeBsp((g_physical_address) rsdpRequest.response->address);
 	clockInitialize();
 	filesystemInitialize();
 	pipeInitialize();
@@ -85,16 +151,16 @@ void kernelRunBootstrapCore(g_physical_address initialPdPhys)
 	userMutexInitialize();
 
 	taskingInitializeBsp();
-	logInfo("%! starting on %i cores", "kernel", processorGetNumberOfProcessors());
+	logInfo("%! starting on %i core(s)", "kernel", processorGetNumberOfProcessors());
 	mutexRelease(&bootstrapCoreLock);
-
-	systemWaitForApplicationCores();
-	systemMarkReady();
 
 	auto initializationProcess = taskingCreateProcess(G_SECURITY_LEVEL_KERNEL);
 	auto initializationTask = taskingCreateTask((g_virtual_address) kernelInitializationThread, initializationProcess,
 	                                            G_SECURITY_LEVEL_KERNEL);
 	taskingAssign(taskingGetLocal(), initializationTask);
+
+	systemWaitForApplicationCores();
+	systemMarkReady();
 
 	interruptsEnable();
 	for(;;)
@@ -152,6 +218,7 @@ void kernelInitializationThread()
 
 	G_PRETTY_BOOT_STATUS_P(20);
 	kernelSpawnService("/applications/pcidriver.bin", "", G_SECURITY_LEVEL_DRIVER);
+
 	G_PRETTY_BOOT_STATUS_P(20);
 	kernelSpawnService("/applications/devicemanager.bin", "", G_SECURITY_LEVEL_DRIVER);
 	G_PRETTY_BOOT_STATUS_P(40);
@@ -159,8 +226,20 @@ void kernelInitializationThread()
 
 	G_PRETTY_BOOT_STATUS_P(80);
 	kernelSpawnService("/applications/windowserver.bin", "", G_SECURITY_LEVEL_APPLICATION);
+	// G_PRETTY_BOOT_STATUS_P(80);
+	// kernelSpawnService("/applications/terminal.bin", "--headless", G_SECURITY_LEVEL_DRIVER);
 
 	G_PRETTY_BOOT_STATUS("initializing...", 100);
 
+	// logInfo("do stuff...");
+	// for(;;)
+	// {
+	// 	auto task = taskingGetCurrentTask();
+	// 	taskingWait(task, __func__, [task]()
+	// 	{
+	// 		clockWaitForTime(task->id, clockGetLocal()->time + 1000);
+	// 	});
+	// 	logInfo("alive...");
+	// }
 	taskingExit();
 }

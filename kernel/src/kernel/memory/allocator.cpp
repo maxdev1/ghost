@@ -20,9 +20,9 @@
 
 #include "kernel/memory/allocator.hpp"
 #include "kernel/utils/math.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/panic.hpp"
-#include "shared/utils/string.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/panic.hpp"
+#include "kernel/utils/string.hpp"
 
 /**
  * This memory allocator uses a combination of buckets and linked-lists. For all allocations that are
@@ -31,26 +31,28 @@
  */
 
 void _memoryAllocatorMerge(g_allocator* allocator);
-g_allocator_section_header* _memoryAllocatorAllocateSection(g_allocator* allocator, g_size totalSize, g_allocator_section_type type);
+g_allocator_section_header* _memoryAllocatorAllocateSection(g_allocator* allocator, g_size totalSize,
+                                                            g_allocator_section_type type);
 g_size _memoryAllocatorFreeSection(g_allocator* allocator, g_allocator_section_header* section);
-g_size _memoryAllocatorFreeInBucket(g_allocator* allocator, g_allocator_section_bucket* bucket, void* mem);
+g_size _memoryAllocatorFreeInBucket(g_allocator_section_bucket* bucket, void* mem);
 void* _memoryAllocatorAllocateInBucket(g_allocator* allocator, g_size size);
-void* _memoryAllocatorAllocateInSpecificBucket(g_allocator* allocator, g_allocator_section_bucket* bucket);
+void* _memoryAllocatorAllocateInSpecificBucket(g_allocator_section_bucket* bucket);
 
 #define _G_ALLOCATOR_BUCKET_BITMAP(bucket) ((uint8_t*) ((g_address) bucket + sizeof(g_allocator_section_bucket)))
 #define _G_ALLOCATOR_BUCKET_CONTENT(bucket) ((uint8_t*) ((g_address) bucket + sizeof(g_allocator_section_bucket) + bucket->bitmapSize))
 
-void memoryAllocatorInitialize(g_allocator* allocator, g_allocator_type type, g_virtual_address start, g_virtual_address end)
+void memoryAllocatorInitialize(g_allocator* allocator, g_allocator_type type, g_virtual_address start,
+                               g_virtual_address end)
 {
 	mutexInitializeGlobal(&allocator->lock, __func__);
 
 	allocator->type = type;
 
-	g_allocator_section_header* firstSection = (g_allocator_section_header*) start;
+	auto firstSection = (g_allocator_section_header*) start;
 	firstSection->type = G_ALLOCATOR_SECTION_TYPE_FREE;
 	firstSection->totalSize = end - start;
 	firstSection->next = nullptr;
-	allocator->sections = (g_allocator_section_header*) firstSection;
+	allocator->sections = firstSection;
 }
 
 void* memoryAllocatorAllocate(g_allocator* allocator, g_size size)
@@ -65,7 +67,8 @@ void* memoryAllocatorAllocate(g_allocator* allocator, g_size size)
 	void* mem = nullptr;
 	if(size > G_ALLOCATOR_MAX_FOR_BUCKETS)
 	{
-		auto section = _memoryAllocatorAllocateSection(allocator, sizeof(g_allocator_section_header) + size, G_ALLOCATOR_SECTION_TYPE_CHUNK);
+		auto section = _memoryAllocatorAllocateSection(allocator, sizeof(g_allocator_section_header) + size,
+		                                               G_ALLOCATOR_SECTION_TYPE_CHUNK);
 		if(section)
 			mem = (void*) ((g_address) section + sizeof(g_allocator_section_header));
 	}
@@ -73,22 +76,22 @@ void* memoryAllocatorAllocate(g_allocator* allocator, g_size size)
 		mem = _memoryAllocatorAllocateInBucket(allocator, size);
 
 	mutexRelease(&allocator->lock);
-	return (void*) mem;
+	return mem;
 }
 
 g_size memoryAllocatorFree(g_allocator* allocator, void* mem)
 {
 	mutexAcquire(&allocator->lock);
 
-	g_allocator_section_header* current = allocator->sections;
+	auto section = allocator->sections;
 	do
 	{
-		if((g_address) mem > (g_address) current && (g_address) mem < (g_address) current + current->totalSize)
+		if((g_address) mem > (g_address) section && (g_address) mem < (g_address) section + section->totalSize)
 			break;
-		current = current->next;
-	} while(current);
+		section = section->next;
+	} while(section);
 
-	if(!current)
+	if(!section)
 	{
 		logInfo("%! attempted to free %x not managed by kernel allocator (type %i)", "critical", mem, allocator->type);
 		mutexRelease(&allocator->lock);
@@ -96,12 +99,13 @@ g_size memoryAllocatorFree(g_allocator* allocator, void* mem)
 	}
 
 	g_size size;
-	if(current->type == G_ALLOCATOR_SECTION_TYPE_CHUNK)
-		size = _memoryAllocatorFreeSection(allocator, current);
-	else if(current->type == G_ALLOCATOR_SECTION_TYPE_BUCKET)
-		size = _memoryAllocatorFreeInBucket(allocator, (g_allocator_section_bucket*) current, mem);
+	if(section->type == G_ALLOCATOR_SECTION_TYPE_CHUNK)
+		size = _memoryAllocatorFreeSection(allocator, section);
+	else if(section->type == G_ALLOCATOR_SECTION_TYPE_BUCKET)
+		size = _memoryAllocatorFreeInBucket((g_allocator_section_bucket*) section, mem);
 	else
-		panic("%! attempt to free kernel memory in a section of type %i in allocator %i", "alloc", current->type, allocator->type);
+		panic("%! attempt to free kernel memory in a section of type %i in allocator %i", "alloc", section->type,
+		      allocator->type);
 
 	mutexRelease(&allocator->lock);
 	return size;
@@ -115,7 +119,7 @@ void memoryAllocatorExpand(g_allocator* allocator, g_size size)
 	while(last->next)
 		last = last->next;
 
-	g_allocator_section_header* next = (g_allocator_section_header*) ((g_address) last + last->totalSize);
+	auto next = (g_allocator_section_header*) ((g_address) last + last->totalSize);
 	next->type = G_ALLOCATOR_SECTION_TYPE_FREE;
 	next->totalSize = size;
 	next->next = nullptr;
@@ -126,7 +130,8 @@ void memoryAllocatorExpand(g_allocator* allocator, g_size size)
 	mutexRelease(&allocator->lock);
 }
 
-g_allocator_section_header* _memoryAllocatorAllocateSection(g_allocator* allocator, g_size totalSize, g_allocator_section_type type)
+g_allocator_section_header* _memoryAllocatorAllocateSection(g_allocator* allocator, g_size totalSize,
+                                                            g_allocator_section_type type)
 {
 	g_allocator_section_header* current = allocator->sections;
 	do
@@ -143,12 +148,12 @@ g_allocator_section_header* _memoryAllocatorAllocateSection(g_allocator* allocat
 	g_size remainder = current->totalSize - totalSize;
 	if(remainder > sizeof(g_allocator_section_header) + G_ALLOCATOR_MAX_FOR_BUCKETS)
 	{
-		g_allocator_section_header* next = (g_allocator_section_header*) ((g_address) current + totalSize);
+		auto next = (g_allocator_section_header*) ((g_address) current + totalSize);
 		current->totalSize = totalSize;
+		next->next = current->next;
 		current->next = next;
 		next->type = G_ALLOCATOR_SECTION_TYPE_FREE;
 		next->totalSize = remainder;
-		next->next = nullptr;
 	}
 
 	current->type = type;
@@ -174,7 +179,8 @@ g_allocator_section_bucket* _memoryAllocatorAllocateNewBucket(g_allocator* alloc
 	auto bitmapSize = (entryCount / 8);
 	auto sectionTotalSize = sizeof(g_allocator_section_bucket) + bitmapSize + entryCount * size;
 
-	g_allocator_section_bucket* bucket = (g_allocator_section_bucket*) _memoryAllocatorAllocateSection(allocator, sectionTotalSize, G_ALLOCATOR_SECTION_TYPE_BUCKET);
+	auto bucket = (g_allocator_section_bucket*) _memoryAllocatorAllocateSection(
+			allocator, sectionTotalSize, G_ALLOCATOR_SECTION_TYPE_BUCKET);
 	if(!bucket)
 		return nullptr;
 
@@ -188,7 +194,7 @@ g_allocator_section_bucket* _memoryAllocatorAllocateNewBucket(g_allocator* alloc
 	return bucket;
 }
 
-void* _memoryAllocatorAllocateInSpecificBucket(g_allocator* allocator, g_allocator_section_bucket* bucket)
+void* _memoryAllocatorAllocateInSpecificBucket(g_allocator_section_bucket* bucket)
 {
 	uint8_t* bucketBitmap = _G_ALLOCATOR_BUCKET_BITMAP(bucket);
 	int byteIndex = -1;
@@ -207,8 +213,13 @@ void* _memoryAllocatorAllocateInSpecificBucket(g_allocator* allocator, g_allocat
 	uint8_t byte = bucketBitmap[byteIndex];
 	uint8_t bitIndex;
 	for(uint8_t i = 0; i < 8; i++)
+	{
 		if((byte & (1 << i)) == 0)
+		{
 			bitIndex = i;
+			break;
+		}
+	}
 
 	bucketBitmap[byteIndex] |= 1 << bitIndex;
 
@@ -218,30 +229,33 @@ void* _memoryAllocatorAllocateInSpecificBucket(g_allocator* allocator, g_allocat
 
 void* _memoryAllocatorAllocateInBucket(g_allocator* allocator, g_size size)
 {
-	g_allocator_section_header* current = allocator->sections;
+	auto section = allocator->sections;
 	do
 	{
-		if(current->type == G_ALLOCATOR_SECTION_TYPE_BUCKET)
+		if(section->type == G_ALLOCATOR_SECTION_TYPE_BUCKET)
 		{
-			g_allocator_section_bucket* bucket = (g_allocator_section_bucket*) current;
+			auto bucket = (g_allocator_section_bucket*) section;
 			if(bucket->entrySize == size)
 			{
-				void* result = _memoryAllocatorAllocateInSpecificBucket(allocator, bucket);
+				void* result = _memoryAllocatorAllocateInSpecificBucket(bucket);
 				if(result)
 					return result;
 			}
 		}
 
-		current = current->next;
-	} while(current);
+		section = section->next;
+	} while(section);
 
 	g_allocator_section_bucket* bucket = _memoryAllocatorAllocateNewBucket(allocator, size);
-	return _memoryAllocatorAllocateInSpecificBucket(allocator, bucket);
+	if(!bucket)
+		return nullptr;
+
+	return _memoryAllocatorAllocateInSpecificBucket(bucket);
 }
 
-g_size _memoryAllocatorFreeInBucket(g_allocator* allocator, g_allocator_section_bucket* bucket, void* mem)
+g_size _memoryAllocatorFreeInBucket(g_allocator_section_bucket* bucket, void* mem)
 {
-	g_address contentAddress = (g_address) _G_ALLOCATOR_BUCKET_CONTENT(bucket);
+	auto contentAddress = (g_address) _G_ALLOCATOR_BUCKET_CONTENT(bucket);
 	auto entryIndex = ((g_address) mem - contentAddress) / bucket->entrySize;
 
 	uint8_t* bitmap = _G_ALLOCATOR_BUCKET_BITMAP(bucket);
@@ -251,17 +265,17 @@ g_size _memoryAllocatorFreeInBucket(g_allocator* allocator, g_allocator_section_
 
 void _memoryAllocatorMerge(g_allocator* allocator)
 {
-	g_allocator_section_header* current = (g_allocator_section_header*) allocator->sections;
-	while(current && current->next)
+	auto section = allocator->sections;
+	while(section && section->next)
 	{
-		if(current->type == G_ALLOCATOR_SECTION_TYPE_FREE && current->next->type == G_ALLOCATOR_SECTION_TYPE_FREE)
+		if(section->type == G_ALLOCATOR_SECTION_TYPE_FREE && section->next->type == G_ALLOCATOR_SECTION_TYPE_FREE)
 		{
-			current->totalSize += current->next->totalSize;
-			current->next = current->next->next;
+			section->totalSize += section->next->totalSize;
+			section->next = section->next->next;
 		}
 		else
 		{
-			current = current->next;
+			section = section->next;
 		}
 	}
 }

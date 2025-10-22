@@ -140,7 +140,7 @@ struct g_pci_enable_resource_access_response
 /**
  * Read a BAR from a device.
  */
-bool pciDriverReadBAR(g_pci_device_address address, uint8_t bar, uint32_t* outValue);
+bool pciDriverReadBAR(g_pci_device_address address, uint8_t bar, g_address* outValue);
 
 struct g_pci_read_bar_request
 {
@@ -152,13 +152,13 @@ struct g_pci_read_bar_request
 struct g_pci_read_bar_response
 {
     bool successful;
-    uint32_t value;
+    g_address value;
 }__attribute__((packed));
 
 /**
  * Read a BAR size from a device.
  */
-bool pciDriverReadBARSize(g_pci_device_address address, uint8_t bar, uint32_t* outValue);
+bool pciDriverReadBARSize(g_pci_device_address address, uint8_t bar, g_address* outValue);
 
 struct g_pci_read_bar_size_request
 {
@@ -170,7 +170,7 @@ struct g_pci_read_bar_size_request
 struct g_pci_read_bar_size_response
 {
     bool successful;
-    uint32_t value;
+    g_address value;
 }__attribute__((packed));
 
 #endif

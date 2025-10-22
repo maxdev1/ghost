@@ -24,6 +24,7 @@
 #include "common.h"
 #include "stdint.h"
 #include "system/types.h"
+#include "memory/types.h"
 
 __BEGIN_C
 // not implemented warning
@@ -101,6 +102,13 @@ uint32_t g_io_port_read_dword(uint16_t port);
 void g_io_port_write_byte(uint16_t port, uint8_t data);
 void g_io_port_write_word(uint16_t port, uint16_t data);
 void g_io_port_write_dword(uint16_t port, uint32_t data);
+
+/**
+ * Ask the kernel for the EFI framebuffer data.
+ *
+ * @security-level DRIVER
+ */
+void g_get_efi_framebuffer(g_address* outFramebuffer, uint16_t* outWidth, uint16_t* outHeight, uint16_t* outBpp, uint32_t* outPitch);
 
 __END_C
 

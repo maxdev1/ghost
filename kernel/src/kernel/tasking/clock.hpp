@@ -21,8 +21,8 @@
 #ifndef __KERNEL_CLOCK__
 #define __KERNEL_CLOCK__
 
-#include "shared/system/mutex.hpp"
-#include "build_config.hpp"
+#include "kernel/system/mutex.hpp"
+#include "kernel/build_config.hpp"
 #include <ghost/tasks/types.h>
 
 /**

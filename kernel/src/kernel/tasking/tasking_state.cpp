@@ -22,44 +22,22 @@
 #include "kernel/memory/gdt.hpp"
 #include "kernel/system/interrupts/ivt.hpp"
 
-void taskingStateResetVm86(g_task* task, g_vm86_registers in, uint32_t intr)
-{
-	g_processor_state_vm86* state = (g_processor_state_vm86*) (task->interruptStack.end - sizeof(g_processor_state_vm86));
-	task->state = (g_processor_state*) state;
-
-	memorySetBytes(state, 0, sizeof(g_processor_state_vm86));
-	state->defaultFrame.eax = in.ax;
-	state->defaultFrame.ebx = in.bx;
-	state->defaultFrame.ecx = in.cx;
-	state->defaultFrame.edx = in.dx;
-	state->defaultFrame.ebp = 0;
-	state->defaultFrame.esi = in.si;
-	state->defaultFrame.edi = in.di;
-
-	state->defaultFrame.eip = G_FP_OFF(ivt->entry[intr]);
-	state->defaultFrame.cs = G_FP_SEG(ivt->entry[intr]);
-	state->defaultFrame.eflags = 0x20202;
-	state->defaultFrame.ss = ((G_PAGE_ALIGN_DOWN(task->stack.start) + G_PAGE_SIZE) >> 4);
-
-	state->gs = 0x00;
-	state->fs = 0x00;
-	state->es = in.es;
-	state->ds = in.ds;
-}
-
-void taskingStateReset(g_task* task, g_address eip, g_security_level entryLevel)
+void taskingStateReset(g_task* task, g_address rip, g_security_level entryLevel)
 {
 	g_processor_state* state;
-	if(entryLevel == G_SECURITY_LEVEL_KERNEL && task->securityLevel > G_SECURITY_LEVEL_KERNEL)
+	if(task->securityLevel > G_SECURITY_LEVEL_KERNEL)
 		state = (g_processor_state*) (task->interruptStack.end - sizeof(g_processor_state));
 	else
 		state = (g_processor_state*) (task->stack.end - sizeof(g_processor_state));
-
 	task->state = state;
 
 	memorySetBytes((void*) task->state, 0, sizeof(g_processor_state));
-	state->eflags = 0x200;
-	state->esp = (g_virtual_address) task->state;
+	state->rflags = 0x20202;
+
+	if(entryLevel > G_SECURITY_LEVEL_KERNEL)
+		state->rsp = task->stack.end - 0x8; // TODO Find out why BOTH this and alignment in crt0 is required
+	else
+		state->rsp = (g_virtual_address) task->state;
 
 	if(entryLevel == G_SECURITY_LEVEL_KERNEL)
 	{
@@ -67,7 +45,6 @@ void taskingStateReset(g_task* task, g_address eip, g_security_level entryLevel)
 		state->ss = G_GDT_DESCRIPTOR_KERNEL_DATA | G_SEGMENT_SELECTOR_RING0;
 		state->ds = G_GDT_DESCRIPTOR_KERNEL_DATA | G_SEGMENT_SELECTOR_RING0;
 		state->es = G_GDT_DESCRIPTOR_KERNEL_DATA | G_SEGMENT_SELECTOR_RING0;
-		state->fs = G_GDT_DESCRIPTOR_KERNEL_DATA | G_SEGMENT_SELECTOR_RING0;
 	}
 	else
 	{
@@ -75,14 +52,12 @@ void taskingStateReset(g_task* task, g_address eip, g_security_level entryLevel)
 		state->ss = G_GDT_DESCRIPTOR_USER_DATA | G_SEGMENT_SELECTOR_RING3;
 		state->ds = G_GDT_DESCRIPTOR_USER_DATA | G_SEGMENT_SELECTOR_RING3;
 		state->es = G_GDT_DESCRIPTOR_USER_DATA | G_SEGMENT_SELECTOR_RING3;
-		state->fs = G_GDT_DESCRIPTOR_USER_DATA | G_SEGMENT_SELECTOR_RING3;
-		state->gs = G_GDT_DESCRIPTOR_USERTHREADLOCAL;
 	}
 
 	if(entryLevel <= G_SECURITY_LEVEL_DRIVER)
 	{
-		state->eflags |= 0x3000; // IOPL 3
+		state->rflags |= 0x3000; // IOPL 3
 	}
 
-	state->eip = eip;
+	state->rip = rip;
 }

@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/tasking/tasking.hpp"
+#include "kernel/memory/constants.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/ipc/message_queues.hpp"
@@ -36,8 +37,8 @@
 #include "kernel/tasking/tasking_state.hpp"
 #include "kernel/utils/hashmap.hpp"
 #include "kernel/utils/wait_queue.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/panic.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/panic.hpp"
 
 static g_tasking_local* taskingLocal = 0;
 static g_mutex taskingIdLock;
@@ -306,14 +307,14 @@ void taskingRestoreState(g_task* task)
 	}
 	else
 	{
-		pagingSwitchToSpace(task->process->pageDirectory);
+		pagingSwitchToSpace(task->process->pageSpace);
 	}
 
-	// For TLS: write thread-local addresses to GDT
+	// For TLS: write thread-local addresses
 	gdtSetTlsAddresses(task->threadLocal.userThreadLocal, task->threadLocal.kernelThreadLocal);
 
-	// Set TSS ESP0 for ring 3 tasks to return onto
-	gdtSetTssEsp0(task->interruptStack.end);
+	// Set TSS RSP0 for ring 3 tasks to return onto
+	gdtSetTssRsp0(task->interruptStack.end);
 
 	// Restore FPU state
 	if(task->fpu.stored)
@@ -339,12 +340,18 @@ g_process* taskingCreateProcess(g_security_level securityLevel)
 
 	mutexInitializeGlobal(&process->lock, __func__);
 
-	process->pageDirectory = taskingMemoryCreatePageDirectory(securityLevel);
+	process->pageSpace = taskingMemoryCreatePageSpace();
+	if(!process->pageSpace)
+	{
+		logInfo("%! failed to create new address space to create process", "tasking");
+		return nullptr;
+	}
 
 	process->virtualRangePool = (g_address_range_pool*) heapAllocate(sizeof(g_address_range_pool));
 	addressRangePoolInitialize(process->virtualRangePool);
 	addressRangePoolAddRange(process->virtualRangePool, G_USER_VIRTUAL_RANGES_START, G_USER_VIRTUAL_RANGES_END);
 
+	logDebug("%! new process %i, address space %x", "tasking", process->id, process->pageSpace);
 	return process;
 }
 
@@ -355,7 +362,7 @@ void taskingDestroyProcess(g_process* process)
 
 	filesystemProcessRemove(process->id);
 
-	taskingMemoryDestroyPageDirectory(process->pageDirectory);
+	taskingMemoryDestroyPageSpace(process->pageSpace);
 
 	addressRangePoolDestroy(process->virtualRangePool);
 	heapFree(process->virtualRangePool);
@@ -375,12 +382,16 @@ g_task* taskingCreateTask(g_virtual_address eip, g_process* process, g_security_
 	_taskingInitializeTask(task, process, level);
 	task->type = G_TASK_TYPE_DEFAULT;
 
-	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(task->process->pageDirectory);
+	g_physical_address returnSpace = taskingMemoryTemporarySwitchTo(task->process->pageSpace);
 
 	taskingMemoryInitialize(task);
 	taskingStateReset(task, eip, level);
 
-	taskingMemoryTemporarySwitchBack(returnDirectory);
+	logDebug("%! created task %i, intr stack: %x-%x, stack: %x-%x", "tasking", task->id, task->interruptStack.start,
+			task->interruptStack.end, task->stack.start, task->stack.end);
+	logDebug("%# state: RIP: %x, RSP: %x, CS: %h, SS: %h, RFLAGS: %h", task->state->rip, task->state->rsp, task->state->cs, task->state->ss, task->state->rflags);
+
+	taskingMemoryTemporarySwitchBack(returnSpace);
 
 	taskingProcessAddToTaskList(process, task);
 	hashmapPut(taskGlobalMap, task->id, task);
@@ -390,22 +401,7 @@ g_task* taskingCreateTask(g_virtual_address eip, g_process* process, g_security_
 
 g_task* taskingCreateTaskVm86(g_process* process, uint32_t intr, g_vm86_registers in, g_vm86_registers* out)
 {
-	g_task* task = (g_task*) heapAllocateClear(sizeof(g_task));
-	_taskingInitializeTask(task, process, G_SECURITY_LEVEL_KERNEL);
-	task->type = G_TASK_TYPE_VM86;
-
-	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(task->process->pageDirectory);
-
-	taskingMemoryInitialize(task);
-	taskingStateResetVm86(task, in, intr);
-	task->vm86Data = (g_task_information_vm86*) heapAllocateClear(sizeof(g_task_information_vm86));
-	task->vm86Data->out = out;
-
-	taskingMemoryTemporarySwitchBack(returnDirectory);
-
-	taskingProcessAddToTaskList(process, task);
-	hashmapPut(taskGlobalMap, task->id, task);
-	return task;
+	panic("no vm86");
 }
 
 void taskingDestroyTask(g_task* task)
@@ -419,7 +415,7 @@ void taskingDestroyTask(g_task* task)
 	waitQueueWake(&task->waitersJoin);
 
 	// Switch to task space
-	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(task->process->pageDirectory);
+	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(task->process->pageSpace);
 
 	messageQueueTaskRemoved(task->id);
 	taskingMemoryDestroy(task);

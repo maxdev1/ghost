@@ -22,9 +22,9 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/system/interrupts/apic/lapic.hpp"
 #include "kernel/system/system.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/memory/gdt_macros.hpp"
-#include "shared/panic.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/memory/gdt.hpp"
+#include "kernel/panic.hpp"
 
 static g_processor* processors = nullptr;
 static uint32_t processorsAvailable = 0;
@@ -47,9 +47,6 @@ g_processor* _processorGetCurrent()
 
 void processorInitializeBsp()
 {
-	if(!processorSupportsCpuid())
-		panic("%! processor has no CPUID support", "cpu");
-
 	processorPrintInformation();
 
 	if(!processorHasFeature(g_cpuid_standard_edx_feature::APIC))
@@ -148,6 +145,9 @@ void processorAdd(uint32_t apicId, uint32_t processorHardwareId)
 
 uint16_t processorGetNumberOfProcessors()
 {
+	if(!G_SMP_ENABLED)
+		return 1;
+
 	if(!processors)
 		panic("%! tried to retrieve number of cores before initializing system on BSP", "kern");
 	return processorsAvailable;
@@ -160,13 +160,10 @@ uint32_t processorGetCurrentId()
 	if(!systemIsReady())
 		return processorGetCurrentIdFromApic();
 
-	// Kernel thread-local data is in segment 0x38
-	// GS:0x0 is relative address within <g_kernel_threadlocal>
-	uint32_t processor;
-	asm volatile("mov $" STR(G_GDT_DESCRIPTOR_KERNELTHREADLOCAL) ", %%eax\n"
-		"mov %%eax, %%gs\n"
-		"mov %%gs:0x0, %0"
-		: "=r"(processor)::"eax");
+	// GS points to valid <g_kernel_threadlocal>
+	// 0x0 is relative address within struct
+	uint64_t processor;
+	asm volatile("mov %%gs:0x0, %0" : "=r" (processor));
 	return processor;
 }
 
@@ -180,11 +177,6 @@ uint32_t processorGetCurrentIdFromApic()
 bool processorListAvailable()
 {
 	return processors != nullptr;
-}
-
-bool processorSupportsCpuid()
-{
-	return _checkForCPUID();
 }
 
 void processorCpuid(uint32_t code, uint32_t* outA, uint32_t* outB, uint32_t* outC, uint32_t* outD)
@@ -280,9 +272,9 @@ void processorWriteMsr(uint32_t msr, uint32_t lo, uint32_t hi)
 		: "a"(lo), "d"(hi), "c"(msr));
 }
 
-uint32_t processorReadEflags()
+uint64_t processorReadEflags()
 {
-	uint32_t eflags;
+	uint64_t eflags;
 	asm volatile("pushf\n"
 		"pop %0"
 		: "=g"(eflags));

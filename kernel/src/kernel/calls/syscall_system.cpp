@@ -24,9 +24,11 @@
 #include "kernel/tasking/clock.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/system/interrupts/apic/ioapic.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 #include "kernel/tasking/elf/elf_object.hpp"
-#include "shared/utils/string.hpp"
+#include "kernel/utils/string.hpp"
+#include "kernel/memory/paging.hpp"
+#include "kernel/boot/limine.hpp"
 
 void _getBinaryNameWithoutExtension(g_task* task, char buf[], int len)
 {
@@ -132,4 +134,17 @@ void syscallAwaitIrq(g_task* task, g_syscall_await_irq* data)
 			clockWaitForTime(task->id, clockGetLocal()->time + data->timeout);
 		}
 	});
+}
+
+void syscallGetEfiFramebuffer(g_task* task, g_syscall_get_efi_framebuffer* data)
+{
+	if(task->securityLevel > G_SECURITY_LEVEL_DRIVER)
+		return;
+
+	auto framebuffer = limineGetFramebuffer();
+	data->address = pagingVirtualToPhysical((g_address) framebuffer->address);
+	data->width = framebuffer->width;
+	data->height = framebuffer->height;
+	data->bpp = framebuffer->bpp;
+	data->pitch = framebuffer->pitch;
 }

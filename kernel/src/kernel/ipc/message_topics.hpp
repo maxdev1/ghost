@@ -22,7 +22,7 @@
 #define __KERNEL_IPC_MESSAGE_TOPICS__
 
 #include "kernel/utils/wait_queue.hpp"
-#include "shared/system/mutex.hpp"
+#include "kernel/system/mutex.hpp"
 #include <ghost/messages/callstructs.h>
 
 /**

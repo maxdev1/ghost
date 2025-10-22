@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 #include <ghost/tasks/types.h>
+#include <ghost/memory/types.h>
 #include <libdevice/interface.hpp>
 
 struct g_video_mode_info
@@ -31,7 +32,7 @@ struct g_video_mode_info
     uint16_t resY;
     uint16_t bpp;
     uint16_t bpsl;
-    uint32_t lfb;
+    g_address lfb;
     bool explicit_update;
 }__attribute__((packed));
 

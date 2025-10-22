@@ -18,14 +18,12 @@
 ;*                                                                           *
 ;* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-
-BITS 32
+BITS 64
 
 ;
 ; C handler functions
 ;
 extern _interruptHandler
-
 ;
 ; Handler routine
 ;
@@ -37,15 +35,15 @@ interruptRoutine:
 	;
 	; [Ring 3 -> Ring 0]
 	;	push ss
-	;	push esp
-	;	push eflags
+	;	push rsp
+	;	push rflags
 	;	push cs
-	;	push eip
+	;	push rip
 	;
 	; [Ring 0 -> Ring 0]
-	;	push eflags
+	;	push rflags
 	;	push cs
-	;	push eip
+	;	push rip
 	;
 	; This is the reason we give the stack pointer to our interrupt handler.
 	; The interrupt handler will then return the stack that we can pop the
@@ -53,72 +51,85 @@ interruptRoutine:
 	;
 
 	; Store general purpose
-	push edi
-	push esi
-	push ebp
-	push ebx
-	push edx
-	push ecx
-	push eax
+    push rax
+    push rcx
+    push rdx
+    push rbx
+    push rbp
+    push rsi
+    push rdi
+
+    push r8
+    push r9
+    push r10
+    push r11
+    push r12
+    push r13
+    push r14
+    push r15
 
 	; Store segments
-	push ds
-	push es
-	push fs
-	push gs
+    mov ax, ds
+    push rax
+    mov ax, es
+    push rax
 
-	; Switch to kernel segments
-	mov ax, 0x10
-	mov ds, ax
-	mov es, ax
-	mov fs, ax
-	mov ss, ax
-	; Segment points to kernel thread-local data
-	mov ax, 0x38
-	mov gs, ax
+    ; Switch to kernel segments
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
 
-	; Stack pointer argument
-	push esp
-	; Call handler
-	call _interruptHandler
-	; Set stack from return value
-	mov esp, eax
+    ; Stack pointer argument
+    mov rdi, rsp
+    ; Call handler
+    call _interruptHandler
+    ; Set stack pointer from return value
+    mov rsp, rax
 
-	; Restore segments
-	pop gs
-	pop fs
-	pop es
-	pop ds
+    ; Restore segments
+    pop rax
+    mov ds, ax
+    pop rax
+    mov es, ax
 
-	; Restore general purpose
-	pop eax
-	pop ecx
-	pop edx
-	pop ebx
-	pop ebp
-	pop esi
-	pop edi
+    ; Restore all registers
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop r11
+    pop r10
+    pop r9
+    pop r8
 
-	; Skip intr and error in Registers struct
-	add esp, 8
+    pop rdi
+    pop rsi
+    pop rbp
+    pop rbx
+    pop rdx
+    pop rcx
+    pop rax
+
+    ; Skip past the error code and interrupt number
+    add rsp, 16
 
 	;
-	; Now we return and on IRET the processor again pops specific registers.
-	; If we switch to a kernel-level task, ESP and SS will not be popped.
+	; Now we return and on IRETQ the processor again pops specific registers.
+	; If we switch to a kernel-level task, RSP and SS will not be popped.
 	;
 	; [Ring 0 -> Ring 0]
-	;		pop eip
+	;		pop rip
 	;		pop cs
-	;		pop eflags
+	;		pop rflags
 	;
 	; [Ring 0 -> Ring 3]
-	;		pop eip
+	;		pop rip
 	;		pop cs
-	;		pop eflags
-	;		pop esp
+	;		pop rflags
+	;		pop rsp
 	;		pop ss
 	;
-	iret
+    iretq
 
 
 ; Handling routine macros

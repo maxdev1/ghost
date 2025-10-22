@@ -1,0 +1,45 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+#include "kernel/boot/limine.hpp"
+#include "kernel/utils/string.hpp"
+
+static limine_framebuffer* fb = nullptr;
+
+limine_file* limineFindModule(limine_module_response* info, const char* path)
+{
+	for(uint64_t i = 0; i < info->module_count; i++)
+	{
+		auto module = info->modules[i];
+		if(stringEquals(module->path, path))
+			return module;
+	}
+	return nullptr;
+}
+
+void limineStoreFramebuffer(limine_framebuffer* framebuffer)
+{
+	fb = framebuffer;
+}
+
+limine_framebuffer* limineGetFramebuffer()
+{
+	return fb;
+}

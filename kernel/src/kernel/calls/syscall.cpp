@@ -28,17 +28,17 @@
 #include "kernel/calls/syscall_kernquery.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "shared/panic.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/panic.hpp"
+#include "kernel/logger/logger.hpp"
 
 #include <ghost/syscall.h>
 
-g_syscall_registration* syscallRegistrations = 0;
+g_syscall_registration* syscallRegistrations = nullptr;
 
 void syscallHandle(g_task* task)
 {
-	uint32_t callId = task->state->eax;
-	void* syscallData = (void*) task->state->ebx;
+	uint64_t callId = task->state->rax;
+	void* syscallData = (void*) task->state->rdi;
 
 	syscall(callId, syscallData);
 }
@@ -54,7 +54,7 @@ void syscall(uint32_t callId, void* syscallData)
 	}
 
 	g_syscall_registration* reg = &syscallRegistrations[callId];
-	if(reg->handler == 0)
+	if(reg->handler == nullptr)
 	{
 		logInfo("%! task %i tried to use unknown syscall %i", "syscall", task->id, callId);
 		return;
@@ -158,6 +158,7 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_CALL_VM86, (g_syscall_handler) syscallCallVm86);
 	_syscallRegister(G_SYSCALL_IRQ_CREATE_REDIRECT, (g_syscall_handler) syscallIrqCreateRedirect);
 	_syscallRegister(G_SYSCALL_AWAIT_IRQ, (g_syscall_handler) syscallAwaitIrq, true);
+	_syscallRegister(G_SYSCALL_GET_EFI_FRAMEBUFFER, (g_syscall_handler) syscallGetEfiFramebuffer);
 
 	// Kernquery
 	_syscallRegister(G_SYSCALL_KERNQUERY, (g_syscall_handler) syscallKernQuery);

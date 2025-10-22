@@ -19,7 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/memory/heap.hpp"
-#include "shared/panic.hpp"
+#include "kernel/panic.hpp"
 
 // The functions in this file are implemented as defined in the Itanium C++ ABI
 // standard. These functions are required by GCC for special cases, see the
@@ -62,3 +62,12 @@ void operator delete[](void* m)
 {
 	heapFree(m);
 }
+
+/**
+ * This method is called by the GCC if a pure virtual method is called.
+ */
+extern "C" void __cxa_pure_virtual()
+{
+	// We can't fix this, so we just do nothing
+}
+

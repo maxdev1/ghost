@@ -20,7 +20,7 @@
 
 #include "kernel/memory/lower_heap.hpp"
 #include "kernel/memory/allocator.hpp"
-#include "shared/panic.hpp"
+#include "kernel/panic.hpp"
 
 static g_allocator lowerHeapAllocator;
 static g_mutex lowerHeapMutex;

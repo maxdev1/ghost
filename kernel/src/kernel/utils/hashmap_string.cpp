@@ -20,7 +20,7 @@
 
 #include "kernel/utils/hashmap_string.hpp"
 #include "kernel/memory/memory.hpp"
-#include "shared/utils/string.hpp"
+#include "kernel/utils/string.hpp"
 
 const char* hashmapKeyCopyString(const char* key) {
 	return stringDuplicate(key);

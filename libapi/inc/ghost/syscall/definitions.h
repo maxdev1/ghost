@@ -102,6 +102,7 @@ __BEGIN_C
 #define G_SYSCALL_TEST							123
 #define G_SYSCALL_IRQ_CREATE_REDIRECT           124
 #define G_SYSCALL_AWAIT_IRQ         			125
+#define G_SYSCALL_GET_EFI_FRAMEBUFFER			126
 
 // Kernquery
 #define G_SYSCALL_KERNQUERY						129

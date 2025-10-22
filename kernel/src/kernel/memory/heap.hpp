@@ -21,13 +21,13 @@
 #ifndef __KERNEL_HEAP__
 #define __KERNEL_HEAP__
 
-#include "shared/memory/constants.hpp"
 #include <ghost/memory/types.h>
 
 /**
- * Initializes the kernel heap using the given range of memory.
+ * Initializes the kernel heap. This maps an initial memory area and
+ * then performs an initialization of a memory allocator on this area.
  */
-void heapInitialize(g_virtual_address start, g_virtual_address end);
+void heapInitialize();
 
 /**
  * Allocates a number of bytes on the kernel heap.

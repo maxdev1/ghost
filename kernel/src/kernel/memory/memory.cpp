@@ -23,49 +23,29 @@
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/kernel.hpp"
 #include "kernel/memory/heap.hpp"
-#include "kernel/memory/lower_heap.hpp"
+#include "kernel/memory/constants.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/memory/paging.hpp"
 #include "kernel/tasking/task.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 
-g_address_range_pool* memoryVirtualRangePool = 0;
+g_address_range_pool* memoryVirtualRangePool = nullptr;
+g_bitmap_page_allocator memoryPhysicalAllocator;
 
-void _memoryRelocatePhysicalBitmap(g_setup_information* setupInformation)
+void memoryInitialize(limine_memmap_response* memoryMap)
 {
-	uint32_t bitmapPages = ((setupInformation->bitmapArrayEnd - setupInformation->bitmapArrayStart) / G_PAGE_SIZE);
-	g_virtual_address bitmapVirtual = addressRangePoolAllocate(memoryVirtualRangePool, bitmapPages);
+	logInfo("%! initializing kernel memory with map at %x", "mem", memoryMap);
 
-	for(uint32_t i = 0; i < bitmapPages; i++)
-	{
-		g_offset off = (i * G_PAGE_SIZE);
-		pagingMapPage(bitmapVirtual + off, setupInformation->bitmapArrayStart + off, G_PAGE_TABLE_KERNEL_DEFAULT,
-		              G_PAGE_KERNEL_DEFAULT);
-	}
-	bitmapPageAllocatorRelocate(&memoryPhysicalAllocator, bitmapVirtual);
-}
-
-void memoryInitialize(g_setup_information* setupInformation)
-{
-	bitmapPageAllocatorInitialize(&memoryPhysicalAllocator, (g_bitmap_header*) setupInformation->bitmapArrayStart);
+	bitmapPageAllocatorInitialize(&memoryPhysicalAllocator, memoryMap);
 	logInfo("%! available: %i MiB", "memory", (memoryPhysicalAllocator.freePageCount * G_PAGE_SIZE) / 1024 / 1024);
 
-	heapInitialize(setupInformation->heapStart, setupInformation->heapEnd);
-	lowerHeapInitialize(G_LOWER_HEAP_MEMORY_START, G_LOWER_HEAP_MEMORY_END);
+	heapInitialize();
 
 	memoryVirtualRangePool = (g_address_range_pool*) heapAllocate(sizeof(g_address_range_pool));
 	addressRangePoolInitialize(memoryVirtualRangePool);
-	addressRangePoolAddRange(memoryVirtualRangePool, G_KERNEL_VIRTUAL_RANGES_START, G_KERNEL_VIRTUAL_RANGES_END);
+	addressRangePoolAddRange(memoryVirtualRangePool, G_MEM_KERN_VIRT_RANGES_START, G_MEM_KERN_VIRT_RANGES_END);
 
 	pageReferenceTrackerInitialize();
-
-	_memoryRelocatePhysicalBitmap(setupInformation);
-}
-
-void memoryUnmapSetupMemory()
-{
-	for(g_virtual_address addr = G_LOWER_MEMORY_END; addr < G_KERNEL_AREA_START; addr += G_PAGE_SIZE)
-		pagingUnmapPage(addr);
 }
 
 g_physical_address memoryPhysicalAllocate(bool untracked)
@@ -181,4 +161,53 @@ bool memoryOnDemandHandlePageFault(g_task* task, g_address accessed)
 		memorySetBytes((void*) rzeroLeft, 0, rzeroRight - rzeroLeft);
 
 	return true;
+}
+
+void* memorySetBytes(void* target, uint8_t value, int32_t length)
+{
+	auto pos = (uint8_t*) target;
+
+	while(length--)
+		*pos++ = value;
+
+	return target;
+}
+
+void* memorySetWords(void* target, uint16_t value, int32_t length)
+{
+	auto pos = (uint16_t*) target;
+
+	while(length--)
+		*pos++ =  value;
+
+	return target;
+}
+
+void* memoryCopy(void* target, const void* source, int32_t size)
+{
+	auto targetPtr = (uint8_t*) target;
+	auto sourcePtr = (const uint8_t*) source;
+
+	// TODO qword copying
+
+	while(size >= 4)
+	{
+		*(uint32_t*) targetPtr = *(const uint32_t*) sourcePtr;
+		targetPtr += 4;
+		sourcePtr += 4;
+		size -= 4;
+	}
+
+	while(size >= 2)
+	{
+		*(uint16_t*) targetPtr = *(const uint16_t*) sourcePtr;
+		targetPtr += 2;
+		sourcePtr += 2;
+		size -= 2;
+	}
+
+	while(size--)
+		*targetPtr++ = *sourcePtr++;
+
+	return target;
 }

@@ -145,13 +145,16 @@ popd () {
 
 
 # Global variables
-with TARGET				"i686-ghost"
+with TARGET				"x86_64-ghost"
 with CROSS_CC			$TARGET"-gcc"
 with CROSS_CXX		$TARGET"-g++"
 with CROSS_LD			$TARGET"-ld"
 with CROSS_GAS		$TARGET"-as"
 with CROSS_AR			$TARGET"-ar"
 
+# Limine
+with LIMINE_VERSION "9.2.0"
+with LIMINE_SOURCE "https://ghostkernel.org/repository/limine/limine-$LIMINE_VERSION.tar.gz"
 
 # Target architecture
 __TARGET_ARCH_PART=${TARGET%-*}

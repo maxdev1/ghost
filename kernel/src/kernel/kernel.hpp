@@ -24,7 +24,6 @@
 #include <ghost/memory/types.h>
 
 struct g_bitmap_page_allocator;
-struct g_setup_information;
 
 extern g_bitmap_page_allocator* kernelPhysicalAllocator;
 
@@ -33,12 +32,12 @@ extern g_bitmap_page_allocator* kernelPhysicalAllocator;
  * bootstrap processor. The setup information structure contains information
  * about everything that the loader has prepared for the kernel.
  */
-extern "C" void kernelMain(g_setup_information* setupInformation);
+extern "C" void kernelMain();
 
 /**
  * Bootstrap processor (BSP) initialization sequence.
  */
-void kernelRunBootstrapCore(g_physical_address initialPdPhys);
+void kernelRunBootstrapCore();
 
 /**
  * Once the kernel is set up and all application processors are ready, this is the first thread

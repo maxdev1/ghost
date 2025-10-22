@@ -19,9 +19,9 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/interrupts/idt.hpp"
-#include "kernel/system/processor/processor.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/memory/gdt_macros.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/memory/gdt.hpp"
+#include "ghost/memory/types.h"
 
 /**
  * IDT pointer structure
@@ -33,19 +33,28 @@ g_idt_pointer idtPointer;
  */
 __attribute__((aligned(8))) g_idt_entry idt[256];
 
-void idtCreateGate(uint32_t index, void* base, uint8_t flags)
+void idtCreateGate(uint32_t index, void* base, uint8_t flags, uint8_t ist)
 {
-	idt[index].baseLow = ((uint32_t) base) & 0xFFFF;
-	idt[index].baseHigh = (((uint32_t) base) >> 16) & 0xFFFF;
+	uint64_t baseAddr = (uint64_t) base;
+	idt[index].baseLow = baseAddr & 0xFFFF;
+	idt[index].baseMid = (baseAddr >> 16) & 0xFFFF;
+	idt[index].baseHigh = (baseAddr >> 32) & 0xFFFFFFFF;
 	idt[index].kernelSegment = G_GDT_DESCRIPTOR_KERNEL_CODE;
-	idt[index].zero = 0;
+	idt[index].reserved = 0;
+	idt[index].ist = ist & 0x7; // Only use the 3 lowest bits for IST
 	idt[index].flags = flags;
 }
 
-void idtPrepare()
+void idtCreateGate(uint32_t index, void* base, uint8_t flags)
+{
+	idtCreateGate(index, base, flags, 0); // Default IST value is 0
+}
+
+
+void idtInitialize()
 {
 	idtPointer.limit = (sizeof(g_idt_entry) * 256) - 1;
-	idtPointer.base = (uint32_t) &idt;
+	idtPointer.base = (g_address) &idt;
 
 	uint8_t* idtp = (uint8_t*) (&idt);
 	for(uint32_t i = 0; i < sizeof(g_idt_entry) * 256; i++)
@@ -54,11 +63,13 @@ void idtPrepare()
 	}
 }
 
-void idtLoad()
+void idtInitializeLocal()
 {
-	// Load the IDT
-	logDebug("%! descriptor table lays at %h", "idt", &idt);
-	logDebug("%! pointer at %h, base %h, limit %h", "idt", &idtPointer, idtPointer.base, idtPointer.limit);
-	_loadIdt((uint32_t) &idtPointer);
-	logDebug("%! loaded on core %i", "idt", processorGetCurrentId());
+	auto idtPointerAddr = (g_address) &idtPointer;
+	asm volatile (
+		"lidt (%0)"
+		:
+		: "r" (idtPointerAddr)
+		: "memory"
+	);
 }

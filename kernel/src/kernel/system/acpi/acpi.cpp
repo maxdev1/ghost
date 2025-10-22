@@ -21,13 +21,14 @@
 #include "kernel/system/acpi/acpi.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/system/processor/processor.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/panic.hpp"
-#include "shared/utils/string.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/panic.hpp"
+#include "kernel/utils/string.hpp"
+#include "kernel/memory/constants.hpp"
 #include <ghost/memory/types.h>
 
-static g_acpi_table_header* acpiRoot = 0;
-static g_acpi_entry* acpiTables = 0;
+static g_acpi_table_header* acpiRoot = nullptr;
+static g_acpi_entry* acpiTables = nullptr;
 static bool acpiRootIsXsdt = false;
 
 g_acpi_entry* acpiGetEntryWithSignature(const char* signature)
@@ -44,9 +45,11 @@ g_acpi_entry* acpiGetEntryWithSignature(const char* signature)
 	return nullptr;
 }
 
-void acpiInitialize()
+void acpiInitialize(g_physical_address rsdpPhys)
 {
-	g_rsdp_descriptor* rsdp = rsdpFind();
+	auto rsdpPage = G_PAGE_ALIGN_DOWN(rsdpPhys);
+	pagingMapPage(G_MEM_PHYS_TO_VIRT(rsdpPage), rsdpPage,G_PAGE_TABLE_KERNEL_DEFAULT,G_PAGE_KERNEL_DEFAULT);
+	auto rsdp = (g_rsdp_descriptor*) G_MEM_PHYS_TO_VIRT(rsdpPhys);
 	if(!rsdp)
 		panic("%! failed to find RSDP", "acpi");
 
@@ -54,67 +57,46 @@ void acpiInitialize()
 
 	for(uint32_t i = 0; i < acpiGetRSDTentryCount(); i++)
 	{
-		g_physical_address entry = acpiGetRSDTentry(i);
-		if(entry != 0)
-		{
-			g_acpi_table_header* sdt = acpiMapSDT(entry);
+		g_physical_address sdtPhys = acpiGetRSDTentry(i);
+		if(!sdtPhys)
+			continue;
 
-			// Could not be mapped? Skip
-			if(sdt == 0)
-				continue;
+		g_acpi_table_header* sdt = acpiMapSDT(sdtPhys);
+		if(!sdt)
+			continue;
 
-			// Create the entry
-			g_acpi_entry* entry = new g_acpi_entry();
-			entry->header = sdt;
-			entry->next = acpiTables;
-			acpiTables = entry;
-		}
+		auto entry = new g_acpi_entry();
+		entry->header = sdt;
+		entry->next = acpiTables;
+		acpiTables = entry;
 	}
 }
 
 void acpiPrepareRootSDT(g_rsdp_descriptor* rsdp)
 {
-
-	g_physical_address rootTableLocation = 0;
-
+	g_physical_address rootTablePhys = 0;
 	acpiRootIsXsdt = false;
 
 	// If ACPI 2.0 or higher, try to use the XSDT
 	if(rsdp->revision > 0)
 	{
-		g_rsdp_descriptor_20* rsdp20 = (g_rsdp_descriptor_20*) rsdp;
+		auto rsdp20 = (g_rsdp_descriptor_20*) rsdp;
 		if(rsdp20->xsdtAddress != 0)
 		{
-#if __x86_64__
-			rootTableLocation = rsdp20->xsdtAddress;
+			rootTablePhys = rsdp20->xsdtAddress;
 			logDebug("%! found XSDT in 64bit range", "acpi");
 			acpiRootIsXsdt = true;
-#elif __i386__
-			if(rsdp20->xsdtAddress < 0xFFFFFFFF)
-			{
-				acpiRootIsXsdt = true;
-				logDebug("%! found XSDT in 32bit range", "acpi");
-				rootTableLocation = rsdp20->xsdtAddress;
-			}
-			else
-			{
-				acpiRootIsXsdt = false;
-				logDebug("%! found XSDT, but range too high for 32bits, attempting to use RSDT", "acpi");
-			}
-#endif
 		}
 	}
 
 	// No XSDT? Use RSDT
 	if(!acpiRootIsXsdt)
-	{
-		rootTableLocation = rsdp->rsdtAddress;
-	}
+		rootTablePhys = rsdp->rsdtAddress;
 
-	if(!rootTableLocation)
+	if(!rootTablePhys)
 		panic("%! failed to find ACPI root table", "acpi");
 
-	g_acpi_table_header* header = acpiMapSDT(rootTableLocation);
+	g_acpi_table_header* header = acpiMapSDT(rootTablePhys);
 	if(!header)
 		panic("%! could not map root system descriptor table", "acpi");
 
@@ -124,7 +106,7 @@ void acpiPrepareRootSDT(g_rsdp_descriptor* rsdp)
 bool acpiValidateSDT(g_acpi_table_header* header)
 {
 	uint8_t sum = 0;
-	uint8_t* tableBytes = reinterpret_cast<uint8_t*>(header);
+	auto tableBytes = reinterpret_cast<uint8_t*>(header);
 
 	for(uint32_t i = 0; i < header->length; i++)
 		sum += tableBytes[i];
@@ -136,26 +118,26 @@ uint32_t acpiGetLengthOfUnmappedSDT(g_physical_address tableLocation)
 {
 	g_physical_address physStart = G_PAGE_ALIGN_DOWN(tableLocation);
 	g_virtual_address virtualBase = addressRangePoolAllocate(
-		memoryVirtualRangePool, 2);
+			memoryVirtualRangePool, 2); // TODO may as well direct map to higher half
 
 	if(!pagingMapPage(virtualBase, physStart, G_PAGE_TABLE_KERNEL_DEFAULT,
-					  G_PAGE_KERNEL_DEFAULT))
+	                  G_PAGE_KERNEL_DEFAULT))
 	{
 		logWarn("%! could not create virtual mapping (1) for SDT %h", "acpi",
-				tableLocation);
+		        tableLocation);
 		return 0;
 	}
 	if(!pagingMapPage(virtualBase + G_PAGE_SIZE, physStart + G_PAGE_SIZE,
-					  G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT))
+	                  G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT))
 	{
 		logWarn("%! could not create virtual mapping (2) for SDT %h", "acpi",
-				tableLocation);
+		        tableLocation);
 		return 0;
 	}
 
 	uint32_t mappingOffset = tableLocation - physStart;
 
-	g_acpi_table_header* header = (g_acpi_table_header*) (virtualBase + mappingOffset);
+	auto header = (g_acpi_table_header*) (virtualBase + mappingOffset);
 	uint32_t length = header->length;
 
 	pagingUnmapPage(virtualBase);
@@ -171,15 +153,15 @@ g_acpi_table_header* acpiMapSDT(g_physical_address tableLocation)
 	if(tableLength == 0)
 	{
 		logWarn("%! could not map SDT at phys %h, could not get table length",
-				"acpi", tableLocation);
-		return 0;
+		        "acpi", tableLocation);
+		return nullptr;
 	}
 
 	if(tableLength > G_SDT_MAXIMUM_BYTES)
 	{
 		logWarn("%! SDT at %h was skipped due to illegal length (%h)", "acpi",
-				tableLocation, tableLength);
-		return 0;
+		        tableLocation, tableLength);
+		return nullptr;
 	}
 
 	// Down/upalign physical range
@@ -192,68 +174,56 @@ g_acpi_table_header* acpiMapSDT(g_physical_address tableLocation)
 	// Calculate amount of physical pages and allocate virtual range
 	uint32_t pages = (physEnd - physStart) / G_PAGE_SIZE;
 	g_virtual_address virtualBase = addressRangePoolAllocate(
-		memoryVirtualRangePool, pages);
+			memoryVirtualRangePool, pages);
 
 	// Could not find a virtual range of that size
 	if(!virtualBase)
 	{
 		logWarn(
-			"%! could not find a free virtual range to map an SDT of size %i pages",
-			"acpi", pages);
-		return 0;
+				"%! could not find a free virtual range to map an SDT of size %i pages",
+				"acpi", pages);
+		return nullptr;
 	}
 
 	// Map the pages
-	for(g_virtual_address off = 0; off < (physEnd - physStart); off +=
-																G_PAGE_SIZE)
+	for(g_virtual_address off = 0; off < (physEnd - physStart); off += G_PAGE_SIZE)
 	{
 		pagingMapPage(virtualBase + off, physStart + off,
-					  G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
+		              G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
 	}
 
 	// Get the header pointer
-	g_acpi_table_header* header = (g_acpi_table_header*) (virtualBase + mappingOffset);
+	auto header = (g_acpi_table_header*) (virtualBase + mappingOffset);
 
 	// Validate the table
 	if(!acpiValidateSDT(header))
 	{
 		logWarn("%! descriptor table was not valid", "acpi");
-		return 0;
+		return nullptr;
 	}
 
-	// Now return the tables header
 	return header;
 }
 
 uint32_t acpiGetRSDTentryCount()
 {
-
 	uint32_t entryBytes = acpiRoot->length - sizeof(g_acpi_table_header);
 	if(acpiRootIsXsdt)
 	{
 		return entryBytes / 8;
 	}
-	else
-	{
-		return entryBytes / 4;
-	}
+	return entryBytes / 4;
 }
 
 g_physical_address acpiGetRSDTentry(uint32_t index)
 {
-
 	g_virtual_address startOfEntries = ((g_virtual_address) acpiRoot) + sizeof(g_acpi_table_header);
 
 	if(acpiRootIsXsdt)
 	{
 		return ((uint64_t*) startOfEntries)[index];
 	}
-	else
-	{
-		return ((uint32_t*) startOfEntries)[index];
-	}
-
-	return 0;
+	return ((uint32_t*) startOfEntries)[index];
 }
 
 bool acpiEntryHasSignature(g_acpi_entry* entry, const char* signature)

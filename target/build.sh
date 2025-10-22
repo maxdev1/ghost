@@ -9,28 +9,22 @@ TARGET=$@
 with TARGET "pack"
 
 
-#
 # Ramdisk build
-#
 with RAMDISK_WRITER "ramdisk-writer"
 
-#
 # ISO file
-#
 with ISO_SRC        "iso"
 with ISO_TGT        "ghost.iso"
-with GRUB_MKRESCUE  "grub-mkrescue"
 
-#
 # Binaries to copy
-#
 with KERNEL_BIN     "../kernel/kernel"
 with LOADER_BIN     "../kernel/loader"
-
 
 # Header
 target_headline $TARGET
 
+# Must have curl
+requireTool curl
 
 #
 # Generate the ramdisk file
@@ -48,9 +42,19 @@ target_make_iso() {
 	headline "making iso"
 	rm $ISO_TGT
 	cp $KERNEL_BIN "$ISO_SRC/boot/kernel"
-	cp $LOADER_BIN "$ISO_SRC/boot/loader"
 
-	$GRUB_MKRESCUE --output=$ISO_TGT $ISO_SRC
+  cp "limine-$LIMINE_VERSION/bin/limine-bios.sys" "$ISO_SRC/boot/limine/"
+  cp "limine-$LIMINE_VERSION/bin/limine-bios-cd.bin" "$ISO_SRC/boot/limine/"
+  cp "limine-$LIMINE_VERSION/bin/limine-uefi-cd.bin" "$ISO_SRC/boot/limine/"
+
+  xorriso -as mkisofs -R -r -J -b /boot/limine/limine-bios-cd.bin \
+          -no-emul-boot -boot-load-size 4 -boot-info-table -hfsplus \
+          -apm-block-size 2048 --efi-boot /boot/limine/limine-uefi-cd.bin \
+          -efi-boot-part --efi-boot-image --protective-msdos-label \
+          iso -o ghost.iso
+	failOnError
+
+  ./limine-$LIMINE_VERSION/bin/limine bios-install ghost.iso
 	failOnError
 }
 
@@ -95,6 +99,8 @@ target_pack() {
 
 
 # execute targets
+target_verify_limine
+
 for var in $TARGET; do
 	if [[ "$var" == "pack" ]]; then
 		target_pack

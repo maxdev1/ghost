@@ -28,7 +28,7 @@ __BEGIN_C
 /**
  * Page size
  */
-#define G_PAGE_SIZE				0x1000
+#define G_PAGE_SIZE				0x1000ULL
 #define G_PAGE_ALIGN_MASK		(G_PAGE_SIZE - 1)
 
 /**
@@ -65,7 +65,8 @@ typedef g_address g_size;
 #define G_FP_TO_LINEAR(fp)				G_SEGOFF_TO_LINEAR(G_FP_SEG(fp), G_FP_OFF(fp))
 
 #define G_SEGOFF_TO_FP(seg, off)		((g_far_pointer) (((seg & 0xFFFF) << 16) | (off & 0xFFFF)))
-#define G_LINEAR_TO_FP(linear)			((linear > 0x100000) ? 0 : ((((linear >> 4) & 0xFFFF) << 16) + (linear & 0xFL)))
+#define G_LINEAR_TO_FP(linear)			(((((linear) / 16) & 0xFFFF) << 16) | ((linear) % 16))
+
 
 __END_C
 

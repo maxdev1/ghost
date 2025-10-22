@@ -23,7 +23,7 @@
 #include "kernel/tasking/tasking.hpp"
 #include "kernel/utils/hashmap.hpp"
 
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 
 static g_message_transaction messageNextTx = G_MESSAGE_QUEUE_TRANSACTION_START;
 static g_mutex messageTxLock;

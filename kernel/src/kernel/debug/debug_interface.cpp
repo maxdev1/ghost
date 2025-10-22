@@ -19,10 +19,96 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/debug/debug_interface.hpp"
-#include "shared/system/serial_port.hpp"
+#include "kernel/debug/debug_interface_mode.hpp"
+#include "kernel/system/serial_port.hpp"
 
-// only required in full interface mode
+bool debugInterfaceInitialized = false;
+static uint16_t debugInterfaceComPort;
+
+void debugInterfaceInitialize(uint16_t port)
+{
+	debugInterfaceInitialized = true;
+	debugInterfaceComPort = port;
+}
+
+void debugInterfaceWriteByte(uint8_t value)
+{
+	serialPortWrite(debugInterfaceComPort, value);
+}
+
+void debugInterfaceWriteShort(uint16_t value)
+{
+	serialPortWrite(debugInterfaceComPort, (value >> 0) & 0xFF);
+	serialPortWrite(debugInterfaceComPort, (value >> 8) & 0xFF);
+}
+
+void debugInterfaceWriteInt(uint32_t value)
+{
+	serialPortWrite(debugInterfaceComPort, (value >> 0) & 0xFF);
+	serialPortWrite(debugInterfaceComPort, (value >> 8) & 0xFF);
+	serialPortWrite(debugInterfaceComPort, (value >> 16) & 0xFF);
+	serialPortWrite(debugInterfaceComPort, (value >> 24) & 0xFF);
+}
+
+void debugInterfaceWriteLong(uint64_t value)
+{
+	serialPortWrite(debugInterfaceComPort, (value >> 0) & 0xFF);
+	serialPortWrite(debugInterfaceComPort, (value >> 8) & 0xFF);
+	serialPortWrite(debugInterfaceComPort, (value >> 16) & 0xFF);
+	serialPortWrite(debugInterfaceComPort, (value >> 24) & 0xFF);
+	serialPortWrite(debugInterfaceComPort, (value >> 32) & 0xFF);
+	serialPortWrite(debugInterfaceComPort, (value >> 40) & 0xFF);
+	serialPortWrite(debugInterfaceComPort, (value >> 48) & 0xFF);
+	serialPortWrite(debugInterfaceComPort, (value >> 56) & 0xFF);
+}
+
+void debugInterfaceWriteString(const char *string)
+{
+	const char *p = string;
+	while (*p)
+	{
+		serialPortWrite(debugInterfaceComPort, *p++);
+	}
+	serialPortWrite(debugInterfaceComPort, 0);
+}
+
 #if G_DEBUG_INTERFACE_MODE == G_DEBUG_INTERFACE_MODE_FULL
+static const int logBufferLength = 512;
+static char logBuffer[logBufferLength];
+static int logBuffered = 0;
+#endif
+
+void debugInterfaceWriteLogCharacter(char c)
+{
+	if (!debugInterfaceInitialized)
+	{
+		return;
+	}
+
+#if G_DEBUG_INTERFACE_MODE == G_DEBUG_INTERFACE_MODE_PLAIN_LOG
+	serialPortWrite(debugInterfaceComPort, c);
+#elif G_DEBUG_INTERFACE_MODE == G_DEBUG_INTERFACE_MODE_FULL
+	debugInterfaceFullWriteLogCharacter(c);
+#endif
+}
+
+#if G_DEBUG_INTERFACE_MODE == G_DEBUG_INTERFACE_MODE_FULL
+void debugInterfaceFullWriteLogCharacter(char c)
+{
+	logBuffer[logBuffered++] = c;
+
+	if (c == '\n' || logBuffered == logBufferLength - 1)
+	{
+		debugInterfaceWriteShort(G_DEBUG_MESSAGE_LOG);
+		for (int i = 0; i < logBuffered; i++)
+		{
+			serialPortWrite(debugInterfaceComPort, logBuffer[i]);
+		}
+		serialPortWrite(debugInterfaceComPort, 0);
+
+		logBuffered = 0;
+	}
+}
 
 void debugInterfacePublishTaskStatus(int tid, const char* status)
 {

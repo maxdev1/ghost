@@ -20,8 +20,8 @@
 
 #include "kernel/tasking/tasking_directory.hpp"
 #include "kernel/utils/hashmap_string.hpp"
-#include "shared/logger/logger.hpp"
-#include "shared/utils/string.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/utils/string.hpp"
 
 static g_mutex entryLock;
 static g_hashmap<const char*, g_task_directory_entry*>* entryMap = nullptr;

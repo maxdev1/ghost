@@ -23,8 +23,8 @@
 #include "kernel/kernel.hpp"
 #include "kernel/memory/memory.hpp"
 
-#include "shared/system/mutex.hpp"
-#include "shared/utils/string.hpp"
+#include "kernel/system/mutex.hpp"
+#include "kernel/utils/string.hpp"
 
 g_fs_open_status filesystemPipeDelegateOpen(g_fs_node* node, g_file_flag_mode flags)
 {

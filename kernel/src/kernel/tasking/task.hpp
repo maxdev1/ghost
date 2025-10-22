@@ -24,7 +24,7 @@
 #include "kernel/memory/address_range_pool.hpp"
 #include "kernel/system/processor/processor_state.hpp"
 #include "kernel/utils/wait_queue.hpp"
-#include "shared/system/mutex.hpp"
+#include "kernel/system/mutex.hpp"
 
 #include <ghost/tasks/types.h>
 #include <ghost/system/types.h>
@@ -229,7 +229,7 @@ struct g_process
     g_task* main;
     g_task_entry* tasks;
 
-    g_physical_address pageDirectory;
+    g_physical_address pageSpace;
     g_address_range_pool* virtualRangePool;
 
     struct

@@ -27,8 +27,8 @@
 struct svga_device_t
 {
 	uint32_t versionId = SVGA_ID_2;
-	uint32_t ioBase = 0;
-	uint32_t vramSize = 0;
+	g_address ioBase = 0;
+	g_size vramSize = 0;
 
 	struct
 	{

@@ -21,7 +21,7 @@
 #include "kernel/system/timing/hpet.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/system/acpi/acpi.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 
 static volatile uint64_t* mmio = nullptr;
 static bool available = false;
@@ -34,16 +34,20 @@ void hpetInitialize()
 {
 	_hpetFindAndMap();
 
-	// Read correct frequency
-	uint64_t capabilities = mmio[HPET_GEN_CAP_REG / 8];
-	uint32_t clockPeriod = (capabilities >> 32) & 0xFFFFFFFF;
-	frequency = (1000000000000000.0 / clockPeriod);
-	periodsPerSecond = 1.0 / frequency;
+	// TODO this crashes in QEMU
+	if(mmio && false)
+	{
+		// Read correct frequency
+		uint64_t capabilities = mmio[HPET_GEN_CAP_REG / 8];
+		uint32_t clockPeriod = (capabilities >> 32) & 0xFFFFFFFF;
+		frequency = (1000000000000000.0 / clockPeriod); // TODO now on x86_64 do it properly
+		periodsPerSecond = 1.0 / frequency;
 
-	// Make sure it is enabled
-	mmio[HPET_GEN_CONFIG_REG / 8] |= 1;
+		// Make sure it is enabled
+		mmio[HPET_GEN_CONFIG_REG / 8] |= 1;
 
-	available = true;
+		available = true;
+	}
 }
 
 void _hpetFindAndMap()
@@ -63,8 +67,11 @@ void _hpetFindAndMap()
 	}
 
 	auto virtBase = addressRangePoolAllocate(memoryVirtualRangePool, 1);
-	pagingMapPage(virtBase, hpet->baseAddress.address, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_TABLE_KERNEL_DEFAULT,
-	              G_PAGE_KERNEL_UNCACHED);
+	if(!pagingMapPage(virtBase, hpet->baseAddress.address, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_UNCACHED))
+	{
+		logInfo("%! failed to map", "hpet");
+		return;
+	}
 
 	mmio = (volatile uint64_t*) virtBase;
 }

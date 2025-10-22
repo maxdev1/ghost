@@ -21,8 +21,8 @@
 #ifndef __KERNEL_MEMORY_ALLOCATOR__
 #define __KERNEL_MEMORY_ALLOCATOR__
 
-#include "shared/logger/logger.hpp"
-#include "shared/system/mutex.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/system/mutex.hpp"
 #include <ghost/memory/types.h>
 
 /**

@@ -23,7 +23,7 @@
 #include "kernel/utils/hashmap.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/tasking/clock.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/logger/logger.hpp"
 
 static g_user_mutex nextMutex;
 static g_mutex globalLock;

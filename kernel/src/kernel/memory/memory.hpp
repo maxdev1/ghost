@@ -21,20 +21,23 @@
 #ifndef __KERNEL_MEMORY__
 #define __KERNEL_MEMORY__
 
+#include <limine.h>
+#include <ghost/stdint.h>
+#include <stddef.h>
+
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/memory/address_range_pool.hpp"
-#include "kernel/memory/paging.hpp"
-#include "shared/memory/memory.hpp"
-#include "shared/setup_information.hpp"
+#include "kernel/memory/bitmap_page_allocator.hpp"
+
+#define G_ALIGN_UP(value, boundary)    (((value) + ((boundary) - 1)) & ~((boundary) - 1))
+#define G_ALIGN_DOWN(value, boundary)  ((value) & ~((boundary) - 1))
 
 class g_task;
 class g_process;
 
 extern g_address_range_pool* memoryVirtualRangePool;
 
-void memoryInitialize(g_setup_information* setupInformation);
-
-void memoryUnmapSetupMemory();
+void memoryInitialize(limine_memmap_response* memoryMap);
 
 /**
  * Allocates a physical memory page.
@@ -49,7 +52,7 @@ void memoryPhysicalFree(g_physical_address page);
 /**
  * Allocates and maps a memory range with the given number of pages.
  */
- g_virtual_address memoryAllocateKernel(int32_t pages);
+g_virtual_address memoryAllocateKernel(int32_t pages);
 
 /**
  * Frees a memory range allocated with <memoryAllocateKernelRange>.
@@ -71,5 +74,37 @@ g_memory_file_ondemand* memoryOnDemandFindMapping(g_task* task, g_address addres
  * Handles loading of the on-demand mapped file content.
  */
 bool memoryOnDemandHandlePageFault(g_task* task, g_address accessed);
+
+/**
+ * Reference to the loaders or kernels physical page allocator.
+ */
+extern g_bitmap_page_allocator memoryPhysicalAllocator;
+
+/**
+ * Sets number bytes at target to value.
+ *
+ * @param target	the target pointer
+ * @param value		the byte value
+ * @param number	the number of bytes to set
+ */
+void* memorySetBytes(void* target, uint8_t value, int32_t number);
+
+/**
+ * Sets number words at target to value.
+ *
+ * @param target	the target pointer
+ * @param value		the word value
+ * @param number	the number of word to set
+ */
+void* memorySetWords(void* target, uint16_t value, int32_t number);
+
+/**
+ * Copys size bytes from source to target.
+ *
+ * @param source	pointer to the source memory location
+ * @param target	pointer to the target memory location
+ * @param size		number of bytes to copy
+ */
+void* memoryCopy(void* target, const void* source, int32_t size);
 
 #endif

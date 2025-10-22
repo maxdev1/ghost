@@ -26,34 +26,36 @@
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/timing/hpet.hpp"
 #include "kernel/system/smp.hpp"
-#include "shared/panic.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/panic.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/memory/paging.hpp"
 
 static int applicationCoresWaiting;
 static bool bspInitialized = false;
 static bool systemReady = false;
 
-void systemInitializeBsp(g_physical_address initialPdPhys)
+void systemInitializeBsp(g_physical_address rsdp)
 {
 	processorInitializeBsp();
 
-	acpiInitialize();
+	acpiInitialize(rsdp);
 	apicDetect();
 	hpetInitialize();
 
 	if(!processorListAvailable())
 		panic("%! no processors found", "system");
 
-	gdtPrepare();
 	gdtInitialize();
+	gdtInitializeLocal();
 
 	interruptsInitializeBsp();
 	syscallRegisterAll();
+
 	processorFinalizeSetup();
 
 	auto numCores = processorGetNumberOfProcessors();
 	if(numCores > 1)
-		smpInitialize(initialPdPhys);
+		smpInitialize(pagingGetCurrentSpace());
 
 	applicationCoresWaiting = numCores - 1;
 	bspInitialized = true;
@@ -61,7 +63,7 @@ void systemInitializeBsp(g_physical_address initialPdPhys)
 
 void systemInitializeAp()
 {
-	gdtInitialize();
+	gdtInitializeLocal();
 	interruptsInitializeAp();
 	processorFinalizeSetup();
 }

@@ -44,7 +44,7 @@ struct g_elf_symbol_info
 };
 
 /**
- * Structure of an ELF32 object in memory.
+ * Structure of an ELF64 object in memory.
  */
 struct g_elf_object
 {
@@ -54,7 +54,7 @@ struct g_elf_object
 	bool root;
 	char* name;
 
-	Elf32_Ehdr header;
+	Elf64_Ehdr header;
 	g_elf_dependency* dependencies;
 
 	g_virtual_address startAddress;
@@ -96,12 +96,12 @@ struct g_elf_object
 	g_elf_object* symbolLookupOrderListNext;
 
 	// In-address-space memory pointers
-	Elf32_Dyn* dynamicSection;
+	Elf64_Dyn* dynamicSection;
 	const char* dynamicStringTable;
-	Elf32_Word dynamicStringTableSize;
-	Elf32_Sym* dynamicSymbolTable;
-	Elf32_Word dynamicSymbolTableSize;
-	Elf32_Word* dynamicSymbolHashTable;
+	Elf64_Word dynamicStringTableSize;
+	Elf64_Sym* dynamicSymbolTable;
+	Elf64_Word dynamicSymbolTableSize;
+	Elf64_Word* dynamicSymbolHashTable;
 
 	// Initialization and destruction information
 	void (*init)();
@@ -130,7 +130,7 @@ g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* n
 /**
  * Loads a PT_LOAD segment using the header information, relative to the base address.
  */
-g_spawn_status elfObjectLoadLoadSegment(g_fd file, Elf32_Phdr phdr, g_virtual_address base);
+g_spawn_status elfObjectLoadLoadSegment(g_fd file, Elf64_Phdr phdr, g_virtual_address base);
 
 /**
  * Applies relocations on the given object.

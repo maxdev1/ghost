@@ -22,7 +22,7 @@
 #define __KERNEL_IVT__
 
 #include <ghost/stdint.h>
-#include "shared/memory/memory.hpp"
+#include "kernel/memory/memory.hpp"
 
 /**
  * Interrupt vector table struct, used for VM86 calls

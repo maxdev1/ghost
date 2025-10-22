@@ -24,8 +24,8 @@
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/system/timing/hpet.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "shared/panic.hpp"
-#include "shared/logger/logger.hpp"
+#include "kernel/panic.hpp"
+#include "kernel/logger/logger.hpp"
 
 static g_clock_local* locals = nullptr;
 

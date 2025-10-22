@@ -19,10 +19,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "message_topics.hpp"
-
-#include <shared/memory/memory.hpp>
-
-#include "shared/utils/string.hpp"
+#include "kernel/memory/memory.hpp"
+#include "kernel/utils/string.hpp"
 #include "kernel/utils/hashmap_string.hpp"
 
 static g_hashmap<const char*, g_message_topic*>* messageTopics = nullptr;

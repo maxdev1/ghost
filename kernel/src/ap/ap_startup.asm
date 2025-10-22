@@ -1,6 +1,6 @@
 ;* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 ;*                                                                           *
-;*  Ghost, a micro-kernel based operating system for the x86 architecture    *
+;*  Ghost, a micro-kernel based operating system for the x86_64 architecture *
 ;*  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
 ;*                                                                           *
 ;*  This program is free software: you can redistribute it and/or modify     *
@@ -16,14 +16,14 @@
 ;*  You should have received a copy of the GNU General Public License        *
 ;*  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
 ;*                                                                           *
-;* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+;* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
 
 ; ############################################################################
 ;
 ;                                  NOTE
 ;
-;   At this point, no stack is a available, don't use PUSH or POP!
+;   At this point, no stack is available, don't use PUSH or POP!
 ;
 ;   This file is compiled to the ramdisk and loaded by the SMP mechanism to
 ;   start up APs.
@@ -37,9 +37,16 @@
 ; Loaded by the kernel to this location
 org 0x1000
 
-; Initial setup
+; Real mode
 BITS 16
 startup:
+    ; No interrupts & clear segments
+    cli
+    xor ax, ax
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+
 	; Load the GDT
     lgdt [gdtPointer]
 
@@ -64,54 +71,64 @@ protectedStart:
     mov ss, ax
 
 	; Lock all cores
-	acquireLock:
+    acquireLock:
     lock bts dword [interlock], 0
     jc acquireLock
 
-	    ; Set page directory
-	    mov eax, [0x500]
-	    mov cr3, eax
+    ; Enable PAE and PGE
+    mov eax, cr4
+    or eax, (1 << 5) | (1 << 7)
+    mov cr4, eax
 
-		; Enable paging
-	    mov eax, cr0
-	    or eax, 0x80000000
-	    mov cr0, eax
+    ; Set page directory
+    mov eax, [0x500]
+    mov cr3, eax
 
-	    ; Set "global pages" flag
-	    mov eax, cr4
-	    or eax, 80
-	    mov cr4, eax
+    ; Set up EFER.LME & EFER.NXE
+    mov ecx, 0xC0000080
+    rdmsr
+    or eax, (1 << 8) | (1 << 11)
+    wrmsr
 
-		; Load stack from stack array
-		mov eax, [0x508]		; current index
-		shl eax, 2				; multiply by 4 (size of one entry)
-		mov esp, [0x50C + eax]	; move entry to ESP
-		mov ebp, esp
+    ; Enable paging
+    mov eax, cr0
+    or eax, 1 << 31
+    mov cr0, eax
 
-		; Increment AP counter
-		inc dword [0x508]
+    ; Get index of this AP and increment counter
+    mov eax, [0x510]
+    inc dword [0x510]
 
 	; Release lock
     lock btr dword [interlock], 0
 
-	; Jump to kernel
-	call [0x504]
+	; Far-jump to 64 bits
+	jmp 0x18:longStart
 
-	; AP should never exit, just for safety
-	hang:
-	hlt
-	jmp hang
+; Long mode
+[BITS 64]
+longStart:
+    ; 32-bit code provides AP index in EAX
+    ; From the stack array, take the entry at offset multiplied by 8
+    shl rax, 3
+    mov rsp,  [0x518 + rax]
+    mov rbp, rsp
 
+    ; Set data segments
+    mov bx, 0x20
+    mov ds, bx
+    mov es, bx
+    mov fs, bx
+    mov gs, bx
+    mov ss, bx
+
+	; Jump into kernel code
+    mov rax, [0x508]
+    jmp rax
 
 ; Inter-core synchronization
 interlock:
-	dd 0x00000000
-
-
-; Pointer to the GDT
-gdtPointer:
-	dw 24
-	dd gdt
+	dd 0
 
 ; Basic setup GDT
 gdt:
@@ -124,7 +141,7 @@ gdt:
 	; code descriptor
 	dw 0xFFFF
 	dw 0x0000
-	dw 0x9800
+	dw 0x9A00
 	dw 0x00CF
 
 	; data descriptor
@@ -132,3 +149,22 @@ gdt:
 	dw 0x0000
 	dw 0x9200
 	dw 0x00CF
+
+    ; 64-bit code descriptor
+    dw 0x0000
+    dw 0x0000
+    dw 0x9A00
+    dw 0x0020
+
+    ; 64-bit data descriptor
+    dw 0x0000
+    dw 0x0000
+    dw 0x9200
+    dw 0x0000
+
+gdtEnd:
+
+align 4
+gdtPointer:
+    dw gdtEnd - gdt - 1
+    dd gdt

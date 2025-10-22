@@ -22,7 +22,11 @@
 #define __KERNEL_DEBUG_INTERFACE__
 
 #include <ghost/stdint.h>
-#include "shared/debug/debug_interface.hpp"
+#include "kernel/build_config.hpp"
+
+#include "kernel/debug/debug_protocol.hpp"
+#include "kernel/debug/debug_interface_mode.hpp"
+
 
 #if G_DEBUG_INTERFACE_MODE == G_DEBUG_INTERFACE_MODE_FULL
 
@@ -57,6 +61,27 @@ void debugInterfaceSystemInformation(const char* key, uint64_t value);
 #define G_DEBUG_INTERFACE_TASK_SET_STATUS(task, status)
 #define G_DEBUG_INTERFACE_TASK_SET_SOURCE_PATH(task, source_path)
 #define G_DEBUG_INTERFACE_SYSTEM_INFORMATION(key, value)
+#endif
+
+
+extern bool debugInterfaceInitialized;
+
+void debugInterfaceInitialize(uint16_t port);
+
+void debugInterfaceWriteLogCharacter(char c);
+
+void debugInterfaceWriteByte(uint8_t value);
+
+void debugInterfaceWriteShort(uint16_t value);
+
+void debugInterfaceWriteInt(uint32_t value);
+
+void debugInterfaceWriteLong(uint64_t value);
+
+void debugInterfaceWriteString(const char *string);
+
+#if G_DEBUG_INTERFACE_MODE == G_DEBUG_INTERFACE_MODE_FULL
+void debugInterfaceFullWriteLogCharacter(char c);
 #endif
 
 #endif

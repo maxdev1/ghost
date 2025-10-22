@@ -79,7 +79,7 @@ bool ahciDriverIdentifyController()
 		   devices[i].subclassCode == PCI_01_SUBCLASS_SATA &&
 		   devices[i].progIf == PCI_01_06_PROGIF_AHCI)
 		{
-			uint32_t bar;
+			g_address bar;
 			if(!pciDriverReadBAR(devices[i].deviceAddress, 5, &bar))
 			{
 				klog("Failed to read BAR5 from PCI device %x", devices[i].deviceAddress);
