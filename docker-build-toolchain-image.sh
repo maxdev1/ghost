@@ -8,7 +8,7 @@ echo "Building toolchain within Docker container..."
 docker run --name ghost-toolchain-setup -v "$(pwd):/ghost/source" ubuntu:latest /ghost/source/docker-prepare.sh >>ghost-build.log 2>&1
 
 echo "Committing image..."
-docker commit --change='WORKDIR /ghost/source' --change='CMD ["/bin/bash"]' ghost-toolchain-setup ghost-toolchain-64
+docker commit --change='WORKDIR /ghost/source' --change='CMD "/bin/bash"' ghost-toolchain-setup ghost-toolchain-64
 
 echo "Removing temporary container..."
 docker rm ghost-toolchain-setup

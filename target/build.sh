@@ -98,6 +98,24 @@ target_pack() {
 }
 
 
+#
+# Checks if limine is present and otherwise builds it
+#
+target_verify_limine() {
+  if [ ! -d "limine-$LIMINE_VERSION" ]; then
+    echo "Download limine"
+    curl -LO https://ghostkernel.org/repository/limine/limine-$LIMINE_VERSION.tar.gz
+    tar -xzf limine-$LIMINE_VERSION.tar.gz
+
+    echo "Building limine"
+    pushd limine-$LIMINE_VERSION >/dev/null || exit 1
+    ./configure --enable-bios --enable-bios-cd --enable-uefi-cd --enable-uefi-x86-64
+    make -j"$(nproc)"
+    popd >/dev/null || exit 1
+  fi
+}
+
+
 # execute targets
 target_verify_limine
 
