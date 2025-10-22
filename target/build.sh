@@ -51,10 +51,10 @@ target_make_iso() {
           -no-emul-boot -boot-load-size 4 -boot-info-table -hfsplus \
           -apm-block-size 2048 --efi-boot /boot/limine/limine-uefi-cd.bin \
           -efi-boot-part --efi-boot-image --protective-msdos-label \
-          iso -o ghost.iso
+          iso -o $ISO_TGT
 	failOnError
 
-  ./limine-$LIMINE_VERSION/bin/limine bios-install ghost.iso
+  ./limine-$LIMINE_VERSION/bin/limine bios-install $ISO_TGT
 	failOnError
 }
 
@@ -108,10 +108,11 @@ target_verify_limine() {
     tar -xzf limine-$LIMINE_VERSION.tar.gz
 
     echo "Building limine"
-    pushd limine-$LIMINE_VERSION >/dev/null || exit 1
+    pushd limine-$LIMINE_VERSION
     ./configure --enable-bios --enable-bios-cd --enable-uefi-cd --enable-uefi-x86-64
     make -j"$(nproc)"
-    popd >/dev/null || exit 1
+    make install
+    popd
   fi
 }
 
