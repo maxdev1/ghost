@@ -216,7 +216,6 @@ void text_area_t::applyScroll()
 
 g_point text_area_t::positionToUnscrolledCursorPoint(int pos)
 {
-
 	int cursorX = insets.left;
 	int cursorY = insets.top;
 
@@ -449,8 +448,8 @@ int text_area_t::viewToPosition(g_point p)
 
 		if(p.x < onView.x + onView.width / 2
 		   // TODO only multiline
-		   && p.y > onView.y
-		   && p.y < onView.y + onView.height / 2
+		   && p.y + fontSize / 2 > onView.y
+		   && p.y + fontSize / 2 < onView.y + onView.height / 2
 		)
 		{
 			break;
@@ -465,16 +464,22 @@ g_rectangle text_area_t::glyphToView(g_positioned_glyph& g)
 {
 	int yOffset = getBounds().height / 2 - fontSize / 2 - 2;
 	int x = scrollX + g.position.x + insets.left;
-	int y = g.position.y + 5; // TODO single-line must use yOffset
+	int y = g.position.y + insets.top; // TODO single-line must use yOffset
 	return g_rectangle(x, y, g.size.width, g.size.height);
 }
 
 g_rectangle text_area_t::positionToCursorBounds(int pos)
 {
-
 	auto cursorPoint = positionToUnscrolledCursorPoint(pos);
 	int caretHeight = fontSize + 4;
-	return g_rectangle(cursorPoint.x + scrollX, cursorPoint.y + getBounds().height / 2 - caretHeight / 2, 1, caretHeight);
+
+	int yOffset = getBounds().height / 2 - caretHeight / 2;
+
+	return g_rectangle(
+		cursorPoint.x + scrollX,
+		cursorPoint.y - caretHeight+ insets.top, // TODO single line must use + yOffset,
+		1,
+		caretHeight);
 }
 
 void text_area_t::setFont(g_font* f)
