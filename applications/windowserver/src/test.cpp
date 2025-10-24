@@ -20,7 +20,12 @@
 
 #include "test.hpp"
 
+#include <sstream>
+#include <components/tree.hpp>
+#include <components/tree_node.hpp>
+#include <components/text/text_area.hpp>
 #include <layout/flex_layout_manager.hpp>
+#include <layout/stack_layout_manager.hpp>
 
 #include "components/button.hpp"
 #include "components/checkbox.hpp"
@@ -31,27 +36,17 @@
 #include "layout/flow_layout_manager.hpp"
 #include "layout/grid_layout_manager.hpp"
 
-class open_executable_action_handler_t;
-void open_executable_spawn(open_executable_action_handler_t* data);
+class open_exe_data_t;
+void open_executable_spawn(open_exe_data_t* data);
 
-class open_executable_action_handler_t : public internal_action_handler_t
+class open_exe_data_t
 {
 public:
 	std::string exe;
 	std::string args;
-
-	open_executable_action_handler_t(std::string exe, std::string args) :
-		exe(exe), args(args)
-	{
-	}
-
-	void handle(action_component_t* source)
-	{
-		g_create_task_d((void*) &open_executable_spawn, this);
-	}
 };
 
-void open_executable_spawn(open_executable_action_handler_t* data)
+void open_executable_spawn(open_exe_data_t* data)
 {
 	g_spawn(data->exe.c_str(), data->args.c_str(), "/", G_SECURITY_LEVEL_APPLICATION);
 }
@@ -64,16 +59,16 @@ void addExecutableButton(window_t* window, std::string name, std::string exe, st
 	button_t* openCalculatorButton = new button_t();
 	openCalculatorButton->setBounds(g_rectangle(10, nextButtonPos, 270, 30));
 	openCalculatorButton->getLabel().setTitle(name);
-	openCalculatorButton->setInternalActionHandler(new open_executable_action_handler_t(exe, args));
+	openCalculatorButton->setInternalActionHandler([exe, args]()
+	{
+		auto data = new open_exe_data_t();
+		data->exe = exe;
+		data->args = args;
+		g_create_task_d((void*) &open_executable_spawn, data);
+	});
 	window->addChild(openCalculatorButton);
 	nextButtonPos += 35;
 }
-
-class create_test_window_handler_t : public internal_action_handler_t
-{
-public:
-	void handle(action_component_t* source);
-};
 
 void createTestWindow()
 {
@@ -191,36 +186,78 @@ void createTestWindow2()
 
 void createTestWindow3()
 {
-	window_t* window = new window_t;
-	window->setTitle("Flex layout");
-	window->setBounds(g_rectangle(700, 10, 300, 300));
+	auto window = new window_t;
+	window->setTitle("Components");
+	window->setBounds(g_rectangle(530, 30, 320, 530));
+	window->setLayoutManager(new grid_layout_manager_t(1, 1));
 
-	auto flex = new flex_layout_manager_t();
-	flex->setHorizontal(false);
-	window->setLayoutManager(flex);
+	auto scroller = new scrollpane_t;
+	scroller->setBounds(g_rectangle(0, 0, 300, 200));
 
-	button_t* button = new button_t();
-	button->setTitle("Button1");
-	window->addChild(button);
-	flex->setLayoutInfo(button, 0.0f, 1.0f, 100);
+	auto panel = new panel_t();
+	panel->setLayoutManager(new stack_layout_manager_t());
 
-	button_t* button2 = new button_t();
-	button2->setTitle("Button2");
-	window->addChild(button2);
-	flex->setLayoutInfo(button2, 1.0f, 1.0f, -1);
+	auto jsonInput = new text_area_t();
+	jsonInput->setMinimumSize(g_dimension(500, 300));
+	jsonInput->setText(R"({
+	"rootNodes": [
+		{
+			"title": "Fruits",
+			"children": [
+				{"title":"Apple"},
+				{"title":"Cherry"}
+			]
+		}
+	]
+})");
+	panel->addChild(jsonInput);
+
+	auto tree = new tree_t();
+
+	auto button = new button_t();
+	button->setTitle("To tree");
+	panel->addChild(button);
+	button->setInternalActionHandler([tree, jsonInput]()
+	{
+		auto text = jsonInput->getText();
+		klog(("setting model from JSON: " + text).c_str());
+		tree->setModelFromJson(text);
+	});
+
+
+	std::string json = "{"
+			"\"rootNodes\": ["
+			"{"
+			"\"id\": 1,"
+			"\"title\": \"Node 1\","
+			"\"children\": ["
+			"{"
+			"\"id\": 2,"
+			"\"title\": \"Node 1.1\""
+			"},"
+			"{"
+			"\"id\": 3,"
+			"\"title\": \"Node 1.2\""
+			"}"
+			"]"
+			"}"
+			"]"
+			"}";
+	tree->setModelFromJson(json);
+
+	panel->addChild(tree);
+
+	scroller->setContent(panel);
+
+	window->addChild(scroller);
 
 	windowserver_t::instance()->screen->addChild(window);
 	window->setVisible(true);
-}
-
-void create_test_window_handler_t::handle(action_component_t* source)
-{
-	g_create_task((void*) &createTestWindow);
 }
 
 void test_t::createTestComponents()
 {
 	// createTestWindow();
 	// createTestWindow2();
-	// createTestWindow3();
+	createTestWindow3();
 }

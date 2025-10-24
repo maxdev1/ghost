@@ -25,13 +25,97 @@
 #include <libproperties/parser.hpp>
 #include <libwindow/properties.hpp>
 #include <libfont/text_alignment.hpp>
-#include <math.h>
+#include <cmath>
+
+
+enum g_button_render_state
+{
+	DEFAULT = 0,
+	HOVER = 1,
+	PRESSED = 2,
+	DISABLED = 3
+};
+
+enum g_button_state_color_type
+{
+	BACKGROUND = 0,
+	BORDER = 1,
+	BORDER_FOCUSED = 2
+};
+
+std::map<g_button_style,
+         std::map<g_button_render_state,
+                  std::map<g_button_state_color_type, g_color_argb>
+         >
+> BUTTON_STYLES = {
+		{G_BUTTON_STYLE_DEFAULT, {
+				 {
+						 DEFAULT, {
+								 {BACKGROUND, RGB(248, 248, 248)},
+								 {BORDER, RGB(193, 193, 193)},
+								 {BORDER_FOCUSED, RGB(84, 149, 255)}
+						 }
+				 },
+				 {
+						 HOVER, {
+								 {BACKGROUND, RGB(255, 255, 255)},
+								 {BORDER, RGB(193, 193, 193)},
+								 {BORDER_FOCUSED, RGB(84, 149, 255)}
+						 }
+				 },
+				 {
+						 PRESSED, {
+								 {BACKGROUND, RGB(230, 230, 230)},
+								 {BORDER, RGB(193, 193, 193)},
+								 {BORDER_FOCUSED, RGB(84, 149, 255)}
+						 }
+				 },
+				 {
+						 DISABLED, {
+								 {BACKGROUND, RGB(249, 249, 249)},
+								 {BORDER, RGB(234, 234, 234)},
+								 {BORDER_FOCUSED, RGB(234, 234, 234)}
+						 }
+				 }
+		 }},
+		{G_BUTTON_STYLE_GHOST, {
+				 {
+						 DEFAULT, {
+								 {BACKGROUND, ARGB(0, 0, 0, 0)},
+								 {BORDER, ARGB(0, 0, 0, 0)},
+								 {BORDER_FOCUSED, ARGB(0, 0, 0, 0)}
+						 }
+				 },
+				 {
+						 HOVER, {
+								 {BACKGROUND, RGB(255, 255, 255)},
+								 {BORDER, RGB(193, 193, 193)},
+								 {BORDER_FOCUSED, RGB(84, 149, 255)}
+						 }
+				 },
+				 {
+						 PRESSED, {
+								 {BACKGROUND, RGB(230, 230, 230)},
+								 {BORDER, RGB(193, 193, 193)},
+								 {BORDER_FOCUSED, RGB(84, 149, 255)}
+						 }
+				 },
+				 {
+						 DISABLED, {
+								 {BACKGROUND, ARGB(0, 0, 0, 0)},
+								 {BORDER, ARGB(0, 0, 0, 0)},
+								 {BORDER_FOCUSED, ARGB(0, 0, 0, 0)}
+						 }
+				 }
+		 }}
+};
+
 
 button_t::button_t() :
 	insets(g_insets(5, 10, 5, 10))
 {
 	enabled = true;
-	addChild(&label, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
+	component_t::addChild(&label, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
 	label.setAlignment(g_text_alignment::CENTER);
 	label.setColor(RGB(10, 10, 15));
 }
@@ -72,49 +156,33 @@ void button_t::paint()
 		return;
 
 	clearSurface();
+
+	auto styleData = BUTTON_STYLES[style];
+	auto stateData = enabled
+		                 ? state.pressed
+			                   ? styleData[PRESSED]
+			                   : (state.hovered
+				                      ? styleData[HOVER]
+				                      : styleData[DEFAULT])
+		                 : styleData[DISABLED];
+	g_color_argb background = stateData[BACKGROUND];
+	g_color_argb border = stateData[focused ? BORDER_FOCUSED : BORDER];
+
+	double offsetX = 0.5;
+	double offsetY = 0.5;
+	double borderRadius = 5;
+
 	auto bounds = getBounds();
-
-	// choose colors
-	g_color_argb background;
-	if(enabled)
-	{
-		background = state.pressed ? RGB(230, 230, 230) : (state.hovered ? RGB(255, 255, 255) : RGB(248, 248, 248));
-	}
-	else
-	{
-		background = RGB(220, 220, 220);
-	}
-
-	g_color_argb border;
-	if(enabled)
-	{
-		if(focused)
-		{
-			border = RGB(55, 155, 255);
-		}
-		else
-		{
-			border = RGB(180, 180, 180);
-		}
-	}
-	else
-	{
-		border = RGB(160, 160, 160);
-	}
-
-	// prepare
-	double x = 0.5;
-	double y = 0.5;
 	double width = bounds.width - 1;
 	double height = bounds.height - 1;
-	double radius = 2.5;
 	double degrees = M_PI / 180.0;
 
 	cairo_new_sub_path(cr);
-	cairo_arc(cr, x + width - radius, y + radius, radius, -90 * degrees, 0 * degrees);
-	cairo_arc(cr, x + width - radius, y + height - radius, radius, 0 * degrees, 90 * degrees);
-	cairo_arc(cr, x + radius, y + height - radius, radius, 90 * degrees, 180 * degrees);
-	cairo_arc(cr, x + radius, y + radius, radius, 180 * degrees, 270 * degrees);
+	cairo_arc(cr, offsetX + width - borderRadius, offsetY + borderRadius, borderRadius, -90 * degrees, 0 * degrees);
+	cairo_arc(cr, offsetX + width - borderRadius, offsetY + height - borderRadius, borderRadius, 0 * degrees,
+	          90 * degrees);
+	cairo_arc(cr, offsetX + borderRadius, offsetY + height - borderRadius, borderRadius, 90 * degrees, 180 * degrees);
+	cairo_arc(cr, offsetX + borderRadius, offsetY + borderRadius, borderRadius, 180 * degrees, 270 * degrees);
 	cairo_close_path(cr);
 
 	cairo_set_source_rgba(cr, G_COLOR_ARGB_TO_FPARAMS(background));
@@ -187,7 +255,7 @@ std::string button_t::getTitle()
 void button_t::setEnabled(bool enabled)
 {
 	this->enabled = enabled;
-	label.setColor(enabled ? RGB(10, 10, 15) : RGB(50, 50, 50));
+	label.setColor(enabled ? RGB(10, 10, 15) : RGB(80, 80, 80));
 	markFor(COMPONENT_REQUIREMENT_PAINT);
 }
 
@@ -198,6 +266,11 @@ bool button_t::getNumericProperty(int property, uint32_t* out)
 		*out = enabled;
 		return true;
 	}
+	else if(property == G_UI_PROPERTY_STYLE)
+	{
+		*out = style;
+		return true;
+	}
 
 	return false;
 }
@@ -206,8 +279,15 @@ bool button_t::setNumericProperty(int property, uint32_t value)
 {
 	if(property == G_UI_PROPERTY_ENABLED)
 	{
-		enabled = value;
+		setEnabled(value);
 		markFor(COMPONENT_REQUIREMENT_ALL);
+		return true;
+	}
+	else if(property == G_UI_PROPERTY_STYLE)
+	{
+		style = value;
+		markFor(COMPONENT_REQUIREMENT_ALL);
+		klog("set style to %i", value);
 		return true;
 	}
 

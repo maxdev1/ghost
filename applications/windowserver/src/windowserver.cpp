@@ -114,7 +114,7 @@ void windowserver_t::createVitalComponents(g_rectangle screenBounds)
 	screen->setBounds(screenBounds);
 
 	stateLabel = new label_t();
-	stateLabel->setTitle("");
+	stateLabel->setTitle("fps");
 	stateLabel->setAlignment(g_text_alignment::RIGHT);
 	stateLabel->setVisible(debugOn);
 	stateLabel->setBounds(g_rectangle(10, screenBounds.height - 100, screenBounds.width - 20, 30));
@@ -165,7 +165,7 @@ void windowserver_t::initializeVideo()
 	}
 }
 
-void windowserver_t::updateLoop(const g_rectangle& screenBounds) const
+void windowserver_t::updateLoop(const g_rectangle& screenBounds)
 {
 	g_task_register_name("windowserver/updater");
 
@@ -220,7 +220,7 @@ void windowserver_t::updateDebounceLoop() const
 	}
 }
 
-void windowserver_t::output(graphics_t* graphics) const
+void windowserver_t::output(graphics_t* graphics)
 {
 	g_rectangle invalid = screen->grabInvalid();
 	if(invalid.width == 0 && invalid.height == 0)
@@ -256,7 +256,13 @@ void windowserver_t::output(graphics_t* graphics) const
 	auto screenSurface = graphics->getSurface();
 	cairo_surface_flush(screenSurface);
 	auto buffer = (g_color_argb*) cairo_image_surface_get_data(screenSurface);
-	videoOutput->blit(invalid, screenBounds, buffer);
+
+	g_rectangle totalInvalid = invalid;
+	totalInvalid.extend(lastInvalid.getStart());
+	totalInvalid.extend(lastInvalid.getEnd());
+	videoOutput->blit(totalInvalid.clip(screenBounds), screenBounds, buffer);
+
+	lastInvalid = invalid;
 }
 
 void windowserver_t::loadCursor()

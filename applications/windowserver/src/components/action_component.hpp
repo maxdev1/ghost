@@ -24,16 +24,7 @@
 
 class action_component_t;
 
-/**
- * Used so the window server can itself be the handler for an action component.
- */
-class internal_action_handler_t
-{
-public:
-    virtual ~internal_action_handler_t() = default;
-
-    virtual void handle(action_component_t* source) = 0;
-};
+typedef std::function<void()> g_internal_action_handler_func;
 
 /**
  * An action component is capable of being observed by an action listener.
@@ -42,7 +33,7 @@ public:
  */
 class action_component_t : virtual public component_t
 {
-    internal_action_handler_t* internalHandler;
+    g_internal_action_handler_func internalHandler;
 
 public:
     explicit action_component_t() : internalHandler(nullptr)
@@ -52,7 +43,11 @@ public:
     ~action_component_t() override = default;
 
     virtual void fireAction();
-    virtual void setInternalActionHandler(internal_action_handler_t* handler);
+
+    void setInternalActionHandler(g_internal_action_handler_func handler)
+    {
+        this->internalHandler = std::move(handler);
+    }
 };
 
 #endif

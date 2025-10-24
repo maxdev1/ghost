@@ -23,6 +23,7 @@
 
 #include <utility>
 #include <cstring>
+#include <malloc.h>
 
 g_component::~g_component()
 {
@@ -201,21 +202,24 @@ bool g_component::setStringProperty(int property, std::string value)
 
 	g_message_transaction tx = g_get_message_tx_id();
 
-	auto request = new g_ui_component_set_string_property_request();
+	auto requestSize = sizeof(g_ui_component_set_string_property_request) + value.length() + 1;
+	auto request = static_cast<g_ui_component_set_string_property_request*>(
+		operator new(sizeof(g_ui_component_set_string_property_request) + value.length() + 1)
+	);
 	request->header.id = G_UI_PROTOCOL_SET_STRING_PROPERTY;
 	request->id = this->id;
 	request->property = property;
-	strncpy(request->value, value.c_str(), G_UI_STRING_PROPERTY_MAXIMUM - 1);
+	strcpy(request->value, value.c_str());
 
-	g_send_message_t(g_ui_delegate_tid, request, sizeof(g_ui_component_set_string_property_request), tx);
+	g_send_message_t(g_ui_delegate_tid, request, requestSize, tx);
 	g_yield_t(g_ui_delegate_tid);
 
-	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_simple_response);
-	uint8_t buffer[bufferSize];
+	size_t responseBufferSize = sizeof(g_message_header) + sizeof(g_ui_simple_response);
+	uint8_t responseBuffer[responseBufferSize];
 	bool success = false;
-	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	if(g_receive_message_t(responseBuffer, responseBufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		auto response = (g_ui_simple_response*) G_MESSAGE_CONTENT(buffer);
+		auto response = (g_ui_simple_response*) G_MESSAGE_CONTENT(responseBuffer);
 		success = (response->status == G_UI_PROTOCOL_SUCCESS);
 	}
 
@@ -237,20 +241,26 @@ bool g_component::getStringProperty(int property, std::string& out)
 	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_get_string_property_request), tx);
 	g_yield_t(g_ui_delegate_tid);
 
-	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_get_string_property_response);
-	auto buffer = new uint8_t[bufferSize];
 	bool success = false;
-	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	for(int size = 128; size <= 1024; size *= 2)
 	{
-		auto response = (g_ui_component_get_string_property_response*) G_MESSAGE_CONTENT(buffer);
-		if(response->status == G_UI_PROTOCOL_SUCCESS)
+		size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_get_string_property_response) + size;
+		auto buffer = new uint8_t[bufferSize];
+		auto receiveStatus = g_receive_message_t(buffer, bufferSize, tx);
+		if(receiveStatus == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 		{
-			success = true;
-			out = std::string(response->value);
+			auto response = (g_ui_component_get_string_property_response*) G_MESSAGE_CONTENT(buffer);
+			if(response->status == G_UI_PROTOCOL_SUCCESS)
+			{
+				success = true;
+				out = std::string(response->value);
+			}
 		}
-	}
+		delete buffer;
 
-	delete buffer;
+		if(success || receiveStatus != G_MESSAGE_RECEIVE_STATUS_EXCEEDS_BUFFER_SIZE)
+			break;
+	}
 	return success;
 }
 

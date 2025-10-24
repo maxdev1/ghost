@@ -18,57 +18,111 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __WINDOWSERVER_COMPONENTS_BUTTON__
-#define __WINDOWSERVER_COMPONENTS_BUTTON__
+#ifndef __TEXT_AREA__
+#define __TEXT_AREA__
 
-#include "components/action_component.hpp"
-#include "components/button_state.hpp"
-#include "components/component.hpp"
-#include "components/label.hpp"
+#include "components/text/text_component.hpp"
 #include "components/titled_component.hpp"
 
-#include <libwindow/button.hpp>
+#include <libfont/font.hpp>
+#include <libfont/text_layouter.hpp>
+#include <libinput/keyboard/keyboard.hpp>
 #include <libwindow/metrics/insets.hpp>
+#include <libwindow/color_argb.hpp>
 #include <string>
 
-class button_t : virtual public component_t, virtual public titled_component_t, virtual public action_component_t
+enum class text_area_visual_status_t : uint8_t
 {
-    button_state_t state;
-    label_t label;
+    NORMAL,
+    HOVERED
+};
+
+class text_area_t : virtual public text_component_t, virtual public titled_component_t
+{
+    std::string text;
+    text_area_visual_status_t visualStatus;
+    bool secure;
+
+    g_font* font;
+
+    int scrollX;
+    int fontSize;
+    g_color_argb textColor;
     g_insets insets;
-    bool enabled;
-    g_button_style style = G_BUTTON_STYLE_DEFAULT;
+
+    int cursor;
+    int marker;
+
+    g_layouted_text* viewModel;
+
+    bool shiftDown = false;
+
+    void loadDefaultFont();
+    void applyScroll();
 
 public:
-    button_t();
-    ~button_t() override = default;
+    text_area_t();
+    ~text_area_t() override = default;
 
     void update() override;
-    void layout() override;
     void paint() override;
 
+    component_t* handleKeyEvent(key_event_t& e) override;
     component_t* handleMouseEvent(mouse_event_t& e) override;
-
-    void setTitleInternal(std::string title) override;
-    std::string getTitle() override;
 
     bool getNumericProperty(int property, uint32_t* out) override;
     bool setNumericProperty(int property, uint32_t value) override;
 
-    bool isFocusableDefault() const override;
+    void setText(std::string text) override;
+    std::string getText() override;
+
+    bool isFocusableDefault() const override
+    {
+        return true;
+    }
     void setFocusedInternal(bool focused) override;
 
-    virtual void setEnabled(bool enabled);
+    virtual void setSecure(bool secure);
 
-    virtual bool isEnabled() const
+    virtual bool isSecure()
     {
-        return enabled;
+        return secure;
     }
 
-    label_t& getLabel()
+    void setTitleInternal(std::string title) override
     {
-        return label;
+        setText(title);
     }
+
+    std::string getTitle() override
+    {
+        return getText();
+    }
+
+    void setCursor(int pos) override;
+
+    int getCursor() override
+    {
+        return cursor;
+    }
+
+    void setMarker(int pos) override;
+
+    int getMarker() override
+    {
+        return marker;
+    }
+
+    g_range getSelectedRange() override;
+
+    void backspace(g_key_info& info);
+
+    void insert(std::string text);
+    int viewToPosition(g_point p);
+    g_rectangle glyphToView(g_positioned_glyph& g);
+    g_point positionToUnscrolledCursorPoint(int pos);
+    g_rectangle positionToCursorBounds(int pos);
+    void setFont(g_font* f);
 };
 
 #endif

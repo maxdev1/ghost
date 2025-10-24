@@ -38,7 +38,6 @@
  */
 #define G_UI_MAXIMUM_MESSAGE_SIZE 4096
 
-#define G_UI_STRING_PROPERTY_MAXIMUM 1024
 #define G_UI_COMPONENT_TITLE_MAXIMUM 1024
 
 /**
@@ -63,8 +62,7 @@ typedef uint8_t g_ui_protocol_command_id;
 #define G_UI_PROTOCOL_INITIALIZATION			((g_ui_protocol_command_id) 1)
 #define G_UI_PROTOCOL_CREATE_COMPONENT			((g_ui_protocol_command_id) 2)
 #define G_UI_PROTOCOL_ADD_COMPONENT				((g_ui_protocol_command_id) 3)
-#define G_UI_PROTOCOL_SET_TITLE					((g_ui_protocol_command_id) 4)
-#define G_UI_PROTOCOL_GET_TITLE					((g_ui_protocol_command_id) 5)
+
 #define G_UI_PROTOCOL_SET_BOUNDS				((g_ui_protocol_command_id) 6)
 #define G_UI_PROTOCOL_FOCUS        				((g_ui_protocol_command_id) 7)
 #define G_UI_PROTOCOL_ADD_LISTENER				((g_ui_protocol_command_id) 8)
@@ -269,38 +267,6 @@ typedef struct
 } __attribute__((packed)) g_ui_component_get_bounds_response;
 
 /**
- * Request/response for setting the title on a titled component
- */
-typedef struct
-{
-    g_ui_message_header header;
-    g_ui_component_id id;
-    char title[G_UI_COMPONENT_TITLE_MAXIMUM];
-} __attribute__((packed)) g_ui_component_set_title_request;
-
-typedef struct
-{
-    g_ui_message_header header;
-    g_ui_protocol_status status;
-} __attribute__((packed)) g_ui_component_set_title_response;
-
-/**
- * Request/response for getting the title on a titled component
- */
-typedef struct
-{
-    g_ui_message_header header;
-    g_ui_component_id id;
-} __attribute__((packed)) g_ui_component_get_title_request;
-
-typedef struct
-{
-    g_ui_message_header header;
-    g_ui_protocol_status status;
-    char title[G_UI_COMPONENT_TITLE_MAXIMUM];
-} __attribute__((packed)) g_ui_component_get_title_response;
-
-/**
  * Request/response for getting a numeric property
  */
 typedef struct
@@ -342,7 +308,7 @@ typedef struct
     g_ui_message_header header;
     g_ui_component_id id;
     int property;
-    char value[G_UI_STRING_PROPERTY_MAXIMUM];
+    char value[];
 } __attribute__((packed)) g_ui_component_set_string_property_request;
 
 /**
@@ -359,7 +325,7 @@ typedef struct
 {
     g_ui_message_header header;
     g_ui_protocol_status status;
-    char value[G_UI_STRING_PROPERTY_MAXIMUM];
+    char value[];
 } __attribute__((packed)) g_ui_component_get_string_property_response;
 
 /**

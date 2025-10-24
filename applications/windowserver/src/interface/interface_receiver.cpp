@@ -303,73 +303,6 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 		responseMessage = response;
 		responseLength = sizeof(g_ui_component_set_numeric_property_response);
 	}
-	else if(requestUiMessage->id == G_UI_PROTOCOL_SET_TITLE)
-	{
-		auto request = (g_ui_component_set_title_request*) requestUiMessage;
-		component_t* component = component_registry_t::get(request->id);
-
-		auto response = new g_ui_component_set_title_response;
-		if(component == nullptr)
-		{
-			response->status = G_UI_PROTOCOL_FAIL;
-		}
-		else
-		{
-			titled_component_t* titled_component = dynamic_cast<titled_component_t*>(component);
-			if(titled_component == nullptr)
-			{
-				response->status = G_UI_PROTOCOL_FAIL;
-			}
-			else
-			{
-				titled_component->setTitle(request->title);
-				response->status = G_UI_PROTOCOL_SUCCESS;
-			}
-		}
-
-		responseMessage = response;
-		responseLength = sizeof(g_ui_component_set_title_response);
-	}
-	else if(requestUiMessage->id == G_UI_PROTOCOL_GET_TITLE)
-	{
-		auto request = (g_ui_component_get_title_request*) requestUiMessage;
-		component_t* component = component_registry_t::get(request->id);
-
-		auto response = new g_ui_component_get_title_response;
-		if(component == nullptr)
-		{
-			response->status = G_UI_PROTOCOL_FAIL;
-		}
-		else
-		{
-			titled_component_t* titledComponent = dynamic_cast<titled_component_t*>(component);
-			if(titledComponent == nullptr)
-			{
-				response->status = G_UI_PROTOCOL_FAIL;
-			}
-			else
-			{
-				std::string title = titledComponent->getTitle();
-
-				size_t titleLen;
-				if(title.length() >= G_UI_COMPONENT_TITLE_MAXIMUM)
-				{
-					titleLen = G_UI_COMPONENT_TITLE_MAXIMUM - 1;
-				}
-				else
-				{
-					titleLen = title.length();
-				}
-				memcpy(response->title, title.c_str(), titleLen);
-				response->title[titleLen] = 0;
-
-				response->status = G_UI_PROTOCOL_SUCCESS;
-			}
-		}
-
-		responseMessage = response;
-		responseLength = sizeof(g_ui_component_get_title_response);
-	}
 	else if(requestUiMessage->id == G_UI_PROTOCOL_SET_STRING_PROPERTY)
 	{
 		auto request = (g_ui_component_set_string_property_request*) requestUiMessage;
@@ -394,27 +327,34 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 		auto request = (g_ui_component_get_string_property_request*) requestUiMessage;
 		component_t* component = component_registry_t::get(request->id);
 
-		auto response = new g_ui_component_get_string_property_response;
+		g_ui_component_get_string_property_response* response;
 		if(component == nullptr)
 		{
+			response = new g_ui_component_get_string_property_response;
 			response->status = G_UI_PROTOCOL_FAIL;
+			responseLength = sizeof(g_ui_component_get_string_property_response);
 		}
 		else
 		{
 			std::string value;
 			if(component->getStringProperty(request->property, value))
 			{
-				strncpy(response->value, value.c_str(), G_UI_STRING_PROPERTY_MAXIMUM - 1);
+				responseLength = sizeof(g_ui_component_get_string_property_response) + value.length() + 1;
+				response = static_cast<g_ui_component_get_string_property_response*>(
+					operator new(responseLength)
+				);
+				strcpy(response->value, value.c_str());
 				response->status = G_UI_PROTOCOL_SUCCESS;
 			}
 			else
 			{
+				response = new g_ui_component_get_string_property_response;
 				response->status = G_UI_PROTOCOL_FAIL;
+				responseLength = sizeof(g_ui_component_get_string_property_response);
 			}
 		}
 
 		responseMessage = response;
-		responseLength = sizeof(g_ui_component_get_string_property_response);
 	}
 	else if(requestUiMessage->id == G_UI_PROTOCOL_CANVAS_BLIT)
 	{

@@ -424,6 +424,8 @@ component_t* window_t::handleMouseEvent(mouse_event_t& me)
 		crossPressed = false;
 		markFor(COMPONENT_REQUIREMENT_PAINT);
 		cursor_t::set("default");
+
+		resizeMode = RESIZE_MODE_NONE;
 	}
 	else if(me.type == G_MOUSE_EVENT_RELEASE)
 	{
@@ -432,6 +434,8 @@ component_t* window_t::handleMouseEvent(mouse_event_t& me)
 			this->close();
 			return this;
 		}
+
+		resizeMode = RESIZE_MODE_NONE;
 	}
 	else if(me.type == G_MOUSE_EVENT_LEAVE)
 	{

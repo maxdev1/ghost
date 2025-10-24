@@ -39,6 +39,7 @@ class windowserver_t
 
     g_user_mutex updateLock = g_mutex_initialize();
     g_user_mutex lazyUpdateLock = g_mutex_initialize();
+    g_rectangle lastInvalid;
 
     void initializeVideo();
     void createVitalComponents(g_rectangle screenBounds);
@@ -46,7 +47,7 @@ class windowserver_t
     void loadCursor();
     static void startInputHandlers();
 
-    void updateLoop(const g_rectangle& screenBounds) const;
+    void updateLoop(const g_rectangle& screenBounds);
     void updateDebounceLoop() const;
 
     static void fpsCounter();
@@ -85,7 +86,7 @@ public:
     /**
      * Blits the component state.
      */
-    void output(graphics_t* graphics) const;
+    void output(graphics_t* graphics);
 
     /**
      * Dispatches the given event to the component.

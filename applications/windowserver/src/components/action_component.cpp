@@ -25,7 +25,7 @@ void action_component_t::fireAction()
 {
 	if(internalHandler)
 	{
-		internalHandler->handle(this);
+		internalHandler();
 		return;
 	}
 
@@ -37,9 +37,4 @@ void action_component_t::fireAction()
 		actionEvent.header.component_id = info.component_id;
 		g_send_message(info.target_thread, &actionEvent, sizeof(g_ui_component_action_event));
 	});
-}
-
-void action_component_t::setInternalActionHandler(internal_action_handler_t* handler)
-{
-	this->internalHandler = handler;
 }

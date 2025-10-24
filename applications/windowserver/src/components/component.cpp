@@ -25,6 +25,7 @@
 #include "events/mouse_event.hpp"
 #include "layout/flow_layout_manager.hpp"
 #include "layout/grid_layout_manager.hpp"
+#include "layout/flex_layout_manager.hpp"
 #include "component_registry.hpp"
 #include "windowserver.hpp"
 
@@ -34,7 +35,7 @@
 #include <algorithm>
 #include <stdlib.h>
 #include <typeinfo>
-#include <layout/flex_layout_manager.hpp>
+#include <libwindow/properties.hpp>
 
 component_t::component_t() :
 	bounding_component_t(this),
@@ -357,7 +358,7 @@ component_t* component_t::handleMouseEvent(mouse_event_t& event)
 		                                                postedEvent.type = event.type;
 		                                                postedEvent.buttons = event.buttons;
 		                                                postedEvent.clickCount = event.clickCount;
-	                                                	postedEvent.scroll = event.scroll;
+		                                                postedEvent.scroll = event.scroll;
 		                                                g_send_message(
 				                                                info.target_thread, &postedEvent,
 				                                                sizeof(g_ui_component_mouse_event));
@@ -671,11 +672,29 @@ bool component_t::setNumericProperty(int property, uint32_t value)
 
 bool component_t::setStringProperty(int property, std::string text)
 {
+	if(property == G_UI_PROPERTY_TITLE)
+	{
+		if(auto titled = dynamic_cast<titled_component_t*>(this))
+		{
+			titled->setTitle(text);
+			return true;
+		}
+	}
+
 	return false;
 }
 
 bool component_t::getStringProperty(int property, std::string& out)
 {
+	if(property == G_UI_PROPERTY_TITLE)
+	{
+		if(auto titled = dynamic_cast<titled_component_t*>(this))
+		{
+			out = titled->getTitle();
+			return true;
+		}
+	}
+
 	return false;
 }
 

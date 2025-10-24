@@ -76,6 +76,7 @@ int main()
 	navBar->setFlexGap(10);
 	{
 		navPrev = g_button::create();
+		navPrev->setStyle(G_BUTTON_STYLE_GHOST);
 		navPrev->setTitle("<");
 		navBar->addChild(navPrev);
 		navBar->setFlexComponentInfo(navPrev, 0, 1, 50);
@@ -90,6 +91,7 @@ int main()
 		});
 
 		navNext = g_button::create();
+		navNext->setStyle(G_BUTTON_STYLE_GHOST);
 		navNext->setTitle(">");
 		navBar->addChild(navNext);
 		navBar->setFlexComponentInfo(navNext, 0, 1, 50);
@@ -119,6 +121,7 @@ int main()
 
 		navUp = g_button::create();
 		navUp->setTitle("^");
+		navUp->setStyle(G_BUTTON_STYLE_GHOST);
 		navBar->addChild(navUp);
 		navBar->setFlexComponentInfo(navUp, 0, 1, 50);
 

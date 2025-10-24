@@ -61,7 +61,6 @@ typedef uint32_t component_requirement_t;
  * separately, it is referenced with the internal type.
  */
 typedef uint32_t component_child_reference_type_t;
-
 #define COMPONENT_CHILD_REFERENCE_TYPE_DEFAULT 0
 #define COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL 1
 
@@ -287,7 +286,7 @@ public:
      */
     virtual void markDirty()
     {
-        markDirty(g_rectangle(0, 0, bounds.width + 1, bounds.height + 1));
+        markDirty(g_rectangle(0, 0, bounds.width, bounds.height));
     }
 
     /**

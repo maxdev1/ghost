@@ -24,7 +24,7 @@
 checkbox_t::checkbox_t() :
 	checked(false), boxSize(DEFAULT_BOX_SIZE), boxTextGap(DEFAULT_BOX_TEXT_GAP), hovered(false), pressed(false)
 {
-	addChild(&label, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
+	component_t::addChild(&label, COMPONENT_CHILD_REFERENCE_TYPE_INTERNAL);
 }
 
 void checkbox_t::handleBoundChanged(const g_rectangle& oldBounds)
