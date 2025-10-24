@@ -155,19 +155,16 @@ void g_text_layouter::layout(cairo_t* cr, const char* text, g_font* font, int si
                 y += lineHeight;
             }
 
-            if(!invisible)
-            {
-                // Position
-                positioned.line = line;
-                positioned.position.x = x;
-                positioned.position.y = y + lineHeight;
+            // Position
+            positioned.line = line;
+            positioned.position.x = x;
+            positioned.position.y = y + lineHeight;
 
-                // Add position
-                layout->positions.push_back(positioned);
+            // Add position
+            layout->positions.push_back(positioned);
 
-                // Jump to next
-                x += positioned.advance.x;
-            }
+            // Jump to next
+            x += positioned.advance.x;
 
             // increase positions
             glyph_pos += cluster->num_glyphs;
