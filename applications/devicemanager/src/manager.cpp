@@ -39,6 +39,8 @@ int main()
 	g_tid comHandler = g_create_task((void*) _deviceManagerAwaitCommands);
 	_deviceManagerCheckPciDevices();
 
+	g_spawn("/applications/ahcidriver.bin", "", "", G_SECURITY_LEVEL_DRIVER);
+
 	g_join(comHandler);
 }
 
