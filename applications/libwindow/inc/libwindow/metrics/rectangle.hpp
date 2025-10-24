@@ -186,15 +186,12 @@ public:
             return;
         }
 
-        int newX = std::min(x, p.x);
-        int newY = std::min(y, p.y);
-        int newWidth = std::max(x + width, p.x + 1) - newX;
-        int newHeight = std::max(y + height, p.y + 1) - newY;
-
-        x = newX;
-        y = newY;
-        width = newWidth;
-        height = newHeight;
+        int right = std::max(x + width, p.x + 1);
+        int bottom = std::max(y + height, p.y + 1);
+        x = std::min(x, p.x);
+        y = std::min(y, p.y);
+        width = right - x;
+        height = bottom - y;
     }
 
     /**
