@@ -32,40 +32,38 @@ void kvlog(const char* message, va_list l)
 	va_list lc;
 	va_copy(lc, l);
 
-	// First try
 	uint32_t messageLen = strlen(message);
-	uint32_t bufLen = messageLen * 4;
+	uint32_t bufLen = messageLen * 2;
 
-	char* buf = malloc(bufLen);
-	if(!buf)
+	char* buf = NULL;
+	int printed = -1;
+
+	for(;;)
 	{
-		g_log("failed to allocate buffer for kernel logging");
-		return;
-	}
+		free(buf);
+		buf = malloc(bufLen);
 
-	int printed = vsnprintf(buf, bufLen, message, l);
-	int success = printed == messageLen - 1;
-	if(success)
-		g_log(buf);
-
-	free(buf);
-
-	// Buffer too small? Second try
-	if(!success)
-	{
-		bufLen = messageLen * 8;
-		buf = (char*) malloc(bufLen);
 		if(!buf)
 		{
-			g_log("failed to allocate buffer for kernel logging on retry");
+			g_log("failed to allocate buffer for kernel logging");
+			va_end(lc);
 			return;
 		}
 
-		vsnprintf(buf, bufLen, message, lc);
-		g_log(buf);
+		va_list ltmp;
+		va_copy(ltmp, lc);
+		printed = vsnprintf(buf, bufLen, message, ltmp);
+		va_end(ltmp);
 
-		free(buf);
+		if(printed >= 0 && (uint32_t) printed < bufLen)
+		{
+			g_log(buf);
+			break;
+		}
+
+		bufLen *= 2;
 	}
 
+	free(buf);
 	va_end(lc);
 }

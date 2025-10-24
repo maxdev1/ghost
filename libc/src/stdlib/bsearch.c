@@ -26,8 +26,24 @@
  *
  */
 void* bsearch(const void* value, const void* array, size_t num_elements,
-		size_t size, int (*comparator)(const void*, const void*)) {
-	klog("warning: bsearch is not implemented");
-	return 0;
-}
+              size_t size, int (*comparator)(const void*, const void*))
+{
+	size_t low = 0;
+	size_t high = num_elements;
 
+	while(low < high)
+	{
+		size_t mid = low + (high - low) / 2;
+		const void* elem = (const char*) array + mid * size;
+
+		int cmp = comparator(value, elem);
+		if(cmp < 0)
+			high = mid;
+		else if(cmp > 0)
+			low = mid + 1;
+		else
+			return (void*) elem;
+	}
+
+	return NULL;
+}

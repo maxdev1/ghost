@@ -18,15 +18,71 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "stdlib.h"
-#include "errno.h"
-#include "stdio.h"
+#include <ctype.h>
+#include <limits.h>
 
 /**
  *
  */
-long strtol(const char* str, char** endptr, int base) {
+long strtol(const char* str, char** endptr, int base)
+{
+	const char* p = str;
+	while(isspace(*p))
+		p++;
 
-	klog("warning: strtol is not implemented");
-	return 0;
+	int sign = 1;
+	if(*p == '+' || *p == '-')
+	{
+		if(*p == '-')
+			sign = -1;
+		p++;
+	}
+
+	if(base == 0)
+	{
+		if(*p == '0')
+		{
+			if(p[1] == 'x' || p[1] == 'X')
+			{
+				base = 16;
+				p += 2;
+			}
+			else
+			{
+				base = 8;
+				p++;
+			}
+		}
+		else
+			base = 10;
+	}
+	else if(base == 16 && *p == '0' && (p[1] == 'x' || p[1] == 'X'))
+		p += 2;
+
+	long result = 0;
+	while(*p)
+	{
+		int digit;
+		if(isdigit(*p))
+			digit = *p - '0';
+		else if(isalpha(*p))
+			digit = (tolower(*p) - 'a') + 10;
+		else
+			break;
+		if(digit >= base)
+			break;
+
+		if(result > (LONG_MAX - digit) / base)
+		{
+			result = LONG_MAX;
+			break;
+		}
+
+		result = result * base + digit;
+		p++;
+	}
+
+	if(endptr)
+		*endptr = (char*) p;
+	return sign * result;
 }

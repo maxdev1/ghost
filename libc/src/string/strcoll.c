@@ -18,14 +18,9 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "string.h"
-#include "errno.h"
-#include <ghost/system.h>
+#include <string.h>
 
-/**
- *
- */
 int strcoll(const char* str_a, const char* str_b)
 {
-	__G_NOT_IMPLEMENTED("strcoll");
+	return strcmp(str_a, str_b);
 }

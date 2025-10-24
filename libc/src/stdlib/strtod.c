@@ -18,14 +18,64 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "stdlib.h"
-#include "errno.h"
-#include <ghost/system.h>
+#include <ctype.h>
+#include <math.h>
 
 /**
  *
  */
 double strtod(const char* str, char** endptr)
 {
-	__G_NOT_IMPLEMENTED("strtod");
+	const char* p = str;
+	while(isspace(*p))
+		p++;
+
+	int sign = 1;
+	if(*p == '+' || *p == '-')
+	{
+		if(*p == '-')
+			sign = -1;
+		p++;
+	}
+
+	double value = 0.0;
+	while(isdigit(*p))
+	{
+		value = value * 10.0 + (*p - '0');
+		p++;
+	}
+
+	if(*p == '.')
+	{
+		p++;
+		double frac = 1.0;
+		while(isdigit(*p))
+		{
+			frac *= 0.1;
+			value += (*p - '0') * frac;
+			p++;
+		}
+	}
+
+	int exp_sign = 1;
+	int exp_val = 0;
+	if(*p == 'e' || *p == 'E')
+	{
+		p++;
+		if(*p == '+' || *p == '-')
+		{
+			if(*p == '-')
+				exp_sign = -1;
+			p++;
+		}
+		while(isdigit(*p))
+		{
+			exp_val = exp_val * 10 + (*p - '0');
+			p++;
+		}
+	}
+
+	if(endptr)
+		*endptr = (char*) p;
+	return sign * value * pow(10.0, exp_sign * exp_val);
 }
