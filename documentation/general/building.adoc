@@ -20,11 +20,11 @@ To run the toolchain in a Docker container you can either build the image yourse
 
 1. Pull the image:
 
-	docker pull ghcr.io/maxdev1/ghost-toolchain:1.0
+	docker pull ghcr.io/maxdev1/ghost-toolchain-64:1.0
 
 2. Start a container and mount the repository to it:
 
-	docker run -it --name ghost-toolchain -v "$(pwd):/ghost/source" ghost-toolchain
+	docker run -it --name ghost-toolchain -v "$(pwd):/ghost/source" ghcr.io/maxdev1/ghost-toolchain-64:1.0
 
 3. Go to the <<Build targets>> section below.
 
