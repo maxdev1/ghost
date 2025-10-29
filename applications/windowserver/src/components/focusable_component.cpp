@@ -35,7 +35,7 @@ component_t* focusable_component_t::setFocused(bool focused)
 			event.header.type = G_UI_COMPONENT_EVENT_TYPE_FOCUS;
 			event.header.component_id = info.component_id;
 			event.now_focused = focused;
-			g_send_message(info.target_thread, &event, sizeof(g_ui_component_focus_event));
+			platformSendMessage(info.target_thread, &event, sizeof(g_ui_component_focus_event), SYS_TX_NONE);
 		});
 
 		return self;

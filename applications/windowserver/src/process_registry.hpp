@@ -26,9 +26,9 @@
 class process_registry_t
 {
 public:
-    static void bind(g_pid pid, g_tid eventDispatcher);
-    static g_tid get(g_pid);
-    static void cleanup_process(g_pid pid);
+    static void bind(SYS_TID_T pid, SYS_TID_T eventDispatcher);
+    static SYS_TID_T get(SYS_TID_T);
+    static void cleanup_process(SYS_TID_T pid);
 };
 
 #endif

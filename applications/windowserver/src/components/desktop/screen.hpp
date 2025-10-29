@@ -39,7 +39,7 @@ public:
                   component_child_reference_type_t type = COMPONENT_CHILD_REFERENCE_TYPE_DEFAULT) override;
     void removeChild(component_t* comp) override;
 
-    void sendWindowEvent(g_ui_component_id observerId, window_t* window, g_tid observerThread, bool present);
+    void sendWindowEvent(g_ui_component_id observerId, window_t* window, SYS_TID_T observerThread, bool present);
 
     /**
      * Overrides the default invalidation method. On the component, this method

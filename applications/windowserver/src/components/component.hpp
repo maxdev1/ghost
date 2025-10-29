@@ -85,11 +85,11 @@ struct component_listener_entry_t
 class component_t : public bounding_component_t, public focusable_component_t
 {
 protected:
-    g_user_mutex lock = g_mutex_initialize_r(true);
+    SYS_MUTEX_T lock = platformInitializeMutex(true);
     g_rectangle bounds;
     component_t* parent;
     std::vector<component_child_reference_t> children;
-    g_user_mutex childrenLock = g_mutex_initialize_r(true);
+    SYS_MUTEX_T childrenLock = platformInitializeMutex(true);
 
     g_dimension minimumSize;
     g_dimension preferredSize;
@@ -350,7 +350,7 @@ public:
     virtual bool getStringProperty(int property, std::string& out);
     virtual bool setStringProperty(int property, std::string value);
 
-    void addListener(g_ui_component_event_type eventType, g_tid target_thread, g_ui_component_id id);
+    void addListener(g_ui_component_event_type eventType, SYS_TID_T target_thread, g_ui_component_id id);
     bool callForListeners(g_ui_component_event_type eventType, const std::function<void(event_listener_info_t&)>& func);
 
     void recheckGraphics();

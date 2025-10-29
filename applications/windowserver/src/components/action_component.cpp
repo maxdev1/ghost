@@ -35,6 +35,6 @@ void action_component_t::fireAction()
 		g_ui_component_action_event actionEvent;
 		actionEvent.header.type = G_UI_COMPONENT_EVENT_TYPE_ACTION;
 		actionEvent.header.component_id = info.component_id;
-		g_send_message(info.target_thread, &actionEvent, sizeof(g_ui_component_action_event));
+		platformSendMessage(info.target_thread, &actionEvent, sizeof(g_ui_component_action_event), SYS_TX_NONE);
 	});
 }

@@ -21,9 +21,7 @@
 #ifndef __INTERFACE_COMMAND_MESSAGE_RECEIVER__
 #define __INTERFACE_COMMAND_MESSAGE_RECEIVER__
 
-#include <ghost.h>
-
 void interfaceReceiverThread();
-void interfaceReceiverProcessCommand(g_message_header* requestMessage);
+void interfaceReceiverProcessCommand(void* requestMessage);
 
 #endif

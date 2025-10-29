@@ -18,6 +18,8 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#ifdef _GHOST_
+
 #include "generic_video_output.hpp"
 #include <libvideo/videodriver.hpp>
 #include <cstdio>
@@ -28,10 +30,10 @@ bool g_generic_video_output::initializeWithSettings(uint32_t width, uint32_t hei
 	int tries = 3;
 	while(!videoDriverSetMode(driverTid, deviceId, width, height, bits, videoModeInformation))
 	{
-		klog("failed to initialize generic video... retrying");
+		platformLog("failed to initialize generic video... retrying");
 		if(tries-- == 0)
 			return false;
-		g_sleep(1000);
+		platformSleep(1000);
 	}
 	return true;
 }
@@ -91,3 +93,5 @@ g_dimension g_generic_video_output::getResolution()
 {
 	return {videoModeInformation.resX, videoModeInformation.resY};
 }
+
+#endif

@@ -46,7 +46,7 @@ std::string g_json::parseString()
 {
 	if(*source != '"')
 	{
-		klog("JSON ERROR; expected string at %i", source - start);
+		printf("JSON ERROR; expected string at %i", source - start);
 		return "";
 	}
 
@@ -73,7 +73,7 @@ std::string g_json::parseString()
 
 	if(*source != '"')
 	{
-		klog("JSON ERROR; unterminated string at %i", source - start);
+		printf("JSON ERROR; unterminated string at %i", source - start);
 	}
 
 	++source;
@@ -122,7 +122,7 @@ g_json_node g_json::parseValue()
 		return g_json_node{nullptr};
 	}
 
-	klog("JSON ERROR; invalid value at %i", source - start);
+	printf("JSON ERROR; invalid value at %i", source - start);
 	return g_json_node{nullptr};
 }
 
@@ -143,7 +143,7 @@ g_json_node g_json::parseArray()
 
 		if(!consume(','))
 		{
-			klog("JSON ERROR; expected comma at %i", source - start);
+			printf("JSON ERROR; expected comma at %i", source - start);
 			break;
 		}
 	}
@@ -162,7 +162,7 @@ g_json_node g_json::parseObject()
 		std::string key = parseString();
 		if(!consume(':'))
 		{
-			klog("JSON ERROR; expected colon at %i", source - start);
+			printf("JSON ERROR; expected colon at %i", source - start);
 			break;
 		}
 		obj[key] = parseValue();
@@ -171,7 +171,7 @@ g_json_node g_json::parseObject()
 			break;
 		if(!consume(','))
 		{
-			klog("JSON ERROR; expected comma at %i", source - start);
+			printf("JSON ERROR; expected comma at %i", source - start);
 			break;
 		}
 		skipWhitespace();

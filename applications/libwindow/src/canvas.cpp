@@ -19,18 +19,19 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "libwindow/canvas.hpp"
+#include "libwindow/platform/platform.hpp"
 
 g_canvas* g_canvas::create()
 {
 	return createCanvasComponent<g_canvas>();
 }
 
-void g_canvas::acknowledgeNewBuffer(g_address address, uint16_t width, uint16_t height)
+void g_canvas::acknowledgeNewBuffer(uintptr_t address, uint16_t width, uint16_t height)
 {
 	bool changed = false;
 
-	g_mutex_acquire(currentBufferLock);
-	if(address != (g_address) currentBuffer.buffer)
+	platformAcquireMutex(currentBufferLock);
+	if(address != (uintptr_t) currentBuffer.buffer)
 	{
 		if(currentBuffer.surface)
 		{
@@ -39,7 +40,7 @@ void g_canvas::acknowledgeNewBuffer(g_address address, uint16_t width, uint16_t 
 		}
 		if(currentBuffer.buffer)
 		{
-			g_unmap(currentBuffer.buffer);
+			platformUnmapSharedMemory(currentBuffer.buffer);
 		}
 
 		currentBuffer.buffer = (uint8_t*) address;
@@ -57,14 +58,14 @@ void g_canvas::acknowledgeNewBuffer(g_address address, uint16_t width, uint16_t 
 			auto surfaceStatus = cairo_surface_status(currentBuffer.surface);
 			if(surfaceStatus != CAIRO_STATUS_SUCCESS)
 			{
-				klog("failed to create surface for canvas %i: %i", this->id, surfaceStatus);
+				platformLog("failed to create surface for canvas %i: %i", this->id, surfaceStatus);
 				currentBuffer.surface = nullptr;
 			}
 		}
 
 		changed = true;
 	}
-	g_mutex_release(currentBufferLock);
+	platformReleaseMutex(currentBufferLock);
 
 	if(changed && bufferListener)
 		bufferListener->handleBufferChanged();
@@ -72,10 +73,10 @@ void g_canvas::acknowledgeNewBuffer(g_address address, uint16_t width, uint16_t 
 
 cairo_t* g_canvas::acquireGraphics()
 {
-	g_mutex_acquire(currentBufferLock);
+	platformAcquireMutex(currentBufferLock);
 	if(!currentBuffer.surface)
 	{
-		g_mutex_release(currentBufferLock);
+		platformReleaseMutex(currentBufferLock);
 		return nullptr;
 	}
 
@@ -85,9 +86,9 @@ cairo_t* g_canvas::acquireGraphics()
 		auto contextStatus = cairo_status(currentBuffer.context);
 		if(contextStatus != CAIRO_STATUS_SUCCESS)
 		{
-			klog("failed to create cairo context: %i", contextStatus);
+			platformLog("failed to create cairo context: %i", contextStatus);
 			currentBuffer.context = nullptr;
-			g_mutex_release(currentBufferLock);
+			platformReleaseMutex(currentBufferLock);
 			return nullptr;
 		}
 	}
@@ -101,7 +102,7 @@ void g_canvas::releaseGraphics()
 	--currentBuffer.contextRefCount;
 	if(currentBuffer.contextRefCount < 0)
 	{
-		klog("error: over-deref of g_canvas %i by %i references", this->id, currentBuffer.contextRefCount);
+		platformLog("error: over-deref of g_canvas %i by %i references", this->id, currentBuffer.contextRefCount);
 		currentBuffer.contextRefCount = 0;
 		return;
 	}
@@ -113,16 +114,16 @@ void g_canvas::releaseGraphics()
 		currentBuffer.context = nullptr;
 	}
 
-	g_mutex_release(currentBufferLock);
+	platformReleaseMutex(currentBufferLock);
 }
 
 void g_canvas::blit(const g_rectangle& rect)
 {
-	g_message_transaction tx = g_get_message_tx_id();
+	SYS_TX_T tx = platformCreateMessageTransaction();
 	g_ui_component_canvas_blit_request request;
 	request.header.id = G_UI_PROTOCOL_CANVAS_BLIT;
 	request.id = this->id;
 	request.area = rect;
-	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_canvas_blit_request), tx);
-	g_yield_t(g_ui_delegate_tid);
+	platformSendMessage(g_ui_delegate_tid, &request, sizeof(g_ui_component_canvas_blit_request), tx);
+	platformYieldTo(g_ui_delegate_tid);
 }

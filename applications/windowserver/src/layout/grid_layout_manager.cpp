@@ -30,7 +30,7 @@ void grid_layout_manager_t::layout()
 
 	if(columns <= 0)
 	{
-		klog("grid layout must have a defined number of columns");
+		platformLog("grid layout must have a defined number of columns");
 		return;
 	}
 

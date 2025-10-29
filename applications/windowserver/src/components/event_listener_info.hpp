@@ -22,13 +22,12 @@
 #define __WINDOWSERVER_COMPONENTS_EVENTLISTENERINFO__
 
 #include <libwindow/interface.hpp>
-#include <ghost.h>
 #include <list>
 #include <string>
 
 typedef struct
 {
-    g_tid target_thread;
+    SYS_TID_T target_thread;
     g_ui_component_id component_id;
 } event_listener_info_t;
 

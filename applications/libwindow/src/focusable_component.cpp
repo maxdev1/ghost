@@ -36,21 +36,21 @@ bool g_focusable_component::setFocused(bool focused)
 	if(!g_ui_initialized)
 		return false;
 
-	g_message_transaction tx = g_get_message_tx_id();
+	SYS_TX_T tx = platformCreateMessageTransaction();
 
 	g_ui_component_focus_request request;
 	request.header.id = G_UI_PROTOCOL_FOCUS;
 	request.id = this->id;
-	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_focus_request), tx);
-	g_yield_t(g_ui_delegate_tid);
+	platformSendMessage(g_ui_delegate_tid, &request, sizeof(g_ui_component_focus_request), tx);
+	platformYieldTo(g_ui_delegate_tid);
 
-	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_focus_response);
+	size_t bufferSize = SYS_MESSAGE_HEADER_SIZE + sizeof(g_ui_component_focus_response);
 	uint8_t buffer[bufferSize];
 
 	bool success = false;
-	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	if(platformReceiveMessage(buffer, bufferSize, tx) == SYS_MESSAGE_RECEIVE_SUCCESS)
 	{
-		auto response = (g_ui_component_focus_response*) G_MESSAGE_CONTENT(buffer);
+		auto response = (g_ui_component_focus_response*) SYS_MESSAGE_CONTENT(buffer);
 		success = (response->status == G_UI_PROTOCOL_SUCCESS);
 	}
 

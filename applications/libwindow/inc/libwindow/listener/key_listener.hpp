@@ -23,8 +23,7 @@
 
 #include "listener.hpp"
 #include "../interface.hpp"
-
-#include <libinput/keyboard/keyboard.hpp>
+#include "../platform/platform.hpp"
 #include <bits/std_function.h>
 
 struct g_key_event

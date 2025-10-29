@@ -35,9 +35,9 @@ event_processor_t::event_processor_t()
 
 void event_processor_t::bufferKeyEvent(g_key_info keyInfo)
 {
-	g_mutex_acquire(key_info_buffer_lock);
+	platformAcquireMutex(key_info_buffer_lock);
 	key_info_buffer.push_back(keyInfo);
-	g_mutex_release(key_info_buffer_lock);
+	platformReleaseMutex(key_info_buffer_lock);
 }
 
 void event_processor_t::process()
@@ -48,13 +48,13 @@ void event_processor_t::process()
 
 void event_processor_t::processKeyState()
 {
-	g_mutex_acquire(key_info_buffer_lock);
+	platformAcquireMutex(key_info_buffer_lock);
 	while(key_info_buffer.size() > 0)
 	{
 		translateKeyEvent(key_info_buffer.back());
 		key_info_buffer.pop_back();
 	}
-	g_mutex_release(key_info_buffer_lock);
+	platformReleaseMutex(key_info_buffer_lock);
 }
 
 void event_processor_t::translateKeyEvent(g_key_info& info)
@@ -110,7 +110,7 @@ void event_processor_t::processMouseState()
 		// Multiclicks
 		static uint64_t lastClick = 0;
 		static int clickCount = 0;
-		uint64_t currentClick = g_millis();
+		uint64_t currentClick = platformMillis();
 		uint64_t diff = currentClick - lastClick;
 		if(diff < multiclickTimespan)
 		{

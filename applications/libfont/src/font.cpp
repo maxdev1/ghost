@@ -27,7 +27,7 @@ g_font::g_font(std::string name, uint8_t* source, uint32_t sourceLength) : name(
 	data = new uint8_t[sourceLength];
 	if(!data)
 	{
-		klog("failed to allocate memory buffer for font '%s'", name);
+		printf("failed to allocate memory buffer for font '%s'\n", name);
 		return;
 	}
 	memcpy(data, source, sourceLength);
@@ -35,7 +35,7 @@ g_font::g_font(std::string name, uint8_t* source, uint32_t sourceLength) : name(
 	FT_Error error = FT_New_Memory_Face(g_font_manager::getInstance()->getLibraryHandle(), data, sourceLength, 0, &face);
 	if(error)
 	{
-		klog("freetype2 failed at FT_New_Memory_Face with error code %i", error);
+		printf("freetype2 failed at FT_New_Memory_Face with error code %i\n", error);
 		delete data;
 		return;
 	}
@@ -45,7 +45,7 @@ g_font::g_font(std::string name, uint8_t* source, uint32_t sourceLength) : name(
 	if(status != CAIRO_STATUS_SUCCESS)
 	{
         FT_Done_Face(face);
-		klog("cairo failed at cairo_ft_font_face_create_for_ft_face with error %i", status);
+		printf("cairo failed at cairo_ft_font_face_create_for_ft_face with error %i\n", status);
 		cairo_face = 0;
 		delete data;
 		return;
@@ -80,11 +80,12 @@ bool g_font::readAllBytes(FILE* file, uint32_t offset, uint8_t* buffer, uint32_t
 
 g_font* g_font::load(std::string path, std::string name)
 {
-	FILE* file = fopen(path.c_str(), "r");
+	FILE* file = fopen(path.c_str(), "rb");
 	if(!file)
 		return nullptr;
 
-	int64_t length = g_length(fileno(file));
+	fseek(file, 0, SEEK_END);
+	long length = ftell(file);
 	if(length == -1)
 	{
 		fclose(file);

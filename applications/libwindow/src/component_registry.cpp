@@ -22,7 +22,7 @@
 #include "libwindow/component.hpp"
 #include <map>
 
-static g_user_mutex componentsLock = g_mutex_initialize();
+static SYS_MUTEX_T componentsLock = platformInitializeMutex(false);
 static std::map<g_ui_component_id, g_component*> components;
 
 /**
@@ -30,9 +30,9 @@ static std::map<g_ui_component_id, g_component*> components;
  */
 void g_component_registry::add(g_component* component)
 {
-	g_mutex_acquire(componentsLock);
+	platformAcquireMutex(componentsLock);
 	components[component->getId()] = component;
-	g_mutex_release(componentsLock);
+	platformReleaseMutex(componentsLock);
 }
 
 /**
@@ -40,13 +40,13 @@ void g_component_registry::add(g_component* component)
  */
 g_component* g_component_registry::get(g_ui_component_id id)
 {
-	g_mutex_acquire(componentsLock);
+	platformAcquireMutex(componentsLock);
 
 	g_component* component = nullptr;
 	if(components.count(id) > 0)
 		component = components[id];
 
-	g_mutex_release(componentsLock);
+	platformReleaseMutex(componentsLock);
 
 	return component;
 }

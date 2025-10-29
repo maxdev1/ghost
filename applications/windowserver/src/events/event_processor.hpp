@@ -22,8 +22,7 @@
 #define __WINDOWSERVER_EVENTS_EVENTPROCESSOR__
 
 #include <deque>
-#include <libinput/keyboard/keyboard.hpp>
-#include <libinput/mouse/mouse.hpp>
+#include "platform/platform.hpp"
 
 #define DEFAULT_MULTICLICK_TIMESPAN 250
 
@@ -39,7 +38,7 @@ class event_processor_t
 	event_processor_t();
 
 	std::deque<g_key_info> key_info_buffer;
-	g_user_mutex key_info_buffer_lock = g_mutex_initialize();
+	SYS_MUTEX_T key_info_buffer_lock = platformInitializeMutex(false);
 	void bufferKeyEvent(g_key_info keyInfo);
 
 	void process();

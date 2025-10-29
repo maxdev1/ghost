@@ -29,14 +29,14 @@ class component_registry_t
 {
 public:
     static g_ui_component_id add(component_t* component);
-    static void bind(g_pid process, component_t* component);
+    static void bind(SYS_TID_T process, component_t* component);
     static component_t* get(g_ui_component_id id);
 
-    static void removeComponent(g_pid pid, g_ui_component_id id);
-    static void cleanupProcess(g_pid pid);
+    static void removeComponent(SYS_TID_T pid, g_ui_component_id id);
+    static void cleanupProcess(SYS_TID_T pid);
 
 private:
-    static void removeProcessComponents(g_pid process, component_t* component,
+    static void removeProcessComponents(SYS_TID_T process, component_t* component,
                                           std::list<component_t*>& removedComponents);
 };
 

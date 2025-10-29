@@ -40,28 +40,22 @@ void interfaceReceiverThread()
 {
 	while(true)
 	{
-		size_t buflen = sizeof(g_message_header) + G_UI_MAXIMUM_MESSAGE_SIZE;
+		size_t buflen = SYS_MESSAGE_HEADER_SIZE + G_UI_MAXIMUM_MESSAGE_SIZE;
 		auto buf = new uint8_t[buflen];
 		bool deferred = false;
 
-		g_message_receive_status stat = g_receive_message_tmb(
-				buf, buflen,
-				G_MESSAGE_TRANSACTION_NONE, G_MESSAGE_RECEIVE_MODE_BLOCKING,
-				0); // TODO break condition not working
-
-		if(stat == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+		auto stat = platformReceiveMessage(buf, buflen, SYS_TX_NONE);
+		if(stat == SYS_MESSAGE_RECEIVE_SUCCESS)
 		{
-			auto message = (g_message_header*) buf;
-
-			interfaceReceiverProcessCommand(message);
+			interfaceReceiverProcessCommand(buf);
 		}
-		else if(stat == G_MESSAGE_RECEIVE_STATUS_EXCEEDS_BUFFER_SIZE)
+		else if(stat == SYS_MESSAGE_RECEIVE_ERROR_EXCEEDS_BUFFER)
 		{
-			klog("could not receive an incoming request, message exceeded buffer size");
+			platformLog("could not receive an incoming request, message exceeded buffer size");
 		}
 		else
 		{
-			klog("an unknown error occurred when trying to receive a UI request (code: %i)", stat);
+			platformLog("an unknown error occurred when trying to receive a UI request (code: %i)", stat);
 		}
 
 		if(!deferred)
@@ -69,9 +63,9 @@ void interfaceReceiverThread()
 	}
 }
 
-void interfaceReceiverProcessCommand(g_message_header* requestMessage)
+void interfaceReceiverProcessCommand(void* requestMessage)
 {
-	auto requestUiMessage = (g_ui_message_header*) G_MESSAGE_CONTENT(requestMessage);
+	auto requestUiMessage = (g_ui_message_header*) SYS_MESSAGE_CONTENT(requestMessage);
 	void* responseMessage = nullptr;
 	int responseLength = 0;
 
@@ -100,7 +94,7 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 				break;
 
 			case G_UI_COMPONENT_TYPE_CANVAS:
-				component = new canvas_t(requestMessage->sender);
+				component = new canvas_t(SYS_MESSAGE_SENDER(requestMessage));
 				break;
 
 			case G_UI_COMPONENT_TYPE_SELECTION:
@@ -120,7 +114,7 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 				break;
 
 			default:
-				klog("don't know how to create a component of type %i", createRequest->type);
+				platformLog("don't know how to create a component of type %i", createRequest->type);
 				break;
 		}
 
@@ -128,7 +122,7 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 		if(component)
 		{
 			component_id = component->id;
-			component_registry_t::bind(g_get_pid_for_tid(requestMessage->sender), component);
+			component_registry_t::bind(platformGetPidForTid(SYS_MESSAGE_SENDER(requestMessage)), component);
 		}
 
 		// create response message
@@ -220,7 +214,7 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 		auto response = new g_ui_component_add_listener_response;
 		if(component == nullptr)
 		{
-			klog("failed to attach listener since component doesn't exist");
+			platformLog("failed to attach listener since component doesn't exist");
 			response->status = G_UI_PROTOCOL_FAIL;
 		}
 		else
@@ -555,7 +549,7 @@ void interfaceReceiverProcessCommand(g_message_header* requestMessage)
 
 	if(responseMessage)
 	{
-		g_send_message_t(requestMessage->sender, responseMessage, responseLength, requestMessage->transaction);
-		g_yield_t(requestMessage->sender);
+		platformSendMessage(SYS_MESSAGE_SENDER(requestMessage), responseMessage, responseLength, SYS_MESSAGE_TRANSACTION(requestMessage));
+		platformYieldTo(SYS_MESSAGE_SENDER(requestMessage));
 	}
 }

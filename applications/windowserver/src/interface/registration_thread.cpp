@@ -28,36 +28,33 @@
 
 void interfaceRegistrationThread()
 {
-	if(!g_task_register_name(G_UI_REGISTRY_NAME))
+	if(!platformRegisterTaskIdentifier(G_UI_REGISTRY_NAME))
 	{
-		klog("failed to register as \"%s\"", G_UI_REGISTRY_NAME);
+		platformLog("failed to register as \"%s\"", G_UI_REGISTRY_NAME);
 		return;
 	}
 
-	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_initialize_request);
+	size_t buflen = SYS_MESSAGE_HEADER_SIZE + sizeof(g_ui_initialize_request);
 	uint8_t buf[buflen];
 
-	g_tid receiverTid = g_create_task((void*) &interfaceReceiverThread);
+	SYS_TID_T receiverTid = platformCreateThread((void*) &interfaceReceiverThread);
 	while(true)
 	{
-		g_message_receive_status stat = g_receive_message(buf, buflen);
-
-		if(stat == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+		if(platformReceiveMessage(buf, buflen, SYS_TX_NONE) == SYS_MESSAGE_RECEIVE_SUCCESS)
 		{
-			auto header = (g_message_header*) buf;
-			auto body = (g_ui_initialize_request*) G_MESSAGE_CONTENT(buf);
+			auto body = (g_ui_initialize_request*) SYS_MESSAGE_CONTENT(buf);
 
-			process_registry_t::bind(g_get_pid_for_tid(body->event_dispatcher), body->event_dispatcher);
+			process_registry_t::bind(platformGetPidForTid(body->event_dispatcher), body->event_dispatcher);
 
-			g_create_task_d((void*) &interfaceApplicationExitCleanupThread,
-			                new application_exit_cleanup_handler_t(g_get_pid_for_tid(header->sender)));
+			platformCreateThreadWithData((void*) &interfaceApplicationExitCleanupThread,
+			                new application_exit_cleanup_handler_t(platformGetPidForTid(SYS_MESSAGE_SENDER(buf))));
 
 			g_ui_initialize_response response;
 			response.header.id = G_UI_PROTOCOL_INITIALIZATION;
 			response.status = G_UI_PROTOCOL_SUCCESS;
 			response.window_server_delegate = receiverTid;
-			g_send_message_t(header->sender, &response, sizeof(g_ui_initialize_response),
-			                 header->transaction);
+			platformSendMessage(SYS_MESSAGE_SENDER(buf), &response, sizeof(g_ui_initialize_response),
+			                 SYS_MESSAGE_TRANSACTION(buf));
 		}
 	}
 }

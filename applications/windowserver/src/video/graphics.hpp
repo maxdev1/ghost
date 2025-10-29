@@ -24,7 +24,7 @@
 #include <cairo/cairo.h>
 #include <libwindow/metrics/dimension.hpp>
 #include <libwindow/metrics/rectangle.hpp>
-#include <ghost/mutex.h>
+#include "platform/platform.hpp"
 
 /**
  * The graphics class is a utility that internally holds a cairo surface and has
@@ -34,7 +34,7 @@ class graphics_t
 {
     cairo_t* context = nullptr;
     cairo_surface_t* surface = nullptr;
-    g_user_mutex lock = g_mutex_initialize_r(true);
+    SYS_MUTEX_T lock = platformInitializeMutex(true);
 
     int contextRefCount = 0;
     int averageFactor = 10;

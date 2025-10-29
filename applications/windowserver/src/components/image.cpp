@@ -23,7 +23,6 @@
 #include <libwindow/properties.hpp>
 
 #include <cairo/cairo.h>
-#include <ghost.h>
 #include <sstream>
 #include "windowserver.hpp"
 
@@ -33,7 +32,7 @@ image_t::image_t()
 
 void image_t::loadImage(std::string path)
 {
-	g_mutex_acquire(this->lock);
+	platformAcquireMutex(this->lock);
 	if(image)
 	{
 		cairo_surface_destroy(image);
@@ -43,10 +42,10 @@ void image_t::loadImage(std::string path)
 	image = cairo_image_surface_create_from_png(path.c_str());
 	if(cairo_surface_status(image) != CAIRO_STATUS_SUCCESS)
 	{
-		klog("failed to load image: %s", path.c_str());
+		platformLog("failed to load image: %s", path.c_str());
 		image = nullptr;
 	}
-	g_mutex_release(this->lock);
+	platformReleaseMutex(this->lock);
 
 	markFor(COMPONENT_REQUIREMENT_PAINT);
 }
@@ -67,7 +66,7 @@ void image_t::paint()
 	if(!cr)
 		return;
 
-	g_mutex_acquire(this->lock);
+	platformAcquireMutex(this->lock);
 
 	cairo_save(cr);
 	int imageWidth = cairo_image_surface_get_width(image);
@@ -78,7 +77,7 @@ void image_t::paint()
 	cairo_fill(cr);
 	cairo_restore(cr);
 
-	g_mutex_release(this->lock);
+	platformReleaseMutex(this->lock);
 
 	graphics.releaseContext();
 

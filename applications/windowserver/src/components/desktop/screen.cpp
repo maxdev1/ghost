@@ -51,19 +51,19 @@ void screen_t::removeChild(component_t* comp)
 	component_t::removeChild(comp);
 }
 
-void screen_t::sendWindowEvent(g_ui_component_id observerId, window_t* window, g_tid observerThread, bool present)
+void screen_t::sendWindowEvent(g_ui_component_id observerId, window_t* window, SYS_TID_T observerThread, bool present)
 {
 	g_ui_windows_event windowEvent;
 	windowEvent.header.type = G_UI_COMPONENT_EVENT_TYPE_WINDOWS;
 	windowEvent.header.component_id = observerId;
 	windowEvent.window_id = window->id;
 	windowEvent.present = present;
-	g_send_message(observerThread, &windowEvent, sizeof(g_ui_windows_event));
+	platformSendMessage(observerThread, &windowEvent, sizeof(g_ui_windows_event), SYS_TX_NONE);
 }
 
 void screen_t::markDirty(g_rectangle rect)
 {
-	g_mutex_acquire(lock);
+	platformAcquireMutex(lock);
 
 	if(invalid.width == 0 && invalid.height == 0)
 	{
@@ -94,14 +94,14 @@ void screen_t::markDirty(g_rectangle rect)
 	{
 		invalid.height = getBounds().height - invalid.y;
 	}
-	g_mutex_release(lock);
+	platformReleaseMutex(lock);
 }
 
 g_rectangle screen_t::grabInvalid()
 {
-	g_mutex_acquire(lock);
+	platformAcquireMutex(lock);
 	g_rectangle ret = invalid;
 	invalid = g_rectangle();
-	g_mutex_release(lock);
+	platformReleaseMutex(lock);
 	return ret;
 }

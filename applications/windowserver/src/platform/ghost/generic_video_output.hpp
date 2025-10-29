@@ -21,19 +21,19 @@
 #ifndef __GENERIC_VIDEO_OUTPUT__
 #define __GENERIC_VIDEO_OUTPUT__
 
-#include "configuration_based_video_output.hpp"
+#include "video/configuration_based_video_output.hpp"
+#include "platform/platform.hpp"
 #include <libvideo/videodriver.hpp>
-#include <ghost/tasks/types.h>
 
 class g_generic_video_output : public g_configuration_based_video_output
 {
     g_video_mode_info videoModeInformation{};
 
-    g_tid driverTid;
+    SYS_TID_T driverTid;
     g_device_id deviceId;
 
 public:
-    explicit g_generic_video_output(g_tid driverTid, g_device_id deviceId): driverTid(driverTid), deviceId(deviceId)
+    explicit g_generic_video_output(SYS_TID_T driverTid, g_device_id deviceId): driverTid(driverTid), deviceId(deviceId)
     {
     }
 

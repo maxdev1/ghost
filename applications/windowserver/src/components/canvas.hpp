@@ -39,17 +39,17 @@ class canvas_t;
 struct async_resizer_info_t
 {
     bool alive;
-    g_user_mutex lock;
-    g_user_mutex checkAtom;
+    SYS_MUTEX_T lock;
+    SYS_MUTEX_T checkAtom;
     canvas_t* canvas;
 };
 
 class canvas_t : virtual public component_t
 {
-    g_pid partnerProcess;
+    SYS_TID_T partnerProcess;
     async_resizer_info_t* asyncInfo;
 
-    g_user_mutex bufferLock = g_mutex_initialize_r(true);
+    SYS_MUTEX_T bufferLock = platformInitializeMutex(true);
     buffer_info_t buffer{};
     bool bufferReady = false;
 
@@ -70,7 +70,7 @@ protected:
     }
 
 public:
-    explicit canvas_t(g_tid partnerThread);
+    explicit canvas_t(SYS_TID_T partnerThread);
     ~canvas_t() override;
 
     void handleBoundChanged(const g_rectangle& oldBounds) override;

@@ -22,32 +22,32 @@
 
 #include <map>
 
-static std::map<g_pid, g_tid> remoteDelegates;
-static g_user_mutex remoteDelegatesLock = g_mutex_initialize();
+static std::map<SYS_TID_T, SYS_TID_T> remoteDelegates;
+static SYS_MUTEX_T remoteDelegatesLock = platformInitializeMutex(false);
 
-void process_registry_t::bind(g_pid pid, g_tid tid)
+void process_registry_t::bind(SYS_TID_T pid, SYS_TID_T tid)
 {
-	g_mutex_acquire(remoteDelegatesLock);
+	platformAcquireMutex(remoteDelegatesLock);
 	remoteDelegates[pid] = tid;
-	g_mutex_release(remoteDelegatesLock);
+	platformReleaseMutex(remoteDelegatesLock);
 }
 
-g_tid process_registry_t::get(g_pid pid)
+SYS_TID_T process_registry_t::get(SYS_TID_T pid)
 {
-	g_mutex_acquire(remoteDelegatesLock);
+	platformAcquireMutex(remoteDelegatesLock);
 	if(remoteDelegates.count(pid) > 0)
 	{
-		g_tid tid = remoteDelegates[pid];
-		g_mutex_release(remoteDelegatesLock);
+		SYS_TID_T tid = remoteDelegates[pid];
+		platformReleaseMutex(remoteDelegatesLock);
 		return tid;
 	}
-	g_mutex_release(remoteDelegatesLock);
-	return G_TID_NONE;
+	platformReleaseMutex(remoteDelegatesLock);
+	return SYS_TID_NONE;
 }
 
-void process_registry_t::cleanup_process(g_pid pid)
+void process_registry_t::cleanup_process(SYS_TID_T pid)
 {
-	g_mutex_acquire(remoteDelegatesLock);
+	platformAcquireMutex(remoteDelegatesLock);
 	remoteDelegates.erase(pid);
-	g_mutex_release(remoteDelegatesLock);
+	platformReleaseMutex(remoteDelegatesLock);
 }

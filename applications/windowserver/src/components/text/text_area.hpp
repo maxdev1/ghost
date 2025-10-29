@@ -26,7 +26,6 @@
 
 #include <libfont/font.hpp>
 #include <libfont/text_layouter.hpp>
-#include <libinput/keyboard/keyboard.hpp>
 #include <libwindow/metrics/insets.hpp>
 #include <libwindow/color_argb.hpp>
 #include <string>

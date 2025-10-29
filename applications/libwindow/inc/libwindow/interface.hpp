@@ -21,9 +21,7 @@
 #ifndef LIBWINDOW_INTERFACE
 #define LIBWINDOW_INTERFACE
 
-#include <ghost.h>
-#include <libinput/keyboard/keyboard.hpp>
-
+#include "platform/platform.hpp"
 #include "metrics/dimension.hpp"
 #include "metrics/rectangle.hpp"
 
@@ -144,7 +142,7 @@ typedef struct
 typedef struct
 {
     g_ui_message_header header;
-    g_tid event_dispatcher;
+    SYS_TID_T event_dispatcher;
 } __attribute__((packed)) g_ui_initialize_request;
 
 /**
@@ -159,7 +157,7 @@ typedef struct
 {
     g_ui_message_header header;
     g_ui_protocol_status status;
-    g_tid window_server_delegate;
+    SYS_TID_T window_server_delegate;
 } __attribute__((packed)) g_ui_initialize_response;
 
 /**
@@ -345,7 +343,7 @@ typedef struct
 {
     g_ui_message_header header;
     g_ui_component_id canvas_id;
-    g_tid target_thread; // For global events (like window event)
+    SYS_TID_T target_thread; // For global events (like window event)
 } __attribute__((packed)) g_ui_register_desktop_canvas_request;
 
 typedef struct
@@ -362,7 +360,7 @@ typedef struct
     g_ui_message_header header;
     g_ui_component_id id;
     g_ui_component_event_type event_type;
-    g_tid target_thread;
+    SYS_TID_T target_thread;
 } __attribute__((packed)) g_ui_component_add_listener_request;
 
 typedef struct
@@ -463,7 +461,7 @@ typedef struct
 typedef struct
 {
     g_ui_component_event_header header;
-    g_address newBufferAddress;
+    size_t newBufferAddress;
     uint16_t width;
     uint16_t height;
 } __attribute__((packed)) g_ui_component_canvas_wfa_event;

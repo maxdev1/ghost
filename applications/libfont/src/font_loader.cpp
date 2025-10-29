@@ -40,7 +40,11 @@ g_font* g_font_loader::getFont(std::string path, std::string name)
 
 g_font* g_font_loader::getSystemFont(std::string name)
 {
+#if _WIN32
+	return getFont("../../sysroot/system/graphics/fonts/" + name + ".ttf", name);
+#else
 	return getFont("/system/graphics/fonts/" + name + ".ttf", name);
+#endif
 }
 
 g_font* g_font_loader::get(std::string name)
@@ -53,5 +57,9 @@ g_font* g_font_loader::get(std::string name)
 
 g_font* g_font_loader::getDefault()
 {
+#if _WIN32
+	return getFont("../../sysroot/system/graphics/fonts/default.ttf", "default");
+#else
 	return getFont("/system/graphics/fonts/default.ttf", "default");
+#endif
 }

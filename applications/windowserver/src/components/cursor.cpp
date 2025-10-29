@@ -21,8 +21,8 @@
 #include "components/cursor.hpp"
 #include "windowserver.hpp"
 
-#include <ghost.h>
 #include <libproperties/parser.hpp>
+#include <sstream>
 
 static std::map<std::string, cursor_configuration> cursorConfigurations;
 static cursor_configuration* currentConfiguration = 0;
@@ -52,7 +52,7 @@ void cursor_t::set(std::string name)
 	}
 	else
 	{
-		klog("could neither load '%s' cursor nor 'default' cursor", name.c_str());
+		platformLog("could neither load '%s' cursor nor 'default' cursor", name.c_str());
 	}
 
 	screen_t* screen = windowserver_t::instance()->screen;
@@ -76,7 +76,7 @@ bool cursor_t::load(std::string cursorPath)
 	std::ifstream in(configpath);
 	if(!in.good())
 	{
-		klog("failed to open cursor configuration at %s", configpath.c_str());
+		platformLog("failed to open cursor configuration at %s", configpath.c_str());
 		return false;
 	}
 
@@ -91,6 +91,7 @@ bool cursor_t::load(std::string cursorPath)
 
 	if(name.empty() || hitpoint_x.empty() || hitpoint_y.empty() || image.empty())
 	{
+		platformLog("either name (%s), hitpoint (%s %s), or image (%s) was missing for cursor\n", name.c_str(), hitpoint_x.c_str(), hitpoint_y.c_str(), image.c_str());
 		return false;
 	}
 
@@ -111,6 +112,7 @@ bool cursor_t::load(std::string cursorPath)
 	FILE* cursorImageFile = fopen(cursorImagePath.c_str(), "r");
 	if(cursorImageFile == NULL)
 	{
+		platformLog("failed to open image file at %s\n", cursorImagePath.c_str());
 		return false;
 	}
 	fclose(cursorImageFile);
@@ -120,7 +122,7 @@ bool cursor_t::load(std::string cursorPath)
 	pack.surface = cairo_image_surface_create_from_png(cursorImagePath.c_str());
 	if(pack.surface == nullptr)
 	{
-		klog("failed to load cursor image at '%s' for configuration '%s'", cursorImagePath.c_str(), cursorPath.c_str());
+		platformLog("failed to load cursor image at '%s' for configuration '%s'", cursorImagePath.c_str(), cursorPath.c_str());
 		return false;
 	}
 

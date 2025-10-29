@@ -452,7 +452,7 @@ void window_t::close()
 		g_ui_component_close_event posted_event;
 		posted_event.header.type = G_UI_COMPONENT_EVENT_TYPE_CLOSE;
 		posted_event.header.component_id = info.component_id;
-		g_send_message(info.target_thread, &posted_event, sizeof(g_ui_component_close_event));
+		platformSendMessage(info.target_thread, &posted_event, sizeof(g_ui_component_close_event), SYS_TX_NONE);
 	});
 
 	setVisible(false);

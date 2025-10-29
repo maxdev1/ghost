@@ -32,7 +32,7 @@ void titled_component_t::setTitle(std::string title)
 		event->header.type = G_UI_COMPONENT_EVENT_TYPE_TITLE;
 		event->header.component_id = info.component_id;
 		strncpy(event->title, title.c_str(), G_UI_COMPONENT_TITLE_MAXIMUM);
-		g_send_message(info.target_thread, event, sizeof(g_ui_component_title_event));
+		platformSendMessage(info.target_thread, event, sizeof(g_ui_component_title_event), SYS_TX_NONE);
 		delete event;
 	});
 }

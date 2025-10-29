@@ -51,7 +51,7 @@ class g_canvas : virtual public g_component, virtual public g_focusable_componen
 {
 protected:
     g_canvas_buffer_info currentBuffer{};
-    g_user_mutex currentBufferLock = g_mutex_initialize();
+    SYS_MUTEX_T currentBufferLock = platformInitializeMutex(false);
 
     /**
      * Listener only for user purpose, so a client gets an event once the
@@ -81,7 +81,7 @@ public:
 
     static g_canvas* create();
 
-    void acknowledgeNewBuffer(g_address address, uint16_t width, uint16_t height);
+    void acknowledgeNewBuffer(uintptr_t address, uint16_t width, uint16_t height);
 
     void blit(const g_rectangle& rect);
 

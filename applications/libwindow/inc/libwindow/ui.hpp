@@ -44,14 +44,14 @@ struct g_ui_event_dispatch_data
  * ID of the thread that the window server creates when
  * initializing the UI communication.
  */
-extern g_tid g_ui_delegate_tid;
+extern SYS_TID_T g_ui_delegate_tid;
 
 /**
  * ID of the event dispatcher thread that is continuously waiting
  * for events from the window manager to fire the respective listener
  * that was attached.
  */
-extern g_tid g_ui_event_dispatcher_tid;
+extern SYS_TID_T g_ui_event_dispatcher_tid;
 
 class g_ui
 {

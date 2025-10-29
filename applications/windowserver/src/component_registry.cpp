@@ -24,43 +24,43 @@
 #include "component_registry.hpp"
 
 static std::map<g_ui_component_id, component_t*> components;
-static g_user_mutex componentsLock = g_mutex_initialize_r(true);
-static std::map<g_pid, std::map<g_ui_component_id, component_t*>> components_by_process;
+static SYS_MUTEX_T componentsLock = platformInitializeMutex(true);
+static std::map<SYS_TID_T, std::map<g_ui_component_id, component_t*>> components_by_process;
 static g_ui_component_id next_id = 1;
 
 g_ui_component_id component_registry_t::add(component_t* component)
 {
-	g_mutex_acquire(componentsLock);
+	platformAcquireMutex(componentsLock);
 	g_ui_component_id id = next_id++;
 	components[id] = component;
 	component->id = id;
-	g_mutex_release(componentsLock);
+	platformReleaseMutex(componentsLock);
 	return id;
 }
 
-void component_registry_t::bind(g_pid process, component_t* component)
+void component_registry_t::bind(SYS_TID_T process, component_t* component)
 {
-	g_mutex_acquire(componentsLock);
+	platformAcquireMutex(componentsLock);
 	components_by_process[process][component->id] = component;
-	g_mutex_release(componentsLock);
+	platformReleaseMutex(componentsLock);
 }
 
 component_t* component_registry_t::get(g_ui_component_id id)
 {
-	g_mutex_acquire(componentsLock);
+	platformAcquireMutex(componentsLock);
 	if(components.count(id) > 0)
 	{
 		component_t* comp = components[id];
-		g_mutex_release(componentsLock);
+		platformReleaseMutex(componentsLock);
 		return comp;
 	}
-	g_mutex_release(componentsLock);
+	platformReleaseMutex(componentsLock);
 	return nullptr;
 }
 
-void component_registry_t::removeComponent(g_pid pid, g_ui_component_id id)
+void component_registry_t::removeComponent(SYS_TID_T pid, g_ui_component_id id)
 {
-	g_mutex_acquire(componentsLock);
+	platformAcquireMutex(componentsLock);
 	if(components.count(id) > 0)
 	{
 		if(components_by_process.count(pid) > 0)
@@ -69,13 +69,13 @@ void component_registry_t::removeComponent(g_pid pid, g_ui_component_id id)
 		}
 		components.erase(id);
 	}
-	g_mutex_release(componentsLock);
+	platformReleaseMutex(componentsLock);
 }
 
-void component_registry_t::cleanupProcess(g_pid pid)
+void component_registry_t::cleanupProcess(SYS_TID_T pid)
 {
 	// Get components mapped for process
-	g_mutex_acquire(componentsLock);
+	platformAcquireMutex(componentsLock);
 	auto components = &components_by_process[pid];
 
 	if(components)
@@ -114,10 +114,10 @@ void component_registry_t::cleanupProcess(g_pid pid)
 		// Remove map from registry
 		components_by_process.erase(pid);
 	}
-	g_mutex_release(componentsLock);
+	platformReleaseMutex(componentsLock);
 }
 
-void component_registry_t::removeProcessComponents(g_pid process, component_t* component,
+void component_registry_t::removeProcessComponents(SYS_TID_T process, component_t* component,
                                                    std::list<component_t*>& removedComponents)
 {
 	// Never remove twice

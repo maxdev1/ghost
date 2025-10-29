@@ -45,14 +45,14 @@ void g_font_manager::initializeEngine()
 {
 	FT_Error error = FT_Init_FreeType(&library);
 	if(error)
-		klog("freetype2 failed at FT_Init_FreeType with error code %i", error);
+		printf("freetype2 failed at FT_Init_FreeType with error code %i\n", error);
 }
 
 void g_font_manager::destroyEngine()
 {
 	FT_Error error = FT_Done_Library(library);
 	if(error)
-		klog("freetype2 failed at FT_Done_Library with error code %i", error);
+		printf("freetype2 failed at FT_Done_Library with error code %i\n", error);
 }
 
 g_font* g_font_manager::getFont(std::string name)
@@ -66,7 +66,7 @@ bool g_font_manager::registerFont(std::string name, g_font* font)
 {
 	if(fontRegistry.count(name) > 0)
 	{
-		klog("tried to create font '%s' that already exists", name.c_str());
+		printf("tried to create font '%s' that already exists\n", name.c_str());
 		return false;
 	}
 

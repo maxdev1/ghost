@@ -39,8 +39,8 @@ void g_component::destroy()
 	g_ui_destroy_component_request request;
 	request.header.id = G_UI_PROTOCOL_DESTROY_COMPONENT;
 	request.id = this->id;
-	g_send_message(g_ui_delegate_tid, &request, sizeof(g_ui_destroy_component_request));
-	g_yield_t(g_ui_delegate_tid);
+	platformSendMessage(g_ui_delegate_tid, &request, sizeof(g_ui_destroy_component_request), SYS_TX_NONE);
+	platformYieldTo(g_ui_delegate_tid);
 }
 
 bool g_component::addChild(g_component* child)
@@ -49,21 +49,21 @@ bool g_component::addChild(g_component* child)
 		return false;
 
 	// send initialization request
-	g_message_transaction tx = g_get_message_tx_id();
+	SYS_TX_T tx = platformCreateMessageTransaction();
 
 	g_ui_component_add_child_request request;
 	request.header.id = G_UI_PROTOCOL_ADD_COMPONENT;
 	request.parent = this->id;
 	request.child = child->id;
-	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_add_child_request), tx);
+	platformSendMessage(g_ui_delegate_tid, &request, sizeof(g_ui_component_add_child_request), tx);
 
 	// read response
-	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_add_child_response);
+	size_t bufferSize = SYS_MESSAGE_HEADER_SIZE + sizeof(g_ui_component_add_child_response);
 	uint8_t buffer[bufferSize];
 
-	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	if(platformReceiveMessage(buffer, bufferSize, tx) == SYS_MESSAGE_RECEIVE_SUCCESS)
 	{
-		auto response = (g_ui_component_add_child_response*) G_MESSAGE_CONTENT(buffer);
+		auto response = (g_ui_component_add_child_response*) SYS_MESSAGE_CONTENT(buffer);
 		if(response->status == G_UI_PROTOCOL_SUCCESS)
 		{
 			return true;
@@ -79,21 +79,21 @@ bool g_component::setBounds(const g_rectangle& rect)
 		return false;
 
 	// send initialization request
-	g_message_transaction tx = g_get_message_tx_id();
+	SYS_TX_T tx = platformCreateMessageTransaction();
 
 	g_ui_component_set_bounds_request request;
 	request.header.id = G_UI_PROTOCOL_SET_BOUNDS;
 	request.id = this->id;
 	request.bounds = rect;
-	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_set_bounds_request), tx);
-	g_yield_t(g_ui_delegate_tid);
+	platformSendMessage(g_ui_delegate_tid, &request, sizeof(g_ui_component_set_bounds_request), tx);
+	platformYieldTo(g_ui_delegate_tid);
 
 	// read response
-	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_simple_response);
+	size_t buflen = SYS_MESSAGE_HEADER_SIZE + sizeof(g_ui_simple_response);
 	uint8_t buffer[buflen];
-	if(g_receive_message_t(buffer, buflen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	if(platformReceiveMessage(buffer, buflen, tx) == SYS_MESSAGE_RECEIVE_SUCCESS)
 	{
-		auto response = (g_ui_simple_response*) G_MESSAGE_CONTENT(buffer);
+		auto response = (g_ui_simple_response*) SYS_MESSAGE_CONTENT(buffer);
 		return response->status == G_UI_PROTOCOL_SUCCESS;
 	}
 	return false;
@@ -105,22 +105,22 @@ g_rectangle g_component::getBounds()
 		return g_rectangle();
 
 	// send initialization request
-	g_message_transaction tx = g_get_message_tx_id();
+	SYS_TX_T tx = platformCreateMessageTransaction();
 
 	g_ui_component_get_bounds_request request;
 	request.header.id = G_UI_PROTOCOL_GET_BOUNDS;
 	request.id = this->id;
-	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_get_bounds_request), tx);
-	g_yield_t(g_ui_delegate_tid);
+	platformSendMessage(g_ui_delegate_tid, &request, sizeof(g_ui_component_get_bounds_request), tx);
+	platformYieldTo(g_ui_delegate_tid);
 
 	// read response
-	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_get_bounds_response);
+	size_t bufferSize = SYS_MESSAGE_HEADER_SIZE + sizeof(g_ui_component_get_bounds_response);
 	uint8_t buffer[bufferSize];
 
 	g_rectangle result;
-	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	if(platformReceiveMessage(buffer, bufferSize, tx) == SYS_MESSAGE_RECEIVE_SUCCESS)
 	{
-		auto response = (g_ui_component_get_bounds_response*) G_MESSAGE_CONTENT(buffer);
+		auto response = (g_ui_component_get_bounds_response*) SYS_MESSAGE_CONTENT(buffer);
 		if(response->status == G_UI_PROTOCOL_SUCCESS)
 			result = response->bounds;
 	}
@@ -134,25 +134,25 @@ bool g_component::setNumericProperty(int property, uint32_t value)
 		return false;
 
 	// send initialization request
-	g_message_transaction tx = g_get_message_tx_id();
+	SYS_TX_T tx = platformCreateMessageTransaction();
 
 	g_ui_component_set_numeric_property_request request;
 	request.header.id = G_UI_PROTOCOL_SET_NUMERIC_PROPERTY;
 	request.id = this->id;
 	request.property = property;
 	request.value = value;
-	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_set_numeric_property_request), tx);
-	g_yield_t(g_ui_delegate_tid);
+	platformSendMessage(g_ui_delegate_tid, &request, sizeof(g_ui_component_set_numeric_property_request), tx);
+	platformYieldTo(g_ui_delegate_tid);
 
 	// read response
-	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_set_numeric_property_response);
+	size_t bufferSize = SYS_MESSAGE_HEADER_SIZE + sizeof(g_ui_component_set_numeric_property_response);
 	uint8_t buffer[bufferSize];
 
 	bool success = false;
-	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	if(platformReceiveMessage(buffer, bufferSize, tx) == SYS_MESSAGE_RECEIVE_SUCCESS)
 	{
 		auto response = (g_ui_component_set_numeric_property_response*)
-				G_MESSAGE_CONTENT(buffer);
+				SYS_MESSAGE_CONTENT(buffer);
 		success = (response->status == G_UI_PROTOCOL_SUCCESS);
 	}
 
@@ -165,24 +165,24 @@ bool g_component::getNumericProperty(int property, uint32_t* out)
 		return false;
 
 	// send initialization request
-	g_message_transaction tx = g_get_message_tx_id();
+	SYS_TX_T tx = platformCreateMessageTransaction();
 
 	g_ui_component_get_numeric_property_request request;
 	request.header.id = G_UI_PROTOCOL_GET_NUMERIC_PROPERTY;
 	request.id = this->id;
 	request.property = property;
-	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_get_numeric_property_request), tx);
-	g_yield_t(g_ui_delegate_tid);
+	platformSendMessage(g_ui_delegate_tid, &request, sizeof(g_ui_component_get_numeric_property_request), tx);
+	platformYieldTo(g_ui_delegate_tid);
 
 	// read response
-	size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_get_numeric_property_response);
+	size_t bufferSize = SYS_MESSAGE_HEADER_SIZE + sizeof(g_ui_component_get_numeric_property_response);
 	uint8_t buffer[bufferSize];
 
 	bool success = false;
-	if(g_receive_message_t(buffer, bufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	if(platformReceiveMessage(buffer, bufferSize, tx) == SYS_MESSAGE_RECEIVE_SUCCESS)
 	{
 		auto response = (g_ui_component_get_numeric_property_response*)
-				G_MESSAGE_CONTENT(buffer);
+				SYS_MESSAGE_CONTENT(buffer);
 
 		if(response->status == G_UI_PROTOCOL_SUCCESS)
 		{
@@ -200,7 +200,7 @@ bool g_component::setStringProperty(int property, std::string value)
 	if(!g_ui_initialized)
 		return false;
 
-	g_message_transaction tx = g_get_message_tx_id();
+	SYS_TX_T tx = platformCreateMessageTransaction();
 
 	auto requestSize = sizeof(g_ui_component_set_string_property_request) + value.length() + 1;
 	auto request = static_cast<g_ui_component_set_string_property_request*>(
@@ -211,15 +211,15 @@ bool g_component::setStringProperty(int property, std::string value)
 	request->property = property;
 	strcpy(request->value, value.c_str());
 
-	g_send_message_t(g_ui_delegate_tid, request, requestSize, tx);
-	g_yield_t(g_ui_delegate_tid);
+	platformSendMessage(g_ui_delegate_tid, request, requestSize, tx);
+	platformYieldTo(g_ui_delegate_tid);
 
-	size_t responseBufferSize = sizeof(g_message_header) + sizeof(g_ui_simple_response);
+	size_t responseBufferSize = SYS_MESSAGE_HEADER_SIZE + sizeof(g_ui_simple_response);
 	uint8_t responseBuffer[responseBufferSize];
 	bool success = false;
-	if(g_receive_message_t(responseBuffer, responseBufferSize, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	if(platformReceiveMessage(responseBuffer, responseBufferSize, tx) == SYS_MESSAGE_RECEIVE_SUCCESS)
 	{
-		auto response = (g_ui_simple_response*) G_MESSAGE_CONTENT(responseBuffer);
+		auto response = (g_ui_simple_response*) SYS_MESSAGE_CONTENT(responseBuffer);
 		success = (response->status == G_UI_PROTOCOL_SUCCESS);
 	}
 
@@ -232,24 +232,24 @@ bool g_component::getStringProperty(int property, std::string& out)
 	if(!g_ui_initialized)
 		return false;
 
-	g_message_transaction tx = g_get_message_tx_id();
+	SYS_TX_T tx = platformCreateMessageTransaction();
 
 	g_ui_component_get_string_property_request request;
 	request.header.id = G_UI_PROTOCOL_GET_STRING_PROPERTY;
 	request.id = this->id;
 	request.property = property;
-	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_component_get_string_property_request), tx);
-	g_yield_t(g_ui_delegate_tid);
+	platformSendMessage(g_ui_delegate_tid, &request, sizeof(g_ui_component_get_string_property_request), tx);
+	platformYieldTo(g_ui_delegate_tid);
 
 	bool success = false;
 	for(int size = 128; size <= 1024; size *= 2)
 	{
-		size_t bufferSize = sizeof(g_message_header) + sizeof(g_ui_component_get_string_property_response) + size;
+		size_t bufferSize = SYS_MESSAGE_HEADER_SIZE + sizeof(g_ui_component_get_string_property_response) + size;
 		auto buffer = new uint8_t[bufferSize];
-		auto receiveStatus = g_receive_message_t(buffer, bufferSize, tx);
-		if(receiveStatus == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+		auto receiveStatus = platformReceiveMessage(buffer, bufferSize, tx);
+		if(receiveStatus == SYS_MESSAGE_RECEIVE_SUCCESS)
 		{
-			auto response = (g_ui_component_get_string_property_response*) G_MESSAGE_CONTENT(buffer);
+			auto response = (g_ui_component_get_string_property_response*) SYS_MESSAGE_CONTENT(buffer);
 			if(response->status == G_UI_PROTOCOL_SUCCESS)
 			{
 				success = true;
@@ -258,7 +258,7 @@ bool g_component::getStringProperty(int property, std::string& out)
 		}
 		delete buffer;
 
-		if(success || receiveStatus != G_MESSAGE_RECEIVE_STATUS_EXCEEDS_BUFFER_SIZE)
+		if(success || receiveStatus != SYS_MESSAGE_RECEIVE_ERROR_EXCEEDS_BUFFER)
 			break;
 	}
 	return success;
@@ -272,9 +272,9 @@ bool g_component::addListener(g_ui_component_event_type eventType, g_listener* n
 	if(newListener == nullptr)
 		return false;
 
-	g_mutex_acquire(listenersLock);
+	platformAcquireMutex(listenersLock);
 	listeners[eventType].push_back(newListener);
-	g_mutex_release(listenersLock);
+	platformReleaseMutex(listenersLock);
 
 	return g_ui::addListener(this->id, eventType);
 }
@@ -283,7 +283,7 @@ void g_component::handle(g_ui_component_event_header* header)
 {
 	auto eventType = header->type;
 
-	g_mutex_acquire(listenersLock);
+	platformAcquireMutex(listenersLock);
 	auto it = listeners.find(eventType);
 	if(it != listeners.end())
 	{
@@ -294,9 +294,9 @@ void g_component::handle(g_ui_component_event_header* header)
 	}
 	else
 	{
-		klog("incoming event (%i) but no one to handle", eventType);
+		platformLog("incoming event (%i) but no one to handle", eventType);
 	}
-	g_mutex_release(listenersLock);
+	platformReleaseMutex(listenersLock);
 }
 
 bool g_component::addMouseListener(g_mouse_listener* listener)
@@ -406,20 +406,20 @@ bool g_component::setSize(g_ui_protocol_command_id command, const g_dimension& s
 	if(!g_ui_initialized)
 		return false;
 
-	g_message_transaction tx = g_get_message_tx_id();
+	SYS_TX_T tx = platformCreateMessageTransaction();
 
 	g_ui_component_set_size_request request;
 	request.header.id = command;
 	request.id = this->id;
 	request.size = size;
-	g_send_message_t(g_ui_delegate_tid, &request, sizeof(request), tx);
-	g_yield_t(g_ui_delegate_tid);
+	platformSendMessage(g_ui_delegate_tid, &request, sizeof(request), tx);
+	platformYieldTo(g_ui_delegate_tid);
 
-	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_simple_response);
+	size_t buflen = SYS_MESSAGE_HEADER_SIZE + sizeof(g_ui_simple_response);
 	uint8_t buffer[buflen];
-	if(g_receive_message_t(buffer, buflen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	if(platformReceiveMessage(buffer, buflen, tx) == SYS_MESSAGE_RECEIVE_SUCCESS)
 	{
-		auto response = (g_ui_simple_response*) G_MESSAGE_CONTENT(buffer);
+		auto response = (g_ui_simple_response*) SYS_MESSAGE_CONTENT(buffer);
 		return response->status == G_UI_PROTOCOL_SUCCESS;
 	}
 	return false;
@@ -430,20 +430,20 @@ bool g_component::setFlexOrientation(bool horizontal)
 	if(!g_ui_initialized)
 		return false;
 
-	g_message_transaction tx = g_get_message_tx_id();
+	SYS_TX_T tx = platformCreateMessageTransaction();
 
 	g_ui_flex_set_orientation_request request;
 	request.header.id = G_UI_PROTOCOL_FLEX_SET_ORIENTATION;
 	request.id = this->id;
 	request.horizontal = horizontal;
-	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_flex_set_orientation_request), tx);
-	g_yield_t(g_ui_delegate_tid);
+	platformSendMessage(g_ui_delegate_tid, &request, sizeof(g_ui_flex_set_orientation_request), tx);
+	platformYieldTo(g_ui_delegate_tid);
 
-	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_simple_response);
+	size_t buflen = SYS_MESSAGE_HEADER_SIZE + sizeof(g_ui_simple_response);
 	uint8_t buffer[buflen];
-	if(g_receive_message_t(buffer, buflen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	if(platformReceiveMessage(buffer, buflen, tx) == SYS_MESSAGE_RECEIVE_SUCCESS)
 	{
-		auto response = (g_ui_simple_response*) G_MESSAGE_CONTENT(buffer);
+		auto response = (g_ui_simple_response*) SYS_MESSAGE_CONTENT(buffer);
 		return response->status == G_UI_PROTOCOL_SUCCESS;
 	}
 	return false;
@@ -454,7 +454,7 @@ bool g_component::setFlexComponentInfo(g_component* child, float grow, float shr
 	if(!g_ui_initialized)
 		return false;
 
-	g_message_transaction tx = g_get_message_tx_id();
+	SYS_TX_T tx = platformCreateMessageTransaction();
 
 	g_ui_flex_set_component_info request;
 	request.header.id = G_UI_PROTOCOL_FLEX_SET_COMPONENT_INFO;
@@ -463,14 +463,14 @@ bool g_component::setFlexComponentInfo(g_component* child, float grow, float shr
 	request.grow = grow;
 	request.shrink = shrink;
 	request.basis = basis;
-	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_flex_set_component_info), tx);
-	g_yield_t(g_ui_delegate_tid);
+	platformSendMessage(g_ui_delegate_tid, &request, sizeof(g_ui_flex_set_component_info), tx);
+	platformYieldTo(g_ui_delegate_tid);
 
-	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_simple_response);
+	size_t buflen = SYS_MESSAGE_HEADER_SIZE + sizeof(g_ui_simple_response);
 	uint8_t buffer[buflen];
-	if(g_receive_message_t(buffer, buflen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	if(platformReceiveMessage(buffer, buflen, tx) == SYS_MESSAGE_RECEIVE_SUCCESS)
 	{
-		auto response = (g_ui_simple_response*) G_MESSAGE_CONTENT(buffer);
+		auto response = (g_ui_simple_response*) SYS_MESSAGE_CONTENT(buffer);
 		return response->status == G_UI_PROTOCOL_SUCCESS;
 	}
 	return false;
@@ -482,20 +482,20 @@ bool g_component::setLayoutPadding(g_insets padding)
 	if(!g_ui_initialized)
 		return false;
 
-	g_message_transaction tx = g_get_message_tx_id();
+	SYS_TX_T tx = platformCreateMessageTransaction();
 
 	g_ui_layout_set_padding request;
 	request.header.id = G_UI_PROTOCOL_LAYOUT_SET_PADDING;
 	request.id = this->id;
 	request.insets = padding;
-	g_send_message_t(g_ui_delegate_tid, &request, sizeof(g_ui_layout_set_padding), tx);
-	g_yield_t(g_ui_delegate_tid);
+	platformSendMessage(g_ui_delegate_tid, &request, sizeof(g_ui_layout_set_padding), tx);
+	platformYieldTo(g_ui_delegate_tid);
 
-	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_simple_response);
+	size_t buflen = SYS_MESSAGE_HEADER_SIZE + sizeof(g_ui_simple_response);
 	uint8_t buffer[buflen];
-	if(g_receive_message_t(buffer, buflen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	if(platformReceiveMessage(buffer, buflen, tx) == SYS_MESSAGE_RECEIVE_SUCCESS)
 	{
-		auto response = (g_ui_simple_response*) G_MESSAGE_CONTENT(buffer);
+		auto response = (g_ui_simple_response*) SYS_MESSAGE_CONTENT(buffer);
 		return response->status == G_UI_PROTOCOL_SUCCESS;
 	}
 	return false;

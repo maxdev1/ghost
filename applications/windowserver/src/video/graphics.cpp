@@ -32,10 +32,10 @@ graphics_t::graphics_t(uint16_t width, uint16_t height) :
 
 cairo_t* graphics_t::acquireContext()
 {
-	g_mutex_acquire(lock);
+	platformAcquireMutex(lock);
 	if(!surface)
 	{
-		g_mutex_release(lock);
+		platformReleaseMutex(lock);
 		return nullptr;
 	}
 
@@ -46,7 +46,7 @@ cairo_t* graphics_t::acquireContext()
 		if(contextStatus != CAIRO_STATUS_SUCCESS)
 		{
 			context = nullptr;
-			g_mutex_release(lock);
+			platformReleaseMutex(lock);
 			return nullptr;
 		}
 	}
@@ -60,7 +60,7 @@ void graphics_t::releaseContext()
 	--contextRefCount;
 	if(contextRefCount < 0)
 	{
-		klog("error: over-deref of canvas by %i references", contextRefCount);
+		platformLog("error: over-deref of canvas by %i references", contextRefCount);
 		contextRefCount = 0;
 		return;
 	}
@@ -71,7 +71,7 @@ void graphics_t::releaseContext()
 		context = nullptr;
 	}
 
-	g_mutex_release(lock);
+	platformReleaseMutex(lock);
 }
 
 void graphics_t::resize(int newWidth, int newHeight, bool averaged)
@@ -91,7 +91,7 @@ void graphics_t::resize(int newWidth, int newHeight, bool averaged)
 		return;
 	}
 
-	g_mutex_acquire(lock);
+	platformAcquireMutex(lock);
 	if(surface)
 	{
 		cairo_surface_destroy(surface);
@@ -104,16 +104,16 @@ void graphics_t::resize(int newWidth, int newHeight, bool averaged)
 	auto surfaceStatus = cairo_surface_status(surface);
 	if(surfaceStatus != CAIRO_STATUS_SUCCESS)
 	{
-		klog("failed to create graphics surface of size %i %i: %i", width, height, surfaceStatus);
+		platformLog("failed to create graphics surface of size %i %i: %i", width, height, surfaceStatus);
 		surface = nullptr;
 	}
 
-	g_mutex_release(lock);
+	platformReleaseMutex(lock);
 }
 
 void graphics_t::blitTo(graphics_t* target, const g_rectangle& clip, const g_point& position)
 {
-	g_mutex_acquire(lock);
+	platformAcquireMutex(lock);
 
 	auto cr = target->acquireContext();
 	if(cr)
@@ -123,7 +123,7 @@ void graphics_t::blitTo(graphics_t* target, const g_rectangle& clip, const g_poi
 			auto surfaceStatus = cairo_surface_status(surface);
 			if(surfaceStatus != CAIRO_STATUS_SUCCESS)
 			{
-				klog("bad surface status");
+				platformLog("bad surface status");
 			}
 			else
 			{
@@ -149,5 +149,5 @@ void graphics_t::blitTo(graphics_t* target, const g_rectangle& clip, const g_poi
 		target->releaseContext();
 	}
 
-	g_mutex_release(lock);
+	platformReleaseMutex(lock);
 }

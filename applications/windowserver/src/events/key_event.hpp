@@ -23,7 +23,7 @@
 
 #include "events/event.hpp"
 
-#include <libinput/keyboard/keyboard.hpp>
+#include "platform/platform.hpp"
 #include <stdint.h>
 
 class key_event_t : public event_t

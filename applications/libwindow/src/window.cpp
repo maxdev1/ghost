@@ -20,7 +20,6 @@
 
 #include <functional>
 #include <utility>
-#include <ghost.h>
 
 #include "libwindow/properties.hpp"
 #include "libwindow/window.hpp"

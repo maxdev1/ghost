@@ -357,7 +357,7 @@ component_t* text_field_t::handleKeyEvent(key_event_t& ke)
 		}
 		else
 		{
-			char c = g_keyboard::charForKey(ke.info);
+			char c = platformCharForKey(ke.info);
 
 			if(c != -1)
 			{

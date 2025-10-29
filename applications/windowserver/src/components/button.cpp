@@ -25,7 +25,7 @@
 #include <libproperties/parser.hpp>
 #include <libwindow/properties.hpp>
 #include <libfont/text_alignment.hpp>
-#include <cmath>
+#include <math.h>
 
 
 enum g_button_render_state
@@ -287,7 +287,7 @@ bool button_t::setNumericProperty(int property, uint32_t value)
 	{
 		style = value;
 		markFor(COMPONENT_REQUIREMENT_ALL);
-		klog("set style to %i", value);
+		platformLog("set style to %i", value);
 		return true;
 	}
 

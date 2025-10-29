@@ -22,13 +22,14 @@
 #define __WINDOWSERVER_INTERFACE_APPLICATIONEXITCLEANUP__
 
 #include "interface/interface_receiver.hpp"
+#include "platform/platform.hpp"
 
 class application_exit_cleanup_handler_t
 {
-    g_tid pid;
+    SYS_TID_T pid;
 
 public:
-    application_exit_cleanup_handler_t(g_pid pid) : pid(pid)
+    application_exit_cleanup_handler_t(SYS_TID_T pid) : pid(pid)
     {
     }
 

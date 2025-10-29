@@ -31,20 +31,20 @@ bool g_scrollpane::setContent(g_component* content)
 	if(!g_ui_initialized)
 		return false;
 
-	g_message_transaction tx = g_get_message_tx_id();
+	SYS_TX_T tx = platformCreateMessageTransaction();
 
 	g_ui_scrollpane_set_content request;
 	request.header.id = G_UI_PROTOCOL_SCROLLPANE_SET_CONTENT;
 	request.scrollpane = this->id;
 	request.content = content->getId();
-	g_send_message_t(g_ui_delegate_tid, &request, sizeof(request), tx);
-	g_yield_t(g_ui_delegate_tid);
+	platformSendMessage(g_ui_delegate_tid, &request, sizeof(request), tx);
+	platformYieldTo(g_ui_delegate_tid);
 
-	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_simple_response);
+	size_t buflen = SYS_MESSAGE_HEADER_SIZE + sizeof(g_ui_simple_response);
 	uint8_t buffer[buflen];
-	if(g_receive_message_t(buffer, buflen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	if(platformReceiveMessage(buffer, buflen, tx) == SYS_MESSAGE_RECEIVE_SUCCESS)
 	{
-		auto response = (g_ui_simple_response*) G_MESSAGE_CONTENT(buffer);
+		auto response = (g_ui_simple_response*) SYS_MESSAGE_CONTENT(buffer);
 		return response->status == G_UI_PROTOCOL_SUCCESS;
 	}
 	return false;
@@ -55,21 +55,21 @@ bool g_scrollpane::setFixed(bool width, bool height)
 	if(!g_ui_initialized)
 		return false;
 
-	g_message_transaction tx = g_get_message_tx_id();
+	SYS_TX_T tx = platformCreateMessageTransaction();
 
 	g_ui_scrollpane_set_fixed request;
 	request.header.id = G_UI_PROTOCOL_SCROLLPANE_SET_FIXED;
 	request.scrollpane = this->id;
 	request.width = width;
 	request.height = height;
-	g_send_message_t(g_ui_delegate_tid, &request, sizeof(request), tx);
-	g_yield_t(g_ui_delegate_tid);
+	platformSendMessage(g_ui_delegate_tid, &request, sizeof(request), tx);
+	platformYieldTo(g_ui_delegate_tid);
 
-	size_t buflen = sizeof(g_message_header) + sizeof(g_ui_simple_response);
+	size_t buflen = SYS_MESSAGE_HEADER_SIZE + sizeof(g_ui_simple_response);
 	uint8_t buffer[buflen];
-	if(g_receive_message_t(buffer, buflen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	if(platformReceiveMessage(buffer, buflen, tx) == SYS_MESSAGE_RECEIVE_SUCCESS)
 	{
-		auto response = (g_ui_simple_response*) G_MESSAGE_CONTENT(buffer);
+		auto response = (g_ui_simple_response*) SYS_MESSAGE_CONTENT(buffer);
 		return response->status == G_UI_PROTOCOL_SUCCESS;
 	}
 	return false;

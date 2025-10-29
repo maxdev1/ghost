@@ -24,31 +24,25 @@
 #include "components/cursor.hpp"
 #include "events/event.hpp"
 #include "events/locatable.hpp"
-#include "input/input_receiver.hpp"
 #include "interface/registration_thread.hpp"
-#include "video/generic_video_output.hpp"
 #include "components/window.hpp"
 #include "components/text/text_field.hpp"
-#include "interface/interface_receiver.hpp"
 #include "test.hpp"
+#include "platform/platform.hpp"
 
 #include <cairo/cairo.h>
 #include <iostream>
 #include <cstdio>
-#include <libdevice/interface.hpp>
+#include <sstream>
 
-static windowserver_t* server;
-static g_user_mutex dispatchLock = g_mutex_initialize_r(true);
+#ifdef _GHOST_
+#include <libdevice/interface.hpp>
+#endif
+
+static SYS_MUTEX_T dispatchLock = platformInitializeMutex(true);
 static int framesTotal = 0;
 static bool debugOn = false;
 int debugBorderCycle = 0;
-
-int main()
-{
-	server = new windowserver_t();
-	server->launch();
-	return 0;
-}
 
 windowserver_t* windowserver_t::instance()
 {
@@ -62,23 +56,23 @@ windowserver_t::windowserver_t()
 
 void windowserver_t::startInputHandlers()
 {
-	input_receiver_t::initialize();
+	platformStartInput();
 
 	std::string keyLayout = "de-DE";
-	if(!g_keyboard::loadLayout(keyLayout))
+	if(!platformInitializeKeyboardLayout(keyLayout))
 	{
-		klog(("failed to load keyboard layout '" + keyLayout + "', no keyboard input available").c_str());
+		platformLog(("failed to load keyboard layout '" + keyLayout + "', no keyboard input available").c_str());
 	}
 
-	server->loadCursor();
+	platformLoadCursors();
 	server->requestUpdateLater();
 }
 
 void windowserver_t::startOtherTasks()
 {
-	g_task_register_name("windowserver/launcher");
+	platformRegisterTaskIdentifier("windowserver/launcher");
 	// TODO not the windowservers job
-	g_spawn("/applications/desktop.bin", "", "", G_SECURITY_LEVEL_APPLICATION);
+	platformSpawn("/applications/desktop.bin", "", "");
 }
 
 void windowserver_t::startLazyUpdateLoop()
@@ -88,11 +82,11 @@ void windowserver_t::startLazyUpdateLoop()
 
 void windowserver_t::launch()
 {
-	g_task_register_name("windowserver");
+	platformRegisterTaskIdentifier("windowserver");
 
 	initializeVideo();
 
-	g_create_task((void*) &startInputHandlers);
+	platformCreateThread((void*) &startInputHandlers);
 
 	g_dimension resolution = videoOutput->getResolution();
 	g_rectangle screenBounds(0, 0, resolution.width, resolution.height);
@@ -100,11 +94,11 @@ void windowserver_t::launch()
 
 	test_t::createTestComponents();
 
-	g_create_task((void*) &interfaceRegistrationThread);
-	g_create_task((void*) &startOtherTasks);
-	g_create_task((void*) &startLazyUpdateLoop);
+	platformCreateThread((void*) &interfaceRegistrationThread);
+	platformCreateThread((void*) &startOtherTasks);
+	platformCreateThread((void*) &startLazyUpdateLoop);
 
-	renderTask = g_get_tid();
+	renderTask = platformGetTid();
 	updateLoop(screenBounds);
 }
 
@@ -121,53 +115,30 @@ void windowserver_t::createVitalComponents(g_rectangle screenBounds)
 	instance()->stateLabel->setColor(RGB(255, 255, 255));
 	screen->addChild(stateLabel);
 
-	g_create_task((void*) &windowserver_t::fpsCounter);
-}
+#ifndef _GHOST_
+	panel_t* backgroundPanel = new panel_t();
+	backgroundPanel->setBounds(screenBounds);
+	backgroundPanel->setBackground(RGB(0,0,0));
+	screen->addChild(backgroundPanel);
+#endif
 
-g_video_output* windowserver_t::findVideoOutput()
-{
-	klog("waiting for a video device to be present...");
-
-	auto tx = G_MESSAGE_TOPIC_TRANSACTION_START;
-	size_t bufLen = 1024;
-	uint8_t buf[bufLen];
-	while(true)
-	{
-		auto status = g_receive_topic_message(G_DEVICE_EVENT_TOPIC, buf, bufLen, tx);
-		if(status == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
-		{
-			auto message = (g_message_header*) buf;
-			tx = message->transaction;
-			auto content = (g_device_event_header*) G_MESSAGE_CONTENT(message);
-
-			if(content->event == G_DEVICE_EVENT_DEVICE_REGISTERED)
-			{
-				auto deviceEvent = (g_device_event_device_registered*) content;
-
-				if(deviceEvent->type == G_DEVICE_TYPE_VIDEO)
-				{
-					return new g_generic_video_output(deviceEvent->driver, deviceEvent->id);
-				}
-			}
-		}
-	}
+	platformCreateThread((void*) &windowserver_t::fpsCounter);
 }
 
 void windowserver_t::initializeVideo()
 {
-	videoOutput = findVideoOutput();
+	videoOutput = platformCreateVideoOutput();
 
-	g_set_video_log(false);
 	if(!videoOutput->initialize())
 	{
-		klog("failed to initialize generic video output");
-		g_exit(-1);
+		platformLog("failed to initialize generic video output");
+		platformExit(-1);
 	}
 }
 
 void windowserver_t::updateLoop(const g_rectangle& screenBounds)
 {
-	g_task_register_name("windowserver/updater");
+	platformRegisterTaskIdentifier("windowserver/updater");
 
 	graphics_t global;
 	global.resize(screenBounds.width, screenBounds.height, false);
@@ -175,7 +146,7 @@ void windowserver_t::updateLoop(const g_rectangle& screenBounds)
 	cursor_t::nextPosition = g_point(screenBounds.width / 2, screenBounds.height / 2);
 
 	uint64_t lastUpdate = 0;
-	g_mutex_acquire(updateLock);
+	platformAcquireMutex(updateLock);
 	while(true)
 	{
 		eventProcessor->process();
@@ -190,33 +161,33 @@ void windowserver_t::updateLoop(const g_rectangle& screenBounds)
 		output(&global);
 
 		framesTotal++;
-		g_mutex_acquire_to(updateLock, 1000);
+		platformAcquireMutexTimeout(updateLock, 1000);
 
-		auto now = g_millis();
+		auto now = platformMillis();
 		if(now - lastUpdate < 10)
-			g_sleep(5);
+			platformSleep(5);
 		lastUpdate = now;
 	}
 }
 
 void windowserver_t::requestUpdateImmediately() const
 {
-	g_mutex_release(updateLock);
+	platformReleaseMutex(updateLock);
 }
 
 void windowserver_t::requestUpdateLater() const
 {
-	g_mutex_release(lazyUpdateLock);
+	platformReleaseMutex(lazyUpdateLock);
 }
 
 void windowserver_t::updateDebounceLoop() const
 {
-	g_mutex_acquire(lazyUpdateLock);
+	platformAcquireMutex(lazyUpdateLock);
 	while(true)
 	{
-		g_sleep(10);
-		g_mutex_acquire_to(lazyUpdateLock, 1000);
-		g_mutex_release(updateLock);
+		platformSleep(10);
+		platformAcquireMutexTimeout(lazyUpdateLock, 1000);
+		platformReleaseMutex(updateLock);
 	}
 }
 
@@ -265,18 +236,6 @@ void windowserver_t::output(graphics_t* graphics)
 	lastInvalid = invalid;
 }
 
-void windowserver_t::loadCursor()
-{
-	auto dir = g_open_directory("/system/graphics/cursor");
-	g_fs_directory_entry* entry;
-	while((entry = g_read_directory(dir)) != nullptr)
-	{
-		std::string path = std::string("/system/graphics/cursor") + "/" + entry->name;
-		cursor_t::load(path);
-	}
-	cursor_t::set("default");
-}
-
 component_t* windowserver_t::dispatchUpwards(component_t* component, event_t& event)
 {
 	// store when dispatching to parents
@@ -314,9 +273,9 @@ component_t* windowserver_t::dispatch(component_t* component, event_t& event)
 			locatable->position.y -= locationOnScreen.y;
 		}
 
-		g_mutex_acquire(dispatchLock);
+		platformAcquireMutex(dispatchLock);
 		handledBy = event.visit(component);
-		g_mutex_release(dispatchLock);
+		platformReleaseMutex(dispatchLock);
 	}
 
 	return handledBy;
@@ -360,18 +319,18 @@ component_t* windowserver_t::switchFocus(component_t* to)
 
 void windowserver_t::fpsCounter()
 {
-	g_task_register_name("windowserver/fps-counter");
+	platformRegisterTaskIdentifier("windowserver/fps-counter");
 
 	int seconds = 0;
 	for(;;)
 	{
 		if(!debugOn)
 		{
-			g_sleep(5000);
+			platformSleep(5000);
 			continue;
 		}
 
-		g_sleep(1000);
+		platformSleep(1000);
 		seconds++;
 		std::stringstream s;
 		s << "FPS: " << framesTotal << ", Time: " << seconds;

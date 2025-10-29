@@ -34,17 +34,16 @@ class item_container_t;
  */
 class windowserver_t
 {
-    g_tid updateTask = G_TID_NONE;
-    g_tid renderTask = G_TID_NONE;
+    SYS_TID_T updateTask = SYS_TID_NONE;
+    SYS_TID_T renderTask = SYS_TID_NONE;
 
-    g_user_mutex updateLock = g_mutex_initialize();
-    g_user_mutex lazyUpdateLock = g_mutex_initialize();
+    SYS_MUTEX_T updateLock = platformInitializeMutex(false);
+    SYS_MUTEX_T lazyUpdateLock = platformInitializeMutex(false);
     g_rectangle lastInvalid;
 
     void initializeVideo();
     void createVitalComponents(g_rectangle screenBounds);
     g_video_output* findVideoOutput();
-    void loadCursor();
     static void startInputHandlers();
 
     void updateLoop(const g_rectangle& screenBounds);
@@ -116,5 +115,7 @@ public:
     static void startLazyUpdateLoop();
     static void startOtherTasks();
 };
+
+extern windowserver_t* server;
 
 #endif

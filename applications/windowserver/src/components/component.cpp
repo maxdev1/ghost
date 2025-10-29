@@ -56,7 +56,7 @@ component_t::~component_t()
 
 void component_t::setBoundsInternal(const g_rectangle& newBounds)
 {
-	g_mutex_acquire(lock);
+	platformAcquireMutex(lock);
 
 	g_rectangle oldBounds = bounds;
 	markDirty();
@@ -78,7 +78,7 @@ void component_t::setBoundsInternal(const g_rectangle& newBounds)
 		handleBoundChanged(oldBounds);
 	}
 
-	g_mutex_release(lock);
+	platformReleaseMutex(lock);
 }
 
 void component_t::recheckGraphics()
@@ -89,21 +89,21 @@ void component_t::recheckGraphics()
 
 g_rectangle component_t::getBounds() const
 {
-	g_mutex_acquire(lock);
+	platformAcquireMutex(lock);
 	auto bounds = this->bounds;
-	g_mutex_release(lock);
+	platformReleaseMutex(lock);
 	return bounds;
 }
 
 std::vector<component_child_reference_t>& component_t::acquireChildren()
 {
-	g_mutex_acquire(childrenLock);
+	platformAcquireMutex(childrenLock);
 	return children;
 }
 
 void component_t::releaseChildren() const
 {
-	g_mutex_release(childrenLock);
+	platformReleaseMutex(childrenLock);
 }
 
 
@@ -136,7 +136,7 @@ bool component_t::canHandleEvents() const
 
 void component_t::setVisible(bool visible)
 {
-	g_mutex_acquire(lock);
+	platformAcquireMutex(lock);
 
 	this->visible = visible;
 	markDirty();
@@ -150,7 +150,7 @@ void component_t::setVisible(bool visible)
 		markParentFor(COMPONENT_REQUIREMENT_LAYOUT);
 	}
 
-	g_mutex_release(lock);
+	platformReleaseMutex(lock);
 
 	this->callForListeners(G_UI_COMPONENT_EVENT_TYPE_VISIBLE, [visible](event_listener_info_t& info)
 	{
@@ -158,7 +158,7 @@ void component_t::setVisible(bool visible)
 		e.header.type = G_UI_COMPONENT_EVENT_TYPE_VISIBLE;
 		e.header.component_id = info.component_id;
 		e.visible = visible;
-		g_send_message(info.target_thread, &e, sizeof(g_ui_component_visible_event));
+		platformSendMessage(info.target_thread, &e, sizeof(g_ui_component_visible_event),SYS_TX_NONE);
 	});
 }
 
@@ -177,7 +177,7 @@ void component_t::blit(graphics_t* out, const g_rectangle& parentClip, const g_p
 	if(!this->visible)
 		return;
 
-	g_mutex_acquire(lock);
+	platformAcquireMutex(lock);
 
 	g_rectangle clip = getBounds();
 	clip.x = screenPosition.x;
@@ -188,14 +188,14 @@ void component_t::blit(graphics_t* out, const g_rectangle& parentClip, const g_p
 	{
 		graphics.blitTo(out, clip, screenPosition);
 	}
-	g_mutex_release(lock);
+	platformReleaseMutex(lock);
 
 	this->blitChildren(out, clip, screenPosition);
 }
 
 void component_t::blitChildren(graphics_t* out, const g_rectangle& clip, const g_point& screenPosition)
 {
-	g_mutex_acquire(childrenLock);
+	platformAcquireMutex(childrenLock);
 	for(auto& c: children)
 	{
 		if(c.component->visible)
@@ -204,7 +204,7 @@ void component_t::blitChildren(graphics_t* out, const g_rectangle& clip, const g
 			c.component->blit(out, clip, childPositionOnParent);
 		}
 	}
-	g_mutex_release(childrenLock);
+	platformReleaseMutex(childrenLock);
 }
 
 void component_t::addChild(component_t* comp, component_child_reference_type_t type)
@@ -218,14 +218,14 @@ void component_t::addChild(component_t* comp, component_child_reference_type_t t
 	reference.component = comp;
 	reference.type = type;
 
-	g_mutex_acquire(childrenLock);
+	platformAcquireMutex(childrenLock);
 	children.push_back(reference);
 	std::stable_sort(children.begin(), children.end(),
 	                 [](const component_child_reference_t& c1, const component_child_reference_t& c2)
 	                 {
 		                 return c1.component->zIndex < c2.component->zIndex;
 	                 });
-	g_mutex_release(childrenLock);
+	platformReleaseMutex(childrenLock);
 
 	comp->markFor(COMPONENT_REQUIREMENT_ALL);
 	markFor(COMPONENT_REQUIREMENT_ALL);
@@ -235,7 +235,7 @@ void component_t::removeChild(component_t* comp)
 {
 	comp->parent = 0;
 
-	g_mutex_acquire(childrenLock);
+	platformAcquireMutex(childrenLock);
 	for(auto itr = children.begin(); itr != children.end();)
 	{
 		if((*itr).component == comp)
@@ -247,7 +247,7 @@ void component_t::removeChild(component_t* comp)
 			++itr;
 		}
 	}
-	g_mutex_release(childrenLock);
+	platformReleaseMutex(childrenLock);
 
 	markFor(COMPONENT_REQUIREMENT_LAYOUT);
 }
@@ -256,18 +256,18 @@ component_t* component_t::getComponentAt(g_point p)
 {
 	component_t* target = this;
 
-	g_mutex_acquire(childrenLock);
+	platformAcquireMutex(childrenLock);
 	for(auto it = children.rbegin(); it != children.rend(); ++it)
 	{
 		auto child = (*it).component;
 		if(child->visible && child->bounds.contains(p))
 		{
-			g_mutex_release(childrenLock);
+			platformReleaseMutex(childrenLock);
 			target = child->getComponentAt(g_point(p.x - child->bounds.x, p.y - child->bounds.y));
 			break;
 		}
 	}
-	g_mutex_release(childrenLock);
+	platformReleaseMutex(childrenLock);
 
 	return target;
 }
@@ -285,7 +285,7 @@ window_t* component_t::getWindow()
 
 void component_t::bringChildToFront(component_t* comp)
 {
-	g_mutex_acquire(childrenLock);
+	platformAcquireMutex(childrenLock);
 	for(uint32_t index = 0; index < children.size(); index++)
 	{
 		if(children[index].component == comp)
@@ -298,7 +298,7 @@ void component_t::bringChildToFront(component_t* comp)
 			break;
 		}
 	}
-	g_mutex_release(childrenLock);
+	platformReleaseMutex(childrenLock);
 }
 
 void component_t::bringToFront()
@@ -321,7 +321,7 @@ component_t* component_t::handleMouseEvent(mouse_event_t& event)
 {
 	component_t* handledByChild = nullptr;
 
-	g_mutex_acquire(childrenLock);
+	platformAcquireMutex(childrenLock);
 	for(auto it = children.rbegin(); it != children.rend(); ++it)
 	{
 		auto child = (*it).component;
@@ -343,7 +343,7 @@ component_t* component_t::handleMouseEvent(mouse_event_t& event)
 			event.position.y += child->bounds.y;
 		}
 	}
-	g_mutex_release(childrenLock);
+	platformReleaseMutex(childrenLock);
 
 	if(handledByChild)
 		return handledByChild;
@@ -359,9 +359,9 @@ component_t* component_t::handleMouseEvent(mouse_event_t& event)
 		                                                postedEvent.buttons = event.buttons;
 		                                                postedEvent.clickCount = event.clickCount;
 		                                                postedEvent.scroll = event.scroll;
-		                                                g_send_message(
+		                                                platformSendMessage(
 				                                                info.target_thread, &postedEvent,
-				                                                sizeof(g_ui_component_mouse_event));
+				                                                sizeof(g_ui_component_mouse_event),SYS_TX_NONE);
 	                                                });
 
 	// TODO Temporary fix so scroll-events still go to parents
@@ -378,7 +378,7 @@ component_t* component_t::handleKeyEvent(key_event_t& event)
 {
 	component_t* handledByChild = nullptr;
 
-	g_mutex_acquire(childrenLock);
+	platformAcquireMutex(childrenLock);
 	for(auto it = children.rbegin(); it != children.rend(); ++it)
 	{
 		auto child = (*it).component;
@@ -391,7 +391,7 @@ component_t* component_t::handleKeyEvent(key_event_t& event)
 			break;
 		}
 	}
-	g_mutex_release(childrenLock);
+	platformReleaseMutex(childrenLock);
 
 	if(!handledByChild)
 	{
@@ -412,9 +412,9 @@ bool component_t::sendKeyEventToListener(key_event_t& event)
 				                              G_UI_COMPONENT_EVENT_TYPE_KEY;
 		                              posted_key_event.header.component_id = info.component_id;
 		                              posted_key_event.key_info = event.info;
-		                              g_send_message(
+		                              platformSendMessage(
 				                              info.target_thread, &posted_key_event,
-				                              sizeof(g_ui_component_key_event));
+				                              sizeof(g_ui_component_key_event),SYS_TX_NONE);
 	                              });
 }
 
@@ -487,21 +487,21 @@ void component_t::resolveRequirement(component_requirement_t req, int lvl)
 {
 	if((childRequirements & req) && !(req == COMPONENT_REQUIREMENT_LAYOUT))
 	{
-		g_mutex_acquire(childrenLock);
+		platformAcquireMutex(childrenLock);
 		for(auto& child: children)
 		{
 			if(child.component->visible)
 			{
-				g_mutex_acquire(child.component->lock);
+				platformAcquireMutex(child.component->lock);
 				child.component->resolveRequirement(req, lvl + 1);
-				g_mutex_release(child.component->lock);
+				platformReleaseMutex(child.component->lock);
 			}
 		}
 		childRequirements &= ~req;
-		g_mutex_release(childrenLock);
+		platformReleaseMutex(childrenLock);
 	}
 
-	g_mutex_acquire(lock);
+	platformAcquireMutex(lock);
 	if(requirements & req)
 	{
 		if(req == COMPONENT_REQUIREMENT_UPDATE)
@@ -520,28 +520,28 @@ void component_t::resolveRequirement(component_requirement_t req, int lvl)
 
 		requirements &= ~req;
 	}
-	g_mutex_release(lock);
+	platformReleaseMutex(lock);
 
 	if((childRequirements & req) && req == COMPONENT_REQUIREMENT_LAYOUT)
 	{
-		g_mutex_acquire(childrenLock);
+		platformAcquireMutex(childrenLock);
 		for(auto& child: children)
 		{
 			if(child.component->visible)
 			{
-				g_mutex_acquire(child.component->lock);
+				platformAcquireMutex(child.component->lock);
 				child.component->resolveRequirement(req, lvl + 1);
-				g_mutex_release(child.component->lock);
+				platformReleaseMutex(child.component->lock);
 			}
 		}
 		childRequirements &= ~req;
-		g_mutex_release(childrenLock);
+		platformReleaseMutex(childrenLock);
 	}
 }
 
-void component_t::addListener(g_ui_component_event_type eventType, g_tid target_thread, g_ui_component_id id)
+void component_t::addListener(g_ui_component_event_type eventType, SYS_TID_T target_thread, g_ui_component_id id)
 {
-	g_mutex_acquire(lock);
+	platformAcquireMutex(lock);
 
 	auto entry = new component_listener_entry_t();
 	entry->info.target_thread = target_thread;
@@ -549,13 +549,13 @@ void component_t::addListener(g_ui_component_event_type eventType, g_tid target_
 	entry->type = eventType;
 	listeners.push_back(entry);
 
-	g_mutex_release(lock);
+	platformReleaseMutex(lock);
 }
 
 bool component_t::callForListeners(g_ui_component_event_type eventType,
                                    const std::function<void(event_listener_info_t&)>& func)
 {
-	g_mutex_acquire(lock);
+	platformAcquireMutex(lock);
 
 	bool handled = false;
 	for(auto& entry: listeners)
@@ -567,7 +567,7 @@ bool component_t::callForListeners(g_ui_component_event_type eventType,
 		}
 	}
 
-	g_mutex_release(lock);
+	platformReleaseMutex(lock);
 	return handled;
 }
 
@@ -700,16 +700,16 @@ bool component_t::getStringProperty(int property, std::string& out)
 
 bool component_t::getChildReference(component_t* child, component_child_reference_t& out)
 {
-	g_mutex_acquire(childrenLock);
+	platformAcquireMutex(childrenLock);
 	for(auto& ref: children)
 	{
 		if(ref.component == child)
 		{
 			out = ref;
-			g_mutex_release(childrenLock);
+			platformReleaseMutex(childrenLock);
 			return true;
 		}
 	}
-	g_mutex_release(childrenLock);
+	platformReleaseMutex(childrenLock);
 	return false;
 }

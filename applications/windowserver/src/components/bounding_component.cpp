@@ -31,6 +31,6 @@ void bounding_component_t::setBounds(const g_rectangle& bounds)
 		bounds_event.header.type = G_UI_COMPONENT_EVENT_TYPE_BOUNDS;
 		bounds_event.header.component_id = info.component_id;
 		bounds_event.bounds = bounds;
-		g_send_message(info.target_thread, &bounds_event, sizeof(g_ui_component_bounds_event));
+		platformSendMessage(info.target_thread, &bounds_event, sizeof(g_ui_component_bounds_event), SYS_TX_NONE);
 	});
 }

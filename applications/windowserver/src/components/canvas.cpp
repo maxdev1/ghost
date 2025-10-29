@@ -23,19 +23,18 @@
 #include "windowserver.hpp"
 
 #include <cstring>
-#include <ghost.h>
 
 #define ALIGN_UP(value) (value + value % 100)
 
-canvas_t::canvas_t(g_tid partnerThread)
+canvas_t::canvas_t(SYS_TID_T partnerThread)
 {
-	partnerProcess = g_get_pid_for_tid(partnerThread);
+	partnerProcess = platformGetPidForTid(partnerThread);
 	asyncInfo = new async_resizer_info_t();
 	asyncInfo->canvas = this;
 	asyncInfo->alive = true;
-	asyncInfo->lock = g_mutex_initialize();
-	asyncInfo->checkAtom = g_mutex_initialize();
-	g_create_task_d((void*) canvas_t::asyncBufferResizer, asyncInfo);
+	asyncInfo->lock = platformInitializeMutex(false);
+	asyncInfo->checkAtom = platformInitializeMutex(false);
+	platformCreateThreadWithData((void*) canvas_t::asyncBufferResizer, asyncInfo);
 }
 
 /**
@@ -44,22 +43,22 @@ canvas_t::canvas_t(g_tid partnerThread)
  */
 canvas_t::~canvas_t()
 {
-	g_mutex_acquire(asyncInfo->lock);
+	platformAcquireMutex(asyncInfo->lock);
 	asyncInfo->alive = false;
-	g_mutex_release(asyncInfo->lock);
+	platformReleaseMutex(asyncInfo->lock);
 }
 
 void canvas_t::asyncBufferResizer(async_resizer_info_t* asyncInfo)
 {
 	while(true)
 	{
-		g_mutex_acquire_to(asyncInfo->checkAtom, 10000);
+		platformAcquireMutexTimeout(asyncInfo->checkAtom, 10000);
 
-		g_mutex_acquire(asyncInfo->lock);
+		platformAcquireMutex(asyncInfo->lock);
 		if(!asyncInfo->alive)
 			break;
 		asyncInfo->canvas->checkBuffer();
-		g_mutex_release(asyncInfo->lock);
+		platformReleaseMutex(asyncInfo->lock);
 	}
 	delete asyncInfo;
 }
@@ -67,18 +66,18 @@ void canvas_t::asyncBufferResizer(async_resizer_info_t* asyncInfo)
 /**
  * When the bounds of a canvas are changed, the buffer must be checked.
  */
-void canvas_t::handleBoundChanged(const g_rectangle& oldBounds) { g_mutex_release(asyncInfo->checkAtom); }
+void canvas_t::handleBoundChanged(const g_rectangle& oldBounds) { platformReleaseMutex(asyncInfo->checkAtom); }
 
 /**
  * Checks whether the current buffer is still sufficient for the required amount of pixels.
  */
 void canvas_t::checkBuffer()
 {
-	g_mutex_acquire(lock);
+	platformAcquireMutex(lock);
 	g_rectangle bounds = getBounds();
 	if(bounds.width == 0 || bounds.height == 0)
 	{
-		g_mutex_release(lock);
+		platformReleaseMutex(lock);
 		return;
 	}
 
@@ -86,7 +85,7 @@ void canvas_t::checkBuffer()
 	bounds.height = ALIGN_UP(bounds.height);
 
 	createNewBuffer(bounds, bounds.width, bounds.height);
-	g_mutex_release(lock);
+	platformReleaseMutex(lock);
 }
 
 void canvas_t::createNewBuffer(g_rectangle& bounds, int width, int height)
@@ -94,13 +93,13 @@ void canvas_t::createNewBuffer(g_rectangle& bounds, int width, int height)
 	// Check if buffer still large enough
 	int stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, width);
 	int imageSize = stride * height;
-	uint16_t pages = G_PAGE_ALIGN_UP(imageSize) / G_PAGE_SIZE;
-	uint32_t bufferSize = pages * G_PAGE_SIZE;
+	uint16_t pages = SYS_PAGE_ALIGN_UP(imageSize) / SYS_PAGE_SIZE;
+	uint32_t bufferSize = pages * SYS_PAGE_SIZE;
 
-	g_mutex_acquire(bufferLock);
+	platformAcquireMutex(bufferLock);
 	if(pages <= buffer.pages)
 	{
-		g_mutex_release(bufferLock);
+		platformReleaseMutex(bufferLock);
 		return;
 	}
 
@@ -112,27 +111,27 @@ void canvas_t::createNewBuffer(g_rectangle& bounds, int width, int height)
 	}
 	if(buffer.localMapping)
 	{
-		g_unmap(buffer.localMapping);
+		platformUnmapSharedMemory(buffer.localMapping);
 		buffer.localMapping = nullptr;
 	}
 
 	// create a new buffer
 	buffer.pages = pages;
-	buffer.localMapping = (uint8_t*) g_alloc_mem(bufferSize);
+	buffer.localMapping = (uint8_t*) platformAllocateMemory(bufferSize);
 	buffer.paintableWidth = bounds.width;
 	buffer.paintableHeight = bounds.height;
 
 	if(buffer.localMapping == nullptr)
 	{
-		klog("warning: failed to allocate a buffer of size %i for a canvas", bufferSize);
+		platformLog("warning: failed to allocate a buffer of size %i for a canvas", bufferSize);
 	}
 	else
 	{
 		memset(buffer.localMapping, 0, bufferSize);
-		buffer.remoteMapping = (uint8_t*) g_share_mem(buffer.localMapping, pages * G_PAGE_SIZE, partnerProcess);
+		buffer.remoteMapping = (uint8_t*) platformShareMemory(buffer.localMapping, pages * SYS_PAGE_SIZE, partnerProcess);
 		if(buffer.remoteMapping == nullptr)
 		{
-			klog("warning: failed to share a buffer for a canvas to proc %i", partnerProcess);
+			platformLog("warning: failed to share a buffer for a canvas to proc %i", partnerProcess);
 		}
 		else
 		{
@@ -143,14 +142,14 @@ void canvas_t::createNewBuffer(g_rectangle& bounds, int width, int height)
 			auto status = cairo_surface_status(buffer.surface);
 			if(status != CAIRO_STATUS_SUCCESS)
 			{
-				klog("failed to create surface: %i", status);
+				platformLog("failed to create surface: %i", status);
 				buffer.surface = nullptr;
 			}
 		}
 	}
 
 	notifyClientAboutNewBuffer();
-	g_mutex_release(bufferLock);
+	platformReleaseMutex(bufferLock);
 }
 
 void canvas_t::notifyClientAboutNewBuffer()
@@ -158,19 +157,19 @@ void canvas_t::notifyClientAboutNewBuffer()
 	g_ui_component_canvas_wfa_event event;
 	event.header.type = G_UI_COMPONENT_EVENT_TYPE_CANVAS_NEW_BUFFER;
 	event.header.component_id = this->id;
-	event.newBufferAddress = (g_address) buffer.remoteMapping;
+	event.newBufferAddress = (uintptr_t) buffer.remoteMapping;
 	event.width = buffer.paintableWidth;
 	event.height = buffer.paintableHeight;
 
-	g_tid eventDispatcher = process_registry_t::get(partnerProcess);
-	if(eventDispatcher == G_TID_NONE)
+	SYS_TID_T eventDispatcher = process_registry_t::get(partnerProcess);
+	if(eventDispatcher == SYS_TID_NONE)
 	{
-		klog("failed to send buffer notification to event dispatcher of process %i since it is not registered",
+		platformLog("failed to send buffer notification to event dispatcher of process %i since it is not registered",
 		     partnerProcess);
 	}
 	else
 	{
-		g_send_message(eventDispatcher, &event, sizeof(g_ui_component_canvas_wfa_event));
+		platformSendMessage(eventDispatcher, &event, sizeof(g_ui_component_canvas_wfa_event),SYS_TX_NONE);
 	}
 }
 
@@ -179,7 +178,7 @@ void canvas_t::blit(graphics_t* out, const g_rectangle& clip, const g_point& pos
 	auto cr = out->acquireContext();
 	if(cr)
 	{
-		g_mutex_acquire(bufferLock);
+		platformAcquireMutex(bufferLock);
 		if(bufferReady && buffer.surface)
 		{
 			cairo_surface_mark_dirty(buffer.surface);
@@ -188,7 +187,7 @@ void canvas_t::blit(graphics_t* out, const g_rectangle& clip, const g_point& pos
 			cairo_paint(cr);
 			cairo_restore(cr);
 		}
-		g_mutex_release(bufferLock);
+		platformReleaseMutex(bufferLock);
 
 		if(windowserver_t::isDebug())
 		{
@@ -209,9 +208,9 @@ void canvas_t::blit(graphics_t* out, const g_rectangle& clip, const g_point& pos
 
 void canvas_t::requestBlit(g_rectangle& area)
 {
-	g_mutex_acquire(bufferLock);
+	platformAcquireMutex(bufferLock);
 	bufferReady = true;
-	g_mutex_release(bufferLock);
+	platformReleaseMutex(bufferLock);
 
 	markDirty(area);
 	windowserver_t::instance()->requestUpdateLater();

@@ -31,7 +31,7 @@ void interfaceApplicationExitCleanupThread(application_exit_cleanup_handler_t* h
 
 void application_exit_cleanup_handler_t::run()
 {
-	g_join(pid);
+	platformJoin(pid);
 	component_registry_t::cleanupProcess(pid);
 	process_registry_t::cleanup_process(pid);
 }

@@ -48,7 +48,7 @@ public:
 
 void open_executable_spawn(open_exe_data_t* data)
 {
-	g_spawn(data->exe.c_str(), data->args.c_str(), "/", G_SECURITY_LEVEL_APPLICATION);
+	platformSpawn(data->exe.c_str(), data->args.c_str(), "/");
 }
 
 static int nextButtonPos = 70;
@@ -64,7 +64,7 @@ void addExecutableButton(window_t* window, std::string name, std::string exe, st
 		auto data = new open_exe_data_t();
 		data->exe = exe;
 		data->args = args;
-		g_create_task_d((void*) &open_executable_spawn, data);
+		platformCreateThreadWithData((void*) &open_executable_spawn, data);
 	});
 	window->addChild(openCalculatorButton);
 	nextButtonPos += 35;
@@ -74,7 +74,7 @@ void createTestWindow()
 {
 	window_t* window = new window_t;
 	window->setTitle("Components");
-	window->setBounds(g_rectangle(530, 30, 320, 530));
+	window->setBounds(g_rectangle(100, 30, 320, 530));
 	window->setLayoutManager(new grid_layout_manager_t(1, 1));
 
 	scrollpane_t* scroller = new scrollpane_t;
@@ -212,6 +212,10 @@ void createTestWindow3()
 })");
 	panel->addChild(jsonInput);
 
+	auto testInput = new text_field_t();
+	testInput->setMinimumSize(g_dimension(100, 30));
+	panel->addChild(testInput);
+
 	auto tree = new tree_t();
 
 	auto button = new button_t();
@@ -220,7 +224,7 @@ void createTestWindow3()
 	button->setInternalActionHandler([tree, jsonInput]()
 	{
 		auto text = jsonInput->getText();
-		klog(("setting model from JSON: " + text).c_str());
+		platformLog(("setting model from JSON: " + text).c_str());
 		tree->setModelFromJson(text);
 	});
 
@@ -257,7 +261,7 @@ void createTestWindow3()
 
 void test_t::createTestComponents()
 {
-	// createTestWindow();
-	// createTestWindow2();
+	createTestWindow();
+	createTestWindow2();
 	createTestWindow3();
 }

@@ -45,7 +45,7 @@ void tree_t::setModelFromJson(std::string& model)
 
 	if(!json.isObject())
 	{
-		klog("Tree model JSON was not an object");
+		platformLog("Tree model JSON was not an object");
 		return;
 	}
 	auto jsonObject = json.asObject();
@@ -53,7 +53,7 @@ void tree_t::setModelFromJson(std::string& model)
 	auto rootNodes = jsonObject["rootNodes"];
 	if(!rootNodes.isArray())
 	{
-		klog("Property 'rootNodes' in JSON model must be an array");
+		platformLog("Property 'rootNodes' in JSON model must be an array");
 		return;
 	}
 
@@ -69,7 +69,7 @@ tree_node_t* tree_t::createNodeComponent(g_json_node& node)
 {
 	if(!node.isObject())
 	{
-		klog("Skipping non-object node in 'rootNodes'");
+		platformLog("Skipping non-object node in 'rootNodes'");
 		return nullptr;
 	}
 

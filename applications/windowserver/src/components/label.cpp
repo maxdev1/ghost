@@ -23,7 +23,6 @@
 #include <libwindow/properties.hpp>
 
 #include <cairo/cairo.h>
-#include <ghost.h>
 #include <sstream>
 #include <windowserver.hpp>
 
@@ -47,12 +46,15 @@ void label_t::update()
 	if(!cr)
 		return;
 
-	cairo_save(cr);
-	cairo_set_font_face(cr, font->getFace());
-	cairo_set_font_size(cr, fontSize);
-	cairo_text_extents(cr, this->text.c_str(), &textExtents);
-	cairo_font_extents(cr, &fontExtents);
-	cairo_restore(cr);
+	if(font)
+	{
+		cairo_save(cr);
+		cairo_set_font_face(cr, font->getFace());
+		cairo_set_font_size(cr, fontSize);
+		cairo_text_extents(cr, this->text.c_str(), &textExtents);
+		cairo_font_extents(cr, &fontExtents);
+		cairo_restore(cr);
+	}
 
 	graphics.releaseContext();
 
@@ -92,13 +94,17 @@ void label_t::paint()
 	auto cr = graphics.acquireContext();
 	if(!cr)
 		return;
-	cairo_save(cr);
-	cairo_set_source_rgb(cr, ARGB_FR_FROM(color), ARGB_FB_FROM(color), ARGB_FG_FROM(color));
-	cairo_move_to(cr, textX, textY);
-	cairo_set_font_face(cr, font->getFace());
-	cairo_set_font_size(cr, fontSize);
-	cairo_show_text(cr, text.c_str());
-	cairo_restore(cr);
+
+	if(font)
+	{
+		cairo_save(cr);
+		cairo_set_source_rgb(cr, ARGB_FR_FROM(color), ARGB_FB_FROM(color), ARGB_FG_FROM(color));
+		cairo_move_to(cr, textX, textY);
+		cairo_set_font_face(cr, font->getFace());
+		cairo_set_font_size(cr, fontSize);
+		cairo_show_text(cr, text.c_str());
+		cairo_restore(cr);
+	}
 
 	graphics.releaseContext();
 }
