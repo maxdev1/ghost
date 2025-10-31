@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,50 +18,88 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef DESKTOP_TASKBAR
-#define DESKTOP_TASKBAR
+#ifndef __LIBFONT_TEXT_TEXTLAYOUTER__
+#define __LIBFONT_TEXT_TEXTLAYOUTER__
 
-#include <libwindow/canvas.hpp>
-#include <libwindow/selection.hpp>
-#include <libwindow/window.hpp>
-#include <libwindow/font/text_layouter.hpp>
+#include "libwindow/metrics/dimension.hpp"
+#include "libwindow/metrics/point.hpp"
+#include "libwindow/metrics/rectangle.hpp"
+#include "libwindow/font/font.hpp"
+#include "libwindow/font/text_alignment.hpp"
 #include <vector>
 
-struct taskbar_entry_t
+/**
+ *
+ */
+struct g_positioned_glyph
 {
-    g_window* window;
-    std::string title;
-    bool focused;
-    bool hovered;
-    bool visible;
-    g_rectangle onView;
+	g_positioned_glyph() : line(-1), glyph(0), glyph_count(0)
+	{
+	}
+
+	int line;
+	g_point position;
+
+	g_dimension size;
+	g_point advance;
+
+	cairo_glyph_t* glyph;
+	int glyph_count;
 };
 
-class taskbar_t : public g_canvas
+/**
+ *
+ */
+struct g_layouted_text
 {
-    g_user_mutex entriesLock = g_mutex_initialize_r(true);
-    std::vector<taskbar_entry_t*> entries;
-    g_layouted_text* textLayoutBuffer;
 
-protected:
-    void init();
+	// List of glyphs with their positions
+	std::vector<g_positioned_glyph> positions;
 
-    void onMouseMove(const g_point& position);
+	// Bounds of the entire layouted text
+	g_rectangle textBounds;
 
-    void onMouseLeftPress(const g_point& position, int clickCount);
-    void onMouseDrag(const g_point& position);
-    void onMouseRelease(const g_point& position);
-    void onMouseLeave(const g_point& position);
+	// Buffers
+	cairo_glyph_t* glyph_buffer = nullptr;
+	int glyph_count;
+	cairo_text_cluster_t* cluster_buffer = nullptr;
+	int cluster_count;
+};
 
-public:
-    explicit taskbar_t(g_ui_component_id id);
+/**
+ *
+ */
+class g_text_layouter
+{
+  private:
+	/**
+	 *
+	 */
+	g_text_layouter()
+	{
+	}
 
-    ~taskbar_t() override = default;
-    static taskbar_t* create();
+  public:
+	/**
+	 * @return the instance of the font manager singleton
+	 */
+	static g_text_layouter* getInstance();
 
-    void handleDesktopEvent(g_ui_windows_event* event);
+	/**
+	 *
+	 */
+	g_layouted_text* initializeBuffer();
 
-    virtual void paint();
+	/**
+	 *
+	 */
+	void layout(cairo_t* cr, const char* text, g_font* font, int size, g_rectangle bounds, g_text_alignment alignment, g_layouted_text* layout,
+				bool breakOnOverflow = true);
+
+	/**
+	 *
+	 */
+	void destroyLayout(g_layouted_text* layout);
 };
 
 #endif

@@ -19,7 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "char_renderer.hpp"
-#include <libfont/font_loader.hpp>
+#include <libwindow/font/font_loader.hpp>
 
 char_renderer_t::char_renderer_t()
 {

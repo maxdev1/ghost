@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,50 +18,69 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef DESKTOP_TASKBAR
-#define DESKTOP_TASKBAR
+#include "libwindow/font/font_manager.hpp"
 
-#include <libwindow/canvas.hpp>
-#include <libwindow/selection.hpp>
-#include <libwindow/window.hpp>
-#include <libwindow/font/text_layouter.hpp>
-#include <vector>
+static g_font_manager* instance = 0;
 
-struct taskbar_entry_t
+g_font_manager* g_font_manager::getInstance()
 {
-    g_window* window;
-    std::string title;
-    bool focused;
-    bool hovered;
-    bool visible;
-    g_rectangle onView;
-};
+	if(instance == 0)
+	{
+		instance = new g_font_manager();
+	}
+	return instance;
+}
 
-class taskbar_t : public g_canvas
+g_font_manager::g_font_manager()
 {
-    g_user_mutex entriesLock = g_mutex_initialize_r(true);
-    std::vector<taskbar_entry_t*> entries;
-    g_layouted_text* textLayoutBuffer;
+	initializeEngine();
+}
 
-protected:
-    void init();
+g_font_manager::~g_font_manager()
+{
+	destroyEngine();
+}
 
-    void onMouseMove(const g_point& position);
+void g_font_manager::initializeEngine()
+{
+	FT_Error error = FT_Init_FreeType(&library);
+	if(error)
+		printf("freetype2 failed at FT_Init_FreeType with error code %i\n", error);
+}
 
-    void onMouseLeftPress(const g_point& position, int clickCount);
-    void onMouseDrag(const g_point& position);
-    void onMouseRelease(const g_point& position);
-    void onMouseLeave(const g_point& position);
+void g_font_manager::destroyEngine()
+{
+	FT_Error error = FT_Done_Library(library);
+	if(error)
+		printf("freetype2 failed at FT_Done_Library with error code %i\n", error);
+}
 
-public:
-    explicit taskbar_t(g_ui_component_id id);
+g_font* g_font_manager::getFont(std::string name)
+{
+	if(fontRegistry.count(name) > 0)
+		return fontRegistry[name];
+	return nullptr;
+}
 
-    ~taskbar_t() override = default;
-    static taskbar_t* create();
+bool g_font_manager::registerFont(std::string name, g_font* font)
+{
+	if(fontRegistry.count(name) > 0)
+	{
+		printf("tried to create font '%s' that already exists\n", name.c_str());
+		return false;
+	}
 
-    void handleDesktopEvent(g_ui_windows_event* event);
+	fontRegistry[name] = font;
+	return true;
+}
 
-    virtual void paint();
-};
+void g_font_manager::destroyFont(g_font* font)
+{
+	fontRegistry.erase(font->getName());
+	delete font;
+}
 
-#endif
+FT_Library g_font_manager::getLibraryHandle()
+{
+	return library;
+}

@@ -23,8 +23,8 @@
 #include <cairo/cairo.h>
 #include <cstdlib>
 #include <map>
-#include <libfont/text_layouter.hpp>
-#include <libfont/font_loader.hpp>
+#include <libwindow/font/text_layouter.hpp>
+#include <libwindow/font/font_loader.hpp>
 #include <helper.hpp>
 
 g_font* font = nullptr;

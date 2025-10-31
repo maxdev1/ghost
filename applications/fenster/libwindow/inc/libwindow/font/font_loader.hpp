@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,50 +18,21 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef DESKTOP_TASKBAR
-#define DESKTOP_TASKBAR
+#ifndef __LIBFONT_TEXT_FONTLOADER__
+#define __LIBFONT_TEXT_FONTLOADER__
 
-#include <libwindow/canvas.hpp>
-#include <libwindow/selection.hpp>
-#include <libwindow/window.hpp>
-#include <libwindow/font/text_layouter.hpp>
-#include <vector>
+#include "libwindow/font/font.hpp"
+#include <string>
 
-struct taskbar_entry_t
+class g_font_loader
 {
-    g_window* window;
-    std::string title;
-    bool focused;
-    bool hovered;
-    bool visible;
-    g_rectangle onView;
-};
+  private:
+	static g_font* getFont(std::string path, std::string name);
+	static g_font* getSystemFont(std::string name);
 
-class taskbar_t : public g_canvas
-{
-    g_user_mutex entriesLock = g_mutex_initialize_r(true);
-    std::vector<taskbar_entry_t*> entries;
-    g_layouted_text* textLayoutBuffer;
-
-protected:
-    void init();
-
-    void onMouseMove(const g_point& position);
-
-    void onMouseLeftPress(const g_point& position, int clickCount);
-    void onMouseDrag(const g_point& position);
-    void onMouseRelease(const g_point& position);
-    void onMouseLeave(const g_point& position);
-
-public:
-    explicit taskbar_t(g_ui_component_id id);
-
-    ~taskbar_t() override = default;
-    static taskbar_t* create();
-
-    void handleDesktopEvent(g_ui_windows_event* event);
-
-    virtual void paint();
+  public:
+	static g_font* get(std::string name);
+	static g_font* getDefault();
 };
 
 #endif

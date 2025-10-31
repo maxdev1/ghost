@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,50 +18,48 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef DESKTOP_TASKBAR
-#define DESKTOP_TASKBAR
+#include "libwindow/font/font_loader.hpp"
+#include "libwindow/font/font_manager.hpp"
 
-#include <libwindow/canvas.hpp>
-#include <libwindow/selection.hpp>
-#include <libwindow/window.hpp>
-#include <libwindow/font/text_layouter.hpp>
-#include <vector>
-
-struct taskbar_entry_t
+g_font* g_font_loader::getFont(std::string path, std::string name)
 {
-    g_window* window;
-    std::string title;
-    bool focused;
-    bool hovered;
-    bool visible;
-    g_rectangle onView;
-};
+	g_font* existing = g_font_manager::getInstance()->getFont(name);
+	if(existing)
+		return existing;
 
-class taskbar_t : public g_canvas
+	g_font* newFont = g_font::load(path, name);
+	if(!newFont)
+		return nullptr;
+
+	if(g_font_manager::getInstance()->registerFont(name, newFont))
+		return newFont;
+
+	delete newFont;
+	return nullptr;
+}
+
+g_font* g_font_loader::getSystemFont(std::string name)
 {
-    g_user_mutex entriesLock = g_mutex_initialize_r(true);
-    std::vector<taskbar_entry_t*> entries;
-    g_layouted_text* textLayoutBuffer;
-
-protected:
-    void init();
-
-    void onMouseMove(const g_point& position);
-
-    void onMouseLeftPress(const g_point& position, int clickCount);
-    void onMouseDrag(const g_point& position);
-    void onMouseRelease(const g_point& position);
-    void onMouseLeave(const g_point& position);
-
-public:
-    explicit taskbar_t(g_ui_component_id id);
-
-    ~taskbar_t() override = default;
-    static taskbar_t* create();
-
-    void handleDesktopEvent(g_ui_windows_event* event);
-
-    virtual void paint();
-};
-
+#if _WIN32
+	return getFont("../../../sysroot/system/graphics/fonts/" + name + ".ttf", name);
+#else
+	return getFont("/system/graphics/fonts/" + name + ".ttf", name);
 #endif
+}
+
+g_font* g_font_loader::get(std::string name)
+{
+	g_font* font = getSystemFont(name);
+	if(font)
+		return font;
+	return getDefault();
+}
+
+g_font* g_font_loader::getDefault()
+{
+#if _WIN32
+	return getFont("../../../sysroot/system/graphics/fonts/default.ttf", "default");
+#else
+	return getFont("/system/graphics/fonts/default.ttf", "default");
+#endif
+}

@@ -53,7 +53,12 @@ move_to_front() {
 build_target() {
 	all_name="$@"
 	print_gray "$all_name "
-	$SH build.sh $@ >ghost-build.log 2>&1
+
+	if [ -f Makefile ]; then
+	  (make target=ghost -j8 $@) >ghost-build.log 2>&1
+	else
+	  $SH build.sh $@ >ghost-build.log 2>&1
+	fi
 }
 
 print_status() {

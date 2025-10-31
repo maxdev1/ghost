@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2022, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,50 +18,57 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef DESKTOP_TASKBAR
-#define DESKTOP_TASKBAR
+#ifndef __LIBFONT_TEXT_FONTMANAGER__
+#define __LIBFONT_TEXT_FONTMANAGER__
 
-#include <libwindow/canvas.hpp>
-#include <libwindow/selection.hpp>
-#include <libwindow/window.hpp>
-#include <libwindow/font/text_layouter.hpp>
-#include <vector>
+#include "libwindow/font/font.hpp"
+#include "libwindow/font/freetype.hpp"
+#include <map>
+#include <string>
 
-struct taskbar_entry_t
+class g_font_manager
 {
-    g_window* window;
-    std::string title;
-    bool focused;
-    bool hovered;
-    bool visible;
-    g_rectangle onView;
-};
+  private:
+    FT_Library library;
+    std::map<std::string, g_font*> fontRegistry;
 
-class taskbar_t : public g_canvas
-{
-    g_user_mutex entriesLock = g_mutex_initialize_r(true);
-    std::vector<taskbar_entry_t*> entries;
-    g_layouted_text* textLayoutBuffer;
+    g_font_manager();
+    ~g_font_manager();
 
-protected:
-    void init();
+    void initializeEngine();
+    void destroyEngine();
 
-    void onMouseMove(const g_point& position);
+  public:
+    /**
+     * @return the instance of the font manager singleton
+     */
+    static g_font_manager* getInstance();
 
-    void onMouseLeftPress(const g_point& position, int clickCount);
-    void onMouseDrag(const g_point& position);
-    void onMouseRelease(const g_point& position);
-    void onMouseLeave(const g_point& position);
+    /**
+     * Registers the font.
+     *
+     * @param name			name to which the font shall be registered
+     */
+    bool registerFont(std::string name, g_font* font);
 
-public:
-    explicit taskbar_t(g_ui_component_id id);
+    /**
+     * Looks for an existing font with the "name".
+     *
+     * @param name	the name to which the font is registered
+     */
+    g_font* getFont(std::string name);
 
-    ~taskbar_t() override = default;
-    static taskbar_t* create();
+    /**
+     * Deletes the font and removes it from the font registry.
+     *
+     * @param font	the font to destroy
+     */
+    void destroyFont(g_font* font);
 
-    void handleDesktopEvent(g_ui_windows_event* event);
-
-    virtual void paint();
+    /**
+     * @return the freetype library handle
+     */
+    FT_Library getLibraryHandle();
 };
 
 #endif
