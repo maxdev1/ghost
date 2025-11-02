@@ -30,28 +30,30 @@
 #include <libwindow/selection.hpp>
 #include <vector>
 
-class background_t : virtual public g_canvas
+using namespace fenster;
+
+class background_t : virtual public Canvas
 {
 protected:
     void init();
 
     taskbar_t* taskbar;
     std::vector<item_t*> items;
-    void onMouseMove(const g_point& position);
+    void onMouseMove(const Point& position);
     bool dragItems;
-    g_point selectionStart;
-    g_selection* selection = nullptr;
+    Point selectionStart;
+    Selection* selection = nullptr;
     item_organizer_t* organizer = nullptr;
 
-    void onMouseLeftPress(const g_point& position, int clickCount);
-    void onMouseDrag(const g_point& position);
-    void onMouseRelease(const g_point& position);
+    void onMouseLeftPress(const Point& position, int clickCount);
+    void onMouseDrag(const Point& position);
+    void onMouseRelease(const Point& position);
 
 public:
-    explicit background_t(g_ui_component_id id):
-        g_component(id),
-        g_canvas(id), dragItems(false),
-        g_focusable_component(id)
+    explicit background_t(ComponentId id):
+        Component(id),
+        Canvas(id), dragItems(false),
+        FocusableComponent(id)
     {
     }
 

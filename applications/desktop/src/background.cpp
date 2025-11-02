@@ -22,6 +22,8 @@
 #include <cairo/cairo.h>
 #include <stdlib.h>
 
+using namespace fenster;
+
 background_t* background_t::create()
 {
 	auto instance = createCanvasComponent<background_t>();
@@ -38,32 +40,32 @@ void background_t::init()
 		paint();
 	});
 
-	this->addMouseListener([this](g_ui_component_mouse_event* e)
+	this->addMouseListener([this](ComponentMouseEvent* e)
 	{
 		auto position = e->position;
-		if(e->type == G_MOUSE_EVENT_MOVE)
+		if(e->type == FENSTER_MOUSE_EVENT_MOVE)
 		{
 			onMouseMove(position);
 		}
-		else if(e->type == G_MOUSE_EVENT_PRESS && e->buttons & G_MOUSE_BUTTON_1)
+		else if(e->type == FENSTER_MOUSE_EVENT_PRESS && e->buttons & FENSTER_MOUSE_BUTTON_1)
 		{
 			onMouseLeftPress(position, e->clickCount);
 		}
-		else if(e->type == G_MOUSE_EVENT_DRAG && e->buttons & G_MOUSE_BUTTON_1)
+		else if(e->type == FENSTER_MOUSE_EVENT_DRAG && e->buttons & FENSTER_MOUSE_BUTTON_1)
 		{
 			onMouseDrag(position);
 		}
-		else if(e->type == G_MOUSE_EVENT_RELEASE)
+		else if(e->type == FENSTER_MOUSE_EVENT_RELEASE)
 		{
 			onMouseRelease(position);
 		}
-		else if(e->type == G_MOUSE_EVENT_LEAVE)
+		else if(e->type == FENSTER_MOUSE_EVENT_LEAVE)
 		{
 			onMouseRelease(position);
 		}
 	});
 
-	selection = g_selection::create();
+	selection = Selection::create();
 	selection->setBounds(this->getBounds());
 	selection->setVisible(false);
 	this->addChild(selection);
@@ -71,7 +73,7 @@ void background_t::init()
 	this->organize();
 }
 
-void background_t::onMouseMove(const g_point& position)
+void background_t::onMouseMove(const Point& position)
 {
 	for(auto item: items)
 	{
@@ -84,10 +86,10 @@ void background_t::onMouseMove(const g_point& position)
 	}
 }
 
-void background_t::onMouseLeftPress(const g_point& position, int clickCount)
+void background_t::onMouseLeftPress(const Point& position, int clickCount)
 {
 	item_t* pressedItem = nullptr;
-	std::vector<g_rectangle> itemsBounds;
+	std::vector<Rectangle> itemsBounds;
 	for(auto& item: items)
 	{
 		auto itemBounds = item->getBounds();
@@ -148,7 +150,7 @@ void background_t::onMouseLeftPress(const g_point& position, int clickCount)
 	}
 }
 
-void background_t::onMouseDrag(const g_point& position)
+void background_t::onMouseDrag(const Point& position)
 {
 	if(dragItems)
 	{
@@ -157,13 +159,13 @@ void background_t::onMouseDrag(const g_point& position)
 			if(item->selected)
 			{
 				auto point = position - item->dragOffset;
-				item->setBounds(g_rectangle(point.x, point.y, 100, 100));
+				item->setBounds(Rectangle(point.x, point.y, 100, 100));
 			}
 		}
 	}
 	else
 	{
-		g_rectangle bounds(selectionStart.x, selectionStart.y, position.x - selectionStart.x,
+		Rectangle bounds(selectionStart.x, selectionStart.y, position.x - selectionStart.x,
 		                   position.y - selectionStart.y);
 		auto boundsNorm = bounds.asNormalized();
 		selection->setBounds(boundsNorm);
@@ -171,7 +173,7 @@ void background_t::onMouseDrag(const g_point& position)
 
 		for(auto item: items)
 		{
-			g_rectangle rect = item->getBounds();
+			Rectangle rect = item->getBounds();
 			if(boundsNorm.intersects(rect))
 			{
 				auto wasSelected = item->selected;
@@ -190,7 +192,7 @@ void background_t::onMouseDrag(const g_point& position)
 	}
 }
 
-void background_t::onMouseRelease(const g_point& position)
+void background_t::onMouseRelease(const Point& position)
 {
 	if(dragItems)
 		dragItems = false;
@@ -240,7 +242,7 @@ void background_t::paint()
 	cairo_rectangle(cr, bgX, bgY, bounds.width, bounds.height);
 	cairo_fill(cr);
 
-	this->blit(g_rectangle(0, 0, bounds.width, bounds.height));
+	this->blit(Rectangle(0, 0, bounds.width, bounds.height));
 
 	this->releaseGraphics();
 }

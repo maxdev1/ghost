@@ -60,21 +60,21 @@ void guiScreenPaintEntry(gui_screen_t* screen)
 
 bool gui_screen_t::createUi()
 {
-	auto status = g_ui::open();
-	if(status != G_UI_OPEN_STATUS_SUCCESSFUL)
+	auto status = Application::open();
+	if(status != FENSTER_APPLICATION_STATUS_SUCCESSFUL)
 	{
-		klog("terminal: failed to initialize g_ui with status %i", status);
+		klog("terminal: failed to initialize application UI with status %i", status);
 		return false;
 	}
 
-	window = g_window::create();
+	window = Window::create();
 	window->setTitle("Terminal");
 	window->setBackground(ARGB(250, 0, 0, 2));
 
-	canvas.component = g_canvas::create();
+	canvas.component = Canvas::create();
 	canvas.component->setBufferListener(new canvas_buffer_listener_t(this));
 	canvas.component->setBoundsListener(new canvas_resize_bounds_listener_t(this));
-	canvas.component->addKeyListener([this](g_key_event& e)
+	canvas.component->addKeyListener([this](KeyEvent& e)
 	{
 		g_key_info_basic ghostKey;
 		ghostKey.pressed = e.info.pressed;
@@ -98,23 +98,23 @@ bool gui_screen_t::createUi()
 		}
 		cursor.blink = true;
 	});
-	canvas.component->addMouseListener([this](g_ui_component_mouse_event* event)
+	canvas.component->addMouseListener([this](ComponentMouseEvent* event)
 	{
-		if(event->type == G_MOUSE_EVENT_SCROLL)
+		if(event->type == FENSTER_MOUSE_EVENT_SCROLL)
 		{
 			scroll(-event->scroll);
 		}
 		return this;
 	});
 
-	window->setLayout(G_UI_LAYOUT_MANAGER_GRID);
+	window->setLayout(FENSTER_LAYOUT_MANAGER_GRID);
 	window->addChild(canvas.component);
 
-	g_rectangle windowBounds = g_rectangle(80, 80, 700, 500);
+	Rectangle windowBounds = Rectangle(80, 80, 700, 500);
 	window->setBounds(windowBounds);
 	window->setVisible(true);
 
-	window->addListener(G_UI_COMPONENT_EVENT_TYPE_FOCUS, new terminal_focus_listener_t(this));
+	window->addListener(FENSTER_COMPONENT_EVENT_TYPE_FOCUS, new terminal_focus_listener_t(this));
 	window->setFocused(true);
 
 	window->onClose([this]()
@@ -130,7 +130,7 @@ void gui_screen_t::blinkCursor()
 	repaint();
 }
 
-void canvas_resize_bounds_listener_t::handleBoundsChanged(g_rectangle bounds)
+void canvas_resize_bounds_listener_t::handleBoundsChanged(Rectangle bounds)
 {
 	screen->setCanvasBounds(bounds);
 	screen->repaint();
@@ -203,7 +203,7 @@ void gui_screen_t::paint()
 
 		int visibleCols = getColumns();
 		int visibleRows = getRows();
-		g_rectangle changes = g_rectangle(-1, -1, 0, 0);
+		Rectangle changes = Rectangle(-1, -1, 0, 0);
 
 		if(fullRepaint)
 		{
@@ -267,7 +267,7 @@ void gui_screen_t::paint()
 				if(viewBuffer.buffer[y * visibleCols + x] != c)
 				{
 					viewBuffer.buffer[y * visibleCols + x] = c;
-					changes.extend(g_point(x, y));
+					changes.extend(Point(x, y));
 				}
 			}
 
@@ -282,8 +282,8 @@ void gui_screen_t::paint()
 		   blink)
 		{
 			if(lastPaintedCursorX != -1)
-				changes.extend(g_point(lastPaintedCursorX, lastPaintedCursorViewY));
-			changes.extend(g_point(cursorViewX, cursorViewY));
+				changes.extend(Point(lastPaintedCursorX, lastPaintedCursorViewY));
+			changes.extend(Point(cursorViewX, cursorViewY));
 			lastPaintedCursorX = cursor.x;
 			lastPaintedCursorViewY = cursorViewY;
 			lastPaintedCursorBlink = cursor.blink;
@@ -291,7 +291,7 @@ void gui_screen_t::paint()
 
 		if(changes.width && changes.height)
 		{
-			g_rectangle screenChanges(
+			Rectangle screenChanges(
 					changes.x * chars.width + canvas.padding,
 					changes.y * chars.height + canvas.padding,
 					changes.width * chars.width,
@@ -362,7 +362,7 @@ void gui_screen_t::paint()
 				}
 			}
 
-			canvas.component->blit(g_rectangle(
+			canvas.component->blit(Rectangle(
 					std::max(screenChanges.x - 2, 0),
 					std::max(screenChanges.y - 2, 0),
 					screenChanges.width + 4,
@@ -473,7 +473,7 @@ int gui_screen_t::getRows()
 	return (canvas.bounds.height - 2 * canvas.padding) / chars.height;
 }
 
-void gui_screen_t::setCanvasBounds(g_rectangle& bounds)
+void gui_screen_t::setCanvasBounds(Rectangle& bounds)
 {
 	canvas.bounds = bounds;
 	recalculateView();

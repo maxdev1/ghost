@@ -23,7 +23,7 @@
 
 char_renderer_t::char_renderer_t()
 {
-	font = g_font_loader::get(CHAR_RENDERER_DEFAULT_FONT);
+	font = fenster::FontLoader::get(CHAR_RENDERER_DEFAULT_FONT);
 
 	fontOptions = cairo_font_options_create();
 	cairo_font_options_set_antialias(fontOptions, CAIRO_ANTIALIAS_NONE);

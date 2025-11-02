@@ -27,12 +27,14 @@
 #include <libwindow/font/font_loader.hpp>
 #include <helper.hpp>
 
-g_font* font = nullptr;
+using namespace fenster;
 
-taskbar_t::taskbar_t(g_ui_component_id id):
-	g_component(id), g_canvas(id), g_focusable_component(id)
+Font* font = nullptr;
+
+taskbar_t::taskbar_t(ComponentId id):
+	Component(id), Canvas(id), FocusableComponent(id)
 {
-	textLayoutBuffer = g_text_layouter::getInstance()->initializeBuffer();
+	textLayoutBuffer = TextLayouter::getInstance()->initializeBuffer();
 }
 
 taskbar_t* taskbar_t::create()
@@ -44,32 +46,32 @@ taskbar_t* taskbar_t::create()
 
 void taskbar_t::init()
 {
-	font = g_font_loader::getDefault();
+	font = FontLoader::getDefault();
 	this->setBufferListener([this]()
 	{
 		paint();
 	});
 
-	this->addMouseListener([this](g_ui_component_mouse_event* e)
+	this->addMouseListener([this](ComponentMouseEvent* e)
 	{
 		auto position = e->position;
-		if(e->type == G_MOUSE_EVENT_MOVE)
+		if(e->type == FENSTER_MOUSE_EVENT_MOVE)
 		{
 			onMouseMove(position);
 		}
-		else if(e->type == G_MOUSE_EVENT_PRESS && e->buttons & G_MOUSE_BUTTON_1)
+		else if(e->type == FENSTER_MOUSE_EVENT_PRESS && e->buttons & FENSTER_MOUSE_BUTTON_1)
 		{
 			onMouseLeftPress(position, e->clickCount);
 		}
-		else if(e->type == G_MOUSE_EVENT_DRAG && e->buttons & G_MOUSE_BUTTON_1)
+		else if(e->type == FENSTER_MOUSE_EVENT_DRAG && e->buttons & FENSTER_MOUSE_BUTTON_1)
 		{
 			onMouseDrag(position);
 		}
-		else if(e->type == G_MOUSE_EVENT_RELEASE)
+		else if(e->type == FENSTER_MOUSE_EVENT_RELEASE)
 		{
 			onMouseRelease(position);
 		}
-		else if(e->type == G_MOUSE_EVENT_LEAVE)
+		else if(e->type == FENSTER_MOUSE_EVENT_LEAVE)
 		{
 			onMouseLeave(position);
 		}
@@ -79,7 +81,7 @@ void taskbar_t::init()
 	this->setDispatchesFocus(false);
 }
 
-void taskbar_t::onMouseMove(const g_point& position)
+void taskbar_t::onMouseMove(const Point& position)
 {
 	g_mutex_acquire(entriesLock);
 	bool changes = false;
@@ -95,7 +97,7 @@ void taskbar_t::onMouseMove(const g_point& position)
 	g_mutex_release(entriesLock);
 }
 
-void taskbar_t::onMouseLeftPress(const g_point& position, int clickCount)
+void taskbar_t::onMouseLeftPress(const Point& position, int clickCount)
 {
 	g_mutex_acquire(entriesLock);
 	for(auto& entry: entries)
@@ -122,15 +124,15 @@ void taskbar_t::onMouseLeftPress(const g_point& position, int clickCount)
 	g_mutex_release(entriesLock);
 }
 
-void taskbar_t::onMouseDrag(const g_point& position)
+void taskbar_t::onMouseDrag(const Point& position)
 {
 }
 
-void taskbar_t::onMouseRelease(const g_point& position)
+void taskbar_t::onMouseRelease(const Point& position)
 {
 }
 
-void taskbar_t::onMouseLeave(const g_point& position)
+void taskbar_t::onMouseLeave(const Point& position)
 {
 	g_mutex_acquire(entriesLock);
 	bool changes = false;
@@ -208,15 +210,15 @@ void taskbar_t::paint()
 			cairo_fill(cr);
 			cairo_restore(cr);
 
-			entry->onView = g_rectangle(entryLeft + 2, 4, taskWidth - 4, bounds.height - 8);
+			entry->onView = Rectangle(entryLeft + 2, 4, taskWidth - 4, bounds.height - 8);
 
-			g_rectangle textArea(10, 0, taskWidth - 20, bounds.height - 10);
-			g_text_layouter::getInstance()->layout(cr, entry->title.c_str(), font, 14, textArea, g_text_alignment::LEFT,
+			Rectangle textArea(10, 0, taskWidth - 20, bounds.height - 10);
+			TextLayouter::getInstance()->layout(cr, entry->title.c_str(), font, 14, textArea, TextAlignment::LEFT,
 			                                       textLayoutBuffer);
-			for(g_positioned_glyph& g: textLayoutBuffer->positions)
+			for(PositionedGlyph& g: textLayoutBuffer->positions)
 			{
 
-				g_rectangle onView(g.position.x, g.position.y, g.size.width, g.size.height);
+				Rectangle onView(g.position.x, g.position.y, g.size.width, g.size.height);
 
 				cairo_save(cr);
 				cairo_set_source_rgb(cr, 0.96, 0.98, 0.98);
@@ -230,11 +232,11 @@ void taskbar_t::paint()
 	}
 	g_mutex_release(entriesLock);
 
-	this->blit(g_rectangle(0, 0, bounds.width, bounds.height));
+	this->blit(Rectangle(0, 0, bounds.width, bounds.height));
 	this->releaseGraphics();
 }
 
-void taskbar_t::handleDesktopEvent(g_ui_windows_event* event)
+void taskbar_t::handleDesktopEvent(WindowsEvent* event)
 {
 	g_mutex_acquire(entriesLock);
 
@@ -253,7 +255,7 @@ void taskbar_t::handleDesktopEvent(g_ui_windows_event* event)
 		if(!entry)
 		{
 			entry = new taskbar_entry_t();
-			entry->window = g_window::attach(event->window_id);
+			entry->window = Window::attach(event->window_id);
 			entry->title = entry->window->getTitle();
 			if(entry->title.length() == 0)
 			{

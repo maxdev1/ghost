@@ -27,39 +27,41 @@
 #include <libwindow/font/text_layouter.hpp>
 #include <vector>
 
+using namespace fenster;
+
 struct taskbar_entry_t
 {
-    g_window* window;
+    Window* window;
     std::string title;
     bool focused;
     bool hovered;
     bool visible;
-    g_rectangle onView;
+    Rectangle onView;
 };
 
-class taskbar_t : public g_canvas
+class taskbar_t : public Canvas
 {
     g_user_mutex entriesLock = g_mutex_initialize_r(true);
     std::vector<taskbar_entry_t*> entries;
-    g_layouted_text* textLayoutBuffer;
+    LayoutedText* textLayoutBuffer;
 
 protected:
     void init();
 
-    void onMouseMove(const g_point& position);
+    void onMouseMove(const Point& position);
 
-    void onMouseLeftPress(const g_point& position, int clickCount);
-    void onMouseDrag(const g_point& position);
-    void onMouseRelease(const g_point& position);
-    void onMouseLeave(const g_point& position);
+    void onMouseLeftPress(const Point& position, int clickCount);
+    void onMouseDrag(const Point& position);
+    void onMouseRelease(const Point& position);
+    void onMouseLeave(const Point& position);
 
 public:
-    explicit taskbar_t(g_ui_component_id id);
+    explicit taskbar_t(ComponentId id);
 
     ~taskbar_t() override = default;
     static taskbar_t* create();
 
-    void handleDesktopEvent(g_ui_windows_event* event);
+    void handleDesktopEvent(WindowsEvent* event);
 
     virtual void paint();
 };

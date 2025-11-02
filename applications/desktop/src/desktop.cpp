@@ -23,30 +23,31 @@
 #include "taskbar.hpp"
 
 #include <fstream>
-#include <libproperties/parser.hpp>
+#include <libproperties/properties.hpp>
 
 #define USER_DESKTOP_DIR "/user/desktop/"
 
+using namespace fenster;
 background_t* background = nullptr;
 taskbar_t* taskbar = nullptr;
 
 int main()
 {
-	if(g_ui::open() != G_UI_OPEN_STATUS_SUCCESSFUL)
+	if(Application::open() != FENSTER_APPLICATION_STATUS_SUCCESSFUL)
 	{
 		klog("failed to create UI");
 		return -1;
 	}
 
 	background = background_t::create();
-	g_ui::registerDesktopCanvas(background);
+	Application::registerDesktopCanvas(background);
 
-	g_dimension screenDimension;
-	g_ui::getScreenDimension(screenDimension);
+	Dimension screenDimension;
+	Application::getScreenDimension(screenDimension);
 	taskbar = taskbar_t::create();
-	taskbar->setBounds(g_rectangle(0, screenDimension.height - 40, screenDimension.width, 40));
+	taskbar->setBounds(Rectangle(0, screenDimension.height - 40, screenDimension.width, 40));
 	background->addTaskbar(taskbar);
-	background->setDesktopListener([](g_ui_windows_event* event)
+	background->setDesktopListener([](WindowsEvent* event)
 	{
 		taskbar->handleDesktopEvent(event);
 	});
@@ -70,12 +71,12 @@ void desktopLoadItems()
 		std::string path = std::string(USER_DESKTOP_DIR) + entry->name;
 
 		std::ifstream cfg(path);
-		g_properties_parser parser(cfg);
+		properties::Properties parser(cfg);
 		auto properties = parser.getProperties();
 
 		auto item = item_t::create(properties["name"], properties["icon"], properties["application"]);
 		background->addItem(item);
-		item->setBounds(g_rectangle(0, next++ * 100, 100, 100));
+		item->setBounds(Rectangle(0, next++ * 100, 100, 100));
 	}
 	background->organize();
 }

@@ -38,7 +38,7 @@ struct char_layout_t
 
 class char_renderer_t
 {
-    g_font* font;
+    fenster::Font* font;
     cairo_scaled_font_t* scaledFont = nullptr;
     cairo_font_options_t* fontOptions = nullptr;
 

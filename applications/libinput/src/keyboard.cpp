@@ -22,7 +22,7 @@
 
 #include <fstream>
 #include <ghost.h>
-#include <libproperties/parser.hpp>
+#include <libproperties/properties.hpp>
 #include <libps2driver/ps2driver.hpp>
 #include <map>
 #include <stdio.h>
@@ -178,7 +178,7 @@ bool g_keyboard::loadScancodeLayout(std::string iso)
 		klog("scancode layout file '%s' not found", iso.c_str());
 		return false;
 	}
-	g_properties_parser props(in);
+	properties::Properties props(in);
 
 	scancodeLayout.clear();
 	std::map<std::string, std::string> properties = props.getProperties();
@@ -245,7 +245,7 @@ bool g_keyboard::loadConversionLayout(std::string iso)
 		klog("conversion file for '%s' not found", iso.c_str());
 		return false;
 	}
-	g_properties_parser props(in);
+	properties::Properties props(in);
 
 	// empty existing conversion layout
 	conversionLayout.clear();

@@ -21,9 +21,11 @@
 
 #include "item_organizer.hpp"
 
-void item_organizer_t::organize(const std::vector<item_t*>& items, const g_rectangle& backgroundBounds) const
+using namespace fenster;
+
+void item_organizer_t::organize(const std::vector<item_t*>& items, const Rectangle& backgroundBounds) const
 {
-	std::vector<g_rectangle> allBounds;
+	std::vector<Rectangle> allBounds;
 	for(auto& item: items)
 	{
 		auto bounds = item->getBounds();

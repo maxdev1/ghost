@@ -26,6 +26,8 @@
 
 #include <vector>
 
+using namespace fenster;
+
 class item_organizer_t
 {
     struct
@@ -42,7 +44,7 @@ public:
     {
     }
 
-    void organize(const std::vector<item_t*>& items, const g_rectangle& backgroundBounds) const;
+    void organize(const std::vector<item_t*>& items, const Rectangle& backgroundBounds) const;
 };
 
 

@@ -41,10 +41,12 @@ class input_key_listener_t;
 class canvas_buffer_listener_t;
 class terminal_focus_listener_t;
 
+using namespace fenster;
+
 class gui_screen_t : public screen_t
 {
     g_user_mutex exitFlag;
-    g_window* window;
+    Window* window;
 
     std::list<g_key_info> inputBuffer;
     g_user_mutex inputBufferEmpty;
@@ -69,12 +71,12 @@ class gui_screen_t : public screen_t
 
     struct
     {
-        g_canvas* component;
-        g_rectangle bounds;
+        Canvas* component;
+        Rectangle bounds;
 
         cairo_surface_t* surface = nullptr;
         uint8_t* surfaceBuffer = nullptr;
-        g_dimension bufferSize;
+        Dimension bufferSize;
         cairo_t* context = nullptr;
 
         int padding = 3;
@@ -96,7 +98,7 @@ class gui_screen_t : public screen_t
         int rows = 0;
     } viewBuffer;
 
-    void setCanvasBounds(g_rectangle& bounds);
+    void setCanvasBounds(Rectangle& bounds);
     void repaint() const;
     void setFocused(bool focused);
     void bufferInput(const g_key_info& info);
@@ -133,7 +135,7 @@ public:
     int getRows() override;
 };
 
-class canvas_resize_bounds_listener_t : public g_bounds_listener
+class canvas_resize_bounds_listener_t : public BoundsListener
 {
     gui_screen_t* screen;
 
@@ -142,10 +144,10 @@ public:
     {
     }
 
-    void handleBoundsChanged(g_rectangle bounds) override;
+    void handleBoundsChanged(Rectangle bounds) override;
 };
 
-class canvas_buffer_listener_t : public g_canvas_buffer_listener
+class canvas_buffer_listener_t : public CanvasBufferListener
 {
     gui_screen_t* screen;
 
@@ -157,7 +159,7 @@ public:
     void handleBufferChanged() override;
 };
 
-class terminal_focus_listener_t : public g_focus_listener
+class terminal_focus_listener_t : public FocusListener
 {
 private:
     gui_screen_t* screen;

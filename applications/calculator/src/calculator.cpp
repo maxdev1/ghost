@@ -24,28 +24,31 @@
 #include <libwindow/textfield.hpp>
 #include <libwindow/ui.hpp>
 #include <libwindow/window.hpp>
+#include <libwindow/metrics/rectangle.hpp>
 
 #include <algorithm>
 #include <sstream>
 
-g_window* window;
-g_textfield* display;
-g_button* but1;
-g_button* but2;
-g_button* but3;
-g_button* but4;
-g_button* but5;
-g_button* but6;
-g_button* but7;
-g_button* but8;
-g_button* but9;
-g_button* but0;
-g_button* butPlus;
-g_button* butMinus;
-g_button* butMult;
-g_button* butDiv;
-g_button* butEq;
-g_button* butClear;
+using namespace fenster;
+
+Window* window;
+TextField* display;
+Button* but1;
+Button* but2;
+Button* but3;
+Button* but4;
+Button* but5;
+Button* but6;
+Button* but7;
+Button* but8;
+Button* but9;
+Button* but0;
+Button* butPlus;
+Button* butMinus;
+Button* butMult;
+Button* butDiv;
+Button* butEq;
+Button* butClear;
 
 double totalValue = 0;
 double currentValue = 0;
@@ -53,11 +56,11 @@ int previousCommand = COM_NONE;
 
 int main()
 {
-	g_ui_open_status open_stat = g_ui::open();
+	ApplicationOpenStatus open_stat = Application::open();
 
-	if(open_stat == G_UI_OPEN_STATUS_SUCCESSFUL)
+	if(open_stat == FENSTER_APPLICATION_STATUS_SUCCESSFUL)
 	{
-		window = g_window::create();
+		window = Window::create();
 		window->setTitle("Calculator");
 		window->setResizable(false);
 		window->onClose([]()
@@ -65,15 +68,15 @@ int main()
 			g_exit(0);
 		});
 
-		display = g_textfield::create();
+		display = TextField::create();
 		display->setTitle("0");
-		display->setBounds(g_rectangle(10, 10, 150, 30));
+		display->setBounds(Rectangle(10, 10, 150, 30));
 		window->addChild(display);
 
 #define PLACE_BUTTON_T(num, text, x, y)             \
-	but##num = g_button::create();                  \
+	but##num = Button::create();                  \
 	but##num->setTitle(text);                       \
-	but##num->setBounds(g_rectangle(x, y, 30, 30)); \
+	but##num->setBounds(Rectangle(x, y, 30, 30)); \
 	window->addChild(but##num);
 
 #define PLACE_BUTTON(num, x, y) PLACE_BUTTON_T(num, #num, x, y);
@@ -123,7 +126,7 @@ int main()
 		PLACE_BUTTON_T(Eq, "=", grid4, grid5 + dispOff);
 		butEq->setActionListener([]() { command_pressed(COM_EQ); });
 
-		window->setBounds(g_rectangle(70, 70, 190, 320));
+		window->setBounds(Rectangle(70, 70, 190, 320));
 		window->setVisible(true);
 
 		g_user_mutex lock = g_mutex_initialize();

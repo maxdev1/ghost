@@ -29,6 +29,7 @@
 #include <libwindow/image.hpp>
 #include <libwindow/listener/key_listener.hpp>
 
+using namespace fenster;
 struct file_entry_t
 {
 	std::string name;
@@ -37,15 +38,15 @@ struct file_entry_t
 
 std::string currentBase = "/";
 
-g_scrollpane* scroller;
-g_panel* content;
-g_textfield* navText;
-g_button* navPrev;
-g_button* navNext;
-g_button* navUp;
+Scrollpane* scroller;
+Panel* content;
+TextField* navText;
+Button* navPrev;
+Button* navNext;
+Button* navUp;
 
-std::vector<g_panel*> panels;
-std::vector<g_panel*> selectedPanels;
+std::vector<Panel*> panels;
+std::vector<Panel*> selectedPanels;
 g_user_mutex selectedPanelsLock = g_mutex_initialize_r(true);
 
 std::vector<std::string> history;
@@ -56,27 +57,27 @@ void navigatorLoad(bool keepHistory = false);
 
 int main()
 {
-	if(g_ui::open() != G_UI_OPEN_STATUS_SUCCESSFUL)
+	if(Application::open() != FENSTER_APPLICATION_STATUS_SUCCESSFUL)
 	{
 		klog("failed to create UI");
 		return -1;
 	}
 
-	g_window* window = g_window::create();
-	window->setBounds(g_rectangle(0, 0, 600, 500));
+	Window* window = Window::create();
+	window->setBounds(Rectangle(0, 0, 600, 500));
 	window->setTitle("Navigator");
 	window->onClose([]() { g_exit(0); });
 
-	window->setLayout(G_UI_LAYOUT_MANAGER_FLEX);
+	window->setLayout(FENSTER_LAYOUT_MANAGER_FLEX);
 	window->setFlexOrientation(false);
 
-	g_panel* navBar = g_panel::create();
-	navBar->setLayout(G_UI_LAYOUT_MANAGER_FLEX);
-	navBar->setLayoutPadding(g_insets(5, 5, 5, 5));
+	Panel* navBar = Panel::create();
+	navBar->setLayout(FENSTER_LAYOUT_MANAGER_FLEX);
+	navBar->setLayoutPadding(Insets(5, 5, 5, 5));
 	navBar->setFlexGap(10);
 	{
-		navPrev = g_button::create();
-		navPrev->setStyle(G_BUTTON_STYLE_GHOST);
+		navPrev = Button::create();
+		navPrev->setStyle(FENSTER_BUTTON_STYLE_GHOST);
 		navPrev->setTitle("<");
 		navBar->addChild(navPrev);
 		navBar->setFlexComponentInfo(navPrev, 0, 1, 50);
@@ -90,8 +91,8 @@ int main()
 			}
 		});
 
-		navNext = g_button::create();
-		navNext->setStyle(G_BUTTON_STYLE_GHOST);
+		navNext = Button::create();
+		navNext->setStyle(FENSTER_BUTTON_STYLE_GHOST);
 		navNext->setTitle(">");
 		navBar->addChild(navNext);
 		navBar->setFlexComponentInfo(navNext, 0, 1, 50);
@@ -105,10 +106,10 @@ int main()
 			}
 		});
 
-		navText = g_textfield::create();
+		navText = TextField::create();
 		navBar->addChild(navText);
 		navBar->setFlexComponentInfo(navText, 1, 1, 0);
-		navText->addKeyListener([](g_key_event& e)
+		navText->addKeyListener([](KeyEvent& e)
 		{
 			// TODO: g_keyboard needs a layout right now, maybe key events should already send ASCII codes:
 			if(e.info.scancode == 28 && e.info.pressed)
@@ -119,9 +120,9 @@ int main()
 			return false;
 		});
 
-		navUp = g_button::create();
+		navUp = Button::create();
 		navUp->setTitle("^");
-		navUp->setStyle(G_BUTTON_STYLE_GHOST);
+		navUp->setStyle(FENSTER_BUTTON_STYLE_GHOST);
 		navBar->addChild(navUp);
 		navBar->setFlexComponentInfo(navUp, 0, 1, 50);
 
@@ -136,14 +137,14 @@ int main()
 	window->addChild(navBar);
 	window->setFlexComponentInfo(navBar, 0, 1, 40);
 
-	g_panel* centerPanel = g_panel::create();
+	Panel* centerPanel = Panel::create();
 	centerPanel->setBackground(RGB(255, 255, 255));
-	centerPanel->setLayout(G_UI_LAYOUT_MANAGER_GRID);
+	centerPanel->setLayout(FENSTER_LAYOUT_MANAGER_GRID);
 	{
-		scroller = g_scrollpane::create();
-		content = g_panel::create();
-		content->setLayout(G_UI_LAYOUT_MANAGER_FLOW);
-		content->setLayoutPadding(g_insets(5, 5, 5, 5));
+		scroller = Scrollpane::create();
+		content = Panel::create();
+		content->setLayout(FENSTER_LAYOUT_MANAGER_FLOW);
+		content->setLayoutPadding(Insets(5, 5, 5, 5));
 
 		scroller->setFixed(true, false);
 		scroller->setContent(content);
@@ -167,7 +168,7 @@ int main()
 
 void navigatorRemoveOldPanels()
 {
-	std::vector<g_panel*> clonedPanels(panels);
+	std::vector<Panel*> clonedPanels(panels);
 	panels.clear();
 	selectedPanels.clear();
 	for(auto& panel: clonedPanels)
@@ -250,12 +251,12 @@ void navigatorLoad(bool keepHistory)
 		std::string path = currentBase + "/" + child.name;
 		auto nodeType = child.type;
 
-		g_panel* panel = g_panel::create();
+		Panel* panel = Panel::create();
 		panel->setBackground(ARGB(1, 0, 0, 0));
-		panel->setMinimumSize(g_dimension(100, 100));
-		panel->addMouseListener([path,nodeType,panel](g_ui_component_mouse_event* e)
+		panel->setMinimumSize(Dimension(100, 100));
+		panel->addMouseListener([path,nodeType,panel](ComponentMouseEvent* e)
 		{
-			if(e->type == G_MOUSE_EVENT_PRESS)
+			if(e->type == FENSTER_MOUSE_EVENT_PRESS)
 			{
 				if(e->clickCount == 2)
 				{
@@ -288,11 +289,11 @@ void navigatorLoad(bool keepHistory)
 					g_mutex_release(selectedPanelsLock);
 				}
 			}
-			else if(e->type == G_MOUSE_EVENT_ENTER)
+			else if(e->type == FENSTER_MOUSE_EVENT_ENTER)
 			{
 				panel->setBackground(RGB(230, 240, 255));
 			}
-			else if(e->type == G_MOUSE_EVENT_LEAVE)
+			else if(e->type == FENSTER_MOUSE_EVENT_LEAVE)
 			{
 				if(std::find(selectedPanels.begin(), selectedPanels.end(), panel) == selectedPanels.end())
 				{
@@ -303,15 +304,15 @@ void navigatorLoad(bool keepHistory)
 
 		panel->setFocusable(true);
 
-		g_image* image = g_image::create();
-		image->setBounds(g_rectangle(5, 0, 90, 70));
+		Image* image = Image::create();
+		image->setBounds(Rectangle(5, 0, 90, 70));
 		image->loadImage(std::string("/system/graphics/navigator/") +
 		                 (nodeType == G_FS_NODE_TYPE_FOLDER ? "folder.png" : "file.png"));
 		panel->addChild(image);
 
-		g_label* label = g_label::create();
-		label->setBounds(g_rectangle(5, 70, 90, 25));
-		label->setAlignment(g_text_alignment::CENTER);
+		Label* label = Label::create();
+		label->setBounds(Rectangle(5, 70, 90, 25));
+		label->setAlignment(TextAlignment::CENTER);
 		label->setTitle(child.name);
 		panel->addChild(label);
 

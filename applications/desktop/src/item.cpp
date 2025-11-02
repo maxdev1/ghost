@@ -25,10 +25,12 @@
 #include <libwindow/color_argb.hpp>
 #include <helper.hpp>
 
+using namespace fenster;
+
 item_t::item_t(uint32_t id):
-	g_component(id),
-	g_canvas(id),
-	g_focusable_component(id)
+	Component(id),
+	Canvas(id),
+	FocusableComponent(id)
 {
 	this->setBufferListener([this]()
 	{
@@ -53,11 +55,11 @@ void item_t::init(std::string name, std::string icon, std::string application)
 		iconSurface = nullptr;
 	}
 
-	label = g_label::create();
+	label = Label::create();
 	label->setTitle(name.c_str());
-	label->setBounds(g_rectangle(0, 75, 100, 20));
+	label->setBounds(Rectangle(0, 75, 100, 20));
 	label->setColor(ARGB(255, 255, 255, 255));
-	label->setAlignment(g_text_alignment::CENTER);
+	label->setAlignment(TextAlignment::CENTER);
 	this->addChild(label);
 }
 
@@ -97,7 +99,7 @@ void item_t::paint()
 	}
 
 	this->releaseGraphics();
-	this->blit(g_rectangle(0, 0, bounds.width, bounds.height));
+	this->blit(Rectangle(0, 0, bounds.width, bounds.height));
 }
 
 void item_t::onDoubleClick()
