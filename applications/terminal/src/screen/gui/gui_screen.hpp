@@ -33,7 +33,7 @@
 #include <libwindow/canvas.hpp>
 #include <libwindow/listener/focus_listener.hpp>
 #include <libwindow/listener/key_listener.hpp>
-#include <libwindow/ui.hpp>
+#include <libwindow/application.hpp>
 #include <libwindow/window.hpp>
 
 class canvas_resize_bounds_listener_t;

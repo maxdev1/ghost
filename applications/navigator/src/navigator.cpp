@@ -19,7 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <libwindow/button.hpp>
-#include <libwindow/ui.hpp>
+#include <libwindow/application.hpp>
 #include <libwindow/window.hpp>
 #include <libwindow/interface.hpp>
 #include <libwindow/textfield.hpp>

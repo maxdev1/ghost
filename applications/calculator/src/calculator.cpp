@@ -22,7 +22,7 @@
 #include <libwindow/button.hpp>
 #include <libwindow/label.hpp>
 #include <libwindow/textfield.hpp>
-#include <libwindow/ui.hpp>
+#include <libwindow/application.hpp>
 #include <libwindow/window.hpp>
 #include <libwindow/metrics/rectangle.hpp>
 
