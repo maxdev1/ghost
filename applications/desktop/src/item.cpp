@@ -21,8 +21,8 @@
 #include "item.hpp"
 #include <cairo/cairo.h>
 #include <math.h>
-#include <libwindow/font/text_alignment.hpp>
-#include <libwindow/color_argb.hpp>
+#include <libfenster/font/text_alignment.hpp>
+#include <libfenster/color_argb.hpp>
 #include <helper.hpp>
 
 using namespace fenster;

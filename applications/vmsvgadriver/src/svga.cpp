@@ -22,7 +22,7 @@
 #include <libpci/driver.hpp>
 #include <cstdio>
 #include <malloc.h>
-#include <libwindow/color_argb.hpp>
+#include <libfenster/color_argb.hpp>
 
 svga_device_t device;
 

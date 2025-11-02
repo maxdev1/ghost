@@ -21,8 +21,8 @@
 #ifndef DESKTOP_ITEM
 #define DESKTOP_ITEM
 
-#include <libwindow/canvas.hpp>
-#include <libwindow/label.hpp>
+#include <libfenster/canvas.hpp>
+#include <libfenster/label.hpp>
 #include <cairo/cairo.h>
 
 using namespace fenster;

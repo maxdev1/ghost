@@ -23,7 +23,7 @@
 
 #include <cairo/cairo.h>
 #include <unordered_map>
-#include <libwindow/font/font.hpp>
+#include <libfenster/font/font.hpp>
 
 #define CHAR_RENDERER_DEFAULT_FONT "consolas"
 

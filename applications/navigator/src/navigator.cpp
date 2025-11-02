@@ -18,16 +18,16 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <libwindow/button.hpp>
-#include <libwindow/application.hpp>
-#include <libwindow/window.hpp>
-#include <libwindow/interface.hpp>
-#include <libwindow/textfield.hpp>
-#include <libwindow/panel.hpp>
-#include <libwindow/scrollpane.hpp>
-#include <libwindow/label.hpp>
-#include <libwindow/image.hpp>
-#include <libwindow/listener/key_listener.hpp>
+#include <libfenster/button.hpp>
+#include <libfenster/application.hpp>
+#include <libfenster/window.hpp>
+#include <libfenster/interface.hpp>
+#include <libfenster/textfield.hpp>
+#include <libfenster/panel.hpp>
+#include <libfenster/scrollpane.hpp>
+#include <libfenster/label.hpp>
+#include <libfenster/image.hpp>
+#include <libfenster/listener/key_listener.hpp>
 
 using namespace fenster;
 struct file_entry_t

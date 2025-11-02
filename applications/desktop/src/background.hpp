@@ -26,8 +26,8 @@
 #include "item.hpp"
 #include "item_organizer.hpp"
 
-#include <libwindow/canvas.hpp>
-#include <libwindow/selection.hpp>
+#include <libfenster/canvas.hpp>
+#include <libfenster/selection.hpp>
 #include <vector>
 
 using namespace fenster;

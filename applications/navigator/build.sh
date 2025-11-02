@@ -8,7 +8,7 @@ fi
 # Build configuration
 ARTIFACT_NAME="navigator.bin"
 CFLAGS_ADD="-I$SYSROOT_SYSTEM_INCLUDE/freetype2"
-LDFLAGS="-lproperties -linput -lwindow -lcairo -lfreetype -lpixman-1 -lpng -lz"
+LDFLAGS="-lproperties -linput -lfenster -lcairo -lfreetype -lpixman-1 -lpng -lz"
 
 # Include application build tasks
 . "../applications.sh"

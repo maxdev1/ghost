@@ -24,7 +24,7 @@
 #include <list>
 #include <cstdio>
 #include <cstring>
-#include <libwindow/color_argb.hpp>
+#include <libfenster/color_argb.hpp>
 
 void guiScreenBlinkCursorEntry(gui_screen_t* screen);
 void guiScreenPaintEntry(gui_screen_t* screen);

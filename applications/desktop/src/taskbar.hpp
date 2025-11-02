@@ -21,10 +21,10 @@
 #ifndef DESKTOP_TASKBAR
 #define DESKTOP_TASKBAR
 
-#include <libwindow/canvas.hpp>
-#include <libwindow/selection.hpp>
-#include <libwindow/window.hpp>
-#include <libwindow/font/text_layouter.hpp>
+#include <libfenster/canvas.hpp>
+#include <libfenster/selection.hpp>
+#include <libfenster/window.hpp>
+#include <libfenster/font/text_layouter.hpp>
 #include <vector>
 
 using namespace fenster;

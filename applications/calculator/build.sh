@@ -7,7 +7,7 @@ fi
 
 # Build configuration
 ARTIFACT_NAME="calculator.bin"
-LDFLAGS="-lwindow"
+LDFLAGS="-lfenster"
 
 # Include application build tasks
 . "../applications.sh"

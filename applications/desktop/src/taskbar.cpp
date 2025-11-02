@@ -23,8 +23,8 @@
 #include <cairo/cairo.h>
 #include <cstdlib>
 #include <map>
-#include <libwindow/font/text_layouter.hpp>
-#include <libwindow/font/font_loader.hpp>
+#include <libfenster/font/text_layouter.hpp>
+#include <libfenster/font/font_loader.hpp>
 #include <helper.hpp>
 
 using namespace fenster;
