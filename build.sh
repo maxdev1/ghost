@@ -6,7 +6,7 @@ fi
 . "$ROOT/ghost.sh"
 
 # Prioritized applications that need to be built first
-APPLICATION_PRIORITY=("libjson" "libproperties" "libdevice" "libps2" "libps2driver" "libinput" "libwindow" "libfont" "libterminal" "libvideo" "libpci" "libahci")
+APPLICATION_PRIORITY=("libdevice" "libps2" "libps2driver" "libinput" "libterminal" "libvideo" "libpci" "libahci" "fenster")
 
 # Flags
 FIRST_RUN=0
@@ -216,6 +216,12 @@ build_app() {
 
 build_apps() {
 	pushd applications
+
+	# Install fenster headers
+	pushd fenster
+	(make target=ghost install-headers) >ghost-build.log 2>&1
+	popd
+
 
 	apps_success=0
 	apps_total=0
