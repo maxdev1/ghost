@@ -55,7 +55,7 @@ build_target() {
 	print_gray "$all_name "
 
 	if [ -f Makefile ]; then
-	  (make target=ghost -j8 $@) >ghost-build.log 2>&1
+	  (make target=ghost $@) >ghost-build.log 2>&1
 	else
 	  $SH build.sh $@ >ghost-build.log 2>&1
 	fi
