@@ -76,7 +76,14 @@ bool gui_screen_t::createUi()
 	canvas.component->setBoundsListener(new canvas_resize_bounds_listener_t(this));
 	canvas.component->addKeyListener([this](g_key_event& e)
 	{
-		auto info = g_keyboard::fullKeyInfo(e.info);
+		g_key_info_basic ghostKey;
+		ghostKey.pressed = e.info.pressed;
+		ghostKey.ctrl = e.info.ctrl;
+		ghostKey.shift = e.info.shift;
+		ghostKey.alt = e.info.alt;
+		ghostKey.scancode = e.info.scancode;
+
+		auto info = g_keyboard::fullKeyInfo(ghostKey);
 		if(info.key == "KEY_PAD_2")
 		{
 			scroll(1);
