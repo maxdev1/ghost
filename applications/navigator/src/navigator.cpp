@@ -22,7 +22,7 @@
 #include <libfenster/application.hpp>
 #include <libfenster/window.hpp>
 #include <libfenster/interface.hpp>
-#include <libfenster/textfield.hpp>
+#include <libfenster/text_field.hpp>
 #include <libfenster/panel.hpp>
 #include <libfenster/scrollpane.hpp>
 #include <libfenster/label.hpp>
@@ -38,7 +38,7 @@ struct file_entry_t
 
 std::string currentBase = "/";
 
-Scrollpane* scroller;
+ScrollPane* scroller;
 Panel* content;
 TextField* navText;
 Button* navPrev;
@@ -138,10 +138,10 @@ int main()
 	window->setFlexComponentInfo(navBar, 0, 1, 40);
 
 	Panel* centerPanel = Panel::create();
-	centerPanel->setBackground(RGB(255, 255, 255));
+	centerPanel->setBackground(_RGB(255, 255, 255));
 	centerPanel->setLayout(FENSTER_LAYOUT_MANAGER_GRID);
 	{
-		scroller = Scrollpane::create();
+		scroller = ScrollPane::create();
 		content = Panel::create();
 		content->setLayout(FENSTER_LAYOUT_MANAGER_FLOW);
 		content->setLayoutPadding(Insets(5, 5, 5, 5));
@@ -285,13 +285,13 @@ void navigatorLoad(bool keepHistory)
 					}
 					selectedPanels.clear();
 					selectedPanels.push_back(panel);
-					panel->setBackground(RGB(230, 240, 255));
+					panel->setBackground(_RGB(230, 240, 255));
 					g_mutex_release(selectedPanelsLock);
 				}
 			}
 			else if(e->type == FENSTER_MOUSE_EVENT_ENTER)
 			{
-				panel->setBackground(RGB(230, 240, 255));
+				panel->setBackground(_RGB(230, 240, 255));
 			}
 			else if(e->type == FENSTER_MOUSE_EVENT_LEAVE)
 			{

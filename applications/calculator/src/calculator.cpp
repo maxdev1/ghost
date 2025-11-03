@@ -21,7 +21,7 @@
 #include <calculator.hpp>
 #include <libfenster/button.hpp>
 #include <libfenster/label.hpp>
-#include <libfenster/textfield.hpp>
+#include <libfenster/text_field.hpp>
 #include <libfenster/application.hpp>
 #include <libfenster/window.hpp>
 #include <libfenster/metrics/rectangle.hpp>
