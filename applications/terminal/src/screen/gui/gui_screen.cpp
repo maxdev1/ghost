@@ -25,7 +25,7 @@
 #include <cstdio>
 #include <cstring>
 #include <libfenster/color_argb.hpp>
-#include <libfenster/layout/grid_layout_manager.hpp>
+#include <libfenster/layout/grid_layout.hpp>
 
 void guiScreenBlinkCursorEntry(gui_screen_t* screen);
 void guiScreenPaintEntry(gui_screen_t* screen);
@@ -108,7 +108,7 @@ bool gui_screen_t::createUi()
 		return this;
 	});
 
-	window->setLayoutManager(GridLayoutManager::create(window));
+	GridLayout::create(window);
 	window->addChild(canvas.component);
 
 	Rectangle windowBounds = Rectangle(80, 80, 700, 500);

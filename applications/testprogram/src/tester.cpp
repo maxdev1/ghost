@@ -26,7 +26,7 @@
 #include <cstdio>
 #include <libfenster/checkbox.hpp>
 #include <libfenster/label.hpp>
-#include <libfenster/layout/stack_layout_manager.hpp>
+#include <libfenster/layout/stack_layout.hpp>
 
 int main(int argc, char** argv)
 {
@@ -41,12 +41,12 @@ int main(int argc, char** argv)
 	{
 		g_exit(0);
 	});
-	fenster::StackLayoutManager::create(window);
+	fenster::StackLayout::create(window);
 
 	auto panel = fenster::Panel::create();
 	panel->setBackground(_RGB(200, 200, 255));
 
-	auto stackLayout = fenster::StackLayoutManager::create(panel);
+	auto stackLayout = fenster::StackLayout::create(panel);
 	stackLayout->setPadding(fenster::Insets(10, 10, 10, 10));
 	stackLayout->setSpace(20);
 

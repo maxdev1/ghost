@@ -28,9 +28,9 @@
 #include <libfenster/label.hpp>
 #include <libfenster/image.hpp>
 #include <libfenster/listener/key_listener.hpp>
-#include <libfenster/layout/flex_layout_manager.hpp>
-#include <libfenster/layout/grid_layout_manager.hpp>
-#include <libfenster/layout/flow_layout_manager.hpp>
+#include <libfenster/layout/flex_layout.hpp>
+#include <libfenster/layout/grid_layout.hpp>
+#include <libfenster/layout/flow_layout.hpp>
 
 using namespace fenster;
 struct file_entry_t
@@ -71,11 +71,11 @@ int main()
 	window->setTitle("Navigator");
 	window->onClose([]() { g_exit(0); });
 
-	auto windowLayout = FlexLayoutManager::create(window);
+	auto windowLayout = FlexLayout::create(window);
 	windowLayout->setHorizontal(false);
 
 	Panel* navBar = Panel::create();
-	auto navBarLayout = FlexLayoutManager::create(navBar);
+	auto navBarLayout = FlexLayout::create(navBar);
 	navBarLayout->setPadding(Insets(5, 5, 5, 5));
 	navBarLayout->setSpace(10);
 	{
@@ -142,12 +142,12 @@ int main()
 
 	Panel* centerPanel = Panel::create();
 	centerPanel->setBackground(_RGB(255, 255, 255));
-	GridLayoutManager::create(centerPanel);
+	GridLayout::create(centerPanel);
 	{
 		scroller = ScrollPane::create();
 		content = Panel::create();
 
-		auto contentLayout = FlowLayoutManager::create(content);
+		auto contentLayout = FlowLayout::create(content);
 		contentLayout->setPadding(Insets(5, 5, 5, 5));
 
 		scroller->setFixed(true, false);
