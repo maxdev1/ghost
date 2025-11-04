@@ -28,6 +28,9 @@
 #include <libfenster/label.hpp>
 #include <libfenster/image.hpp>
 #include <libfenster/listener/key_listener.hpp>
+#include <libfenster/layout/flex_layout_manager.hpp>
+#include <libfenster/layout/grid_layout_manager.hpp>
+#include <libfenster/layout/flow_layout_manager.hpp>
 
 using namespace fenster;
 struct file_entry_t
@@ -68,19 +71,19 @@ int main()
 	window->setTitle("Navigator");
 	window->onClose([]() { g_exit(0); });
 
-	window->setLayout(FENSTER_LAYOUT_MANAGER_FLEX);
-	window->setFlexOrientation(false);
+	auto windowLayout = FlexLayoutManager::create(window);
+	windowLayout->setHorizontal(false);
 
 	Panel* navBar = Panel::create();
-	navBar->setLayout(FENSTER_LAYOUT_MANAGER_FLEX);
-	navBar->setLayoutPadding(Insets(5, 5, 5, 5));
-	navBar->setFlexGap(10);
+	auto navBarLayout = FlexLayoutManager::create(navBar);
+	navBarLayout->setPadding(Insets(5, 5, 5, 5));
+	navBarLayout->setSpace(10);
 	{
 		navPrev = Button::create();
 		navPrev->setStyle(FENSTER_BUTTON_STYLE_GHOST);
 		navPrev->setTitle("<");
 		navBar->addChild(navPrev);
-		navBar->setFlexComponentInfo(navPrev, 0, 1, 50);
+		navBarLayout->setComponentInfo(navPrev, 0, 1, 50);
 		navPrev->setActionListener([]()
 		{
 			if(historyCurrentPosition > 0)
@@ -95,7 +98,7 @@ int main()
 		navNext->setStyle(FENSTER_BUTTON_STYLE_GHOST);
 		navNext->setTitle(">");
 		navBar->addChild(navNext);
-		navBar->setFlexComponentInfo(navNext, 0, 1, 50);
+		navBarLayout->setComponentInfo(navNext, 0, 1, 50);
 		navNext->setActionListener([]()
 		{
 			if(historyCurrentPosition >= 0 && historyCurrentPosition < (int) history.size() - 1)
@@ -108,7 +111,7 @@ int main()
 
 		navText = TextField::create();
 		navBar->addChild(navText);
-		navBar->setFlexComponentInfo(navText, 1, 1, 0);
+		navBarLayout->setComponentInfo(navText, 1, 1, 0);
 		navText->addKeyListener([](KeyEvent& e)
 		{
 			// TODO: g_keyboard needs a layout right now, maybe key events should already send ASCII codes:
@@ -124,7 +127,7 @@ int main()
 		navUp->setTitle("^");
 		navUp->setStyle(FENSTER_BUTTON_STYLE_GHOST);
 		navBar->addChild(navUp);
-		navBar->setFlexComponentInfo(navUp, 0, 1, 50);
+		navBarLayout->setComponentInfo(navUp, 0, 1, 50);
 
 		navUp->setActionListener([]()
 		{
@@ -135,16 +138,17 @@ int main()
 		});
 	}
 	window->addChild(navBar);
-	window->setFlexComponentInfo(navBar, 0, 1, 40);
+	windowLayout->setComponentInfo(navBar, 0, 1, 40);
 
 	Panel* centerPanel = Panel::create();
 	centerPanel->setBackground(_RGB(255, 255, 255));
-	centerPanel->setLayout(FENSTER_LAYOUT_MANAGER_GRID);
+	GridLayoutManager::create(centerPanel);
 	{
 		scroller = ScrollPane::create();
 		content = Panel::create();
-		content->setLayout(FENSTER_LAYOUT_MANAGER_FLOW);
-		content->setLayoutPadding(Insets(5, 5, 5, 5));
+
+		auto contentLayout = FlowLayoutManager::create(content);
+		contentLayout->setPadding(Insets(5, 5, 5, 5));
 
 		scroller->setFixed(true, false);
 		scroller->setContent(content);
@@ -152,7 +156,7 @@ int main()
 		centerPanel->addChild(scroller);
 	}
 	window->addChild(centerPanel);
-	window->setFlexComponentInfo(centerPanel, 1, 1, 0);
+	windowLayout->setComponentInfo(centerPanel, 1, 1, 0);
 
 	window->setVisible(true);
 	window->onClose([]()

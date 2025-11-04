@@ -20,13 +20,66 @@
 
 #include "tester.hpp"
 
-#include <assert.h>
-#include <ghost.h>
-#include <libgen.h>
-#include <malloc.h>
-#include <stdio.h>
-#include <string.h>
+#include <libfenster/application.hpp>
+#include <libfenster/window.hpp>
+#include <libfenster/panel.hpp>
+#include <cstdio>
+#include <libfenster/checkbox.hpp>
+#include <libfenster/label.hpp>
+#include <libfenster/layout/stack_layout_manager.hpp>
 
 int main(int argc, char** argv)
 {
+	if(fenster::Application::open() != FENSTER_APPLICATION_STATUS_SUCCESSFUL)
+	{
+		printf("Failed to start UI\n");
+		return -1;
+	}
+
+	auto window = fenster::Window::create();
+	window->onClose([]()
+	{
+		g_exit(0);
+	});
+	fenster::StackLayoutManager::create(window);
+
+	auto panel = fenster::Panel::create();
+	panel->setBackground(_RGB(200, 200, 255));
+
+	auto stackLayout = fenster::StackLayoutManager::create(panel);
+	stackLayout->setPadding(fenster::Insets(10, 10, 10, 10));
+	stackLayout->setSpace(20);
+
+	auto testLabel = fenster::Label::create();
+	testLabel->setTitle("Choose the checkbox to test listener behaviour:");
+	panel->addChild(testLabel);
+
+	auto check = fenster::Checkbox::create();
+	check->setTitle("Enable other field");
+	panel->addChild(check);
+
+	auto conditionalLabel = fenster::Label::create();
+	conditionalLabel->setTitle("Conditional label");
+	conditionalLabel->setVisible(false);
+	panel->addChild(conditionalLabel);
+	check->addCheckedListener([conditionalLabel](bool checked)
+	{
+		printf("Check state changed to %s\n", checked ? "checked" : "unchecked");
+		conditionalLabel->setVisible(checked);
+	});
+
+	auto testLabel2 = fenster::Label::create();
+	testLabel2->setTitle("Very cool.");
+	panel->addChild(testLabel2);
+
+	window->addChild(panel);
+
+	window->setTitle("Test window");
+	window->setBounds(fenster::Rectangle(70, 70, 400, 300));
+	window->setVisible(true);
+
+	for(;;)
+	{
+		g_sleep(999999);
+	}
 }
