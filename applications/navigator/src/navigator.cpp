@@ -33,6 +33,7 @@
 #include <libfenster/layout/flow_layout.hpp>
 
 using namespace fenster;
+
 struct file_entry_t
 {
 	std::string name;
@@ -72,7 +73,7 @@ int main()
 	window->onClose([]() { g_exit(0); });
 
 	auto windowLayout = FlexLayout::create(window);
-	windowLayout->setHorizontal(false);
+	windowLayout->setOrientation(Orientation::Vertical);
 
 	Panel* navBar = Panel::create();
 	auto navBarLayout = FlexLayout::create(navBar);
