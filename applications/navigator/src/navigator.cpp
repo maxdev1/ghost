@@ -61,7 +61,7 @@ void navigatorLoad(bool keepHistory = false);
 
 int main()
 {
-	if(Application::open() != FENSTER_APPLICATION_STATUS_SUCCESSFUL)
+	if(Application::open() != fenster::ApplicationOpenStatus::Success)
 	{
 		klog("failed to create UI");
 		return -1;
@@ -81,7 +81,7 @@ int main()
 	navBarLayout->setSpace(10);
 	{
 		navPrev = Button::create();
-		navPrev->setStyle(FENSTER_BUTTON_STYLE_GHOST);
+		navPrev->setVariant(ButtonVariant::Ghost);
 		navPrev->setTitle("<");
 		navBar->addChild(navPrev);
 		navBarLayout->setComponentInfo(navPrev, 0, 1, 50);
@@ -96,7 +96,7 @@ int main()
 		});
 
 		navNext = Button::create();
-		navNext->setStyle(FENSTER_BUTTON_STYLE_GHOST);
+		navNext->setVariant(ButtonVariant::Ghost);
 		navNext->setTitle(">");
 		navBar->addChild(navNext);
 		navBarLayout->setComponentInfo(navNext, 0, 1, 50);
@@ -126,7 +126,7 @@ int main()
 
 		navUp = Button::create();
 		navUp->setTitle("^");
-		navUp->setStyle(FENSTER_BUTTON_STYLE_GHOST);
+		navUp->setVariant(ButtonVariant::Ghost);
 		navBar->addChild(navUp);
 		navBarLayout->setComponentInfo(navUp, 0, 1, 50);
 

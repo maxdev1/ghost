@@ -62,7 +62,7 @@ void guiScreenPaintEntry(gui_screen_t* screen)
 bool gui_screen_t::createUi()
 {
 	auto status = Application::open();
-	if(status != FENSTER_APPLICATION_STATUS_SUCCESSFUL)
+	if(status != fenster::ApplicationOpenStatus::Success)
 	{
 		klog("terminal: failed to initialize application UI with status %i", status);
 		return false;

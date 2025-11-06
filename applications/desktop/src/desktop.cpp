@@ -33,7 +33,7 @@ taskbar_t* taskbar = nullptr;
 
 int main()
 {
-	if(Application::open() != FENSTER_APPLICATION_STATUS_SUCCESSFUL)
+	if(Application::open() != Success)
 	{
 		klog("failed to create UI");
 		return -1;

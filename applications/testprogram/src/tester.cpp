@@ -30,7 +30,7 @@
 
 int main(int argc, char** argv)
 {
-	if(fenster::Application::open() != FENSTER_APPLICATION_STATUS_SUCCESSFUL)
+	if(fenster::Application::open() != fenster::ApplicationOpenStatus::Success)
 	{
 		printf("Failed to start UI\n");
 		return -1;
