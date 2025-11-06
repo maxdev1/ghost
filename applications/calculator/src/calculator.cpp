@@ -58,7 +58,7 @@ int main()
 {
 	ApplicationOpenStatus open_stat = Application::open();
 
-	if(open_stat == Success)
+	if(open_stat == ApplicationOpenStatus::Success)
 	{
 		window = Window::create();
 		window->setTitle("Calculator");

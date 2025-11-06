@@ -101,7 +101,7 @@ bool gui_screen_t::createUi()
 	});
 	canvas.component->addMouseListener([this](ComponentMouseEvent* event)
 	{
-		if(event->type == FENSTER_MOUSE_EVENT_SCROLL)
+		if(event->type == fenster::MouseEventType::Scroll)
 		{
 			scroll(-event->scroll);
 		}
@@ -115,7 +115,7 @@ bool gui_screen_t::createUi()
 	window->setBounds(windowBounds);
 	window->setVisible(true);
 
-	window->addListener(FENSTER_COMPONENT_EVENT_TYPE_FOCUS, new terminal_focus_listener_t(this));
+	window->addListener(fenster::ComponentEventType::Focus, new terminal_focus_listener_t(this));
 	window->setFocused(true);
 
 	window->onClose([this]()

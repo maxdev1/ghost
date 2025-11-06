@@ -261,7 +261,7 @@ void navigatorLoad(bool keepHistory)
 		panel->setMinimumSize(Dimension(100, 100));
 		panel->addMouseListener([path,nodeType,panel](ComponentMouseEvent* e)
 		{
-			if(e->type == FENSTER_MOUSE_EVENT_PRESS)
+			if(e->type == fenster::MouseEventType::Press)
 			{
 				if(e->clickCount == 2)
 				{
@@ -294,11 +294,11 @@ void navigatorLoad(bool keepHistory)
 					g_mutex_release(selectedPanelsLock);
 				}
 			}
-			else if(e->type == FENSTER_MOUSE_EVENT_ENTER)
+			else if(e->type == fenster::MouseEventType::Enter)
 			{
 				panel->setBackground(_RGB(230, 240, 255));
 			}
-			else if(e->type == FENSTER_MOUSE_EVENT_LEAVE)
+			else if(e->type == fenster::MouseEventType::Leave)
 			{
 				if(std::find(selectedPanels.begin(), selectedPanels.end(), panel) == selectedPanels.end())
 				{

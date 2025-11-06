@@ -55,23 +55,23 @@ void taskbar_t::init()
 	this->addMouseListener([this](ComponentMouseEvent* e)
 	{
 		auto position = e->position;
-		if(e->type == FENSTER_MOUSE_EVENT_MOVE)
+		if(e->type == fenster::MouseEventType::Move)
 		{
 			onMouseMove(position);
 		}
-		else if(e->type == FENSTER_MOUSE_EVENT_PRESS && e->buttons & FENSTER_MOUSE_BUTTON_1)
+		else if(e->type == fenster::MouseEventType::Press && e->buttons & fenster::MouseButton::Button1)
 		{
 			onMouseLeftPress(position, e->clickCount);
 		}
-		else if(e->type == FENSTER_MOUSE_EVENT_DRAG && e->buttons & FENSTER_MOUSE_BUTTON_1)
+		else if(e->type == fenster::MouseEventType::Drag && e->buttons & fenster::MouseButton::Button1)
 		{
 			onMouseDrag(position);
 		}
-		else if(e->type == FENSTER_MOUSE_EVENT_RELEASE)
+		else if(e->type == fenster::MouseEventType::Release)
 		{
 			onMouseRelease(position);
 		}
-		else if(e->type == FENSTER_MOUSE_EVENT_LEAVE)
+		else if(e->type == fenster::MouseEventType::Leave)
 		{
 			onMouseLeave(position);
 		}
