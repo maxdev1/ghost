@@ -77,6 +77,7 @@ int main()
 
 	Panel* navBar = Panel::create();
 	auto navBarLayout = FlexLayout::create(navBar);
+	navBarLayout->setOrientation(Orientation::Horizontal);
 	navBarLayout->setPadding(Insets(5, 5, 5, 5));
 	navBarLayout->setSpace(10);
 	{

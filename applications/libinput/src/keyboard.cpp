@@ -56,7 +56,7 @@ g_key_info g_keyboard::readKey(g_fd in)
 	return g_key_info();
 }
 
-bool g_keyboard::keyForScancode(uint8_t scancode, g_key_info *out)
+bool g_keyboard::keyForScancode(uint8_t scancode, g_key_info* out)
 {
 
 	// Get "pressed" info from scancode
@@ -183,7 +183,7 @@ bool g_keyboard::loadScancodeLayout(std::string iso)
 	scancodeLayout.clear();
 	std::map<std::string, std::string> properties = props.getProperties();
 
-	for(auto entry : properties)
+	for(auto entry: properties)
 	{
 
 		uint32_t scancode = 0;
@@ -251,7 +251,7 @@ bool g_keyboard::loadConversionLayout(std::string iso)
 	conversionLayout.clear();
 
 	std::map<std::string, std::string> properties = props.getProperties();
-	for(auto entry : properties)
+	for(auto entry: properties)
 	{
 
 		// create key info value
@@ -305,8 +305,15 @@ bool g_keyboard::loadConversionLayout(std::string iso)
 		{
 			c = value[0];
 
-			// Escaped numeric values
-			if(c == '\\')
+			if(value == "\\n")
+			{
+				c = '\n';
+			}
+			else if(value == "\\t")
+			{
+				c = '\t';
+			}
+			else if(c == '\\') // Escaped numeric values
 			{
 				if(value.length() > 1)
 				{

@@ -55,6 +55,9 @@ KEY_Z s  : Z
 KEY_SPACE: " "
 KEY_SPACE s: " "
 
+KEY_ENTER: \n
+KEY_TAB  : \t
+
 KEY_1    : 1
 KEY_1 s  : !
 KEY_2    : 2
