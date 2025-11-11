@@ -21,11 +21,11 @@
 #include "tester.hpp"
 
 #include <libfenster/application.hpp>
-#include <libfenster/window.hpp>
-#include <libfenster/panel.hpp>
+#include <libfenster/components/window.hpp>
+#include <libfenster/components/panel.hpp>
 #include <cstdio>
-#include <libfenster/checkbox.hpp>
-#include <libfenster/label.hpp>
+#include <libfenster/components/checkbox.hpp>
+#include <libfenster/components/label.hpp>
 #include <libfenster/layout/stack_layout.hpp>
 
 int main(int argc, char** argv)

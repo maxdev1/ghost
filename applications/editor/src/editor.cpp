@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *                                                                           *
+*                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
  *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
@@ -18,53 +18,51 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef DESKTOP_BACKGROUND
-#define DESKTOP_BACKGROUND
-
-#include <taskbar.hpp>
-
-#include "item.hpp"
-#include "item_organizer.hpp"
-
-#include <libfenster/components/canvas.hpp>
-#include <libfenster/components/selection.hpp>
-#include <vector>
+#include <libfenster/components/button.hpp>
+#include <libfenster/application.hpp>
+#include <libfenster/components/window.hpp>
+#include <libfenster/layout/grid_layout.hpp>
+#include <libfenster/components/text_area.hpp>
+#include <fstream>
+#include <string>
+#include <iterator>
 
 using namespace fenster;
 
-class background_t : virtual public Canvas
+int main(int argc, char* argv[])
 {
-protected:
-    void init();
+	if(Application::open() != ApplicationOpenStatus::Success)
+	{
+		klog("failed to create UI");
+		return -1;
+	}
 
-    taskbar_t* taskbar;
-    std::vector<item_t*> items;
-    void onMouseMove(const Point& position);
-    bool dragItems;
-    Point selectionStart;
-    Selection* selection = nullptr;
-    item_organizer_t* organizer = nullptr;
+	Window* window = Window::create();
+	window->setBounds(Rectangle(0, 0, 600, 400));
+	window->setTitle("Editor");
+	window->onClose([]() { g_exit(0); });
 
-    void onMouseLeftPress(const Point& position, int clickCount);
-    void onMouseDrag(const Point& position);
-    void onMouseRelease(const Point& position);
+	auto windowLayout = GridLayout::create(window);
 
-public:
-    explicit background_t(ComponentId id):
-        Component(id),
-        Canvas(id), dragItems(false),
-        FocusableComponent(id)
-    {
-    }
+	auto textArea = TextArea::create();
+	window->addChild(textArea);
 
-    ~background_t() override = default;
-    static background_t* create();
+	if(argc > 1)
+	{
+		std::ifstream file(argv[1], std::ios::binary); // open in binary mode
+		if(file)
+		{
+			textArea->setTitle(std::string(std::istreambuf_iterator<char>(file),
+			                               std::istreambuf_iterator<char>()).c_str());
+		}
+	}
 
-    void addTaskbar(taskbar_t* taskbar);
-    virtual void paint();
+	window->setVisible(true);
+	window->onClose([]()
+	{
+		g_exit(0);
+	});
 
-    void organize();
-    void addItem(item_t* item);
-};
-
-#endif
+	for(;;)
+		g_sleep(9999);
+}

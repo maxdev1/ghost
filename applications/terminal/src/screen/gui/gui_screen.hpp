@@ -29,12 +29,12 @@
 #include <list>
 #include <map>
 
-#include <libfenster/button.hpp>
-#include <libfenster/canvas.hpp>
+#include <libfenster/components/button.hpp>
+#include <libfenster/components/canvas.hpp>
 #include <libfenster/listener/focus_listener.hpp>
 #include <libfenster/listener/key_listener.hpp>
 #include <libfenster/application.hpp>
-#include <libfenster/window.hpp>
+#include <libfenster/components/window.hpp>
 
 class canvas_resize_bounds_listener_t;
 class input_key_listener_t;

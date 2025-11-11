@@ -21,9 +21,9 @@
 #ifndef DESKTOP_TASKBAR
 #define DESKTOP_TASKBAR
 
-#include <libfenster/canvas.hpp>
-#include <libfenster/selection.hpp>
-#include <libfenster/window.hpp>
+#include <libfenster/components/canvas.hpp>
+#include <libfenster/components/selection.hpp>
+#include <libfenster/components/window.hpp>
 #include <libfenster/font/text_layouter.hpp>
 #include <vector>
 

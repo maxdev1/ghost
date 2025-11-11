@@ -19,11 +19,11 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <calculator.hpp>
-#include <libfenster/button.hpp>
-#include <libfenster/label.hpp>
-#include <libfenster/text_field.hpp>
+#include <libfenster/components/button.hpp>
+#include <libfenster/components/label.hpp>
+#include <libfenster/components/text_field.hpp>
 #include <libfenster/application.hpp>
-#include <libfenster/window.hpp>
+#include <libfenster/components/window.hpp>
 #include <libfenster/metrics/rectangle.hpp>
 
 #include <algorithm>

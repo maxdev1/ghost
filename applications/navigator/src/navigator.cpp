@@ -18,15 +18,15 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <libfenster/button.hpp>
+#include <libfenster/components/button.hpp>
 #include <libfenster/application.hpp>
-#include <libfenster/window.hpp>
+#include <libfenster/components/window.hpp>
 #include <libfenster/interface.hpp>
-#include <libfenster/text_field.hpp>
-#include <libfenster/panel.hpp>
-#include <libfenster/scrollpane.hpp>
-#include <libfenster/label.hpp>
-#include <libfenster/image.hpp>
+#include <libfenster/components/text_field.hpp>
+#include <libfenster/components/panel.hpp>
+#include <libfenster/components/scrollpane.hpp>
+#include <libfenster/components/label.hpp>
+#include <libfenster/components/image.hpp>
 #include <libfenster/listener/key_listener.hpp>
 #include <libfenster/layout/flex_layout.hpp>
 #include <libfenster/layout/grid_layout.hpp>
@@ -279,6 +279,10 @@ void navigatorLoad(bool keepHistory)
 						if(std::equal(ending.rbegin(), ending.rend(), path.rbegin()))
 						{
 							g_spawn(path.c_str(), "", ".", G_SECURITY_LEVEL_APPLICATION);
+						}
+						else
+						{
+							g_spawn("/applications/editor.bin", path.c_str(), ".", G_SECURITY_LEVEL_APPLICATION);
 						}
 					}
 				}
