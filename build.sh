@@ -196,7 +196,8 @@ build_app() {
 
 	name="${1%/} "
 	printf "  $name"
-	name_back=$(backspace_len ${#name})
+	name_and_target="$name $2 $3"
+	name_back=$(backspace_len ${#name_and_target})
 
 	build_target $2 $3
 	if [ $? -eq 0 ]; then
@@ -208,6 +209,10 @@ build_app() {
 		printf "\n\n"
 		tail -n 100 ghost-build.log | awk '$0="   "$0'
 		printf "\n"
+
+    if [[ $CI_BUILD == 1 ]]; then
+      exit 1
+    fi
 	fi
 	((apps_total = apps_total + 1))
 
