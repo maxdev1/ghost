@@ -21,7 +21,7 @@
 #include <calculator.hpp>
 #include <libfenster/components/button.hpp>
 #include <libfenster/components/label.hpp>
-#include <libfenster/components/text_field.hpp>
+#include <libfenster/components/text_box.hpp>
 #include <libfenster/application.hpp>
 #include <libfenster/components/window.hpp>
 #include <libfenster/metrics/rectangle.hpp>
@@ -32,7 +32,7 @@
 using namespace fenster;
 
 Window* window;
-TextField* display;
+TextBox* display;
 Button* but1;
 Button* but2;
 Button* but3;
@@ -68,7 +68,7 @@ int main()
 			g_exit(0);
 		});
 
-		display = TextField::create();
+		display = TextBox::create();
 		display->setTitle("0");
 		display->setBounds(Rectangle(10, 10, 150, 30));
 		window->addChild(display);

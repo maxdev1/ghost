@@ -22,7 +22,6 @@
 
 #include <cairo/cairo.h>
 #include <cstdlib>
-#include <map>
 #include <libfenster/font/text_layouter.hpp>
 #include <libfenster/font/font_loader.hpp>
 #include <helper.hpp>
@@ -34,7 +33,7 @@ Font* font = nullptr;
 taskbar_t::taskbar_t(ComponentId id):
 	Component(id), Canvas(id), FocusableComponent(id)
 {
-	textLayoutBuffer = TextLayouter::getInstance()->initializeBuffer();
+	textLayoutBuffer = TextLayouter::initializeLayout();
 }
 
 taskbar_t* taskbar_t::create()
@@ -213,19 +212,13 @@ void taskbar_t::paint()
 			entry->onView = Rectangle(entryLeft + 2, 4, taskWidth - 4, bounds.height - 8);
 
 			Rectangle textArea(10, 0, taskWidth - 20, bounds.height - 10);
-			TextLayouter::getInstance()->layout(cr, entry->title.c_str(), font, 14, textArea, TextAlignment::LEFT,
-			                                       textLayoutBuffer);
+			TextLayouter::layout(cr, entry->title.c_str(), font, 14, textArea, TextAlignment::LEFT, textLayoutBuffer);
 			for(PositionedGlyph& g: textLayoutBuffer->positions)
 			{
 
-				Rectangle onView(g.position.x, g.position.y, g.size.width, g.size.height);
-
 				cairo_save(cr);
 				cairo_set_source_rgb(cr, 0.96, 0.98, 0.98);
-				// TODO text layouter is buggy (need to subtract glyph positions):
-				cairo_translate(cr, entryLeft + onView.x - g.glyph->x, onView.y - g.glyph->y + 10);
-				cairo_glyph_path(cr, g.glyph, g.glyph_count);
-				cairo_fill(cr);
+				TextLayouter::paintChar(cr, g);
 				cairo_restore(cr);
 			}
 		}

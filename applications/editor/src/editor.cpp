@@ -22,7 +22,7 @@
 #include <libfenster/application.hpp>
 #include <libfenster/components/window.hpp>
 #include <libfenster/layout/grid_layout.hpp>
-#include <libfenster/components/text_area.hpp>
+#include <libfenster/components/text_box.hpp>
 #include <fstream>
 #include <string>
 #include <iterator>
@@ -44,7 +44,8 @@ int main(int argc, char* argv[])
 
 	auto windowLayout = GridLayout::create(window);
 
-	auto textArea = TextArea::create();
+	auto textArea = TextBox::create();
+	textArea->setMultiLine(true);
 	window->addChild(textArea);
 
 	if(argc > 1)
@@ -53,7 +54,7 @@ int main(int argc, char* argv[])
 		if(file)
 		{
 			textArea->setTitle(std::string(std::istreambuf_iterator<char>(file),
-			                               std::istreambuf_iterator<char>()).c_str());
+										   std::istreambuf_iterator<char>()).c_str());
 		}
 	}
 

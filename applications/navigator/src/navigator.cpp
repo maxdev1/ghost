@@ -22,7 +22,7 @@
 #include <libfenster/application.hpp>
 #include <libfenster/components/window.hpp>
 #include <libfenster/interface.hpp>
-#include <libfenster/components/text_field.hpp>
+#include <libfenster/components/text_box.hpp>
 #include <libfenster/components/panel.hpp>
 #include <libfenster/components/scrollpane.hpp>
 #include <libfenster/components/label.hpp>
@@ -44,7 +44,7 @@ std::string currentBase = "/";
 
 ScrollPane* scroller;
 Panel* content;
-TextField* navText;
+TextBox* navText;
 Button* navPrev;
 Button* navNext;
 Button* navUp;
@@ -61,7 +61,7 @@ void navigatorLoad(bool keepHistory = false);
 
 int main()
 {
-	if(Application::open() != fenster::ApplicationOpenStatus::Success)
+	if(Application::open() != ApplicationOpenStatus::Success)
 	{
 		klog("failed to create UI");
 		return -1;
@@ -111,7 +111,7 @@ int main()
 			}
 		});
 
-		navText = TextField::create();
+		navText = TextBox::create();
 		navBar->addChild(navText);
 		navBarLayout->setComponentInfo(navText, 1, 1, 0);
 		navText->addKeyListener([](KeyEvent& e)
