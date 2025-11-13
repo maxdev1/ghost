@@ -9,7 +9,7 @@ This is the main development repository.
 ## Documentation
 See the `documentation` folder. It contains information about the technical design as well as detailed building instructions.
 
-An usually up-to-date version of the documentation is provided here: https://ghostkernel.org/documentation/
+A usually up-to-date version of the documentation is provided here: https://ghostkernel.org/documentation/
 
 ## Live ISO
 
@@ -45,16 +45,17 @@ Afterwards, the `target` folder will contain the bootable ISO image.
 * Limine protocol compliance
 * It's also very cool
 
+The OS uses the [fenster windowserver](https://github.com/maxdev1/fenster) which originated from this project:
+
 ![Screenshot of 0.12.0](https://ghostkernel.org/files/ghost-0.22.2.png)
 
 ## Ported software
-* musl (provides libm part of Ghost libc)
-* cairo
-* freetype
 * libpng
 * pixman
 * zlib
-* nasm
+* cairo
+* freetype
+* musl (provides libm part of Ghost libc)
 
 ## Contact
 If you want to get in contact, contribute to the project or have any questions,
