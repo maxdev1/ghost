@@ -26,6 +26,8 @@
 
 void syscallLog(g_task* task, g_syscall_log* data);
 
+void syscallOpenLogPipe(g_task* task, g_syscall_open_log_pipe* data);
+
 void syscallSetVideoLog(g_task* task, g_syscall_set_video_log* data);
 
 void syscallTest(g_task* task, g_syscall_test* data);

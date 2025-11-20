@@ -153,6 +153,7 @@ void syscallRegisterAll()
 
 	// System
 	_syscallRegister(G_SYSCALL_LOG, (g_syscall_handler) syscallLog);
+	_syscallRegister(G_SYSCALL_OPEN_LOG_PIPE, (g_syscall_handler) syscallOpenLogPipe);
 	_syscallRegister(G_SYSCALL_SET_VIDEO_LOG, (g_syscall_handler) syscallSetVideoLog);
 	_syscallRegister(G_SYSCALL_TEST, (g_syscall_handler) syscallTest);
 	_syscallRegister(G_SYSCALL_CALL_VM86, (g_syscall_handler) syscallCallVm86);

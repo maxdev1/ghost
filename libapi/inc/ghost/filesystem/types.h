@@ -29,8 +29,8 @@ __BEGIN_C
  * Types
  */
 typedef int32_t g_fd; // a file descriptor
-typedef uint32_t g_fs_virt_id; // a vfs node id
-typedef uint64_t g_fs_phys_id; // a physical filesystem node identifier
+typedef int32_t g_fs_virt_id; // a vfs node id
+typedef int32_t g_fs_phys_id; // a physical filesystem node identifier
 typedef int32_t g_device; // a device id
 
 #define G_FD_NONE		((g_fd) -1)

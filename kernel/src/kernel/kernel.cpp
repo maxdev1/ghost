@@ -226,6 +226,7 @@ void kernelInitializationThread()
 
 	G_PRETTY_BOOT_STATUS_P(80);
 	kernelSpawnService("/applications/fenster.bin", "", G_SECURITY_LEVEL_APPLICATION);
+	kernelSpawnService("/applications/tester.bin", "", G_SECURITY_LEVEL_APPLICATION);
 	// G_PRETTY_BOOT_STATUS_P(80);
 	// kernelSpawnService("/applications/terminal.bin", "--headless", G_SECURITY_LEVEL_DRIVER);
 

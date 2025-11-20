@@ -26,7 +26,9 @@
 #include <cstdio>
 #include <libfenster/components/checkbox.hpp>
 #include <libfenster/components/label.hpp>
-#include <libfenster/layout/stack_layout.hpp>
+#include <libfenster/components/text_box.hpp>
+#include <libfenster/layout/grid_layout.hpp>
+#include <libfenster/layout/flex_layout.hpp>
 
 int main(int argc, char** argv)
 {
@@ -41,45 +43,50 @@ int main(int argc, char** argv)
 	{
 		g_exit(0);
 	});
-	fenster::StackLayout::create(window);
+	auto flex = fenster::FlexLayout::create(window);
 
-	auto panel = fenster::Panel::create();
-	panel->setBackground(_RGB(200, 200, 255));
+	auto textArea = fenster::TextBox::create();
+	textArea->setMultiLine(true);
+	textArea->setTitle("...");
+	window->addChild(textArea);
+	flex->setComponentInfo(textArea, 1, 1, -1);
 
-	auto stackLayout = fenster::StackLayout::create(panel);
-	stackLayout->setPadding(fenster::Insets(10, 10, 10, 10));
-	stackLayout->setSpace(20);
+	auto lastRead = fenster::Label::create();
+	lastRead->setTitle("Last read: -");
+	window->addChild(lastRead);
+	flex->setComponentInfo(lastRead, 0,0, 50);
 
-	auto testLabel = fenster::Label::create();
-	testLabel->setTitle("Choose the checkbox to test listener behaviour:");
-	panel->addChild(testLabel);
-
-	auto check = fenster::Checkbox::create();
-	check->setTitle("Enable other field");
-	panel->addChild(check);
-
-	auto conditionalLabel = fenster::Label::create();
-	conditionalLabel->setTitle("Conditional label");
-	conditionalLabel->setVisible(false);
-	panel->addChild(conditionalLabel);
-	check->addCheckedListener([conditionalLabel](bool checked)
-	{
-		printf("Check state changed to %s\n", checked ? "checked" : "unchecked");
-		conditionalLabel->setVisible(checked);
-	});
-
-	auto testLabel2 = fenster::Label::create();
-	testLabel2->setTitle("Very cool.");
-	panel->addChild(testLabel2);
-
-	window->addChild(panel);
-
-	window->setTitle("Test window");
-	window->setBounds(fenster::Rectangle(70, 70, 400, 300));
+	window->setTitle("Kernel log");
+	window->setBounds(fenster::Rectangle(50, 50, 600, 600));
 	window->setVisible(true);
 
+	g_fd logPipe = g_open_log_pipe();
+	if(logPipe == G_FD_NONE)
+	{
+		textArea->setTitle("Failed to open kernel log pipe");
+		g_sleep(999999999);
+	}
+
+	uint8_t buf[1] ={0};
+	std::stringstream s;
 	for(;;)
 	{
-		g_sleep(999999);
+		int r = g_read(logPipe, buf, 1);
+		if(r == 0)
+		{
+			// Pipe is not blocking in both directions right now...
+			g_sleep(100);
+			continue;
+		}
+		s << (char) buf[0];
+
+		textArea->setTitle(s.str());
+
+		if(s.str().size() > 1000)
+			s.str("");
+
+		std::stringstream out;
+		out << s.str().size();
+		lastRead->setTitle(out.str());
 	}
 }

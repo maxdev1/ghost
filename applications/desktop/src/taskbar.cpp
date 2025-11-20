@@ -187,11 +187,11 @@ void taskbar_t::paint()
 			{
 				if(entry->hovered)
 				{
-					cairo_set_source_rgb(cr, 37.0 / 255, 32.0 / 255, 39.0 / 255);
+					cairo_set_source_rgb(cr, 30.0 / 255, 32.0 / 255, 39.0 / 255);
 				}
 				else
 				{
-					cairo_set_source_rgb(cr, 27.0 / 255, 28.0 / 255, 33.0 / 255);
+					cairo_set_source_rgb(cr, 20.0 / 255, 28.0 / 255, 33.0 / 255);
 				}
 			}
 			else
@@ -215,10 +215,9 @@ void taskbar_t::paint()
 			TextLayouter::layout(cr, entry->title.c_str(), font, 14, textArea, TextAlignment::LEFT, textLayoutBuffer);
 			for(PositionedGlyph& g: textLayoutBuffer->positions)
 			{
-
 				cairo_save(cr);
 				cairo_set_source_rgb(cr, 0.96, 0.98, 0.98);
-				TextLayouter::paintChar(cr, g);
+				TextLayouter::paintChar(cr, g, Point(entryLeft, 10));
 				cairo_restore(cr);
 			}
 		}

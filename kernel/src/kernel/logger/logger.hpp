@@ -26,6 +26,8 @@
 
 #include "kernel/logger/logger_macros.hpp"
 
+struct g_fs_node;
+
 void loggerPrintLocked(const char *message, ...);
 
 void loggerPrintlnLocked(const char *message, ...);
@@ -37,6 +39,8 @@ void loggerPrintlnUnlocked(const char *message, ...);
 void loggerEnableSerial(bool enable);
 
 void loggerEnableVideo(bool video);
+
+void loggerEnablePipe(g_fs_node* node);
 
 void loggerPrintPlain(const char *message);
 

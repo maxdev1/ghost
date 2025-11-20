@@ -19,6 +19,10 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/logger/logger.hpp"
+
+#include <kernel/ipc/pipes.hpp>
+
+#include "kernel/memory/memory.hpp"
 #include "kernel/system/spinlock.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/build_config.hpp"
@@ -31,6 +35,8 @@ static const uint32_t LOGGER_HEADER_WIDTH = 14;
 static bool logSerial = false;
 static bool logVideo = G_VIDEO_LOG_BOOT;
 g_spinlock loggerLock = 0;
+
+g_fs_node* pipeNode = nullptr;
 
 void loggerPrintLocked(const char* message, ...)
 {
@@ -245,11 +251,25 @@ void loggerPrintPlain(const char* message_const)
 void loggerPrintCharacter(char c)
 {
 	if(logVideo)
-	{
 		consoleVideoPrint(c);
-	}
 	if(logSerial)
-	{
 		debugInterfaceWriteLogCharacter(c);
+
+	if(pipeNode != nullptr)
+	{
+		uint8_t buf[1];
+		buf[0] = c;
+		int64_t wrote;
+		pipeWrite(pipeNode->physicalId, buf, 0, 1, &wrote);
+		if(wrote == 0)
+		{
+			pipeTruncate(pipeNode->physicalId);
+			pipeWrite(pipeNode->physicalId, buf, 0, 1, &wrote);
+		}
 	}
+}
+
+void loggerEnablePipe(g_fs_node* node)
+{
+	pipeNode = node;
 }

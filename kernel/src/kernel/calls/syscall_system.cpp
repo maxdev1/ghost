@@ -59,6 +59,29 @@ void syscallLog(g_task* task, g_syscall_log* data)
 	}
 }
 
+void syscallOpenLogPipe(g_task* task, g_syscall_open_log_pipe* data)
+{
+	g_fs_node* node;
+	if(filesystemCreatePipe(false, &node) != G_FS_PIPE_SUCCESSFUL)
+	{
+		logInfo("%! failed to open kernel log read pipe", "log");
+		data->fd = G_FD_NONE;
+		return;
+	}
+
+	g_file_flag_mode readFlags = G_FILE_FLAG_MODE_READ;
+	g_fs_open_status readOpen = filesystemOpenNodeFd(node, readFlags, task->process->id, &data->fd);
+	if(readOpen != G_FS_OPEN_SUCCESSFUL)
+	{
+		logInfo("%! failed to open read end of kernel log pipe %i for task %i with status %i", "filesystem", node->id,
+		        task->id, readOpen);
+		data->fd = G_FD_NONE;
+		return;
+	}
+
+	loggerEnablePipe(node);
+}
+
 void syscallSetVideoLog(g_task* task, g_syscall_set_video_log* data)
 {
 	loggerEnableVideo(data->enabled);

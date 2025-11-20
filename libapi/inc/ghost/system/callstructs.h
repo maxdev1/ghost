@@ -60,6 +60,15 @@ typedef struct
 }__attribute__((packed)) g_syscall_log;
 
 /**
+ * @field fd
+ * 		the opened fd
+ */
+typedef struct
+{
+	g_fd fd;
+}__attribute__((packed)) g_syscall_open_log_pipe;
+
+/**
  * @field enabled
  * 		whether or not to enable the video log
  */

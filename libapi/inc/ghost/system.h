@@ -23,6 +23,7 @@
 
 #include "common.h"
 #include "stdint.h"
+#include "filesystem/types.h"
 #include "system/types.h"
 #include "memory/types.h"
 
@@ -56,6 +57,13 @@ g_vm86_call_status g_call_vm86(uint32_t interrupt, g_vm86_registers* in, g_vm86_
  * @security-level APPLICATION
  */
 void g_log(const char* message);
+
+/**
+ * Opens the kernel log pipe for reading.
+ * 
+ * @return file descriptor to the kernel log pipe
+ */
+g_fd g_open_log_pipe();
 
 /**
  * Enables or disables logging to the video output.

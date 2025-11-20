@@ -31,6 +31,7 @@
 #include <libfenster/layout/flex_layout.hpp>
 #include <libfenster/layout/grid_layout.hpp>
 #include <libfenster/layout/flow_layout.hpp>
+#include <libfenster/layout/stack_layout.hpp>
 
 using namespace fenster;
 
@@ -113,7 +114,7 @@ int main()
 
 		navText = TextBox::create();
 		navBar->addChild(navText);
-		navBarLayout->setComponentInfo(navText, 1, 1, 0);
+		navBarLayout->setComponentInfo(navText, 1, 1, -1);
 		navText->addKeyListener([](KeyEvent& e)
 		{
 			// TODO: g_keyboard needs a layout right now, maybe key events should already send ASCII codes:
@@ -144,8 +145,8 @@ int main()
 
 	Panel* centerPanel = Panel::create();
 	centerPanel->setBackground(_RGB(255, 255, 255));
-	GridLayout::create(centerPanel);
 	{
+		GridLayout::create(centerPanel);
 		scroller = ScrollPane::create();
 		content = Panel::create();
 
@@ -158,7 +159,7 @@ int main()
 		centerPanel->addChild(scroller);
 	}
 	window->addChild(centerPanel);
-	windowLayout->setComponentInfo(centerPanel, 1, 1, 0);
+	windowLayout->setComponentInfo(centerPanel, 1, 1, -1);
 
 	window->setVisible(true);
 	window->onClose([]()
