@@ -30,11 +30,19 @@ endif()
 set(REPO_ROOT ${CMAKE_SOURCE_DIR}/../..)
 set(TOOLCHAIN_SH ${REPO_ROOT}/toolchain.sh)
 
+set(AUTOCONF_269_BIN ${REPO_ROOT}/build-deps/autoconf-2.69/bin)
+if(EXISTS ${AUTOCONF_269_BIN})
+  set(_toolchain_path "${AUTOCONF_269_BIN}:$ENV{PATH}")
+else()
+  set(_toolchain_path "$ENV{PATH}")
+endif()
+
 add_custom_target(ghost-toolchain
   COMMAND ${CMAKE_COMMAND} -E env
           TARGET=${TARGET_TRIPLE}
           TOOLCHAIN_BASE=${TOOLCHAIN_BASE}
           SYSROOT=${SYSROOT}
+          PATH=${_toolchain_path}
           bash ${TOOLCHAIN_SH}
   WORKING_DIRECTORY ${REPO_ROOT}
   USES_TERMINAL

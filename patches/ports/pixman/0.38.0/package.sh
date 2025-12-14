@@ -14,4 +14,17 @@ fi
 	./configure --host=$TARGET --prefix=$PREFIX --enable-shared=yes --enable-static=no
 	make -C pixman -j8
 	make -C pixman DESTDIR=$SYSROOT install
+	mkdir -p "$SYSROOT${PREFIX}/lib/pkgconfig"
+	cat <<EOF > "$SYSROOT${PREFIX}/lib/pkgconfig/pixman-1.pc"
+prefix=${PREFIX}
+exec_prefix=\${prefix}
+libdir=\${exec_prefix}/lib
+includedir=\${prefix}/include/pixman-1
+
+Name: pixman-1
+Description: Pixman pixel manipulation library
+Version: 0.38.0
+Libs: -L\${libdir} -lpixman-1
+Cflags: -I\${includedir}
+EOF
 }

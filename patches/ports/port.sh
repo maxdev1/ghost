@@ -16,6 +16,8 @@ BUILD_ROOT="build"
 PREFIX="/system"
 REQUIRES_INSTALL_IN_SOURCE_DIR=0
 
+set -o pipefail
+
 
 # Helper to quit if a process fails
 fail() {
