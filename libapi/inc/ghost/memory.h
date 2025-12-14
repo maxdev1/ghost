@@ -23,8 +23,9 @@
 
 #include "common.h"
 #include "stdint.h"
-#include "memory/types.h"
-#include "tasks/types.h"
+#include "ghost/memory/types.h"
+#include "ghost/tasks/types.h"
+
 
 __BEGIN_C
 

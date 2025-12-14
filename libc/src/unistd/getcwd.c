@@ -24,14 +24,16 @@
 /**
  *
  */
+
 char* getcwd(char* buf, size_t size) {
 
-	auto stat = g_get_working_directory_l(buf, size);
-	if (stat == G_GET_WORKING_DIRECTORY_SUCCESSFUL) {
+	g_get_working_directory_status st = g_get_working_directory_l(buf, size);
+	if (st == G_GET_WORKING_DIRECTORY_SUCCESSFUL) {
 		return buf;
-	} else if (stat == G_GET_WORKING_DIRECTORY_SIZE_EXCEEDED) {
+	} else if (st == G_GET_WORKING_DIRECTORY_SIZE_EXCEEDED) {
 		errno = ERANGE;
 	}
 	return NULL;
 }
+
 

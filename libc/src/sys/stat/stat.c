@@ -29,7 +29,8 @@
 int stat(const char* pathname, struct stat* buf)
 {
 	g_fs_stat_data data;
-	auto status = g_fs_stat(pathname, &data);
+		g_fs_stat_status status = g_fs_stat(pathname, &data);
+
 	if(status != G_FS_STAT_SUCCESS)
 		return -1;
 

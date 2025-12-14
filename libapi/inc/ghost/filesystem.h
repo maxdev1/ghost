@@ -21,9 +21,10 @@
 #ifndef GHOST_API_FILESYSTEM
 #define GHOST_API_FILESYSTEM
 
-#include "common.h"
-#include "filesystem/types.h"
-#include "memory.h"
+#include "ghost/common.h"
+#include "ghost/filesystem/types.h"
+#include "ghost/memory.h"
+
 
 __BEGIN_C
 /**

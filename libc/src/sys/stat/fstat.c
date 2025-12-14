@@ -19,7 +19,9 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "sys/stat.h"
+#include "ghost/filesystem.h"
 #include "internal.h"
+
 
 /**
  *
@@ -27,7 +29,8 @@
 int fstat(int fd, struct stat* buf)
 {
 	g_fs_stat_data data;
-	auto status = g_fs_fstat(fd, &data);
+		g_fs_stat_status status = g_fs_fstat(fd, &data);
+
 	if(status != G_FS_STAT_SUCCESS)
 		return -1;
 

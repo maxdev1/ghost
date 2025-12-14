@@ -33,10 +33,16 @@
 void __g_init_libc_call_init();
 void __g_fini_libc_call_fini();
 
+/* Avoid macro collision: musl features.h defines 'weak' macro, but we want GCC attribute token here */
+#ifdef weak
+#undef weak
+#endif
+
 /**
  * @see __g_init_libc_call_init
  */
 extern void (*__preinit_array_start[])() __attribute__((weak));
+
 extern void (*__preinit_array_end[])() __attribute__((weak));
 extern void _init() __attribute__((weak));
 extern void _fini() __attribute__((weak));

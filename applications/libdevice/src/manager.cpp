@@ -21,7 +21,9 @@
 #include "libdevice/manager.hpp"
 #include <ghost/messages.h>
 #include <ghost/tasks.h>
+#include <stdio.h> // klog declaration
 #include <cstdio>
+
 
 bool deviceManagerRegisterDevice(g_device_type type, g_tid handler, g_device_id* outId)
 {

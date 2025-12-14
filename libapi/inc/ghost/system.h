@@ -21,16 +21,19 @@
 #ifndef GHOST_API_SYSTEM
 #define GHOST_API_SYSTEM
 
-#include "common.h"
-#include "stdint.h"
-#include "filesystem/types.h"
-#include "system/types.h"
-#include "memory/types.h"
+#include "ghost/common.h"
+#include "ghost/stdint.h"
+#include "ghost/filesystem/types.h"
+#include "ghost/system/types.h"
+#include "ghost/memory/types.h"
+#include "ghost/tasks.h" // for g_exit declaration used by __G_NOT_IMPLEMENTED
+
 
 __BEGIN_C
 // not implemented warning
 #define __G_NOT_IMPLEMENTED_WARN(name)		g_log("'" #name "' is not implemented");
 #define __G_NOT_IMPLEMENTED(name)		    __G_NOT_IMPLEMENTED_WARN(name) g_exit(0);
+
 
 /**
  * Performs a Virtual 8086 BIOS interrupt call.
