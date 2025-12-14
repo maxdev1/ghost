@@ -28,6 +28,18 @@ VMSVGA graphics adapter enabled for better performance.
 
 Afterwards, the `target` folder will contain the bootable ISO image.
 
+### Bootstrapping the Ghost toolchain locally
+
+Outside the Docker workflow you can build the cross-toolchain directly on your host by running:
+
+```bash
+./bootstrap-toolchain.sh
+```
+
+The script wraps the `cmake -S cmake/ghost-toolchain-bootstrap ...` invocation, produces the toolchain/sysroot under `build-ghost/`, and prints the `-DTOOLCHAIN_BASE` and `-DSYSROOT` paths you should pass to your main CMake configure step.
+
+If your distribution ships Autoconf newer than 2.69, run `./tools/install-autoconf-269.sh` once and prepend the printed `.../autoconf-2.69/bin` to `PATH` before invoking the toolchain scripts—the Ghost toolchain currently requires Autoconf 2.69 exactly.
+
 ## Features
 * x86_64-based micro-kernel
 * SMP multi-processor support

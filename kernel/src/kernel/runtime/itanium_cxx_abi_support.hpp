@@ -21,6 +21,12 @@
 #ifndef __ITANIUM_CXX_ABI_SUPPORT__
 #define __ITANIUM_CXX_ABI_SUPPORT__
 
+// Forward declare before including libstdc++ headers so they see it.
+namespace std
+{
+	[[noreturn]] void __throw_bad_function_call();
+}
+
 #include <bits/std_function.h>
 
 // Must be defined because we use -ffreestanding which causes these to not be
@@ -28,4 +34,6 @@
 void* operator new(size_t size, void* ptr) noexcept;
 void* operator new[](size_t size, void* ptr) noexcept;
 
+// GCC's libstdc++ expects this helper even without exceptions. Provide our own
+// panic-backed implementation (see itanium_cxx_abi_support.cpp).
 #endif

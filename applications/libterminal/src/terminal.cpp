@@ -20,7 +20,8 @@
 
 #include "libterminal/terminal.hpp"
 #include <ghost.h>
-#include <iostream>
+#include <cstdio>
+#include <cstdarg>
 #include <cstring>
 #include <unistd.h>
 
@@ -32,13 +33,22 @@ static int bufferedChars = 0;
 static int bufferSize = 64;
 static g_user_mutex bufferLock = g_mutex_initialize();
 
+static void terminalCommand(const char* fmt, ...)
+{
+	fputc((char) G_TERMKEY_ESC, stdout);
+	va_list args;
+	va_start(args, fmt);
+	vfprintf(stdout, fmt, args);
+	va_end(args);
+	fflush(stdout);
+}
+
 /**
  *
  */
 void g_terminal::setEcho(bool echo)
 {
-	std::cout << (char) G_TERMKEY_ESC << "{" << (echo ? "1" : "0") << "e";
-	std::flush(std::cout);
+	terminalCommand("{%de", echo ? 1 : 0);
 }
 
 /**
@@ -46,9 +56,7 @@ void g_terminal::setEcho(bool echo)
  */
 void g_terminal::setMode(g_terminal_mode mode)
 {
-
-	std::cout << (char) G_TERMKEY_ESC << "{" << mode << "m";
-	std::flush(std::cout);
+	terminalCommand("{%dm", (int) mode);
 }
 
 /**
@@ -150,8 +158,7 @@ int g_terminal::getChar()
  */
 void g_terminal::putChar(int c)
 {
-	std::cout << (char) G_TERMKEY_ESC << "{" << c << "p";
-	std::flush(std::cout);
+	terminalCommand("{%dp", c);
 }
 
 /**
@@ -159,8 +166,7 @@ void g_terminal::putChar(int c)
  */
 void g_terminal::setCursor(g_term_cursor_position position)
 {
-	std::cout << (char) G_TERMKEY_ESC << "[" << position.y << ";" << position.x << "f";
-	std::flush(std::cout);
+	terminalCommand("[%d;%df", position.y, position.x);
 }
 
 /**
@@ -208,8 +214,7 @@ g_term_cursor_position g_terminal::getCursor()
 {
 
 	// read request
-	std::cout << (char) G_TERMKEY_ESC << "[6n";
-	std::flush(std::cout);
+	terminalCommand("[6n");
 
 	// read response
 	readAndBufferUntilESC();
@@ -247,8 +252,7 @@ g_term_dimension g_terminal::getSize()
 {
 
 	// read request
-	std::cout << (char) G_TERMKEY_ESC << "{i";
-	std::flush(std::cout);
+	terminalCommand("{i");
 
 	// read response
 	readAndBufferUntilESC();
@@ -284,8 +288,7 @@ g_term_dimension g_terminal::getSize()
  */
 void g_terminal::moveCursorUp(int n)
 {
-	std::cout << (char) G_TERMKEY_ESC << "[" << n << "A";
-	std::flush(std::cout);
+	terminalCommand("[%dA", n);
 }
 
 /**
@@ -293,8 +296,7 @@ void g_terminal::moveCursorUp(int n)
  */
 void g_terminal::moveCursorDown(int n)
 {
-	std::cout << (char) G_TERMKEY_ESC << "[" << n << "B";
-	std::flush(std::cout);
+	terminalCommand("[%dB", n);
 }
 
 /**
@@ -302,8 +304,7 @@ void g_terminal::moveCursorDown(int n)
  */
 void g_terminal::moveCursorForward(int n)
 {
-	std::cout << (char) G_TERMKEY_ESC << "[" << n << "C";
-	std::flush(std::cout);
+	terminalCommand("[%dC", n);
 }
 
 /**
@@ -311,8 +312,7 @@ void g_terminal::moveCursorForward(int n)
  */
 void g_terminal::moveCursorBack(int n)
 {
-	std::cout << (char) G_TERMKEY_ESC << "[" << n << "D";
-	std::flush(std::cout);
+	terminalCommand("[%dD", n);
 }
 
 /**
@@ -320,8 +320,7 @@ void g_terminal::moveCursorBack(int n)
  */
 void g_terminal::remove()
 {
-	std::cout << (char) G_TERMKEY_ESC << "{x";
-	std::flush(std::cout);
+	terminalCommand("{x");
 }
 
 /**
@@ -329,8 +328,7 @@ void g_terminal::remove()
  */
 void g_terminal::setControlProcess(g_pid pid)
 {
-	std::cout << (char) G_TERMKEY_ESC << "{" << pid << "c";
-	std::flush(std::cout);
+	terminalCommand("{%dc", pid);
 }
 
 /**
@@ -338,8 +336,7 @@ void g_terminal::setControlProcess(g_pid pid)
  */
 void g_terminal::clear()
 {
-	std::cout << (char) G_TERMKEY_ESC << "[2J";
-	std::flush(std::cout);
+	terminalCommand("[2J");
 }
 
 /**
@@ -347,8 +344,7 @@ void g_terminal::clear()
  */
 void g_terminal::setScrollAreaToScreen()
 {
-	std::cout << (char) G_TERMKEY_ESC << "[r";
-	std::flush(std::cout);
+	terminalCommand("[r");
 }
 
 /**
@@ -356,8 +352,7 @@ void g_terminal::setScrollAreaToScreen()
  */
 void g_terminal::setScrollArea(int start, int end)
 {
-	std::cout << (char) G_TERMKEY_ESC << "[" << start << ";" << end << "r";
-	std::flush(std::cout);
+	terminalCommand("[%d;%dr", start, end);
 }
 
 /**
@@ -367,13 +362,12 @@ void g_terminal::scroll(int value)
 {
 	if(value >= 0)
 	{
-		std::cout << (char) G_TERMKEY_ESC << "[" << value << "S";
+		terminalCommand("[%dS", value);
 	}
 	else
 	{
-		std::cout << (char) G_TERMKEY_ESC << "[" << -value << "T";
+		terminalCommand("[%dT", -value);
 	}
-	std::flush(std::cout);
 }
 
 /**
@@ -381,6 +375,5 @@ void g_terminal::scroll(int value)
  */
 void g_terminal::setCursorVisible(bool visible)
 {
-	std::cout << (char) G_TERMKEY_ESC << "{" << 0 << ";" << (visible ? 1 : 0) << "C";
-	std::flush(std::cout);
+	terminalCommand("{0;%dC", visible ? 1 : 0);
 }

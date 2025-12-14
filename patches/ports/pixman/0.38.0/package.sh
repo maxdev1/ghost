@@ -8,8 +8,10 @@ port_unpack() {
 }
 
 port_install() {
+if [ -z "$PKG_CONFIG" ]; then
 	export PKG_CONFIG=$TARGET-pkg-config.sh
+fi
 	./configure --host=$TARGET --prefix=$PREFIX --enable-shared=yes --enable-static=no
-	make -j8
-	make DESTDIR=$SYSROOT install
+	make -C pixman -j8
+	make -C pixman DESTDIR=$SYSROOT install
 }

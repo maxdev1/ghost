@@ -26,7 +26,7 @@
 #include <cstdio>
 #include <libvideo/videodriver.hpp>
 
-bool initialized = false;
+static bool g_svga_initialized = false;
 g_device_id deviceId;
 
 int main()
@@ -34,8 +34,8 @@ int main()
 	g_task_register_name("vmsvgadriver");
 	klog("started");
 
-	initialized = svgaInitializeDevice();
-	if(!initialized)
+	g_svga_initialized = svgaInitializeDevice();
+	if(!g_svga_initialized)
 	{
 		klog("failed to initialize SVGA controller");
 		return -1;
@@ -71,7 +71,7 @@ void vmsvgaDriverReceiveMessages()
 			auto modeSetRequest = (g_video_set_mode_request*) request;
 
 			g_video_set_mode_response response{};
-			if(initialized)
+			if(g_svga_initialized)
 			{
 				klog("vmsvgadriver: setting video mode to %ix%i@%i", modeSetRequest->width, modeSetRequest->height,
 				     modeSetRequest->bpp);
@@ -95,7 +95,7 @@ void vmsvgaDriverReceiveMessages()
 		}
 		else if(request->command == G_VIDEO_COMMAND_UPDATE)
 		{
-			if(initialized)
+			if(g_svga_initialized)
 			{
 				auto updateRequest = (g_video_update_request*) request;
 				svgaUpdate(updateRequest->x, updateRequest->y, updateRequest->width, updateRequest->height);

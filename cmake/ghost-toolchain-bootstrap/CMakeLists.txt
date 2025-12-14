@@ -31,11 +31,11 @@ set(REPO_ROOT ${CMAKE_SOURCE_DIR}/../..)
 set(TOOLCHAIN_SH ${REPO_ROOT}/toolchain.sh)
 
 add_custom_target(ghost-toolchain
-  COMMAND ${CMAKE_COMMAND} -E env \
-    TARGET=${TARGET_TRIPLE} \
-    TOOLCHAIN_BASE=${TOOLCHAIN_BASE} \
-    SYSROOT=${SYSROOT} \
-    bash ${TOOLCHAIN_SH}
+  COMMAND ${CMAKE_COMMAND} -E env
+          TARGET=${TARGET_TRIPLE}
+          TOOLCHAIN_BASE=${TOOLCHAIN_BASE}
+          SYSROOT=${SYSROOT}
+          bash ${TOOLCHAIN_SH}
   WORKING_DIRECTORY ${REPO_ROOT}
   USES_TERMINAL
   COMMENT "Building Ghost cross toolchain into ${TOOLCHAIN_BASE} with sysroot ${SYSROOT}")

@@ -226,7 +226,7 @@ void addressRangePoolMerge(g_address_range_pool* pool)
 			current->pages += current->next->pages;
 
 			g_address_range* nextnext = current->next->next;
-			delete current->next;
+			heapFree(current->next);
 			current->next = nextnext;
 		}
 		else

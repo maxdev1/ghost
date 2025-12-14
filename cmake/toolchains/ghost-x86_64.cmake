@@ -23,6 +23,8 @@ set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR x86_64)
 
 # Compilers and binutils
+set(_TOOLCHAIN_BIN ${TOOLCHAIN_BASE}/bin)
+list(PREPEND CMAKE_PROGRAM_PATH ${_TOOLCHAIN_BIN})
 set(CROSS_GCC   ${TARGET_TRIPLE}-gcc)
 set(CROSS_GXX   ${TARGET_TRIPLE}-g++)
 set(CROSS_AS    ${TARGET_TRIPLE}-as)
@@ -30,22 +32,34 @@ set(CROSS_AR    ${TARGET_TRIPLE}-ar)
 set(CROSS_RANLIB ${TARGET_TRIPLE}-ranlib)
 set(CROSS_LD    ${TARGET_TRIPLE}-ld)
 
-# Detect availability early and emit a helpful message if missing
-find_program(_FOUND_GCC NAMES ${CROSS_GCC})
-if(NOT _FOUND_GCC)
-  message(FATAL_ERROR "Cross compiler '${CROSS_GCC}' not found.\n"
-    "Bootstrap the toolchain first using:\n"
-    "  cmake -S cmake/ghost-toolchain-bootstrap -B build-ghost-toolchain \\\n      -DTARGET_TRIPLE=${TARGET_TRIPLE} \\\n      -DTOOLCHAIN_BASE=$PWD/build-ghost/toolchain \\\n      -DSYSROOT=$PWD/build-ghost/sysroot\n"
-    "  cmake --build build-ghost-toolchain --target ghost-toolchain\n"
-    "Then re-run your original CMake configure command.")
-endif()
+function(_ghost_find_tool out_var name)
+  set(_cache_var "_ghost_tool_${out_var}")
+  find_program(${_cache_var} NAMES ${name})
+  if(NOT ${_cache_var})
+    message(FATAL_ERROR "Cross tool '${name}' not found (looked in ${_TOOLCHAIN_BIN}).\n"
+      "Bootstrap the toolchain first using:\n"
+      "  cmake -S cmake/ghost-toolchain-bootstrap -B build-ghost-toolchain \\\n      -DTARGET_TRIPLE=${TARGET_TRIPLE} \\\n      -DTOOLCHAIN_BASE=$PWD/build-ghost/toolchain \\\n      -DSYSROOT=$PWD/build-ghost/sysroot\n"
+      "  cmake --build build-ghost-toolchain --target ghost-toolchain\n"
+      "Then re-run your original CMake configure command.")
+  endif()
+  set(${out_var} ${${_cache_var}} PARENT_SCOPE)
+endfunction()
 
-set(CMAKE_C_COMPILER   ${CROSS_GCC})
-set(CMAKE_CXX_COMPILER ${CROSS_GXX})
-set(CMAKE_ASM_COMPILER ${CROSS_AS})
-set(CMAKE_AR           ${CROSS_AR} CACHE FILEPATH "Archiver")
-set(CMAKE_RANLIB       ${CROSS_RANLIB} CACHE FILEPATH "Ranlib")
-set(CMAKE_LINKER       ${CROSS_LD} CACHE FILEPATH "Linker")
+_ghost_find_tool(CROSS_GCC_PATH   ${CROSS_GCC})
+_ghost_find_tool(CROSS_GXX_PATH   ${CROSS_GXX})
+_ghost_find_tool(CROSS_AS_PATH    ${CROSS_AS})
+_ghost_find_tool(CROSS_AR_PATH    ${CROSS_AR})
+_ghost_find_tool(CROSS_RANLIB_PATH ${CROSS_RANLIB})
+_ghost_find_tool(CROSS_LD_PATH    ${CROSS_LD})
+
+set(CMAKE_C_COMPILER   ${CROSS_GCC_PATH})
+set(CMAKE_CXX_COMPILER ${CROSS_GXX_PATH})
+set(CMAKE_ASM_COMPILER ${CROSS_GCC_PATH})
+set(CMAKE_AR           ${CROSS_AR_PATH} CACHE FILEPATH "Archiver" FORCE)
+set(CMAKE_RANLIB       ${CROSS_RANLIB_PATH} CACHE FILEPATH "Ranlib" FORCE)
+set(CMAKE_LINKER       ${CROSS_LD_PATH} CACHE FILEPATH "Linker" FORCE)
+set(CMAKE_C_STANDARD_LIBRARIES "-static-libgcc")
+set(CMAKE_CXX_STANDARD_LIBRARIES "-static-libgcc")
 
 # Sysroot
 set(SYSROOT "${SYSROOT}" CACHE PATH "Ghost sysroot path")
@@ -53,6 +67,7 @@ if(NOT SYSROOT)
   # Default to a sysroot dir inside the build tree to avoid writing to '/'
   set(SYSROOT ${CMAKE_BINARY_DIR}/sysroot CACHE PATH "Ghost sysroot path" FORCE)
 endif()
+set(CMAKE_TRY_COMPILE_PLATFORM_VARIABLES TARGET_TRIPLE TOOLCHAIN_BASE SYSROOT)
 
 # Important: tell CMake this is a freestanding cross environment
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)

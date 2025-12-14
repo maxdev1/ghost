@@ -36,6 +36,11 @@ patches/ports/build/*
 
 documentation/out/*
 
+build/*
+build-deps/*
+build-ghost/*
+build-ghost-toolchain/*
+target/*
 target/iso/boot/kernel
 target/iso/boot/loader
 target/iso/boot/ramdisk

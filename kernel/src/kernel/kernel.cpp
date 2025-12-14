@@ -221,6 +221,10 @@ void kernelInitializationThread()
 
 	G_PRETTY_BOOT_STATUS_P(20);
 	kernelSpawnService("/applications/devicemanager.bin", "", G_SECURITY_LEVEL_DRIVER);
+
+	G_PRETTY_BOOT_STATUS_P(30);
+	kernelSpawnService("/applications/vmsvgadriver.bin", "", G_SECURITY_LEVEL_DRIVER);
+
 	G_PRETTY_BOOT_STATUS_P(40);
 	kernelSpawnService("/applications/ps2driver.bin", "", G_SECURITY_LEVEL_DRIVER);
 
