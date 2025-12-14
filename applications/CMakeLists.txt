@@ -16,6 +16,9 @@ foreach(_inc ${_all_inc_dirs})
   endif()
 endforeach()
 
+# Make sure the sysroot headers are exposed to all application targets.
+list(APPEND APPLICATIONS_ALL_INC_DIRS ${SYSROOT}/system/include)
+
 # Track library install targets to ensure apps build after headers/libs are installed
 set(_LIB_INSTALL_TARGETS)
 set(_LIB_HEADER_INSTALL_TARGETS)
