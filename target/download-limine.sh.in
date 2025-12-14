@@ -1,0 +1,16 @@
+# Script to download and build Limine version @LIMINE_VERSION@
+
+set -euo pipefail
+
+if [ ! -d "@LIMINE_DIR@" ]; then
+    echo "Downloading limine..."
+    curl -k -L "@LIMINE_SOURCE@" -o "@LIMINE_TAR@"
+    tar -xzf "@LIMINE_TAR@" -C "@LIMINE_SOURCE_DIR@"
+    (
+        cd "@LIMINE_DIR@"
+        ./configure --enable-bios-cd --enable-uefi-cd
+        make
+    )
+else
+    echo "Limine already prepared at @LIMINE_DIR@"
+fi
