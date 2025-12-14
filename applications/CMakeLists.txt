@@ -80,6 +80,24 @@ endfunction()
 file(GLOB children RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *)
 
 set(FENSTER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/fenster)
+set(_fenster_expected_header ${FENSTER_DIR}/libfenster/inc/libfenster/components/button.hpp)
+if(NOT EXISTS ${_fenster_expected_header})
+  find_package(Git QUIET)
+  if(GIT_FOUND)
+    execute_process(
+      COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive applications/fenster
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      RESULT_VARIABLE _fenster_submodule_result
+      OUTPUT_QUIET ERROR_QUIET
+    )
+    if(NOT _fenster_submodule_result EQUAL 0)
+      message(WARNING "fenster submodule missing and automatic initialization failed (error ${_fenster_submodule_result}); GUI apps may not build")
+    endif()
+  else()
+    message(WARNING "fenster submodule missing and Git is not available; GUI apps may not build")
+  endif()
+endif()
+
 if(EXISTS ${FENSTER_DIR}/Makefile)
   if(IS_DIRECTORY ${FENSTER_DIR}/libfenster/inc)
     list(APPEND APPLICATIONS_ALL_INC_DIRS ${FENSTER_DIR}/libfenster/inc)

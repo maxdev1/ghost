@@ -47,6 +47,7 @@ target/iso/boot/limine/limine-*.sys
 target/iso/boot/limine/limine-*.bin
 target/limine-*/*
 target/limine-*.tar.gz
+target/ghost.iso
 
 node_modules
 
@@ -59,4 +60,3 @@ sysroot/system/share
 sysroot/applications/*
 !sysroot/applications/empty.txt
 
-ghost.iso
