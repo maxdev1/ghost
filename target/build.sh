@@ -39,15 +39,15 @@ case "$1" in
         cp "${LIMINE_DIR}/bin/limine-uefi-cd.bin" "${ISO_ROOT}/boot/limine/limine-uefi-cd.bin"
 
         cat <<EOF > "${ISO_ROOT}/limine.conf"
-:timeout: 5
-:default: Ghost
+timeout: 5
+default_entry: Ghost
 
-:entry:
-  name: Ghost
-  path: /boot/kernel
-  module_path: /boot/ramdisk
-  module_string: ramdisk
-  cmdline: root=/dev/ram0
+/Ghost
+    protocol: limine
+    path: boot():/boot/kernel
+    module_path: boot():/boot/ramdisk
+    module_string: ramdisk
+    cmdline: root=/dev/ram0
 EOF
         cp "${ISO_ROOT}/limine.conf" "${ISO_ROOT}/boot/limine/limine.conf"
 
