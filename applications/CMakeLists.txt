@@ -113,7 +113,7 @@ if(EXISTS ${FENSTER_DIR}/Makefile)
     "CXXFLAGS=--sysroot=${SYSROOT} -I${SYSROOT}/system/include/freetype2"
     "LDFLAGS=--sysroot=${SYSROOT} -L${SYSROOT}/system/lib -Wl,-rpath-link,${SYSROOT}/system/lib"
   )
-  add_custom_target(fenster
+  add_custom_target(fenster ALL
     COMMAND ${CMAKE_COMMAND} -E env ${_fenster_env} make
     WORKING_DIRECTORY ${FENSTER_DIR}
     USES_TERMINAL
@@ -276,7 +276,7 @@ if(TARGET fenster)
   if(TARGET libinput-install-headers)
     add_dependencies(fenster libinput-install-headers)
   endif()
-  foreach(_dep libvideo libps2driver)
+  foreach(_dep libdevice libvideo libps2driver)
     if(TARGET ${_dep}-install)
       add_dependencies(fenster ${_dep}-install)
     endif()
