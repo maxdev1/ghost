@@ -105,7 +105,7 @@ if(EXISTS ${FENSTER_DIR}/Makefile)
   if(IS_DIRECTORY ${FENSTER_DIR}/libproperties/inc)
     list(APPEND APPLICATIONS_ALL_INC_DIRS ${FENSTER_DIR}/libproperties/inc)
   endif()
-  set(_fenster_env
+  set(_fenster_make_vars
     "target=ghost"
     "SYSROOT=${SYSROOT}"
     "CXX=${CMAKE_CXX_COMPILER}"
@@ -114,12 +114,12 @@ if(EXISTS ${FENSTER_DIR}/Makefile)
     "LDFLAGS=--sysroot=${SYSROOT} -L${SYSROOT}/system/lib -Wl,-rpath-link,${SYSROOT}/system/lib"
   )
   add_custom_target(fenster ALL
-    COMMAND ${CMAKE_COMMAND} -E env ${_fenster_env} make
+    COMMAND make ${_fenster_make_vars}
     WORKING_DIRECTORY ${FENSTER_DIR}
     USES_TERMINAL
     COMMENT "Building fenster (libproperties/libfenster/server)")
   add_custom_target(fenster-install-headers
-    COMMAND ${CMAKE_COMMAND} -E env ${_fenster_env} make install-headers
+    COMMAND make ${_fenster_make_vars} install-headers
     WORKING_DIRECTORY ${FENSTER_DIR}
     USES_TERMINAL
     COMMENT "Installing fenster headers")
