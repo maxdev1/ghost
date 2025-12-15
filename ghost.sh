@@ -186,8 +186,15 @@ includeInBuild() {
 
 
 # Toolchain specifics
-with TOOLCHAIN_BASE		"/ghost"
-with SYSROOT			    $TOOLCHAIN_BASE"/source/sysroot"
+GHOST_SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_DEFAULT_TOOLCHAIN_BASE="/ghost"
+_DEFAULT_SYSROOT="/ghost/source/sysroot"
+if [[ "${GHOST_SOURCE_DIR}" != /ghost/source* ]]; then
+	_DEFAULT_TOOLCHAIN_BASE="${GHOST_SOURCE_DIR}/build-ghost/toolchain"
+	_DEFAULT_SYSROOT="${GHOST_SOURCE_DIR}/build-ghost/sysroot"
+fi
+with TOOLCHAIN_BASE		"$_DEFAULT_TOOLCHAIN_BASE"
+with SYSROOT			    "$_DEFAULT_SYSROOT"
 
 with NASM				nasm
 with SH					bash
@@ -199,4 +206,3 @@ SYSROOT_SYSTEM_INCLUDE=$SYSROOT_SYSTEM/include
 SYSROOT_SYSTEM_LIB=$SYSROOT_SYSTEM/lib
 
 export PATH=$PATH:$TOOLCHAIN_BASE/bin
-
