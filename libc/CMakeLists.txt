@@ -25,14 +25,13 @@ elseif(TARGET_TRIPLE MATCHES "^(i.86|i386)")
 endif()
 
 add_library(c_static STATIC ${LIBC_C_SOURCES} ${LIBC_ASM_SOURCES})
-add_library(c_shared SHARED ${LIBC_C_SOURCES} ${LIBC_ASM_SOURCES})
 
 # Include dirs
 set(LIBC_INC ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 set(LIBAPI_INC ${CMAKE_CURRENT_SOURCE_DIR}/../libapi/inc)
 set(KERNEL_INC ${CMAKE_CURRENT_SOURCE_DIR}/../kernel/inc)
 set(MUSL_INC ${CMAKE_CURRENT_SOURCE_DIR}/src/musl)
-foreach(tgt c_static c_shared)
+foreach(tgt c_static)
   target_include_directories(${tgt} PUBLIC ${LIBC_INC} ${LIBAPI_INC} ${KERNEL_INC} ${MUSL_INC})
   target_compile_options(${tgt} PRIVATE -fPIC -Wno-narrowing)
   # Ensure musl features macros (weak_alias etc.) are available in all units
@@ -40,8 +39,14 @@ foreach(tgt c_static c_shared)
   set_property(TARGET ${tgt} PROPERTY C_STANDARD 11)
 endforeach()
 
-# Shared link flags
-target_link_options(c_shared PRIVATE -shared -shared-libgcc)
+set(LIBC_SHARED ${CMAKE_CURRENT_BINARY_DIR}/libc.so)
+add_custom_command(OUTPUT ${LIBC_SHARED}
+  COMMAND ${CMAKE_C_COMPILER} --sysroot=${SYSROOT} -shared -shared-libgcc
+          -o ${LIBC_SHARED}
+          -Wl,--whole-archive $<TARGET_FILE:c_static> -Wl,--no-whole-archive
+  DEPENDS c_static
+  COMMENT "Linking libc.so from libc.a")
+add_custom_target(c_shared ALL DEPENDS ${LIBC_SHARED})
 
 # CRT objects (assembled with GAS)
 set(CRT_NAMES crt0 crti crtn)
@@ -63,7 +68,7 @@ add_custom_target(libc-crt ALL DEPENDS ${CRT_OBJECTS})
 add_custom_target(libc-install
   COMMAND ${CMAKE_COMMAND} -E make_directory ${SYSROOT}/system/lib
   COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:c_static> ${SYSROOT}/system/lib/libc.a
-  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:c_shared> ${SYSROOT}/system/lib/libc.so
+  COMMAND ${CMAKE_COMMAND} -E copy ${LIBC_SHARED} ${SYSROOT}/system/lib/libc.so
   COMMAND ${CMAKE_COMMAND} -E copy ${CRT_OBJECTS} ${SYSROOT}/system/lib/
   # Create empty libm.a archive
   COMMAND ${CMAKE_AR} cr ${SYSROOT}/system/lib/libm.a
