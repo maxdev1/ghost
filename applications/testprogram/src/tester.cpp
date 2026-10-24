@@ -24,6 +24,7 @@
 #include <libfenster/components/window.hpp>
 #include <libfenster/components/panel.hpp>
 #include <cstdio>
+#include <string>
 #include <libfenster/components/checkbox.hpp>
 #include <libfenster/components/label.hpp>
 #include <libfenster/components/text_box.hpp>
@@ -67,26 +68,24 @@ int main(int argc, char** argv)
 		g_sleep(999999999);
 	}
 
-	uint8_t buf[1] ={0};
-	std::stringstream s;
+	uint8_t buf[G_PIPE_DEFAULT_CAPACITY];
+	std::string text;
+	constexpr size_t maxLogLength = 1000;
 	for(;;)
 	{
-		int r = g_read(logPipe, buf, 1);
-		if(r == 0)
+		// Drain the buffered output before making synchronous UI requests.
+		int r = g_read(logPipe, buf, sizeof(buf));
+		if(r > 0)
 		{
-			// Pipe is not blocking in both directions right now...
-			g_sleep(100);
-			continue;
+			text.append(reinterpret_cast<const char*>(buf), r);
+			if(text.size() > maxLogLength)
+				text.erase(0, text.size() - maxLogLength);
+
+			textArea->setTitle(text);
+			lastRead->setTitle(std::to_string(text.size()));
 		}
-		s << (char) buf[0];
 
-		textArea->setTitle(s.str());
-
-		if(s.str().size() > 1000)
-			s.str("");
-
-		std::stringstream out;
-		out << s.str().size();
-		lastRead->setTitle(out.str());
+		// Coalesce new output and avoid busy polling when the pipe is empty.
+		g_sleep(16);
 	}
 }
