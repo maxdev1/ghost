@@ -25,8 +25,7 @@
 
 static volatile uint64_t* mmio = nullptr;
 static bool available = false;
-static uint64_t frequency = HPET_DEFAULT_FREQUENCY;
-static double periodsPerSecond = 1.0 / frequency;
+static uint64_t periodFemtoseconds = 0;
 
 void _hpetFindAndMap();
 
@@ -34,20 +33,33 @@ void hpetInitialize()
 {
 	_hpetFindAndMap();
 
-	// TODO this crashes in QEMU
-	if(mmio && false)
+	if(!mmio)
+		return;
+
+	uint64_t capabilities = mmio[HPET_GEN_CAP_REG / 8];
+	uint32_t clockPeriod = capabilities >> 32;
+	if(!(capabilities & HPET_CAP_COUNTER_64BIT) || !(capabilities & 0xFF) ||
+	   clockPeriod == 0 || clockPeriod > HPET_MAX_PERIOD_FEMTOSECONDS)
 	{
-		// Read correct frequency
-		uint64_t capabilities = mmio[HPET_GEN_CAP_REG / 8];
-		uint32_t clockPeriod = (capabilities >> 32) & 0xFFFFFFFF;
-		frequency = (1000000000000000.0 / clockPeriod); // TODO now on x86_64 do it properly
-		periodsPerSecond = 1.0 / frequency;
-
-		// Make sure it is enabled
-		mmio[HPET_GEN_CONFIG_REG / 8] |= 1;
-
-		available = true;
+		logInfo("%! unsupported counter or clock period, using timer ticks", "hpet");
+		return;
 	}
+
+	periodFemtoseconds = clockPeriod;
+
+	// Use only the free-running counter. Keep PIT/RTC routing intact and disable
+	// comparator interrupts left enabled by firmware before starting the counter.
+	mmio[HPET_GEN_CONFIG_REG / 8] = 0;
+	uint32_t timerCount = ((capabilities >> 8) & 0x1F) + 1;
+	for(uint32_t timer = 0; timer < timerCount; timer++)
+	{
+		uint32_t config = HPET_TIMER0_CONFIG_REG + timer * HPET_TIMER_REGISTER_STRIDE;
+		mmio[config / 8] &= ~HPET_TIMER_INTERRUPT_ENABLE;
+	}
+	mmio[HPET_GEN_CONFIG_REG / 8] = HPET_CONFIG_ENABLE;
+	available = (mmio[HPET_GEN_CONFIG_REG / 8] & HPET_CONFIG_ENABLE) != 0;
+	if(available)
+		logInfo("%! enabled %i-fs clock period", "hpet", clockPeriod);
 }
 
 void _hpetFindAndMap()
@@ -59,6 +71,12 @@ void _hpetFindAndMap()
 		return;
 	}
 
+	if(entry->header->length < sizeof(g_acpi_hpet))
+	{
+		logInfo("%! invalid ACPI table", "hpet");
+		return;
+	}
+
 	auto hpet = (g_acpi_hpet*) entry->header;
 	if(hpet->baseAddress.addressSpace != 0)
 	{
@@ -66,9 +84,18 @@ void _hpetFindAndMap()
 		return;
 	}
 
+	if(!hpet->baseAddress.address || (hpet->baseAddress.address & G_PAGE_ALIGN_MASK))
+	{
+		logInfo("%! invalid MMIO base", "hpet");
+		return;
+	}
+
 	auto virtBase = addressRangePoolAllocate(memoryVirtualRangePool, 1);
+	if(!virtBase)
+		return;
 	if(!pagingMapPage(virtBase, hpet->baseAddress.address, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_UNCACHED))
 	{
+		addressRangePoolFree(memoryVirtualRangePool, virtBase);
 		logInfo("%! failed to map", "hpet");
 		return;
 	}
@@ -87,5 +114,9 @@ uint64_t hpetGetNanos()
 		return 0;
 
 	uint64_t counterValue = mmio[HPET_MAIN_COUNTER_REG / 8];
-	return (uint64_t) ((double) counterValue * periodsPerSecond * 1000000000);
+	// Divide first so the counter * femtoseconds product cannot overflow after
+	// only a few hours. Retain the remainder to preserve sub-tick precision.
+	return (counterValue / HPET_FEMTOSECONDS_PER_NANOSECOND) * periodFemtoseconds +
+	       ((counterValue % HPET_FEMTOSECONDS_PER_NANOSECOND) * periodFemtoseconds) /
+	       HPET_FEMTOSECONDS_PER_NANOSECOND;
 }

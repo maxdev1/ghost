@@ -76,8 +76,8 @@ struct g_fs_delegate
     g_fs_close_status (*close)(g_fs_node* node, g_file_flag_mode openFlags);
     g_fs_directory_refresh_status (*refreshDir)(g_fs_node* node);
 
-    void (*waitForRead)(g_tid task, g_fs_node* node);
-    void (*waitForWrite)(g_tid task, g_fs_node* node);
+    bool (*waitForRead)(g_task* task, g_fs_node* node, uint64_t length);
+    bool (*waitForWrite)(g_task* task, g_fs_node* node, uint64_t length);
 };
 
 struct g_filesystem_find_result

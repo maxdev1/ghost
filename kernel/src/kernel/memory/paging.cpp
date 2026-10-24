@@ -55,7 +55,49 @@ g_physical_address pagingVirtualToPageEntry(g_virtual_address addr)
 
 g_physical_address pagingVirtualToPhysical(g_virtual_address addr)
 {
-	return pagingVirtualToPageEntry(addr) & ~G_PAGE_ALIGN_MASK;
+	constexpr uint64_t addressMask4KiB = 0x000FFFFFFFFFF000ULL;
+	constexpr uint64_t addressMask2MiB = 0x000FFFFFFFE00000ULL;
+	constexpr uint64_t addressMask1GiB = 0x000FFFFFC0000000ULL;
+	constexpr uint64_t offsetMask2MiB = (1ULL << 21) - 1;
+	constexpr uint64_t offsetMask1GiB = (1ULL << 30) - 1;
+
+	auto pml4 = (g_address*) G_MEM_PHYS_TO_VIRT(pagingGetCurrentSpace());
+	uint64_t pml4Index = G_PML4_INDEX(addr);
+	uint64_t pdptAddr = pml4[pml4Index] & addressMask4KiB;
+	if(!pdptAddr)
+		return 0;
+
+	auto pdpt = (g_address*) G_MEM_PHYS_TO_VIRT(pdptAddr);
+	uint64_t pdptIndex = G_PDPT_INDEX(addr);
+	uint64_t pdptValue = pdpt[pdptIndex];
+	if(!pdptValue)
+		return 0;
+	if(pdptValue & G_PAGE_LARGE_PAGE_FLAG)
+		return (pdptValue & addressMask1GiB) + (addr & offsetMask1GiB);
+
+	uint64_t pdAddr = pdptValue & addressMask4KiB;
+	if(!pdAddr)
+		return 0;
+
+	auto pd = (g_address*) G_MEM_PHYS_TO_VIRT(pdAddr);
+	uint64_t pdIndex = G_PD_INDEX(addr);
+	uint64_t pdValue = pd[pdIndex];
+	if(!pdValue)
+		return 0;
+	if(pdValue & G_PAGE_LARGE_PAGE_FLAG)
+		return (pdValue & addressMask2MiB) + (addr & offsetMask2MiB);
+
+	uint64_t ptAddr = pdValue & addressMask4KiB;
+	if(!ptAddr)
+		return 0;
+
+	auto pt = (g_address*) G_MEM_PHYS_TO_VIRT(ptAddr);
+	uint64_t ptIndex = G_PT_INDEX(addr);
+	uint64_t ptValue = pt[ptIndex];
+	if(!ptValue)
+		return 0;
+
+	return (ptValue & addressMask4KiB) + (addr & G_PAGE_ALIGN_MASK);
 }
 
 void pagingSwitchToSpace(g_physical_address dir)

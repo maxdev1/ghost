@@ -27,15 +27,9 @@
 
 #define G_DEBUG_LOG_PAUSE 5000
 
-/**
- * The "preferred task" is just a hint to scheduling that it would make sense to
- * switch to a specific task. It is checked on all cores.
- */
-g_tid preferredTask;
-
 void schedulerInitializeLocal()
 {
-	preferredTask = G_TID_NONE;
+	taskingGetLocal()->scheduling.preferredTask = G_TID_NONE;
 }
 
 void schedulerPrepareEntry(g_schedule_entry* entry)
@@ -50,19 +44,20 @@ g_schedule_entry* schedulerGetNextTask(g_tasking_local* local)
 		return entry;
 	}
 
-	// Check if there is a global "preferred task" to do next
-	// TODO The current yield is not "fair" and makes the system slower
-	if(false && preferredTask != G_TID_NONE)
+	// Check if there is a local "preferred task" to do next.
+	if(local->scheduling.preferredTask != G_TID_NONE)
 	{
 		while(entry)
 		{
-			if(entry->task->id == preferredTask)
+			if(entry->task->id == local->scheduling.preferredTask)
 			{
-				preferredTask = G_TID_NONE;
+				local->scheduling.preferredTask = G_TID_NONE;
 				return entry;
 			}
 			entry = entry->next;
 		}
+
+		local->scheduling.preferredTask = G_TID_NONE;
 	}
 
 	// Otherwise just find our current tasks entry and choose the next one
@@ -94,7 +89,23 @@ void schedulerSetCurrent(g_tasking_local* local, g_task* task)
 
 void schedulerPrefer(g_tid task)
 {
-	preferredTask = task;
+	if(task == G_TID_NONE)
+	{
+		taskingGetLocal()->scheduling.preferredTask = G_TID_NONE;
+		return;
+	}
+
+	schedulerPreferTask(taskingGetById(task));
+}
+
+void schedulerPreferTask(g_task* task)
+{
+	if(!task || !task->assignment)
+		return;
+
+	mutexAcquire(&task->assignment->lock);
+	task->assignment->scheduling.preferredTask = task->id;
+	mutexRelease(&task->assignment->lock);
 }
 
 void schedulerSchedule(g_tasking_local* local)

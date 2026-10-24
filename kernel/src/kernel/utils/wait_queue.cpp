@@ -30,10 +30,11 @@ void waitQueueInitialize(g_wait_queue* queue)
 
 void waitQueueAdd(g_wait_queue* queue, g_tid task)
 {
-	mutexAcquire(&queue->lock);
-
 	auto entry = (g_wait_queue_entry*) heapAllocate(sizeof(g_wait_queue_entry));
 	entry->task = task;
+
+	mutexAcquire(&queue->lock);
+
 	entry->next = queue->head;
 	queue->head = entry;
 
@@ -71,6 +72,10 @@ void waitQueueWake(g_wait_queue* queue)
 	mutexAcquire(&queue->lock);
 
 	auto waiter = queue->head;
+	queue->head = nullptr;
+
+	mutexRelease(&queue->lock);
+
 	while(waiter)
 	{
 		g_task* task = taskingGetById(waiter->task);
@@ -80,7 +85,4 @@ void waitQueueWake(g_wait_queue* queue)
 		heapFree(waiter);
 		waiter = next;
 	}
-	queue->head = nullptr;
-
-	mutexRelease(&queue->lock);
 }

@@ -2,6 +2,7 @@
 .project
 .modifydates
 .changes
+.idea
 build.log
 temp
 variables.sh

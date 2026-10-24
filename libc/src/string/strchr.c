@@ -32,5 +32,9 @@ char* strchr(const char* str, int c) {
 		}
 		++str;
 	}
+
+	if (*str == c) {
+		return (char*) str;
+	}
 	return NULL;
 }

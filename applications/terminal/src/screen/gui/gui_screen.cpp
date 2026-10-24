@@ -173,6 +173,7 @@ void gui_screen_t::bufferInput(const g_key_info& info)
 
 void canvas_buffer_listener_t::handleBufferChanged()
 {
+	screen->fullRepaint = true;
 	screen->repaint();
 }
 

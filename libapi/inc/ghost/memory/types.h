@@ -41,12 +41,14 @@ __BEGIN_C
 #define G_PAGE_IN_TABLE_INDEX(address)		((uint32_t)((address / G_PAGE_SIZE) % 1024))
 
 // address types
-#if __i386__
+#if UINTPTR_MAX == UINT32_MAX
 typedef uint32_t g_address;
-#define G_ADDRESS_MAX      0xFFFFFFFFl
-#elif __x86_64__
+#define G_ADDRESS_MAX      UINT32_MAX
+#elif UINTPTR_MAX == UINT64_MAX
 typedef uint64_t g_address;
-#define G_ADDRESS_MAX      0xFFFFFFFFFFFFFFFFl
+#define G_ADDRESS_MAX      UINT64_MAX
+#else
+#error Unsupported pointer width for g_address
 #endif
 
 typedef g_address g_physical_address;

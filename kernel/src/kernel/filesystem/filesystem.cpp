@@ -383,10 +383,11 @@ g_fs_read_status filesystemRead(g_task* task, g_fd fd, uint8_t* buffer, uint64_t
 		return G_FS_READ_INVALID_FD;
 	}
 
+	bool blocking = (descriptor->openFlags & G_FILE_FLAG_MODE_BLOCKING);
 	int64_t read;
 	g_fs_read_status status;
 	while((status = filesystemRead(node, buffer, descriptor->offset, length, &read)) == G_FS_READ_BUSY
-	      && node->blocking)
+	      && blocking)
 	{
 		g_fs_delegate* delegate = filesystemFindDelegate(node);
 		if(!delegate->waitForRead)
@@ -394,12 +395,8 @@ g_fs_read_status filesystemRead(g_task* task, g_fd fd, uint8_t* buffer, uint64_t
 			      "filesytem", task->id, node->id);
 
 		INTERRUPTS_PAUSE;
-		mutexAcquire(&task->lock);
-		task->status = G_TASK_STATUS_WAITING;
-		task->waitsFor = "read";
-		mutexRelease(&task->lock);
-		delegate->waitForRead(task->id, node);
-		taskingYield();
+		if(delegate->waitForRead(task, node, length))
+			taskingYield();
 		INTERRUPTS_RESUME;
 	}
 
@@ -467,10 +464,11 @@ g_fs_write_status filesystemWrite(g_task* task, g_fd fd, uint8_t* buffer, uint64
 		}
 	}
 
+	bool blocking = (descriptor->openFlags & G_FILE_FLAG_MODE_BLOCKING);
 	int64_t wrote;
 	g_fs_write_status status;
 
-	while((status = filesystemWrite(node, buffer, startOffset, length, &wrote)) == G_FS_WRITE_BUSY && node->blocking)
+	while((status = filesystemWrite(node, buffer, startOffset, length, &wrote)) == G_FS_WRITE_BUSY && blocking)
 	{
 		g_fs_delegate* delegate = filesystemFindDelegate(node);
 		if(!delegate->waitForWrite)
@@ -478,12 +476,8 @@ g_fs_write_status filesystemWrite(g_task* task, g_fd fd, uint8_t* buffer, uint64
 			      "filesytem", task->id, node->id);
 
 		INTERRUPTS_PAUSE;
-		mutexAcquire(&task->lock);
-		task->status = G_TASK_STATUS_WAITING;
-		task->waitsFor = "write";
-		mutexRelease(&task->lock);
-		delegate->waitForWrite(task->id, node);
-		taskingYield();
+		if(delegate->waitForWrite(task, node, length))
+			taskingYield();
 		INTERRUPTS_RESUME;
 	}
 	if(wrote > 0)
@@ -540,7 +534,7 @@ g_fs_pipe_status filesystemCreatePipe(g_bool blocking, g_fs_node** outPipeNode)
 
 	g_fs_node* pipeNode = filesystemCreateNode(G_FS_NODE_TYPE_PIPE, pipeName);
 	pipeNode->physicalId = pipeId;
-	pipeNode->blocking = true; // TODO Why does using the parameter freeze everything?
+	pipeNode->blocking = blocking;
 	filesystemAddChild(pipesFolder, pipeNode);
 	*outPipeNode = pipeNode;
 	return G_FS_PIPE_SUCCESSFUL;

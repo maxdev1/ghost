@@ -14,7 +14,7 @@ export AUTOCONF=autoconf2.69
 apt-get update
 apt-get install -y \
     libmpfr-dev libgmp-dev libmpc-dev \
-    autoconf2.69 pkg-config xorriso grub-pc-bin \
+    autoconf2.69 pkg-config xorriso \
     make texinfo flex bison gcc g++ nasm \
     asciidoc asciidoctor \
     mtools \

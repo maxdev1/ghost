@@ -53,4 +53,9 @@ void schedulerDump();
  */
 void schedulerPrefer(g_tid task);
 
+/**
+ * Sets a task as the preferred task without a task-id lookup.
+ */
+void schedulerPreferTask(g_task* task);
+
 #endif

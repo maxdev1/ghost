@@ -53,11 +53,20 @@ void syscallKernQuery(g_task* task, g_syscall_kernquery* data)
 		auto out = (g_kernquery_task_get_data*) data->buffer;
 
 		g_task* target = taskingGetById(out->id);
-		mutexAcquire(&target->lock);
-
-		if(!target || target->status == G_TASK_STATUS_DEAD)
+		if(!target)
 		{
 			data->status = G_KERNQUERY_STATUS_UNKNOWN_ID;
+			out->found = false;
+			out->id = -1;
+			return;
+		}
+
+		mutexAcquire(&target->lock);
+
+		if(target->status == G_TASK_STATUS_DEAD)
+		{
+			data->status = G_KERNQUERY_STATUS_UNKNOWN_ID;
+			out->found = false;
 			out->id = -1;
 		}
 		else

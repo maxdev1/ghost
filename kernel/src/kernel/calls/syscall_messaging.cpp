@@ -21,6 +21,7 @@
 #include "kernel/calls/syscall_messaging.hpp"
 #include "kernel/ipc/message_queues.hpp"
 #include "kernel/ipc/message_topics.hpp"
+#include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/tasking/user_mutex.hpp"
 #include "kernel/logger/logger.hpp"
 
@@ -30,10 +31,10 @@ void syscallMessageSend(g_task* task, g_syscall_send_message* data)
 	      G_MESSAGE_SEND_STATUS_FULL &&
 	      data->mode == G_MESSAGE_SEND_MODE_BLOCKING)
 	{
-		taskingWait(task, __func__, [task, data]()
-		{
-			messageQueueWaitForSend(task->id, data->receiver);
-		});
+		INTERRUPTS_PAUSE;
+		if(messageQueueWaitForSend(task, data->receiver, data->length))
+			taskingYield();
+		INTERRUPTS_RESUME;
 	}
 	messageQueueUnwaitForSend(task->id, data->receiver);
 }
@@ -50,7 +51,10 @@ void syscallMessageReceive(g_task* task, g_syscall_receive_message* data)
 		//	data->status = G_MESSAGE_RECEIVE_STATUS_INTERRUPTED;
 		//	break;
 		// }
-		taskingWait(task, __func__);
+		INTERRUPTS_PAUSE;
+		if(messageQueueWaitForReceive(task, data->transaction))
+			taskingYield();
+		INTERRUPTS_RESUME;
 	}
 }
 
@@ -78,10 +82,10 @@ void syscallMessageTopicReceive(g_task* task, g_syscall_receive_topic_message* d
 	      G_MESSAGE_RECEIVE_STATUS_EMPTY &&
 	      data->mode == G_MESSAGE_RECEIVE_MODE_BLOCKING)
 	{
-		taskingWait(task, __func__, [data, task]()
-		{
-			messageTopicsWaitForReceive(data->topic, task->id);
-		});
+		INTERRUPTS_PAUSE;
+		if(messageTopicsWaitForReceive(data->topic, task, data->start_after))
+			taskingYield();
+		INTERRUPTS_RESUME;
 	}
 	messageTopicsUnwaitForReceive(data->topic, task->id);
 }

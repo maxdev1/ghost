@@ -59,10 +59,13 @@ struct g_acpi_hpet
 #define HPET_IRQ_STATUS_REG     0x80
 #define HPET_IRQ_ENABLE_REG     0x90
 
-// Tick Period
-#define HPET_MIN_TICK_REG       0x3C
-
-#define HPET_DEFAULT_FREQUENCY  14318180
+// Capability, configuration and conversion constants (HPET specification 1.0a).
+#define HPET_CAP_COUNTER_64BIT             (1ULL << 13)
+#define HPET_CONFIG_ENABLE                 1ULL
+#define HPET_TIMER_INTERRUPT_ENABLE        (1ULL << 2)
+#define HPET_TIMER_REGISTER_STRIDE         0x20
+#define HPET_MAX_PERIOD_FEMTOSECONDS       100000000ULL
+#define HPET_FEMTOSECONDS_PER_NANOSECOND   1000000ULL
 
 /**
  * Attempts to detect and initialize the High-Precision Event Timer (HPET).

@@ -49,6 +49,28 @@ struct g_hashmap
 };
 
 template <typename K, typename V>
+int hashmapBucketIndex(g_hashmap<K, V>* map, K key)
+{
+    return map->keyHash(key) % map->bucketCount;
+}
+
+template <typename K, typename V>
+g_hashmap_entry<K, V>* hashmapGetEntryUnlocked(g_hashmap<K, V>* map, K key)
+{
+    auto* entry = map->buckets[hashmapBucketIndex(map, key)];
+    while (entry)
+    {
+        if (map->keyEquals(entry->key, key))
+        {
+            return entry;
+        }
+        entry = entry->next;
+    }
+
+    return nullptr;
+}
+
+template <typename K, typename V>
 g_hashmap<K, V>* hashmapInternalCreate(int bucketCount)
 {
     g_hashmap<K, V>* map = (g_hashmap<K, V>*)heapAllocate(sizeof(g_hashmap<K, V>));
@@ -82,14 +104,14 @@ void hashmapPut(g_hashmap<K, V>* map, K key, V value)
 {
     mutexAcquire(&map->lock);
 
-    auto* entry = hashmapGetEntry(map, key);
+    auto* entry = hashmapGetEntryUnlocked(map, key);
     if (entry)
     {
         entry->value = value;
     }
     else
     {
-        int bucket = map->keyHash(key) % map->bucketCount;
+        int bucket = hashmapBucketIndex(map, key);
         auto* newEntry = (g_hashmap_entry<K, V>*)heapAllocate(sizeof(g_hashmap_entry<K, V>));
         newEntry->key = map->keyCopy(key);
         newEntry->value = value;
@@ -107,16 +129,7 @@ g_hashmap_entry<K, V>* hashmapGetEntry(g_hashmap<K, V>* map, K key)
 {
     mutexAcquire(&map->lock);
 
-    int hash = map->keyHash(key);
-    auto* entry = map->buckets[hash % map->bucketCount];
-    while (entry)
-    {
-        if (map->keyEquals(entry->key, key))
-        {
-            break;
-        }
-        entry = entry->next;
-    }
+    auto* entry = hashmapGetEntryUnlocked(map, key);
 
     mutexRelease(&map->lock);
     return entry;
@@ -126,7 +139,7 @@ template <typename K, typename V>
 V hashmapGet(g_hashmap<K, V>* map, K key, V def)
 {
     mutexAcquire(&map->lock);
-    g_hashmap_entry<K, V>* entry = hashmapGetEntry(map, key);
+    g_hashmap_entry<K, V>* entry = hashmapGetEntryUnlocked(map, key);
 
     V value;
     if (entry)
@@ -152,7 +165,7 @@ void hashmapRemove(g_hashmap<K, V>* map, K key)
 {
     mutexAcquire(&map->lock);
 
-    int bucket = map->keyHash(key) % map->bucketCount;
+    int bucket = hashmapBucketIndex(map, key);
     auto* entry = map->buckets[bucket];
     g_hashmap_entry<K, V>* previous = 0;
     while (entry)
@@ -179,6 +192,43 @@ void hashmapRemove(g_hashmap<K, V>* map, K key)
     }
 
     mutexRelease(&map->lock);
+}
+
+template <typename K, typename V>
+V hashmapTake(g_hashmap<K, V>* map, K key, V def)
+{
+    mutexAcquire(&map->lock);
+
+    int bucket = hashmapBucketIndex(map, key);
+    auto* entry = map->buckets[bucket];
+    g_hashmap_entry<K, V>* previous = 0;
+    V value = def;
+    while (entry)
+    {
+        if (map->keyEquals(entry->key, key))
+        {
+            if (previous)
+            {
+                previous->next = entry->next;
+            }
+            else
+            {
+                map->buckets[bucket] = entry->next;
+            }
+            value = entry->value;
+            map->keyFree(entry->key);
+            heapFree(entry);
+
+            map->itemCount--;
+
+            break;
+        }
+        previous = entry;
+        entry = entry->next;
+    }
+
+    mutexRelease(&map->lock);
+    return value;
 }
 
 template <typename K, typename V>

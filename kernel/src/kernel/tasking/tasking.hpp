@@ -70,6 +70,7 @@ struct g_tasking_local
         g_task* current;
 
         g_task* idleTask;
+        g_tid preferredTask;
     } scheduling;
 };
 
@@ -237,6 +238,11 @@ g_task* taskingGetById(g_tid id);
 g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel);
 
 /**
+ * Releases a spawned task after its parent has consumed the result and initialized the process.
+ */
+void taskingReleaseSpawn(g_process* process);
+
+/**
  * Entry function for a newly spawned task. Loads the executable binary and then executes a
  * privilege downgrade to enter the user-level task execution.
  */
@@ -244,14 +250,14 @@ void taskingSpawnEntry();
 
 /**
  * This function is entered after the binary is loaded within the kernel thread and the task
- * should escape to userland. Finally sets the task waiting until the caller task wakes it.
+ * should escape to userland. Waits until the caller explicitly releases the initialized process.
  */
 void taskingFinalizeSpawn(g_task* task);
 
 /**
  * Waits until the task exits and then wakes the waiting task.
  */
-void taskingWaitForExit(g_tid task, g_tid waiter);
+bool taskingWaitForExit(g_tid task, g_task* waiter);
 
 /**
  * Wakes the task.
@@ -262,6 +268,7 @@ void taskingWake(g_task* task);
  * Sets the task waiting and executes the function before yielding. The lambda
  * should attach wake-up for the task.
  */
+void taskingPrepareWait(g_task* task, const char* debugName);
 void taskingWait(g_task* task, const char* debugName, const std::function<void ()>& beforeYield = nullptr);
 
 #endif

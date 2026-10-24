@@ -28,12 +28,29 @@ void requestsInitialize();
 /**
  * @return the IRQ handler task
  */
-g_tid requestsGetHandlerTask(uint8_t irq);
+g_task* requestsGetHandlerTask(uint8_t irq);
 
 /**
  * Sets the registered task for an IRQ.
  */
-void requestsSetHandlerTask(uint8_t irq, g_tid task);
+void requestsSetHandlerTask(uint8_t irq, g_task* task);
+
+/**
+ * Registers the task as waiting for this IRQ.
+ *
+ * @return true if the caller should yield, false if an IRQ was already pending.
+ */
+bool requestsWaitForIrq(uint8_t irq, g_task* task);
+
+/**
+ * Clears a wait that may still be active after a timeout or unrelated wake.
+ */
+void requestsClearWait(uint8_t irq, g_task* task);
+
+/**
+ * Removes any IRQ registrations that still reference a task that is about to be destroyed.
+ */
+void requestsTaskRemoved(g_task* task);
 
 /**
  * Wakes a registered IRQ handler.

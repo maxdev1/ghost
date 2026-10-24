@@ -58,12 +58,12 @@ g_fs_open_status filesystemPipeDelegateTruncate(g_fs_node* file)
 	return pipeTruncate(file->physicalId);
 }
 
-void filesystemPipeDelegateWaitForRead(g_tid task, g_fs_node* node)
+bool filesystemPipeDelegateWaitForRead(g_task* task, g_fs_node* node, uint64_t length)
 {
-	pipeWaitForRead(task, node->physicalId);
+	return pipeWaitForRead(task, node->physicalId, length);
 }
 
-void filesystemPipeDelegateWaitForWrite(g_tid task, g_fs_node* node)
+bool filesystemPipeDelegateWaitForWrite(g_task* task, g_fs_node* node, uint64_t length)
 {
-	pipeWaitForWrite(task, node->physicalId);
+	return pipeWaitForWrite(task, node->physicalId, length);
 }

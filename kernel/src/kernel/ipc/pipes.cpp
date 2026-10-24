@@ -20,6 +20,7 @@
 
 #include "kernel/ipc/pipes.hpp"
 #include "kernel/memory/memory.hpp"
+#include "kernel/tasking/tasking.hpp"
 #include "kernel/utils/hashmap.hpp"
 
 #include "kernel/logger/logger.hpp"
@@ -27,6 +28,12 @@
 static g_fs_phys_id pipeNextId;
 static g_mutex pipeNextIdLock;
 static g_hashmap<g_fs_phys_id, g_pipeline*>* pipeMap;
+
+static bool pipeCanWrite(g_pipeline* pipe, uint64_t length)
+{
+	size_t space = pipe->capacity - pipe->size;
+	return length <= pipe->capacity ? space >= length : space > 0;
+}
 
 void pipeInitialize()
 {
@@ -122,9 +129,10 @@ void pipeRemoveReference(g_fs_phys_id pipeId, g_file_flag_mode flags)
 		waitQueueWake(&pipe->waitersWrite);
 	}
 
+	bool deletePipe = pipe->referencesRead == 0 && pipe->referencesWrite == 0;
 	mutexRelease(&pipe->lock);
 
-	if(pipe->referencesRead == 0 && pipe->referencesWrite == 0)
+	if(deletePipe)
 	{
 		pipeDeleteInternal(pipeId, pipe);
 	}
@@ -193,32 +201,43 @@ g_fs_write_status pipeWrite(g_fs_phys_id pipeId, uint8_t* buffer, uint64_t offse
 	size_t space = (pipe->capacity - pipe->size);
 
 	g_fs_write_status status;
-	if(space > 0)
+	if(pipe->referencesRead == 0)
 	{
-		length = (space >= length) ? length : space;
+		*outWrote = 0;
+		status = G_FS_WRITE_ERROR;
+	}
+	else if(!pipeCanWrite(pipe, length))
+	{
+		// Keep small writes atomic so packet-based producers can safely use nonblocking pipes.
+		*outWrote = 0;
+		status = G_FS_WRITE_BUSY;
+	}
+	else if(space > 0)
+	{
+		uint64_t writeLength = (space >= length) ? length : space;
 
 		size_t lengthToEnd = ((g_address) pipe->buffer + pipe->capacity) - (size_t) pipe->writePosition;
-		if(length > lengthToEnd)
+		if(writeLength > lengthToEnd)
 		{
 			memoryCopy(pipe->writePosition, buffer, lengthToEnd);
 
-			size_t remaining = length - lengthToEnd;
+			size_t remaining = writeLength - lengthToEnd;
 			memoryCopy(pipe->buffer, &buffer[lengthToEnd], remaining);
 
 			pipe->writePosition = (uint8_t*) ((g_address) pipe->buffer + remaining);
 		}
 		else
 		{
-			memoryCopy(pipe->writePosition, buffer, length);
+			memoryCopy(pipe->writePosition, buffer, writeLength);
 
-			pipe->writePosition = (uint8_t*) ((g_address) pipe->writePosition + length);
+			pipe->writePosition = (uint8_t*) ((g_address) pipe->writePosition + writeLength);
 		}
 
 		if(pipe->writePosition == pipe->buffer + pipe->capacity)
 			pipe->writePosition = pipe->buffer;
 
-		pipe->size += length;
-		*outWrote = length;
+		pipe->size += writeLength;
+		*outWrote = writeLength;
 
 		status = G_FS_WRITE_SUCCESSFUL;
 		waitQueueWake(&pipe->waitersRead);
@@ -258,20 +277,36 @@ g_fs_open_status pipeTruncate(g_fs_phys_id pipeId)
 	return G_FS_OPEN_SUCCESSFUL;
 }
 
-void pipeWaitForRead(g_tid task, g_fs_phys_id pipeId)
+bool pipeWaitForRead(g_task* task, g_fs_phys_id pipeId, uint64_t)
 {
 	g_pipeline* pipe = pipeGetById(pipeId);
 	if(!pipe)
-		return;
+		return false;
 
-	waitQueueAdd(&pipe->waitersRead, task);
+	mutexAcquire(&pipe->lock);
+	bool shouldWait = pipe->size == 0 && pipe->referencesWrite > 0;
+	if(shouldWait)
+	{
+		taskingPrepareWait(task, "read");
+		waitQueueAdd(&pipe->waitersRead, task->id);
+	}
+	mutexRelease(&pipe->lock);
+	return shouldWait;
 }
 
-void pipeWaitForWrite(g_tid task, g_fs_phys_id pipeId)
+bool pipeWaitForWrite(g_task* task, g_fs_phys_id pipeId, uint64_t length)
 {
 	g_pipeline* pipe = pipeGetById(pipeId);
 	if(!pipe)
-		return;
+		return false;
 
-	waitQueueAdd(&pipe->waitersWrite, task);
+	mutexAcquire(&pipe->lock);
+	bool shouldWait = !pipeCanWrite(pipe, length) && pipe->referencesRead > 0;
+	if(shouldWait)
+	{
+		taskingPrepareWait(task, "write");
+		waitQueueAdd(&pipe->waitersWrite, task->id);
+	}
+	mutexRelease(&pipe->lock);
+	return shouldWait;
 }

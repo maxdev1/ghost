@@ -24,6 +24,8 @@
 #include "kernel/utils/wait_queue.hpp"
 #include "kernel/system/mutex.hpp"
 
+struct g_task;
+
 /**
  * Entry in the reference list of a pipe.
  */
@@ -96,7 +98,7 @@ g_fs_open_status pipeTruncate(g_fs_phys_id pipeId);
  */
 void pipeDeleteInternal(g_fs_phys_id pipeId, g_pipeline* pipe);
 
-void pipeWaitForRead(g_tid task, g_fs_phys_id pipeId);
-void pipeWaitForWrite(g_tid task, g_fs_phys_id pipeId);
+bool pipeWaitForRead(g_task* task, g_fs_phys_id pipeId, uint64_t length);
+bool pipeWaitForWrite(g_task* task, g_fs_phys_id pipeId, uint64_t length);
 
 #endif

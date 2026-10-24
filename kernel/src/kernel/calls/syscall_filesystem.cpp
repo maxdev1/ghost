@@ -108,7 +108,9 @@ void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 		return;
 	}
 
-	g_file_flag_mode writeFlags = (G_FILE_FLAG_MODE_WRITE | (data->blocking ? G_FILE_FLAG_MODE_BLOCKING : 0));
+	g_file_flag_mode writeFlags = G_FILE_FLAG_MODE_WRITE;
+	if(data->blocking)
+		writeFlags |= G_FILE_FLAG_MODE_BLOCKING;
 	g_fs_open_status writeOpen = filesystemOpenNodeFd(pipeNode, writeFlags, task->process->id, &data->write_fd);
 	if(writeOpen != G_FS_OPEN_SUCCESSFUL)
 	{
@@ -118,7 +120,8 @@ void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 		return;
 	}
 
-	g_file_flag_mode readFlags = (G_FILE_FLAG_MODE_READ | (data->blocking ? G_FILE_FLAG_MODE_BLOCKING : 0));
+	// Keep readers blocking even for nonblocking pipes so dedicated consumer threads can sleep.
+	g_file_flag_mode readFlags = (G_FILE_FLAG_MODE_READ | G_FILE_FLAG_MODE_BLOCKING);
 	g_fs_open_status readOpen = filesystemOpenNodeFd(pipeNode, readFlags, task->process->id, &data->read_fd);
 	if(readOpen != G_FS_OPEN_SUCCESSFUL)
 	{

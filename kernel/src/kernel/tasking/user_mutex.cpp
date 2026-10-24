@@ -181,14 +181,11 @@ void userMutexDestroy(g_user_mutex mutex)
 {
 	userMutexRelease(mutex);
 
-	mutexAcquire(&mutexMap->lock);
-	g_user_mutex_entry* entry = hashmapGet<g_user_mutex, g_user_mutex_entry*>(mutexMap, mutex, nullptr);
+	g_user_mutex_entry* entry = hashmapTake<g_user_mutex, g_user_mutex_entry*>(mutexMap, mutex, nullptr);
 	if(entry)
 	{
-		hashmapRemove(mutexMap, mutex);
 		heapFree(entry);
 	}
-	mutexRelease(&mutexMap->lock);
 }
 
 void userMutexWaitForAcquire(g_user_mutex mutex, g_tid task)

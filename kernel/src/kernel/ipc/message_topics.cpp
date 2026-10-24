@@ -20,6 +20,7 @@
 
 #include "message_topics.hpp"
 #include "kernel/memory/memory.hpp"
+#include "kernel/tasking/tasking.hpp"
 #include "kernel/utils/string.hpp"
 #include "kernel/utils/hashmap_string.hpp"
 
@@ -28,6 +29,7 @@ static g_mutex messageTopicsLock;
 
 g_message_topic* _messageTopicsGetOrCreate(const char* name);
 void _messageTopicsAddToTail(g_message_topic* topic, g_message_header* message);
+g_message_header* _messageTopicsFindAfter(g_message_topic* topic, g_message_transaction startAfter);
 
 void messageTopicsInitialize()
 {
@@ -60,14 +62,7 @@ g_message_receive_status messageTopicsReceive(const char* topicName, g_message_t
 	auto topic = _messageTopicsGetOrCreate(topicName);
 	mutexAcquire(&topic->lock);
 
-	// Find message that has higher or equal transaction number
-	auto message = topic->head;
-	while(message)
-	{
-		if(message->transaction > startAfter)
-			break;
-		message = message->next;
-	}
+	auto message = _messageTopicsFindAfter(topic, startAfter);
 
 	// Return it
 	g_message_receive_status status;
@@ -120,10 +115,19 @@ g_message_topic* _messageTopicsGetOrCreate(const char* name)
 	return topic;
 }
 
-void messageTopicsWaitForReceive(const char* topicName, g_tid receiver)
+bool messageTopicsWaitForReceive(const char* topicName, g_task* receiver, g_message_transaction startAfter)
 {
 	auto topic = _messageTopicsGetOrCreate(topicName);
-	waitQueueAdd(&topic->waitersReceive, receiver);
+
+	mutexAcquire(&topic->lock);
+	bool shouldWait = !_messageTopicsFindAfter(topic, startAfter);
+	if(shouldWait)
+	{
+		taskingPrepareWait(receiver, "message-topic-receive");
+		waitQueueAdd(&topic->waitersReceive, receiver->id);
+	}
+	mutexRelease(&topic->lock);
+	return shouldWait;
 }
 
 void messageTopicsUnwaitForReceive(const char* topicName, g_tid receiver)
@@ -154,4 +158,16 @@ void _messageTopicsAddToTail(g_message_topic* topic, g_message_header* message)
 	}
 
 	mutexRelease(&topic->lock);
+}
+
+g_message_header* _messageTopicsFindAfter(g_message_topic* topic, g_message_transaction startAfter)
+{
+	auto message = topic->head;
+	while(message)
+	{
+		if(message->transaction > startAfter)
+			return message;
+		message = message->next;
+	}
+	return nullptr;
 }

@@ -84,10 +84,18 @@ void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
 
 void syscallJoin(g_task* task, g_syscall_join* data)
 {
-	taskingWait(task, __func__, [task ,data]()
+	for(;;)
 	{
-		taskingWaitForExit(data->taskId, task->id);
-	});
+		INTERRUPTS_PAUSE;
+		if(taskingWaitForExit(data->taskId, task))
+			taskingYield();
+		else
+		{
+			INTERRUPTS_RESUME;
+			break;
+		}
+		INTERRUPTS_RESUME;
+	}
 }
 
 void syscallSpawn(g_task* task, g_syscall_spawn* data)
@@ -123,7 +131,7 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 			if(data->workdir)
 				target.process->environment.workingDirectory = stringDuplicate(data->workdir);
 
-			target.process->main->status = G_TASK_STATUS_RUNNING;
+			taskingReleaseSpawn(target.process);
 		}
 	}
 	else
@@ -301,18 +309,17 @@ void syscallTaskAwaitByName(g_task* task, g_syscall_task_await_by_name* data)
 	g_tid target;
 	while((target = taskingDirectoryGet(data->name)) == G_TID_NONE)
 	{
-		taskingWait(task, __func__, [data, task]()
+		INTERRUPTS_PAUSE;
+		if(taskingDirectoryWaitForRegister(data->name, task))
 		{
-			clockWaitForTime(task->id, clockGetLocal()->time + 100);
-			taskingDirectoryWaitForRegister(data->name, task->id);
-		});
-		clockUnwaitForTime(task->id);
-		taskingDirectoryUnwaitForRegister(data->name, task->id);
-
-		taskingWait(task, __func__, [data, task]()
+			taskingYield();
+			INTERRUPTS_RESUME;
+			taskingDirectoryUnwaitForRegister(data->name, task->id);
+		}
+		else
 		{
-			clockWaitForTime(task->id, clockGetLocal()->time + 500);
-		});
+			INTERRUPTS_RESUME;
+		}
 	}
 	data->task = target;
 }

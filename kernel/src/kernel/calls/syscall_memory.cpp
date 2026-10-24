@@ -142,6 +142,7 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 	{
 		logInfo("%! task %i was unable to share memory because addresses above %h are not allowed", "syscall", task->id,
 		        G_MEM_LOWER_HALF_END);
+		mutexRelease(&targetProcess->lock);
 		return;
 	}
 

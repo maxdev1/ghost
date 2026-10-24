@@ -25,25 +25,20 @@
 #include "kernel/build_config.hpp"
 #include <ghost/tasks/types.h>
 
+struct g_task;
+
 /**
  * Number of milliseconds on how often a high-precision clock source should be
  * checked to keep millisecond time accurate.
  */
 #define G_CLOCK_RECALIBRATION_INTERVAL   1000
 
-struct g_clock_waiter
-{
-    g_tid task;
-    uint64_t wakeTime;
-    g_clock_waiter* next;
-};
-
 /**
  * Processor local clock information.
  */
 struct g_clock_local
 {
-    g_clock_waiter* waiters;
+    g_task* waiters;
     g_mutex lock;
 
     /**

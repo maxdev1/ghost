@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/calls/syscall_system.hpp"
+#include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/interrupts/requests.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/tasking/clock.hpp"
@@ -148,15 +149,19 @@ void syscallAwaitIrq(g_task* task, g_syscall_await_irq* data)
 		return taskingExit();
 	}
 
-	requestsSetHandlerTask(data->irq, task->id);
-	taskingWait(task, __func__, [data, task]()
+	INTERRUPTS_PAUSE;
+	if(requestsWaitForIrq(data->irq, task))
 	{
 		if(data->timeout)
 		{
-			clockUnwaitForTime(task->id);
 			clockWaitForTime(task->id, clockGetLocal()->time + data->timeout);
 		}
-	});
+		taskingYield();
+		requestsClearWait(data->irq, task);
+		if(data->timeout)
+			clockUnwaitForTime(task->id);
+	}
+	INTERRUPTS_RESUME;
 }
 
 void syscallGetEfiFramebuffer(g_task* task, g_syscall_get_efi_framebuffer* data)
@@ -165,7 +170,8 @@ void syscallGetEfiFramebuffer(g_task* task, g_syscall_get_efi_framebuffer* data)
 		return;
 
 	auto framebuffer = limineGetFramebuffer();
-	data->address = pagingVirtualToPhysical((g_address) framebuffer->address);
+	g_address framebufferVirtual = (g_address) framebuffer->address;
+	data->address = pagingVirtualToPhysical(framebufferVirtual);
 	data->width = framebuffer->width;
 	data->height = framebuffer->height;
 	data->bpp = framebuffer->bpp;

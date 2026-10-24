@@ -82,9 +82,14 @@ void efifbDriverHandleCommandSetMode(g_video_set_mode_request* request, g_tid re
 	g_get_efi_framebuffer(&lfb, &resX, &resY, &bpp, &pitch);
 
 	uint64_t lfbSize = pitch * resY;
-	auto localMapped = g_map_mmio((void*) lfb, lfbSize);
+	g_address lfbAligned = G_PAGE_ALIGN_DOWN(lfb);
+	uint32_t lfbOffset = lfb - lfbAligned;
+	uint32_t mappingSize = G_PAGE_ALIGN_UP(lfbOffset + lfbSize);
+
+	auto localMappedBase = static_cast<uint8_t*>(g_map_mmio((void*) lfbAligned, mappingSize));
 	// TODO: This is kind of unneccessary, we don't want to map it here
-	void* addressInRequestersSpace = g_share_mem((void*) localMapped, lfbSize, requestingTaskId);
+	auto sharedMappedBase = static_cast<uint8_t*>(g_share_mem(localMappedBase, mappingSize, requestingTaskId));
+	void* addressInRequestersSpace = sharedMappedBase + lfbOffset;
 
 	g_video_set_mode_response response{};
 	response.status = G_VIDEO_SET_MODE_STATUS_SUCCESS;

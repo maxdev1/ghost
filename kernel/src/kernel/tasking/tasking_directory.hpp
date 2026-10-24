@@ -54,8 +54,9 @@ const char* taskingDirectoryGetIdentifier(g_tid tid);
 
 /**
  * Adds the task to the wait queue for when another task registers with this identifier.
+ * Returns false when the name is already registered and the caller does not need to wait.
  */
-void taskingDirectoryWaitForRegister(const char* name, g_tid task);
+bool taskingDirectoryWaitForRegister(const char* name, g_task* task);
 void taskingDirectoryUnwaitForRegister(const char* name, g_tid task);
 
 #endif

@@ -77,11 +77,12 @@ struct g_task
     int interruptionLevel;
 
     /**
-     * Flag that is only relevant when this task is spawned from an executable. After the task has
-     * privilege-downgraded itself, it must be waked by the task that spawned it. This task is waiting
-     * until the flag is set.
+     * Executable loading publishes completion before its parent consumes the spawn result.
+     * The child then waits for release after the parent has finished process initialization.
+     * Both flags are accessed with atomic acquire/release operations.
      */
     g_bool spawnFinished;
+    g_bool spawnReleased;
 
     /**
      * Pointer to the processor-local tasking structure that this task is currently scheduled on.
@@ -157,6 +158,16 @@ struct g_task
      * List of tasks that wait for this task to die.
      */
     g_wait_queue waitersJoin;
+
+    /**
+     * Linkage used when this task is waiting on a timeout in the local clock queue.
+     */
+    struct
+    {
+        g_task* next;
+        uint64_t wakeTime;
+        bool active;
+    } timeoutWait;
 
     /**
      * Addition for debugging

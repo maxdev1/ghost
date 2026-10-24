@@ -154,8 +154,9 @@ void mutexRelease(g_mutex* mutex)
 	if(mutex->initialized != G_MUTEX_INITIALIZED)
 		mutexErrorUninitialized(mutex);
 
-	// No interruption allowed during check
-	bool setIF = false;
+	// Task mutexes preserve incoming IF; global mutexes restore it on the last release.
+	const bool hadIF = interruptsAreEnabled();
+	bool setIF = mutex->type == G_MUTEX_TYPE_TASK && hadIF;
 	interruptsDisable();
 
 	G_SPINLOCK_ACQUIRE(mutex->lock);

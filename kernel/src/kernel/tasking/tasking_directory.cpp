@@ -48,14 +48,20 @@ g_task_directory_entry* _taskingDirectoryGetOrCreateEntry(const char* name)
 	return entry;
 }
 
-void taskingDirectoryWaitForRegister(const char* name, g_tid task)
+bool taskingDirectoryWaitForRegister(const char* name, g_task* task)
 {
 	mutexAcquire(&entryLock);
 
 	auto entry = _taskingDirectoryGetOrCreateEntry(name);
-	waitQueueAdd(&entry->waitQueue, task);
+	bool shouldWait = entry->task == G_TID_NONE;
+	if(shouldWait)
+	{
+		taskingPrepareWait(task, "task-name");
+		waitQueueAdd(&entry->waitQueue, task->id);
+	}
 
 	mutexRelease(&entryLock);
+	return shouldWait;
 }
 
 void taskingDirectoryUnwaitForRegister(const char* name, g_tid task)
@@ -71,6 +77,7 @@ void taskingDirectoryUnwaitForRegister(const char* name, g_tid task)
 bool taskingDirectoryRegister(const char* name, g_tid tid, g_security_level priority)
 {
 	bool success = false;
+	g_wait_queue* waitQueue = nullptr;
 	mutexAcquire(&entryLock);
 
 	auto entry = _taskingDirectoryGetOrCreateEntry(name);
@@ -89,17 +96,24 @@ bool taskingDirectoryRegister(const char* name, g_tid tid, g_security_level prio
 			heapFree((void*) existingReverseName);
 		hashmapPut(reverseMap, tid, (const char*) stringDuplicate(name));
 
-		waitQueueWake(&entry->waitQueue);
+		waitQueue = &entry->waitQueue;
 	}
 
 	mutexRelease(&entryLock);
+	if(waitQueue)
+		waitQueueWake(waitQueue);
 	return success;
 }
 
 g_tid taskingDirectoryGet(const char* name)
 {
+	mutexAcquire(&entryLock);
+
 	auto entry = hashmapGet(entryMap, name, (g_task_directory_entry*) nullptr);
-	return entry ? entry->task : G_TID_NONE;
+	g_tid task = entry ? entry->task : G_TID_NONE;
+
+	mutexRelease(&entryLock);
+	return task;
 }
 
 const char* taskingDirectoryGetIdentifier(g_tid tid)

@@ -198,8 +198,9 @@ void kernelSpawnService(const char* path, const char* args, g_security_level sec
 		if(spawnRes.status == G_SPAWN_STATUS_SUCCESSFUL)
 		{
 			spawnRes.process->environment.arguments = args;
-			spawnRes.process->main->status = G_TASK_STATUS_RUNNING;
-			logInfo("%! %s started in process %i", "service", path, spawnRes.process->id);
+			auto pid = spawnRes.process->id;
+			taskingReleaseSpawn(spawnRes.process);
+			logInfo("%! %s started in process %i", "service", path, pid);
 		}
 		else
 		{

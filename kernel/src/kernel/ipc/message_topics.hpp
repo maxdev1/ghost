@@ -25,6 +25,8 @@
 #include "kernel/system/mutex.hpp"
 #include <ghost/messages/callstructs.h>
 
+struct g_task;
+
 /**
  * A message topic is identified by a name and persists posted message.
  * The transaction is always counted up for each posted message. Receiving tasks
@@ -62,7 +64,7 @@ g_message_receive_status messageTopicsReceive(const char* topicName, g_message_t
 /**
  * Adds the task to the receive-wait queue of the topic.
  */
-void messageTopicsWaitForReceive(const char* topicName, g_tid receiver);
+bool messageTopicsWaitForReceive(const char* topicName, g_task* receiver, g_message_transaction startAfter);
 
 /**
  * Removes the task from the receive-wait queue of the topic.

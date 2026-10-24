@@ -27,6 +27,7 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
+#include "kernel/system/interrupts/requests.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/system/system.hpp"
 #include "kernel/tasking/cleanup.hpp"
@@ -108,7 +109,7 @@ void taskingExit()
 
 void taskingInitializeBsp()
 {
-	mutexInitializeGlobal(&taskingIdLock, __func__);
+	mutexInitializeTask(&taskingIdLock, __func__);
 
 	auto numProcs = processorGetNumberOfProcessors();
 	taskingLocal = (g_tasking_local*) heapAllocate(sizeof(g_tasking_local) * numProcs);
@@ -130,6 +131,7 @@ void taskingInitializeLocal()
 	local->scheduling.current = nullptr;
 	local->scheduling.list = nullptr;
 	local->scheduling.idleTask = nullptr;
+	local->scheduling.preferredTask = G_TID_NONE;
 
 	mutexInitializeGlobal(&local->lock, __func__);
 
@@ -323,7 +325,7 @@ void taskingRestoreState(g_task* task)
 
 void taskingSchedule(bool resetPreference)
 {
-	if(resetPreference && processorIsBsp())
+	if(resetPreference)
 		schedulerPrefer(G_TID_NONE);
 	schedulerSchedule(taskingGetLocal());
 }
@@ -338,7 +340,7 @@ g_process* taskingCreateProcess(g_security_level securityLevel)
 	auto process = (g_process*) heapAllocateClear(sizeof(g_process));
 	process->id = taskingGetNextId();
 
-	mutexInitializeGlobal(&process->lock, __func__);
+	mutexInitializeTask(&process->lock, __func__);
 
 	process->pageSpace = taskingMemoryCreatePageSpace();
 	if(!process->pageSpace)
@@ -414,6 +416,10 @@ void taskingDestroyTask(g_task* task)
 	// Wake up tasks that joined this task
 	waitQueueWake(&task->waitersJoin);
 
+	// Remove any external wait registrations before the task leaves global lookup structures.
+	clockUnwaitForTime(task->id);
+	requestsTaskRemoved(task);
+
 	// Switch to task space
 	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(task->process->pageSpace);
 
@@ -481,6 +487,11 @@ g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel)
 	// Create target process & task
 	g_spawn_result res{};
 	res.process = taskingCreateProcess(securityLevel);
+	if(!res.process)
+	{
+		res.status = G_SPAWN_STATUS_MEMORY_ERROR;
+		return res;
+	}
 	g_task* child = taskingCreateTask(0, res.process, securityLevel);
 	if(!child)
 	{
@@ -508,12 +519,19 @@ g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel)
 	// Set kernel-level entry
 	taskingStateReset(child, (g_address) &taskingSpawnEntry, G_SECURITY_LEVEL_KERNEL);
 
-	// Start thread & wait for spawn to finish
-	taskingWait(parent, __func__, [child]()
+	// A wake-up can be unrelated to spawning, so wait for the published completion flag.
+	__atomic_store_n(&child->spawnFinished, false, __ATOMIC_RELAXED);
+	__atomic_store_n(&child->spawnReleased, false, __ATOMIC_RELAXED);
+	taskingAssignBalanced(child);
+	while(!__atomic_load_n(&child->spawnFinished, __ATOMIC_ACQUIRE))
 	{
-		child->spawnFinished = false;
-		taskingAssignBalanced(child);
-	});
+		taskingWait(parent, __func__, [parent, child]()
+		{
+			// Recheck after entering WAITING so completion cannot race with going to sleep.
+			if(__atomic_load_n(&child->spawnFinished, __ATOMIC_ACQUIRE))
+				taskingWake(parent);
+		});
+	}
 
 	// Take result
 	res.status = res.process->spawnArgs->status;
@@ -523,7 +541,53 @@ g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel)
 	heapFree(res.process->spawnArgs);
 	res.process->spawnArgs = nullptr;
 
+	if(res.status != G_SPAWN_STATUS_SUCCESSFUL)
+	{
+		// Failed children must keep their process alive until its result has been consumed.
+		taskingReleaseSpawn(res.process);
+		res.process = nullptr;
+	}
+
 	return res;
+}
+
+void taskingReleaseSpawn(g_process* process)
+{
+	auto task = process->main;
+	mutexAcquire(&task->lock);
+	__atomic_store_n(&task->spawnReleased, true, __ATOMIC_RELEASE);
+	if(task->status == G_TASK_STATUS_WAITING)
+		task->status = G_TASK_STATUS_RUNNING;
+	// A failed child may exit and be cleaned up as soon as this lock is released.
+	mutexRelease(&task->lock);
+}
+
+static void taskingCompleteSpawn(g_task* task)
+{
+	// Capture everything from spawnArgs before publishing completion; the parent then frees it.
+	auto parent = taskingGetById(task->process->spawnArgs->parent);
+	if(!parent)
+	{
+		heapFree(task->process->spawnArgs);
+		task->process->spawnArgs = nullptr;
+		taskingExit();
+		return;
+	}
+	mutexAcquire(&parent->lock);
+	__atomic_store_n(&task->spawnFinished, true, __ATOMIC_RELEASE);
+	if(parent->status == G_TASK_STATUS_WAITING)
+		parent->status = G_TASK_STATUS_RUNNING;
+	// Publication lets the parent finish spawning and even exit on another core.
+	mutexRelease(&parent->lock);
+
+	while(!__atomic_load_n(&task->spawnReleased, __ATOMIC_ACQUIRE))
+	{
+		taskingWait(task, __func__, [task]()
+		{
+			if(__atomic_load_n(&task->spawnReleased, __ATOMIC_ACQUIRE))
+				taskingWake(task);
+		});
+	}
 }
 
 void taskingSpawnEntry()
@@ -540,8 +604,7 @@ void taskingSpawnEntry()
 	if(loadRes.status != G_SPAWN_STATUS_SUCCESSFUL)
 	{
 		logInfo("%! failed to load binary to current address space", "elf");
-		auto parent = taskingGetById(process->spawnArgs->parent);
-		taskingWake(parent);
+		taskingCompleteSpawn(task);
 		taskingExit();
 	}
 
@@ -559,23 +622,26 @@ void taskingFinalizeSpawn(g_task* task)
 	task->securityLevel = process->spawnArgs->securityLevel;
 	taskingStateReset(task, process->spawnArgs->entry, task->securityLevel);
 
-	taskingWait(task, __func__, [task, process]()
-	{
-		task->spawnFinished = true;
-		auto parent = taskingGetById(process->spawnArgs->parent);
-		taskingWake(parent);
-	});
+	taskingCompleteSpawn(task);
 }
 
-void taskingWaitForExit(g_tid joinedTid, g_tid waiter)
+bool taskingWaitForExit(g_tid joinedTid, g_task* waiter)
 {
 	g_task* task = taskingGetById(joinedTid);
 	if(!task)
-		return;
+		return false;
+	if(task == waiter)
+		return false;
 
-	mutexAcquire(&task->process->lock);
-	waitQueueAdd(&task->waitersJoin, waiter);
-	mutexRelease(&task->process->lock);
+	mutexAcquire(&task->lock);
+	bool shouldWait = task->status != G_TASK_STATUS_DEAD;
+	if(shouldWait)
+	{
+		taskingPrepareWait(waiter, "join");
+		waitQueueAdd(&task->waitersJoin, waiter->id);
+	}
+	mutexRelease(&task->lock);
+	return shouldWait;
 }
 
 void taskingWake(g_task* task)
@@ -589,13 +655,18 @@ void taskingWake(g_task* task)
 	}
 }
 
-void taskingWait(g_task* task, const char* debugName, const std::function<void ()>& beforeYield)
+void taskingPrepareWait(g_task* task, const char* debugName)
 {
-	INTERRUPTS_PAUSE;
 	mutexAcquire(&task->lock);
 	task->status = G_TASK_STATUS_WAITING;
 	task->waitsFor = debugName;
 	mutexRelease(&task->lock);
+}
+
+void taskingWait(g_task* task, const char* debugName, const std::function<void ()>& beforeYield)
+{
+	INTERRUPTS_PAUSE;
+	taskingPrepareWait(task, debugName);
 	if(beforeYield)
 		beforeYield();
 	taskingYield();

@@ -29,17 +29,65 @@
 
 static g_clock_local* locals = nullptr;
 
+static g_clock_local* _clockGetLocalForProcessor(uint32_t processor)
+{
+	if(!locals)
+		panic("%! attempted to use clock before initializing it", "clock");
+
+	return &locals[processor];
+}
+
+static g_clock_local* _clockGetLocalForTask(g_task* task)
+{
+	if(task && task->assignment)
+		return _clockGetLocalForProcessor(task->assignment->processor);
+
+	return clockGetLocal();
+}
+
+static void _clockRemoveWaiter(g_clock_local* local, g_task* task)
+{
+	if(!task || !task->timeoutWait.active)
+		return;
+
+	g_task* previous = nullptr;
+	g_task* entry = local->waiters;
+	while(entry)
+	{
+		if(entry == task)
+		{
+			if(previous)
+				previous->timeoutWait.next = entry->timeoutWait.next;
+			else
+				local->waiters = entry->timeoutWait.next;
+
+			entry->timeoutWait.next = nullptr;
+			entry->timeoutWait.wakeTime = 0;
+			entry->timeoutWait.active = false;
+			return;
+		}
+
+		previous = entry;
+		entry = entry->timeoutWait.next;
+	}
+
+	task->timeoutWait.next = nullptr;
+	task->timeoutWait.wakeTime = 0;
+	task->timeoutWait.active = false;
+}
+
 void clockInitialize()
 {
 	uint32_t numProcs = processorGetNumberOfProcessors();
 	locals = (g_clock_local*) heapAllocate(sizeof(g_clock_local) * numProcs);
+	const uint64_t initialNanoTime = hpetGetNanos();
 
 	for(uint32_t i = 0; i < numProcs; i++)
 	{
 		mutexInitializeGlobal(&locals[i].lock, __func__);
 		locals[i].waiters = nullptr;
 		locals[i].time = 0;
-		locals[i].lastNanoTime = 0;
+		locals[i].lastNanoTime = initialNanoTime;
 		locals[i].lastRecalibrateMilliTime = 0;
 #if G_DEBUG_THREAD_DUMPING
 		locals[i].lastLogTime = 0;
@@ -49,44 +97,46 @@ void clockInitialize()
 
 g_clock_local* clockGetLocal()
 {
-	if(!locals)
-		panic("%! attempted to use clock before initializing it", "clock");
-
-	return &locals[processorGetCurrentId()];
+	return _clockGetLocalForProcessor(processorGetCurrentId());
 }
 
 void clockWaitForTime(g_tid task, uint64_t wakeTime)
 {
-	auto local = clockGetLocal();
+	g_task* waiter = taskingGetById(task);
+	if(!waiter)
+		return;
+
+	auto local = _clockGetLocalForTask(waiter);
 	mutexAcquire(&local->lock);
 
-	g_clock_waiter* waiter = (g_clock_waiter*) heapAllocate(sizeof(g_clock_waiter));
-	waiter->task = task;
-	waiter->wakeTime = wakeTime;
-	waiter->next = nullptr;
+	_clockRemoveWaiter(local, waiter);
+
+	waiter->timeoutWait.next = nullptr;
+	waiter->timeoutWait.wakeTime = wakeTime;
+	waiter->timeoutWait.active = true;
 
 	if(local->waiters)
 	{
-		g_clock_waiter* prev = nullptr;
-		g_clock_waiter* entry = local->waiters;
+		g_task* prev = nullptr;
+		g_task* entry = local->waiters;
 		while(entry)
 		{
 			// Insert in middle
-			if(entry->wakeTime > wakeTime)
+			if(entry->timeoutWait.wakeTime > wakeTime)
 			{
-				waiter->next = entry;
+				waiter->timeoutWait.next = entry;
 				if(prev)
-					prev->next = waiter;
+					prev->timeoutWait.next = waiter;
 				else
 					local->waiters = waiter;
 				break;
 			}
 			prev = entry;
-			entry = entry->next;
+			entry = entry->timeoutWait.next;
 
 			// Insert at tail
 			if(!entry)
-				prev->next = waiter;
+				prev->timeoutWait.next = waiter;
 		}
 	}
 	else
@@ -100,34 +150,31 @@ void clockWaitForTime(g_tid task, uint64_t wakeTime)
 
 void clockWakeWaiters(g_clock_local* local)
 {
-	while(local->waiters && local->time >= local->waiters->wakeTime)
+	while(local->waiters && local->time >= local->waiters->timeoutWait.wakeTime)
 	{
-		g_task* task = taskingGetById(local->waiters->task);
+		g_task* task = local->waiters;
+		local->waiters = task->timeoutWait.next;
+		task->timeoutWait.next = nullptr;
+		task->timeoutWait.wakeTime = 0;
+		task->timeoutWait.active = false;
 		taskingWake(task);
-
-		auto next = local->waiters->next;
-		heapFree(local->waiters);
-		local->waiters = next;
 	}
 }
 
 void clockUpdateTime(g_clock_local* local)
 {
-	local->time += (1000 / G_TIMER_FREQUENCY);
-
-	// Use HPET timing if available
 	if(hpetIsAvailable())
 	{
-		// Recalibrate milliseconds with HPET every second
-		if(local->time - local->lastRecalibrateMilliTime > G_CLOCK_RECALIBRATION_INTERVAL)
-		{
-			uint64_t now = hpetGetNanos();
-			uint64_t elapsedNanos = now - local->lastNanoTime;
-			uint64_t elapsedMillis = ((double) elapsedNanos / 1000000);
-			local->time = local->lastRecalibrateMilliTime + elapsedMillis;
-			local->lastNanoTime = now;
-			local->lastRecalibrateMilliTime = local->time;
-		}
+		// Timer interrupts can coalesce while interrupts are masked. Advance by
+		// elapsed hardware time so sleep deadlines do not stretch under load.
+		uint64_t elapsedNanos = hpetGetNanos() - local->lastNanoTime;
+		uint64_t elapsedMillis = elapsedNanos / 1000000ULL;
+		local->time += elapsedMillis;
+		local->lastNanoTime += elapsedMillis * 1000000ULL;
+	}
+	else
+	{
+		local->time += (1000 / G_TIMER_FREQUENCY);
 	}
 }
 
@@ -142,52 +189,25 @@ void clockUpdate()
 
 void clockUnwaitForTime(g_tid task)
 {
-	auto local = clockGetLocal();
+	g_task* waiter = taskingGetById(task);
+	if(!waiter)
+		return;
+
+	auto local = _clockGetLocalForTask(waiter);
 	mutexAcquire(&local->lock);
-
-	g_clock_waiter* prev = nullptr;
-	g_clock_waiter* entry = local->waiters;
-	while(entry)
-	{
-		if(entry->task == task)
-		{
-			auto next = entry->next;
-			if(prev)
-				prev->next = next;
-			else
-				local->waiters = next;
-
-			heapFree(entry);
-			entry = next;
-		}
-		else
-		{
-			prev = entry;
-			entry = entry->next;
-		}
-	}
-
+	_clockRemoveWaiter(local, waiter);
 	mutexRelease(&local->lock);
 }
 
 bool clockHasTimedOut(g_tid task)
 {
-	auto local = clockGetLocal();
+	g_task* waiter = taskingGetById(task);
+	if(!waiter)
+		return true;
+
+	auto local = _clockGetLocalForTask(waiter);
 	mutexAcquire(&local->lock);
-
-	bool timeout = true;
-
-	g_clock_waiter* entry = local->waiters;
-	while(entry)
-	{
-		if(entry->task == task && local->time < entry->wakeTime)
-		{
-			timeout = false;
-			break;
-		}
-		entry = entry->next;
-	}
-
+	bool timeout = !waiter->timeoutWait.active || local->time >= waiter->timeoutWait.wakeTime;
 	mutexRelease(&local->lock);
 	return timeout;
 }

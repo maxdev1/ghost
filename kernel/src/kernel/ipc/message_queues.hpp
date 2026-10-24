@@ -26,6 +26,8 @@
 
 #include <ghost/messages/callstructs.h>
 
+struct g_task;
+
 /**
  * A message queue exists per task and removes messages once they are read by
  * the receiving task.
@@ -70,7 +72,7 @@ void messageQueueTaskRemoved(g_tid task);
 /**
  * Adds the sender to the list of waiters that wait for free space in the receivers queue.
  */
-void messageQueueWaitForSend(g_tid sender, g_tid receiver);
+bool messageQueueWaitForSend(g_task* sender, g_tid receiver, uint32_t length);
 
 /**
  * Removes the sender from the send-wait queue.
@@ -80,7 +82,7 @@ void messageQueueUnwaitForSend(g_tid sender, g_tid receiver);
 /**
  * Adds the receiver to the list of waiters that wait for new messages in the receivers queue.
  */
-void messageQueueWaitForReceive(g_tid receiver);
+bool messageQueueWaitForReceive(g_task* receiver, g_message_transaction tx);
 
 /**
  * Removes the receiver from the receive-wait queue.
