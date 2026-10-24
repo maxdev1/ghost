@@ -84,17 +84,11 @@ void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
 
 void syscallJoin(g_task* task, g_syscall_join* data)
 {
-	for(;;)
+	while(taskingWaitIf([&]()
 	{
-		INTERRUPTS_PAUSE;
-		if(taskingWaitForExit(data->taskId, task))
-			taskingYield();
-		else
-		{
-			INTERRUPTS_RESUME;
-			break;
-		}
-		INTERRUPTS_RESUME;
+		return taskingWaitForExit(data->taskId, task);
+	}))
+	{
 	}
 }
 
@@ -156,14 +150,13 @@ void syscallKill(g_task* task, g_syscall_kill* data)
 	g_task* target = taskingGetById(data->pid);
 	if(target)
 	{
-		INTERRUPTS_PAUSE;
+		g_interrupt_guard interrupts;
 		mutexAcquire(&target->lock);
 		data->status = G_KILL_STATUS_SUCCESSFUL;
 		target->process->main->status = G_TASK_STATUS_DEAD;
 		mutexRelease(&target->lock);
 		waitQueueWake(&target->waitersJoin);
 		taskingYield();
-		INTERRUPTS_RESUME;
 	}
 	else
 	{
@@ -309,17 +302,11 @@ void syscallTaskAwaitByName(g_task* task, g_syscall_task_await_by_name* data)
 	g_tid target;
 	while((target = taskingDirectoryGet(data->name)) == G_TID_NONE)
 	{
-		INTERRUPTS_PAUSE;
-		if(taskingDirectoryWaitForRegister(data->name, task))
+		if(taskingWaitIf([&]()
 		{
-			taskingYield();
-			INTERRUPTS_RESUME;
+			return taskingDirectoryWaitForRegister(data->name, task);
+		}))
 			taskingDirectoryUnwaitForRegister(data->name, task->id);
-		}
-		else
-		{
-			INTERRUPTS_RESUME;
-		}
 	}
 	data->task = target;
 }

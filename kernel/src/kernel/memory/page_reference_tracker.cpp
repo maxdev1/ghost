@@ -25,9 +25,28 @@
 static g_pp_reference_count_directory directory;
 static g_mutex lock;
 
-#if __x86_64__
-#warning "This class does not support 64 bits"
-#endif
+// Sparse 4 MiB regions, hashed into the directory. Physical addresses above
+// 4 GiB must not be used directly as indices into its 1024 buckets.
+static g_pp_reference_count_table* _pageReferenceTrackerFind(g_physical_address address, bool create)
+{
+	const g_physical_address regionSize = 1024 * G_PAGE_SIZE;
+	auto base = address & ~(regionSize - 1);
+	auto bucket = (base / regionSize) % 1024;
+	auto table = directory.tables[bucket];
+	while(table && table->base != base)
+		table = table->next;
+
+	if(!table && create)
+	{
+		table = new g_pp_reference_count_table;
+		table->base = base;
+		table->next = directory.tables[bucket];
+		for(uint32_t i = 0; i < 1024; ++i)
+			table->referenceCount[i] = 0;
+		directory.tables[bucket] = table;
+	}
+	return table;
+}
 
 void pageReferenceTrackerInitialize()
 {
@@ -38,20 +57,8 @@ void pageReferenceTrackerIncrement(g_physical_address address)
 {
 	mutexAcquire(&lock);
 
-	uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(address);
-	uint32_t pi = G_PAGE_IN_TABLE_INDEX(address);
-
-	if(directory.tables[ti] == 0)
-	{
-		directory.tables[ti] = new g_pp_reference_count_table;
-
-		for(uint32_t i = 0; i < 1024; i++)
-		{
-			directory.tables[ti]->referenceCount[i] = 0;
-		}
-	}
-
-	++(directory.tables[ti]->referenceCount[pi]);
+	auto table = _pageReferenceTrackerFind(address, true);
+	++table->referenceCount[(address / G_PAGE_SIZE) % 1024];
 
 	mutexRelease(&lock);
 }
@@ -60,16 +67,15 @@ int16_t pageReferenceTrackerDecrement(g_physical_address address)
 {
 	mutexAcquire(&lock);
 
-	uint32_t ti = G_TABLE_IN_DIRECTORY_INDEX(address);
-	uint32_t pi = G_PAGE_IN_TABLE_INDEX(address);
-
-	if(directory.tables[ti] == 0)
+	auto table = _pageReferenceTrackerFind(address, false);
+	int16_t refs = 0;
+	if(table)
 	{
-		mutexRelease(&lock);
-		return 0;
+		auto& count = table->referenceCount[(address / G_PAGE_SIZE) % 1024];
+		if(count > 0)
+			--count;
+		refs = count;
 	}
-
-	int16_t refs = --(directory.tables[ti]->referenceCount[pi]);
 	mutexRelease(&lock);
 
 	return refs < 0 ? 0 : refs;

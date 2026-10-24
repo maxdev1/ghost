@@ -39,7 +39,8 @@ void* _memoryAllocatorAllocateInBucket(g_allocator* allocator, g_size size);
 void* _memoryAllocatorAllocateInSpecificBucket(g_allocator_section_bucket* bucket);
 
 #define _G_ALLOCATOR_BUCKET_BITMAP(bucket) ((uint8_t*) ((g_address) bucket + sizeof(g_allocator_section_bucket)))
-#define _G_ALLOCATOR_BUCKET_CONTENT(bucket) ((uint8_t*) ((g_address) bucket + sizeof(g_allocator_section_bucket) + bucket->bitmapSize))
+#define _G_ALLOCATOR_BUCKET_CONTENT_OFFSET(bitmapSize) G_ALLOCATOR_ALIGN_UP(sizeof(g_allocator_section_bucket) + (bitmapSize))
+#define _G_ALLOCATOR_BUCKET_CONTENT(bucket) ((uint8_t*) ((g_address) bucket + _G_ALLOCATOR_BUCKET_CONTENT_OFFSET(bucket->bitmapSize)))
 
 void memoryAllocatorInitialize(g_allocator* allocator, g_allocator_type type, g_virtual_address start,
                                g_virtual_address end)
@@ -62,7 +63,7 @@ void* memoryAllocatorAllocate(g_allocator* allocator, g_size size)
 	if(!allocator->sections)
 		panic("%! tried to use allocate on uninitialized chunk allocator at %x", "alloc", allocator);
 
-	size = size < 8 ? 8 : mathCeilToPowerOf2(size);
+	size = size < G_ALLOCATOR_ALIGNMENT ? G_ALLOCATOR_ALIGNMENT : mathCeilToPowerOf2(size);
 
 	void* mem = nullptr;
 	if(size > G_ALLOCATOR_MAX_FOR_BUCKETS)
@@ -177,7 +178,7 @@ g_allocator_section_bucket* _memoryAllocatorAllocateNewBucket(g_allocator* alloc
 		entryCount = 16;
 
 	auto bitmapSize = (entryCount / 8);
-	auto sectionTotalSize = sizeof(g_allocator_section_bucket) + bitmapSize + entryCount * size;
+	auto sectionTotalSize = _G_ALLOCATOR_BUCKET_CONTENT_OFFSET(bitmapSize) + entryCount * size;
 
 	auto bucket = (g_allocator_section_bucket*) _memoryAllocatorAllocateSection(
 			allocator, sectionTotalSize, G_ALLOCATOR_SECTION_TYPE_BUCKET);

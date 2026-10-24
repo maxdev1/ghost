@@ -617,7 +617,8 @@ void taskingSpawnEntry()
 
 void taskingFinalizeSpawn(g_task* task)
 {
-	INTERRUPTS_PAUSE;
+	// This path returns through the prepared task state; keep IRQs masked until then.
+	interruptsDisable();
 	auto process = task->process;
 	task->securityLevel = process->spawnArgs->securityLevel;
 	taskingStateReset(task, process->spawnArgs->entry, task->securityLevel);
@@ -665,10 +666,11 @@ void taskingPrepareWait(g_task* task, const char* debugName)
 
 void taskingWait(g_task* task, const char* debugName, const std::function<void ()>& beforeYield)
 {
-	INTERRUPTS_PAUSE;
-	taskingPrepareWait(task, debugName);
-	if(beforeYield)
-		beforeYield();
-	taskingYield();
-	INTERRUPTS_RESUME;
+	taskingWaitIf([&]()
+	{
+		taskingPrepareWait(task, debugName);
+		if(beforeYield)
+			beforeYield();
+		return true;
+	});
 }

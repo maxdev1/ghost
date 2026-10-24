@@ -37,6 +37,10 @@ typedef uint32_t g_allocator_type;
  */
 #define G_ALLOCATOR_MAX_FOR_BUCKETS 1024
 
+// Keep objects and embedded atomic locks naturally aligned on every allocation.
+#define G_ALLOCATOR_ALIGNMENT 16
+#define G_ALLOCATOR_ALIGN_UP(value) (((value) + G_ALLOCATOR_ALIGNMENT - 1) & ~(g_size)(G_ALLOCATOR_ALIGNMENT - 1))
+
 /**
  * Type of allocated sections in the used memory range
  */
@@ -48,7 +52,7 @@ typedef uint32_t g_allocator_section_type;
 /**
  * Header of an allocation section
  */
-struct g_allocator_section_header
+struct alignas(G_ALLOCATOR_ALIGNMENT) g_allocator_section_header
 {
 	g_allocator_section_type type;
 	g_allocator_section_header* next;
@@ -58,7 +62,7 @@ struct g_allocator_section_header
 /**
  * Bucket starts with the same header but then adds additional fields to the in-memory structure
  */
-struct g_allocator_section_bucket
+struct alignas(G_ALLOCATOR_ALIGNMENT) g_allocator_section_bucket
 {
 	g_allocator_section_header header;
 	uint16_t entrySize;

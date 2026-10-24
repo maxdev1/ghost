@@ -133,33 +133,38 @@ bool memoryOnDemandHandlePageFault(g_task* task, g_address accessed)
 
 	auto accessedLeft = G_PAGE_ALIGN_DOWN(accessed);
 	auto accessedRight = accessedLeft + G_PAGE_SIZE;
+	if(pagingVirtualToPhysical(accessedLeft))
+	{
+		// Another core may have resolved this fault before we got here.
+		pagingInvalidatePage(accessedLeft);
+		return true;
+	}
+
+	// Fill the page through the direct map before publishing a user mapping.
+	// Other threads must never execute a partially loaded library/code page.
+	auto physical = memoryPhysicalAllocate();
+	auto page = (uint8_t*) G_MEM_PHYS_TO_VIRT(physical);
+	memorySetBytes(page, 0, G_PAGE_SIZE);
+
 	auto fileEnd = mapping->fileStart + mapping->fileSize;
-
-	// Allocate requested page
-	pagingMapPage(accessedLeft, memoryPhysicalAllocate(), G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
-
-	// Zero everything before content
-	g_address zeroLeft = accessedLeft;
-	g_address zeroRight = mapping->fileStart > accessedRight ? accessedRight : mapping->fileStart;
-	if(zeroLeft < zeroRight)
-		memorySetBytes((void*) zeroLeft, 0, zeroRight - zeroLeft);
-
-	// Read data to memory
-	g_address copyLeft = mapping->fileStart > accessedLeft ? mapping->fileStart : accessedLeft;
-	g_address copyRight = fileEnd > accessedRight ? accessedRight : fileEnd;
+	auto copyLeft = mapping->fileStart > accessedLeft ? mapping->fileStart : accessedLeft;
+	auto copyRight = fileEnd > accessedRight ? accessedRight : fileEnd;
 	if(copyLeft < copyRight)
 	{
 		g_offset fileOffset = mapping->fileOffset + (copyLeft - mapping->fileStart);
-		if(!filesystemReadToMemory(mapping->fd, fileOffset, (uint8_t*) copyLeft, copyRight - copyLeft))
+		if(!filesystemReadToMemory(mapping->fd, fileOffset, page + (copyLeft - accessedLeft), copyRight - copyLeft))
+		{
+			memoryPhysicalFree(physical);
 			return false;
+		}
 	}
 
-	// Zero everything after content
-	g_address rzeroLeft = fileEnd > accessedLeft ? fileEnd : accessedLeft;
-	g_address rzeroRight = accessedRight;
-	if(rzeroLeft < rzeroRight)
-		memorySetBytes((void*) rzeroLeft, 0, rzeroRight - rzeroLeft);
-
+	if(!pagingMapPage(accessedLeft, physical, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT))
+	{
+		// A concurrent fault won publication; discard our private copy.
+		memoryPhysicalFree(physical);
+		pagingInvalidatePage(accessedLeft);
+	}
 	return true;
 }
 

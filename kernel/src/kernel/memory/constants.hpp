@@ -46,7 +46,7 @@
  * to this higher-half offset in virtual memory by default.
  */
 #define G_MEM_HIGHER_HALF_DIRECT_MAP_OFFSET         0xffff800000000000
-#define G_MEM_PHYS_TO_VIRT(phys)                    ((G_MEM_HIGHER_HALF_DIRECT_MAP_OFFSET) + (g_address) phys)
+#define G_MEM_PHYS_TO_VIRT(phys)                    ((G_MEM_HIGHER_HALF_DIRECT_MAP_OFFSET) + (g_address) (phys))
 
 #define G_MEM_KERN_VIRT_RANGES_START			    0xffffff8090000000
 #define G_MEM_KERN_VIRT_RANGES_END			        0xffffff89ffc00000

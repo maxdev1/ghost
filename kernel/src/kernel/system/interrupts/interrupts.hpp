@@ -24,17 +24,6 @@
 #include "kernel/system/processor/processor_state.hpp"
 
 /**
- * Pauses/resumes interrupts within the same scope.
- */
-#define INTERRUPTS_PAUSE                        \
-	int __intr_paused = interruptsAreEnabled(); \
-	if(__intr_paused)                           \
-		interruptsDisable();
-#define INTERRUPTS_RESUME \
-	if(__intr_paused)     \
-		interruptsEnable();
-
-/**
  * Sets up interrupts on the bootstrap processor.
  */
 void interruptsInitializeBsp();
@@ -58,6 +47,28 @@ void interruptsDisable();
  * @returns whether interrupts are enabled
  */
 bool interruptsAreEnabled();
+
+/** Restores the incoming interrupt state when leaving a critical section. */
+class g_interrupt_guard
+{
+    const bool wasEnabled;
+
+public:
+    g_interrupt_guard() : wasEnabled(interruptsAreEnabled())
+    {
+        if(wasEnabled)
+            interruptsDisable();
+    }
+
+    ~g_interrupt_guard()
+    {
+        if(wasEnabled)
+            interruptsEnable();
+    }
+
+    g_interrupt_guard(const g_interrupt_guard&) = delete;
+    g_interrupt_guard& operator=(const g_interrupt_guard&) = delete;
+};
 
 /**
  * Installs all ISRs into the IDT.

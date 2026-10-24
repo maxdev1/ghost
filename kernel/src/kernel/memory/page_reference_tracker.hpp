@@ -29,6 +29,8 @@
  */
 struct g_pp_reference_count_table
 {
+	g_physical_address base;
+	g_pp_reference_count_table* next;
 	int16_t referenceCount[1024];
 };
 

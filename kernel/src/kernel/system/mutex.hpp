@@ -38,7 +38,7 @@ typedef struct
     g_mutex_type type;
     int depth;
     uint32_t owner;
-} __attribute__((packed)) g_mutex;
+} g_mutex;
 
 /**
  * Initializes a task mutex. This mutex will yield until it can be acquired.

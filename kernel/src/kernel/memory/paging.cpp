@@ -28,19 +28,19 @@ g_physical_address pagingVirtualToPageEntry(g_virtual_address addr)
 {
 	auto pml4 = (g_address*) G_MEM_PHYS_TO_VIRT(pagingGetCurrentSpace());
 	uint64_t pml4Index = G_PML4_INDEX(addr);
-	uint64_t pdptAddr = pml4[pml4Index] & ~G_PAGE_ALIGN_MASK;
+	uint64_t pdptAddr = __atomic_load_n(&pml4[pml4Index], __ATOMIC_ACQUIRE) & ~G_PAGE_ALIGN_MASK;
 	if(!pdptAddr)
 		return 0;
 
 	auto pdpt = (g_address*) G_MEM_PHYS_TO_VIRT(pdptAddr);
 	uint64_t pdptIndex = G_PDPT_INDEX(addr);
-	uint64_t pdAddr = pdpt[pdptIndex] & ~G_PAGE_ALIGN_MASK;
+	uint64_t pdAddr = __atomic_load_n(&pdpt[pdptIndex], __ATOMIC_ACQUIRE) & ~G_PAGE_ALIGN_MASK;
 	if(!pdAddr)
 		return 0;
 
 	auto pd = (g_address*) G_MEM_PHYS_TO_VIRT(pdAddr);
 	uint64_t pdIndex = G_PD_INDEX(addr);
-	uint64_t pdValue = pd[pdIndex];
+	uint64_t pdValue = __atomic_load_n(&pd[pdIndex], __ATOMIC_ACQUIRE);
 	uint64_t ptAddr = pdValue & ~G_PAGE_ALIGN_MASK;
 	if(!ptAddr)
 		return 0;
@@ -50,7 +50,7 @@ g_physical_address pagingVirtualToPageEntry(g_virtual_address addr)
 
 	auto pt = (g_address*) G_MEM_PHYS_TO_VIRT(ptAddr);
 	uint64_t ptIndex = G_PT_INDEX(addr);
-	return pt[ptIndex];
+	return __atomic_load_n(&pt[ptIndex], __ATOMIC_ACQUIRE);
 }
 
 g_physical_address pagingVirtualToPhysical(g_virtual_address addr)
@@ -63,13 +63,13 @@ g_physical_address pagingVirtualToPhysical(g_virtual_address addr)
 
 	auto pml4 = (g_address*) G_MEM_PHYS_TO_VIRT(pagingGetCurrentSpace());
 	uint64_t pml4Index = G_PML4_INDEX(addr);
-	uint64_t pdptAddr = pml4[pml4Index] & addressMask4KiB;
+	uint64_t pdptAddr = __atomic_load_n(&pml4[pml4Index], __ATOMIC_ACQUIRE) & addressMask4KiB;
 	if(!pdptAddr)
 		return 0;
 
 	auto pdpt = (g_address*) G_MEM_PHYS_TO_VIRT(pdptAddr);
 	uint64_t pdptIndex = G_PDPT_INDEX(addr);
-	uint64_t pdptValue = pdpt[pdptIndex];
+	uint64_t pdptValue = __atomic_load_n(&pdpt[pdptIndex], __ATOMIC_ACQUIRE);
 	if(!pdptValue)
 		return 0;
 	if(pdptValue & G_PAGE_LARGE_PAGE_FLAG)
@@ -81,7 +81,7 @@ g_physical_address pagingVirtualToPhysical(g_virtual_address addr)
 
 	auto pd = (g_address*) G_MEM_PHYS_TO_VIRT(pdAddr);
 	uint64_t pdIndex = G_PD_INDEX(addr);
-	uint64_t pdValue = pd[pdIndex];
+	uint64_t pdValue = __atomic_load_n(&pd[pdIndex], __ATOMIC_ACQUIRE);
 	if(!pdValue)
 		return 0;
 	if(pdValue & G_PAGE_LARGE_PAGE_FLAG)
@@ -93,7 +93,7 @@ g_physical_address pagingVirtualToPhysical(g_virtual_address addr)
 
 	auto pt = (g_address*) G_MEM_PHYS_TO_VIRT(ptAddr);
 	uint64_t ptIndex = G_PT_INDEX(addr);
-	uint64_t ptValue = pt[ptIndex];
+	uint64_t ptValue = __atomic_load_n(&pt[ptIndex], __ATOMIC_ACQUIRE);
 	if(!ptValue)
 		return 0;
 
@@ -103,6 +103,28 @@ g_physical_address pagingVirtualToPhysical(g_virtual_address addr)
 void pagingSwitchToSpace(g_physical_address dir)
 {
 	asm volatile("mov %0, %%cr3" : : "b"(dir));
+}
+
+static volatile uint64_t* _pagingGetOrCreateTable(volatile uint64_t* parent, uint64_t index, uint64_t flags)
+{
+	uint64_t entry = __atomic_load_n(&parent[index], __ATOMIC_ACQUIRE);
+	if(!entry)
+	{
+		auto physical = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
+		auto table = (uint64_t*) G_MEM_PHYS_TO_VIRT(physical);
+		for(int i = 0; i < 512; ++i)
+			table[i] = 0;
+
+		uint64_t expected = 0;
+		entry = physical | flags;
+		if(!__atomic_compare_exchange_n(&parent[index], &expected, entry, false,
+		                                __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
+		{
+			bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, physical);
+			entry = expected;
+		}
+	}
+	return (volatile uint64_t*) G_MEM_PHYS_TO_VIRT(entry & 0x000FFFFFFFFFF000ULL);
 }
 
 bool pagingMapPage(g_virtual_address virt, g_physical_address phys,
@@ -123,93 +145,53 @@ bool pagingMapPage(g_virtual_address virt, g_physical_address phys,
 	auto pml4 = (volatile uint64_t*) G_MEM_PHYS_TO_VIRT(pagingGetCurrentSpace());
 
 
-	// Get PDPT from PML4
-	uint64_t pml4Index = G_PML4_INDEX(virt);
-	volatile uint64_t* pdpt;
-	if(!pml4[pml4Index])
-	{
-		g_physical_address newPdpt = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-		pml4[pml4Index] = newPdpt | pdptFlags;
-
-		pdpt = (volatile uint64_t*) G_MEM_PHYS_TO_VIRT(newPdpt);
-		for(int i = 0; i < 512; i++)
-			pdpt[i] = 0;
-	}
-	else
-	{
-		pdpt = (volatile uint64_t*) G_MEM_PHYS_TO_VIRT(pml4[pml4Index] & ~G_PAGE_ALIGN_MASK);
-	}
-
-	// Get PD from PDPT
-	uint64_t pdptIndex = G_PDPT_INDEX(virt);
-	volatile uint64_t* pd;
-	if(!pdpt[pdptIndex])
-	{
-		g_physical_address newPd = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-		pdpt[pdptIndex] = newPd | pdFlags;
-
-		pd = (volatile uint64_t*) G_MEM_PHYS_TO_VIRT(newPd);
-		for(int i = 0; i < 512; i++)
-			pd[i] = 0;
-	}
-	else
-	{
-		pd = (volatile uint64_t*) G_MEM_PHYS_TO_VIRT(pdpt[pdptIndex] & ~G_PAGE_ALIGN_MASK);
-	}
-
-	// Get PT from PD
-	uint64_t pdIndex = G_PD_INDEX(virt);
-	volatile uint64_t* pt;
-	if(!pd[pdIndex])
-	{
-		g_physical_address newPt = bitmapPageAllocatorAllocate(&memoryPhysicalAllocator);
-		pd[pdIndex] = newPt | ptFlags;
-
-		pt = (volatile uint64_t*) G_MEM_PHYS_TO_VIRT(newPt);
-		for(int i = 0; i < 512; i++)
-			pt[i] = 0;
-	}
-	else
-	{
-		pt = (volatile uint64_t*) G_MEM_PHYS_TO_VIRT(pd[pdIndex] & ~G_PAGE_ALIGN_MASK);
-	}
+	// Kernel tables are shared by every address space and can grow on any core.
+	// Initialize child tables before publishing them; a losing creator frees its
+	// unused page instead of overwriting another core's mappings.
+	auto pdpt = _pagingGetOrCreateTable(pml4, G_PML4_INDEX(virt), pdptFlags);
+	auto pd = _pagingGetOrCreateTable(pdpt, G_PDPT_INDEX(virt), pdFlags);
+	auto pt = _pagingGetOrCreateTable(pd, G_PD_INDEX(virt), ptFlags);
 
 	// Write page into page table
 	uint64_t ptIndex = G_PT_INDEX(virt);
-	if(!pt[ptIndex] || allowOverride)
+	uint64_t expected = 0;
+	uint64_t entry = phys | pageFlags;
+	if(allowOverride)
+		__atomic_store_n(&pt[ptIndex], entry, __ATOMIC_RELEASE);
+	else if(!__atomic_compare_exchange_n(&pt[ptIndex], &expected, entry, false,
+	                                      __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
 	{
-		pt[ptIndex] = phys | pageFlags;
-		pagingInvalidatePage(virt);
-		return true;
+		logInfo("%! failed to write paging entry for %x since it is already set to: %x", "paging", virt, expected);
+		return false;
 	}
 
-	logInfo("%! failed to write paging entry for %x since it is already set to: %x", "paging", virt, pt[ptIndex]);
-	return false;
+	pagingInvalidatePage(virt);
+	return true;
 }
 
 void pagingUnmapPage(g_virtual_address virt)
 {
 	auto pml4 = (volatile uint64_t*) G_MEM_PHYS_TO_VIRT(pagingGetCurrentSpace());
 	uint64_t pml4Index = G_PML4_INDEX(virt);
-	if(!pml4[pml4Index])
+	if(!__atomic_load_n(&pml4[pml4Index], __ATOMIC_ACQUIRE))
 		return;
 
-	auto pdpt = (volatile uint64_t*) G_MEM_PHYS_TO_VIRT(pml4[pml4Index] & ~G_PAGE_ALIGN_MASK);
+	auto pdpt = (volatile uint64_t*) G_MEM_PHYS_TO_VIRT(__atomic_load_n(&pml4[pml4Index], __ATOMIC_ACQUIRE) & ~G_PAGE_ALIGN_MASK);
 	uint64_t pdptIndex = G_PDPT_INDEX(virt);
-	if(!pdpt[pdptIndex])
+	if(!__atomic_load_n(&pdpt[pdptIndex], __ATOMIC_ACQUIRE))
 		return;
 
-	auto pd = (volatile uint64_t*) G_MEM_PHYS_TO_VIRT(pdpt[pdptIndex] & ~G_PAGE_ALIGN_MASK);
+	auto pd = (volatile uint64_t*) G_MEM_PHYS_TO_VIRT(__atomic_load_n(&pdpt[pdptIndex], __ATOMIC_ACQUIRE) & ~G_PAGE_ALIGN_MASK);
 	uint64_t pdIndex = G_PD_INDEX(virt);
-	if(!pd[pdIndex])
+	if(!__atomic_load_n(&pd[pdIndex], __ATOMIC_ACQUIRE))
 		return;
 
-	auto pt = (volatile uint64_t*) G_MEM_PHYS_TO_VIRT(pd[pdIndex] & ~G_PAGE_ALIGN_MASK);
+	auto pt = (volatile uint64_t*) G_MEM_PHYS_TO_VIRT(__atomic_load_n(&pd[pdIndex], __ATOMIC_ACQUIRE) & ~G_PAGE_ALIGN_MASK);
 	uint64_t ptIndex = G_PT_INDEX(virt);
-	if(!pt[ptIndex])
+	if(!__atomic_load_n(&pt[ptIndex], __ATOMIC_ACQUIRE))
 		return;
 
-	pt[ptIndex] = 0;
+	__atomic_store_n(&pt[ptIndex], 0, __ATOMIC_RELEASE);
 	pagingInvalidatePage(virt);
 }
 

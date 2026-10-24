@@ -31,7 +31,6 @@
 #include "kernel/memory/paging.hpp"
 
 static int applicationCoresWaiting;
-static bool bspInitialized = false;
 static bool systemReady = false;
 
 void systemInitializeBsp(g_physical_address rsdp)
@@ -54,11 +53,9 @@ void systemInitializeBsp(g_physical_address rsdp)
 	processorFinalizeSetup();
 
 	auto numCores = processorGetNumberOfProcessors();
+	__atomic_store_n(&applicationCoresWaiting, numCores - 1, __ATOMIC_RELEASE);
 	if(numCores > 1)
 		smpInitialize(pagingGetCurrentSpace());
-
-	applicationCoresWaiting = numCores - 1;
-	bspInitialized = true;
 }
 
 void systemInitializeAp()
@@ -71,30 +68,30 @@ void systemInitializeAp()
 void systemWaitForApplicationCores()
 {
 	logDebug("%! waiting for %i application processors", processorGetCurrentId() == 0 ? "bsp" : "ap",
-	         applicationCoresWaiting);
-	while(applicationCoresWaiting > 0)
-		asm("pause");
+	         __atomic_load_n(&applicationCoresWaiting, __ATOMIC_ACQUIRE));
+	while(__atomic_load_n(&applicationCoresWaiting, __ATOMIC_ACQUIRE) > 0)
+		asm volatile("pause");
 }
 
 void systemWaitForReady()
 {
 	logDebug("%! waiting for system to be ready", processorGetCurrentId() == 0 ? "bsp" : "ap");
-	while(!systemReady)
-		asm("pause");
+	while(!__atomic_load_n(&systemReady, __ATOMIC_ACQUIRE))
+		asm volatile("pause");
 }
 
 void systemMarkApplicationCoreReady()
 {
-	--applicationCoresWaiting;
+	__atomic_fetch_sub(&applicationCoresWaiting, 1, __ATOMIC_ACQ_REL);
 }
 
 void systemMarkReady()
 {
 	logInfo("%! ready", "system");
-	systemReady = true;
+	__atomic_store_n(&systemReady, true, __ATOMIC_RELEASE);
 }
 
 bool systemIsReady()
 {
-	return systemReady;
+	return __atomic_load_n(&systemReady, __ATOMIC_ACQUIRE);
 }

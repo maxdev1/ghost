@@ -38,7 +38,7 @@ g_processor* _processorGetCurrent()
 {
 	auto id = processorGetCurrentId();
 	g_processor* processor = processors;
-	while(processor && id--)
+	while(processor && processor->id != id)
 	{
 		processor = processor->next;
 	}
@@ -126,7 +126,7 @@ void processorAdd(uint32_t apicId, uint32_t processorHardwareId)
 		existing = existing->next;
 	}
 
-	auto core = (g_processor*) heapAllocate(sizeof(g_processor));
+	auto core = (g_processor*) heapAllocateClear(sizeof(g_processor));
 	core->id = processorsAvailable;
 	core->hardwareId = processorHardwareId;
 	core->apicId = apicId;
@@ -162,7 +162,7 @@ uint32_t processorGetCurrentId()
 
 	// GS points to valid <g_kernel_threadlocal>
 	// 0x0 is relative address within struct
-	uint64_t processor;
+	uint32_t processor;
 	asm volatile("mov %%gs:0x0, %0" : "=r" (processor));
 	return processor;
 }

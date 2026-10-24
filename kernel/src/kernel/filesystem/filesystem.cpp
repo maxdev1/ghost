@@ -22,7 +22,6 @@
 #include "kernel/filesystem/filesystem_pipedelegate.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/filesystem/filesystem_ramdiskdelegate.hpp"
-#include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/ipc/pipes.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/tasking/tasking.hpp"
@@ -394,10 +393,10 @@ g_fs_read_status filesystemRead(g_task* task, g_fd fd, uint8_t* buffer, uint64_t
 			panic("%! task %i tried to wait for file %i but delegate didn't provide wait-for-read implementation",
 			      "filesytem", task->id, node->id);
 
-		INTERRUPTS_PAUSE;
-		if(delegate->waitForRead(task, node, length))
-			taskingYield();
-		INTERRUPTS_RESUME;
+		taskingWaitIf([&]()
+		{
+			return delegate->waitForRead(task, node, length);
+		});
 	}
 
 	if(read > 0)
@@ -475,10 +474,10 @@ g_fs_write_status filesystemWrite(g_task* task, g_fd fd, uint8_t* buffer, uint64
 			panic("%! task %i tried to wait for file %i but delegate didn't provide wait-for-write implementation",
 			      "filesytem", task->id, node->id);
 
-		INTERRUPTS_PAUSE;
-		if(delegate->waitForWrite(task, node, length))
-			taskingYield();
-		INTERRUPTS_RESUME;
+		taskingWaitIf([&]()
+		{
+			return delegate->waitForWrite(task, node, length);
+		});
 	}
 	if(wrote > 0)
 	{
@@ -729,28 +728,26 @@ g_fs_read_directory_status filesystemReadDirectory(g_fs_node* dir, uint32_t inde
 
 bool filesystemReadToMemory(g_fd fd, size_t offset, uint8_t* buffer, uint64_t len)
 {
-	int64_t seeked;
-	g_fs_seek_status seekStatus = filesystemSeek(taskingGetCurrentTask(), fd, G_FS_SEEK_SET, offset, &seeked);
-	if(seekStatus != G_FS_SEEK_SUCCESSFUL)
-	{
-		logInfo("%! failed to seek to %i in file %i (status %i)", "fs", offset, fd, seekStatus);
+	auto task = taskingGetCurrentTask();
+	auto descriptor = filesystemProcessGetDescriptor(task->process->id, fd);
+	if(!descriptor)
 		return false;
-	}
-
-	if(seeked != offset)
-	{
-		logInfo("%! tried to seek in file to position %i but highest offset is %i", "fs", (uint32_t) offset,
-		        (uint32_t) seeked);
+	auto node = filesystemGetNode(descriptor->nodeId);
+	if(!node)
 		return false;
-	}
+	uint64_t fileLength;
+	if(filesystemGetLength(node, &fileLength) != G_FS_LENGTH_SUCCESSFUL ||
+	   offset > fileLength || len > fileLength - offset)
+		return false;
 
+	// ELF headers and demand-loaded library pages use explicit offsets. A
+	// seek/read pair races with other faults sharing this process's descriptor.
 	uint64_t remain = len;
 	while(remain)
 	{
 		int64_t read;
-		auto stat = filesystemRead(taskingGetCurrentTask(), fd, &buffer[len - remain], remain, &read);
-		if(stat != G_FS_READ_SUCCESSFUL ||
-		   read == 0)
+		auto stat = filesystemRead(node, &buffer[len - remain], offset + len - remain, remain, &read);
+		if(stat != G_FS_READ_SUCCESSFUL || read <= 0 || (uint64_t) read > remain)
 		{
 			logInfo("%! failed to read file from fd %i (status %i), remaining: %i", "fs", fd, stat, (uint32_t) remain);
 			return false;
@@ -759,7 +756,6 @@ bool filesystemReadToMemory(g_fd fd, size_t offset, uint8_t* buffer, uint64_t le
 	}
 	return true;
 }
-
 
 bool filesystemGetFileName(g_fd fd, const char** outName)
 {

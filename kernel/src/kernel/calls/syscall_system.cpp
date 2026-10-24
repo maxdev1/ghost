@@ -19,7 +19,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/calls/syscall_system.hpp"
-#include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/interrupts/requests.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/tasking/clock.hpp"
@@ -149,19 +148,19 @@ void syscallAwaitIrq(g_task* task, g_syscall_await_irq* data)
 		return taskingExit();
 	}
 
-	INTERRUPTS_PAUSE;
-	if(requestsWaitForIrq(data->irq, task))
+	taskingWaitIf([&]()
 	{
+		if(!requestsWaitForIrq(data->irq, task))
+			return false;
 		if(data->timeout)
-		{
 			clockWaitForTime(task->id, clockGetLocal()->time + data->timeout);
-		}
-		taskingYield();
+		return true;
+	}, [&]()
+	{
 		requestsClearWait(data->irq, task);
 		if(data->timeout)
 			clockUnwaitForTime(task->id);
-	}
-	INTERRUPTS_RESUME;
+	});
 }
 
 void syscallGetEfiFramebuffer(g_task* task, g_syscall_get_efi_framebuffer* data)

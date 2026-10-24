@@ -40,7 +40,7 @@ g_fs_node* pipeNode = nullptr;
 
 void loggerPrintLocked(const char* message, ...)
 {
-	INTERRUPTS_PAUSE;
+	g_interrupt_guard interrupts;
 	G_SPINLOCK_ACQUIRE(loggerLock);
 
 	va_list valist;
@@ -49,12 +49,11 @@ void loggerPrintLocked(const char* message, ...)
 	va_end(valist);
 
 	G_SPINLOCK_RELEASE(loggerLock);
-	INTERRUPTS_RESUME;
 }
 
 void loggerPrintlnLocked(const char* message, ...)
 {
-	INTERRUPTS_PAUSE;
+	g_interrupt_guard interrupts;
 	G_SPINLOCK_ACQUIRE(loggerLock);
 
 	va_list valist;
@@ -64,7 +63,6 @@ void loggerPrintlnLocked(const char* message, ...)
 	loggerPrintCharacter('\n');
 
 	G_SPINLOCK_RELEASE(loggerLock);
-	INTERRUPTS_RESUME;
 }
 
 void loggerPrintUnlocked(const char* message, ...)

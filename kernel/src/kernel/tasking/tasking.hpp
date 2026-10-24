@@ -22,6 +22,7 @@
 #define __KERNEL_TASKING__
 
 #include "kernel/tasking/task.hpp"
+#include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/utils/hashmap.hpp"
 #include "kernel/runtime/itanium_cxx_abi_support.hpp"
 
@@ -264,11 +265,37 @@ bool taskingWaitForExit(g_tid task, g_task* waiter);
  */
 void taskingWake(g_task* task);
 
-/**
- * Sets the task waiting and executes the function before yielding. The lambda
- * should attach wake-up for the task.
- */
+/** Marks the task waiting; the caller must prevent preemption until yielding. */
 void taskingPrepareWait(g_task* task, const char* debugName);
+
+/**
+ * Prepares a conditional wait with interrupts disabled. prepareWait must recheck
+ * its condition and mark/register the waiter under the resource lock, returning
+ * false if no wait is needed. Release resource locks before returning true.
+ * afterYield runs only after a prepared wait, before restoring interrupt state.
+ * Returns whether a wait was prepared and a yield performed. Callers must retry
+ * their operation after waking, since a wake-up need not satisfy its condition.
+ * Templates keep capturing callbacks on the stack without heap allocation.
+ */
+template<typename PrepareWait, typename AfterYield>
+bool taskingWaitIf(const PrepareWait& prepareWait, const AfterYield& afterYield)
+{
+    g_interrupt_guard interrupts;
+    if(!prepareWait())
+        return false;
+
+    taskingYield();
+    afterYield();
+    return true;
+}
+
+template<typename PrepareWait>
+bool taskingWaitIf(const PrepareWait& prepareWait)
+{
+    return taskingWaitIf(prepareWait, [] {});
+}
+
+/** Marks the task waiting, attaches its wake-up source, then yields. */
 void taskingWait(g_task* task, const char* debugName, const std::function<void ()>& beforeYield = nullptr);
 
 #endif

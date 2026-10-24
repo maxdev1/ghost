@@ -44,7 +44,7 @@ struct g_bitmap_index_page_header
     g_bitmap_header* entries[];
 }__attribute__((packed));
 
-#define G_BITMAP_INDEX_MAX_ENTRIES     ((G_PAGE_SIZE - offsetof(g_bitmap_index_page_header, entries)) / sizeof(g_bitmap_index_page_header))
+#define G_BITMAP_INDEX_MAX_ENTRIES     ((G_PAGE_SIZE - offsetof(g_bitmap_index_page_header, entries)) / sizeof(g_bitmap_header*))
 
 /**
  * Header of a single bitmap. The entries are the actual bitmap and each address
@@ -59,7 +59,7 @@ struct g_bitmap_header
 }__attribute__((packed));
 
 #define G_BITMAP_MAX_ENTRIES                ((G_PAGE_SIZE - offsetof(g_bitmap_header, entries)) / sizeof(G_BITMAP_ENTRY_TYPE))
-#define G_BITMAP_TOTAL_BITS                 (G_BITMAP_MAX_ENTRIES * 8)
+#define G_BITMAP_TOTAL_BITS                 (G_BITMAP_MAX_ENTRIES * G_BITMAP_BITS_PER_ENTRY)
 
 /**
  * Allocator structure

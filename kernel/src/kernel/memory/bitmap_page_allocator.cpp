@@ -39,6 +39,7 @@ void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, limine_me
 	// Allocate top-level index page that keeps pointers to bitmaps
 	g_physical_address indexPagePhys = _bitmapPageAllocatorEarlyAllocate(memoryMap, 1);
 	allocator->indexPage = (g_bitmap_index_page_header*) G_MEM_PHYS_TO_VIRT(indexPagePhys);
+	allocator->indexPage->next = nullptr;
 	for(size_t i = 0; i < G_BITMAP_INDEX_MAX_ENTRIES; i++)
 		allocator->indexPage->entries[i] = nullptr;
 
@@ -46,10 +47,15 @@ void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, limine_me
 	for(int i = 0; i < memoryMap->entry_count; i++)
 	{
 		auto entry = memoryMap->entries[i];
-		if(entry->type != LIMINE_MEMMAP_USABLE)
+		if(entry->type != LIMINE_MEMMAP_USABLE || entry->length < G_PAGE_SIZE)
 			continue;
 
 		g_physical_address currentPage = entry->base;
+
+		// Currently only one index page is supported. Check before every insertion,
+		// including the first bitmap of each separate firmware memory-map region.
+		if(indexEntry >= G_BITMAP_INDEX_MAX_ENTRIES)
+			goto stopFilling;
 
 		// At the start of every free area, create a bitmap
 		auto bitmap = _bitmapPageAllocatorInitializeBitmap(currentPage);
@@ -61,7 +67,7 @@ void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, limine_me
 			size_t entryIndex = (currentPage - bitmap->base) / G_PAGE_SIZE;
 			size_t bitmapIndex = entryIndex / G_BITMAP_BITS_PER_ENTRY;
 			size_t bitmapBit = entryIndex % G_BITMAP_BITS_PER_ENTRY;
-			bitmap->entries[bitmapIndex] |= (1 << bitmapBit);
+			bitmap->entries[bitmapIndex] |= (1ULL << bitmapBit);
 			allocator->freePageCount++;
 
 			// Go to next page
@@ -76,14 +82,14 @@ void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, limine_me
 				if(!remainingSpaceSufficient)
 					break;
 
+				if(indexEntry >= G_BITMAP_INDEX_MAX_ENTRIES)
+					goto stopFilling;
+
 				// Create the next bitmap at the next free page
 				bitmap = _bitmapPageAllocatorInitializeBitmap(currentPage);
 				allocator->indexPage->entries[indexEntry++] = bitmap;
 				currentPage += G_PAGE_SIZE;
 
-				// Currently only one index page is supported
-				if(indexEntry >= G_BITMAP_INDEX_MAX_ENTRIES)
-					goto stopFilling;
 			}
 		}
 	}
@@ -157,7 +163,7 @@ void bitmapPageAllocatorMarkFree(g_bitmap_page_allocator* allocator, g_physical_
 			size_t totalBitIndex = (address - bitmap->base) / G_PAGE_SIZE;
 			size_t bitmapIndex = totalBitIndex / G_BITMAP_BITS_PER_ENTRY;
 			size_t bitmapBit = totalBitIndex % G_BITMAP_BITS_PER_ENTRY;
-			bitmap->entries[bitmapIndex] &= ~(1ULL << bitmapBit);
+			bitmap->entries[bitmapIndex] |= (1ULL << bitmapBit);
 
 			mutexAcquire(&allocator->lock);
 			allocator->freePageCount++;
@@ -247,9 +253,12 @@ bool _bitmapPageAllocatorFastBufferFree(g_bitmap_page_allocator* allocator, g_ph
 	}
 	mutexRelease(&allocator->fastBuffer.lock);
 
-	mutexAcquire(&allocator->lock);
-	allocator->freePageCount++;
-	mutexRelease(&allocator->lock);
+	if(freed)
+	{
+		mutexAcquire(&allocator->lock);
+		allocator->freePageCount++;
+		mutexRelease(&allocator->lock);
+	}
 
 	return freed;
 }
@@ -265,9 +274,12 @@ g_physical_address _bitmapPageAllocatorFastBufferAllocate(g_bitmap_page_allocato
 	}
 	mutexRelease(&allocator->fastBuffer.lock);
 
-	mutexAcquire(&allocator->lock);
-	allocator->freePageCount--;
-	mutexRelease(&allocator->lock);
+	if(address)
+	{
+		mutexAcquire(&allocator->lock);
+		allocator->freePageCount--;
+		mutexRelease(&allocator->lock);
+	}
 
 	return address;
 }
