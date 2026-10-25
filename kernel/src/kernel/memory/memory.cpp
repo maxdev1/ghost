@@ -26,6 +26,7 @@
 #include "kernel/memory/constants.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/memory/paging.hpp"
+#include "kernel/system/processor/processor.hpp"
 #include "kernel/tasking/task.hpp"
 #include "kernel/logger/logger.hpp"
 
@@ -46,6 +47,28 @@ void memoryInitialize(limine_memmap_response* memoryMap)
 	addressRangePoolAddRange(memoryVirtualRangePool, G_MEM_KERN_VIRT_RANGES_START, G_MEM_KERN_VIRT_RANGES_END);
 
 	pageReferenceTrackerInitialize();
+}
+
+bool memoryPhysicalIsRangeAddressable(g_physical_address address, g_size size)
+{
+	if(size == 0)
+		return false;
+
+	// Long mode requires PAE; older CPUs without this leaf use 36 physical bits.
+	uint32_t eax, ebx, ecx, edx;
+	uint32_t physicalAddressBits = 36;
+	processorCpuid(0x80000000, &eax, &ebx, &ecx, &edx);
+	if(eax >= 0x80000008)
+	{
+		processorCpuid(0x80000008, &eax, &ebx, &ecx, &edx);
+		physicalAddressBits = eax & 0xff;
+	}
+
+	if(physicalAddressBits < 32 || physicalAddressBits > 52)
+		return false;
+
+	const uint64_t physicalLimit = 1ULL << physicalAddressBits;
+	return address < physicalLimit && size <= physicalLimit - address;
 }
 
 g_physical_address memoryPhysicalAllocate(bool untracked)

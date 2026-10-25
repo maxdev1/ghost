@@ -40,6 +40,12 @@ extern g_address_range_pool* memoryVirtualRangePool;
 void memoryInitialize(limine_memmap_response* memoryMap);
 
 /**
+ * Checks whether a non-empty byte range fits the CPU's physical address width.
+ * Does not check page alignment, memory availability, or ownership.
+ */
+bool memoryPhysicalIsRangeAddressable(g_physical_address address, g_size size);
+
+/**
  * Allocates a physical memory page.
  */
 g_physical_address memoryPhysicalAllocate(bool untracked = false);

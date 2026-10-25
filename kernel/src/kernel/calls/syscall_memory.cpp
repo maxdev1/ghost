@@ -190,10 +190,20 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 
 void syscallMapMmioArea(g_task* task, g_syscall_map_mmio* data)
 {
-	uint32_t pages = G_PAGE_ALIGN_UP(data->size) / G_PAGE_SIZE;
+	const g_physical_address physicalAddress = data->physicalAddress;
+	const uint64_t size = data->size;
+	data->virtualAddress = nullptr;
 
-	g_virtual_address virtualRangeBase = addressRangePoolAllocate(task->process->virtualRangePool, pages,
-	                                                              G_PROC_VIRTUAL_RANGE_FLAG_WEAK);
+	if(task->securityLevel > G_SECURITY_LEVEL_DRIVER || size == 0 || (physicalAddress & G_PAGE_ALIGN_MASK))
+		return;
+
+	const uint64_t mappedSize = G_PAGE_ALIGN_UP(size);
+	if(!memoryPhysicalIsRangeAddressable(physicalAddress, mappedSize))
+		return;
+
+	const uint32_t pages = mappedSize / G_PAGE_SIZE;
+	auto pool = task->process->virtualRangePool;
+	g_virtual_address virtualRangeBase = addressRangePoolAllocate(pool, pages, G_PROC_VIRTUAL_RANGE_FLAG_WEAK);
 	if(virtualRangeBase == 0)
 	{
 		logInfo("%! task %i failed to map mmio memory, could not allocate virtual range", "syscall", task->id);
@@ -202,8 +212,15 @@ void syscallMapMmioArea(g_task* task, g_syscall_map_mmio* data)
 
 	for(uint32_t i = 0; i < pages; i++)
 	{
-		pagingMapPage(virtualRangeBase + i * G_PAGE_SIZE, data->physicalAddress + i * G_PAGE_SIZE,
-		              G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
+		if(!pagingMapPage(virtualRangeBase + i * G_PAGE_SIZE, physicalAddress + i * G_PAGE_SIZE,
+		                  G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT))
+		{
+			// Only undo mappings installed by this call. Device pages are never freed.
+			for(uint32_t mapped = 0; mapped < i; mapped++)
+				pagingUnmapPage(virtualRangeBase + mapped * G_PAGE_SIZE);
+			addressRangePoolFree(pool, virtualRangeBase);
+			return;
+		}
 	}
 
 	data->virtualAddress = (void*) virtualRangeBase;
