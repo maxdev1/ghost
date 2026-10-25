@@ -105,26 +105,20 @@ downloads, patches and installs some third-party libraries.
 == Creating a bootable USB stick
 You can create a bootable USB stick with the following steps.
 
-1. Convert the `image.iso` file to an .img
+    # 1. Identify USB drive
+    diskutil list
 
-	hdiutil convert -format UDRO -o converted.img image.iso
+    # 2. Unmount USB drive (replace N with the correct disk number)
+    diskutil unmountDisk /dev/diskN
 
-2. Find out which drive the USB stick is with
+    # 3. Write ISO directly to USB
+    sudo dd if=./target/ghost.iso of=/dev/rdiskN bs=4m
 
-	diskutil list
+    # 4. Flush pending writes
+    sync
 
-3. Unmount the disk
-
-	diskutil unmountDisk /dev/diskN
-
-4. Write the image to the stick
-
-	sudo dd if=converted.img of=/dev/rdiskN bs=1m
-
-5. Unmount it again
-
-	diskutil unmountDisk /dev/diskN
-
+    # 5. Safely eject USB drive
+    diskutil eject /dev/diskN
 
 == Tips
 * To specify a different toolchain base directory, modify `TOOLCHAIN_BASE`, copy the `variables.sh.template` to `variables.sh` and specify the variable with an export.
