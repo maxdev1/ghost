@@ -116,7 +116,53 @@ g_tid taskingDirectoryGet(const char* name)
 	return task;
 }
 
-const char* taskingDirectoryGetIdentifier(g_tid tid)
+void taskingDirectoryCopyIdentifier(g_tid tid, char* out, uint32_t capacity)
 {
-	return hashmapGet(reverseMap, tid, (const char*) nullptr);
+	if(!capacity)
+		return;
+	mutexAcquire(&entryLock);
+	auto name = hashmapGet(reverseMap, tid, (const char*) nullptr);
+	uint32_t length = 0;
+	if(name)
+		while(length + 1 < capacity && name[length])
+		{
+			out[length] = name[length];
+			++length;
+		}
+	out[length] = 0;
+	mutexRelease(&entryLock);
+}
+
+void taskingDirectoryTaskRemoved(g_tid task)
+{
+	mutexAcquire(&entryLock);
+	auto name = hashmapTake(reverseMap, task, (const char*) nullptr);
+	if(name)
+		heapFree((void*) name);
+	while(true)
+	{
+		const char* unusedName = nullptr;
+		auto iter = hashmapIteratorStart(entryMap);
+		while(hashmapIteratorHasNext(&iter))
+		{
+			auto item = hashmapIteratorNext(&iter);
+			auto entry = item->value;
+			if(entry->task == task)
+			{
+				entry->task = G_TID_NONE;
+				entry->priority = G_SECURITY_LEVEL_APPLICATION;
+			}
+			if(entry->task == G_TID_NONE && waitQueueIsEmpty(&entry->waitQueue))
+			{
+				unusedName = item->key;
+				break;
+			}
+		}
+		hashmapIteratorEnd(&iter);
+		if(!unusedName)
+			break;
+		auto entry = hashmapTake(entryMap, unusedName, (g_task_directory_entry*) nullptr);
+		heapFree(entry);
+	}
+	mutexRelease(&entryLock);
 }

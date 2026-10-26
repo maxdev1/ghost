@@ -21,11 +21,10 @@
 #include "kernel/memory/bitmap_page_allocator.hpp"
 #include "kernel/logger/logger.hpp"
 #include "kernel/memory/constants.hpp"
-#include "kernel/system/mutex.hpp"
 #include "kernel/panic.hpp"
+#include "kernel/system/mutex.hpp"
 
 void _bitmapPageAllocatorFastBufferInitialize(g_bitmap_page_allocator* allocator);
-bool _bitmapPageAllocatorFastBufferFree(g_bitmap_page_allocator* allocator, g_physical_address address);
 g_physical_address _bitmapPageAllocatorFastBufferAllocate(g_bitmap_page_allocator* allocator);
 g_physical_address _bitmapPageAllocatorEarlyAllocate(limine_memmap_response* memoryMap, int pages);
 g_bitmap_header* _bitmapPageAllocatorInitializeBitmap(g_physical_address addr);
@@ -89,7 +88,6 @@ void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, limine_me
 				bitmap = _bitmapPageAllocatorInitializeBitmap(currentPage);
 				allocator->indexPage->entries[indexEntry++] = bitmap;
 				currentPage += G_PAGE_SIZE;
-
 			}
 		}
 	}
@@ -145,44 +143,67 @@ void bitmapPageAllocatorMarkFree(g_bitmap_page_allocator* allocator, g_physical_
 	if(G_PAGE_ALIGN_DOWN(address) != address)
 		panic("%! attempted to free unaligned physical address %x", "bitmap", address);
 
-	if(_bitmapPageAllocatorFastBufferFree(allocator, address))
-		return;
-
-	bool success = false;
-
-	for(size_t i = 0; i < G_BITMAP_INDEX_MAX_ENTRIES; i++)
+	for(size_t i = 0; i < G_BITMAP_INDEX_MAX_ENTRIES; ++i)
 	{
-		g_bitmap_header* bitmap = allocator->indexPage->entries[i];
+		auto bitmap = allocator->indexPage->entries[i];
 		if(!bitmap)
 			break;
+		if(address < bitmap->base || address >= bitmap->end)
+			continue;
 
-		// TODO: Try acquire would be cool here
+		const size_t bitIndex = (address - bitmap->base) / G_PAGE_SIZE;
+		const size_t entryIndex = bitIndex / G_BITMAP_BITS_PER_ENTRY;
+		const uint64_t mask = 1ULL << (bitIndex % G_BITMAP_BITS_PER_ENTRY);
+
 		mutexAcquire(&bitmap->lock);
-		if(address >= bitmap->base && address < bitmap->end)
+		if(bitmap->entries[entryIndex] & mask)
 		{
-			size_t totalBitIndex = (address - bitmap->base) / G_PAGE_SIZE;
-			size_t bitmapIndex = totalBitIndex / G_BITMAP_BITS_PER_ENTRY;
-			size_t bitmapBit = totalBitIndex % G_BITMAP_BITS_PER_ENTRY;
-			bitmap->entries[bitmapIndex] |= (1ULL << bitmapBit);
-
-			mutexAcquire(&allocator->lock);
-			allocator->freePageCount++;
-			mutexRelease(&allocator->lock);
-
-			success = true;
+			mutexRelease(&bitmap->lock);
+			logWarn("%! attempted to free an available physical page %x", "bitmap", address);
+			return;
 		}
-		mutexRelease(&bitmap->lock);
 
-		if(success)
-			break;
+		// Lock bitmap and fast-buffer to reject duplicate frees; allocation releases the budget lock first to avoid deadlock
+		mutexAcquire(&allocator->fastBuffer.lock);
+		for(int cell = 0; cell < allocator->fastBuffer.size; ++cell)
+		{
+			if(allocator->fastBuffer.buffer[cell] == address)
+			{
+				mutexRelease(&allocator->fastBuffer.lock);
+				mutexRelease(&bitmap->lock);
+				logWarn("%! attempted to free a cached physical page %x", "bitmap", address);
+				return;
+			}
+		}
+
+		if(allocator->fastBuffer.size < G_BITMAP_ALLOCATOR_FASTBUFFER_SIZE)
+			allocator->fastBuffer.buffer[allocator->fastBuffer.size++] = address;
+		else
+			bitmap->entries[entryIndex] |= mask;
+
+		mutexAcquire(&allocator->lock);
+		++allocator->freePageCount;
+		mutexRelease(&allocator->lock);
+
+		mutexRelease(&allocator->fastBuffer.lock);
+		mutexRelease(&bitmap->lock);
+		return;
 	}
 
-	if(!success)
-		logWarn("%! failed to free physical address %x", "bitmap", address);
+	logWarn("%! failed to free unmanaged physical address %x", "bitmap", address);
 }
 
-g_physical_address bitmapPageAllocatorAllocate(g_bitmap_page_allocator* allocator)
+g_physical_address bitmapPageAllocatorTryAllocate(g_bitmap_page_allocator* allocator, uint32_t reservePages)
 {
+	mutexAcquire(&allocator->lock);
+	if(allocator->freePageCount <= reservePages)
+	{
+		mutexRelease(&allocator->lock);
+		return 0;
+	}
+	--allocator->freePageCount;
+	mutexRelease(&allocator->lock);
+
 	g_physical_address addressFromFB = _bitmapPageAllocatorFastBufferAllocate(allocator);
 	if(addressFromFB)
 		return addressFromFB;
@@ -208,10 +229,6 @@ g_physical_address bitmapPageAllocatorAllocate(g_bitmap_page_allocator* allocato
 					bitmap->entries[entryIndex] &= ~(1ULL << bit);
 					size_t totalBitIndex = entryIndex * G_BITMAP_BITS_PER_ENTRY + bit;
 
-					mutexAcquire(&allocator->lock);
-					allocator->freePageCount--;
-					mutexRelease(&allocator->lock);
-
 					result = bitmap->base + totalBitIndex * G_PAGE_SIZE;
 					goto allocated;
 				}
@@ -223,7 +240,18 @@ g_physical_address bitmapPageAllocatorAllocate(g_bitmap_page_allocator* allocato
 			return result;
 	}
 
-	panic("%! failed to allocate physical memory", "bitmap");
+	mutexAcquire(&allocator->lock);
+	++allocator->freePageCount;
+	mutexRelease(&allocator->lock);
+	return 0;
+}
+
+g_physical_address bitmapPageAllocatorAllocate(g_bitmap_page_allocator* allocator)
+{
+	auto page = bitmapPageAllocatorTryAllocate(allocator, 0);
+	if(!page)
+		panic("%! failed to allocate critical physical memory", "bitmap");
+	return page;
 }
 
 /**
@@ -241,28 +269,6 @@ void _bitmapPageAllocatorFastBufferInitialize(g_bitmap_page_allocator* allocator
 	allocator->fastBuffer.size = 0;
 }
 
-bool _bitmapPageAllocatorFastBufferFree(g_bitmap_page_allocator* allocator, g_physical_address address)
-{
-	bool freed = false;
-
-	mutexAcquire(&allocator->fastBuffer.lock);
-	if(allocator->fastBuffer.size < G_BITMAP_ALLOCATOR_FASTBUFFER_SIZE)
-	{
-		allocator->fastBuffer.buffer[allocator->fastBuffer.size++] = address;
-		freed = true;
-	}
-	mutexRelease(&allocator->fastBuffer.lock);
-
-	if(freed)
-	{
-		mutexAcquire(&allocator->lock);
-		allocator->freePageCount++;
-		mutexRelease(&allocator->lock);
-	}
-
-	return freed;
-}
-
 g_physical_address _bitmapPageAllocatorFastBufferAllocate(g_bitmap_page_allocator* allocator)
 {
 	g_physical_address address = 0;
@@ -273,13 +279,6 @@ g_physical_address _bitmapPageAllocatorFastBufferAllocate(g_bitmap_page_allocato
 		address = allocator->fastBuffer.buffer[--allocator->fastBuffer.size];
 	}
 	mutexRelease(&allocator->fastBuffer.lock);
-
-	if(address)
-	{
-		mutexAcquire(&allocator->lock);
-		allocator->freePageCount--;
-		mutexRelease(&allocator->lock);
-	}
 
 	return address;
 }

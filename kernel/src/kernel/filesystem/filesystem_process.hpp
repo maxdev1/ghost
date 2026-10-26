@@ -31,10 +31,16 @@
  */
 struct g_file_descriptor
 {
-    g_fd id;
-    uint64_t offset;
-    g_fs_virt_id nodeId;
-    g_file_flag_mode openFlags;
+	g_fd id;
+	uint64_t offset;
+	g_fs_virt_id nodeId;
+	g_file_flag_mode openFlags;
+	g_fs_node* node;
+	g_mutex operationLock;
+	uint64_t generation;
+	uint32_t references;
+	bool closed;
+	g_wait_queue waiters;
 };
 
 /**
@@ -42,9 +48,8 @@ struct g_file_descriptor
  */
 struct g_filesystem_process
 {
-    g_fd nextDescriptor;
-    g_mutex nextDescriptorLock;
-    g_hashmap<g_fd, g_file_descriptor*>* descriptors;
+	g_fd nextDescriptor;
+	g_hashmap<g_fd, g_file_descriptor*>* descriptors;
 };
 
 /**
@@ -63,15 +68,25 @@ void filesystemProcessCreate(g_pid pid);
 void filesystemProcessRemove(g_pid pid);
 
 /**
- * Creates a file descriptor opening a node.
+ * Creates a descriptor with a caller pin; release it after reading the result.
  */
 g_fs_open_status filesystemProcessCreateDescriptor(g_pid pid, g_fs_virt_id nodeId, g_file_flag_mode flags,
-                                                   g_file_descriptor** outDescriptor, g_fd optionalFd = G_FD_NONE);
+												   g_file_descriptor** outDescriptor, g_fd optionalFd = G_FD_NONE,
+												   uint64_t initialOffset = 0);
 
 /**
- * Finds a file descriptor.
+ * Acquires a descriptor pin; release it with filesystemProcessReleaseDescriptor.
+ * A nonzero generation rejects a reused FD. Release pins before taskingWaitIf's
+ * yield/cancellation boundary and acquire a fresh pin for each attempt.
  */
-g_file_descriptor* filesystemProcessGetDescriptor(g_pid pid, g_fd fd);
+g_file_descriptor* filesystemProcessAcquireDescriptor(g_pid pid, g_fd fd, uint64_t generation = 0);
+
+/** Releases a descriptor pin. Accepts nullptr. */
+void filesystemProcessReleaseDescriptor(g_file_descriptor* descriptor);
+
+g_fs_close_status filesystemProcessCloseDescriptor(g_pid pid, g_fd fd);
+
+void filesystemProcessRegisterDescriptorWait(g_file_descriptor* descriptor, g_task* task);
 
 /**
  * Closes a file descriptor.
@@ -82,7 +97,7 @@ void filesystemProcessRemoveDescriptor(g_pid pid, g_fd fd);
  * Clones a file descriptor.
  */
 g_fs_clonefd_status filesystemProcessCloneDescriptor(g_pid sourcePid, g_fd sourceFd, g_pid targetPid, g_fd targetFd,
-                                                     g_fd* outFd);
+													 g_fd* outFd);
 
 /**
  * Creates stdio for a new process (and possibly maps requested values).

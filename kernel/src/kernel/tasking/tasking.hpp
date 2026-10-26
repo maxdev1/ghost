@@ -228,9 +228,19 @@ void taskingExit();
 void taskingIdleThread();
 
 /**
- * Finds a task by its id.
+ * Acquires a live task by ID and pins it and its process until taskingReleaseTask.
+ * Release the pin before cancellation waits; re-acquire by ID after waking.
  */
-g_task* taskingGetById(g_tid id);
+g_task* taskingAcquireTask(g_tid id);
+
+/** Releases a lookup pin. Accepts nullptr. */
+void taskingReleaseTask(g_task* task);
+
+/** Retires a dead task from lookup only after all readers have released it. */
+bool taskingTryRetireTask(g_task* task);
+void taskingRequestTermination(g_task* task);
+void taskingTerminateProcess(g_process* process);
+void taskingHandleTerminationRequest();
 
 /**
  * Spawns an executable. This creates a task entering <taskingSpawnEntry> where the actual
@@ -284,8 +294,11 @@ bool taskingWaitIf(const PrepareWait& prepareWait, const AfterYield& afterYield)
     if(!prepareWait())
         return false;
 
+    // prepareWait has released resource locks; cancellation is safe here.
+    taskingHandleTerminationRequest();
     taskingYield();
     afterYield();
+    taskingHandleTerminationRequest();
     return true;
 }
 
@@ -296,6 +309,20 @@ bool taskingWaitIf(const PrepareWait& prepareWait)
 }
 
 /** Marks the task waiting, attaches its wake-up source, then yields. */
-void taskingWait(g_task* task, const char* debugName, const std::function<void ()>& beforeYield = nullptr);
+template<typename BeforeYield>
+void taskingWait(g_task* task, const char* debugName, const BeforeYield& beforeYield)
+{
+    taskingWaitIf([&]()
+    {
+        taskingPrepareWait(task, debugName);
+        beforeYield();
+        return true;
+    });
+}
+
+inline void taskingWait(g_task* task, const char* debugName)
+{
+    taskingWait(task, debugName, [] {});
+}
 
 #endif

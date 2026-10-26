@@ -41,7 +41,7 @@ void taskingCleanupThread()
 			auto task = entry->task;
 			mutexAcquire(&task->lock);
 
-			if(task->status == G_TASK_STATUS_DEAD)
+			if(task->status == G_TASK_STATUS_DEAD && taskingTryRetireTask(task))
 			{
 				if(previous)
 					previous->next = next;

@@ -31,7 +31,7 @@ struct g_pp_reference_count_table
 {
 	g_physical_address base;
 	g_pp_reference_count_table* next;
-	int16_t referenceCount[1024];
+	uint32_t referenceCount[1024];
 };
 
 /**
@@ -54,6 +54,6 @@ void pageReferenceTrackerIncrement(g_physical_address address);
  * 
  * @return the remaining number of references
  */
-int16_t pageReferenceTrackerDecrement(g_physical_address address);
+uint32_t pageReferenceTrackerDecrement(g_physical_address address);
 
 #endif

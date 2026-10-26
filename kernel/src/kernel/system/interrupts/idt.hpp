@@ -93,5 +93,6 @@ void idtInitializeLocal();
  * @param flags			the flags to apply
  */
 void idtCreateGate(uint32_t index, void* base, uint8_t flags);
+void idtCreateGate(uint32_t index, void* base, uint8_t flags, uint8_t ist);
 
 #endif

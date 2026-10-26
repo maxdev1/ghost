@@ -1,0 +1,10 @@
+#pragma once
+#include "support/tracked_heap.hpp"
+#include "production/hashmap_hpp.inc"
+#include "production/hashmap_string_hpp.inc"
+#include "production/hashmap_string_cpp.inc"
+#include "production/elf64_types.inc"
+#include "production/elf_object_layout.inc"
+#include "support/loader/symbol_table.hpp"
+#include "production/elfObjectSymbolHash.inc"
+#include "production/elfObjectFindSymbol.inc"

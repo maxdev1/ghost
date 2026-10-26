@@ -19,12 +19,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/calls/syscall_memory.hpp"
+#include "kernel/memory/constants.hpp"
 #include "kernel/memory/lower_heap.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
-#include "kernel/tasking/tasking_memory.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
-#include "kernel/memory/constants.hpp"
+#include "kernel/tasking/tasking_memory.hpp"
 
 #include "kernel/logger/logger.hpp"
 
@@ -54,138 +54,166 @@ void syscallLowerMemoryFree(g_task* task, g_syscall_lower_free* data)
 
 void syscallAllocateMemory(g_task* task, g_syscall_alloc_mem* data)
 {
+	const uint64_t size = data->size;
 	data->virtualResult = nullptr;
+	data->physicalResult = nullptr;
 
-	uint32_t pages = G_PAGE_ALIGN_UP(data->size) / G_PAGE_SIZE;
-	if(pages == 0)
-	{
-		logInfo("%! task %i failed to allocate an empty physical memory area", "syscall", task->id);
+	uint32_t pages;
+	if(!memorySizeToPageCount(size, &pages))
 		return;
-	}
 
-	g_virtual_address mapped = addressRangePoolAllocate(task->process->virtualRangePool, pages);
-	if(mapped == 0)
+	auto process = task->process;
+	mutexAcquire(&process->lock);
+	auto mapped = addressRangePoolAllocate(process->virtualRangePool, pages);
+	if(!mapped)
 	{
-		logInfo("%! task %i failed to allocate a virtual address range for memory mapping", "syscall", task->id);
+		mutexRelease(&process->lock);
 		return;
 	}
 
 	g_physical_address page = 0;
-	bool failedPhysical = false;
-	for(uint32_t i = 0; i < pages; i++)
+	uint32_t installed = 0;
+	for(; installed < pages; ++installed)
 	{
-		page = memoryPhysicalAllocate();
+		page = memoryPhysicalTryAllocate();
 		if(!page)
+			break;
+		auto address = mapped + installed * G_PAGE_SIZE;
+		memorySetBytes((void*) G_MEM_PHYS_TO_VIRT(page), 0, G_PAGE_SIZE);
+		if(!pagingMapPage(address, page, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT))
 		{
-			failedPhysical = true;
+			memoryPhysicalFree(page);
 			break;
 		}
-		pagingMapPage(mapped + i * G_PAGE_SIZE, page, G_PAGE_TABLE_USER_DEFAULT,G_PAGE_TABLE_USER_DEFAULT,
-		              G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
 	}
 
-	if(failedPhysical)
+	if(installed != pages)
 	{
-		logInfo("%! ran out of physical memory during allocate-memory syscall in %i", "syscall", task->id);
-		for(uint32_t i = 0; i < pages; i++)
+		// Remove only our installed prefix before returning any frames to the allocator.
+		for(uint32_t i = 0; i < installed; ++i)
 		{
-			g_physical_address page = pagingVirtualToPhysical(mapped + i * G_PAGE_SIZE);
-			memoryPhysicalFree(page);
+			auto address = mapped + i * G_PAGE_SIZE;
+			auto physical = pagingVirtualToPhysical(address);
+			pagingUnmapPage(address);
+			memoryPhysicalFree(physical);
 		}
-		addressRangePoolFree(task->process->virtualRangePool, mapped);
-		return;
+		addressRangePoolFree(process->virtualRangePool, mapped);
 	}
-
-	data->virtualResult = (void*) mapped;
-	data->physicalResult = (task->securityLevel <= G_SECURITY_LEVEL_DRIVER && pages == 1) ? (void*) page : nullptr;
+	else
+	{
+		data->virtualResult = (void*) mapped;
+		data->physicalResult = (task->securityLevel <= G_SECURITY_LEVEL_DRIVER && pages == 1) ? (void*) page : nullptr;
+	}
+	mutexRelease(&process->lock);
 }
 
 void syscallUnmap(g_task* task, g_syscall_unmap* data)
 {
-	g_address_range* range = addressRangePoolFind(task->process->virtualRangePool, data->virtualBase);
-	if(!range)
-		return;
-
-	for(uint32_t i = 0; i < range->pages; i++)
+	auto process = task->process;
+	mutexAcquire(&process->lock);
+	auto range = addressRangePoolFind(process->virtualRangePool, data->virtualBase);
+	if(range && range->used && !(range->flags & G_PROC_VIRTUAL_RANGE_FLAG_INTERNAL))
 	{
-		g_virtual_address virt = range->base + i * G_PAGE_SIZE;
-		g_physical_address page = pagingVirtualToPhysical(virt);
-		if(!page)
-			continue;
-
-		if((range->flags & G_PROC_VIRTUAL_RANGE_FLAG_WEAK) == 0)
-			memoryPhysicalFree(page);
-
-		pagingUnmapPage(virt);
+		for(uint32_t i = 0; i < range->pages; i++)
+		{
+			g_virtual_address virt = range->base + i * G_PAGE_SIZE;
+			uint64_t entry = pagingVirtualToPageEntry(virt);
+			if(!(entry & G_PAGE_PRESENT))
+				continue;
+			pagingUnmapPage(virt);
+			if(!(entry & G_PAGE_UNMANAGED_FLAG))
+				memoryPhysicalFree(entry & G_PAGE_PHYSICAL_MASK);
+		}
+		addressRangePoolFree(process->virtualRangePool, range->base);
 	}
-
-	addressRangePoolFree(task->process->virtualRangePool, range->base);
+	mutexRelease(&process->lock);
 }
+
+struct g_shared_page
+{
+	g_physical_address address;
+	uint64_t flags;
+};
 
 void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 {
-	data->virtualAddress = 0;
+	const g_virtual_address memory = (g_virtual_address) data->memory;
+	const uint64_t size = data->size;
+	const g_tid targetId = data->processId;
+	data->virtualAddress = nullptr;
+	uint32_t pages;
+	if(size > G_USER_VIRTUAL_RANGES_END - G_USER_VIRTUAL_RANGES_START ||
+	   !memorySizeToPageCount(size, &pages))
+		return;
+	const uint64_t mappedSize = (uint64_t) pages * G_PAGE_SIZE;
+	if((memory & G_PAGE_ALIGN_MASK) || memory > G_MEM_LOWER_HALF_END ||
+	   mappedSize > G_MEM_LOWER_HALF_END - memory + 1)
+		return;
 
-	g_task* targetTask = taskingGetById(data->processId);
-	if(!targetTask)
+	auto target = taskingAcquireTask(targetId);
+	if(!target)
+		return;
+	auto process = target->process;
+	auto snapshot = (g_shared_page*) heapTryAllocate(sizeof(g_shared_page) * pages);
+	if(!snapshot)
 	{
-		logInfo("%! task %i was unable to share memory with non-existing process %i", "syscall", task->id,
-		        data->processId);
+		taskingReleaseTask(target);
 		return;
 	}
-	g_process* targetProcess = targetTask->process;
-	mutexAcquire(&targetProcess->lock);
+	uint32_t retained = 0;
+	bool allUnmanaged = true;
 
-	g_virtual_address memory = (g_virtual_address) data->memory;
-	uint32_t pages = G_PAGE_ALIGN_UP(data->size) / G_PAGE_SIZE;
-	if(memory > G_MEM_LOWER_HALF_END || (memory + pages * G_PAGE_SIZE) > G_MEM_LOWER_HALF_END)
+	// Retain the source while its mappings are locked, before publishing aliases.
+	// Never hold both processes' locks, so reciprocal shares cannot deadlock.
+	mutexAcquire(&task->process->lock);
+	for(; retained < pages; ++retained)
 	{
-		logInfo("%! task %i was unable to share memory because addresses above %h are not allowed", "syscall", task->id,
-		        G_MEM_LOWER_HALF_END);
-		mutexRelease(&targetProcess->lock);
-		return;
-	}
-
-	g_virtual_address virtualRangeBase = addressRangePoolAllocate(targetProcess->virtualRangePool, pages,
-	                                                              G_PROC_VIRTUAL_RANGE_FLAG_NONE);
-	mutexRelease(&targetProcess->lock);
-
-	if(virtualRangeBase == 0)
-	{
-		logInfo(
-				"%! task %i was unable to share memory area %h of size %h with task %i because there was no free virtual range",
-				"syscall",
-				task->id, memory, pages * G_PAGE_SIZE, targetProcess->main->id);
-		return;
-	}
-
-	for(uint32_t i = 0; i < pages; i++)
-	{
-		g_physical_address physicalAddr = pagingVirtualToPhysical(memory + i * G_PAGE_SIZE);
-
-		targetTask = taskingGetById(data->processId);
-		if(!targetTask)
+		uint64_t entry = pagingVirtualToPageEntry(memory + retained * G_PAGE_SIZE);
+		if(!(entry & G_PAGE_PRESENT))
+			break;
+		snapshot[retained] = {entry & G_PAGE_PHYSICAL_MASK, entry & G_PAGE_UNMANAGED_FLAG};
+		if(!(entry & G_PAGE_UNMANAGED_FLAG))
 		{
-			logInfo("%! task %i was unable to share memory with no longer existing process %i", "syscall", task->id,
-			        data->processId);
-			return;
+			pageReferenceTrackerIncrement(snapshot[retained].address);
+			allUnmanaged = false;
 		}
-
-		mutexAcquire(&targetProcess->lock);
-		targetProcess = targetTask->process;
-
-		g_physical_address back = taskingMemoryTemporarySwitchTo(targetProcess->pageSpace);
-		pagingMapPage(virtualRangeBase + i * G_PAGE_SIZE, physicalAddr, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
-		taskingMemoryTemporarySwitchBack(back);
-		mutexRelease(&targetProcess->lock);
-
-		pageReferenceTrackerIncrement(physicalAddr);
 	}
+	mutexRelease(&task->process->lock);
 
-	data->virtualAddress = (void*) virtualRangeBase;
-	logDebug("%! shared memory area of process %i at %h of size %h with process %i to address %h", "syscall", task->id,
-	         memory,
-	         pages * G_PAGE_SIZE, targetProcess->main->id, virtualRangeBase);
+	g_virtual_address base = 0;
+	if(retained == pages)
+	{
+		mutexAcquire(&process->lock);
+		if(!process->terminating)
+			base = addressRangePoolAllocate(process->virtualRangePool, pages,
+											allUnmanaged ? G_PROC_VIRTUAL_RANGE_FLAG_WEAK
+														 : G_PROC_VIRTUAL_RANGE_FLAG_NONE);
+		if(base)
+		{
+			auto back = taskingMemoryTemporarySwitchTo(process->pageSpace);
+			uint32_t mapped = 0;
+			for(; mapped < pages; ++mapped)
+				if(!pagingMapPage(base + mapped * G_PAGE_SIZE, snapshot[mapped].address, G_PAGE_TABLE_USER_DEFAULT,
+								  G_PAGE_USER_DEFAULT | snapshot[mapped].flags))
+					break;
+			if(mapped != pages)
+			{
+				for(uint32_t i = 0; i < mapped; ++i)
+					pagingUnmapPage(base + i * G_PAGE_SIZE);
+				addressRangePoolFree(process->virtualRangePool, base);
+				base = 0;
+			}
+			taskingMemoryTemporarySwitchBack(back);
+		}
+		mutexRelease(&process->lock);
+	}
+	if(!base)
+		for(uint32_t i = 0; i < retained; ++i)
+			if(!(snapshot[i].flags & G_PAGE_UNMANAGED_FLAG))
+				memoryPhysicalFree(snapshot[i].address);
+	heapFree(snapshot);
+	data->virtualAddress = (void*) base;
+	taskingReleaseTask(target);
 }
 
 void syscallMapMmioArea(g_task* task, g_syscall_map_mmio* data)
@@ -203,25 +231,29 @@ void syscallMapMmioArea(g_task* task, g_syscall_map_mmio* data)
 
 	const uint32_t pages = mappedSize / G_PAGE_SIZE;
 	auto pool = task->process->virtualRangePool;
+	mutexAcquire(&task->process->lock);
 	g_virtual_address virtualRangeBase = addressRangePoolAllocate(pool, pages, G_PROC_VIRTUAL_RANGE_FLAG_WEAK);
 	if(virtualRangeBase == 0)
 	{
 		logInfo("%! task %i failed to map mmio memory, could not allocate virtual range", "syscall", task->id);
+		mutexRelease(&task->process->lock);
 		return;
 	}
 
 	for(uint32_t i = 0; i < pages; i++)
 	{
 		if(!pagingMapPage(virtualRangeBase + i * G_PAGE_SIZE, physicalAddress + i * G_PAGE_SIZE,
-		                  G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT))
+						  G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT | G_PAGE_UNMANAGED_FLAG))
 		{
 			// Only undo mappings installed by this call. Device pages are never freed.
 			for(uint32_t mapped = 0; mapped < i; mapped++)
 				pagingUnmapPage(virtualRangeBase + mapped * G_PAGE_SIZE);
 			addressRangePoolFree(pool, virtualRangeBase);
+			mutexRelease(&task->process->lock);
 			return;
 		}
 	}
 
 	data->virtualAddress = (void*) virtualRangeBase;
+	mutexRelease(&task->process->lock);
 }

@@ -23,12 +23,14 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/memory/paging.hpp"
+#include "kernel/memory/constants.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/system/processor/virtual_8086_monitor.hpp"
 #include "kernel/tasking/elf/elf_loader.hpp"
 #include "kernel/tasking/tasking.hpp"
 #include "kernel/tasking/tasking_memory.hpp"
 #include "kernel/logger/logger.hpp"
+#include "kernel/panic.hpp"
 
 /**
  * Names of the exceptions
@@ -69,37 +71,14 @@ g_address exceptionsGetCR2()
 
 bool exceptionsHandleDivideError(g_task* task)
 {
-	if(!task)
-		return false;
-
-	auto faultyInstruction = (uint8_t*) task->state->rip;
-	uint8_t opcode = faultyInstruction[0];
-	int skip = 1;
-
-	if(
-		opcode == 0xF6 // DIV
-		|| opcode == 0xF7 // IDIV
-	)
-	{
-		skip = 2;
-		uint8_t modrm = faultyInstruction[1];
-		uint8_t mod = (modrm >> 6) & 0x3;
-		if(mod == 1)
-			skip += 1;
-		else if(mod == 2)
-			skip += 4;
-	}
-
-	task->state->rip += skip;
-
-	logInfo("%! divide error in task %i at %x, skipping to RIP: %x", "exception", task->id, faultyInstruction,
-	        task->state->rip);
-	return true;
+	return false;
 }
 
 g_elf_object* exceptionsFindResponsibleObject(g_task* task, g_address rip)
 {
 	g_elf_object* object = nullptr;
+	if(!task || !task->process || !task->process->object)
+		return nullptr;
 
 	auto iter = hashmapIteratorStart(task->process->object->loadedObjects);
 	while(hashmapIteratorHasNext(&iter))
@@ -116,49 +95,77 @@ g_elf_object* exceptionsFindResponsibleObject(g_task* task, g_address rip)
 	return object;
 }
 
-Elf64_Sym* exceptionsFindFunctionSymbol(g_elf_object* object, g_address rip)
+static bool exceptionsReadUser(g_address address, void* output, size_t size)
 {
-	if(object->root)
+	if(address > G_MEM_LOWER_HALF_END || size > G_MEM_LOWER_HALF_END - address + 1)
+		return false;
+	auto bytes = (uint8_t*) output;
+	while(size)
 	{
-		// TODO: Symbol lookup only works well for shared libs so far, for some reason
-		return nullptr;
+		const auto entry = pagingVirtualToPageEntry(address);
+		if((entry & (G_PAGE_PRESENT | G_PAGE_USER_FLAG)) != (G_PAGE_PRESENT | G_PAGE_USER_FLAG) ||
+		   (entry & (G_PAGE_UNMANAGED_FLAG | G_PAGE_LARGE_PAGE_FLAG)))
+			return false;
+		const auto offset = address & G_PAGE_ALIGN_MASK;
+		const auto count = size < G_PAGE_SIZE - offset ? size : G_PAGE_SIZE - offset;
+		memoryCopy(bytes, (void*) G_MEM_PHYS_TO_VIRT((entry & G_PAGE_PHYSICAL_MASK) + offset), count);
+		address += count;
+		bytes += count;
+		size -= count;
 	}
+	return true;
+}
 
-	Elf64_Sym* bestMatch = nullptr;
-	g_address localRip = rip - object->baseAddress;
-
-	for(uint64_t symbolIndex = 0; symbolIndex < object->dynamicSymbolTableSize; symbolIndex++)
+static bool exceptionsFindFunctionSymbol(g_elf_object* object, g_address rip, Elf64_Sym* best)
+{
+	bool found = false;
+	const auto count = object->dynamicSymbolTableSize < 65536 ? object->dynamicSymbolTableSize : 65536;
+	for(uint64_t i = 0; i < count; ++i)
 	{
-		auto& symbol = object->dynamicSymbolTable[symbolIndex];
-
-		if(ELF64_ST_TYPE(symbol.st_info) == STT_FUNC)
+		Elf64_Sym symbol;
+		const auto table = (g_address) object->dynamicSymbolTable;
+		if(table > G_MEM_LOWER_HALF_END || i > (G_MEM_LOWER_HALF_END - table) / sizeof(symbol) ||
+		   !exceptionsReadUser(table + i * sizeof(symbol), &symbol, sizeof(symbol)))
+			break;
+		if(ELF64_ST_TYPE(symbol.st_info) == STT_FUNC && symbol.st_value <= rip - object->baseAddress &&
+		   (!found || symbol.st_value > best->st_value))
 		{
-			if(localRip >= symbol.st_value &&
-			   localRip < symbol.st_value + symbol.st_size)
-			{
-				return &symbol;
-			}
-
-			if(localRip >= symbol.st_value &&
-			   (!bestMatch || symbol.st_value > bestMatch->st_value))
-			{
-				bestMatch = &symbol;
-			}
+			*best = symbol;
+			found = true;
 		}
 	}
-
-	return bestMatch;
+	return found;
 }
 
 void exceptionsPrintCallAtRip(g_task* task, g_address rip)
 {
 	auto object = exceptionsFindResponsibleObject(task, rip);
-	auto function = object ? exceptionsFindFunctionSymbol(object, rip) : nullptr;
-
-	if(object && function)
+	Elf64_Sym function;
+	char name[128];
+	bool named = object && exceptionsFindFunctionSymbol(object, rip, &function) &&
+	             function.st_name < object->dynamicStringTableSize;
+	if(named)
 	{
-		auto functionName = function->st_name ? &object->dynamicStringTable[function->st_name] : "?";
-		logInfo("%#   %h (%s <%s> %h)", rip, object->name, functionName, rip - object->baseAddress);
+		size_t i = 0;
+		for(; i + 1 < sizeof(name); ++i)
+		{
+			const uint64_t offset = (uint64_t) function.st_name + i;
+			const auto table = (g_address) object->dynamicStringTable;
+			if(offset >= object->dynamicStringTableSize || table > G_MEM_LOWER_HALF_END ||
+			   offset > G_MEM_LOWER_HALF_END - table || !exceptionsReadUser(table + offset, &name[i], 1))
+			{
+				named = false;
+				break;
+			}
+			if(!name[i])
+				break;
+		}
+		name[i] = 0;
+	}
+
+	if(named)
+	{
+		logInfo("%#   %h (%s <%s> %h)", rip, object->name, name, rip - object->baseAddress);
 	}
 	else if(object)
 	{
@@ -172,21 +179,31 @@ void exceptionsPrintCallAtRip(g_task* task, g_address rip)
 
 void exceptionsPrintStackTrace(g_task* task, volatile g_processor_state* state)
 {
+	if(!task || (state->cs & 3) != 3)
+		return;
+	mutexAcquire(&task->process->lock);
 	logInfo("%# stack trace:");
 	exceptionsPrintCallAtRip(task, state->rip);
 
-	auto rbp = reinterpret_cast<g_address*>(state->rbp);
+	auto rbp = state->rbp;
 	for(int frame = 0; frame < 25; ++frame)
 	{
-		g_address rip = rbp[1];
+		g_address words[2];
+		if((rbp & (sizeof(g_address) - 1)) || rbp < task->stack.start + G_PAGE_SIZE ||
+		   rbp > task->stack.end || sizeof(words) > task->stack.end - rbp ||
+		   !exceptionsReadUser(rbp, words, sizeof(words)))
+			break;
+		g_address rip = words[1];
 		if(rip < 0x1000)
 		{
 			break;
 		}
-		rbp = reinterpret_cast<g_address*>(rbp[0]);
-
 		exceptionsPrintCallAtRip(task, rip);
+		if(words[0] <= rbp)
+			break;
+		rbp = words[0];
 	}
+	mutexRelease(&task->process->lock);
 }
 
 /**
@@ -196,7 +213,7 @@ void exceptionsDumpState(g_task* task, volatile g_processor_state* state)
 {
 	g_process* process = task ? task->process : nullptr;
 	logInfo("%! (task %i, process %i) %s", "exception", task ? task->id : G_TID_NONE,
-	        process ? process->main->id : G_TID_NONE, EXCEPTION_NAMES[state->intr]);
+	        process ? process->id : G_TID_NONE, state->intr < 32 ? EXCEPTION_NAMES[state->intr] : "unknown");
 
 	if(state->intr == 0x0E)
 	{
@@ -206,13 +223,17 @@ void exceptionsDumpState(g_task* task, volatile g_processor_state* state)
 	logInfo("%#   INTR: %h    ERROR: %h", state->intr, state->error);
 	logInfo("%#    RIP: %h   RFLAGS: %h", state->rip, state->rflags);
 	logInfo("%#    CS:  %h       SS: %h", state->cs, state->ss);
-	logInfo("%#    RSP: %h      RBP: %h", state->rbp, state->rbp);
+	logInfo("%#    RSP: %h      RBP: %h", state->rsp, state->rbp);
 	logInfo("%#    RAX: %h  RBX: %h  %RCX: %h  RDX: %h", state->rax, state->rbx, state->rcx, state->rdx);
 	if(task)
 	{
 		logInfo("%#   task stack: %h - %h", task->stack.start, task->stack.end);
 		logInfo("%#   intr stack: %h - %h", task->interruptStack.start, task->interruptStack.end);
-
+	}
+	// A kernel fault may have interrupted a lock holder. Only immutable register
+	// diagnostics are safe there; user faults have a clean syscall/lock boundary.
+	if(task && (state->cs & 3) == 3 && task->process->object)
+	{
 		logInfo("%# loaded objects:");
 		auto iter = hashmapIteratorStart(task->process->object->loadedObjects);
 		while(hashmapIteratorHasNext(&iter))
@@ -227,6 +248,19 @@ void exceptionsDumpState(g_task* task, volatile g_processor_state* state)
 	exceptionsPrintStackTrace(task, state);
 }
 
+static bool exceptionsTerminateUserTask(g_task* task, volatile g_processor_state* state)
+{
+	if(!task || (state->cs & 3) != 3 || task->type == G_TASK_TYPE_VITAL)
+		return false;
+	taskingTerminateProcess(task->process);
+	mutexAcquire(&task->lock);
+	task->status = G_TASK_STATUS_DEAD;
+	mutexRelease(&task->lock);
+	waitQueueWake(&task->waitersJoin);
+	taskingSchedule();
+	return true;
+}
+
 bool exceptionsHandlePageFault(g_task* task, volatile g_processor_state* state)
 {
 	g_virtual_address accessed = exceptionsGetCR2();
@@ -234,10 +268,13 @@ bool exceptionsHandlePageFault(g_task* task, volatile g_processor_state* state)
 
 	if(task)
 	{
-		if(taskingMemoryHandleStackOverflow(task, accessed))
+		// Demand allocation can resolve a missing translation, never a protection
+		// violation or a reserved-bit page-table fault.
+		const bool missingPage = (state->error & (1 | 8)) == 0;
+		if(missingPage && taskingMemoryHandleStackOverflow(task, accessed))
 			return true;
 
-		if(memoryOnDemandHandlePageFault(task, accessed))
+		if(missingPage && memoryOnDemandHandlePageFault(task, accessed))
 			return true;
 
 		logInfo("%! (task %i, core %i) RIP: %x (accessed %h, mapping value: %h)", "pagefault", task->id,
@@ -245,17 +282,7 @@ bool exceptionsHandlePageFault(g_task* task, volatile g_processor_state* state)
 
 		exceptionsDumpState(task, state);
 
-		if(task->type == G_TASK_TYPE_VITAL)
-			return false;
-
-		if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
-			task->status = G_TASK_STATUS_DEAD;
-		else
-			// TODO Somehow give the user task a chance to do something
-			task->status = G_TASK_STATUS_DEAD;
-
-		taskingSchedule();
-		return true;
+		return exceptionsTerminateUserTask(task, state);
 	}
 
 	logInfo("%! RIP: %x (accessed %h, mapping value: %h)", "pagefault", processorGetCurrentId(), state->rip, accessed,
@@ -267,23 +294,15 @@ bool exceptionsHandleGeneralProtectionFault(g_task* task, volatile g_processor_s
 {
 	exceptionsDumpState(task, state);
 
-	if(!task)
-		return false;
-
-	logInfo("%! #%i task %i killed due to general protection fault at EIP %h", "exception", processorGetCurrentId(),
-	        task->id, task->state->rip);
-	task->status = G_TASK_STATUS_DEAD;
-	taskingSchedule();
-	return true;
+	return exceptionsTerminateUserTask(task, state);
 }
 
 bool exceptionsKillTask(g_task* task)
 {
-	logInfo("%! task %i killed due to exception %i (error %i) at EIP %h", "exception", task->id, task->state->intr,
-	        task->state->error, task->state->rip);
-	task->status = G_TASK_STATUS_DEAD;
-	taskingSchedule();
-	return true;
+	if(!task)
+		return false;
+	exceptionsDumpState(task, task->state);
+	return exceptionsTerminateUserTask(task, task->state);
 }
 
 void exceptionsHandle(g_task* task, volatile g_processor_state* state)
@@ -320,12 +339,13 @@ void exceptionsHandle(g_task* task, volatile g_processor_state* state)
 
 	if(!resolved)
 	{
-		logInfo("%*%! (task %i) unresolved exception %i (error %i) at RIP: %h RSP: %h", 0x0C, "exception",
-		        task ? task->id : G_TID_NONE, state->intr,
-		        state->error, state->rip, state->rsp);
-		for(;;)
+		if(task && (state->cs & 3) == 3 && state->intr != 2 && state->intr != 8 && state->intr != 18)
 		{
-			asm("hlt");
+			exceptionsDumpState(task, state);
+			if(exceptionsTerminateUserTask(task, state))
+				return;
 		}
+		panic("%! kernel/hardware exception %i (error %h) at RIP %h RSP %h", "exception",
+		      state->intr, state->error, state->rip, state->rsp);
 	}
 }

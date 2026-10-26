@@ -77,6 +77,14 @@ struct g_task
     int interruptionLevel;
 
     /**
+     * Lookup pins prevent teardown while another core uses this task/process.
+     */
+    uint32_t references;
+    bool terminationRequested;
+    bool spawnPending;
+    g_tid spawnParent;
+
+    /**
      * Executable loading publishes completion before its parent consumes the spawn result.
      * The child then waits for release after the parent has finished process initialization.
      * Both flags are accessed with atomic acquire/release operations.
@@ -190,6 +198,8 @@ struct g_task_entry
 #define G_PROC_VIRTUAL_RANGE_FLAG_NONE 0
 /* Weak flag signals that the physical memory mapped behind the virtual range is not managed by the kernel (for example MMIO). */
 #define G_PROC_VIRTUAL_RANGE_FLAG_WEAK 1
+/* Task stacks and TLS retain kernel references until their owner is destroyed. */
+#define G_PROC_VIRTUAL_RANGE_FLAG_INTERNAL 2
 
 struct g_process_spawn_arguments
 {
@@ -237,8 +247,10 @@ struct g_process
     g_pid id;
     g_mutex lock;
 
+    // Main task metadata stays alive until the last sibling has been reaped.
     g_task* main;
     g_task_entry* tasks;
+    bool terminating;
 
     g_physical_address pageSpace;
     g_address_range_pool* virtualRangePool;

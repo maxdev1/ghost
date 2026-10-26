@@ -21,6 +21,7 @@
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/memory/paging.hpp"
 #include "kernel/system/mutex.hpp"
+#include "kernel/panic.hpp"
 
 static g_pp_reference_count_directory directory;
 static g_mutex lock;
@@ -58,17 +59,20 @@ void pageReferenceTrackerIncrement(g_physical_address address)
 	mutexAcquire(&lock);
 
 	auto table = _pageReferenceTrackerFind(address, true);
-	++table->referenceCount[(address / G_PAGE_SIZE) % 1024];
+	auto& count = table->referenceCount[(address / G_PAGE_SIZE) % 1024];
+	if(count == UINT32_MAX)
+		panic("%! physical page reference count overflow", "memory");
+	++count;
 
 	mutexRelease(&lock);
 }
 
-int16_t pageReferenceTrackerDecrement(g_physical_address address)
+uint32_t pageReferenceTrackerDecrement(g_physical_address address)
 {
 	mutexAcquire(&lock);
 
 	auto table = _pageReferenceTrackerFind(address, false);
-	int16_t refs = 0;
+	uint32_t refs = 0;
 	if(table)
 	{
 		auto& count = table->referenceCount[(address / G_PAGE_SIZE) % 1024];
@@ -78,5 +82,5 @@ int16_t pageReferenceTrackerDecrement(g_physical_address address)
 	}
 	mutexRelease(&lock);
 
-	return refs < 0 ? 0 : refs;
+	return refs;
 }

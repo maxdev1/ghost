@@ -20,11 +20,24 @@
 
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/memory/memory.hpp"
+#include "kernel/memory/constants.hpp"
 #include "kernel/tasking/elf/elf_loader.hpp"
 #include "kernel/tasking/elf/elf_tls.hpp"
 #include "kernel/utils/string.hpp"
 #include "kernel/logger/logger.hpp"
 #include "kernel/utils/debug.hpp"
+
+static bool _elfObjectValidateLoadRange(Elf64_Phdr phdr, g_virtual_address base)
+{
+	// The loader's copy/zero helpers use signed 32-bit lengths. Images also
+	// must stay below the separate pool used for stacks, TLS and shared ranges.
+	if(phdr.p_filesz > phdr.p_memsz || phdr.p_memsz > INT32_MAX ||
+	   phdr.p_offset > G_ADDRESS_MAX - phdr.p_filesz ||
+	   base > G_USER_MAXIMUM_HEAP_BREAK || phdr.p_vaddr > G_USER_MAXIMUM_HEAP_BREAK - base)
+		return false;
+	const g_virtual_address start = base + phdr.p_vaddr;
+	return phdr.p_memsz == 0 || (start >= G_PAGE_SIZE && phdr.p_memsz <= G_USER_MAXIMUM_HEAP_BREAK - start);
+}
 
 g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* name, g_fd file, g_virtual_address base)
 {
@@ -37,26 +50,15 @@ g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* n
 	object->parent = parentObject;
 	object->baseAddress = base;
 	object->root = (parentObject == 0);
-	object->localSymbols = hashmapCreateString<g_elf_symbol_info>(16);
 	if(object->root)
 	{
 		object->loadedObjects = hashmapCreateString<g_elf_object*>(16);
-		object->globalSymbols = hashmapCreateString<g_elf_symbol_info>(16);
 		object->nextObjectId = 0;
 		object->symbolLookupOrderList = 0;
 	}
 	result.object = object;
 
 	logDebug("%! loading object '%s' (%i) to %h (fd %i)", "elf", name, object->id, base, file);
-
-	// Check ELF header
-	result.validation = elfReadAndValidateHeader(file, &object->header, object->root);
-	if(result.validation != G_SPAWN_VALIDATION_SUCCESSFUL)
-	{
-		logInfo("%! validation failed with status %i when loading object %s", "elf", result.validation, name);
-		result.status = object->root ? G_SPAWN_STATUS_FORMAT_ERROR : G_SPAWN_STATUS_DEPENDENCY_ERROR;
-		return result;
-	}
 
 	// Add to list of already loaded dependencies
 	g_elf_object* rootObject = object;
@@ -67,8 +69,21 @@ g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* n
 	hashmapPut(rootObject->loadedObjects, name, object);
 
 	// Add to relocate order list in root object
+	// Keep both load orders: normal relocations prefer the first definition,
+	// while COPY relocations retain the reverse-load-order lookup.
+	if(rootObject->symbolLookupOrderList)
+		rootObject->symbolLookupOrderList->symbolLoadOrderNext = object;
 	object->symbolLookupOrderListNext = rootObject->symbolLookupOrderList;
 	rootObject->symbolLookupOrderList = object;
+
+	// Check ELF header
+	result.validation = elfReadAndValidateHeader(file, &object->header, object->root);
+	if(result.validation != G_SPAWN_VALIDATION_SUCCESSFUL)
+	{
+		logInfo("%! validation failed with status %i when loading object %s", "elf", result.validation, name);
+		result.status = object->root ? G_SPAWN_STATUS_FORMAT_ERROR : G_SPAWN_STATUS_DEPENDENCY_ERROR;
+		return result;
+	}
 
 	// Load each program header
 	for(Elf64_Half p = 0; p < object->header.e_phnum; p++)
@@ -85,6 +100,11 @@ g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* n
 
 		if(phdr.p_type == PT_LOAD)
 		{
+			if(!_elfObjectValidateLoadRange(phdr, base))
+			{
+				result.status = G_SPAWN_STATUS_FORMAT_ERROR;
+				break;
+			}
 			auto fileStart = base + phdr.p_vaddr;
 			auto alignedStart = G_PAGE_ALIGN_DOWN(fileStart);
 			auto alignedEnd = G_PAGE_ALIGN_UP(fileStart + phdr.p_memsz);
@@ -151,6 +171,8 @@ g_elf_object_load_result elfObjectLoad(g_elf_object* parentObject, const char* n
 
 g_spawn_status elfObjectLoadLoadSegment(g_fd file, Elf64_Phdr phdr, g_virtual_address base)
 {
+	if(!_elfObjectValidateLoadRange(phdr, base))
+		return G_SPAWN_STATUS_FORMAT_ERROR;
 	g_address fileStart = base + phdr.p_vaddr;
 	g_offset fileSize = phdr.p_filesz;
 	g_address fileEnd = fileStart + fileSize;
@@ -162,14 +184,21 @@ g_spawn_status elfObjectLoadLoadSegment(g_fd file, Elf64_Phdr phdr, g_virtual_ad
 	uint32_t pages = (alignedEnd - alignedStart) / G_PAGE_SIZE;
 	for(uint32_t i = 0; i < pages; i++)
 	{
-		g_physical_address page = memoryPhysicalAllocate();
-		pagingMapPage(alignedStart + i * G_PAGE_SIZE, page, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
+		auto address = alignedStart + i * G_PAGE_SIZE;
+		if(pagingVirtualToPageEntry(address) & G_PAGE_PRESENT)
+			continue;
+		g_physical_address page = memoryPhysicalTryAllocate();
+		if(!page)
+			return G_SPAWN_STATUS_MEMORY_ERROR;
+		if(pagingMapPage(address, page, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT))
+			memorySetBytes((void*) address, 0, G_PAGE_SIZE);
+		else
+		{
+			memoryPhysicalFree(page);
+			if(!(pagingVirtualToPageEntry(address) & G_PAGE_PRESENT))
+				return G_SPAWN_STATUS_MEMORY_ERROR;
+		}
 	}
-
-	// Zero everything before content
-	uint32_t spaceBefore = fileStart - alignedStart;
-	if(spaceBefore > 0)
-		memorySetBytes((void*) alignedStart, 0, spaceBefore);
 
 	// Read data to memory
 	if(!filesystemReadToMemory(file, phdr.p_offset, (uint8_t*) fileStart, fileSize))
@@ -177,10 +206,9 @@ g_spawn_status elfObjectLoadLoadSegment(g_fd file, Elf64_Phdr phdr, g_virtual_ad
 		return G_SPAWN_STATUS_IO_ERROR;
 	}
 
-	// Zero everything after content
-	uint32_t spaceAfter = alignedEnd - fileEnd;
-	if(spaceAfter > 0)
-		memorySetBytes((void*) fileEnd, 0, spaceAfter);
+	// Zero BSS only; adjacent segments may share the rest of a boundary page.
+	if(phdr.p_memsz > fileSize)
+		memorySetBytes((void*) fileEnd, 0, phdr.p_memsz - fileSize);
 
 	return G_SPAWN_STATUS_SUCCESSFUL;
 }
@@ -252,37 +280,6 @@ void elfObjectInspect(g_elf_object* object)
 		}
 		it++;
 	}
-
-	// Put symbols into root objects dynamic symbol table. This happens in load order.
-	if(object->dynamicSymbolTable)
-	{
-		g_elf_object* rootObject = object;
-		while(rootObject->parent)
-			rootObject = rootObject->parent;
-
-		uint32_t pos = 0;
-		Elf64_Sym* symbol = object->dynamicSymbolTable;
-		while(pos < object->dynamicSymbolTableSize)
-		{
-			const char* symbolName = object->dynamicStringTable + symbol->st_name;
-
-			if(symbol->st_shndx)
-			{
-				g_elf_symbol_info symbolInfo{};
-				symbolInfo.object = object;
-				symbolInfo.absolute = object->baseAddress + symbol->st_value;
-				symbolInfo.value = symbol->st_value;
-
-				hashmapPut<const char*, g_elf_symbol_info>(object->localSymbols, symbolName, symbolInfo);
-
-				if(hashmapGetEntry<const char*, g_elf_symbol_info>(rootObject->globalSymbols, symbolName) == nullptr)
-					hashmapPut<const char*, g_elf_symbol_info>(rootObject->globalSymbols, symbolName, symbolInfo);
-			}
-
-			symbol++;
-			pos++;
-		}
-	}
 }
 
 g_elf_object_load_result elfObjectLoadDependencies(g_elf_object* object)
@@ -311,6 +308,46 @@ g_elf_object_load_result elfObjectLoadDependencies(g_elf_object* object)
 	}
 
 	return result;
+}
+
+static uint32_t _elfObjectSymbolHash(const char* name)
+{
+	uint32_t hash = 0;
+	while(*name)
+	{
+		hash = (hash << 4) + (uint8_t) *name++;
+		uint32_t high = hash & 0xf0000000;
+		if(high)
+			hash ^= high >> 24;
+		hash &= ~high;
+	}
+	return hash;
+}
+
+static Elf64_Sym* _elfObjectFindSymbol(g_elf_object* object, const char* name, uint32_t hash,
+                                     bool lastDefinition)
+{
+	if(!object->dynamicSymbolHashTable || !object->dynamicSymbolTable || !object->dynamicStringTable)
+		return nullptr;
+	const uint32_t bucketCount = object->dynamicSymbolHashTable[0];
+	if(!bucketCount)
+		return nullptr;
+	auto buckets = object->dynamicSymbolHashTable + 2;
+	auto chains = buckets + bucketCount;
+	uint32_t index = buckets[hash % bucketCount];
+	uint32_t found = 0;
+	// Bound traversal even when an ELF has a corrupt chain or symbol index.
+	for(uint32_t remaining = object->dynamicSymbolTableSize;
+	    index && index < object->dynamicSymbolTableSize && remaining; --remaining)
+	{
+		auto symbol = &object->dynamicSymbolTable[index];
+		if(symbol->st_shndx && symbol->st_name < object->dynamicStringTableSize &&
+		   stringEquals(object->dynamicStringTable + symbol->st_name, name) &&
+		   (!found || (lastDefinition ? index > found : index < found)))
+			found = index;
+		index = chains[index];
+	}
+	return found ? &object->dynamicSymbolTable[found] : nullptr;
 }
 
 void elfObjectApplyRelocations(g_fd file, g_elf_object* object)
@@ -348,40 +385,30 @@ void elfObjectApplyRelocations(g_fd file, g_elf_object* object)
 			if(type == R_X86_64_32 || type == R_X86_64_64 || type == R_X86_64_PC32 ||
 			   type == R_X86_64_GLOB_DAT || type == R_X86_64_JUMP_SLOT ||
 			   type == R_X86_64_GOT32 || type == R_X86_64_TPOFF64 ||
-			   type == R_X86_64_DTPMOD64 || type == R_X86_64_DTPOFF32 || type == R_X86_64_DTPOFF64 || type ==
-			   R_X86_64_RELATIVE ||
+			   type == R_X86_64_DTPMOD64 || type == R_X86_64_DTPOFF32 || type == R_X86_64_DTPOFF64 ||
 			   type == R_X86_64_COPY || type == R_X86_64_TPOFF32)
 			{
 				Elf64_Sym* symbol = &object->dynamicSymbolTable[symbolIndex];
 				symbolName = &object->dynamicStringTable[symbol->st_name];
 				symbolSize = symbol->st_size;
 
+				const bool copy = type == R_X86_64_COPY;
+				const uint32_t hash = _elfObjectSymbolHash(symbolName);
 				bool symbolFound = false;
-				if(type == R_X86_64_COPY)
+				for(auto candidate = copy ? rootObject->symbolLookupOrderList : rootObject;
+				    candidate;
+				    candidate = copy ? candidate->symbolLookupOrderListNext : candidate->symbolLoadOrderNext)
 				{
-					auto symbolLookupEntry = rootObject->symbolLookupOrderList;
-					while(symbolLookupEntry)
+					auto definition = _elfObjectFindSymbol(candidate, symbolName, hash, copy);
+					if(definition)
 					{
-						auto entry = hashmapGetEntry(symbolLookupEntry->localSymbols, symbolName);
-						if(entry)
-						{
-							symbolInfo = entry->value;
-							symbolFound = true;
-							break;
-						}
-						symbolLookupEntry = symbolLookupEntry->symbolLookupOrderListNext;
-					}
-				}
-				else
-				{
-					auto entry = hashmapGetEntry(rootObject->globalSymbols, symbolName);
-					if(entry)
-					{
+						symbolInfo.object = candidate;
+						symbolInfo.absolute = candidate->baseAddress + definition->st_value;
+						symbolInfo.value = definition->st_value;
 						symbolFound = true;
-						symbolInfo = entry->value;
+						break;
 					}
 				}
-
 				if(symbolFound)
 				{
 					cS = symbolInfo.absolute;
@@ -481,11 +508,16 @@ void elfObjectDestroy(g_elf_object* elfObject)
 		hashmapDestroy(elfObject->loadedObjects);
 	}
 
-	hashmapDestroy(elfObject->localSymbols);
-
-	if(elfObject->globalSymbols)
-		hashmapDestroy(elfObject->globalSymbols);
-
+	while(elfObject->dependencies)
+	{
+		auto dependency = elfObject->dependencies;
+		elfObject->dependencies = dependency->next;
+		heapFree(dependency->name);
+		heapFree(dependency);
+	}
+	if(elfObject->tlsPart.content)
+		heapFree(elfObject->tlsPart.content);
+	heapFree(elfObject->name);
 	heapFree(elfObject);
 }
 

@@ -20,6 +20,7 @@
 
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/memory/gdt.hpp"
+#include "kernel/memory/paging_shootdown.hpp"
 #include "kernel/logger/logger.hpp"
 #include "kernel/calls/syscall.hpp"
 #include "kernel/system/interrupts/apic/ioapic.hpp"
@@ -67,6 +68,10 @@ void interruptsInitializeAp()
 
 extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_state* state)
 {
+	// A shootdown can interrupt any lock holder or a partially restored task.
+	// Return the interrupted state without touching task, FPU, TLS or scheduler state.
+	if(state->intr == 2 && pagingHandleShootdownNmi())
+		return state;
 	g_task* task = taskingGetCurrentTask();
 	if(task)
 		taskingSaveState(task, (g_processor_state*) state);
@@ -139,7 +144,7 @@ void interruptsInstallRoutines()
 {
 	idtCreateGate(0x00, (void*) _isr00, G_IDT_FLAGS_INTERRUPT_GATE_KERNEL);
 	idtCreateGate(0x01, (void*) _isr01, G_IDT_FLAGS_INTERRUPT_GATE_KERNEL);
-	idtCreateGate(0x02, (void*) _isr02, G_IDT_FLAGS_INTERRUPT_GATE_KERNEL);
+	idtCreateGate(0x02, (void*) _isr02, G_IDT_FLAGS_INTERRUPT_GATE_KERNEL, 1);
 	idtCreateGate(0x03, (void*) _isr03, G_IDT_FLAGS_INTERRUPT_GATE_KERNEL);
 	idtCreateGate(0x04, (void*) _isr04, G_IDT_FLAGS_INTERRUPT_GATE_KERNEL);
 	idtCreateGate(0x05, (void*) _isr05, G_IDT_FLAGS_INTERRUPT_GATE_KERNEL);

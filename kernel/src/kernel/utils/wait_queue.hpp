@@ -25,16 +25,19 @@
 
 #include <ghost/tasks/types.h>
 
+struct g_wait_queue;
 struct g_wait_queue_entry
 {
     g_tid task;
     g_wait_queue_entry* next;
+    g_wait_queue* queue;
+    g_wait_queue_entry* registryNext;
+    g_wait_queue_entry* registryPrevious;
 };
 
 struct g_wait_queue
 {
     g_wait_queue_entry* head;
-    g_mutex lock;
 };
 
 /**
@@ -56,5 +59,10 @@ void waitQueueRemove(g_wait_queue* queue, g_tid task);
  * Wakes all tasks in the queue.
  */
 void waitQueueWake(g_wait_queue* queue);
+
+/** Removes every wait registration held by a task before destroying it. */
+void waitQueueRemoveTask(g_tid task);
+
+bool waitQueueIsEmpty(g_wait_queue* queue);
 
 #endif

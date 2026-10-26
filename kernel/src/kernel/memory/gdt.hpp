@@ -137,6 +137,7 @@ struct g_gdt
     g_gdt_tss_descriptor entryTss;
 
     __attribute__((aligned(16))) g_tss tss;
+    __attribute__((aligned(16))) uint8_t nmiStack[8192];
 } __attribute__((packed));
 
 /**

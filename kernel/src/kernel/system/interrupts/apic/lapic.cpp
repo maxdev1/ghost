@@ -146,7 +146,16 @@ void lapicSendEndOfInterrupt()
 
 void lapicWaitForIcrSend()
 {
-	while(APIC_LVT_GET_DELIVERY_STATUS(lapicRead(APIC_REGISTER_INT_COMMAND_HIGH)) == APIC_ICR_DELIVS_SEND_PENDING)
+	while(lapicRead(APIC_REGISTER_INT_COMMAND_LOW) & APIC_ICR_DELIVS_SEND_PENDING)
 	{
+		asm volatile("pause");
 	}
+}
+
+void lapicSendNmi(uint32_t apicId)
+{
+	lapicWaitForIcrSend();
+	lapicWrite(APIC_REGISTER_INT_COMMAND_HIGH, apicId << 24);
+	lapicWrite(APIC_REGISTER_INT_COMMAND_LOW, APIC_ICR_DELMOD_NMI | APIC_ICR_LEVEL_ASSERT);
+	lapicWaitForIcrSend();
 }

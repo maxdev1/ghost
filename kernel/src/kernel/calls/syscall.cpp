@@ -46,8 +46,10 @@ void syscallHandle(g_task* task)
 
 void syscall(uint32_t callId, void* syscallData)
 {
-	g_task* task = taskingGetCurrentTask();
-	if(callId > G_SYSCALL_MAX)
+	taskingHandleTerminationRequest();
+
+	auto task = taskingGetCurrentTask();
+	if(callId >= G_SYSCALL_MAX)
 	{
 		logInfo("%! task %i tried to use out-of-range syscall %i", "syscall", task->id, callId);
 		return;
@@ -69,11 +71,13 @@ void syscall(uint32_t callId, void* syscallData)
 
 	interruptsDisable();
 	task->state = state;
+
+	taskingHandleTerminationRequest();
 }
 
 void _syscallRegister(int callId, g_syscall_handler handler, bool interruptible = false)
 {
-	if(callId > G_SYSCALL_MAX)
+	if(callId < 0 || callId >= G_SYSCALL_MAX)
 		panic("%! tried to register syscall with id %i, maximum is %i", "syscall", callId, G_SYSCALL_MAX);
 
 	syscallRegistrations[callId].handler = handler;

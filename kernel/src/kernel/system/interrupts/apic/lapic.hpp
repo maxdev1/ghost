@@ -130,6 +130,8 @@ void lapicWrite(uint32_t reg, uint32_t value);
 
 void lapicWaitForIcrSend();
 
+void lapicSendNmi(uint32_t apicId);
+
 void lapicSendEndOfInterrupt();
 
 #endif

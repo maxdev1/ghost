@@ -102,7 +102,7 @@ g_clock_local* clockGetLocal()
 
 void clockWaitForTime(g_tid task, uint64_t wakeTime)
 {
-	g_task* waiter = taskingGetById(task);
+	auto waiter = taskingAcquireTask(task);
 	if(!waiter)
 		return;
 
@@ -146,6 +146,7 @@ void clockWaitForTime(g_tid task, uint64_t wakeTime)
 	}
 
 	mutexRelease(&local->lock);
+	taskingReleaseTask(waiter);
 }
 
 void clockWakeWaiters(g_clock_local* local)
@@ -187,21 +188,25 @@ void clockUpdate()
 	mutexRelease(&local->lock);
 }
 
-void clockUnwaitForTime(g_tid task)
+void clockUnwaitForTime(g_task* waiter)
 {
-	g_task* waiter = taskingGetById(task);
-	if(!waiter)
-		return;
-
 	auto local = _clockGetLocalForTask(waiter);
 	mutexAcquire(&local->lock);
 	_clockRemoveWaiter(local, waiter);
 	mutexRelease(&local->lock);
 }
 
+void clockUnwaitForTime(g_tid task)
+{
+	auto waiter = taskingAcquireTask(task);
+	if(waiter)
+		clockUnwaitForTime(waiter);
+	taskingReleaseTask(waiter);
+}
+
 bool clockHasTimedOut(g_tid task)
 {
-	g_task* waiter = taskingGetById(task);
+	auto waiter = taskingAcquireTask(task);
 	if(!waiter)
 		return true;
 
@@ -209,5 +214,6 @@ bool clockHasTimedOut(g_tid task)
 	mutexAcquire(&local->lock);
 	bool timeout = !waiter->timeoutWait.active || local->time >= waiter->timeoutWait.wakeTime;
 	mutexRelease(&local->lock);
+	taskingReleaseTask(waiter);
 	return timeout;
 }

@@ -83,9 +83,18 @@ struct g_bitmap_page_allocator
  */
 void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, limine_memmap_response* memoryMap);
 
+/**
+ * @returns an allocated frame. Unmanaged, metadata and already-free pages are
+ * rejected without changing availability; unaligned addresses are fatal.
+ */
 void bitmapPageAllocatorMarkFree(g_bitmap_page_allocator* allocator, g_physical_address address);
 
 g_physical_address bitmapPageAllocatorAllocate(g_bitmap_page_allocator* allocator);
+
+/**
+ * @returns zero if no frame can be claimed without consuming the reserve.
+ */
+g_physical_address bitmapPageAllocatorTryAllocate(g_bitmap_page_allocator* allocator, uint32_t reservePages);
 
 
 #endif

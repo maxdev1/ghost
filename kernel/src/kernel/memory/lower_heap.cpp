@@ -47,11 +47,12 @@ void* lowerHeapAllocate(uint32_t size)
 
 	mutexAcquire(&lowerHeapMutex);
 
-	void* ptr = memoryAllocatorAllocate(&lowerHeapAllocator, size);
+	g_size allocatedSize;
+	void* ptr = memoryAllocatorAllocate(&lowerHeapAllocator, size, &allocatedSize);
 	if(!ptr)
 		panic("%! failed to allocate lower memory of size %x", "lowerheap", size);
 
-	lowerHeapAmountInUse += size;
+	lowerHeapAmountInUse += allocatedSize;
 
 	mutexRelease(&lowerHeapMutex);
 	return ptr;
@@ -69,5 +70,8 @@ void lowerHeapFree(void* ptr)
 
 uint32_t lowerHeapGetUsedAmount()
 {
-	return lowerHeapAmountInUse;
+	mutexAcquire(&lowerHeapMutex);
+	auto amount = lowerHeapAmountInUse;
+	mutexRelease(&lowerHeapMutex);
+	return amount;
 }

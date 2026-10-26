@@ -116,7 +116,8 @@ void requestsHandle(g_task* currentTask, uint8_t irq)
 
 	mutexAcquire(&registrationsLock);
 	auto& registration = registrations[irq];
-	handlerTask = registration.task;
+	if(registration.task)
+		handlerTask = taskingAcquireTask(registration.task->id);
 	if(handlerTask && registration.waiting)
 	{
 		registration.waiting = false;
@@ -144,12 +145,17 @@ void requestsHandle(g_task* currentTask, uint8_t irq)
 		mutexRelease(&handlerTask->lock);
 	}
 
-	if(!wakeHandler && !resumeHandler)
+	if((!wakeHandler && !resumeHandler) || !handlerTask->assignment ||
+	   handlerTask->assignment->processor != processorGetCurrentId())
+	{
+		taskingReleaseTask(handlerTask);
 		return;
+	}
 
 	taskingSetCurrent(handlerTask);
 
 	// Once the handler has finished, let the scheduler go back to interrupted task
 	if(currentTask)
 		schedulerPreferTask(currentTask);
+	taskingReleaseTask(handlerTask);
 }

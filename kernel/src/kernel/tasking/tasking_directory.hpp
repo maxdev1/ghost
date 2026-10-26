@@ -35,6 +35,9 @@ struct g_task_directory_entry
  */
 void taskingDirectoryInitialize();
 
+/** Removes names owned by a dead task and unused directory records. */
+void taskingDirectoryTaskRemoved(g_tid task);
+
 /**
  * Registers the given task in the directory. The priority decides if registering is valid,
  * a task with a stronger security level always overrides weaker, and weaker can't override
@@ -48,9 +51,9 @@ bool taskingDirectoryRegister(const char* name, g_tid tid, g_security_level prio
 g_tid taskingDirectoryGet(const char* name);
 
 /**
- * @return name for the task or nullptr
+ * Copies a task name while its directory entry is locked, truncating with a NUL.
  */
-const char* taskingDirectoryGetIdentifier(g_tid tid);
+void taskingDirectoryCopyIdentifier(g_tid tid, char* out, uint32_t capacity);
 
 /**
  * Adds the task to the wait queue for when another task registers with this identifier.

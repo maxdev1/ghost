@@ -85,9 +85,8 @@ void addressRangePoolAddRange(g_address_range_pool* pool, g_address start, g_add
 			pool->first = newRange;
 		}
 	}
-	mutexRelease(&pool->lock);
-
 	addressRangePoolMerge(pool);
+	mutexRelease(&pool->lock);
 }
 
 void addressRangePoolCloneRanges(g_address_range_pool* pool, g_address_range_pool* other)
@@ -207,6 +206,7 @@ int32_t addressRangePoolFree(g_address_range_pool* pool, g_address base)
 	}
 
 	range->used = false;
+	range->flags = 0;
 	freedPages = range->pages;
 	addressRangePoolMerge(pool);
 
@@ -216,6 +216,7 @@ int32_t addressRangePoolFree(g_address_range_pool* pool, g_address base)
 
 void addressRangePoolMerge(g_address_range_pool* pool)
 {
+	mutexAcquire(&pool->lock);
 	g_address_range* current = (g_address_range*) pool->first;
 
 	while(current && current->next)
@@ -234,6 +235,7 @@ void addressRangePoolMerge(g_address_range_pool* pool)
 			current = current->next;
 		}
 	}
+	mutexRelease(&pool->lock);
 }
 
 void addressRangePoolDump(g_address_range_pool* pool, bool onlyFree)
@@ -286,4 +288,20 @@ g_address_range* addressRangePoolFind(g_address_range_pool* pool, g_address base
 	mutexRelease(&pool->lock);
 
 	return range;
+}
+
+bool addressRangePoolClaimForFree(g_address_range_pool* pool, g_address base, uint32_t* pages)
+{
+	mutexAcquire(&pool->lock);
+	auto range = pool->first;
+	while(range && range->base != base)
+		range = range->next;
+	const bool claimed = range && range->used && !(range->flags & G_ADDRESS_RANGE_FLAG_RELEASING);
+	if(claimed)
+	{
+		range->flags |= G_ADDRESS_RANGE_FLAG_RELEASING;
+		*pages = range->pages;
+	}
+	mutexRelease(&pool->lock);
+	return claimed;
 }

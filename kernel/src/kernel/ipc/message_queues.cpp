@@ -50,6 +50,11 @@ g_message_send_status messageQueueSend(g_tid sender, g_tid receiver, void* conte
 	if(length > G_MESSAGE_MAXIMUM_MESSAGE_LENGTH)
 		return G_MESSAGE_SEND_STATUS_EXCEEDS_MAXIMUM;
 
+	// Keep the receiver and its queue alive through publication and wake-up.
+	auto receiverTask = taskingAcquireTask(receiver);
+	if(!receiverTask)
+		return G_MESSAGE_SEND_STATUS_FAILED;
+
 	g_message_send_status status;
 	uint32_t lengthWithHeader = sizeof(g_message_header) + length;
 
@@ -79,6 +84,7 @@ g_message_send_status messageQueueSend(g_tid sender, g_tid receiver, void* conte
 	else
 		heapFree(message);
 
+	taskingReleaseTask(receiverTask);
 	return status;
 }
 
@@ -153,6 +159,7 @@ void messageQueueTaskRemoved(g_tid task)
 		mutexRelease(&queue->lock);
 
 		hashmapRemove(messageQueues, task);
+		waitQueueWake(&queue->waitersSend);
 		heapFree(queue);
 	}
 
@@ -161,6 +168,9 @@ void messageQueueTaskRemoved(g_tid task)
 
 bool messageQueueWaitForSend(g_task* sender, g_tid receiver, uint32_t length)
 {
+	auto receiverTask = taskingAcquireTask(receiver);
+	if(!receiverTask)
+		return false;
 	g_message_queue* queue = _messageQueuesGetOrCreate(receiver);
 
 	mutexAcquire(&queue->lock);
@@ -171,13 +181,19 @@ bool messageQueueWaitForSend(g_task* sender, g_tid receiver, uint32_t length)
 		waitQueueAdd(&queue->waitersSend, sender->id);
 	}
 	mutexRelease(&queue->lock);
+	taskingReleaseTask(receiverTask);
 	return shouldWait;
 }
 
 void messageQueueUnwaitForSend(g_tid sender, g_tid receiver)
 {
-	g_message_queue* queue = _messageQueuesGetOrCreate(receiver);
-	waitQueueRemove(&queue->waitersSend, sender);
+	auto receiverTask = taskingAcquireTask(receiver);
+	if(!receiverTask)
+		return;
+	auto queue = hashmapGet(messageQueues, receiver, (g_message_queue*) nullptr);
+	if(queue)
+		waitQueueRemove(&queue->waitersSend, sender);
+	taskingReleaseTask(receiverTask);
 }
 
 bool messageQueueWaitForReceive(g_task* receiver, g_message_transaction tx)
@@ -194,8 +210,9 @@ bool messageQueueWaitForReceive(g_task* receiver, g_message_transaction tx)
 
 void _messageQueuesWakeWaitingReceiver(g_message_queue* queue)
 {
-	g_task* task = taskingGetById(queue->task);
+	auto task = taskingAcquireTask(queue->task);
 	taskingWake(task);
+	taskingReleaseTask(task);
 }
 
 g_message_header* _messageQueuesFindMatchingMessage(g_message_queue* queue, g_message_transaction tx)

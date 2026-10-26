@@ -93,11 +93,15 @@ void memoryAllocatorExpand(g_allocator* allocator, g_size size);
 
 /**
  * Allocates memory using an allocator.
+ *
+ * @param[opt] allocatedSize reports the payload capacity returned by memoryAllocatorFree.
  */
-void* memoryAllocatorAllocate(g_allocator* allocator, g_size size);
+void* memoryAllocatorAllocate(g_allocator* allocator, g_size size, g_size* allocatedSize = nullptr);
 
 /**
- * Frees memory using an allocator.
+ * Frees an exact live allocation and returns its payload capacity.
+ * Null, unmanaged, interior and already-free pointers return zero.
+ * The last live slot releases its bucket for reuse by any allocation size.
  */
 g_size memoryAllocatorFree(g_allocator* allocator, void* memory);
 

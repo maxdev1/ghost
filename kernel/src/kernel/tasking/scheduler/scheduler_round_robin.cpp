@@ -95,7 +95,9 @@ void schedulerPrefer(g_tid task)
 		return;
 	}
 
-	schedulerPreferTask(taskingGetById(task));
+	auto preferred = taskingAcquireTask(task);
+	schedulerPreferTask(preferred);
+	taskingReleaseTask(preferred);
 }
 
 void schedulerPreferTask(g_task* task)
@@ -128,6 +130,9 @@ void schedulerSchedule(g_tasking_local* local)
 		bool done = false;
 
 		mutexAcquire(&task->lock);
+		if(!task->spawnPending && __atomic_load_n(&task->terminationRequested, __ATOMIC_ACQUIRE) &&
+		   task->state && (task->state->cs & 3) == 3)
+			task->status = G_TASK_STATUS_DEAD;
 		if(task->status == G_TASK_STATUS_RUNNING)
 		{
 			local->scheduling.current = task;
@@ -204,10 +209,11 @@ void schedulerDump()
 
 			if(task->status != G_TASK_STATUS_DEAD)
 			{
-				auto identifier = taskingDirectoryGetIdentifier(task->id);
+				char identifier[512];
+				taskingDirectoryCopyIdentifier(task->id, identifier, sizeof(identifier));
 				logInfo("%# - (%i:%i) usage: %i, %s %s %s", task->process->id, task->id,
 				        USAGE(task->statistics.timesScheduled, task->statistics.timesYielded),
-				        identifier == nullptr ? "" : identifier, taskState,
+				        identifier, taskState,
 				        task->status == G_TASK_STATUS_WAITING ? task->waitsFor : "");
 				task->statistics.timesScheduled = 0;
 				task->statistics.timesYielded = 0;

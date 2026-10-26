@@ -20,6 +20,7 @@
 
 #include "kernel/kernel.hpp"
 #include "kernel/memory/constants.hpp"
+#include "kernel/memory/paging_shootdown.hpp"
 #include "kernel/calls/syscall.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/filesystem/ramdisk.hpp"
@@ -40,6 +41,7 @@
 #include "kernel/video/pretty_boot.hpp"
 #include "kernel/logger/logger.hpp"
 #include "kernel/boot/limine.hpp"
+#include "kernel/utils/string.hpp"
 
 static g_mutex bootstrapCoreLock;
 static g_mutex applicationCoreLock;
@@ -160,6 +162,7 @@ void kernelRunBootstrapCore()
 	taskingAssign(taskingGetLocal(), initializationTask);
 
 	systemWaitForApplicationCores();
+	pagingInitializeSmp();
 	systemMarkReady();
 
 	interruptsEnable();
@@ -195,9 +198,11 @@ void kernelSpawnService(const char* path, const char* args, g_security_level sec
 	if(open == G_FS_OPEN_SUCCESSFUL)
 	{
 		auto spawnRes = taskingSpawn(fd, securityLevel);
+		filesystemClose(taskingGetCurrentTask()->process->id, fd, true);
 		if(spawnRes.status == G_SPAWN_STATUS_SUCCESSFUL)
 		{
-			spawnRes.process->environment.arguments = args;
+			spawnRes.process->environment.arguments = stringDuplicate(args);
+			spawnRes.process->environment.executablePath = stringDuplicate(path);
 			auto pid = spawnRes.process->id;
 			taskingReleaseSpawn(spawnRes.process);
 			logInfo("%! %s started in process %i", "service", path, pid);

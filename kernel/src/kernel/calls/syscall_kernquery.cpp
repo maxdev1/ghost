@@ -52,7 +52,7 @@ void syscallKernQuery(g_task* task, g_syscall_kernquery* data)
 	{
 		auto out = (g_kernquery_task_get_data*) data->buffer;
 
-		g_task* target = taskingGetById(out->id);
+		auto target = taskingAcquireTask(out->id);
 		if(!target)
 		{
 			data->status = G_KERNQUERY_STATUS_UNKNOWN_ID;
@@ -82,17 +82,16 @@ void syscallKernQuery(g_task* task, g_syscall_kernquery* data)
 			else
 				out->source_path[0] = 0;
 
-			const char* identifier = taskingDirectoryGetIdentifier(target->id);
-			if(identifier)
-				stringCopy(out->identifier, identifier);
-			else
-				out->identifier[0] = 0;
+			char identifier[sizeof(out->identifier)];
+			taskingDirectoryCopyIdentifier(target->id, identifier, sizeof(identifier));
+			stringCopy(out->identifier, identifier);
 
 			out->cpu_time = target->statistics.timesScheduled;
 			out->memory_used = 0; // TODO
 		}
 
 		mutexRelease(&target->lock);
+		taskingReleaseTask(target);
 	}
 	else
 	{

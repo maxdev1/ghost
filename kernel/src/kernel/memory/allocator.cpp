@@ -34,7 +34,7 @@ void _memoryAllocatorMerge(g_allocator* allocator);
 g_allocator_section_header* _memoryAllocatorAllocateSection(g_allocator* allocator, g_size totalSize,
                                                             g_allocator_section_type type);
 g_size _memoryAllocatorFreeSection(g_allocator* allocator, g_allocator_section_header* section);
-g_size _memoryAllocatorFreeInBucket(g_allocator_section_bucket* bucket, void* mem);
+g_size _memoryAllocatorFreeInBucket(g_allocator* allocator, g_allocator_section_bucket* bucket, void* mem);
 void* _memoryAllocatorAllocateInBucket(g_allocator* allocator, g_size size);
 void* _memoryAllocatorAllocateInSpecificBucket(g_allocator_section_bucket* bucket);
 
@@ -56,14 +56,21 @@ void memoryAllocatorInitialize(g_allocator* allocator, g_allocator_type type, g_
 	allocator->sections = firstSection;
 }
 
-void* memoryAllocatorAllocate(g_allocator* allocator, g_size size)
+void* memoryAllocatorAllocate(g_allocator* allocator, g_size size, g_size* allocatedSize)
 {
+	if(allocatedSize)
+		*allocatedSize = 0;
 	mutexAcquire(&allocator->lock);
 
 	if(!allocator->sections)
 		panic("%! tried to use allocate on uninitialized chunk allocator at %x", "alloc", allocator);
 
 	size = size < G_ALLOCATOR_ALIGNMENT ? G_ALLOCATOR_ALIGNMENT : mathCeilToPowerOf2(size);
+	if(!size || size > (g_size)-1 - sizeof(g_allocator_section_header))
+	{
+		mutexRelease(&allocator->lock);
+		return nullptr;
+	}
 
 	void* mem = nullptr;
 	if(size > G_ALLOCATOR_MAX_FOR_BUCKETS)
@@ -71,43 +78,58 @@ void* memoryAllocatorAllocate(g_allocator* allocator, g_size size)
 		auto section = _memoryAllocatorAllocateSection(allocator, sizeof(g_allocator_section_header) + size,
 		                                               G_ALLOCATOR_SECTION_TYPE_CHUNK);
 		if(section)
+		{
 			mem = (void*) ((g_address) section + sizeof(g_allocator_section_header));
+			size = section->totalSize - sizeof(g_allocator_section_header);
+		}
 	}
 	else
 		mem = _memoryAllocatorAllocateInBucket(allocator, size);
 
+	if(mem && allocatedSize)
+		*allocatedSize = size;
 	mutexRelease(&allocator->lock);
 	return mem;
 }
 
 g_size memoryAllocatorFree(g_allocator* allocator, void* mem)
 {
+	if(!mem)
+		return 0;
+
 	mutexAcquire(&allocator->lock);
 
+	const auto address = (g_address) mem;
 	auto section = allocator->sections;
-	do
+	while(section)
 	{
-		if((g_address) mem > (g_address) section && (g_address) mem < (g_address) section + section->totalSize)
+		const auto base = (g_address) section;
+		if(address >= base && address - base < section->totalSize)
 			break;
 		section = section->next;
-	} while(section);
+	}
 
 	if(!section)
 	{
-		logInfo("%! attempted to free %x not managed by kernel allocator (type %i)", "critical", mem, allocator->type);
+		logWarn("%! attempted to free %x not managed by kernel allocator (type %i)", "alloc", mem, allocator->type);
 		mutexRelease(&allocator->lock);
 		return 0;
 	}
 
-	g_size size;
+	g_size size = 0;
 	if(section->type == G_ALLOCATOR_SECTION_TYPE_CHUNK)
-		size = _memoryAllocatorFreeSection(allocator, section);
+	{
+		if(address == (g_address) section + sizeof(g_allocator_section_header))
+			size = _memoryAllocatorFreeSection(allocator, section);
+	}
 	else if(section->type == G_ALLOCATOR_SECTION_TYPE_BUCKET)
-		size = _memoryAllocatorFreeInBucket((g_allocator_section_bucket*) section, mem);
-	else
+		size = _memoryAllocatorFreeInBucket(allocator, (g_allocator_section_bucket*) section, mem);
+	else if(section->type != G_ALLOCATOR_SECTION_TYPE_FREE)
 		panic("%! attempt to free kernel memory in a section of type %i in allocator %i", "alloc", section->type,
 		      allocator->type);
 
+	if(!size)
+		logWarn("%! rejected invalid or already-free kernel memory %x in allocator %i", "alloc", mem, allocator->type);
 	mutexRelease(&allocator->lock);
 	return size;
 }
@@ -254,14 +276,31 @@ void* _memoryAllocatorAllocateInBucket(g_allocator* allocator, g_size size)
 	return _memoryAllocatorAllocateInSpecificBucket(bucket);
 }
 
-g_size _memoryAllocatorFreeInBucket(g_allocator_section_bucket* bucket, void* mem)
+g_size _memoryAllocatorFreeInBucket(g_allocator* allocator, g_allocator_section_bucket* bucket, void* mem)
 {
-	auto contentAddress = (g_address) _G_ALLOCATOR_BUCKET_CONTENT(bucket);
-	auto entryIndex = ((g_address) mem - contentAddress) / bucket->entrySize;
+	const auto contentAddress = (g_address) _G_ALLOCATOR_BUCKET_CONTENT(bucket);
+	const auto address = (g_address) mem;
+	if(!bucket->entrySize || address < contentAddress)
+		return 0;
+
+	const auto offset = address - contentAddress;
+	const auto entryIndex = offset / bucket->entrySize;
+	if(offset % bucket->entrySize || entryIndex >= (g_size) bucket->bitmapSize * 8)
+		return 0;
 
 	uint8_t* bitmap = _G_ALLOCATOR_BUCKET_BITMAP(bucket);
-	bitmap[entryIndex / 8] &= ~(1 << (entryIndex % 8));
-	return bucket->entrySize;
+	const uint8_t mask = 1U << (entryIndex % 8);
+	if(!(bitmap[entryIndex / 8] & mask))
+		return 0;
+	bitmap[entryIndex / 8] &= ~mask;
+
+	const g_size releasedSize = bucket->entrySize;
+	for(uint16_t i = 0; i < bucket->bitmapSize; ++i)
+		if(bitmap[i])
+			return releasedSize;
+
+	_memoryAllocatorFreeSection(allocator, &bucket->header);
+	return releasedSize;
 }
 
 void _memoryAllocatorMerge(g_allocator* allocator)

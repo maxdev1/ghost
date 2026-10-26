@@ -82,8 +82,7 @@ void syscallFsCloneFd(g_task* task, g_syscall_fs_clonefd* data)
 
 void syscallFsTell(g_task* task, g_syscall_fs_tell* data)
 {
-
-	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(task->process->id, data->fd);
+	auto descriptor = filesystemProcessAcquireDescriptor(task->process->id, data->fd);
 	if(!descriptor)
 	{
 		data->status = G_FS_TELL_INVALID_FD;
@@ -91,8 +90,11 @@ void syscallFsTell(g_task* task, g_syscall_fs_tell* data)
 		return;
 	}
 
+	mutexAcquire(&descriptor->operationLock);
 	data->result = descriptor->offset;
+	mutexRelease(&descriptor->operationLock);
 	data->status = G_FS_TELL_SUCCESSFUL;
+	filesystemProcessReleaseDescriptor(descriptor);
 }
 
 void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)

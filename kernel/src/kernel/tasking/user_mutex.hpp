@@ -28,11 +28,11 @@
 
 struct g_user_mutex_entry
 {
-    g_mutex lock;
     int value;
 
     bool reentrant;
     g_tid owner;
+    g_pid creator;
 
     g_wait_queue waiters;
 };
@@ -56,6 +56,8 @@ g_user_mutex userMutexCreate(bool reentrant);
  * Destroys a mutex.
  */
 void userMutexDestroy(g_user_mutex mutex);
+void userMutexTaskRemoved(g_tid task);
+void userMutexProcessRemoved(g_pid process);
 
 /**
  *

@@ -39,6 +39,8 @@ void messageTopicsInitialize()
 
 g_message_send_status messageTopicsPost(const char* topicName, g_tid sender, void* content, uint32_t length)
 {
+	if(length > G_MESSAGE_MAXIMUM_MESSAGE_LENGTH)
+		return G_MESSAGE_SEND_STATUS_EXCEEDS_MAXIMUM;
 	g_message_topic* topic = _messageTopicsGetOrCreate(topicName);
 	mutexAcquire(&topic->lock);
 

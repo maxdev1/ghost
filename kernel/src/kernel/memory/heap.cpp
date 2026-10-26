@@ -29,12 +29,13 @@
 static g_allocator heapAllocator;
 static g_virtual_address heapStart = 0;
 static g_virtual_address heapEnd = 0;
-static uint32_t heapAmountInUse = 0;
+static g_size heapAmountInUse = 0;
 static bool heapInitialized = false;
 
 static g_mutex heapLock;
 
 bool _heapExpand();
+bool _heapExpandWithReserve(uint32_t reservePages);
 void _heapMapInitialArea();
 
 void heapInitialize()
@@ -71,20 +72,19 @@ void* heapAllocate(uint32_t size)
 	if(!heapInitialized)
 		panic("%! tried to use uninitialized kernel heap", "kernheap");
 
-	void* ptr = memoryAllocatorAllocate(&heapAllocator, size);
-	if(!ptr)
-	{
-		if(_heapExpand())
-		{
-			mutexRelease(&heapLock);
-			return heapAllocate(size);
-		}
+    g_size allocatedSize;
+    void* ptr;
+    while(!(ptr = memoryAllocatorAllocate(&heapAllocator, size, &allocatedSize)))
+    {
+        if(!_heapExpand())
+        {
+            mutexRelease(&heapLock);
+            panic("%! failed to allocate critical kernel memory", "kernheap");
+            return nullptr;
+        }
+    }
 
-		panic("%! failed to allocate kernel memory", "kernheap");
-		return nullptr;
-	}
-
-	heapAmountInUse += size;
+	heapAmountInUse += allocatedSize;
 
 	mutexRelease(&heapLock);
 
@@ -116,29 +116,61 @@ void heapFree(void* ptr)
 	mutexRelease(&heapLock);
 }
 
-uint32_t heapGetUsedAmount()
+g_size heapGetUsedAmount()
 {
-	return heapAmountInUse;
+	mutexAcquire(&heapLock);
+	auto amount = heapAmountInUse;
+	mutexRelease(&heapLock);
+	return amount;
 }
 
-bool _heapExpand()
+void* heapTryAllocate(uint32_t size)
 {
-	for(g_virtual_address virt = heapEnd; virt < heapEnd + G_MEM_KERN_HEAP_EXPAND_STEP; virt += G_PAGE_SIZE)
-	{
-		g_physical_address phys = memoryPhysicalAllocate(true);
-		if(phys == 0)
-		{
-			logWarn("%! failed to expand kernel heap, out of physical memory", "kernheap");
-			return false;
-		}
+    mutexAcquire(&heapLock);
+    g_size capacity;
+    void* result;
+    while(!(result = memoryAllocatorAllocate(&heapAllocator, size, &capacity)))
+    {
+        if(!_heapExpandWithReserve(1024))
+        {
+            mutexRelease(&heapLock);
+            return nullptr;
+        }
+    }
+    heapAmountInUse += capacity;
+    mutexRelease(&heapLock);
+    return result;
+}
 
-		pagingMapPage(virt, phys, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
-	}
+bool _heapExpand() { return _heapExpandWithReserve(0); }
 
-	memoryAllocatorExpand(&heapAllocator, G_MEM_KERN_HEAP_EXPAND_STEP);
-	heapEnd += G_MEM_KERN_HEAP_EXPAND_STEP;
-
-	logDebug("%! expanded to end %h (%ikb in use)", "kernheap", heapEnd, heapAmountInUse / 1024);
-
-	return true;
+bool _heapExpandWithReserve(uint32_t reservePages)
+{
+    uint32_t installed = 0;
+    const uint32_t pages = G_MEM_KERN_HEAP_EXPAND_STEP / G_PAGE_SIZE;
+    for(; installed < pages; ++installed)
+    {
+        auto page = bitmapPageAllocatorTryAllocate(&memoryPhysicalAllocator, reservePages);
+        if(!page)
+            break;
+        if(!pagingMapPage(heapEnd + installed * G_PAGE_SIZE, page, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT))
+        {
+            bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, page);
+            break;
+        }
+    }
+    if(installed != pages)
+    {
+        while(installed)
+        {
+            auto address = heapEnd + --installed * G_PAGE_SIZE;
+            auto page = pagingVirtualToPhysical(address);
+            pagingUnmapPage(address);
+            bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, page);
+        }
+        return false;
+    }
+    memoryAllocatorExpand(&heapAllocator, G_MEM_KERN_HEAP_EXPAND_STEP);
+    heapEnd += G_MEM_KERN_HEAP_EXPAND_STEP;
+    return true;
 }

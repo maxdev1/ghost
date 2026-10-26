@@ -20,7 +20,7 @@
 
 #include "kernel/utils/math.hpp"
 
-uint32_t mathCeilToPowerOf2(uint32_t n)
+uint64_t mathCeilToPowerOf2(uint64_t n)
 {
 	if(n <= 1)
 		return 1;
@@ -30,5 +30,6 @@ uint32_t mathCeilToPowerOf2(uint32_t n)
 	n |= n >> 4;
 	n |= n >> 8;
 	n |= n >> 16;
+	n |= n >> 32;
 	return n + 1;
 }

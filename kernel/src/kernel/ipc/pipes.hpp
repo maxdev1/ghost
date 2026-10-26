@@ -24,6 +24,8 @@
 #include "kernel/utils/wait_queue.hpp"
 #include "kernel/system/mutex.hpp"
 
+#define G_PIPE_STREAM_CAPACITY 0x4000
+
 struct g_task;
 
 /**
@@ -73,7 +75,7 @@ g_pipeline* pipeGetById(g_fs_phys_id pipeId);
 /**
  * Creates a new pipe.
  */
-g_fs_pipe_status pipeCreate(g_fs_phys_id* outPipeId);
+g_fs_pipe_status pipeCreate(g_fs_phys_id* outPipeId, g_bool blocking = false);
 
 /**
  * Adds a read or write reference to the pipe.

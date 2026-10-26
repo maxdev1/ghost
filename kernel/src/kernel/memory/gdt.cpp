@@ -73,6 +73,7 @@ void gdtInitializeLocal()
 	                  G_ACCESS_BYTE__TSS_386_SEGMENT, 0);
 	memorySetBytes(&localGdt->tss, 0, sizeof(g_tss));
 	localGdt->tss.rsp0 = 0;
+	localGdt->tss.ist[0] = (g_address) localGdt->nmiStack + sizeof(localGdt->nmiStack);
 
 	// Load the GDT & TSS
 	asm volatile("lgdt %0" : : "m" (localGdt->ptr));

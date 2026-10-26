@@ -39,6 +39,8 @@ struct g_address_range_pool
 	g_mutex lock;
 };
 
+#define G_ADDRESS_RANGE_FLAG_RELEASING 0x80
+
 void addressRangePoolInitialize(g_address_range_pool* pool);
 
 void addressRangePoolDestroy(g_address_range_pool* pool);
@@ -58,6 +60,8 @@ int32_t addressRangePoolFree(g_address_range_pool* pool, g_address base);
 g_address_range* addressRangePoolGetRanges(g_address_range_pool* pool);
 
 g_address_range* addressRangePoolFind(g_address_range_pool* pool, g_address base);
+
+bool addressRangePoolClaimForFree(g_address_range_pool* pool, g_address base, uint32_t* pages);
 
 void addressRangePoolDump(g_address_range_pool* pool, bool onlyFree = false);
 

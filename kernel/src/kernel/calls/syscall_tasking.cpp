@@ -20,23 +20,22 @@
 
 #include "kernel/calls/syscall_tasking.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
+#include "kernel/logger/logger.hpp"
 #include "kernel/memory/memory.hpp"
-#include "kernel/tasking/user_mutex.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
+#include "kernel/system/processor/processor.hpp"
+#include "kernel/system/timing/hpet.hpp"
+#include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/scheduler/scheduler.hpp"
 #include "kernel/tasking/tasking_directory.hpp"
-#include "kernel/tasking/clock.hpp"
-#include "kernel/system/timing/hpet.hpp"
-#include "kernel/utils/wait_queue.hpp"
-#include "kernel/logger/logger.hpp"
+#include "kernel/tasking/user_mutex.hpp"
 #include "kernel/utils/string.hpp"
+#include "kernel/utils/wait_queue.hpp"
 
 void syscallSleep(g_task* task, g_syscall_sleep* data)
 {
-	taskingWait(task, __func__, [task, data]()
-	{
-		clockWaitForTime(task->id, clockGetLocal()->time + data->milliseconds);
-	});
+	taskingWait(task, __func__,
+				[task, data]() { clockWaitForTime(task->id, clockGetLocal()->time + data->milliseconds); });
 }
 
 void syscallYield(g_task* task, g_syscall_yield* data)
@@ -59,19 +58,13 @@ void syscallExitTask(g_task* task)
 	taskingExit();
 }
 
-void syscallGetProcessId(g_task* task, g_syscall_get_pid* data)
-{
-	data->id = taskingGetCurrentTask()->process->id;
-}
+void syscallGetProcessId(g_task* task, g_syscall_get_pid* data) { data->id = taskingGetCurrentTask()->process->id; }
 
-void syscallGetTaskId(g_task* task, g_syscall_get_tid* data)
-{
-	data->id = taskingGetCurrentTask()->id;
-}
+void syscallGetTaskId(g_task* task, g_syscall_get_tid* data) { data->id = taskingGetCurrentTask()->id; }
 
 void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
 {
-	g_task* theTask = taskingGetById(data->tid);
+	auto theTask = taskingAcquireTask(data->tid);
 	if(theTask)
 	{
 		data->pid = theTask->process->id;
@@ -80,26 +73,24 @@ void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
 	{
 		data->pid = G_PID_NONE;
 	}
+	taskingReleaseTask(theTask);
 }
 
 void syscallJoin(g_task* task, g_syscall_join* data)
 {
-	while(taskingWaitIf([&]()
-	{
-		return taskingWaitForExit(data->taskId, task);
-	}))
+	while(taskingWaitIf([&]() { return taskingWaitForExit(data->taskId, task); }))
 	{
 	}
 }
 
 void syscallSpawn(g_task* task, g_syscall_spawn* data)
 {
-	if((task->securityLevel == G_SECURITY_LEVEL_APPLICATION && data->securityLevel < G_SECURITY_LEVEL_APPLICATION) ||
-	   (task->securityLevel == G_SECURITY_LEVEL_DRIVER && data->securityLevel < G_SECURITY_LEVEL_DRIVER))
+	const g_security_level securityLevel = data->securityLevel;
+	if(securityLevel > G_SECURITY_LEVEL_APPLICATION || securityLevel < task->securityLevel)
 	{
 		data->status = G_SPAWN_STATUS_TASKING_ERROR;
 		logInfo("%! task %i doesn't have privilege to spawn '%s' as security level %i", "kernel", task->id, data->path,
-		        data->securityLevel);
+				securityLevel);
 		return;
 	}
 
@@ -108,7 +99,7 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 	g_fs_open_status open = filesystemOpen(data->path, G_FILE_FLAG_MODE_READ, task, &fd);
 	if(open == G_FS_OPEN_SUCCESSFUL)
 	{
-		auto target = taskingSpawn(fd, data->securityLevel);
+		auto target = taskingSpawn(fd, securityLevel);
 		data->status = target.status;
 		data->validationDetails = target.validation;
 
@@ -147,41 +138,44 @@ void syscallProcessGetInfo(g_task* task, g_syscall_process_get_info* data)
 
 void syscallKill(g_task* task, g_syscall_kill* data)
 {
-	g_task* target = taskingGetById(data->pid);
+	auto target = taskingAcquireTask(data->pid);
 	if(target)
 	{
-		g_interrupt_guard interrupts;
-		mutexAcquire(&target->lock);
 		data->status = G_KILL_STATUS_SUCCESSFUL;
-		target->process->main->status = G_TASK_STATUS_DEAD;
-		mutexRelease(&target->lock);
-		waitQueueWake(&target->waitersJoin);
-		taskingYield();
+		taskingTerminateProcess(target->process);
 	}
 	else
 	{
 		data->status = G_KILL_STATUS_NOT_FOUND;
 	}
+	taskingReleaseTask(target);
 }
 
 void syscallCreateTask(g_task* task, g_syscall_create_task* data)
 {
-	g_task* newTask = taskingCreateTask((g_virtual_address) data->initialEntry, task->process,
-	                                    task->process->main->securityLevel);
+	const uint8_t affinity = data->coreAffinity;
+	const g_virtual_address initialEntry = (g_virtual_address) data->initialEntry;
+	void* const userEntry = data->userEntry;
+	void* const userData = data->userData;
+	data->threadId = G_TID_NONE;
+	data->status = G_CREATE_TASK_STATUS_FAILED;
+	if(affinity != G_TASK_CORE_AFFINITY_NONE && affinity >= processorGetNumberOfProcessors())
+		return;
+	g_task* newTask = taskingCreateTask(initialEntry, task->process, task->process->main->securityLevel);
 	if(newTask)
 	{
-		newTask->userEntry.function = data->userEntry;
-		newTask->userEntry.data = data->userData;
+		newTask->userEntry.function = userEntry;
+		newTask->userEntry.data = userData;
 		data->threadId = newTask->id;
 		data->status = G_CREATE_TASK_STATUS_SUCCESSFUL;
 
-		if(data->coreAffinity == G_TASK_CORE_AFFINITY_NONE)
+		if(affinity == G_TASK_CORE_AFFINITY_NONE)
 		{
 			taskingAssignBalanced(newTask);
 		}
 		else
 		{
-			taskingAssignOnCore(data->coreAffinity, newTask);
+			taskingAssignOnCore(affinity, newTask);
 		}
 	}
 	else
@@ -196,20 +190,14 @@ void syscallGetTaskEntry(g_task* task, g_syscall_get_task_entry* data)
 	data->userEntry = task->userEntry.function;
 }
 
-void syscallFork(g_task* task, g_syscall_fork* data)
-{
-	logInfo("syscall not implemented: fork");
-}
+void syscallFork(g_task* task, g_syscall_fork* data) { logInfo("syscall not implemented: fork"); }
 
 void syscallGetParentProcessId(g_task* task, g_syscall_get_parent_pid* data)
 {
 	logInfo("syscall not implemented: syscallGetParentProcessId");
 }
 
-void syscallGetMilliseconds(g_task* task, g_syscall_millis* data)
-{
-	data->millis = clockGetLocal()->time;
-}
+void syscallGetMilliseconds(g_task* task, g_syscall_millis* data) { data->millis = clockGetLocal()->time; }
 
 void syscallGetNanoseconds(g_task* task, g_syscall_nanos* data)
 {
@@ -229,25 +217,18 @@ void syscallGetExecutablePath(g_task* task, g_syscall_get_executable_path* data)
 
 void syscallGetWorkingDirectory(g_task* task, g_syscall_get_working_directory* data)
 {
-	const char* workingDirectory = task->process->environment.workingDirectory;
-	if(workingDirectory)
-	{
-		size_t length = stringLength(workingDirectory);
-		if(length + 1 > data->maxlen)
-		{
-			data->result = G_GET_WORKING_DIRECTORY_SIZE_EXCEEDED;
-		}
-		else
-		{
-			stringCopy(data->buffer, workingDirectory);
-			data->result = G_GET_WORKING_DIRECTORY_SUCCESSFUL;
-		}
-	}
+	mutexAcquire(&task->process->lock);
+	auto current = task->process->environment.workingDirectory;
+	auto snapshot = stringDuplicate(current ? current : "/");
+	mutexRelease(&task->process->lock);
+	if(stringLength(snapshot) + 1 > data->maxlen)
+		data->result = G_GET_WORKING_DIRECTORY_SIZE_EXCEEDED;
 	else
 	{
-		stringCopy(data->buffer, "/");
+		stringCopy(data->buffer, snapshot);
 		data->result = G_GET_WORKING_DIRECTORY_SUCCESSFUL;
 	}
+	heapFree(snapshot);
 }
 
 void syscallSetWorkingDirectory(g_task* task, g_syscall_set_working_directory* data)
@@ -255,18 +236,20 @@ void syscallSetWorkingDirectory(g_task* task, g_syscall_set_working_directory* d
 	auto findRes = filesystemFind(nullptr, data->path);
 	if(findRes.status == G_FS_OPEN_SUCCESSFUL)
 	{
-		if(findRes.node->type == G_FS_NODE_TYPE_FOLDER ||
-		   findRes.node->type == G_FS_NODE_TYPE_MOUNTPOINT ||
+		if(findRes.node->type == G_FS_NODE_TYPE_FOLDER || findRes.node->type == G_FS_NODE_TYPE_MOUNTPOINT ||
 		   findRes.node->type == G_FS_NODE_TYPE_ROOT)
 		{
-			if(task->process->environment.workingDirectory)
-			{
-				heapFree(task->process->environment.workingDirectory);
-			}
-
 			int length = filesystemGetAbsolutePathLength(findRes.node);
-			task->process->environment.workingDirectory = (char*) heapAllocate(length + 1);
-			filesystemGetAbsolutePath(findRes.node, task->process->environment.workingDirectory);
+			auto replacement = (char*) heapAllocate(length + 1);
+			filesystemGetAbsolutePath(findRes.node, replacement);
+
+			mutexAcquire(&task->process->lock);
+			auto previous = task->process->environment.workingDirectory;
+			task->process->environment.workingDirectory = replacement;
+			mutexRelease(&task->process->lock);
+
+			if(previous)
+				heapFree(previous);
 			data->result = G_SET_WORKING_DIRECTORY_SUCCESSFUL;
 		}
 		else
@@ -302,10 +285,7 @@ void syscallTaskAwaitByName(g_task* task, g_syscall_task_await_by_name* data)
 	g_tid target;
 	while((target = taskingDirectoryGet(data->name)) == G_TID_NONE)
 	{
-		if(taskingWaitIf([&]()
-		{
-			return taskingDirectoryWaitForRegister(data->name, task);
-		}))
+		if(taskingWaitIf([&]() { return taskingDirectoryWaitForRegister(data->name, task); }))
 			taskingDirectoryUnwaitForRegister(data->name, task->id);
 	}
 	data->task = target;
@@ -316,7 +296,4 @@ void syscallGetTaskByName(g_task* task, g_syscall_task_get_by_name* data)
 	data->resultTaskId = taskingDirectoryGet(data->name);
 }
 
-void syscallDump()
-{
-	schedulerDump();
-}
+void syscallDump() { schedulerDump(); }

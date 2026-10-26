@@ -40,6 +40,6 @@ g_spawn_status elfTlsLoadData(g_fd file, Elf64_Phdr header, g_elf_object* object
  * When a new thread is created, a copy of this master image is created. The address of g_user_threadlocal
  * is then put into the GDT entry.
  */
-void elfTlsCreateMasterImage(g_fd file, g_process* process, g_elf_object* executableObject);
+bool elfTlsCreateMasterImage(g_fd file, g_process* process, g_elf_object* executableObject);
 
 #endif

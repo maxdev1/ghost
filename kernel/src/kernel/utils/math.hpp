@@ -23,6 +23,6 @@
 
 #include <ghost/stdint.h>
 
-uint32_t mathCeilToPowerOf2(uint32_t n);
+uint64_t mathCeilToPowerOf2(uint64_t n);
 
 #endif

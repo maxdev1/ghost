@@ -35,6 +35,7 @@ void heapInitialize();
  * Causes a panic if it fails.
  */
 void* heapAllocate(uint32_t size);
+void* heapTryAllocate(uint32_t size);
 
 /**
  * Allocates a number of bytes on the kernel heap and clears it.
@@ -51,6 +52,6 @@ void heapFree(void* memory);
 /**
  * Returns the amount of used bytes in the kernel heap.
  */
-uint32_t heapGetUsedAmount();
+g_size heapGetUsedAmount();
 
 #endif

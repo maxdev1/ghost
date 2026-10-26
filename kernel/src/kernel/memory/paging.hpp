@@ -33,6 +33,8 @@
 #define G_PAGE_DIRTY_FLAG       (1ULL << 6)  // Page has been written to (only for PT entries)
 #define G_PAGE_LARGE_PAGE_FLAG  (1ULL << 7)  // Page is a large page (2MB or 1GB)
 #define G_PAGE_GLOBAL_FLAG      (1ULL << 8)  // Page is global (only for PT entries)
+#define G_PAGE_UNMANAGED_FLAG   (1ULL << 9)  // Software bit: physical frame is not allocator-owned
+#define G_PAGE_PHYSICAL_MASK    0x000FFFFFFFFFF000ULL
 #define G_PAGE_NX_FLAG          (1ULL << 63) // No-execute flag (if supported)
 
 /**

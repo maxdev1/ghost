@@ -83,6 +83,7 @@ void clockUpdate();
  * Removes the task from the wake queue.
  */
 void clockUnwaitForTime(g_tid task);
+void clockUnwaitForTime(g_task* task);
 
 /**
  * @returns true when the wake-up time for this task was reached or the queue entry removed.

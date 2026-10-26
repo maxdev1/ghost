@@ -86,16 +86,22 @@ g_hashmap<K, V>* hashmapInternalCreate(int bucketCount)
 template <typename K, typename V>
 void hashmapDestroy(g_hashmap<K, V>* map)
 {
+    if(!map)
+        return;
+
     for (int i = 0; i < map->bucketCount; i++)
     {
         auto entry = map->buckets[i];
         while (entry)
         {
             auto next = entry->next;
+            map->keyFree(entry->key);
             heapFree(entry);
             entry = next;
         }
     }
+
+    heapFree(map->buckets);
     heapFree(map);
 }
 

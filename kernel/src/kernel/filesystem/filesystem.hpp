@@ -122,7 +122,7 @@ g_fs_open_status filesystemFindChild(g_fs_node* parent, const char* name, g_fs_n
 bool filesystemFindExistingChild(g_fs_node* parent, const char* name, g_fs_node** outChild = nullptr);
 
 /**
- *
+ * Returns an owned name copy; the caller releases it with heapFree.
  */
 bool filesystemGetFileName(g_fd fd, const char** outName);
 
@@ -136,6 +136,7 @@ g_filesystem_find_result filesystemFind(g_fs_node* parent, const char* path);
  * Retrieves a node by its virtual id.
  */
 g_fs_node* filesystemGetNode(g_fs_virt_id id);
+void filesystemRemovePipeNode(g_fs_phys_id pipe);
 
 /**
  * Adds a child node to a parent.
@@ -164,7 +165,8 @@ g_fs_delegate* filesystemFindDelegate(g_fs_node* node);
  */
 g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task* task, g_fd* outFd);
 g_fs_open_status filesystemOpenNode(g_fs_node* file, g_file_flag_mode flags, g_pid process,
-                                    g_file_descriptor** outDescriptor, g_fd optionalTargetFd = G_FD_NONE);
+                                    g_file_descriptor** outDescriptor, g_fd optionalTargetFd = G_FD_NONE,
+                                    uint64_t initialOffset = 0);
 g_fs_open_status filesystemOpenNodeFd(g_fs_node* file, g_file_flag_mode flags, g_pid process, g_fd* outFd,
                                       g_fd optionalTargetFd = G_FD_NONE);
 

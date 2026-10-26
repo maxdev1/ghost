@@ -35,7 +35,7 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, g_address* outAddress
 /**
  * Creates the stacks and other utility memory for a newly created task.
  */
-void taskingMemoryInitialize(g_task* task);
+bool taskingMemoryInitialize(g_task* task);
 
 /**
  * Initializes additional utility memory for the task, for example storage for
@@ -52,7 +52,7 @@ void taskingMemoryInitializeUtility(g_task* task);
  * For user-space tasks, there is a user-space stack and a dedicated interrupt stack
  * that is switched to when handling interrupts.
  */
-void taskingMemoryInitializeStacks(g_task* task);
+bool taskingMemoryInitializeStacks(g_task* task);
 
 /**
  * Creates and maps a stack.
@@ -96,7 +96,7 @@ void taskingMemoryDestroyPageSpace(g_physical_address directory);
 /**
  * Initializes the tasks thread-local-storage. Creates a copy of the master TLS for this task.
  */
-void taskingMemoryInitializeTls(g_task* task);
+bool taskingMemoryInitializeTls(g_task* task);
 
 /**
  * Destroys the tasks thread-local-storage.

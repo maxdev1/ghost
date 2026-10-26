@@ -49,6 +49,16 @@ void memoryInitialize(limine_memmap_response* memoryMap)
 	pageReferenceTrackerInitialize();
 }
 
+bool memorySizeToPageCount(g_size size, uint32_t* outPages)
+{
+	*outPages = 0;
+	const uint64_t maximumSize = (uint64_t) UINT32_MAX * G_PAGE_SIZE;
+	if(!size || size > maximumSize)
+		return false;
+	*outPages = (size - 1) / G_PAGE_SIZE + 1;
+	return true;
+}
+
 bool memoryPhysicalIsRangeAddressable(g_physical_address address, g_size size)
 {
 	if(size == 0)
@@ -87,29 +97,60 @@ void memoryPhysicalFree(g_physical_address page)
 		bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, page);
 }
 
+g_physical_address memoryPhysicalTryAllocate()
+{
+	auto page = bitmapPageAllocatorTryAllocate(&memoryPhysicalAllocator, 1024);
+	if(page)
+		pageReferenceTrackerIncrement(page);
+	return page;
+}
+
 g_virtual_address memoryAllocateKernel(int32_t pages)
 {
+	if(pages <= 0)
+		return 0;
 	g_virtual_address virt = addressRangePoolAllocate(memoryVirtualRangePool, pages);
-	for(int32_t i = 0; i < pages; i++)
+	if(!virt)
+		return 0;
+	int32_t installed = 0;
+	for(; installed < pages; ++installed)
 	{
-		g_physical_address phys = memoryPhysicalAllocate();
-		pagingMapPage(virt + (i * G_PAGE_SIZE), phys, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
+		auto phys = memoryPhysicalTryAllocate();
+		if(!phys)
+			break;
+		if(!pagingMapPage(virt + installed * G_PAGE_SIZE, phys, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT))
+		{
+			memoryPhysicalFree(phys);
+			break;
+		}
+	}
+	if(installed != pages)
+	{
+		while(installed)
+		{
+			auto address = virt + --installed * G_PAGE_SIZE;
+			auto physical = pagingVirtualToPhysical(address);
+			pagingUnmapPage(address);
+			memoryPhysicalFree(physical);
+		}
+		addressRangePoolFree(memoryVirtualRangePool, virt);
+		return 0;
 	}
 	return virt;
 }
 
 void memoryFreeKernelRange(g_virtual_address address)
 {
-	auto range = addressRangePoolFind(memoryVirtualRangePool, address);
-	if(!range)
+	uint32_t pages;
+	if(!addressRangePoolClaimForFree(memoryVirtualRangePool, address, &pages))
 	{
 		logWarn("%! tried to free unallocated kernel range at %x", "memory", address);
 		return;
 	}
 
-	for(int32_t i = 0; i < range->pages; i++)
+	for(uint32_t i = 0; i < pages; i++)
 	{
-		g_virtual_address virt = range->base + (i * G_PAGE_SIZE);
+		g_virtual_address virt = address + i * G_PAGE_SIZE;
 		g_physical_address phys = pagingVirtualToPhysical(virt);
 		pagingUnmapPage(virt);
 		memoryPhysicalFree(phys);
@@ -165,7 +206,9 @@ bool memoryOnDemandHandlePageFault(g_task* task, g_address accessed)
 
 	// Fill the page through the direct map before publishing a user mapping.
 	// Other threads must never execute a partially loaded library/code page.
-	auto physical = memoryPhysicalAllocate();
+	auto physical = memoryPhysicalTryAllocate();
+	if(!physical)
+		return false;
 	auto page = (uint8_t*) G_MEM_PHYS_TO_VIRT(physical);
 	memorySetBytes(page, 0, G_PAGE_SIZE);
 
@@ -187,6 +230,7 @@ bool memoryOnDemandHandlePageFault(g_task* task, g_address accessed)
 		// A concurrent fault won publication; discard our private copy.
 		memoryPhysicalFree(physical);
 		pagingInvalidatePage(accessedLeft);
+		return (pagingVirtualToPageEntry(accessedLeft) & G_PAGE_PRESENT) != 0;
 	}
 	return true;
 }

@@ -21,16 +21,11 @@
 #include "kernel/tasking/user_mutex.hpp"
 #include "kernel/memory/heap.hpp"
 #include "kernel/utils/hashmap.hpp"
-#include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/tasking/clock.hpp"
-#include "kernel/logger/logger.hpp"
 
 static g_user_mutex nextMutex;
 static g_mutex globalLock;
 static g_hashmap<g_user_mutex, g_user_mutex_entry*>* mutexMap;
-
-void _userMutexSetTaskWaiting(g_user_mutex_entry* entry, g_task* task);
-void _userMutexWakeWaitingTasks(g_user_mutex_entry* entry);
 
 void userMutexInitialize()
 {
@@ -41,178 +36,159 @@ void userMutexInitialize()
 
 g_user_mutex userMutexCreate(bool reentrant)
 {
-	g_user_mutex_entry* entry = (g_user_mutex_entry*) heapAllocate(sizeof(g_user_mutex_entry));
-	mutexInitializeTask(&entry->lock, __func__);
-	entry->value = 0;
-	waitQueueInitialize(&entry->waiters);
+	auto entry = (g_user_mutex_entry*) heapAllocateClear(sizeof(g_user_mutex_entry));
 	entry->reentrant = reentrant;
-	entry->owner = -1;
-
+	entry->owner = G_TID_NONE;
+	entry->creator = taskingGetCurrentTask()->process->id;
+	waitQueueInitialize(&entry->waiters);
 	mutexAcquire(&globalLock);
 	g_user_mutex mutex = ++nextMutex;
-	mutexRelease(&globalLock);
 	hashmapPut(mutexMap, mutex, entry);
-
+	mutexRelease(&globalLock);
 	return mutex;
+}
+
+static bool _userMutexTryAcquire(g_task* task, g_user_mutex_entry* entry)
+{
+	if(entry->value && !(entry->reentrant && entry->owner == task->id))
+		return false;
+	++entry->value;
+	entry->owner = task->id;
+	return true;
 }
 
 g_user_mutex_status userMutexTryAcquire(g_task* task, g_user_mutex mutex)
 {
-	g_user_mutex_entry* entry = hashmapGet<g_user_mutex, g_user_mutex_entry*>(mutexMap, mutex, nullptr);
-	if(!entry)
-	{
-		logWarn("%! task %i tried to lock unknown mutex %i", "mutex", task->id, mutex);
-		return false;
-	}
-
-	g_user_mutex_status status;
-	mutexAcquire(&entry->lock);
-	if(entry->value)
-	{
-		if(entry->reentrant && task->id == entry->owner)
-		{
-			entry->value++;
-			status = G_USER_MUTEX_STATUS_ACQUIRED;
-		}
-		else
-			status = G_USER_MUTEX_STATUS_NOT_ACQUIRED;
-	}
-	else
-	{
-		status = G_USER_MUTEX_STATUS_ACQUIRED;
-		entry->value = 1;
-		if(entry->reentrant)
-		{
-			entry->owner = task->id;
-		}
-		else
-			entry->owner = G_TID_NONE;
-	}
-	mutexRelease(&entry->lock);
-	return status;
+	mutexAcquire(&globalLock);
+	auto entry = hashmapGet(mutexMap, mutex, (g_user_mutex_entry*) nullptr);
+	bool acquired = entry && _userMutexTryAcquire(task, entry);
+	mutexRelease(&globalLock);
+	return acquired ? G_USER_MUTEX_STATUS_ACQUIRED : G_USER_MUTEX_STATUS_NOT_ACQUIRED;
 }
 
 g_user_mutex_status userMutexAcquire(g_task* task, g_user_mutex mutex, uint64_t timeout, bool trying)
 {
-	g_user_mutex_entry* entry = hashmapGet<g_user_mutex, g_user_mutex_entry*>(mutexMap, mutex, nullptr);
-	if(!entry)
-	{
-		logWarn("%! task %i attempted to acquire unknown mutex %i", "mutex", taskingGetCurrentTask()->id, mutex);
-		return G_USER_MUTEX_STATUS_NOT_ACQUIRED;
-	}
-
-	bool wasSet = false;
-	bool hasTimeout = false;
-
-	bool useTimeout = (timeout > 0);
-	if(useTimeout)
+	if(timeout)
 		clockWaitForTime(task->id, clockGetLocal()->time + timeout);
-
+	g_user_mutex_status result = G_USER_MUTEX_STATUS_NOT_ACQUIRED;
 	while(true)
 	{
-		mutexAcquire(&entry->lock);
-		bool stop = false;
-		if(useTimeout && (hasTimeout = clockHasTimedOut(task->id)))
+		bool waiting = taskingWaitIf([&]()
 		{
-			stop = true;
-		}
-		else
-		{
-			g_user_mutex_status status = userMutexTryAcquire(task, mutex);
-			wasSet = (status == G_USER_MUTEX_STATUS_ACQUIRED);
-			stop = wasSet || trying;
-		}
-		if(stop)
-		{
-			mutexRelease(&entry->lock);
-			break;
-		}
-
-		taskingWait(task, __func__, [mutex, entry, task]()
-		{
-			userMutexWaitForAcquire(mutex, task->id);
-			mutexRelease(&entry->lock);
+			mutexAcquire(&globalLock);
+			auto entry = hashmapGet(mutexMap, mutex, (g_user_mutex_entry*) nullptr);
+			bool wait = false;
+			if(timeout && clockHasTimedOut(task->id))
+				result = G_USER_MUTEX_STATUS_TIMEOUT;
+			else if(entry && _userMutexTryAcquire(task, entry))
+				result = G_USER_MUTEX_STATUS_ACQUIRED;
+			else if(entry && !trying)
+			{
+				taskingPrepareWait(task, "user-mutex");
+				waitQueueAdd(&entry->waiters, task->id);
+				wait = true;
+			}
+			mutexRelease(&globalLock);
+			return wait;
 		});
+		if(!waiting)
+			break;
 	}
-
-	if(useTimeout)
+	if(timeout)
 		clockUnwaitForTime(task->id);
-
 	userMutexUnwaitForAcquire(mutex, task->id);
-
-	return hasTimeout
-		       ? G_USER_MUTEX_STATUS_TIMEOUT
-		       : (wasSet ? G_USER_MUTEX_STATUS_ACQUIRED : G_USER_MUTEX_STATUS_NOT_ACQUIRED);
+	return result;
 }
 
 void userMutexRelease(g_user_mutex mutex)
 {
-	g_user_mutex_entry* entry = hashmapGet<g_user_mutex, g_user_mutex_entry*>(mutexMap, mutex, nullptr);
-	if(!entry)
+	mutexAcquire(&globalLock);
+	auto entry = hashmapGet(mutexMap, mutex, (g_user_mutex_entry*) nullptr);
+	if(entry && entry->value > 0)
 	{
-		logWarn("%! task %i tried to unlock unknown mutex %i", "mutex", taskingGetCurrentTask()->id, mutex);
-		return;
-	}
-
-	mutexAcquire(&entry->lock);
-	if(entry->reentrant)
-	{
-		entry->value--;
-		if(entry->value <= 0)
+		if(!entry->reentrant || --entry->value == 0)
 		{
-			if(entry->value < 0)
-			{
-				logInfo("over-release of mutex %x", entry);
-			}
 			entry->value = 0;
 			entry->owner = G_TID_NONE;
-			_userMutexWakeWaitingTasks(entry);
+			waitQueueWake(&entry->waiters);
 		}
 	}
-	else
-	{
-		entry->value = 0;
-		_userMutexWakeWaitingTasks(entry);
-	}
-	mutexRelease(&entry->lock);
+	mutexRelease(&globalLock);
 }
 
-void userMutexDestroy(g_user_mutex mutex)
+static void _userMutexDestroy(g_user_mutex mutex)
 {
-	userMutexRelease(mutex);
-
-	g_user_mutex_entry* entry = hashmapTake<g_user_mutex, g_user_mutex_entry*>(mutexMap, mutex, nullptr);
+	auto entry = hashmapTake(mutexMap, mutex, (g_user_mutex_entry*) nullptr);
 	if(entry)
 	{
+		waitQueueWake(&entry->waiters);
 		heapFree(entry);
 	}
 }
 
+void userMutexDestroy(g_user_mutex mutex)
+{
+	mutexAcquire(&globalLock);
+	_userMutexDestroy(mutex);
+	mutexRelease(&globalLock);
+}
+
+void userMutexTaskRemoved(g_tid task)
+{
+	mutexAcquire(&globalLock);
+	auto iter = hashmapIteratorStart(mutexMap);
+	while(hashmapIteratorHasNext(&iter))
+	{
+		auto entry = hashmapIteratorNext(&iter)->value;
+		if(entry->owner == task)
+		{
+			entry->owner = G_TID_NONE;
+			entry->value = 0;
+			waitQueueWake(&entry->waiters);
+		}
+	}
+	hashmapIteratorEnd(&iter);
+	mutexRelease(&globalLock);
+}
+
+void userMutexProcessRemoved(g_pid process)
+{
+	mutexAcquire(&globalLock);
+	while(true)
+	{
+		g_user_mutex owned = 0;
+		auto iter = hashmapIteratorStart(mutexMap);
+		while(hashmapIteratorHasNext(&iter))
+		{
+			auto item = hashmapIteratorNext(&iter);
+			if(item->value->creator == process)
+			{
+				owned = item->key;
+				break;
+			}
+		}
+		hashmapIteratorEnd(&iter);
+		if(!owned)
+			break;
+		_userMutexDestroy(owned);
+	}
+	mutexRelease(&globalLock);
+}
+
 void userMutexWaitForAcquire(g_user_mutex mutex, g_tid task)
 {
-	g_user_mutex_entry* entry = hashmapGet<g_user_mutex, g_user_mutex_entry*>(mutexMap, mutex, nullptr);
-	if(!entry)
-	{
-		logWarn("%! tried to add waiter for task %i to unknown mutex %i", "mutex", task, mutex);
-		return;
-	}
-
-	waitQueueAdd(&entry->waiters, task);
+	mutexAcquire(&globalLock);
+	auto entry = hashmapGet(mutexMap, mutex, (g_user_mutex_entry*) nullptr);
+	if(entry)
+		waitQueueAdd(&entry->waiters, task);
+	mutexRelease(&globalLock);
 }
 
 void userMutexUnwaitForAcquire(g_user_mutex mutex, g_tid task)
 {
-	g_user_mutex_entry* entry = hashmapGet<g_user_mutex, g_user_mutex_entry*>(mutexMap, mutex, nullptr);
-	if(!entry)
-	{
-		logWarn("%! tried to remove waiter for task %i from unknown mutex %i", "mutex", task, mutex);
-		return;
-	}
-
-	waitQueueRemove(&entry->waiters, task);
-}
-
-void _userMutexWakeWaitingTasks(g_user_mutex_entry* entry)
-{
-	waitQueueWake(&entry->waiters);
+	mutexAcquire(&globalLock);
+	auto entry = hashmapGet(mutexMap, mutex, (g_user_mutex_entry*) nullptr);
+	if(entry)
+		waitQueueRemove(&entry->waiters, task);
+	mutexRelease(&globalLock);
 }

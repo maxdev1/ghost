@@ -23,6 +23,7 @@
 #include "kernel/calls/syscall.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/memory/memory.hpp"
+#include "kernel/memory/constants.hpp"
 #include "kernel/tasking/elf/elf_tls.hpp"
 #include "kernel/tasking/tasking_memory.hpp"
 #include "kernel/utils/string.hpp"
@@ -40,20 +41,32 @@ g_load_executable_result elfLoadExecutable(g_fd fd, g_security_level securityLev
 		return res;
 	}
 
-	const char* name = "root";
+	const char* name = nullptr;
 	filesystemGetFileName(fd, &name);
 
-	auto rootRes = elfObjectLoad(nullptr, name, fd, 0);
+	auto rootRes = elfObjectLoad(nullptr, name ? name : "root", fd, 0);
+	if(name)
+		heapFree((void*)name);
 	res.status = rootRes.status;
 	res.validationDetails = rootRes.validation;
+	// The process owns partial loads too, so failed spawns use the same teardown.
+	process->object = rootRes.object;
 
 	if(rootRes.status == G_SPAWN_STATUS_SUCCESSFUL)
 	{
-		elfTlsCreateMasterImage(fd, process, rootRes.object);
+        if(!elfTlsCreateMasterImage(fd, process, rootRes.object))
+        {
+            res.status = G_SPAWN_STATUS_MEMORY_ERROR;
+            return res;
+        }
 		g_address imageEnd = elfUserProcessCreateInfo(process, rootRes.object, rootRes.nextFreeBase, securityLevel);
 
-		process->object = rootRes.object;
-		process->image.start = rootRes.object->startAddress;
+        if(!imageEnd)
+        {
+            res.status = G_SPAWN_STATUS_MEMORY_ERROR;
+            return res;
+        }
+        process->image.start = rootRes.object->startAddress;
 		process->image.end = imageEnd;
 
 		res.entry = rootRes.object->header.e_entry;
@@ -81,11 +94,21 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* roo
 
 	// Map required memory all loaded objects
 	g_address areaStart = imageEnd;
-	uint32_t pages = G_PAGE_ALIGN_UP(totalRequired) / G_PAGE_SIZE;
+    if(imageEnd < G_PAGE_SIZE || imageEnd > G_USER_MAXIMUM_HEAP_BREAK ||
+       G_PAGE_ALIGN_UP(totalRequired) > G_USER_MAXIMUM_HEAP_BREAK - imageEnd)
+        return 0;
+    uint32_t pages = G_PAGE_ALIGN_UP(totalRequired) / G_PAGE_SIZE;
 	for(uint32_t i = 0; i < pages; i++)
 	{
-		g_physical_address page = memoryPhysicalAllocate();
-		pagingMapPage(areaStart + i * G_PAGE_SIZE, page, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
+		g_physical_address page = memoryPhysicalTryAllocate();
+        if(!page)
+            return 0;
+		memorySetBytes((void*) G_MEM_PHYS_TO_VIRT(page), 0, G_PAGE_SIZE);
+        if(!pagingMapPage(areaStart + i * G_PAGE_SIZE, page, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT))
+        {
+            memoryPhysicalFree(page);
+            return 0;
+        }
 	}
 
 	// Fill with data
@@ -164,7 +187,12 @@ g_spawn_validation_details elfValidateHeader(Elf64_Ehdr* header, bool root)
 		return G_SPAWN_VALIDATION_ELF_NOT_LITTLE_ENDIAN;
 
 	// Must comply to current ELF standard
-	if(header->e_version != EV_CURRENT)
+	if(header->e_version != EV_CURRENT || header->e_ident[EI_VERSION] != EV_CURRENT ||
+	   header->e_ehsize != sizeof(Elf64_Ehdr) ||
+	   !header->e_phnum || header->e_phentsize != sizeof(Elf64_Phdr) ||
+	   (header->e_shnum && header->e_shentsize != sizeof(Elf64_Shdr)) ||
+	   header->e_phoff > G_ADDRESS_MAX - (uint64_t)header->e_phnum * sizeof(Elf64_Phdr) ||
+	   header->e_shoff > G_ADDRESS_MAX - (uint64_t)header->e_shnum * sizeof(Elf64_Shdr))
 		return G_SPAWN_VALIDATION_ELF_NOT_STANDARD_ELF;
 
 	return G_SPAWN_VALIDATION_SUCCESSFUL;

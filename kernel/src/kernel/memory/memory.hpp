@@ -46,9 +46,15 @@ void memoryInitialize(limine_memmap_response* memoryMap);
 bool memoryPhysicalIsRangeAddressable(g_physical_address address, g_size size);
 
 /**
+ * Converts a non-empty byte size to a page count without rounding/narrowing overflow.
+ */
+bool memorySizeToPageCount(g_size size, uint32_t* outPages);
+
+/**
  * Allocates a physical memory page.
  */
 g_physical_address memoryPhysicalAllocate(bool untracked = false);
+g_physical_address memoryPhysicalTryAllocate();
 
 /**
  * Frees a physical memory page.

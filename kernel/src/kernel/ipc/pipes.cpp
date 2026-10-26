@@ -32,7 +32,7 @@ static g_hashmap<g_fs_phys_id, g_pipeline*>* pipeMap;
 static bool pipeCanWrite(g_pipeline* pipe, uint64_t length)
 {
 	size_t space = pipe->capacity - pipe->size;
-	return length <= pipe->capacity ? space >= length : space > 0;
+	return length <= G_PIPE_DEFAULT_CAPACITY ? space >= length : space > 0;
 }
 
 void pipeInitialize()
@@ -43,13 +43,18 @@ void pipeInitialize()
 	pipeMap = hashmapCreateNumeric<g_fs_phys_id, g_pipeline*>(128);
 }
 
-g_fs_pipe_status pipeCreate(g_fs_phys_id* outPipeId)
+g_fs_pipe_status pipeCreate(g_fs_phys_id* outPipeId, g_bool blocking)
 {
 	g_pipeline* pipe = (g_pipeline*) heapAllocateClear(sizeof(g_pipeline));
 
 	mutexInitializeTask(&pipe->lock, __func__);
-	pipe->capacity = G_PIPE_DEFAULT_CAPACITY;
+	pipe->capacity = blocking ? G_PIPE_STREAM_CAPACITY : G_PIPE_DEFAULT_CAPACITY;
 	pipe->buffer = (uint8_t*) memoryAllocateKernel(G_PAGE_ALIGN_UP(pipe->capacity) / G_PAGE_SIZE);
+	if(!pipe->buffer)
+	{
+		heapFree(pipe);
+		return G_FS_PIPE_ERROR;
+	}
 	pipe->readPosition = pipe->buffer;
 	pipe->writePosition = pipe->buffer;
 	waitQueueInitialize(&pipe->waitersRead);
@@ -64,9 +69,12 @@ g_fs_pipe_status pipeCreate(g_fs_phys_id* outPipeId)
 
 void pipeDeleteInternal(g_fs_phys_id pipeId, g_pipeline* pipe)
 {
-	memoryFreeKernelRange((g_virtual_address) pipe->buffer);
-	heapFree(pipe);
 	hashmapRemove(pipeMap, pipeId);
+	waitQueueWake(&pipe->waitersRead);
+	waitQueueWake(&pipe->waitersWrite);
+	memoryFreeKernelRange((g_virtual_address) pipe->buffer);
+	filesystemRemovePipeNode(pipeId);
+	heapFree(pipe);
 
 	logDebug("%! deleted pipe %i", "pipe", pipeId);
 }
@@ -259,7 +267,10 @@ g_fs_length_status pipeGetLength(g_fs_phys_id pipeId, uint64_t* outLength)
 	if(!pipe)
 		return G_FS_LENGTH_ERROR;
 
-	return pipe->size;
+	mutexAcquire(&pipe->lock);
+	*outLength = pipe->size;
+	mutexRelease(&pipe->lock);
+	return G_FS_LENGTH_SUCCESSFUL;
 }
 
 g_fs_open_status pipeTruncate(g_fs_phys_id pipeId)

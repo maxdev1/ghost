@@ -61,4 +61,24 @@ void mutexAcquire(g_mutex* mutex);
  */
 void mutexRelease(g_mutex* mutex);
 
+/** Keeps a mutex acquired until the current scope ends. */
+class g_mutex_guard
+{
+	g_mutex* mutex;
+
+public:
+	explicit g_mutex_guard(g_mutex* mutex) : mutex(mutex)
+	{
+		mutexAcquire(mutex);
+	}
+
+	~g_mutex_guard()
+	{
+		mutexRelease(mutex);
+	}
+
+	g_mutex_guard(const g_mutex_guard&) = delete;
+	g_mutex_guard& operator=(const g_mutex_guard&) = delete;
+};
+
 #endif

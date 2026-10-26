@@ -32,70 +32,65 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, g_address* outAddress
 {
 	g_process* process = task->process;
 	mutexAcquire(&process->lock);
-	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(task->process->pageSpace);
-
-	// Initialize the heap if necessary
-	if(process->heap.brk == 0)
+	*outAddress = G_ADDRESS_MAX;
+	const g_virtual_address start = process->heap.brk ? process->heap.start : process->image.end;
+	const g_virtual_address oldBrk = process->heap.brk ? process->heap.brk : start;
+	const int64_t delta = amount;
+	// The heap ends where the separately allocated user ranges begin. Validate
+	// before unsigned arithmetic, including INT32_MIN and shrinking below start.
+	if(!start || (start & G_PAGE_ALIGN_MASK) || oldBrk < start || oldBrk > G_USER_MAXIMUM_HEAP_BREAK ||
+	   (delta < 0 && (uint64_t)(-delta) > oldBrk - start) ||
+	   (delta >= 0 && (uint64_t)delta > G_USER_MAXIMUM_HEAP_BREAK - oldBrk))
 	{
-		g_virtual_address heapStart = process->image.end;
-
-		g_physical_address phys = memoryPhysicalAllocate();
-		pagingMapPage(heapStart, phys, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
-
-		process->heap.brk = heapStart;
-		process->heap.start = heapStart;
-		process->heap.pages = 1;
+		mutexRelease(&process->lock);
+		return false;
 	}
-
-	// Calculate new address
-	g_virtual_address oldBrk = process->heap.brk;
-	g_virtual_address newBrk = oldBrk + amount;
-
-	// Heap expansion is limited
-	// TODO limit heap expansion again?
-	bool success = false;
-	// if(newBrk >= G_USER_MAXIMUM_HEAP_BREAK)
-	// {
-	// 	logInfo("%! process %i went out of memory during sbrk", "syscall", process->main->id);
-	// 	*outAddress = -1;
-	// }
-	// else
-	// {
-	// Expand if necessary
-	g_virtual_address virt_above;
-	while(newBrk > (virt_above = process->heap.start + process->heap.pages * G_PAGE_SIZE))
+	const g_virtual_address newBrk = oldBrk + delta;
+	const uint32_t wantedPages = G_PAGE_ALIGN_UP(newBrk - start) / G_PAGE_SIZE;
+	const uint32_t oldPages = process->heap.pages;
+	auto back = taskingMemoryTemporarySwitchTo(process->pageSpace);
+	uint32_t installed = oldPages;
+	for(; installed < wantedPages; ++installed)
 	{
-		g_physical_address phys = memoryPhysicalAllocate();
-		pagingMapPage(virt_above, phys, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
-		++process->heap.pages;
+		auto physical = memoryPhysicalTryAllocate();
+		if(!physical)
+			break;
+		memorySetBytes((void*) G_MEM_PHYS_TO_VIRT(physical), 0, G_PAGE_SIZE);
+		if(!pagingMapPage(start + installed * G_PAGE_SIZE, physical, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT))
+		{
+			memoryPhysicalFree(physical);
+			break;
+		}
 	}
-
-	// Shrink if possible
-	g_virtual_address virtAligned;
-	while(newBrk < (virtAligned = process->heap.start + process->heap.pages * G_PAGE_SIZE - G_PAGE_SIZE))
+	const bool success = installed >= wantedPages;
+	// On failure undo only the pages installed by this call. The previous break
+	// and contents stay valid; a conflicting mapping belongs to someone else.
+	const uint32_t keepPages = success ? wantedPages : oldPages;
+	while(installed > keepPages)
 	{
-		g_physical_address phys = pagingVirtualToPhysical(virtAligned);
-		pagingUnmapPage(virtAligned);
-		memoryPhysicalFree(phys);
-
-		--process->heap.pages;
+		auto address = start + --installed * G_PAGE_SIZE;
+		auto physical = pagingVirtualToPhysical(address);
+		pagingUnmapPage(address);
+		memoryPhysicalFree(physical);
 	}
-
-	process->heap.brk = newBrk;
-	*outAddress = oldBrk;
-	success = true;
-	// }
-
-	taskingMemoryTemporarySwitchBack(returnDirectory);
+	if(success)
+	{
+		process->heap.start = start;
+		process->heap.brk = newBrk;
+		process->heap.pages = wantedPages;
+		*outAddress = oldBrk;
+	}
+	taskingMemoryTemporarySwitchBack(back);
 	mutexRelease(&process->lock);
 	return success;
 }
 
-void taskingMemoryInitialize(g_task* task)
+bool taskingMemoryInitialize(g_task* task)
 {
-	taskingMemoryInitializeStacks(task);
+	if(!taskingMemoryInitializeStacks(task))
+		return false;
 	taskingMemoryInitializeUtility(task);
-	taskingMemoryInitializeTls(task);
+	return taskingMemoryInitializeTls(task);
 }
 
 void taskingMemoryInitializeUtility(g_task* task)
@@ -109,28 +104,31 @@ void taskingMemoryInitializeUtility(g_task* task)
 		if(task->process && task->process->main && task->process->main != task)
 		{
 			memoryCopy(task->fpu.state, task->process->main->fpu.state, G_SSE_STATE_SIZE);
-			task->fpu.stored = true;
 		}
 		else
 		{
 			memoryCopy(task->fpu.state, processorGetInitialFpuState(), G_SSE_STATE_SIZE);
 		}
+		// The first dispatch must restore this image too, before the first save.
+		task->fpu.stored = true;
 	}
 	else
 	{
 		task->fpu.stateMem = nullptr;
 		task->fpu.state = nullptr;
+		task->fpu.stored = false;
 	}
-	task->fpu.stored = false;
 }
 
-void taskingMemoryInitializeStacks(g_task* task)
+bool taskingMemoryInitializeStacks(g_task* task)
 {
 	// Interrupt stack for ring 3 & VM86 tasks
 	if(task->securityLevel != G_SECURITY_LEVEL_KERNEL)
 	{
 		task->interruptStack = taskingMemoryCreateStack(memoryVirtualRangePool, G_PAGE_TABLE_KERNEL_DEFAULT,
 		                                                G_PAGE_KERNEL_DEFAULT, G_TASKING_MEMORY_INTERRUPT_STACK_PAGES);
+		if(!task->interruptStack.start)
+			return false;
 	}
 	else
 	{
@@ -155,18 +153,34 @@ void taskingMemoryInitializeStacks(g_task* task)
 		task->stack = taskingMemoryCreateStack(task->process->virtualRangePool, G_PAGE_TABLE_USER_DEFAULT,
 		                                       G_PAGE_USER_DEFAULT, G_TASKING_MEMORY_USER_STACK_PAGES);
 	}
+	return task->stack.start != 0;
 }
 
 g_stack taskingMemoryCreateStack(g_address_range_pool* addressRangePool, uint32_t tableFlags, uint32_t pageFlags,
                                  int pages)
 {
-	g_virtual_address stackVirt = addressRangePoolAllocate(addressRangePool, pages);
+	if(pages < 2)
+		return {};
+	g_virtual_address stackVirt = addressRangePoolAllocate(addressRangePool, pages, G_PROC_VIRTUAL_RANGE_FLAG_INTERNAL);
+	if(!stackVirt)
+		return {};
 
 	// Only allocate and map the last page of the stack; when the process faults, lazy-allocate more physical space.
 	// The first page of the allocated virtual range is used as a "guard page" and makes the process fault when accessed.
-	g_physical_address pagePhys = memoryPhysicalAllocate();
+	g_physical_address pagePhys = memoryPhysicalTryAllocate();
+	if(!pagePhys)
+	{
+		addressRangePoolFree(addressRangePool, stackVirt);
+		return {};
+	}
+	memorySetBytes((void*) G_MEM_PHYS_TO_VIRT(pagePhys), 0, G_PAGE_SIZE);
 	g_address stackEnd = stackVirt + pages * G_PAGE_SIZE;
-	pagingMapPage(stackEnd - G_PAGE_SIZE, pagePhys, tableFlags, pageFlags);
+	if(!pagingMapPage(stackEnd - G_PAGE_SIZE, pagePhys, tableFlags, pageFlags))
+	{
+		memoryPhysicalFree(pagePhys);
+		addressRangePoolFree(addressRangePool, stackVirt);
+		return {};
+	}
 
 	g_stack stack;
 	stack.start = stackVirt;
@@ -187,7 +201,19 @@ void taskingMemoryDestroyUtility(g_task* task)
 	{
 		heapFree(task->fpu.stateMem);
 		task->fpu.stateMem = nullptr;
+		task->fpu.state = nullptr;
+		task->fpu.stored = false;
 	}
+}
+
+static void _taskingMemoryReleasePage(g_virtual_address address)
+{
+	uint64_t entry = pagingVirtualToPageEntry(address);
+	if(!(entry & G_PAGE_PRESENT))
+		return;
+	pagingUnmapPage(address);
+	if(!(entry & G_PAGE_UNMANAGED_FLAG))
+		memoryPhysicalFree(entry & G_PAGE_PHYSICAL_MASK);
 }
 
 void taskingMemoryDestroyStacks(g_task* task)
@@ -197,12 +223,7 @@ void taskingMemoryDestroyStacks(g_task* task)
 	{
 		for(g_virtual_address virt = task->interruptStack.start; virt < task->interruptStack.end; virt += G_PAGE_SIZE)
 		{
-			g_physical_address phys = pagingVirtualToPhysical(virt);
-			if(phys > 0)
-			{
-				memoryPhysicalFree(phys);
-				pagingUnmapPage(virt);
-			}
+			_taskingMemoryReleasePage(virt);
 		}
 		addressRangePoolFree(memoryVirtualRangePool, task->interruptStack.start);
 	}
@@ -224,24 +245,24 @@ void taskingMemoryDestroyStacks(g_task* task)
 
 void taskingMemoryDestroyStack(g_address_range_pool* addressRangePool, g_stack& stack)
 {
+	if(!stack.start)
+		return;
 	for(g_virtual_address page = stack.start; page < stack.end; page += G_PAGE_SIZE)
 	{
-		g_physical_address pagePhys = pagingVirtualToPhysical(page);
-		if(!pagePhys)
-			continue;
-
-		memoryPhysicalFree(pagePhys);
-		pagingUnmapPage(page);
+		_taskingMemoryReleasePage(page);
 	}
 
 	addressRangePoolFree(addressRangePool, stack.start);
+	stack = {};
 }
 
 g_physical_address taskingMemoryCreatePageSpace()
 {
 	auto currentPml4 = (g_address*) G_MEM_PHYS_TO_VIRT(pagingGetCurrentSpace());
 
-	g_physical_address newPml4Phys = memoryPhysicalAllocate();
+	g_physical_address newPml4Phys = memoryPhysicalTryAllocate();
+	if(!newPml4Phys)
+		return 0;
 	auto newPml4 = (g_address*) G_MEM_PHYS_TO_VIRT(newPml4Phys);
 
 	// Copy all higher-level mappings
@@ -256,39 +277,48 @@ g_physical_address taskingMemoryCreatePageSpace()
 	return newPml4Phys;
 }
 
+static void _taskingMemoryDestroyTable(g_physical_address physical, int level)
+{
+	auto table = (uint64_t*) G_MEM_PHYS_TO_VIRT(physical);
+	for(int i = 0; i < 512; ++i)
+	{
+		const uint64_t entry = table[i];
+		if(!(entry & G_PAGE_PRESENT))
+			continue;
+		table[i] = 0;
+		if(level > 1)
+		{
+			// User mappings created by Ghost always use 4 KiB leaf pages.
+			if(entry & G_PAGE_LARGE_PAGE_FLAG)
+				panic("%! unexpected large user page during teardown", "tasking");
+			_taskingMemoryDestroyTable(entry & G_PAGE_PHYSICAL_MASK, level - 1);
+		}
+		else if(!(entry & G_PAGE_UNMANAGED_FLAG))
+			memoryPhysicalFree(entry & G_PAGE_PHYSICAL_MASK);
+	}
+	// Page-table pages are allocated without reference tracking.
+	bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, physical);
+}
+
 void taskingMemoryDestroyPageSpace(g_physical_address directory)
 {
-	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(directory);
+	if(directory == pagingGetCurrentSpace())
+		panic("%! attempted to destroy the active address space", "tasking");
 
-	// Clear mappings and free physical space above 4 MiB
-	// TODO
-	logInfo("%! taskingMemoryDestroyPageSpace not implemented", "todo");
-	// g_page_directory directoryCurrent = (g_page_directory) G_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
-	// for(uint32_t ti = 1; ti < 1024; ti++)
-	// {
-	// 	if(!(directoryCurrent[ti] & G_PAGE_USER_FLAG))
-	// 		continue;
-	//
-	// 	g_page_table tableMapped = ((g_page_table) G_RECURSIVE_PAGE_DIRECTORY_AREA) + (0x400 * ti);
-	// 	for(uint32_t pi = 0; pi < 1024; pi++)
-	// 	{
-	// 		if(tableMapped[pi] == 0)
-	// 			continue;
-	//
-	// 		g_physical_address page = G_PAGE_ALIGN_DOWN(tableMapped[pi]);
-	// 		memoryPhysicalFree(page);
-	// 	}
-	//
-	// 	g_physical_address table = G_PAGE_ALIGN_DOWN(directoryCurrent[ti]);
-	// 	memoryPhysicalFree(table);
-	// }
-
-	taskingMemoryTemporarySwitchBack(returnDirectory);
-
+	// Every task has switched away before final process teardown. User TLB entries
+	// are non-global and were flushed by those CR3 switches. The upper half is shared.
+	auto root = (uint64_t*) G_MEM_PHYS_TO_VIRT(directory);
+	for(int i = 0; i < 256; ++i)
+	{
+		uint64_t entry = root[i];
+		root[i] = 0;
+		if(entry & G_PAGE_PRESENT)
+			_taskingMemoryDestroyTable(entry & G_PAGE_PHYSICAL_MASK, 3);
+	}
 	memoryPhysicalFree(directory);
 }
 
-void taskingMemoryInitializeTls(g_task* task)
+bool taskingMemoryInitializeTls(g_task* task)
 {
 	// Kernel thread-local storage
 	if(!task->threadLocal.kernelThreadLocal)
@@ -310,13 +340,26 @@ void taskingMemoryInitializeTls(g_task* task)
 			if(requiredPages < 1)
 				requiredPages = 1;
 
-			g_virtual_address tlsStart = addressRangePoolAllocate(process->virtualRangePool, requiredPages);
+			g_virtual_address tlsStart = addressRangePoolAllocate(process->virtualRangePool, requiredPages,
+			                                                       G_PROC_VIRTUAL_RANGE_FLAG_INTERNAL);
+			if(!tlsStart)
+				return false;
 			g_virtual_address tlsEnd = tlsStart + requiredPages * G_PAGE_SIZE;
+			task->threadLocal.start = tlsStart;
+			task->threadLocal.end = tlsStart;
 
 			for(g_virtual_address page = tlsStart; page < tlsEnd; page += G_PAGE_SIZE)
 			{
-				g_physical_address phys = memoryPhysicalAllocate();
-				pagingMapPage(page, phys, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT);
+				g_physical_address phys = memoryPhysicalTryAllocate();
+				if(!phys)
+					return false;
+				memorySetBytes((void*) G_MEM_PHYS_TO_VIRT(phys), 0, G_PAGE_SIZE);
+				if(!pagingMapPage(page, phys, G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT))
+				{
+					memoryPhysicalFree(phys);
+					return false;
+				}
+				task->threadLocal.end = page + G_PAGE_SIZE;
 			}
 
 			// Copy TLS contents
@@ -333,6 +376,7 @@ void taskingMemoryInitializeTls(g_task* task)
 			         task->threadLocal.start);
 		}
 	}
+	return true;
 }
 
 void taskingMemoryDestroyTls(g_task* task)
@@ -341,12 +385,7 @@ void taskingMemoryDestroyTls(g_task* task)
 	{
 		for(g_virtual_address page = task->threadLocal.start; page < task->threadLocal.end; page += G_PAGE_SIZE)
 		{
-			g_physical_address pagePhys = pagingVirtualToPhysical(page);
-			if(pagePhys > 0)
-			{
-				memoryPhysicalFree(pagePhys);
-				pagingUnmapPage(page);
-			}
+			_taskingMemoryReleasePage(page);
 		}
 		addressRangePoolFree(task->process->virtualRangePool, task->threadLocal.start);
 	}
@@ -382,7 +421,7 @@ bool taskingMemoryHandleStackOverflow(g_task* task, g_virtual_address accessed)
 	g_virtual_address accessedPage = G_PAGE_ALIGN_DOWN(accessed);
 
 	// Is within range of the stack?
-	if(accessedPage < task->stack.start || accessedPage > task->stack.end)
+	if(accessedPage < task->stack.start || accessedPage >= task->stack.end)
 	{
 		return false;
 	}
@@ -407,6 +446,19 @@ bool taskingMemoryHandleStackOverflow(g_task* task, g_virtual_address accessed)
 		pageFlags = G_PAGE_USER_DEFAULT;
 	}
 
-	pagingMapPage(accessedPage, memoryPhysicalAllocate(), tableFlags, pageFlags);
-	return true;
+	if(pagingVirtualToPageEntry(accessedPage) & G_PAGE_PRESENT)
+	{
+		pagingInvalidatePage(accessedPage);
+		return true;
+	}
+	auto physical = memoryPhysicalTryAllocate();
+	if(!physical)
+		return false;
+	memorySetBytes((void*) G_MEM_PHYS_TO_VIRT(physical), 0, G_PAGE_SIZE);
+	if(pagingMapPage(accessedPage, physical, tableFlags, pageFlags))
+		return true;
+	// Another fault may have installed the same page. Do not leak our copy.
+	memoryPhysicalFree(physical);
+	pagingInvalidatePage(accessedPage);
+	return (pagingVirtualToPageEntry(accessedPage) & G_PAGE_PRESENT) != 0;
 }

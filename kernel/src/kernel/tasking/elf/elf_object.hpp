@@ -83,17 +83,15 @@ struct g_elf_object
 		uint32_t userThreadOffset;
 	} tlsMaster;
 
-	g_hashmap<const char*, g_elf_symbol_info>* localSymbols;
-
-	// Global symbols are filled in load order and only put if not existing yet
-	g_hashmap<const char*, g_elf_symbol_info>* globalSymbols;
 	g_hashmap<const char*, g_elf_object*>* loadedObjects;
 	uint16_t nextObjectId;
 
-	// List ordered by symbol lookup priority, the list exists only in the
+	// Reverse load order for COPY relocations. The head exists only in the
 	// root object while the next-pointer exists for every object
 	g_elf_object* symbolLookupOrderList;
 	g_elf_object* symbolLookupOrderListNext;
+	// Forward load order starts at the root object.
+	g_elf_object* symbolLoadOrderNext;
 
 	// In-address-space memory pointers
 	Elf64_Dyn* dynamicSection;
