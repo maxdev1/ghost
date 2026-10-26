@@ -23,20 +23,24 @@
 
 typedef struct
 {
-	uint32_t ti_module;
-	uint32_t ti_offset;
+	uintptr_t ti_module;
+	uintptr_t ti_offset;
 } tls_index;
 
 /**
  * This function is called whenever a shared library tries to access a symbol thread-local storage.
  *
- * The tls_index we get passed here resides in the GOT. The relocations that fill those values are done
- * in the ELF loader for R_386_TLS_DTPMOD32 and R_386_TLS_DTPOFF32.
+ * The tls_index in the GOT contains two pointer-sized words, relocated by the ELF loader.
+ * On x86-64 these are R_X86_64_DTPMOD64 and R_X86_64_DTPOFF64. Reading 32-bit
+ * words there would mistake the module's upper half for the TLS offset.
  *
  * What we need to do here is ask the kernel for the current threads user-threadlocal object location and then
- * reference to it, according to the offset we get passed.
+ * reference to it, according to Ghost's thread-pointer-relative offset.
  */
-__attribute__((__regparm__(1))) void* ___tls_get_addr(tls_index* index)
+#if defined(__i386__)
+__attribute__((__regparm__(1)))
+#endif
+void* ___tls_get_addr(tls_index* index)
 {
 	g_virtual_address userThreadLocalAddr = (g_virtual_address) g_task_get_tls();
 	return (void*) (userThreadLocalAddr + index->ti_offset);
