@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "char_renderer.hpp"
+#include <vector>
 #include <libfenster/font/font_loader.hpp>
 
 char_renderer_t::char_renderer_t()
@@ -30,21 +31,43 @@ char_renderer_t::char_renderer_t()
 }
 
 
-void char_renderer_t::printChar(cairo_t* cr, int x, int y, char c)
+char_renderer_t::~char_renderer_t()
 {
-	char_layout_t* charLayout = layoutChar(scaledFont, c);
-	if(charLayout == nullptr)
-		return;
+	for(auto& entry : charLayoutCache)
+	{
+		if(!entry.second)
+			continue;
+		cairo_glyph_free(entry.second->glyph_buffer);
+		cairo_text_cluster_free(entry.second->cluster_buffer);
+		delete entry.second;
+	}
+	cairo_font_options_destroy(fontOptions);
+}
 
-	cairo_text_extents_t charExtents;
-	cairo_scaled_font_glyph_extents(scaledFont, charLayout->glyph_buffer, 1, &charExtents);
-
-	cairo_save(cr);
-	cairo_set_source_rgba(cr, 0.8, 0.8, 0.8, 1);
-	cairo_translate(cr, x, y);
-	cairo_glyph_path(cr, charLayout->glyph_buffer, charLayout->cluster_buffer[0].num_glyphs);
-	cairo_fill(cr);
-	cairo_restore(cr);
+void char_renderer_t::printText(cairo_t* cr, int x, int y, const char* text, int length, int advance)
+{
+	glyphs.clear();
+	glyphs.reserve(length);
+	for(int i = 0; i < length; ++i)
+	{
+		if(!text[i] || text[i] == ' ')
+			continue;
+		auto layout = layoutChar(scaledFont, text[i]);
+		if(!layout)
+			continue;
+		for(int g = 0; g < layout->glyph_count; ++g)
+		{
+			auto glyph = layout->glyph_buffer[g];
+			glyph.x += x + i * advance;
+			glyph.y += y;
+			glyphs.push_back(glyph);
+		}
+	}
+	if(!glyphs.empty())
+	{
+		cairo_set_source_rgba(cr, 0.8, 0.8, 0.8, 1);
+		cairo_show_glyphs(cr, glyphs.data(), glyphs.size());
+	}
 }
 
 char_layout_t* char_renderer_t::layoutChar(cairo_scaled_font_t* scaledFont, char c)
@@ -68,7 +91,10 @@ char_layout_t* char_renderer_t::layoutChar(cairo_scaled_font_t* scaledFont, char
 		return layout;
 	}
 
+	cairo_glyph_free(layout->glyph_buffer);
+	cairo_text_cluster_free(layout->cluster_buffer);
 	delete layout;
+	charLayoutCache[c] = nullptr;
 	return nullptr;
 }
 
@@ -77,6 +103,6 @@ void char_renderer_t::prepareContext(cairo_t* cr, double fontSize)
 {
 	cairo_set_font_face(cr, font->getFace());
 	cairo_set_font_size(cr, fontSize);
-	scaledFont = cairo_get_scaled_font(cr);
 	cairo_set_font_options(cr, fontOptions);
+	scaledFont = cairo_get_scaled_font(cr);
 }

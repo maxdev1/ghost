@@ -10,6 +10,7 @@ fi
 SRC="src-read"
 OBJ="obj-read"
 ARTIFACT_NAME="read.bin"
+CFLAGS_ADD="-O2"
 
 # Include application build tasks
 . "../applications.sh"

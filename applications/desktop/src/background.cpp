@@ -209,6 +209,7 @@ void background_t::addTaskbar(taskbar_t* taskbar)
 {
 	this->taskbar = taskbar;
 	this->addChild(taskbar);
+	taskbar->setNumericProperty(ComponentProperty::DesktopTaskbar, true);
 }
 
 

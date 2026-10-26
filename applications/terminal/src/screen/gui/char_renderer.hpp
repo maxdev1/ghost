@@ -23,6 +23,7 @@
 
 #include <cairo/cairo.h>
 #include <unordered_map>
+#include <vector>
 #include <libfenster/font/font.hpp>
 
 #define CHAR_RENDERER_DEFAULT_FONT "consolas"
@@ -43,13 +44,15 @@ class char_renderer_t
     cairo_font_options_t* fontOptions = nullptr;
 
     std::unordered_map<char, char_layout_t*> charLayoutCache{};
+    std::vector<cairo_glyph_t> glyphs;
     char_layout_t* layoutChar(cairo_scaled_font_t* scaledFont, char c);
 
 public:
     char_renderer_t();
+    ~char_renderer_t();
 
     void prepareContext(cairo_t* cr, double fontSize);
-    void printChar(cairo_t* cr, int x, int y, char c);
+    void printText(cairo_t* cr, int x, int y, const char* text, int length, int advance);
 };
 
 

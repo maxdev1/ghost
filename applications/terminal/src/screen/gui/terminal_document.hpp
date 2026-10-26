@@ -39,11 +39,20 @@ class terminal_document_t
 {
 	g_user_mutex linesLock = g_mutex_initialize_r(true);
 	terminal_line_t* lines = nullptr;
+	int cachedColumns = 0;
+	int cachedRows = 1;
+	static int rowsForLine(const terminal_line_t* line, int columns);
+	terminal_line_t* findLine(int offset);
+	void insertNewline(terminal_line_t*& current);
 
 public:
 	terminal_document_t();
+	~terminal_document_t();
 
 	void insert(int x, int offsetY, char c);
+	int write(int& x, int offsetY, const char* data, int length);
+	// Copy a viewport under one lock; offsetY is the top row, counted from the bottom.
+	void copyRows(int offsetY, int columns, int rows, char* target);
 	void remove(int x, int offsetY);
 	terminal_line_t* getLine(int offset);
 

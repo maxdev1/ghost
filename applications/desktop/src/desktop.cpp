@@ -21,6 +21,8 @@
 #include "desktop.hpp"
 #include "background.hpp"
 #include "taskbar.hpp"
+#include "start_menu.hpp"
+#include <algorithm>
 
 #include <fstream>
 #include <libproperties/properties.hpp>
@@ -31,6 +33,28 @@ using namespace fenster;
 background_t* background = nullptr;
 taskbar_t* taskbar = nullptr;
 
+std::vector<desktop::StartEntry> loadStartMenuApplications()
+{
+    const std::string directory = "/user/start-menu/";
+    std::vector<std::string> files;
+    if(auto iterator = g_open_directory(directory.c_str())) {
+        while(auto entry = g_read_directory(iterator)) {
+            std::string name = entry->name;
+            if(name.size() > 9 && name.substr(name.size() - 9) == ".launcher") files.push_back(name);
+        }
+        g_close_directory(iterator);
+    }
+    std::sort(files.begin(), files.end());
+    std::vector<desktop::StartEntry> applications;
+    for(const auto& file : files) {
+        std::ifstream stream(directory + file);
+        properties::Properties properties(stream);
+        desktop::StartEntry entry;
+        if(desktop::launcherFromProperties(properties.getProperties(), entry)) applications.push_back(std::move(entry));
+    }
+    return applications;
+}
+
 int main()
 {
 	if(Application::open() != ApplicationOpenStatus::Success)
@@ -40,17 +64,21 @@ int main()
 	}
 
 	background = background_t::create();
-	Application::registerDesktopCanvas(background);
-
-	Dimension screenDimension;
-	Application::getScreenDimension(screenDimension);
 	taskbar = taskbar_t::create();
-	taskbar->setBounds(Rectangle(0, screenDimension.height - 40, screenDimension.width, 40));
-	background->addTaskbar(taskbar);
 	background->setDesktopListener([](WindowsEvent* event)
 	{
 		taskbar->handleDesktopEvent(event);
 	});
+	Application::registerDesktopCanvas(background);
+
+	Dimension screenDimension;
+	Application::getScreenDimension(screenDimension);
+	taskbar->setBounds(Rectangle(0, screenDimension.height - 40, screenDimension.width, 40));
+	background->addTaskbar(taskbar);
+    start_menu_t::create(taskbar, loadStartMenuApplications(), [](const desktop::StartEntry& entry) {
+        klog(("Launching: " + entry.application + (entry.arguments.empty() ? "" : " " + entry.arguments)).c_str());
+        return g_spawn(entry.application.c_str(), entry.arguments.c_str(), "/applications", G_SECURITY_LEVEL_APPLICATION) == G_SPAWN_STATUS_SUCCESSFUL;
+    });
 
 	desktopLoadItems();
 

@@ -7,7 +7,7 @@ fi
 
 # Build configuration
 ARTIFACT_NAME="terminal.bin"
-CFLAGS_ADD="-I$SYSROOT_SYSTEM_INCLUDE/freetype2"
+CFLAGS_ADD="-O2 -I$SYSROOT_SYSTEM_INCLUDE/freetype2"
 LDFLAGS="-lfenster -lterminal -lps2driver -linput -lproperties -lcairo -lfreetype -lpixman-1 -lpng -lz"
 
 # Include application build tasks

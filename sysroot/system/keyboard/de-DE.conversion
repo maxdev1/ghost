@@ -33,6 +33,7 @@ KEY_P    : p
 KEY_P s  : P
 KEY_Q    : q
 KEY_Q s  : Q
+KEY_Q ac : @
 KEY_R    : r
 KEY_R s  : R
 KEY_S    : s

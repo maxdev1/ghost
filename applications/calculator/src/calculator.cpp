@@ -19,210 +19,150 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <calculator.hpp>
+#include <libfenster/application.hpp>
+#include <libfenster/component_update_batch.hpp>
 #include <libfenster/components/button.hpp>
 #include <libfenster/components/label.hpp>
-#include <libfenster/components/text_box.hpp>
-#include <libfenster/application.hpp>
+#include <libfenster/components/panel.hpp>
 #include <libfenster/components/window.hpp>
-#include <libfenster/metrics/rectangle.hpp>
-
-#include <algorithm>
-#include <sstream>
+#include <libinput/keyboard/keyboard.hpp>
+#include <vector>
 
 using namespace fenster;
 
-Window* window;
-TextBox* display;
-Button* but1;
-Button* but2;
-Button* but3;
-Button* but4;
-Button* but5;
-Button* but6;
-Button* but7;
-Button* but8;
-Button* but9;
-Button* but0;
-Button* butPlus;
-Button* butMinus;
-Button* butMult;
-Button* butDiv;
-Button* butEq;
-Button* butClear;
+namespace
+{
+class CalculatorDisplay : public Label, public FocusableComponent
+{
+public:
+    explicit CalculatorDisplay(ComponentId id) : Component(id), TitledComponent(id), Label(id), FocusableComponent(id) {}
+    static CalculatorDisplay* create() { return createComponent<CalculatorDisplay, ComponentType::Label>(); }
+};
 
-double totalValue = 0;
-double currentValue = 0;
-int previousCommand = COM_NONE;
+Calculator calculator;
+Window* window;
+CalculatorDisplay* display;
+Label* history;
+std::vector<std::pair<char, Button*>> operators;
+
+void input(char key)
+{
+    ComponentUpdateBatch batch;
+    ComponentUpdateBatch::Scope scope(batch);
+    calculator.input(key);
+    display->setTitle(calculator.display());
+    display->setNumericProperty(ComponentProperty::FontSize, calculator.display().size() > 12 ? 26 : 36);
+    history->setTitle(calculator.history());
+    for(auto& item : operators) item.second->setSelected(item.first == calculator.pendingOperation());
+    // Return keyboard input to the readout after a keypad click.
+    batch.commit();
+    display->setFocused(true);
+}
+
+void keyPressed(KeyEvent& event)
+{
+    const auto& key = event.info;
+    if(!key.pressed || key.ctrl || key.alt) return;
+    // The shared layout omits these extended/numeric keypad keys.
+    if(key.scancode == 0x37) { input('*'); return; }
+    if(key.scancode == 0x6035) { input('/'); return; }
+    if(key.scancode == 0x601c) { input('='); return; }
+    if(key.scancode == 0x6053) { input('c'); return; }
+    g_key_info_basic basic;
+    basic.pressed = key.pressed; basic.ctrl = key.ctrl; basic.alt = key.alt;
+    basic.shift = key.shift; basic.scancode = key.scancode;
+    auto full = g_keyboard::fullKeyInfo(basic);
+    char c = g_keyboard::charForKey(full);
+    if(full.key.compare(0, 8, "KEY_PAD_") == 0) {
+        if(full.key.size() == 9 && full.key[8] >= '0' && full.key[8] <= '9') input(full.key[8]);
+        else if(full.key == "KEY_PAD_PLUS") input('+');
+        else if(full.key == "KEY_PAD_MINUS") input('-');
+        else if(full.key == "KEY_PAD_DOT") input('.');
+    }
+    else if(full.key == "KEY_ENTER") input('=');
+    else if(full.key == "KEY_ESC" || full.key == "KEY_DELETE" || c == 'c' || c == 'C') input('c');
+    else if(full.key == "KEY_BACKSPACE") input('b');
+    else if(c == ',') input('.');
+    else if((c >= '0' && c <= '9') || c == '.' || c == '+' || c == '-' || c == '*' || c == '/' || c == '=') input(c);
+}
+}
 
 int main()
 {
-	ApplicationOpenStatus open_stat = Application::open();
+    if(Application::open() != ApplicationOpenStatus::Success) return -1;
+    if(!g_keyboard::loadLayout("de-DE")) return -1;
+    ComponentUpdateBatch batch;
+    ComponentUpdateBatch::Scope scope(batch);
+    window = Window::create();
+    window->setTitle("Calculator");
+    window->setResizable(false);
+    window->setMinimizeButtonVisible(false);
+    window->setMaximizeButtonVisible(false);
+    window->setBounds(Rectangle(70, 70, 348, 540));
+    window->onClose([] { g_exit(0); });
 
-	if(open_stat == ApplicationOpenStatus::Success)
-	{
-		window = Window::create();
-		window->setTitle("Calculator");
-		window->setResizable(false);
-		window->onClose([]()
-		{
-			g_exit(0);
-		});
+    auto readout = Panel::create();
+    readout->setBounds(Rectangle(16, 16, 296, 96));
+    readout->setBackground(_RGB(241, 244, 250));
+    readout->setNumericProperty(ComponentProperty::CornerRadius, 9);
+    readout->setNumericProperty(ComponentProperty::BorderColor, _RGB(222, 228, 238));
+    window->addChild(readout);
+    history = Label::create();
+    history->setBounds(Rectangle(12, 6, 272, 24));
+    history->setAlignment(TextAlignment::RIGHT);
+    history->setColor(_RGB(108, 120, 140));
+    history->setNumericProperty(ComponentProperty::FontSize, 13);
+    readout->addChild(history);
+    display = CalculatorDisplay::create();
+    display->setBounds(Rectangle(12, 32, 272, 56));
+    display->setTitle("0");
+    display->setAlignment(TextAlignment::RIGHT);
+    display->setColor(_RGB(37, 48, 68));
+    display->setNumericProperty(ComponentProperty::FontSize, 36);
+    display->setFocusable(true);
+    display->addKeyListener(keyPressed);
+    readout->addChild(display);
 
-		display = TextBox::create();
-		display->setTitle("0");
-		display->setBounds(Rectangle(10, 10, 150, 30));
-		window->addChild(display);
+    auto button = [&](const std::string& title, char key, int column, int row, int span = 1) {
+        auto value = Button::create();
+        value->setTitle(title);
+        value->setBounds(Rectangle(16 + column * 76, 128 + row * 64, 68 * span + 8 * (span - 1), 56));
+        value->setNumericProperty(ComponentProperty::FontSize, 24);
+        value->setActionListener([key] { input(key); });
+        window->addChild(value);
+        return value;
+    };
+    button("C", 'c', 0, 0)->setTooltip("Clear all  (Esc)");
+    button("±", 's', 1, 0)->setTooltip("Change sign");
+    auto erase = button("", 'b', 2, 0);
+    erase->setIcon(Icon::Back); erase->setTooltip("Delete last digit  (Backspace)");
+    const char operations[] = {'/', '*', '-', '+'};
+    const char* symbols[] = {"÷", "×", "−", "+"};
+    for(int row = 0; row < 4; ++row) operators.push_back({operations[row], button(symbols[row], operations[row], 3, row)});
+    for(int row = 0; row < 3; ++row)
+        for(int column = 0; column < 3; ++column) {
+            char digit = '7' - row * 3 + column;
+            button(std::string(1, digit), digit, column, row + 1);
+        }
+    button("0", '0', 0, 4, 2);
+    button(".", '.', 2, 4);
+    auto equals = button("=", '=', 3, 4);
+    equals->setSelected(true); equals->setTooltip("Calculate  (Enter)");
+    auto hint = Label::create();
+    hint->setTitle("Enter =    Esc clear    Backspace delete");
+    hint->setBounds(Rectangle(16, 448, 296, 20));
+    hint->setNumericProperty(ComponentProperty::FontSize, 11);
+    hint->setAlignment(TextAlignment::CENTER);
+    hint->setColor(_RGB(108, 120, 140));
+    window->addChild(hint);
+    window->addFocusListener([](bool focused) {
+        if(focused) display->setFocused(true);
+    });
+    window->setVisible(true);
+    if(!batch.commit()) return -1;
+    display->setFocused(true);
 
-#define PLACE_BUTTON_T(num, text, x, y)             \
-	but##num = Button::create();                  \
-	but##num->setTitle(text);                       \
-	but##num->setBounds(Rectangle(x, y, 30, 30)); \
-	window->addChild(but##num);
-
-#define PLACE_BUTTON(num, x, y) PLACE_BUTTON_T(num, #num, x, y);
-
-		int grid1 = 10;
-		int grid2 = 50;
-		int grid3 = 90;
-		int grid4 = 130;
-		int grid5 = 170;
-		int dispOff = 40;
-
-		PLACE_BUTTON_T(Clear, "C", grid1, grid1 + dispOff);
-		butClear->setActionListener([]() { command_pressed(COM_CLEAR); });
-
-		PLACE_BUTTON(1, grid1, grid2 + dispOff);
-		but1->setActionListener([] { pad_button_pressed(1); });
-		PLACE_BUTTON(2, grid2, grid2 + dispOff);
-		but2->setActionListener([] { pad_button_pressed(2); });
-		PLACE_BUTTON(3, grid3, grid2 + dispOff);
-		but3->setActionListener([] { pad_button_pressed(3); });
-
-		PLACE_BUTTON(4, grid1, grid3 + dispOff);
-		but4->setActionListener([] { pad_button_pressed(4); });
-		PLACE_BUTTON(5, grid2, grid3 + dispOff);
-		but5->setActionListener([] { pad_button_pressed(5); });
-		PLACE_BUTTON(6, grid3, grid3 + dispOff);
-		but6->setActionListener([] { pad_button_pressed(6); });
-
-		PLACE_BUTTON(7, grid1, grid4 + dispOff);
-		but7->setActionListener([] { pad_button_pressed(7); });
-		PLACE_BUTTON(8, grid2, grid4 + dispOff);
-		but8->setActionListener([] { pad_button_pressed(8); });
-		PLACE_BUTTON(9, grid3, grid4 + dispOff);
-		but9->setActionListener([] { pad_button_pressed(9); });
-
-		PLACE_BUTTON(0, grid1, grid5 + dispOff);
-		but0->setActionListener([] { pad_button_pressed(0); });
-
-		PLACE_BUTTON_T(Plus, "+", grid4, grid1 + dispOff);
-		butPlus->setActionListener([]() { command_pressed(COM_PLUS); });
-		PLACE_BUTTON_T(Minus, "-", grid4, grid2 + dispOff);
-		butMinus->setActionListener([]() { command_pressed(COM_MINUS); });
-		PLACE_BUTTON_T(Mult, "*", grid4, grid3 + dispOff);
-		butMult->setActionListener([]() { command_pressed(COM_MULT); });
-		PLACE_BUTTON_T(Div, "/", grid4, grid4 + dispOff);
-		butDiv->setActionListener([]() { command_pressed(COM_DIV); });
-		PLACE_BUTTON_T(Eq, "=", grid4, grid5 + dispOff);
-		butEq->setActionListener([]() { command_pressed(COM_EQ); });
-
-		window->setBounds(Rectangle(70, 70, 190, 320));
-		window->setVisible(true);
-
-		g_user_mutex lock = g_mutex_initialize();
-		g_mutex_acquire(lock);
-		g_mutex_acquire(lock);
-	}
-}
-
-/**
- *
- */
-void pad_button_pressed(int num)
-{
-
-	butPlus->setEnabled(true);
-	butMinus->setEnabled(true);
-	butMult->setEnabled(true);
-	butDiv->setEnabled(true);
-
-	currentValue = currentValue * 10 + num;
-
-	std::stringstream str;
-	str << currentValue;
-	display->setTitle(str.str());
-	window->setTitle(std::string("Calculator - " + str.str()));
-
-	if(previousCommand == COM_EQ || previousCommand == COM_CLEAR || previousCommand == COM_NONE)
-	{
-		totalValue = currentValue;
-	}
-}
-
-/**
- *
- */
-void command_pressed(int command)
-{
-	butPlus->setEnabled(true);
-	butMinus->setEnabled(true);
-	butMult->setEnabled(true);
-	butDiv->setEnabled(true);
-
-	if(previousCommand == COM_PLUS)
-	{
-		totalValue += currentValue;
-	}
-	else if(previousCommand == COM_MINUS)
-	{
-		totalValue -= currentValue;
-	}
-	else if(previousCommand == COM_MULT)
-	{
-		totalValue *= currentValue;
-	}
-	else if(previousCommand == COM_DIV)
-	{
-		totalValue /= currentValue;
-	}
-	else if(previousCommand != COM_EQ && previousCommand != COM_CLEAR)
-	{
-		totalValue = currentValue;
-	}
-
-	if(command == COM_PLUS)
-	{
-		butPlus->setEnabled(false);
-	}
-	else if(command == COM_MINUS)
-	{
-		butMinus->setEnabled(false);
-	}
-	else if(command == COM_MULT)
-	{
-		butMult->setEnabled(false);
-	}
-	else if(command == COM_DIV)
-	{
-		butDiv->setEnabled(false);
-	}
-	else if(command == COM_EQ)
-	{
-		std::stringstream ss;
-		ss << totalValue;
-		display->setTitle(ss.str());
-		window->setTitle(std::string("Calculator - " + ss.str()));
-	}
-	else if(command == COM_CLEAR)
-	{
-		if(currentValue == 0)
-		{
-			totalValue = 0;
-		}
-		display->setTitle("0");
-		window->setTitle(std::string("Calculator"));
-	}
-
-	currentValue = 0;
-	previousCommand = command;
+    g_user_mutex lock = g_mutex_initialize();
+    g_mutex_acquire(lock);
+    g_mutex_acquire(lock);
 }

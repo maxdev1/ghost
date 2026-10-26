@@ -36,11 +36,13 @@ const terminal_stream_status_t TERMINAL_STREAM_STATUS_WITHIN_GHOSTTERM = 3;
  * Used to remember the status of a stream, for example whether a control
  * sequence is currently being sent.
  */
-typedef struct {
+struct stream_control_status_t
+{
 	terminal_stream_status_t status = TERMINAL_STREAM_STATUS_TEXT;
 	int parameterCount = 0;
-	int parameters[TERMINAL_STREAM_CONTROL_MAX_PARAMETERS];
-	char controlCharacter;
-} stream_control_status_t;
+	int parameters[TERMINAL_STREAM_CONTROL_MAX_PARAMETERS]{};
+	bool invalid = false;
+	char controlCharacter = 0;
+};
 
 #endif

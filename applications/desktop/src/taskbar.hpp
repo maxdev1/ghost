@@ -22,27 +22,37 @@
 #define DESKTOP_TASKBAR
 
 #include <libfenster/components/canvas.hpp>
-#include <libfenster/components/selection.hpp>
 #include <libfenster/components/window.hpp>
 #include <libfenster/font/text_layouter.hpp>
 #include <vector>
+#include <memory>
 
 using namespace fenster;
 
 struct taskbar_entry_t
 {
-    Window* window;
+    std::shared_ptr<Window> window;
     std::string title;
-    bool focused;
-    bool hovered;
-    bool visible;
+    bool focused = false;
+    bool hovered = false;
+    bool visible = false;
+    bool listed = true;
+    bool present = true;
     Rectangle onView;
 };
 
 class taskbar_t : public Canvas
 {
-    g_user_mutex entriesLock = g_mutex_initialize_r(true);
-    std::vector<taskbar_entry_t*> entries;
+    SYS_MUTEX_T entriesLock = platformInitializeMutex(true);
+    std::vector<std::shared_ptr<taskbar_entry_t>> entries;
+    ComponentId pressedWindow = -1;
+    bool pressedStart = false, pressedTaskbar = false;
+    bool startHovered = false, startOpen = false;
+    Rectangle startBounds{8, 5, 44, 30};
+    std::function<void(bool)> startMenuHandler;
+    Point pointerPosition;
+    bool pointerInside = false;
+    Font* font = nullptr;
     LayoutedText* textLayoutBuffer;
 
 protected:
@@ -58,10 +68,12 @@ protected:
 public:
     explicit taskbar_t(ComponentId id);
 
-    ~taskbar_t() override = default;
+    ~taskbar_t() override;
     static taskbar_t* create();
 
     void handleDesktopEvent(WindowsEvent* event);
+    void setStartMenuHandler(std::function<void(bool)> handler);
+    void setStartMenuOpen(bool open);
 
     virtual void paint();
 };

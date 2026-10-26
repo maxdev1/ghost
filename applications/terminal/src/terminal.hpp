@@ -59,6 +59,8 @@ void terminalInputRoutine();
  */
 void terminalOutputRoutine(output_routine_startinfo_t* info);
 
+void terminalProcessOutputBuffer(stream_control_status_t* status, bool isStderr, const char* data, size_t length);
+
 void terminalProcessOutput(stream_control_status_t* status, bool error_stream, char c);
 void terminalProcessSequenceVt100(stream_control_status_t* status);
 static screen_color_t terminalColorFromVt100(int color);

@@ -20,41 +20,57 @@
 
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
 
-/**
- *
- */
 int main(int argc, char** argv)
 {
-
-	if(argc >= 2)
-	{
-		char* filepath = argv[1];
-
-		FILE* file = fopen(filepath, "r");
-
-		if(file == NULL)
-		{
-			fprintf(stderr, "File not found: %s\n", filepath);
-		}
-		else
-		{
-			uint32_t bufsize = 4096;
-			uint8_t* buf = new uint8_t[bufsize];
-
-			ssize_t len;
-			while((len = fread(buf, 1, bufsize, file)) > 0)
-			{
-				fwrite(buf, 1, len, stdout);
-			}
-			fflush(stdout);
-
-			fclose(file);
-		}
-	}
-	else
+	if(argc < 2)
 	{
 		fprintf(stderr, "Usage:\tread <filename>\n");
+		return 1;
 	}
+	const char* filepath = argv[1];
+	const int file = open(filepath, O_RDONLY);
+	if(file < 0)
+	{
+		fprintf(stderr, "Cannot open: %s\n", filepath);
+		return 1;
+	}
+	uint8_t buffer[16384];
+	int result = 0;
+	for(;;)
+	{
+		ssize_t count = read(file, buffer, sizeof(buffer));
+		if(count < 0 && errno == EINTR)
+			continue;
+		if(count <= 0)
+		{
+			if(count < 0)
+			{
+				fprintf(stderr, "Cannot read: %s\n", filepath);
+				result = 1;
+			}
+			break;
+		}
+		ssize_t offset = 0;
+		while(offset < count)
+		{
+			ssize_t written = write(STDOUT_FILENO, buffer + offset, count - offset);
+			if(written < 0 && errno == EINTR)
+				continue;
+			if(written <= 0)
+			{
+				fprintf(stderr, "Cannot write output\n");
+				result = 1;
+				break;
+			}
+			offset += written;
+		}
+		if(result)
+			break;
+	}
+	close(file);
+	return result;
 }

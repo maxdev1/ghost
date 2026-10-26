@@ -28,6 +28,7 @@
 #include <cairo/cairo.h>
 #include <list>
 #include <map>
+#include <vector>
 
 #include <libfenster/components/button.hpp>
 #include <libfenster/components/canvas.hpp>
@@ -52,7 +53,9 @@ class gui_screen_t : public screen_t
     g_user_mutex inputBufferEmpty;
     g_user_mutex inputBufferLock;
 
-    bool fullRepaint;
+    bool fullRepaint = true;
+    g_user_mutex stateLock = g_mutex_initialize_r(true);
+    mutable bool repaintPending = false;
     g_user_mutex upToDate = g_mutex_initialize();
     bool focused = false;
     uint64_t lastInputTime = 0;
@@ -90,17 +93,13 @@ class gui_screen_t : public screen_t
         char_renderer_t* renderer = new char_renderer_t();
     } chars;
 
-    struct
-    {
-        g_size max{};
-        char* buffer = nullptr;
-        int columns = 0;
-        int rows = 0;
-    } viewBuffer;
+    std::vector<char> outputText;
 
     void setCanvasBounds(Rectangle& bounds);
     void repaint() const;
     void setFocused(bool focused);
+    void recalculateView();
+    void normalizeScroll();
     void bufferInput(const g_key_info& info);
 
     friend class canvas_resize_bounds_listener_t;
@@ -112,15 +111,13 @@ public:
     bool createUi();
     void blinkCursor();
     void paint();
-    void recalculateView();
-    void normalizeScroll();
-
     bool initialize(g_user_mutex exitFlag) override;
     g_key_info readInput() override;
     void clean() override;
     void backspace() override;
     void remove() override;
     void write(char c) override;
+    void write(const char* data, size_t length) override;
     void flush() override;
 
     void setCursor(int x, int y) override;

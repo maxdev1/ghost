@@ -19,34 +19,47 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <cstring>
+#include <climits>
 #include "terminal_line.hpp"
 
 terminal_line_t::~terminal_line_t()
 {
-	if (buffer) delete[] buffer;
+	delete[] buffer;
 }
 
 void terminal_line_t::insert(int position, char c)
 {
-	if (position >= length)
-	{
-		// TODO improve performance by keeping wider buffer
-		char *new_buffer = new char[position + 1];
-		memcpy(new_buffer, buffer, length);
-		delete[] buffer;
-		memset(&new_buffer[length], 0, position - length);
-		buffer = new_buffer;
-		length = position + 1;
-	}
+	insert(position, &c, 1);
+}
 
-	buffer[position] = c;
+void terminal_line_t::insert(int position, const char* data, int count)
+{
+	if(position < 0 || count <= 0 || count > INT_MAX - position)
+		return;
+	const int required = position + count;
+	if(required > capacity)
+	{
+		int nextCapacity = capacity ? capacity : 64;
+		while(nextCapacity < required)
+			nextCapacity = nextCapacity > INT_MAX / 2 ? required : nextCapacity * 2;
+		auto next = new char[nextCapacity];
+		if(length)
+			memcpy(next, buffer, length);
+		delete[] buffer;
+		buffer = next;
+		capacity = nextCapacity;
+	}
+	if(position > length)
+		memset(buffer + length, 0, position - length);
+	memcpy(buffer + position, data, count);
+	if(required > length)
+		length = required;
 }
 
 void terminal_line_t::remove(int position)
 {
-	if (length > 0)
-	{
-		memcpy(&buffer[position], &buffer[position + 1], length - position - 1);
-		length--;
-	}
+	if(position < 0 || position >= length)
+		return;
+	memmove(buffer + position, buffer + position + 1, length - position - 1);
+	--length;
 }

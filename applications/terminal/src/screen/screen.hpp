@@ -82,6 +82,12 @@ public:
 
     virtual void write(char c) = 0;
 
+    virtual void write(const char* data, size_t length)
+    {
+        for(size_t i = 0; i < length; ++i)
+            write(data[i]);
+    }
+
     virtual void flush() = 0;
 
     virtual void setCursor(int x, int y) = 0;

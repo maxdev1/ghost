@@ -24,6 +24,8 @@
 #include <list>
 #include <cstdio>
 #include <cstring>
+#include <vector>
+#include <climits>
 #include <libfenster/color_argb.hpp>
 #include <libfenster/layout/grid_layout.hpp>
 
@@ -33,6 +35,7 @@ void guiScreenPaintEntry(gui_screen_t* screen);
 bool gui_screen_t::initialize(g_user_mutex exitFlag)
 {
 	this->exitFlag = exitFlag;
+	g_mutex_acquire(upToDate); // Arm the repaint latch before UI events arrive.
 	inputBufferLock = g_mutex_initialize();
 	inputBufferEmpty = g_mutex_initialize();
 	g_mutex_acquire(inputBufferEmpty);
@@ -69,6 +72,10 @@ bool gui_screen_t::createUi()
 	}
 
 	window = Window::create();
+	window->onClose([this]()
+	{
+		g_mutex_release(exitFlag);
+	});
 	window->setTitle("Terminal");
 	window->setBackground(ARGB(250, 0, 0, 2));
 
@@ -97,7 +104,9 @@ bool gui_screen_t::createUi()
 		{
 			bufferInput(info);
 		}
+		g_mutex_acquire(stateLock);
 		cursor.blink = true;
+		g_mutex_release(stateLock);
 	});
 	canvas.component->addMouseListener([this](ComponentMouseEvent* event)
 	{
@@ -118,17 +127,15 @@ bool gui_screen_t::createUi()
 	window->addListener(fenster::ComponentEventType::Focus, new terminal_focus_listener_t(this));
 	window->setFocused(true);
 
-	window->onClose([this]()
-	{
-		g_mutex_release(exitFlag);
-	});
 	return true;
 }
 
 void gui_screen_t::blinkCursor()
 {
+	g_mutex_acquire(stateLock);
 	cursor.blink = !cursor.blink;
 	repaint();
+	g_mutex_release(stateLock);
 }
 
 void canvas_resize_bounds_listener_t::handleBoundsChanged(Rectangle bounds)
@@ -165,7 +172,9 @@ void gui_screen_t::bufferInput(const g_key_info& info)
 {
 	g_mutex_acquire(inputBufferLock);
 	inputBuffer.push_back(info);
+	g_mutex_acquire(stateLock);
 	lastInputTime = g_millis();
+	g_mutex_release(stateLock);
 	g_mutex_release(inputBufferEmpty);
 	g_mutex_release(inputBufferLock);
 	g_yield();
@@ -173,7 +182,9 @@ void gui_screen_t::bufferInput(const g_key_info& info)
 
 void canvas_buffer_listener_t::handleBufferChanged()
 {
+	g_mutex_acquire(screen->stateLock);
 	screen->fullRepaint = true;
+	g_mutex_release(screen->stateLock);
 	screen->repaint();
 }
 
@@ -185,195 +196,98 @@ void terminal_focus_listener_t::handleFocusChanged(bool now_focused)
 
 void gui_screen_t::paint()
 {
-	fullRepaint = true;
-
-	viewBuffer.max = 300 * 80;
-	viewBuffer.buffer = new char[viewBuffer.max];
-
-	int lastPaintedCursorX = -1;
-	int lastPaintedCursorViewY = -1;
-	bool lastPaintedCursorBlink = cursor.blink;
-
+	std::vector<char> previous, current;
+	int previousColumns = 0, previousRows = 0;
+	int lastCursorX = -1, lastCursorY = -1;
+	uint64_t nextPaint = 0;
+	repaint();
 	while(true)
 	{
+		g_mutex_acquire(upToDate);
+		const auto now = g_millis();
+		if(now < nextPaint)
+			g_sleep(nextPaint - now);
+		nextPaint = g_millis() + 16;
+		__atomic_store_n(&repaintPending, false, __ATOMIC_RELEASE);
 		auto cr = canvas.component->acquireGraphics();
 		if(!cr)
+			continue; // Buffer installation will request a repaint.
+
+		g_mutex_acquire(stateLock);
+		const int columns = getColumns(), rows = getRows();
+		if(columns <= 0 || rows <= 0)
 		{
-			g_sleep(100);
+			g_mutex_release(stateLock);
+			canvas.component->releaseGraphics();
 			continue;
 		}
-
-		int visibleCols = getColumns();
-		int visibleRows = getRows();
-		Rectangle changes = Rectangle(-1, -1, 0, 0);
-
-		if(fullRepaint)
+		const bool full = fullRepaint || columns != previousColumns || rows != previousRows;
+		fullRepaint = false;
+		const int startRow = documentRows < rows ? documentRows : rows + scrollY;
+		current.resize((size_t) columns * rows);
+		document->copyRows(startRow - 1, columns, rows, current.data());
+		const int cursorX = cursor.x > 0 ? (cursor.x - 1) % columns + 1 : 0;
+		const int cursorY = startRow + cursor.y - 1;
+		const bool cursorVisible = focused && ((g_millis() - lastInputTime < 300) || cursor.blink) &&
+		                           cursorX >= 0 && cursorX < columns && cursorY >= 0 && cursorY < rows;
+		g_mutex_release(stateLock);
+		// No document/state lock is held during Cairo work or the server's blit acknowledgement.
+		Rectangle changes(-1, -1, 0, 0);
+		if(full)
 		{
-			fullRepaint = false;
-
-			changes.x = 0;
-			changes.y = 0;
-			changes.width = visibleCols;
-			changes.height = visibleRows;
-
-			// Clear everything
+			changes = Rectangle(0, 0, columns, rows);
 			cairo_save(cr);
-			cairo_set_source_rgba(cr, 0, 0, 0, 0);
-			cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+			cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
 			cairo_paint(cr);
 			cairo_restore(cr);
 		}
-
-		// check view-buffer is valid
-		if(viewBuffer.columns != visibleCols || viewBuffer.rows != visibleRows)
-		{
-			g_size newLen = visibleRows * visibleCols;
-			if(newLen > viewBuffer.max)
-			{
-				g_size newMax = viewBuffer.max * 2;
-				auto newBuffer = new char[newMax];
-				auto oldBuffer = viewBuffer.buffer;
-
-				viewBuffer.buffer = newBuffer;
-				viewBuffer.max = newMax;
-
-				delete[] oldBuffer;
-			}
-
-			memset(viewBuffer.buffer, 0, newLen);
-			viewBuffer.rows = visibleRows;
-			viewBuffer.columns = visibleCols;
-		}
-
-		// Calculate what is to render into the view buffer
-		int renderStartRow;
-		if(documentRows < visibleRows)
-		{
-			renderStartRow = documentRows;
-		}
 		else
 		{
-			renderStartRow = visibleRows + scrollY;
+			for(int y = 0; y < rows; ++y)
+				for(int x = 0; x < columns; ++x)
+					if(current[(size_t) y * columns + x] != previous[(size_t) y * columns + x])
+						changes.extend(Point(x, y));
 		}
+		if(lastCursorX >= 0)
+			changes.extend(Point(lastCursorX, lastCursorY));
+		if(cursorVisible)
+			changes.extend(Point(cursorX, cursorY));
+		lastCursorX = cursorVisible ? cursorX : -1;
+		lastCursorY = cursorVisible ? cursorY : -1;
 
-		// Prepare view-buffer
-		for(int y = 0; y < visibleRows; y++)
+		if(changes.width > 0 && changes.height > 0)
 		{
-			int currentRow = renderStartRow - y - 1;
-			auto row = document->acquireRow(currentRow, visibleCols);
-
-			for(int x = 0; x < visibleCols; x++)
-			{
-				auto c = row.start ? (row.length > x ? row.start[x] : 0) : 0;
-
-				if(viewBuffer.buffer[y * visibleCols + x] != c)
-				{
-					viewBuffer.buffer[y * visibleCols + x] = c;
-					changes.extend(Point(x, y));
-				}
-			}
-
-			document->releaseRow();
-		}
-
-		// Include previous cursor position in "changed" rectangle
-		int cursorViewY = renderStartRow + cursor.y - 1;
-		int cursorViewX = (cursor.x - 1) % visibleCols + 1;
-
-		if(lastPaintedCursorX != cursor.x || lastPaintedCursorViewY != cursorViewY || lastPaintedCursorBlink != cursor.
-		   blink)
-		{
-			if(lastPaintedCursorX != -1)
-				changes.extend(Point(lastPaintedCursorX, lastPaintedCursorViewY));
-			changes.extend(Point(cursorViewX, cursorViewY));
-			lastPaintedCursorX = cursor.x;
-			lastPaintedCursorViewY = cursorViewY;
-			lastPaintedCursorBlink = cursor.blink;
-		}
-
-		if(changes.width && changes.height)
-		{
-			Rectangle screenChanges(
-					changes.x * chars.width + canvas.padding,
-					changes.y * chars.height + canvas.padding,
-					changes.width * chars.width,
-					changes.height * chars.height
-					);
-
-			// Prepare context for char renderer
+			const int left = std::max(0, changes.x), top = std::max(0, changes.y);
+			const int right = std::min(columns, changes.x + changes.width);
+			const int bottom = std::min(rows, changes.y + changes.height);
+			Rectangle pixels(left * chars.width + canvas.padding, top * chars.height + canvas.padding,
+			                 (right - left) * chars.width, (bottom - top) * chars.height);
 			chars.renderer->prepareContext(cr, chars.fontSize);
-
-			// Clear changed character positions
 			cairo_save(cr);
-			cairo_set_source_rgba(cr, 0, 0, 0, 0);
-			cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-			cairo_rectangle(cr, screenChanges.x, screenChanges.y, screenChanges.width, screenChanges.height);
+			cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
+			cairo_rectangle(cr, pixels.x, pixels.y, pixels.width, pixels.height);
 			cairo_fill(cr);
 			cairo_restore(cr);
-
-			// Paint on screen
-			for(int y = 0; y < visibleRows; y++)
+			for(int y = top; y < bottom; ++y)
+				chars.renderer->printText(cr, left * chars.width + canvas.padding,
+				                         y * chars.height + chars.height - 3 + canvas.padding,
+				                         current.data() + (size_t) y * columns + left, right - left, chars.width);
+			if(cursorVisible)
 			{
-				for(int x = 0; x < visibleCols; x++)
-				{
-					auto c = viewBuffer.buffer[y * visibleCols + x];
-					if(c == 0)
-						continue;
-
-					if((x >= changes.x) && (y >= changes.y)
-					   && (x <= changes.x + changes.width)
-					   && (y <= changes.y + changes.height))
-					{
-						chars.renderer->printChar(cr,
-						                          x * chars.width + canvas.padding,
-						                          y * chars.height + chars.height - 3 + canvas.padding,
-						                          c);
-					}
-				}
-			}
-
-			// Paint cursor
-			if(focused)
-			{
-				bool cursorVisible = (g_millis() - lastInputTime < 300) || cursor.blink;
-
-				// Clear cursor location
 				cairo_save(cr);
-				cairo_set_source_rgba(cr, 0, 0, 0, 0);
-				cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-				cairo_rectangle(cr,
-				                cursorViewX * chars.width + canvas.padding,
-				                cursorViewY * chars.height + canvas.padding,
-				                cursor.width,
-				                chars.height);
+				cairo_set_source_rgba(cr, 0.8, 0.8, 0.8, 1);
+				cairo_rectangle(cr, cursorX * chars.width + canvas.padding,
+				                cursorY * chars.height + canvas.padding, 1, chars.height);
 				cairo_fill(cr);
 				cairo_restore(cr);
-
-				// Paint cursor
-				if(cursorVisible)
-				{
-					cairo_save(cr);
-					cairo_set_source_rgba(cr, 0.8, 0.8, 0.8, 1);
-					cairo_rectangle(cr,
-					                cursorViewX * chars.width + canvas.padding,
-					                cursorViewY * chars.height + canvas.padding,
-					                cursor.width,
-					                chars.height);
-					cairo_fill(cr);
-					cairo_restore(cr);
-				}
 			}
-
-			canvas.component->blit(Rectangle(
-					std::max(screenChanges.x - 2, 0),
-					std::max(screenChanges.y - 2, 0),
-					screenChanges.width + 4,
-					screenChanges.height + 4
-					));
+			canvas.component->blit(Rectangle(std::max(0, pixels.x - 2), std::max(0, pixels.y - 2),
+			                                pixels.width + 4, pixels.height + 4));
 		}
-
 		canvas.component->releaseGraphics();
-		g_mutex_acquire(upToDate);
+		previous.swap(current);
+		previousColumns = columns;
+		previousRows = rows;
 	}
 }
 
@@ -388,65 +302,81 @@ bool charIsUtf8(char c)
 
 void gui_screen_t::clean()
 {
+	g_mutex_acquire(stateLock);
 	document->clear();
 	fullRepaint = true;
 	recalculateView();
 	repaint();
+	g_mutex_release(stateLock);
 }
 
 void gui_screen_t::remove()
 {
+	g_mutex_acquire(stateLock);
 	document->remove(cursor.x, cursor.y);
 	recalculateView();
+	g_mutex_release(stateLock);
 }
 
 void gui_screen_t::backspace()
 {
-	setCursor(cursor.x - 1, cursor.y);
+	g_mutex_acquire(stateLock);
+	setCursor(std::max(0, cursor.x - 1), cursor.y);
 	document->remove(cursor.x, cursor.y);
 	recalculateView();
+	g_mutex_release(stateLock);
 }
 
 void gui_screen_t::recalculateView()
 {
-	documentRows = document->getRowCount(getColumns());
+	documentRows = document->getRowCount((canvas.bounds.width - 2 * canvas.padding) / chars.width);
 	normalizeScroll();
 }
 
 void gui_screen_t::write(char c)
 {
-	if(!charIsUtf8(c))
-		return;
+	write(&c, 1);
+}
 
-	document->insert(cursor.x, cursor.y, c);
-	recalculateView();
-
-	if(c == '\n')
-	{
-		setCursor(0, cursor.y);
-	}
-	else
-	{
-		setCursor(cursor.x + 1, cursor.y);
-	}
+void gui_screen_t::write(const char* data, size_t length)
+{
+	g_mutex_acquire(stateLock);
+	outputText.clear();
+	outputText.reserve(length);
+	for(size_t i = 0; i < length; ++i)
+		if(charIsUtf8(data[i]))
+			outputText.push_back(data[i]);
+	if(!outputText.empty())
+		documentRows = document->write(cursor.x, cursor.y, outputText.data(), outputText.size());
+	cursor.blink = true;
+	normalizeScroll();
+	g_mutex_release(stateLock);
 }
 
 
 void gui_screen_t::setCursor(int x, int y)
 {
+	g_mutex_acquire(stateLock);
 	cursor.x = x;
 	cursor.y = y;
 	cursor.blink = true;
+	g_mutex_release(stateLock);
 }
 
 int gui_screen_t::getCursorX()
 {
-	return cursor.x;
+	g_mutex_acquire(stateLock);
+	const int result = cursor.x;
+	g_mutex_release(stateLock);
+	return result;
 }
 
 int gui_screen_t::getCursorY()
 {
-	return cursor.y;
+	g_mutex_acquire(stateLock);
+	const int result = cursor.y;
+	g_mutex_release(stateLock);
+	return result;
 }
 
 void gui_screen_t::flush()
@@ -456,59 +386,76 @@ void gui_screen_t::flush()
 
 void gui_screen_t::repaint() const
 {
-	g_mutex_release(upToDate);
+	if(!__atomic_exchange_n(&repaintPending, true, __ATOMIC_ACQ_REL))
+		g_mutex_release(upToDate);
 }
 
 void gui_screen_t::setFocused(bool _focused)
 {
+	g_mutex_acquire(stateLock);
 	lastInputTime = g_millis();
 	focused = _focused;
+	g_mutex_release(stateLock);
 }
 
 int gui_screen_t::getColumns()
 {
-	return (canvas.bounds.width - 2 * canvas.padding) / chars.width;
+	g_mutex_acquire(stateLock);
+	const int result = (canvas.bounds.width - 2 * canvas.padding) / chars.width;
+	g_mutex_release(stateLock);
+	return result;
 }
 
 int gui_screen_t::getRows()
 {
-	return (canvas.bounds.height - 2 * canvas.padding) / chars.height;
+	g_mutex_acquire(stateLock);
+	const int result = (canvas.bounds.height - 2 * canvas.padding) / chars.height;
+	g_mutex_release(stateLock);
+	return result;
 }
 
 void gui_screen_t::setCanvasBounds(Rectangle& bounds)
 {
+	g_mutex_acquire(stateLock);
 	canvas.bounds = bounds;
 	recalculateView();
 	fullRepaint = true;
+	g_mutex_release(stateLock);
 }
 
 void gui_screen_t::setScrollAreaScreen()
 {
+	g_mutex_acquire(stateLock);
 	scrollY = 0;
 	fullRepaint = true;
 	normalizeScroll();
 	repaint();
+	g_mutex_release(stateLock);
 }
 
 void gui_screen_t::setScrollArea(int start, int end)
 {
+	g_mutex_acquire(stateLock);
 	scrollY = end;
 	fullRepaint = true;
 	normalizeScroll();
 	repaint();
+	g_mutex_release(stateLock);
 }
 
 void gui_screen_t::scroll(int value)
 {
-	scrollY += value;
+	g_mutex_acquire(stateLock);
+	scrollY = std::max<int64_t>(INT_MIN / 2, std::min<int64_t>(INT_MAX / 2, (int64_t) scrollY + value));
 	fullRepaint = true;
 	normalizeScroll();
 	repaint();
+	g_mutex_release(stateLock);
 }
 
 void gui_screen_t::normalizeScroll()
 {
-	int viewRows = getRows();
+	int viewRows = (canvas.bounds.height - 2 * canvas.padding) / chars.height;
 
 	if(scrollY > documentRows)
 		scrollY = documentRows;

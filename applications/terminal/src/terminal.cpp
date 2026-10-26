@@ -20,6 +20,8 @@
 
 #include <libterminal/terminal.hpp>
 #include <unistd.h>
+#include <climits>
+#include <algorithm>
 
 #include "screen/gui/gui_screen.hpp"
 #include "screen/headless_screen.hpp"
@@ -42,6 +44,7 @@ static g_user_mutex exitFlag = g_mutex_initialize();
 
 int main(int argc, char* argv[])
 {
+	g_mutex_acquire(exitFlag); // Arm the close latch before the window can receive events.
 	terminalInitializeScreen(argc == 2 && strcmp(argv[1], "--headless") == 0);
 	if(!screen)
 	{
@@ -96,7 +99,6 @@ void terminalShellJoiner()
 void terminalTerminationRoutine()
 {
 	g_mutex_acquire(exitFlag);
-	g_mutex_acquire(exitFlag);
 	g_kill(shellProcess);
 	g_exit(0);
 }
@@ -132,7 +134,10 @@ bool terminalStartShell()
 	stdioIn[1] = shellStdoutW;
 	stdioIn[2] = shellStderrW;
 
-	auto shellStatus = g_spawn_poi("/applications/gsh.bin", "", "/", G_SECURITY_LEVEL_APPLICATION, &shellProcess,
+	char workingDirectory[G_PATH_MAX];
+	if(g_get_working_directory(workingDirectory) != G_GET_WORKING_DIRECTORY_SUCCESSFUL)
+		strcpy(workingDirectory, "/");
+	auto shellStatus = g_spawn_poi("/applications/gsh.bin", "", workingDirectory, G_SECURITY_LEVEL_APPLICATION, &shellProcess,
 	                               nullptr, stdioIn);
 	if(shellStatus != G_SPAWN_STATUS_SUCCESSFUL)
 	{
@@ -298,10 +303,10 @@ void terminalInputRoutine()
 
 void terminalOutputRoutine(output_routine_startinfo_t* data)
 {
-	size_t bufSize = 1024;
+	size_t bufSize = 16384;
 	uint8_t* buf = new uint8_t[bufSize];
 
-	stream_control_status_t status;
+	stream_control_status_t status{};
 
 	while(true)
 	{
@@ -312,10 +317,12 @@ void terminalOutputRoutine(output_routine_startinfo_t* data)
 		{
 			g_mutex_acquire(screenLock);
 
-			for(int i = 0; i < r; i++)
+			if(r <= 0)
 			{
-				terminalProcessOutput(&status, data->isStderr, buf[i]);
+				g_mutex_release(screenLock);
+				break;
 			}
+			terminalProcessOutputBuffer(&status, data->isStderr, (const char*) buf, r);
 
 			screen->flush();
 			g_mutex_release(screenLock);
@@ -326,8 +333,56 @@ void terminalOutputRoutine(output_routine_startinfo_t* data)
 		}
 	}
 
-	delete buf;
+	delete[] buf;
 	delete data;
+}
+
+void terminalProcessOutputBuffer(stream_control_status_t* status, bool isStderr, const char* data, size_t length)
+{
+	char text[4096];
+	size_t used = 0;
+	auto flush = [&]()
+	{
+		if(!used)
+			return;
+		const int foreground = screen->getColorForeground();
+		if(isStderr)
+			screen->setColorForeground(SC_RED);
+		screen->write(text, used);
+		if(isStderr)
+			screen->setColorForeground(foreground);
+		used = 0;
+	};
+	for(size_t offset = 0; offset < length; ++offset)
+	{
+		const char c = data[offset];
+		if(status->status == TERMINAL_STREAM_STATUS_TEXT)
+		{
+			if(c == 27)
+			{
+				status->status = TERMINAL_STREAM_STATUS_LAST_WAS_ESC;
+				continue;
+			}
+			if(c == '\r')
+				continue;
+			const int count = c == '\t' ? 4 : 1;
+			if(used + count > sizeof(text))
+				flush();
+			for(int i = 0; i < count; ++i)
+				text[used++] = c == '\t' ? ' ' : c;
+		}
+		else
+		{
+			// Only a completed control sequence needs preceding text committed.
+			// Binary ESC bytes with no recognized introducer do not break a batch.
+			if((status->status == TERMINAL_STREAM_STATUS_WITHIN_VT100 ||
+			    status->status == TERMINAL_STREAM_STATUS_WITHIN_GHOSTTERM) &&
+			   !(c >= '0' && c <= '9') && c != ';' && !status->invalid)
+				flush();
+			terminalProcessOutput(status, isStderr, c);
+		}
+	}
+	flush();
 }
 
 void terminalProcessOutput(stream_control_status_t* status, bool isStderr, char c)
@@ -391,30 +446,37 @@ void terminalProcessOutput(stream_control_status_t* status, bool isStderr, char 
 
 			if(status->parameterCount <= TERMINAL_STREAM_CONTROL_MAX_PARAMETERS)
 			{
-				status->parameters[status->parameterCount - 1] = status->parameters[status->parameterCount - 1] * 10;
-				status->parameters[status->parameterCount - 1] += c - '0';
+				auto& value = status->parameters[status->parameterCount - 1];
+				if(value > (INT_MAX - (c - '0')) / 10)
+					status->invalid = true;
+				else
+					value = value * 10 + (c - '0');
 
 				// Illegal number of parameters is skipped
 			}
 		}
 		else if(c == ';') // Parameter seperator
 		{
-			status->parameterCount++;
+			if(status->parameterCount < TERMINAL_STREAM_CONTROL_MAX_PARAMETERS)
+				++status->parameterCount;
+			else
+				status->invalid = true;
 		}
 		else // Finish character
 		{
 			status->controlCharacter = c;
 
-			if(status->status == TERMINAL_STREAM_STATUS_WITHIN_VT100)
+			if(!status->invalid && status->status == TERMINAL_STREAM_STATUS_WITHIN_VT100)
 			{
 				terminalProcessSequenceVt100(status);
 			}
-			else if(status->status == TERMINAL_STREAM_STATUS_WITHIN_GHOSTTERM)
+			else if(!status->invalid && status->status == TERMINAL_STREAM_STATUS_WITHIN_GHOSTTERM)
 			{
 				terminalProcessSequenceGhostterm(status);
 			}
 
 			// reset status
+			status->invalid = false;
 			status->parameterCount = 0;
 			for(int i = 0; i < TERMINAL_STREAM_CONTROL_MAX_PARAMETERS; i++)
 			{
@@ -425,27 +487,35 @@ void terminalProcessOutput(stream_control_status_t* status, bool isStderr, char 
 	}
 }
 
+static void terminalSetCursor(int64_t x, int64_t y)
+{
+	const int columns = std::max(1, screen->getColumns());
+	const int rows = std::max(1, screen->getRows());
+	screen->setCursor(std::max<int64_t>(0, std::min<int64_t>(columns - 1, x)),
+	                  std::max<int64_t>(1 - rows, std::min<int64_t>(rows - 1, y)));
+}
+
 void terminalProcessSequenceVt100(stream_control_status_t* status)
 {
 	switch(status->controlCharacter)
 	{
 		case 'A': // Cursor up
-			screen->setCursor(screen->getCursorX(), screen->getCursorY() - status->parameters[0]);
+			terminalSetCursor(screen->getCursorX(), (int64_t) screen->getCursorY() - status->parameters[0]);
  			screen->flush();
 			break;
 
 		case 'B': // Cursor down
-			screen->setCursor(screen->getCursorX(), screen->getCursorY() + status->parameters[0]);
+			terminalSetCursor(screen->getCursorX(), (int64_t) screen->getCursorY() + status->parameters[0]);
 			screen->flush();
 			break;
 
 		case 'C': // Cursor forward
-			screen->setCursor(screen->getCursorX() + status->parameters[0], screen->getCursorY());
+			terminalSetCursor((int64_t) screen->getCursorX() + status->parameters[0], screen->getCursorY());
 			screen->flush();
 			break;
 
 		case 'D': // Cursor back
-			screen->setCursor(screen->getCursorX() - status->parameters[0], screen->getCursorY());
+			terminalSetCursor((int64_t) screen->getCursorX() - status->parameters[0], screen->getCursorY());
 			screen->flush();
 			break;
 
@@ -483,7 +553,7 @@ void terminalProcessSequenceVt100(stream_control_status_t* status)
 			break;
 
 		case 'f': // Reposition cursor
-			screen->setCursor(status->parameters[1], status->parameters[0]);
+			terminalSetCursor(status->parameters[1], status->parameters[0]);
 			break;
 
 		// Cursor queries

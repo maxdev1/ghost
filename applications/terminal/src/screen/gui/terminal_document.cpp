@@ -19,194 +19,206 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "terminal_document.hpp"
+#include <cstring>
+#include <climits>
+#include <algorithm>
 
 terminal_document_t::terminal_document_t()
 {
-	this->lines = new terminal_line_t();
+	lines = new terminal_line_t();
+}
+
+terminal_document_t::~terminal_document_t()
+{
+	while(lines)
+	{
+		auto previous = lines->previous;
+		delete lines;
+		lines = previous;
+	}
+	g_mutex_destroy(linesLock);
+}
+
+int terminal_document_t::rowsForLine(const terminal_line_t* line, int columns)
+{
+	return line->length ? (line->length - 1) / columns + 1 : 1;
+}
+
+terminal_line_t* terminal_document_t::findLine(int offset)
+{
+	if(offset < 0)
+		return nullptr;
+	auto current = lines;
+	while(offset-- && current)
+		current = current->previous;
+	return current;
+}
+
+void terminal_document_t::insertNewline(terminal_line_t*& current)
+{
+	auto next = new terminal_line_t();
+	next->previous = current;
+	next->next = current->next;
+	if(current->next)
+		current->next->previous = next;
+	else
+		lines = next;
+	current->next = next;
+	current = next;
+	if(cachedColumns > 0)
+		++cachedRows;
+}
+
+int terminal_document_t::write(int& x, int offsetY, const char* data, int length)
+{
+	g_mutex_acquire(linesLock);
+	if(x < 0 || length <= 0)
+	{
+		const int rows = cachedRows;
+		g_mutex_release(linesLock);
+		return rows;
+	}
+	auto current = findLine(offsetY);
+	for(int offset = 0; current && offset < length;)
+	{
+		if(data[offset] == '\n')
+		{
+			insertNewline(current);
+			x = 0;
+			++offset;
+			continue;
+		}
+		int end = offset;
+		while(end < length && data[end] != '\n')
+			++end;
+		if(end - offset > INT_MAX - x)
+			break;
+		int oldRows = cachedColumns > 0 ? rowsForLine(current, cachedColumns) : 0;
+		current->insert(x, data + offset, end - offset);
+		x += end - offset;
+		if(cachedColumns > 0)
+			cachedRows += rowsForLine(current, cachedColumns) - oldRows;
+		offset = end;
+	}
+	const int rows = cachedRows;
+	g_mutex_release(linesLock);
+	return rows;
 }
 
 void terminal_document_t::insert(int x, int offsetY, char c)
 {
-	g_mutex_acquire(this->linesLock);
-
-	auto current = this->lines;
-	while(offsetY-- && current)
-	{
-		current = current->previous;
-	}
-
-	if(current)
-	{
-		if(c == '\n')
-		{
-			auto new_line = new terminal_line_t();
-
-			new_line->previous = current;
-			if(current->next)
-			{
-				current->next->previous = new_line;
-				new_line->next = current->next;
-			}
-			else
-			{
-				this->lines = new_line;
-			}
-			current->next = new_line;
-		}
-		else
-		{
-			current->insert(x, c);
-		}
-	}
-
-	g_mutex_release(this->linesLock);
+	write(x, offsetY, &c, 1);
 }
 
 void terminal_document_t::remove(int x, int offsetY)
 {
-	g_mutex_acquire(this->linesLock);
-
-	auto current = this->lines;
-	while(offsetY-- && current)
-	{
-		current = current->previous;
-	}
-
+	g_mutex_acquire(linesLock);
+	auto current = findLine(offsetY);
 	if(current)
 	{
+		int oldRows = cachedColumns > 0 ? rowsForLine(current, cachedColumns) : 0;
 		current->remove(x);
+		if(cachedColumns > 0)
+			cachedRows += rowsForLine(current, cachedColumns) - oldRows;
 	}
-
-	g_mutex_release(this->linesLock);
+	g_mutex_release(linesLock);
 }
-
 
 terminal_line_t* terminal_document_t::getLine(int offset)
 {
-	g_mutex_acquire(this->linesLock);
-
-	auto current = this->lines;
-	while(offset-- && current)
-	{
-		current = current->previous;
-	}
-
-	g_mutex_release(this->linesLock);
-	return current;
+	g_mutex_acquire(linesLock);
+	auto result = findLine(offset);
+	g_mutex_release(linesLock);
+	return result;
 }
 
-/**
- * Translates lines in the document to rows in the screen. Imagine the
- * below structure during calculation, the remainder being used to
- * calculate the row span.
-
-    [row] 	[10 cols ]		[rem]
-	5		3333333			7
-	4		22222			5
-	3		1111111111		10
-	2		1111111111		20
-	1		1111			25
-	0		000				3
-
- * Keeps the document locked until it is explicitly unlocked.
- */
 terminal_row_t terminal_document_t::acquireRow(int offsetY, int columns)
 {
-	g_mutex_acquire(this->linesLock);
-
-	auto line = this->lines;
-	int rem = line->length;
-
-	while(offsetY-- && line)
+	g_mutex_acquire(linesLock);
+	if(offsetY < 0 || columns <= 0)
+		return {nullptr, 0};
+	auto line = lines;
+	while(line && offsetY >= rowsForLine(line, columns))
 	{
-		if(rem == 0)
-		{
-			rem = line->length;
-		}
-
-		if(rem > columns)
-		{
-			if(rem % columns == 0)
-			{
-				rem -= columns;
-			}
-			else
-			{
-				rem -= rem % columns;
-			}
-		}
-		else
-		{
-			line = line->previous;
-			if(line)
-				rem = line->length;
-		}
+		offsetY -= rowsForLine(line, columns);
+		line = line->previous;
 	}
-
-	if(!line)
-	{
-		return {
-				nullptr,
-				0
-		};
-	}
-
-	int start = 0;
-	int len = 0;
-	if(rem > 0)
-	{
-		if(rem % columns == 0)
-		{
-			start = rem - columns;
-			len = columns;
-		}
-		else
-		{
-			start = rem - rem % columns;
-			len = rem % columns;
-		}
-	}
-
-	return {
-			&line->buffer[start],
-			len
-	};
+	if(!line || !line->length)
+		return {nullptr, 0};
+	const int last = (line->length - 1) % columns + 1;
+	const int end = line->length - (offsetY ? last + (offsetY - 1) * columns : 0);
+	const int count = offsetY ? columns : last;
+	return {line->buffer + end - count, count};
 }
 
 void terminal_document_t::releaseRow() const
 {
-	g_mutex_release(this->linesLock);
+	g_mutex_release(linesLock);
+}
+
+void terminal_document_t::copyRows(int offsetY, int columns, int rows, char* target)
+{
+	if(columns <= 0 || rows <= 0)
+		return;
+	memset(target, 0, (size_t) columns * rows);
+	if(offsetY < 0)
+		return;
+	g_mutex_acquire(linesLock);
+	const int first = std::max(0, offsetY - rows + 1);
+	int offset = 0;
+	auto line = lines;
+	while(line && offset + rowsForLine(line, columns) <= first)
+	{
+		offset += rowsForLine(line, columns);
+		line = line->previous;
+	}
+	while(line && offset <= offsetY)
+	{
+		int lineRows = rowsForLine(line, columns);
+		const int skip = std::max(0, first - offset);
+		const int last = line->length ? (line->length - 1) % columns + 1 : 0;
+		int end = line->length - (skip ? last + (skip - 1) * columns : 0);
+		offset += skip;
+		for(int part = skip; part < lineRows && offset <= offsetY; ++part, ++offset)
+		{
+			const int count = part ? columns : last;
+			if(count)
+				memcpy(target + (size_t) (offsetY - offset) * columns, line->buffer + end - count, count);
+			end -= count;
+		}
+		line = line->previous;
+	}
+	g_mutex_release(linesLock);
 }
 
 int terminal_document_t::getRowCount(int columns)
 {
-	if(columns == 0)
+	if(columns <= 0)
 		return 0;
-
-	int rows = 0;
-	g_mutex_acquire(this->linesLock);
-	auto current = this->lines;
-	while(current)
+	g_mutex_acquire(linesLock);
+	if(columns != cachedColumns)
 	{
-		rows += current->length / columns + (current->length != 0 && current->length % columns == 0 ? 0 : 1);
-		current = current->previous;
+		cachedColumns = columns;
+		cachedRows = 0;
+		for(auto current = lines; current; current = current->previous)
+			cachedRows += rowsForLine(current, columns);
 	}
-	g_mutex_release(this->linesLock);
-	return rows;
+	const int result = cachedRows;
+	g_mutex_release(linesLock);
+	return result;
 }
 
 void terminal_document_t::clear()
 {
-	g_mutex_acquire(this->linesLock);
-	auto old = this->lines;
-	this->lines = new terminal_line_t();
-	g_mutex_release(this->linesLock);
-
-	auto current = old;
-	while(current)
+	g_mutex_acquire(linesLock);
+	auto old = lines;
+	lines = new terminal_line_t();
+	cachedRows = 1;
+	g_mutex_release(linesLock);
+	while(old)
 	{
-		auto prev = current->previous;
-		delete current;
-		current = prev;
+		auto previous = old->previous;
+		delete old;
+		old = previous;
 	}
 }

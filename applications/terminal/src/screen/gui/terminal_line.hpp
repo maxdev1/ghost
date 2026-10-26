@@ -28,11 +28,13 @@ public:
 
 	char *buffer = nullptr;
 	int length = 0;
+	int capacity = 0;
 
 	terminal_line_t *previous = nullptr;
 	terminal_line_t *next = nullptr;
 
 	void insert(int position, char c);
+	void insert(int position, const char* data, int count);
 
 	void remove(int position);
 };
