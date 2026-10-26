@@ -30,15 +30,15 @@ enum ps2_buffer_t {
 };
 
 /**
- * Initializes the mouse by resetting it to the defaults and enabling it. This involves
- * a series of commands that are written to the device.
+ * Configures the mouse with reporting disabled, identifies its packet format,
+ * then enables reporting. The caller must hold the shared controller lock.
  */
 ps2_status_t ps2InitializeMouse();
 
 /**
- * Waits for the PS2 input or output buffer by querying the flags in the status byte.
+ * Waits for buffer readiness. Returns false on timeout without touching data.
  */
-void ps2WaitForBuffer(ps2_buffer_t mode);
+bool ps2WaitForBuffer(ps2_buffer_t mode);
 
 /**
  * Checks for new data from the PS2 device.
@@ -69,5 +69,10 @@ void ps2AwaitKeyIrq();
  * Awaits IRQs from the mouse IRQ device.
  */
 void ps2AwaitMouseIrq();
+
+/**
+ * Dispatches queued input outside the controller lock.
+ */
+void ps2DispatchEvents();
 
 #endif

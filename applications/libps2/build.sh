@@ -8,6 +8,7 @@ fi
 # Define build setup
 ARTIFACT_NAME="libps2.a"
 ARTIFACT_NAME_SHARED="libps2.so"
+CFLAGS_ADD="-fPIC"
 
 # Include application build tasks
 . "../libraries.sh"
