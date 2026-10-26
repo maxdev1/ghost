@@ -395,52 +395,70 @@ g_fs_open_status filesystemOpenNodeFd(g_fs_node* file, g_file_flag_mode flags, g
 	return status;
 }
 
+static g_fs_read_status filesystemReadDescriptor(g_file_descriptor* descriptor, uint8_t* buffer,
+                                                uint64_t length, int64_t* outRead)
+{
+	g_mutex_guard lock(&descriptor->operationLock);
+	auto status = filesystemRead(descriptor->node, buffer, descriptor->offset, length, outRead);
+	if(*outRead > 0)
+		descriptor->offset += *outRead;
+	return status;
+}
+
 g_fs_read_status filesystemRead(g_task* task, g_fd fd, uint8_t* buffer, uint64_t length, int64_t* outRead)
 {
-    uint64_t generation = 0;
-    int64_t read = -1;
-    g_fs_read_status status = G_FS_READ_INVALID_FD;
-    bool retry;
-    do
-    {
-        retry = false;
-        taskingWaitIf([&]()
-        {
-            auto descriptor = filesystemProcessAcquireDescriptor(task->process->id, fd, generation);
-            if(!descriptor) { status = G_FS_READ_INVALID_FD; read = -1; return false; }
-            generation = descriptor->generation;
-            waitQueueRemove(&descriptor->waiters, task->id);
-            auto node = descriptor->node;
-            mutexAcquire(&descriptor->operationLock);
-            status = filesystemRead(node, buffer, descriptor->offset, length, &read);
-            if(read > 0)
-                descriptor->offset += read;
-            mutexRelease(&descriptor->operationLock);
-            if(status != G_FS_READ_BUSY || !(descriptor->openFlags & G_FILE_FLAG_MODE_BLOCKING))
-            {
-                filesystemProcessReleaseDescriptor(descriptor);
-                return false;
-            }
-            auto delegate = filesystemFindDelegate(node);
-            if(!delegate->waitForRead)
-            {
-                status = G_FS_READ_ERROR;
-                filesystemProcessReleaseDescriptor(descriptor);
-                return false;
-            }
-            retry = true;
-            bool wait = delegate->waitForRead(task, node, length);
-            if(wait)
-                filesystemProcessRegisterDescriptorWait(descriptor, task);
-            filesystemProcessReleaseDescriptor(descriptor);
-            return wait;
-        }, [task]() { waitQueueRemoveTask(task->id); });
-        // The pin/operation lock have gone before cancellation or yield.
-        if(retry)
-            taskingHandleTerminationRequest();
-    } while(retry);
-    *outRead = read;
-    return status;
+	uint64_t generation = 0;
+	int64_t bytesRead = -1;
+	g_fs_read_status status = G_FS_READ_INVALID_FD;
+
+	while(true)
+	{
+		bool retryRead = false;
+		taskingWaitIf([&]()
+		{
+			auto descriptor = filesystemProcessAcquireDescriptor(task->process->id, fd, generation);
+			if(!descriptor)
+			{
+				status = G_FS_READ_INVALID_FD;
+				bytesRead = -1;
+				return false;
+			}
+
+			generation = descriptor->generation;
+			waitQueueRemove(&descriptor->waiters, task->id);
+			status = filesystemReadDescriptor(descriptor, buffer, length, &bytesRead);
+			if(status != G_FS_READ_BUSY || !(descriptor->openFlags & G_FILE_FLAG_MODE_BLOCKING))
+			{
+				filesystemProcessReleaseDescriptor(descriptor);
+				return false;
+			}
+
+			auto delegate = filesystemFindDelegate(descriptor->node);
+			if(!delegate->waitForRead)
+			{
+				status = G_FS_READ_ERROR;
+				filesystemProcessReleaseDescriptor(descriptor);
+				return false;
+			}
+
+			// Retry even if readiness changed and no sleep is needed.
+			retryRead = true;
+			bool shouldWait = delegate->waitForRead(task, descriptor->node, length);
+			if(shouldWait)
+				filesystemProcessRegisterDescriptorWait(descriptor, task);
+			filesystemProcessReleaseDescriptor(descriptor);
+			return shouldWait;
+		}, [task]() { waitQueueRemoveTask(task->id); });
+
+		if(!retryRead)
+		{
+			*outRead = bytesRead;
+			return status;
+		}
+
+		// The descriptor reference and operation lock are gone before cancellation.
+		taskingHandleTerminationRequest();
+	}
 }
 
 g_fs_read_status filesystemRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead)
