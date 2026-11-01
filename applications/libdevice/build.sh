@@ -8,6 +8,7 @@ fi
 # Define build setup
 ARTIFACT_NAME="libdevice.a"
 ARTIFACT_NAME_SHARED="libdevice.so"
+CFLAGS_ADD="-fPIC"
 
 # Include application build tasks
 . "../libraries.sh"

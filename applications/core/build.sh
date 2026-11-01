@@ -15,3 +15,15 @@ $SH reverse.sh $@
 $SH lines.sh $@
 $SH read.sh $@
 $SH write.sh $@
+$SH copy.sh $@
+$SH topic.sh $@
+$SH blockdevice.sh $@
+failOnError
+$SH device.sh $@
+$SH volume.sh $@
+failOnError
+$SH disk.sh $@
+failOnError
+$SH process.sh $@
+failOnError
+rm -f "$SYSROOT_APPLICATIONS/proc.bin"

@@ -310,7 +310,8 @@ bool gshHandleBuiltin(program_call_t* call)
 
 	if(call->program == "bg")
 	{
-		g_spawn(call->arguments.at(0).c_str(), "", "", G_SECURITY_LEVEL_APPLICATION);
+		g_spawn_poim(call->arguments.at(0).c_str(), "", "", G_SECURITY_LEVEL_APPLICATION,
+			nullptr, nullptr, nullptr, G_LAUNCH_MODE_TERMINAL);
 		return true;
 	}
 
@@ -334,6 +335,19 @@ bool gshHandleBuiltin(program_call_t* call)
 		{
 			std::cerr << "Usage:\twhich command" << std::endl;
 		}
+		return true;
+	}
+
+	if(call->program == "shutdown" || call->program == "reboot")
+	{
+		if(!call->arguments.empty())
+		{
+			std::cerr << "Usage: " << call->program << std::endl;
+			return true;
+		}
+		std::cout << (call->program == "reboot" ? "Rebooting..." : "Shutting down...") << std::endl;
+		auto status = g_system_power(call->program == "reboot" ? G_POWER_REBOOT : G_POWER_SHUTDOWN);
+		std::cerr << call->program << ": " << g_power_status_string(status) << std::endl;
 		return true;
 	}
 
@@ -410,9 +424,10 @@ void gshProcessExpression(pipe_expression_t* pipeexpr)
 		// do spawning
 		g_pid pidCurrent;
 		g_fd stdioOut[3];
-		g_spawn_status status = g_spawn_poi(
+		g_spawn_status status = g_spawn_poim(
 				gshFindProgram(std::string(cwdbuf), call->program).c_str(),
-				argstream.str().c_str(), cwdbuf, G_SECURITY_LEVEL_APPLICATION, &pidCurrent, stdioOut, stdioIn);
+				argstream.str().c_str(), cwdbuf, G_SECURITY_LEVEL_APPLICATION, &pidCurrent, stdioOut, stdioIn,
+				G_LAUNCH_MODE_TERMINAL);
 
 		// check result
 		if(status == G_SPAWN_STATUS_SUCCESSFUL)

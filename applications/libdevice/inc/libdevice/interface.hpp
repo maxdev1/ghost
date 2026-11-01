@@ -43,6 +43,7 @@ typedef uint16_t g_device_id;
  */
 typedef uint16_t g_device_manager_command;
 #define G_DEVICE_MANAGER_REGISTER_DEVICE	((g_device_manager_command) 0)
+#define G_DEVICE_MANAGER_LIST_DEVICES		((g_device_manager_command) 1)
 
 /**
  * Generic response codes
@@ -70,6 +71,32 @@ struct g_device_manager_register_device_response
 {
 	g_device_manager_general_status status;
 	g_device_id id;
+}__attribute__((packed));
+
+/**
+ * Device listing pages are ordered by ID and contain only IDs greater than
+ * afterId. Start at zero and continue with the last ID until a page is short.
+ */
+#define G_DEVICE_MANAGER_LIST_MAX_DEVICES 128
+
+struct g_device_info
+{
+	g_device_id id;
+	g_device_type type;
+	g_tid handler;
+}__attribute__((packed));
+
+struct g_device_manager_list_devices_request
+{
+	g_device_manager_header header;
+	g_device_id afterId;
+}__attribute__((packed));
+
+struct g_device_manager_list_devices_response
+{
+	g_device_manager_general_status status;
+	uint16_t count;
+	g_device_info devices[G_DEVICE_MANAGER_LIST_MAX_DEVICES];
 }__attribute__((packed));
 
 /**

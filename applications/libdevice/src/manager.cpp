@@ -22,6 +22,7 @@
 #include <ghost/messages.h>
 #include <ghost/tasks.h>
 #include <cstdio>
+#include <cstring>
 
 bool deviceManagerRegisterDevice(g_device_type type, g_tid handler, g_device_id* outId)
 {
@@ -29,16 +30,20 @@ bool deviceManagerRegisterDevice(g_device_type type, g_tid handler, g_device_id*
 	auto tx = g_get_message_tx_id();
 
 	g_device_manager_register_device_request request{};
-	request.type = G_DEVICE_MANAGER_REGISTER_DEVICE;
+	request.header.command = G_DEVICE_MANAGER_REGISTER_DEVICE;
 	request.handler = handler;
 	request.type = type;
-	g_send_message_t(managerId, &request, sizeof(request), tx);
+	if(!outId || g_send_message_t(managerId, &request, sizeof(request), tx) != G_MESSAGE_SEND_STATUS_SUCCESSFUL)
+		return false;
 
 	bool success = false;
-	size_t bufLen = sizeof(g_message_header) + sizeof(g_device_manager_register_device_response);
+	constexpr size_t bufLen = sizeof(g_message_header) + sizeof(g_device_manager_register_device_response);
 	uint8_t buf[bufLen];
 	if(g_receive_message_t(buf, bufLen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
+		auto message = (g_message_header*) buf;
+		if(message->sender != managerId || message->length != sizeof(g_device_manager_register_device_response))
+			return false;
 		auto content = (g_device_manager_register_device_response*) G_MESSAGE_CONTENT(buf);
 
 		if(content->status == G_DEVICE_MANAGER_SUCCESS)
@@ -53,4 +58,40 @@ bool deviceManagerRegisterDevice(g_device_type type, g_tid handler, g_device_id*
 	}
 
 	return success;
+}
+
+bool deviceManagerListDevices(g_device_id afterId, g_device_manager_list_devices_response* outResponse)
+{
+	if(!outResponse)
+		return false;
+	g_tid managerId = g_task_get_by_name(G_DEVICE_MANAGER_NAME);
+	if(managerId == G_TID_NONE)
+		return false;
+
+	auto tx = g_get_message_tx_id();
+	g_device_manager_list_devices_request request{};
+	request.header.command = G_DEVICE_MANAGER_LIST_DEVICES;
+	request.afterId = afterId;
+	if(g_send_message_t(managerId, &request, sizeof(request), tx) != G_MESSAGE_SEND_STATUS_SUCCESSFUL)
+		return false;
+
+	static_assert(sizeof(g_device_manager_list_devices_response) <= G_MESSAGE_MAXIMUM_MESSAGE_LENGTH,
+	              "device listing page exceeds the IPC message limit");
+	uint8_t buffer[sizeof(g_message_header) + sizeof(g_device_manager_list_devices_response)];
+	if(g_receive_message_t(buffer, sizeof(buffer), tx) != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+		return false;
+	auto message = (g_message_header*) buffer;
+	if(message->sender != managerId || message->length != sizeof(g_device_manager_list_devices_response))
+		return false;
+	auto response = (g_device_manager_list_devices_response*) G_MESSAGE_CONTENT(buffer);
+	if(response->status != G_DEVICE_MANAGER_SUCCESS || response->count > G_DEVICE_MANAGER_LIST_MAX_DEVICES)
+		return false;
+	for(uint16_t i = 0; i < response->count; ++i)
+	{
+		if(response->devices[i].id <= afterId)
+			return false;
+		afterId = response->devices[i].id;
+	}
+	memcpy(outResponse, response, sizeof(*outResponse));
+	return true;
 }

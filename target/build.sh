@@ -31,7 +31,20 @@ requireTool curl
 #
 target_ramdisk() {
 	headline "building ramdisk"
-	$RAMDISK_WRITER "$SYSROOT" "$ISO_SRC/boot/ramdisk"
+	if [ ! -f "$SYSROOT/applications/install.bin" ]; then
+		$RAMDISK_WRITER "$SYSROOT" "$ISO_SRC/boot/ramdisk"
+		failOnError
+		return
+	fi
+	(
+		set -e
+		stage=$(mktemp -d)
+		trap 'rm -rf "$stage"' EXIT
+		cp -a "$SYSROOT/." "$stage/"
+		bash build_install_assets.sh --root "$stage" --kernel "$KERNEL_BIN" \
+			--limine "limine-$LIMINE_VERSION/bin"
+		$RAMDISK_WRITER "$stage" "$ISO_SRC/boot/ramdisk"
+	)
 	failOnError
 }
 

@@ -155,27 +155,3 @@ bool pciDriverReadBAR(g_pci_device_address address, uint8_t bar, g_address* outV
 	}
 	return success;
 }
-
-bool pciDriverReadBARSize(g_pci_device_address address, uint8_t bar, g_address* outValue)
-{
-	g_tid driverTid = g_task_await_by_name(G_PCI_DRIVER_NAME);
-
-	g_message_transaction tx = g_get_message_tx_id();
-
-	g_pci_read_bar_size_request request{};
-	request.header.command = G_PCI_READ_BAR_SIZE;
-	request.deviceAddress = address;
-	request.bar = bar;
-	g_send_message_t(driverTid, &request, sizeof(request), tx);
-
-	bool success = false;
-	size_t bufLen = sizeof(g_message_header) + sizeof(g_pci_read_bar_size_response);
-	uint8_t buf[bufLen];
-	if(g_receive_message_t(buf, bufLen, tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
-	{
-		auto response = (g_pci_read_bar_size_response*) G_MESSAGE_CONTENT(buf);
-		success = response->successful;
-		*outValue = response->value;
-	}
-	return success;
-}

@@ -8,6 +8,7 @@ fi
 # Define build setup
 ARTIFACT_NAME="libpci.a"
 ARTIFACT_NAME_SHARED="libpci.so"
+CFLAGS_ADD="-fPIC"
 
 # Include application build tasks
 . "../libraries.sh"

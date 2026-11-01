@@ -1,0 +1,3 @@
+name=Install Ghost
+application=/applications/install.bin
+icon=/system/graphics/app-icons/install.png

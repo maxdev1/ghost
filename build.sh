@@ -6,7 +6,7 @@ fi
 . "$ROOT/ghost.sh"
 
 # Prioritized applications that need to be built first
-APPLICATION_PRIORITY=("libdevice" "libps2" "libps2driver" "libinput" "libterminal" "libvideo" "libpci" "libahci" "fenster")
+APPLICATION_PRIORITY=("libacpi" "libdevice" "libblockdevice" "libstorage" "libps2" "libps2driver" "libinput" "libterminal" "libvideo" "libpci" "libahci" "fenster")
 
 # Flags
 FIRST_RUN=0

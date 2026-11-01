@@ -3,6 +3,7 @@
 
 #include "document.hpp"
 #include <cstdio>
+#include <unistd.h>
 
 namespace editor
 {
@@ -114,6 +115,7 @@ inline bool writeFile(const std::string& path, const std::string& text, const Fi
 	}
 	bool ok = written == bytes.size() && !ferror(file);
 	if(fflush(file) != 0) ok = false;
+	if(ok && fsync(fileno(file)) != 0) ok = false;
 	if(fclose(file) != 0) ok = false;
 	if(!ok) error = "Save failed. Your changes are still in the editor; try Save As to another file.";
 	return ok;

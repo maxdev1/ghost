@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="drive-top" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#f5f8fc"/>
+      <stop offset="1" stop-color="#c3cedb"/>
+    </linearGradient>
+    <linearGradient id="drive-front" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#687d94"/>
+      <stop offset="1" stop-color="#40566f"/>
+    </linearGradient>
+  </defs>
+  <g id="hard-drive" stroke-linejoin="round">
+    <path d="M7 39h50v10a5 5 0 0 1-5 5H12a5 5 0 0 1-5-5Z"
+          fill="url(#drive-front)" stroke="#354b63" stroke-width="1.5"/>
+    <path d="M16 11h32a4 4 0 0 1 3.8 2.8L57 37a3 3 0 0 1-2.9 3.7H9.9A3 3 0 0 1 7 37l5.2-23.2A4 4 0 0 1 16 11Z"
+          fill="url(#drive-top)" stroke="#8295ac" stroke-width="1.5"/>
+    <path d="M17 15h30l4.5 20.5h-39Z" fill="none" stroke="#fff" stroke-opacity=".65"/>
+    <rect x="21" y="20" width="22" height="11" rx="2" fill="#f9fbfd" stroke="#adbbcd"/>
+    <path d="M25 24h14m-14 3h9" fill="none" stroke="#a7b6c8" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M14 47h3m3 0h3m3 0h3" fill="none" stroke="#b9c8d9" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="48" cy="47" r="2" fill="#7de0d2"/>
+    <path d="M12 42h40" fill="none" stroke="#b9c8d9" stroke-opacity=".35"/>
+  </g>
+</svg>

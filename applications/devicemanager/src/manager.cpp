@@ -19,25 +19,39 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "manager.hpp"
-#include <ghost.h>
-#include <libpci/driver.hpp>
-#include <libdevice/interface.hpp>
 #include <cstdio>
-#include <unordered_map>
+#include <cstring>
+#include <ghost.h>
+#include <libdevice/interface.hpp>
+#include <libpci/driver.hpp>
+#include <map>
+#include <string>
 
 void _deviceManagerCheckPciDevices();
 void _deviceManagerAwaitCommands();
 void _deviceManagerHandleRegisterDevice(g_tid sender, g_message_transaction tx,
-                                        g_device_manager_register_device_request* content);
+										g_device_manager_register_device_request* content);
+
+void deviceManagerHandleListDevices(g_tid sender, g_message_transaction tx,
+									const g_device_manager_list_devices_request* content);
 
 static g_user_mutex devicesLock = g_mutex_initialize_r(true);
-static std::unordered_map<g_device_id, device_t*> devices;
+static std::map<g_device_id, device_t*> devices;
 static g_device_id nextDeviceId = 1;
 
-int main()
+int main(int argc, char** argv)
 {
 	g_tid comHandler = g_create_task((void*) _deviceManagerAwaitCommands);
 	_deviceManagerCheckPciDevices();
+
+	std::string fatArguments;
+	if(argc == 3 && strcmp(argv[1], "--root-disk") == 0)
+		fatArguments = std::string(argv[1]) + char(G_CLIARGS_SEPARATOR) + argv[2];
+	if(g_spawn("/applications/fatdriver.bin", fatArguments.c_str(), "", G_SECURITY_LEVEL_DRIVER) !=
+	   G_SPAWN_STATUS_SUCCESSFUL)
+		klog("failed to start FAT driver");
+
+	g_spawn("/applications/storagemanager.bin", "", "", G_SECURITY_LEVEL_DRIVER);
 
 	g_spawn("/applications/ahcidriver.bin", "", "", G_SECURITY_LEVEL_DRIVER);
 
@@ -57,8 +71,7 @@ void _deviceManagerCheckPciDevices()
 
 	for(int i = 0; i < num; i++)
 	{
-		if(devices[i].classCode == PCI_BASE_CLASS_DISPLAY &&
-		   devices[i].subclassCode == PCI_03_SUBCLASS_VGA &&
+		if(devices[i].classCode == PCI_BASE_CLASS_DISPLAY && devices[i].subclassCode == PCI_03_SUBCLASS_VGA &&
 		   devices[i].progIf == PCI_03_00_PROGIF_VGA_COMPATIBLE)
 		{
 			uint32_t vendorId;
@@ -112,19 +125,29 @@ void _deviceManagerAwaitCommands()
 		auto status = g_receive_message(buf, bufLen);
 		if(status != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 			continue;
-		auto message = (g_message_header*) buf;
-		auto content = (g_device_manager_header*) G_MESSAGE_CONTENT(message);
 
-		if(content->command == G_DEVICE_MANAGER_REGISTER_DEVICE)
+		auto message = (g_message_header*) buf;
+		if(message->length < sizeof(g_device_manager_header))
+			continue;
+
+		auto content = (g_device_manager_header*) G_MESSAGE_CONTENT(message);
+		if(content->command == G_DEVICE_MANAGER_REGISTER_DEVICE &&
+		   message->length == sizeof(g_device_manager_register_device_request))
 		{
 			_deviceManagerHandleRegisterDevice(message->sender, message->transaction,
-			                                   (g_device_manager_register_device_request*) content);
+											   (g_device_manager_register_device_request*) content);
+		}
+		else if(content->command == G_DEVICE_MANAGER_LIST_DEVICES &&
+				message->length == sizeof(g_device_manager_list_devices_request))
+		{
+			deviceManagerHandleListDevices(message->sender, message->transaction,
+										   (g_device_manager_list_devices_request*) content);
 		}
 	}
 }
 
 void _deviceManagerHandleRegisterDevice(g_tid sender, g_message_transaction tx,
-                                        g_device_manager_register_device_request* content)
+										g_device_manager_register_device_request* content)
 {
 	g_mutex_acquire(devicesLock);
 	auto id = nextDeviceId++;
@@ -148,4 +171,22 @@ void _deviceManagerHandleRegisterDevice(g_tid sender, g_message_transaction tx,
 	event.type = content->type;
 	event.driver = device->handler;
 	g_send_topic_message(G_DEVICE_EVENT_TOPIC, &event, sizeof(event));
+}
+
+void deviceManagerHandleListDevices(g_tid sender, g_message_transaction tx,
+									const g_device_manager_list_devices_request* content)
+{
+	g_device_manager_list_devices_response response{};
+	response.status = G_DEVICE_MANAGER_SUCCESS;
+
+	g_mutex_acquire(devicesLock);
+	for(auto entry = devices.upper_bound(content->afterId);
+		entry != devices.end() && response.count < G_DEVICE_MANAGER_LIST_MAX_DEVICES; ++entry)
+	{
+		auto device = entry->second;
+		response.devices[response.count++] = {device->id, device->type, device->handler};
+	}
+	g_mutex_release(devicesLock);
+
+	g_send_message_tm(sender, &response, sizeof(response), tx, G_MESSAGE_SEND_MODE_NON_BLOCKING);
 }

@@ -18,59 +18,51 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <stdint.h>
-#include <stdio.h>
+#include "../src-common/io.hpp"
 #include <fcntl.h>
-#include <unistd.h>
-#include <errno.h>
 
 int main(int argc, char** argv)
 {
-	if(argc < 2)
+	int first = 1;
+	bool options = true;
+	if(first < argc && strcmp(argv[first], "--") == 0)
 	{
-		fprintf(stderr, "Usage:\tread <filename>\n");
-		return 1;
+		options = false;
+		++first;
 	}
-	const char* filepath = argv[1];
-	const int file = open(filepath, O_RDONLY);
-	if(file < 0)
+	else if(first < argc && (strcmp(argv[first], "-h") == 0 || strcmp(argv[first], "--help") == 0))
 	{
-		fprintf(stderr, "Cannot open: %s\n", filepath);
-		return 1;
+		printf("Usage: read [FILE...]\nPrint files to standard output. No files or '-' reads standard input.\n");
+		return 0;
 	}
-	uint8_t buffer[16384];
+
+	if(first == argc)
+		return coreTransfer(STDIN_FILENO, STDOUT_FILENO, "read", "standard input", "standard output") ? 1 : 0;
+
 	int result = 0;
-	for(;;)
+	for(int i = first; i < argc; ++i)
 	{
-		ssize_t count = read(file, buffer, sizeof(buffer));
-		if(count < 0 && errno == EINTR)
+		const char* path = argv[i];
+		if(options && path[0] == '-' && strcmp(path, "-") != 0)
+		{
+			fprintf(stderr, "read: unknown option '%s' (use -- before filenames beginning with '-')\n", path);
+			return 1;
+		}
+		bool standardInput = strcmp(path, "-") == 0;
+		int input = standardInput ? STDIN_FILENO : open(path, O_RDONLY);
+		if(input < 0)
+		{
+			coreReportError("read", "open", path);
+			result = 1;
 			continue;
-		if(count <= 0)
-		{
-			if(count < 0)
-			{
-				fprintf(stderr, "Cannot read: %s\n", filepath);
-				result = 1;
-			}
-			break;
 		}
-		ssize_t offset = 0;
-		while(offset < count)
-		{
-			ssize_t written = write(STDOUT_FILENO, buffer + offset, count - offset);
-			if(written < 0 && errno == EINTR)
-				continue;
-			if(written <= 0)
-			{
-				fprintf(stderr, "Cannot write output\n");
-				result = 1;
-				break;
-			}
-			offset += written;
-		}
-		if(result)
+		int transfer = coreTransfer(input, STDOUT_FILENO, "read", path, "standard output");
+		if(transfer)
+			result = 1;
+		if(!standardInput && coreClose(input, "read", path))
+			result = 1;
+		if(transfer == 2)
 			break;
 	}
-	close(file);
 	return result;
 }

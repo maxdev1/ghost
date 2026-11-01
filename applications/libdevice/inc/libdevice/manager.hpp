@@ -29,4 +29,11 @@
  */
 bool deviceManagerRegisterDevice(g_device_type type, g_tid handler, g_device_id* outId);
 
+/**
+ * Queries one page of registered devices in ascending ID order. Pass zero for
+ * afterId initially, then the last returned ID. A short page ends the list.
+ * Returns false if the manager is unavailable or the exchange fails.
+ */
+bool deviceManagerListDevices(g_device_id afterId, g_device_manager_list_devices_response* outResponse);
+
 #endif

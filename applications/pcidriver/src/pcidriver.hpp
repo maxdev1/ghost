@@ -51,7 +51,6 @@ uint32_t pciConfigGetBAR(g_pci_device* dev, int bar);
 /**
  * Reads the size of a BAR. The value that is returned after writing to the BAR contains the fixed bits, hence the flipping.
  */
-uint32_t pciConfigGetBARSize(g_pci_device* dev, int bar);
 
 /**
  * Reads from or writes to the PCI configuration space.
@@ -80,6 +79,5 @@ void pciDriverHandleWriteConfig(g_tid sender, g_message_transaction transaction,
 void pciDriverHandleReadConfig(g_tid sender, g_message_transaction transaction, g_pci_read_config_request* request);
 void pciDriverHandleEnableResourceAccess(g_tid sender, g_message_transaction transaction, g_pci_enable_resource_access_request* request);
 void pciDriverHandleReadBar(g_tid sender, g_message_transaction transaction, g_pci_read_bar_request* request);
-void pciDriverHandleReadBarSize(g_tid sender, g_message_transaction transaction, g_pci_read_bar_size_request* request);
 
 #endif

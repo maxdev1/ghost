@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="64" height="64" viewBox="0 0 64 64">
+  <image xlink:href="hard-drive.svg" width="64" height="64"/>
+  <circle cx="49" cy="45" r="12" fill="#218baf" stroke="#eefaff" stroke-width="2"/>
+  <path d="M49 38v13m-5-5 5 5 5-5" fill="none" stroke="#fff" stroke-width="2.8"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

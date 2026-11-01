@@ -64,7 +64,7 @@ KEY_1 s  : !
 KEY_2    : 2
 KEY_2 s  : "
 KEY_3    : 3
-KEY_3 s  : �
+KEY_3 s  : §
 KEY_4    : 4
 KEY_4 s  : $
 KEY_5    : 5
@@ -84,7 +84,7 @@ KEY_0    : 0
 KEY_0 s  : =
 KEY_0 ac : }
 KEY_0 c  : \0
-KEY_SHARP_S: �
+KEY_SHARP_S: |
 KEY_SHARP_S s: ?
 KEY_SHARP_S ac: \92
 

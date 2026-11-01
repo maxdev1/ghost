@@ -128,7 +128,10 @@ bool ps2WaitForBuffer(ps2_buffer_t buffer)
 static bool ps2ControllerCommand(uint8_t command)
 {
 	if(!ps2WaitForBuffer(PS2_OUT))
+	{
+		klog("PS/2 controller: timed out before command %x", command);
 		return false;
+	}
 	g_io_port_write_byte(G_PS2_STATUS_PORT, command);
 	return true;
 }
@@ -136,7 +139,10 @@ static bool ps2ControllerCommand(uint8_t command)
 static bool ps2WriteData(uint8_t value)
 {
 	if(!ps2WaitForBuffer(PS2_OUT))
+	{
+		klog("PS/2 controller: timed out before data %x", value);
 		return false;
+	}
 	g_io_port_write_byte(G_PS2_DATA_PORT, value);
 	return true;
 }
@@ -187,17 +193,59 @@ int ps2WriteToMouse(uint8_t value)
 			const uint64_t elapsed = g_millis() - start;
 			uint8_t reply;
 			if(elapsed >= PS2_TIMEOUT_MS || !ps2ReadByte(true, reply, PS2_TIMEOUT_MS - elapsed))
+			{
+				klog("PS/2 mouse: no ACK for byte %x, controller status %x", value,
+				     g_io_port_read_byte(G_PS2_STATUS_PORT));
 				return 1;
+			}
 			if(reply == 0xFA)
 				return 0;
 			if(reply == 0xFE) // RESEND applies to this byte, including command parameters.
 				break;
 			if(reply == 0xFC || reply == 0xFD)
+			{
+				klog("PS/2 mouse: byte %x rejected with reply %x", value, reply);
 				return 1;
+			}
 			// Reports already in flight may precede the ACK to disable reporting.
 		}
 	}
+	klog("PS/2 mouse: resend limit reached for byte %x", value);
 	return 1;
+}
+
+/**
+ * Encodes a Synaptics argument through four standard resolution commands.
+ * Reporting must be disabled and the shared controller lock held by the caller.
+ */
+static bool ps2SynapticsArgument(uint8_t argument)
+{
+	if(ps2WriteToMouse(0xE6))
+		return false;
+	for(int shift = 6; shift >= 0; shift -= 2)
+		if(ps2WriteToMouse(0xE8) || ps2WriteToMouse((argument >> shift) & 3))
+			return false;
+	return true;
+}
+
+/**
+ * Identifies Synaptics touchpads without enabling their absolute packet format.
+ * Other mice return ordinary status; unsuccessful probes fall back to defaults.
+ */
+static bool ps2SynapticsIdentify(uint8_t* identity)
+{
+	if(!ps2SynapticsArgument(0) || ps2WriteToMouse(0xE9))
+		return false;
+	for(unsigned i = 0; i < 3; ++i)
+	{
+		if(!ps2ReadByte(true, identity[i]))
+		{
+			klog("PS/2 mouse: identify response incomplete at byte %i", i);
+			return false;
+		}
+	}
+	klog("PS/2 mouse: identify response %x %x %x", identity[0], identity[1], identity[2]);
+	return identity[1] == 0x47;
 }
 
 static bool ps2InitializeController()
@@ -211,13 +259,20 @@ static bool ps2InitializeController()
 	while(g_io_port_read_byte(G_PS2_STATUS_PORT) & PS2_OUTPUT_FULL)
 	{
 		if(g_millis() - start >= PS2_TIMEOUT_MS)
+		{
+			klog("PS/2 controller: output buffer did not drain");
 			return false;
+		}
 		g_io_port_read_byte(G_PS2_DATA_PORT);
 	}
 
 	uint8_t configuration;
 	if(!ps2ControllerCommand(0x20) || !ps2ReadByte(false, configuration))
+	{
+		klog("PS/2 controller: could not read configuration");
 		return false;
+	}
+	klog("PS/2 controller: configuration %x", configuration);
 	// Preserve translation and other firmware settings; enable both IRQs.
 	if(!ps2ControllerCommand(0x60) || !ps2WriteData(configuration | 0x03))
 		return false;
@@ -232,18 +287,49 @@ ps2_status_t ps2InitializeMouse()
 	mouseDeviceId = 0;
 	lastPacketTime = 0;
 
-	// Configure with reporting disabled. Acknowledged sample rates alone do not
-	// identify a wheel mouse: ordinary three-byte mice acknowledge them too.
-	if(ps2WriteToMouse(0xF5) || ps2WriteToMouse(0xF6) ||
-	   ps2WriteToMouse(0xF3) || ps2WriteToMouse(200) ||
-	   ps2WriteToMouse(0xF3) || ps2WriteToMouse(100) ||
-	   ps2WriteToMouse(0xF3) || ps2WriteToMouse(80) ||
-	   ps2WriteToMouse(0xF2))
+	if(ps2WriteToMouse(0xF5) || ps2WriteToMouse(0xF6))
 		return G_PS2_STATUS_FAILED_INITIALIZE;
 
-	uint8_t id;
-	if(!ps2ReadByte(true, id) || (id != 0 && id != 3 && id != 4))
+	uint8_t identity[3];
+	const bool synaptics = ps2SynapticsIdentify(identity);
+	if(synaptics)
+	{
+		/**
+		 * Set Defaults clears absolute mode but preserves sleep and gesture bits.
+		 * Write the whole mode byte to wake the pad and enable firmware tapping.
+		 */
+		if(!ps2SynapticsArgument(0) || ps2WriteToMouse(0xF3) || ps2WriteToMouse(20))
+		{
+			klog("PS/2 Synaptics touchpad: failed to set relative mode");
+			return G_PS2_STATUS_FAILED_INITIALIZE;
+		}
+		klog("PS/2 Synaptics touchpad: firmware %i.%i, relative mode enabled", identity[2] & 15, identity[0]);
+	}
+	else
+	{
+		/**
+		 * Restore resolution after probing before negotiating wheel packets.
+		 * Synaptics pads keep their standard three-byte relative packet format.
+		 */
+		if(ps2WriteToMouse(0xF6) ||
+		   ps2WriteToMouse(0xF3) || ps2WriteToMouse(200) ||
+		   ps2WriteToMouse(0xF3) || ps2WriteToMouse(100) ||
+		   ps2WriteToMouse(0xF3) || ps2WriteToMouse(80))
+			return G_PS2_STATUS_FAILED_INITIALIZE;
+	}
+	if(ps2WriteToMouse(0xF2))
 		return G_PS2_STATUS_FAILED_INITIALIZE;
+	uint8_t id;
+	if(!ps2ReadByte(true, id))
+	{
+		klog("PS/2 mouse: missing device id");
+		return G_PS2_STATUS_FAILED_INITIALIZE;
+	}
+	if((synaptics && id != 0) || (id != 0 && id != 3 && id != 4))
+	{
+		klog("PS/2 mouse: unsupported device id %i", id);
+		return G_PS2_STATUS_FAILED_INITIALIZE;
+	}
 	mouseDeviceId = id;
 
 	// The wheel-detection sequence leaves the rate at 80 Hz. Restore a normal

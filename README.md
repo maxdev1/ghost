@@ -1,66 +1,41 @@
 # ABOUT GHOST
-**Ghost** is a hobbyist operating system for the x86-64 platform.
-The OS is written from scratch in C/C++ and Assembly.
 
-This is the main development repository.
+**Ghost** is an x86-64 operating system written in C, C++ and assembly, with a
+microkernel, userspace drivers and the ƒenster desktop.
 
-**Project website:** http://ghostkernel.org/
+[Project website](https://ghostkernel.org/) ·
+[Documentation](https://ghostkernel.org/documentation/) ·
+[ISO releases](https://github.com/maxdev1/ghost/releases)
 
-## Documentation
-See the `documentation` folder. It contains information about the technical design as well as detailed building instructions.
+This project is independently developed and not based on Linux, BSD, or any other existing OS.
 
-A usually up-to-date version of the documentation is provided here: https://ghostkernel.org/documentation/
+## Build and run
 
-## Live ISO
+The [build guide](documentation/general/building.adoc) covers the cross-toolchain
+and component targets. For the Docker environment, run from the repository root:
 
-If you just want to play around with the latest state, you can download an ISO
-image from the [release section](https://github.com/maxdev1/ghost/releases).
+```sh
+git submodule update --init
+./docker-build-toolchain-image.sh
+```
 
-The suggested way to test it is in VirtualBox with at least 512MB of RAM and the
-VMSVGA graphics adapter enabled for better performance.
+Inside the container, `./build.sh --ci` produces `target/ghost.iso`. Boot it with
+an x86-64 VM, for example:
 
-## Quick-start
+```sh
+qemu-system-x86_64 -cdrom target/ghost.iso -m 1024 -smp 2
+```
 
-1. On your host machine (where Docker is installed), run `./docker-build-toolchain-image.sh`. This will 
-    build an image that contains the cross-compiler and other tools required for building the operating system.
-2. Once the process has finished, it will open a bash within the container. The container has this repository folder mounted to `/ghost/source`.
-3. Build the operating system by running `./build.sh` in that directory within the container.
+The [installer](applications/install/README.md) copies the live system to an
+empty AHCI disk for persistent FAT-backed boot.
 
-Afterwards, the `target` folder will contain the bootable ISO image.
+## Components
 
-## Features
-* x86_64-based micro-kernel
-* SMP multi-processor support
-* Comprehensive kernel interaction library (libapi)
-* Own C standard library (libc)
-* OS-specific GCC toolchain
-* ELF binary & shared library support
-* Window server & toolkit
-* Support for C++ in kernel & userland
-* Various interprocess-communication methods
-* Drivers for
-  * VESA/VBE video output
-  * PS/2 keyboard & mouse
-  * PCI handling
-* Limine protocol compliance
-* It's also very cool
+- SMP kernel with ELF/shared-library loading, tasks, IPC and memory management.
+- `libapi` syscall wrappers, a C runtime and an `x86_64-ghost` GCC toolchain.
+- PCI, ACPI, PS/2, AHCI, FAT, boot-framebuffer and VMSVGA services.
+- [ƒenster](applications/fenster/README.md) window server/UI toolkit, desktop,
+  terminal, shell, editor, file browser and [Doom](applications/doom/README.md).
+- Ported Cairo, FreeType, Pixman, libpng, zlib and musl mathematical routines.
 
-The OS uses the [fenster windowserver](https://github.com/maxdev1/fenster) which originated from this project:
-
-![Screenshot of 0.12.0](https://ghostkernel.org/files/ghost-0.22.2.png)
-
-## Ported software
-* libpng
-* pixman
-* zlib
-* cairo
-* freetype
-* musl (provides libm part of Ghost libc)
-
-## Contact
-If you want to get in contact, contribute to the project or have any questions,
-feel free to contact me at:
-
-	lokoxe@gmail.com
-	
--Max Schlüssel
+Contact: Max Schlüssel, lokoxe@gmail.com.

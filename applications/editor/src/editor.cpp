@@ -16,7 +16,7 @@ using namespace fenster;
 
 namespace
 {
-enum class EventType { Key, Mouse, Resize, Repaint, Focus, Close, Ui };
+enum class EventType { Key, Mouse, Resize, Repaint, Focus, Close, Ui, Power };
 struct Event
 {
 	EventType type;
@@ -25,10 +25,13 @@ struct Event
 	Rectangle bounds;
 	bool focused = false;
 	editor::UiEvent ui;
+	g_power_event power{};
 };
 std::deque<Event> events;
 g_user_mutex eventLock = g_mutex_initialize();
 g_user_mutex eventReady = g_mutex_initialize();
+uint8_t powerRegistration = 255;
+uint8_t powerResponse = 0;
 
 void post(Event event)
 {
@@ -38,6 +41,48 @@ void post(Event event)
 	else events.push_back(event);
 	g_mutex_release(eventLock); g_mutex_release(eventReady);
 }
+/**
+ * Receives authenticated preparation requests on its own endpoint. Document and
+ * dialog state remain on the main UI thread; only the reply byte is shared.
+ */
+void editorPowerListener()
+{
+    g_power_status registration;
+    do { registration = g_power_register(G_POWER_APPLICATION); if(registration == G_POWER_BUSY) g_sleep(5); }
+    while(registration == G_POWER_BUSY);
+    __atomic_store_n(&powerRegistration, registration, __ATOMIC_RELEASE);
+    if(registration != G_POWER_SUCCESSFUL) return;
+    uint8_t buffer[sizeof(g_message_header) + sizeof(g_power_event)];
+    for(;;)
+    {
+        if(g_receive_message(buffer, sizeof(buffer)) != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) continue;
+        auto header = reinterpret_cast<g_message_header*>(buffer);
+        if(header->sender != G_TID_NONE || header->length != sizeof(g_power_event)) continue;
+        auto request = *reinterpret_cast<g_power_event*>(G_MESSAGE_CONTENT(buffer));
+        if(request.magic != G_POWER_EVENT_MAGIC) continue;
+        Event event{EventType::Power}; event.power = request;
+        if(request.type != G_POWER_EVENT_PREPARE) { post(event); continue; }
+        __atomic_store_n(&powerResponse, 0, __ATOMIC_RELEASE);
+        post(event);
+        auto deadline = g_millis() + 29000;
+        bool cancelled = false;
+        while(!__atomic_load_n(&powerResponse, __ATOMIC_ACQUIRE) && g_millis() < deadline)
+        {
+            if(g_receive_message_m(buffer, sizeof(buffer), G_MESSAGE_RECEIVE_MODE_NON_BLOCKING) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+            {
+                auto cancel = reinterpret_cast<g_power_event*>(G_MESSAGE_CONTENT(buffer));
+                if(header->sender == G_TID_NONE && header->length == sizeof(*cancel) &&
+                    cancel->magic == G_POWER_EVENT_MAGIC && cancel->request == request.request && cancel->type == G_POWER_EVENT_CANCEL)
+                { event.power = *cancel; cancelled = true; break; }
+            }
+            g_sleep(5);
+        }
+        if(!cancelled) g_power_acknowledge(request.request, __atomic_load_n(&powerResponse, __ATOMIC_ACQUIRE) == 1);
+        event.power.type = G_POWER_EVENT_CANCEL;
+        post(event);
+    }
+}
+
 bool isDirectory(const std::string& path)
 {
 	struct stat info{};
@@ -78,6 +123,9 @@ editor::Key translate(const KeyInfoBasic& key)
 int main(int argc, char* argv[])
 {
 	g_mutex_acquire(eventReady);
+    if(g_create_task(reinterpret_cast<void*>(editorPowerListener)) == G_TID_NONE) return -1;
+    while(__atomic_load_n(&powerRegistration, __ATOMIC_ACQUIRE) == 255) g_sleep(1);
+    if(powerRegistration != G_POWER_SUCCESSFUL) { klog("editor: could not register shutdown handler"); return -1; }
 	if(Application::open() != ApplicationOpenStatus::Success) { klog("editor: failed to create UI"); return -1; }
 	if(!g_keyboard::loadLayout("de-DE")) { klog("editor: failed to load keyboard layout"); return -1; }
 	auto window = Window::create();
@@ -107,6 +155,7 @@ int main(int argc, char* argv[])
 	std::string lastTitle;
 	std::string lastPointer;
 	bool needsPaint = true;
+    uint32_t pendingPower = 0;
 	app.resetCaret(g_millis());
 	auto updatePointer = [&]()
 	{
@@ -165,6 +214,19 @@ int main(int argc, char* argv[])
                     else ui.focusDialog();
                 } else changed = ui.handle(event.ui);
             }
+            else if(event.type == EventType::Power)
+            {
+                if(event.power.type == G_POWER_EVENT_CANCEL)
+                { if(pendingPower == event.power.request) pendingPower = 0; }
+                else if(app.dialog != editor::Dialog::None)
+                    __atomic_store_n(&powerResponse, 2, __ATOMIC_RELEASE);
+                else
+                {
+                    pendingPower = event.power.request;
+                    app.command(editor::Command::Exit);
+                    if(!app.quit) { window->setVisible(true); window->setFocused(true); ui.focusDialog(); }
+                }
+            }
 			else if(event.type == EventType::Close)
 			{
 				// Fenster hides the window before Close. Restore it for Save/Cancel.
@@ -193,6 +255,11 @@ int main(int argc, char* argv[])
 				else if(mouse.type == MouseEventType::Scroll) app.mouse(editor::Mouse::Wheel, mouse.position.x, mouse.position.y, mouse.scroll);
 				else changed = false;
 			}
+            if(pendingPower && (app.quit || app.dialog == editor::Dialog::None))
+            {
+                __atomic_store_n(&powerResponse, app.quit ? 1 : 2, __ATOMIC_RELEASE);
+                pendingPower = 0;
+            }
 			if(app.quit) g_exit(0);
 			updatePointer();
 			needsPaint |= changed;
