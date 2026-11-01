@@ -7,7 +7,8 @@ fi
 
 # Build configuration
 ARTIFACT_NAME="ahcidriver.bin"
-LDFLAGS="-lpci"
+LDFLAGS="-lpci -ldevice"
+CFLAGS_ADD="-O2 -Wall -Wextra -Werror"
 
 # Include application build tasks
 . "../applications.sh"

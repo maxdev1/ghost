@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-*                                                                           *
+ *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
  *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
@@ -21,7 +21,6 @@
 #ifndef __LIBAHCI_AHCIDRIVER__
 #define __LIBAHCI_AHCIDRIVER__
 
-#define G_AHCI_DRIVER_NAME		"ahcidriver"
-
+#define G_AHCI_DRIVER_NAME "ahcidriver"
 
 #endif

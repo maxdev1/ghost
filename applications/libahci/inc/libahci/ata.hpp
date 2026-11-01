@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-*                                                                           *
+ *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
  *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
@@ -23,32 +23,38 @@
 
 #include <cstdint>
 
-typedef struct
+constexpr uint8_t G_ATA_COMMAND_IDENTIFY = 0xec;
+constexpr uint8_t G_ATA_COMMAND_READ_DMA_EXT = 0x25;
+constexpr uint8_t G_ATA_COMMAND_WRITE_DMA_EXT = 0x35;
+constexpr uint8_t G_ATA_COMMAND_FLUSH_CACHE = 0xe7;
+constexpr uint8_t G_ATA_COMMAND_FLUSH_CACHE_EXT = 0xea;
+
+enum g_ata_identify_word : uint16_t
 {
-	uint16_t GeneralConfiguration; // 0-1: General Configuration
-	uint16_t CylindersLow; // 2-3: Cylinders (Low)
-	uint16_t CylindersHigh; // 4-5: Cylinders (High)
-	uint16_t Heads; // 6-7: Heads
-	uint16_t SectorsPerTrack; // 8-9: Sectors per Track
-	uint16_t VendorUnique1[3]; // 10-15: Reserved / Vendor Unique
-	uint16_t SerialNumber[10]; // 20-39: Serial Number (20 chars)
-	uint16_t BufferType; // 40-41: Buffer Type
-	uint16_t BufferSize; // 42-43: Buffer Size (in 512-byte sectors)
-	uint16_t ECCSize; // 44-45: ECC Size (in 512-byte sectors)
-	uint16_t FirmwareRevision[4]; // 46-49: Firmware Revision
-	uint16_t ModelNumber[20]; // 54-93: Model Number (40 chars)
-	uint16_t MaximumBlockTransfer; // 94-95: Maximum Block Transfer
-	uint16_t MultiwordDMA; // 96-97: Multiword DMA support
-	uint16_t PIOMode; // 98-99: PIO Mode
-	uint16_t MinMultiwordDMA; // 100-101: Min Multiword DMA
-	uint16_t MaxMultiwordDMA; // 102-103: Max Multiword DMA
-	uint16_t Reserved2[46]; // 104-255: Reserved
-	uint16_t Capabilities; // 256-257: Capabilities
-	uint16_t Reserved3; // 258-259: Reserved
-	uint16_t CommandSetSupported[2]; // 260-261: Command Set Supported
-	uint16_t CommandSetActive[2]; // 262-263: Command Set Active
-	uint16_t UltraDMA; // 264-265: Ultra DMA Mode
-	uint16_t Reserved4[123]; // 266-511: Reserved
-} __attribute__((packed)) identify_device_response_t;
+	G_ATA_IDENTIFY_CONFIGURATION = 0,
+	G_ATA_IDENTIFY_SERIAL = 10,
+	G_ATA_IDENTIFY_MODEL = 27,
+	G_ATA_IDENTIFY_CAPABILITIES = 49,
+	G_ATA_IDENTIFY_COMMAND_SETS = 83,
+	G_ATA_IDENTIFY_LBA48_SECTORS = 100,
+	G_ATA_IDENTIFY_SECTOR_GEOMETRY = 106,
+	G_ATA_IDENTIFY_LOGICAL_SECTOR_WORDS = 117
+};
+
+constexpr uint16_t G_ATA_CAPABILITY_DMA_LBA = 0x300;
+constexpr uint16_t G_ATA_COMMAND_SET_LBA48_VALID = 0x4400;
+constexpr uint16_t G_ATA_COMMAND_SET_LBA48_MASK = 0xc400;
+constexpr uint16_t G_ATA_COMMAND_SET_FLUSH = 1 << 12;
+constexpr uint16_t G_ATA_COMMAND_SET_FLUSH_EXT = 1 << 13;
+constexpr uint64_t G_ATA_LBA48_LIMIT = uint64_t(1) << 48;
+
+/**
+ * ATA IDENTIFY payload. Word offsets select capabilities, capacity and strings
+ * without relying on a compiler-specific view of the obsolete geometry fields.
+ */
+struct g_ata_identify_data
+{
+	uint16_t words[256];
+};
 
 #endif
