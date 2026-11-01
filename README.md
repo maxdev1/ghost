@@ -35,7 +35,7 @@ empty AHCI disk for persistent FAT-backed boot.
 - `libapi` syscall wrappers, a C runtime and an `x86_64-ghost` GCC toolchain.
 - PCI, ACPI, PS/2, AHCI, FAT, boot-framebuffer and VMSVGA services.
 - [ƒenster](applications/fenster/README.md) window server/UI toolkit, desktop,
-  terminal, shell, editor, file browser and [Doom](applications/doom/README.md).
+  terminal, shell, editor and file browser.
 - Ported Cairo, FreeType, Pixman, libpng, zlib and musl mathematical routines.
 
 ![Screenshot of 1.5.0](https://ghostkernel.org/files/ghost-1.5.0.png)
