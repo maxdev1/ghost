@@ -1,51 +1,28 @@
-# libc Documentation
+= C library
 :toc: left
+:last-update-label!:
 
 include::../common/homelink.adoc[]
 
-:numbered:
+Ghost's C library supplies the userspace runtime, allocation, standard I/O,
+strings, character handling, directory iteration and file-descriptor operations.
+It calls `libapi` for kernel services. Mathematical routines and selected support
+headers derive from musl.
 
-Implementation status
----------------------
-This section lists the implementation status for the parts of the C library.
-A few headers (floating point arithmetic related) and the implementation of
-the libm parts are taken from the musl C library (http://www.musl-libc.org/).
+[source,c]
+----
+#include <stdio.h>
 
-[options="header"]
-|===============================================================================
-| Header			| Definitions					| Implementation
-| `assert.h`		| ✓								| ✓
-| `complex.h`		| ✓								| _not implemented_
-| `ctype.h`			| ✓								| ✓
-| `dir.h`			| _not defined_					| ✓
-| `dirent.h`		| ✓								| _not implemented_
-| `dlfcn.h`			| _not defined_					| ✓
-| `endian.h`		| ✓								| ✓
-| `errno.h`			| ✓								| ✓
-| `fcntl.h`			| _partially defined_			| _partially implemented_
-| `fenv.h`			| ✓								| _not implemented_
-| `file.h`			| ✓								| ✓
-| `float.h`			| ✓								| _not implemented_
-| `inttypes.h`		| ✓								| _not implemented_
-| `libgen.h`		| _partially defined_			| ✓
-| `limits.h`		| ✓								| ✓
-| `locale.h`		| ✓								| _not implemented_
-| `malloc.h`		| ✓								| ✓
-| `math.h`			| ✓								| ✓ (musl)
-| `sched.h`			| _partially defined_			| ✓
-| `setjmp.h`		| ✓								| ✓
-| `signal.h`		| ✓								| ✓
-| `stdalign.h`		| ✓								| ✓
-| `stdbool.h`		| ✓								| ✓
-| `stdint.h`		| ✓								| ✓
-| `stdio.h`			| ✓								| _partially implemented_
-| `stdlib.h`		| ✓								| _partially implemented_
-| `string.h`		| ✓								| _partially implemented_
-| `strings.h`		| _partially defined_			| ✓
-| `tgmath.h`		| ✓								| ✓
-| `time.h`			| ✓								| _not implemented_
-| `unistd.h`		| _partially defined_			| _partially implemented_
-| `wchar.h`			| ✓								| _not implemented_
-| `wctype.h`		| ✓								| _not implemented_
-|===============================================================================
+FILE* file = fopen("/user/example.txt", "r");
+if(file) {
+    char line[128];
+    while(fgets(line, sizeof(line), file))
+        fputs(line, stdout);
+    fclose(file);
+}
+----
 
+Compatibility is partial rather than a complete C/POSIX environment. Rename and
+several calendar-time, locale and wide-character operations are unavailable or
+stubbed. Header availability does not imply that every declared function is
+supported; check the relevant implementation when porting software.

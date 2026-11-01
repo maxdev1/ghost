@@ -1,37 +1,82 @@
-# Filesystem
+= Filesystem
 :toc: left
+:last-update-label!:
+
 include::../common/homelink.adoc[]
 
-The virtual filesystem of Ghost consists of *nodes*. A node is a structure
-that contains information about the file. Each node has a `g_fs_node_type`.
+The VFS routes operations through each mount's delegate. The live system uses a
+ramdisk; FAT volumes appear under `/mount/fat<ID>`, and an installed system uses
+its boot volume as `/`.
 
-* a **mountpoint** is the root entry of an actual filesystem. In the kernel
-  each mountpoint must have a *delegate*. A delegate handles the different
-  actions that a filesystem must be able to handle (or fail appropriately,
-  setting the correct status codes)
+== FAT volume control
 
-Custom drivers
---------------
-This section describes how to create a custom driver for a filesystem
-device.
+`libstorage` requests mount, flush and unmount through the storage manager.
+Its administrative API separates partition-table changes from filesystem
+formatting. FAT32 formatting initializes an unmounted volume while preserving
+its partition table and neighboring volumes. Unmount rejects open files, active
+transactions and the boot root.
 
-To tell the kernel that the currently running thread should be used as the
-delegate for a specific device, use `g_fs_register_as_delegate`.
+See <<installation#,Installation>> for the disk layout, copy/verification
+sequence and the handoff from Limine bootstrap files to the FAT root filesystem.
 
-Calling this function attempts to create a mountpoint with the given name
-and appends a delegate that redirects requests to this thread as the
-mountpoints driver delegate.
+== Task delegates
 
-After registering itself, the driver must listen for messages addressed to
-the registered thread using `g_recv_msg`. The `type` field of these messages
-is set to one of the `g_fs_tasked_delegate_request_type` codes.
+Driver threads serve filesystems through `ghost/filesystem/delegate.h` and the
+functions in `ghost/filesystem.h`:
 
-See the `applications/examplefsdriver/` for an example implementation.
+* `g_fs_delegate_register` mounts `/mount/NAME` and returns the mount ID and a
+  shared `g_fs_delegate_transaction_storage` control page.
+* `g_fs_delegate_node_create` stages child nodes during lookup, creation or
+  directory refresh. Successful completion publishes them; failure discards them.
+* `g_fs_delegate_transaction_complete` acknowledges a request.
+* `g_fs_delegate_unregister` detaches an owned mount between transactions.
 
-Transactions
-------------
-As there are no kernel threads, all filesystem actions are implemented with
-transactions. Once an action is requested, a new transaction id is assigned.
-The filesystem delegate then does the requested work and sets the status of
-the transaction accordingly. The *requesting* task wakes up once the
-transaction status is set to finished.
+Physical node IDs are opaque 64-bit values scoped to the delegate. An existing
+name retains its type and ID; replacing a deleted file requires a new ID.
+Lookup returns the child's virtual ID in `data.lookup.result_node_id`.
+
+== Requests and shared memory
+
+One transaction is active per control page. The serving thread receives
+`g_fs_delegate_request` messages and must check `G_FS_DELEGATE_MESSAGE_SENDER`
+and the storage version, size, mount, operation and 64-bit transaction ID against
+the shared header. Filesystem transaction IDs are separate from IPC IDs.
+
+Read/write data uses a separate 4 KiB `mapped_buffer`. Transfers can be short;
+clients must loop as needed. The kernel owns both shared pages, and `g_unmap`
+cannot release them. They are not DMA buffers.
+
+The driver writes result fields before completing the transaction. The
+completion syscall's status is separate from the operation's status.
+`SUCCESSFUL` or `STALE_TRANSACTION` acknowledges that the driver has stopped
+using the mapping; other completion errors leave it outstanding.
+
+== Cancellation and lifetime
+
+Requests have a 15-second deadline, including queue time. Timeout or caller
+termination fails the operation and isolates the caller's buffer. Shared pages
+remain reserved until the serving thread acknowledges cancellation or exits.
+Unregister returns `BUSY` while a transaction remains unacknowledged.
+
+Serving-task exit detaches the mount and wakes clients. Old descriptors retain
+the retired backend identity and cannot follow a replacement mount. The serving
+thread must not access its own mount while handling a request.
+
+Retired VFS nodes remain tombstones until reboot. Limits are 64 active mounts,
+1,024 registrations per boot and 16,384 staged or retained delegate nodes.
+
+== Mutations
+
+Protocol version 2 supports CREATE, RESIZE, REMOVE and FLUSH with
+`g_fs_mutation_status` results. Applications use `g_open_f` with CREATE,
+`g_create_directory`, `g_unlink`, `g_unlink_directory`, `g_truncate` and `g_sync`.
+CREATE|EXCLUSIVE rejects an existing name; writes and truncation require a
+writable descriptor. Append serializes EOF selection with writes/truncation on
+the same node. Extending past EOF zero-fills the gap.
+
+FAT file data can remain in the disk cache after a successful write. Use `fsync()`
+or `g_sync` for durability; volume flush and unmount also flush pending writes.
+
+Cancellation does not undo writes already accepted by a backend. Drivers must
+not retry uncertain mutations. A cancelled successful OPEN releases its private
+open reference after `STALE_TRANSACTION`; completed mutations retain their effects.

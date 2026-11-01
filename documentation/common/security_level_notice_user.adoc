@@ -1,2 +1,1 @@
-
-Requires <<threads#SecurityLevels,G_SECURITY_LEVEL_APPLICATION>>.
+Requires <<tasking#SecurityLevels,G_SECURITY_LEVEL_APPLICATION>>.

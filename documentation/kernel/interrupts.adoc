@@ -1,0 +1,38 @@
+= Interrupt handling
+:toc: left
+:last-update-label!:
+
+include::../common/homelink.adoc[]
+
+Ghost separates immediate hardware IRQ handling from work performed by scheduled
+driver tasks.
+
+== Hardware IRQ flow
+
+. The CPU enters an interrupt gate, which clears its interrupt-enable flag (`IF`).
+  Ordinary maskable interrupts are disabled on that CPU.
+. The kernel handles the IRQ, records pending work and wakes or selects a driver
+  task as needed, then sends end-of-interrupt (EOI) to the interrupt controller.
+. The assembly entry code returns through `iretq`, restoring the resumed task's
+  saved flags. The resumed task may differ from the interrupted task.
+
+The normal hardware IRQ path keeps maskable interrupts disabled until `iretq`.
+EOI alone does not enable them. Other CPUs continue independently; NMIs and CPU
+exceptions can still occur.
+
+== Guidelines
+
+* Keep immediate IRQ handling short. Do not sleep or perform blocking driver IPC
+  there; record the event and wake a task for work that may wait.
+* A driver task runs after interrupt return and can itself be interrupted. It may
+  sleep or use blocking IPC when scheduling and the required services are available.
+  Do not block while holding spinlocks or global kernel mutexes.
+* Interrupt nesting and permission to sleep are separate concerns. Enabling IRQs
+  inside a hardware handler would require explicit support for nested handling;
+  it would not make blocking calls safe.
+* Syscalls marked interruptible explicitly enable interrupts during execution.
+  Their handlers run on behalf of a scheduled task, unlike immediate hardware IRQ
+  handling.
+* Complete driver IPC before the final shutdown stage parks other CPUs and
+  disables interrupts. Preserve the incoming interrupt state when leaving a
+  critical section, for example with `g_interrupt_guard`.

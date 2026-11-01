@@ -1,39 +1,20 @@
 = Ghost OS
-Max Schlüssel <lokoxe@gmail.com>
-v1.3
 :last-update-label!:
 
-<- link:https://ghostkernel.org/[Back to homepage]
+link:https://ghostkernel.org/[Project website]
 
-About
------
-This is the system documentation of the *Ghost* operating system.
+*Ghost* is an x86-64 operating system with a microkernel, userspace drivers and the
+ƒenster desktop. This documentation covers its supported interfaces and system
+architecture.
 
-This project is a hobby operating system for the Intel x86 platform with
-almost all components written from scratch. The kernel follows a microkernel
-design. This documentation contains both conceptual and technical details
-for various parts of the system.
-
-NOTE: This file is supposed to be compiled with AsciiDoctor
-(http://asciidoctor.org/), see the script `generate.sh`.
-
-
-Contents
-~~~~~~~~
-The contents of this documentation are split in sections for each system
-component. On the top of each page there's a link back to this home page.
-
-* *Development*
-	** <<building#,Building>> - Toolchain & system building instructions
-	** <<structure#,Project structure>> - Explains the contents of this repository
-	** <<debugging#,Debugging>> - How to debug the kernel
-* *<<loader#,Loader>>* - Initial boot code that loads the kernel to higher memory
-* *Kernel section* - Documentation about the kernel itself
-	** <<tasking#,Tasking>> contains everything about processes and threading
-	** <<memory#,Memory layout>> explains the memory layout
-	** <<spawning#,Spawning>> describes process creation
-* *<<libapi#,libapi>>* - Documentation for the kernel API wrapper library
-* *<<libc#,libc>>* - Documentation for the C library implementation
-* *<<ramdisk-format#,Ramdisk>>* - Documentation about the Ramdisk format & generation
-* *<<driver-architecture#,Driver architecture>>* - Describes driver architecture
-* *<<port#,port.sh>>* - Manual for the porting utility
+* System: <<installation#,Installation and installed boot>>
+* Development: <<building#,Building>>, <<structure#,Repository structure>>,
+  <<dependencies#,Component dependencies>>,
+  <<debugging#,Debugging>>, <<port#,Porting software>>
+* Kernel: <<loader#,Boot>>, <<tasking#,Processes and tasks>>,
+  <<memory#,Memory>>, <<spawning#,Process spawning>>,
+  <<process-cleanup#,Resource ownership>>, <<power#,Shutdown and reboot>>
+* Services: <<driver-architecture#,Driver architecture>>,
+  <<storagemanager#,Storage management>>, <<filesystem#,Filesystem and delegates>>
+* Libraries: <<libapi#,libapi>>, <<libc#,libc>>
+* Formats: <<ramdisk-format#,Ramdisk>>

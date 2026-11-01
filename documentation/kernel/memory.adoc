@@ -1,71 +1,43 @@
-# Memory layout documentation
+= Memory
 :toc: left
 :last-update-label!:
 
 include::../common/homelink.adoc[]
 
-About
------
-This section describes the memory layouting and management.
+Processes use separate four-level x86-64 page tables and share the kernel's
+upper-half mappings. Threads within a process share its user address space.
+Pages are 4 KiB.
 
+== Address layout
 
-Address spaces
---------------
-Each <<threads#Processes,process>> has its own address space. All threads of
-the same process share the same address space and therefore have access to the
-same regions of memory.
+[cols="2,3",options="header"]
+|===
+|Region |Current layout
+|User heap |Begins after the loaded image; its break is bounded by `0xA0000000`.
+|User virtual ranges |`[0xA0000000, 0xC0000000)`, used for mappings, stacks and TLS.
+|Physical direct map |Physical address plus `0xffff800000000000`.
+|Kernel virtual ranges |`[0xffffff8090000000, 0xffffff89ffc00000)`.
+|Kernel heap |Starts at `0xffffff8a00000000`.
+|Kernel image |Linked at `0xffffffff80000000`.
+|===
 
-The layout of each address space looks as follows.
+Constants are in `kernel/memory/constants.hpp`. An address-range reservation is
+separate from its page mappings and physical-frame ownership.
 
-image::../diagrams/Memory-Layout.png[]
+== Stacks and mappings
 
-The _kernel memory_ part of the layout is identical for all processes in the system.
+User stacks reserve ten pages, including an unmapped guard page. One page is
+initially committed; missing-page faults grow the stack within its reservation.
+Kernel and interrupt stacks reserve nine pages each, with eight committed pages
+and a guard. Kernel stacks cannot depend on fault-time growth.
 
-|=====
-| *Recursively mapped page directory* | Contains the page directory
-| *Kernel virtual ranges* | Used whenever a chunk of the virtual address space in the kernel area is needed.
-| *Kernel binary, stack & heap* | The kernel binary image is loaded to this area. Right after it, the kernel setup stack is created. Anything after is used as heap area for the kernel.
-| *User virtual ranges* | Used whenever a chunk of the virtual address space in the user area is needed.
-| *User heap* | The remaining memory after the user binary is used as the kernel heap area.
-| *User binary* | The user binary image is loaded to this area.
-| *Lower memory* | The lower memory area is used for SMP setup and VM86 calls.
-|=====
+Fresh user pages are cleared before publication. Removing a mapping completes
+remote TLB invalidation before its frame can be reused. RAM aliases retain frame
+references; device mappings are non-owning and never return MMIO frames to the
+RAM allocator. Internal stack/TLS reservations are released by task teardown,
+not public `g_unmap`.
 
-[[Stacks]]
-Stacks
-------
-Each thread has two stacks, a user space stack and a kernel space stack.
-
-Kernel space stack
-~~~~~~~~~~~~~~~~~~
-The kernel space stack is the one that the kernel operates on during system
-calls and where the state of the thread is stored during interruptions. It is
-statically assigned to 1 page and mapped into <<Kernelspace,kernel space>>.
-It is not accessible by the userspace code.
-
-User space stack
-~~~~~~~~~~~~~~~~
-The user space stack is the one that the application operates on. On thread
-creation, a virtual address range of 16 pages is reserved and the last page
-is mapped as a physical page. The stack starts at the end of this page.
-
-image::../diagrams/Stack-Initialization.png[]
-
-This allows the stack to grow dynamically without reserving more physical
-memory than necessary. When the stack overflows, a page fault is triggered
-and the kernel handles the situation by inserting a new physical page.
-
-image::../diagrams/Stack-Overflow.png[]
-
-
-Address range pools
---------------------
-The `g_address_range_pool` is an allocator for ranges of addresses. The kernel
-has one main allocator for virtual ranges in the kernel space. Each process has an
-allocator assigned to manage ranges in the user space.
-
-Memory allocator
-----------------
-The `g_allocator` is an in-place memory allocator that is used for the kernel heap
-and lower memory. It uses buckets for small chunks of memory and a linked-list
-for large chunks.
+The bitmap allocator manages physical pages; virtual range pools manage address
+reservations. The kernel heap uses size-class buckets and coalesced larger
+sections. Fallible page allocation retains a recovery reserve, but critical
+kernel metadata exhaustion can still be fatal.

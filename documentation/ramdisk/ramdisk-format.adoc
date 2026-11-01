@@ -1,48 +1,31 @@
-# Ramdisk documentation
+= Ramdisk format
 :toc: left
+:last-update-label!:
 
 include::../common/homelink.adoc[]
 
-:numbered:
-Ramdisk format
---------------
+The live system's ramdisk is a sequence of file/directory records written by
+`tools/ramdisk-writer`. Numeric fields are little-endian; records continue to EOF.
 
-The ramdisk can be created using the ramdisk building tool in
-`tools/ramdisk-writer`. This section documents the structure of the ramdisk.
+[cols="1,2,3",options="header"]
+|===
+|Bytes |Field |Meaning
+|1 |Type |0: directory; 1: file.
+|4 |Entry ID |Unique record identifier.
+|4 |Parent ID |Containing directory.
+|4 |Name length |Byte count of the following name.
+|Name length |Name |Name bytes, without a terminator.
+|===
 
-To build a ramdisk file, format the contents of each file you want to add as
-depicted below. Files and folders must not be written in any particular order.
+File records append:
 
-Node structure
-~~~~~~~~~~~~~~
-Byte order of all numeric values is LITTLE ENDIAN.
+[cols="1,2,3",options="header"]
+|===
+|Bytes |Field |Meaning
+|4 |Data length |Byte count of the file contents.
+|Data length |Data |File contents.
+|===
 
-[options="header"]
-|======================================================================
-| Length in bytes	| Type					| Description
-| 1					| Byte					| <<EntryType,Type of the entry>>
-| 4					| Integer				| Entry ID
-| 4					| Integer				| ID of the parent entry
-| 4					| Integer				| Name length in bytes
-| <Name length>		| String				| Name content
-|======================================================================
-
-Entries of the type file additionally have the fields:
-
-[options="header"]
-|======================================================================
-| Length in bytes	| Type					| Description
-| 4					| Integer				| Data length in bytes
-| <Data length>		| Bytes					| Data content
-|======================================================================
-
-
-[[EntryType]]
-Entry type constants
-~~~~~~~~~~~~~~~~~~~~
-[options="header"]
-|==================================
-| Value				| Type
-| 0					| Folder
-| 1					| File
-|==================================
+Root ID 0 is implicit and has no record. The writer emits each directory before
+its children. `sysroot/.rdignore` controls excluded paths. Installed FAT systems use ordinary files and bootstrap modules
+instead of a packed ramdisk; see <<loader#,Boot>>.

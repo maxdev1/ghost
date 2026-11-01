@@ -1,0 +1,41 @@
+= Resource ownership
+:toc: left
+:last-update-label!:
+
+include::../common/homelink.adoc[]
+
+Processes own their address space and shared metadata; tasks own stacks, TLS,
+saved FPU state and wait registrations. Shared RAM has one reference per owning
+mapping. MMIO mappings are non-owning.
+
+== Termination
+
+. Mark the process terminating, reject task creation and wake blocked tasks.
+. Let in-flight kernel operations reach a cancellation point and release locks.
+. The owning core's reaper retires tasks after lookup pins drain, removes their
+  registrations and releases task-owned memory.
+. The last task closes descriptors, releases process metadata and destroys the
+  private lower-half page tables. Shared kernel mappings remain intact.
+
+Interrupted kernel work must not be abandoned while it owns resources.
+`taskingAcquireTask`/`taskingReleaseTask` pin lookups against reaping. Release pins
+before cancellation waits and resolve IDs again after waking.
+
+Descriptors retain their backend while borrowed. Close detaches the descriptor
+and wakes blocked operations; its final borrower releases the storage.
+Generation checks prevent a retry from reaching a reused descriptor number.
+
+Use `waitQueueAdd` for reverse-indexed wait registrations. Drain a resource's
+wait queue before freeing it. Partial construction and normal destruction must
+release resources through the same ownership paths.
+
+== Window-server clients
+
+ƒenster reclaims a departed client's component trees, surfaces, mappings,
+workers, listeners and subscriptions. Registry access guards protect borrowed
+components; cleanup waits for active readers and stops canvas workers before
+releasing their storage. Local window proxies use `disposeLocal` after their
+callbacks/readers stop.
+
+Global topic history and allocator capacity are retained independently of the
+posting or allocating process. They are not process-owned resources.

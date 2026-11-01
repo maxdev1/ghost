@@ -1,6 +1,24 @@
-# Spawning
+= Process spawning
 :toc: left
+:last-update-label!:
+
 include::../common/homelink.adoc[]
 
-:numbered:
+`g_spawn*` loads an executable and starts a process at the requested security
+level. The caller cannot create a process with greater privilege than its own.
+Variants accept arguments, a working directory, standard-stream descriptors and
+output process IDs; declarations are in `ghost/tasks.h`.
 
+== Launch context
+
+`g_get_launch_mode()` returns `G_LAUNCH_MODE_UI`, `G_LAUNCH_MODE_TERMINAL` or
+`G_LAUNCH_MODE_UNKNOWN`. Use it to choose an interface; it does not grant
+permissions.
+
+Desktop icons, the start menu and Navigator launch with `G_LAUNCH_MODE_UI`.
+The shell uses `G_LAUNCH_MODE_TERMINAL`, including for redirected commands and
+pipelines. Inspecting standard streams or parent processes is unnecessary.
+
+Ordinary `g_spawn*` calls inherit the parent's context. Launchers override it
+through `g_spawn_poim` or `g_spawn_poidm`; `G_LAUNCH_MODE_INHERIT` requests
+inheritance. All threads in a process share the context.

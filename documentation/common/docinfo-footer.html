@@ -1,0 +1,42 @@
+<style>
+.mermaid { overflow-x: auto; margin: 1.5em 0; }
+.mermaid svg { max-width: 100%; height: auto; }
+</style>
+<script>
+async function documentationRenderMermaid() {
+    const sources = document.querySelectorAll('code.language-mermaid');
+    if (!sources.length) return;
+
+    try {
+        await new Promise((resolve, reject) => {
+            const renderer = document.createElement('script');
+            renderer.src = 'assets/mermaid-11.12.2.min.js';
+            renderer.onload = resolve;
+            renderer.onerror = reject;
+            document.head.append(renderer);
+        });
+
+        const diagrams = [];
+        for (const source of sources) {
+            const diagram = document.createElement('div');
+            diagram.className = 'mermaid';
+            diagram.textContent = source.textContent;
+            source.closest('.listingblock').replaceWith(diagram);
+            diagrams.push(diagram);
+        }
+        mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: 'strict',
+            theme: 'neutral',
+            flowchart: { htmlLabels: false, useMaxWidth: true }
+        });
+        await mermaid.run({ nodes: diagrams });
+    } catch (error) {
+        const message = document.createElement('p');
+        message.textContent = 'Unable to render diagrams. Rebuild the documentation and keep its assets directory beside the HTML files.';
+        document.getElementById('content').prepend(message);
+        console.error('Mermaid rendering failed:', error);
+    }
+}
+documentationRenderMermaid();
+</script>

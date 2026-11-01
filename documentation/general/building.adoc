@@ -1,125 +1,53 @@
 = Building
 :toc: left
+:last-update-label!:
+
 include::../common/homelink.adoc[]
 
-== Getting started
-This document contains an explanation on how to build entire operating system from source.
+Ghost uses the `x86_64-ghost` cross-toolchain. Run commands from the repository
+root. Docker provides the toolchain and host dependencies:
 
-Scripts in the repository are usually written for bash. On Windows, install link:https://learn.microsoft.com/en-us/windows/wsl/install[WSL] and continue from there. On Mac OS, it is recommended to use the Docker setup.
+[source,sh]
+----
+git submodule update --init
+./docker-build-toolchain-image.sh
+----
 
-The operating system requires its own compiler and toolchain, which must be set up once. It is strongly recommended to use the <<Toolchain via Docker>> since it simplifies the setup a lot. If you want to install the toolchain on your host system, check the <<Toolchain on host>> section.
+The script opens the `ghost-toolchain-64` container with the checkout mounted at
+`/ghost/source`. Inside it, build the system:
 
-NOTE: The system root directory `sysroot` is reflects the filesystem of the target system. All libraries and applications are installed into this directory, which is then packed into the ramdisk during the build process. This ramdisk is what is mounted as the root of the running system.
+[source,sh]
+----
+./build.sh --ci
+----
 
+The bootable image is `target/ghost.iso`. Reuse the container for later builds:
 
-== Toolchain via Docker
+[source,sh]
+----
+docker exec -w /ghost/source ghost-toolchain-64 bash -lc './build.sh --ci --kernel'
+docker exec -w /ghost/source ghost-toolchain-64 bash -lc './build.sh --ci --apps editor'
+----
 
-To run the toolchain in a Docker container you can either build the image yourself or pull the latest image from the GitHub repository.
+`--ci` stops on failures; component output is in its `ghost-build.log`.
+Use `--libapi`, `--libc` or `--kernel` for those components, and `--pack` to
+refresh the ISO from existing artifacts. `--apps` and `--apps-clean` consume all
+remaining arguments as application names, so place them last.
 
-=== Option A: Pull latest image
+After ƒenster header/layout changes, clean ƒenster and rebuild its consumers;
+its Makefiles do not track header dependencies. A build with `--apps-clean`
+cleans the named applications before compiling them.
 
-1. Pull the image:
+For a native toolchain, use `toolchain.sh`. Override `TOOLCHAIN_BASE` and `TARGET`
+in `variables.sh`, using `variables.sh.template` as the starting point.
+Third-party recipes use `--host=x86_64-ghost` and install under `/system` in the
+sysroot; see <<port#,Porting software>>.
 
-	docker pull ghcr.io/maxdev1/ghost-toolchain-64:1.0
+== Documentation
 
-2. Start a container and mount the repository to it:
+From the repository root:
 
-	docker run -it --name ghost-toolchain -v "$(pwd):/ghost/source" ghcr.io/maxdev1/ghost-toolchain-64:1.0
-
-3. Go to the <<Build targets>> section below.
-
-=== Option B: Build image
-
-1. To get started, clone the repository:
-
-	git clone https://github.com/maxdev1/ghost
-
-2. Within it, execute the following script. This will build the Docker image `ghost-toolchain` which includes everything required to build the operating system. Check the `/ghost-build.log` for outputs. This script will take a while.
-
-	./docker-build-toolchain-image.sh
-
-
-3. Once the image was built, a container will automatically be started. You can now skip to the <<Build targets>> section below.
-
-=== Tips
-
-To reconnect to the container after exiting it:
-
-  docker exec -it ghost-toolchain bash
-
-
-== Toolchain on host
-
-=== Clone repositories
-To get started, clone the repository to `/ghost/source`:
-
-	git clone https://github.com/maxdev1/ghost /ghost/source
-
-If you want to use a different folder, see the "Tips" section below.
-
-
-=== Installing prerequisites
-
-The following dependencies are requirements for the toolchain and need to be installed beforehand or else the script will fail:
-
-* `apt-get update`
-* `apt-get install libmpfr-dev libgmp-dev libmpc-dev autoconf2.69 pkg-config xorriso grub-pc-bin make texinfo flex bison gcc g++ nasm asciidoc asciidoctor`
-
-You may need to `export AUTOCONF=autoconf2.69` depending on your host system.
-
-
-=== Build toolchain
-Run the toolchain setup script `toolchain.sh`. It will attempt to do everything that is
-necessary to create the toolchain. Once the toolchain was built, add it to your `PATH`.
-
-
-== Build targets
-
-The root `build.sh` contains a set of targets that will build everything required for the system (see `--help`).
-
-After setting up the toolchain, simply run `./build.sh` and let it execute all targets. The first build will take some time, because the ported libraries (like cairo) need to be built.
-
-Done? *Congratulations!* In the `target` folder you will now find the bootable ISO image `ghost.iso`.
-
-NOTE: On some systems while running `build.sh`, the configure scripts of some ports
-	might hang at either "checking for suffix of executables" or "checking whether
-	we are crosscompiling". Run `killall conftest` to get it running again.
-
-== Library dependency
-To give a small overview on the dependencies, libapi is the lowest layer library that provides
-wrapping of system calls. On top of this is the libc that utilizes libapi.
-
-image::../diagrams/Library-Dependencies.png[]
-
-== Third-party software
-To install third-party libraries, it is usually necessary to provide some parameters to the
-`./configure` script:
-
-* `--host=i686-ghost` to set the correct host
-* `--prefix=/system` to install libraries to the correct folder
-
-There is also a simplified port installation script in `patches/ports` that allows automatically
-downloads, patches and installs some third-party libraries.
-
-
-== Creating a bootable USB stick
-You can create a bootable USB stick with the following steps.
-
-    # 1. Identify USB drive
-    diskutil list
-
-    # 2. Unmount USB drive (replace N with the correct disk number)
-    diskutil unmountDisk /dev/diskN
-
-    # 3. Write ISO directly to USB
-    sudo dd if=./target/ghost.iso of=/dev/rdiskN bs=4m
-
-    # 4. Flush pending writes
-    sync
-
-    # 5. Safely eject USB drive
-    diskutil eject /dev/diskN
-
-== Tips
-* To specify a different toolchain base directory, modify `TOOLCHAIN_BASE`, copy the `variables.sh.template` to `variables.sh` and specify the variable with an export.
-* While binutils and gcc are being built, the log output is redirected to a file named `ghost-build.log` in the respective build directory in the temporary folder. If the build fails for some reason, you should check this log file.
+[source,sh]
+----
+./documentation/build.sh
+----

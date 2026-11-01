@@ -1,0 +1,58 @@
+= Installation
+:toc: left
+:last-update-label!:
+
+include::../common/homelink.adoc[]
+
+== Installing from the live ISO
+
+Open Install from the desktop or main menu, select a drive and confirm the
+installation. In a terminal, list drives and use the displayed disk ID:
+
+[source,sh]
+----
+install --list
+install 2
+----
+
+Type `INSTALL` to confirm. Installation replaces the target disk's partitions
+and erases its existing files. The target must be a writable AHCI disk with
+512-byte sectors, cache-flush support and enough space for the live system.
+Open files prevent unmounting; the running system disk cannot be formatted.
+
+== What the installer does
+
+. Unmounts the target and asks `fatdriver` to create an MBR partition table and
+  format a FAT32 partition. The provisional MBR has no boot code or active flag.
+. Writes Limine's BIOS bootloader data into the area before the partition.
+. Explicitly probes and mounts the new filesystem through `fatdriver`.
+. Copies the loaded live filesystem using normal directory/file operations,
+  patching `/boot/limine/limine.conf` with the MBR's disk identity as
+  `root=fat:XXXXXXXX`.
+. Flushes and verifies the files and bootloader data, unmounts the filesystem,
+  then commits the bootable MBR.
+
+The kernel, applications and libraries remain ordinary FAT files. The installer,
+its private assets, its desktop/menu launchers and `/boot/ramdisk` are excluded.
+On failure, the installer attempts to unmount and discard its incomplete target
+so installation can be retried.
+
+== Booting the installed system
+
+. BIOS starts Limine from the disk. Limine reads `/boot/kernel` and the bootstrap
+  files listed in its configuration from the FAT partition into memory.
+. The kernel exposes those module buffers as a small temporary filesystem using
+  its ramdisk backend. Directory/file entries reference the loaded buffers;
+  there is no complete ramdisk archive to unpack.
+. Ghost starts PCI, ACPI and device management, followed by the storage manager, AHCI/FAT drivers
+  and early display drivers. Their libraries and runtime files are also supplied
+  as bootstrap modules. The drivers run as userspace processes.
+. The storage manager discovers the disk's volumes. The FAT driver matches the
+  requested disk identity against the MBR signature, claims and mounts the boot
+  volume through the manager. The kernel switches `/` to that FAT filesystem.
+. The remaining services, ƒenster and applications load through the normal
+  filesystem APIs from the disk.
+
+The bootstrap files provide disk access before Ghost can mount FAT itself.
+Limine's modules are preloaded files from the installed disk; listing a driver
+as a module does not make it kernel code or preload all installed applications.

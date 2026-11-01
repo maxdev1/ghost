@@ -1,0 +1,54 @@
+= Shutdown and reboot
+:toc: left
+:last-update-label!:
+
+include::../common/homelink.adoc[]
+
+Use the shell's `shutdown`/`reboot` commands, the desktop's *Shut down*/*Restart*
+actions, or `g_system_power`:
+
+[source,cpp]
+----
+#include <ghost.h>
+
+auto status = g_system_power(G_POWER_SHUTDOWN);
+----
+
+A successful operation does not return. Application vetoes, preparation timeouts
+and flush failures cancel the request and return a status.
+
+== Application preparation
+
+Applications with unsaved state register a dedicated task with
+`g_power_register(G_POWER_APPLICATION)`. Accept events only with sender
+`G_TID_NONE`, exactly `sizeof(g_power_event)` bytes and `G_POWER_EVENT_MAGIC`.
+Acknowledge the request token using `g_power_acknowledge`; a false reply vetoes
+the operation. Approval requires stopping changes to application state.
+
+Callbacks have 30 seconds to finish. Cancellation events retire the matching
+request token. Applications without registration receive no callback.
+
+== System sequence
+
+The BSP coordinator asks applications to prepare and blocks new application
+launches. Storage producers stop accepting work and finish accepted administration
+jobs and controls. The coordinator then blocks filesystem mutations, drains
+existing mutations, flushes mounted filesystems and storage devices, prepares
+ACPI and disables PCI bus mastering. It parks
+secondary CPUs before the final power-off/reset writes. Cancellation restores
+PCI access, storage service and firmware events before reopening mutations.
+
+Storage coordinators register with `G_POWER_STORAGE_PRODUCER`. They acknowledge
+readiness without blocking their serving task, keep new work excluded, and
+acknowledge cancellation after resuming service. Uncertain I/O vetoes shutdown;
+work that exceeds the preparation deadline cancels shutdown and continues running.
+
+`acpidriver` runs uACPI at driver privilege in ring 3; it handles firmware methods,
+SCI and deferred work. `libacpi` exposes capability and S0–S5 queries. Orderly
+transitions support S5 power-off and reboot; querying a sleep state does not
+enable suspend support.
+
+The kernel retains early APIC/HPET table discovery and the bounded final register
+sequence. No driver IPC runs after CPUs are parked and interrupts disabled.
+Reboot uses the FADT reset mechanism with an 8042 fallback. Both live and
+installed systems start ACPI after PCI and before device discovery.

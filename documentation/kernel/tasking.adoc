@@ -1,136 +1,54 @@
-# Task management
+= Processes and tasks
 :toc: left
-:toclevels: 4
 :last-update-label!:
-:source-highlighter: prettify 
-:numbered:
+
 include::../common/homelink.adoc[]
 
 [[Processes]]
-== Processes
-A process contains one or more tasks. It holds information that
-is common for all of its tasks. Each process has a main task and can
-have multiple child tasks.
-
-A process itself has no id, it is identified by the id of its main task.
-
+A process owns an address space, descriptors, working directory and executable
+metadata. Its process ID equals its main task's ID. Each task is one schedulable
+thread with its own stack, TLS and saved CPU/FPU state.
 
 [[Tasks]]
-== Tasks
-A task is a single stream of execution. `g_task` is the data structure
-that contains information for a task.
+== Task API
 
-Tasks running in kernel-level only have one stack, user-space tasks have an additional
-stack that is used during interrupt handling. The <<memory#Stacks,stack section>> describes
-how these stacks are handled.
+`g_create_task` starts a thread in the current process; `_d` variants pass user
+data and `_a` variants select CPU affinity. `g_get_tid` returns the thread ID,
+`g_get_pid` the process ID, and `g_join` waits for a task to finish.
 
-=== Types
-The following constants of type `g_task_type` denote types of tasks.
-[options="header"]
-|==========================================================
-| Identifier			| Description
-| G_TASK_TYPE_DEFAULT	| Normal task
-| G_TASK_TYPE_VM86		| Virtual 8086 task
-|==========================================================
+[source,cpp]
+----
+#include <ghost.h>
 
+void worker();
+auto id = g_create_task(reinterpret_cast<void*>(worker));
+if(id != G_TID_NONE)
+    g_join(id);
+----
 
+Returning from a thread entry or calling `g_exit_task` ends that thread.
+`g_exit` ends the process; ending the main task also terminates its siblings.
+`g_kill` requests process termination, subject to privilege checks.
 
-=== Kernel-level
-==== Creating a task
-In kernel space, a task can be created by using `taskingCreateTask` and
-assigning it to scheduling with `taskingAssign`.
-
-==== Considerations
-There are some things to consider when implementing a task in kernel-level.
-When a kernel-lock is taken by a task, scheduling is disabled until the task
-releases the lock. This is inevitable as it could cause a deadlock if the task
-is interrupted while holding a lock.
-
-To minimize any blocking, locks should therefore be used around critical parts
-but acquired as late and released as soon as possible.
-
-==== Exiting a task
-A kernel task must be exited using `taskingExit`, otherwise the
-task will run into nirvana and cause a failure.
-
-
-=== User-level
-==== Creating a task
-To create a task from userspace, the `<<libapi#g_create_task,g_create_task>>`
-API function is used. This function must be supplied with an address pointing to
-code that the task shall execute. Additionally to the entry point, a pointer
-to user data can be passed.
-
-A simple example could look like this:
-
-[source,c]
------
-void myTaskCounter(int* counter) {
-	for(;;) {
-		(*counter)++;
-	}
-}
-
-int main(int argc, char** argv) {
-	int counter = 0;
-	g_create_task_d(myTaskCounter, &counter);
-	
-	for(;;) {
-		g_sleep(1000);
-		printf("The counter is: %i\n", counter);
-	}
-}
------
-
-Each task has a unique id of type `g_tid`. This id can be obtained from within
-the task using `<<libapi#g_get_tid,g_get_tid>>`.
-
-==== Internal initialization
-The task initialization sequence uses a wrapper function for starting
-the task. First, the `G_SYSCALL_CREATE_TASK` system call is called
-and supplied with a "task setup routine" and the "user entry" (the function
-given to `g_create_task`).
-
-This setup routine is the first piece of code that is executed from within the
-newly created tasnk, but does initially not know where to start execution.
-To get this information, it uses `G_SYSCALL_GET_TASK_ENTRY` which returns
-the user entry to start executing at.
-
-This entire procedure is done to avoid that the kernel must modify the user
-stack to put the necessary values on it, but rather do it from within code which
-is inherently ABI compatible.
-
-
-==== Exiting a task
-A task is automatically destroyed once the entry function finishes execution.
-To stop execution from an arbitrary point, the `<<libapi#g_exit,g_exit>>` API
-function can be used.
-
-A single task can not be killed from a different process; using the
-`<<libapi#g_kill,g_kill>>` always causes the entire process to exit.
-
-When the main task of a <<Processes,process>> dies, all tasks of the process
-are killed.
-
-
+`G_KERNQUERY_TASK_GET_BY_ID` reports scheduled CPU nanoseconds for a thread and
+resident user memory for its process. `G_KERNQUERY_PROCESS_GET_BY_ID` accepts a
+process ID and uses the same response layout, aggregating CPU time across all
+threads, including exited threads. CPU time includes kernel work while scheduled;
+without HPET its resolution is one timer tick. Resident memory includes shared
+RAM mappings and excludes MMIO, uncommitted pages and shared kernel mappings.
 
 [[SecurityLevels]]
-=== Security Levels
-When creating a process, a security level is used to determine what permissions
-the tasks of the process have. This security level is stored on the process
-and applied on task creation.
+== Security levels
 
-==== Existing security levels
-The following constants of type `g_security_level` denote the different
-security levels.
-[options="header"]
-|==========================================================
-| Identifier					| Description
-| `G_SECURITY_LEVEL_APPLICATION`| Has no specific permissions.
-| `G_SECURITY_LEVEL_DRIVER`		| Has I/O permission level 3 (may use `out` and
-		`in` commands to access the CPU I/O ports) and is permitted to
-		use a variety of driver-related system calls.
-| `G_SECURITY_LEVEL_KERNEL`		| Runs in kernel space
-|==========================================================
+[cols="1,3",options="header"]
+|===
+|Level |Execution and permissions
+|`G_SECURITY_LEVEL_APPLICATION` |Ring 3; ordinary application APIs.
+|`G_SECURITY_LEVEL_DRIVER` |Ring 3 with port-I/O access and driver-only system operations.
+|`G_SECURITY_LEVEL_KERNEL` |Ring 0; internal kernel tasks.
+|===
 
-
+A spawn cannot request greater privilege than its caller. Driver and kernel
+processes cannot be killed by application tasks. See
+<<process-cleanup#,Resource ownership>> for kernel lifetime rules and
+<<spawning#,Process spawning>> for launch context.

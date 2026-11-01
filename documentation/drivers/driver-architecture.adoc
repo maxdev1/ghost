@@ -1,61 +1,62 @@
 = Driver architecture
 :toc: left
+:last-update-label!:
+
 include::../common/homelink.adoc[]
 
-The system uses a service-based approach to drivers. The following components
-take their part in this:
+Drivers run as userspace services, each owning its device state and hardware
+operations in a separate address space. Applications and other services access
+them through IPC, with client libraries exposing ordinary function interfaces.
+Drivers are trusted components: driver privilege permits port I/O and restricted
+mapping/interrupt operations, including access to device and DMA memory.
 
-* *devicemanager* is the central device registry
-** *libdevice* is the interface library for devicemanager
+== Communication and ownership
 
-* *pcidriver* is the PCI driver
-** *libpci* is the interface library for pcidriver
+Service interfaces express device operations, such as reading sectors or setting
+a video mode. Register access, interrupt handling and hardware sequencing stay
+inside the responsible driver.
 
-* *ps2driver* is a driver for PS/2 mouse & keyboard input
-** *libps2* is the PS/2 implementation
-** *libps2driver* is the interface library for ps2driver
+Messages carry commands, identifiers, status and buffer references. Bulk data
+uses shared memory: AHCI transfers through driver-owned shared DMA buffers, and
+video drivers share framebuffers with clients. This keeps data transfers separate
+from request/reply traffic.
 
-* *ahcidriver* is the SATA/AHCI implementation
-** *libahci* is the interface library for ahcidriver
+Transaction IDs associate replies with requests. Each protocol defines buffer
+ownership, completion, errors and cancellation. A timeout ends the caller's wait;
+an accepted write may still complete. Shared buffers remain owned until the
+protocol confirms that outstanding access has finished.
 
-* *efifbdriver* is the EFI framebuffer video graphics driver
-* *vmsvgadriver* is the VMSVGA video graphics driver
-* *libvideo* is a generic interface library for video drivers
+== Services
 
+[cols="1,1,3",options="header"]
+|===
+|Service |Client library |Role
+|`devicemanager` |`libdevice` |Device registration and driver startup.
+|`pcidriver` |`libpci` |PCI enumeration, configuration space and BAR access.
+|`acpidriver` |`libacpi` |ACPI firmware, events and power preparation.
+|`ps2driver` |`libps2driver` |Keyboard and mouse input pipes; `libps2` handles the controller.
+|`ahcidriver` |`libblockdevice` |SATA disk geometry, read/write and flush; `libahci` supplies hardware definitions.
+|`efifbdriver`, `vmsvgadriver` |`libvideo` |Shared framebuffer and video mode/update requests.
+|`storagemanager` |`libstorage` |Disk and partition administration, volume discovery, mount coordination and boot-code installation.
+|`fatdriver` |Filesystem API, `libstorage` |FAT12/16/32 volumes and bounded FAT32 formatting; storage manager mount/flush/unmount control.
+|===
 
-An _interface library_ contains functions used to interact with the driver and
-usually also the purpose-related headers.
+== Startup and discovery
 
+The kernel starts `pcidriver`, `acpidriver` and the `devicemanager`, then `ps2driver` and ƒenster.
+The device manager selects VMSVGA when present, otherwise the boot framebuffer,
+and starts `ahcidriver`, `storagemanager` and `fatdriver`.
 
-== Basic initialization
+Drivers register a device type and serving task with the device manager. Each
+registration receives a system-wide device ID and is published on the replayable
+`device` topic. Consumers use the announced driver task and ID for requests.
 
-The *devicemanager* first interacts with pcidriver to enumerate PCI devices and
-then, based on available devices, starts up further driver processes.
+`ahcidriver` exposes DMA/LBA48 disks with 512-byte logical sectors. `storagemanager` discovers whole-disk, MBR and GPT volumes and announces them on
+the replayable `volume` topic. Filesystem workers probe announced regions, claim
+them exclusively and confirm their VFS mounts through `libstorage`. FAT uses
+`/mount/fat<DISK_ID>` for the first partition and appends `p<PARTITION>` for others.
 
-=== Graphics
-
-Depending on the available devices, one of the available video drivers is
-started. All video drivers implement the video driver interface defined in
-*libvideo*.
-
-The video mode can then be initialized by using _videoDriverSetMode_, which
-is usually done by the *windowserver*.
-
-=== Filesystem
-
-For drives and file systems, the implementation is not finalized but the plan is to have:
-
-* *fsdiscovery* a driver that checks for filesystems on block devices
-    that any driver (like ahcidriver) has registered
-* *libblockdevicedriver* a generic interfacing library for all drivers that
-    implement block devices; must be implemented by ahcidriver
-* *fatdriver* a FAT filesystem driver
-
-The idea is that *fsdiscovery* will wait for block devices being registered;
-if a new device apperas, it will use *libblockdevicedriver* to call *ahcidriver*
-to read the first sector of the drive. Then it will identify what filesystem is
-on that drive and run the respective driver.
-
-For the FAT example, it will start *fatdriver* and tell it the device ID of the
-drive. The driver then again uses *libblockdevicedriver* to interact with
-*ahcidriver* to actually read/write data on the drive.
+On installed systems, the selected FAT boot volume becomes `/` before the
+interactive desktop starts. See <<storagemanager#,Storage management>>,
+<<filesystem#,Filesystem delegates>> and
+<<power#,Shutdown and reboot>> for service lifecycle contracts.

@@ -1,13 +1,22 @@
-# libapi Documentation
+= Kernel API
 :toc: left
+:last-update-label!:
 
 include::../common/homelink.adoc[]
 
-:numbered:
+`libapi` provides C wrappers around Ghost system calls. Include `ghost.h` for
+the public API, or individual headers under `ghost/` for a narrower dependency.
+The C library and userspace services use these wrappers.
 
-About
------
-*libapi* is a wrapper library that uses the system call interface provided by the
-kernel to build a facade of C functions. These functions are the base of many
-libc components.
+[source,c]
+----
+#include <ghost.h>
 
+g_pid process = g_get_pid();
+g_sleep(100);
+----
+
+Headers define request types, status codes and privilege requirements. APIs
+cover tasks/processes, memory, filesystems, IPC, device support and power control.
+A successful lookup or an identifier alone does not grant access to privileged
+operations.

@@ -1,26 +1,29 @@
-= Project structure
+= Repository structure
 :toc: left
+:last-update-label!:
+
 include::../common/homelink.adoc[]
 
-Folders
--------
-The project folder structure splits the main artifacts of the project in parts.
-The following tree contains explanations for the most important fodlers
+See <<dependencies#,Component dependencies>> for subsystem diagrams and the build reference.
 
-* `/applications` Contains userspace libraries, applications and drivers
-* `/documentation` Contains this documentation
-* `/kernel`
-** `/src` Main source directory of the kernel
-*** `/kernel` Sources of the kernel
-*** `/loader` Sources of the kernel loader
-*** `/shared` Sources that are shared between kernel and loader
-** `/inc` Contains shared headers
-** `/extra` Contains linker scripts
-* `/libapi` System call library
-* `/libc` Standard C library
-* `/patches`
-** `<<port#,/ports>>` Small build tool and patches for various libraries that are portable
-** `/toolchain` Patches for binutils/GCC
-* `/sysroot` The system root that reflects the initially mounted filesystem
-* `/target` Contains the data written to the ISO image as well as the generated file
-* `/tools` Tools used in the build process
+[cols="1,3",options="header"]
+|===
+|Path |Contents
+|`applications/` |Userspace applications, drivers and libraries; ƒenster is a separate Git repository.
+|`documentation/` |Developer and user reference documentation.
+|`kernel/src/kernel/` |Kernel sources, including boot, memory, scheduling, IPC and filesystem code.
+|`kernel/extra/` |Kernel linker scripts.
+|`libapi/` |Public syscall headers, shared service interfaces and syscall wrappers.
+|`libc/` |Ghost's C library and runtime support.
+|`patches/ports/` |Recipes and patches for third-party software.
+|`patches/toolchain/` |Compiler and binutils patches.
+|`sysroot/` |Files installed into the live system's ramdisk.
+|`target/` |Boot assets and generated ISO/install assets.
+|`tools/` |Host utilities, including the ramdisk writer.
+|`third_party/` |Vendored dependencies and their licenses.
+|===
+
+Kernel code must not include application headers. Interfaces shared with userspace
+belong in `libapi` and must remain C compatible. PCI and ACPI service messages are
+defined in `ghost/system/pci.h` and `ghost/system/acpi.h`; their userspace libraries
+provide client helpers on top of those interfaces.

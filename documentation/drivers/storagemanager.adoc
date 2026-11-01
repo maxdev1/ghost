@@ -1,0 +1,22 @@
+= Storage manager
+:last-update-label!:
+
+include::../common/homelink.adoc[]
+
+`storagemanager` manages disks, partitions and volumes.
+It discovers storage regions, announces available volumes and coordinates their use by filesystem drivers.
+It handles mount, unmount, flush and filesystem-information requests through `libstorage`.
+
+It validates partition layouts and boot space, manages partition changes and wiping, and coordinates formatting and boot-code installation.
+Disk reservations keep these operations from conflicting with mounted filesystems or other storage work.
+
+A volume is a storage region that can contain a filesystem: a partition or an entire unpartitioned disk.
+Disk IDs come from device manager; volume IDs identify regions for the current boot.
+
+Shutdown stops admission of new administrative jobs and controls, then waits for accepted work to finish before storage services are quiesced.
+Queries and ownership messages remain available while work drains.
+Cancellation restores admission; uncertain I/O prevents shutdown readiness.
+
+The `disk` and `volume` tools use it for storage administration.
+The Ghost installer uses it to prepare its destination and install boot code.
+Filesystem drivers handle formatting and file access.

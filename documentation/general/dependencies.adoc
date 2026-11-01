@@ -1,0 +1,377 @@
+= Component dependencies
+:toc: left
+:last-update-label!:
+
+include::../common/homelink.adoc[]
+
+Arrows point from the caller to the provider or dependency. Labels distinguish
+function calls, IPC, streams and launches; dashed arrows identify headers, discovery
+topics or optional paths.
+
+== System foundation
+
+[source,mermaid]
+----
+flowchart TB
+    clients(["Applications/userspace libraries"])
+    libc["libc"]
+    libapi["libapi"]
+    kernel[["kernel"]]
+    compiler["C++ / GCC support"]
+    musl["libm (bundled musl)"]
+
+    clients -->|"default -lc"| libc
+    clients -->|"default -lghostapi"| libapi
+    clients -->|"C++ final-link support"| compiler
+    libc -->|"syscall wrappers"| libapi
+    libapi -->|"allocation/memory functions"| libc
+    libc -->|"bundles"| musl
+    libapi -->|"int 0x80 syscalls"| kernel
+    kernel -.->|"C-compatible ABI headers"| libapi
+    kernel -.->|"ELF definitions from elf.h"| libc
+
+    classDef callers fill:#f3f4f6,stroke:#718096,color:#172b3d
+    class clients callers
+----
+
+The kernel links freestanding and uses shared headers from libapi. Its ELF loader
+also uses libc's +elf.h+ definitions, without linking libc. Kernel code includes no
+application headers. Static archives defer symbol resolution to their consumers;
+libc supplies the math functions behind the empty compatibility libm archive.
+
+== Filesystem access
+
+[source,mermaid]
+----
+flowchart TB
+    apps(["Applications"])
+    libc["libc"]
+    libapi["libapi filesystem API"]
+    vfs[["kernel VFS"]]
+    ramdisk[["kernel ramdisk"]]
+    fat["fatdriver"]
+    storage["Block storage"]
+
+    apps -->|"POSIX file operations"| libc
+    apps -->|"direct filesystem API"| libapi
+    libc -->|"wrappers"| libapi
+    libapi -->|"syscalls"| vfs
+    vfs -->|"built-in backend"| ramdisk
+    vfs -->|"delegate requests & shared pages"| fat
+    fat -->|"sector I/O"| storage
+
+    classDef callers fill:#f3f4f6,stroke:#718096,color:#172b3d
+    class apps callers
+----
+
+The VFS selects the mount's backend. FAT requests go to a userspace delegate;
+ramdisk operations stay inside the kernel. The live system uses the ramdisk,
+while an installed system mounts its selected FAT boot volume as root.
+See <<filesystem#,Filesystem>> for the delegate contract and the next section
+for the block-storage path.
+
+== Volumes and block storage
+
+[source,mermaid]
+----
+flowchart TB
+    apps(["Storage tools"])
+    volumes["libstorage"]
+    manager["storagemanager"]
+    fat["fatdriver"]
+    blocks["libblockdevice"]
+    ahci["ahcidriver"]
+    definitions["libahci"]
+    devices["Device discovery"]
+
+    apps -->|"disk/volume queries and administration"| volumes
+    apps -->|"raw block operations"| blocks
+    volumes -->|"IPC requests"| manager
+    fat -->|"claims and formatter registration"| volumes
+    manager -->|"mount / flush / unmount / format"| fat
+    fat -.->|"volume topic"| manager
+    manager -.->|"device topic"| devices
+    manager -->|"partition-table I/O"| blocks
+    fat -->|"filesystem sector I/O"| blocks
+    blocks -->|"block IPC and shared DMA buffers"| ahci
+    ahci -.->|"hardware definitions"| definitions
+
+    classDef callers fill:#f3f4f6,stroke:#718096,color:#172b3d
+    class apps callers
+----
+
+storagemanager administers disks and partitions, coordinates exclusive volume ownership
+and dispatches filesystem control jobs. fatdriver serves FAT12/16/32 and formats
+FAT32 volumes. libblockdevice accepts the announced driver endpoint; AHCI is the
+block provider in this checkout. AHCI's PCI access and device registration are
+shown in the device-discovery section.
+
+== Device discovery and PCI
+
+[source,mermaid]
+----
+flowchart TB
+    clients(["Applications and hardware drivers"])
+    devices["libdevice"]
+    manager["devicemanager"]
+    pci["libpci"]
+    driver["pcidriver"]
+
+    clients -->|"device registration and queries"| devices
+    devices -->|"IPC"| manager
+    clients -.->|"device topic"| manager
+    clients -->|"PCI enumeration and configuration"| pci
+    manager -->|"controller selection"| pci
+    pci -->|"PCI IPC"| driver
+
+    classDef callers fill:#f3f4f6,stroke:#718096,color:#172b3d
+    class clients callers
+----
+
+Hardware drivers register their serving task and device ID through libdevice.
+devicemanager publishes registrations on the replayable device topic.
+libpci wraps pcidriver's protocol, whose shared C-compatible definitions live in
+libapi. Kernel power code and acpidriver use that protocol directly.
+
+== Windowing and display
+
+[source,mermaid]
+----
+flowchart TB
+    apps(["Graphical applications"])
+    client["libfenster"]
+    server["ƒenster window server"]
+    video["libvideo"]
+    efi["efifbdriver"]
+    svga["vmsvgadriver"]
+    devices["Device discovery"]
+
+    apps -->|"UI API"| client
+    client -->|"UI messages and shared buffers"| server
+    server -.->|"video device topic"| devices
+    server -->|"mode and framebuffer operations"| video
+    video -->|"selected EFI endpoint"| efi
+    video -->|"selected VMware endpoint"| svga
+
+    classDef callers fill:#f3f4f6,stroke:#718096,color:#172b3d
+    class apps callers
+----
+
+Graphical clients communicate with ƒenster through libfenster. The server selects
+a discovered video endpoint; the hardware driver owns mode changes and shared
+framebuffer access. Input handling and graphics-library dependencies have their
+own views below. vmsvgadriver also uses libpci, and both video drivers register
+through libdevice.
+
+== Input and terminals
+
+=== Keyboard and mouse
+
+[source,mermaid]
+----
+flowchart TB
+    consumers(["Input consumers"])
+    client["libps2driver"]
+    driver["ps2driver"]
+    controller["libps2"]
+    input["libinput"]
+    properties["libproperties"]
+
+    consumers -->|"initialize input"| client
+    client -->|"IPC / obtain input pipes"| driver
+    consumers -->|"decode input and translate keys"| input
+    input -->|"read keyboard and mouse pipes"| driver
+    input -->|"keyboard layout configuration"| properties
+    driver -->|"controller operations"| controller
+    input -.->|"packet definitions"| client
+
+    classDef callers fill:#f3f4f6,stroke:#718096,color:#172b3d
+    class consumers callers
+----
+
+ƒenster and the headless terminal initialize PS/2 input through libps2driver.
+libinput decodes pipe data and loads keyboard layouts through libproperties.
+The graphical terminal receives input through ƒenster.
+
+=== Terminal sessions
+
+[source,mermaid]
+----
+flowchart LR
+    apps(["Terminal programs"])
+    client["libterminal"]
+    terminal["terminal"]
+
+    apps -->|"stdin / stdout streams"| terminal
+    apps -->|"terminal control helpers"| client
+    client -->|"escape and control stream"| terminal
+
+    classDef callers fill:#f3f4f6,stroke:#718096,color:#172b3d
+    class apps callers
+----
+
+Terminal programs use inherited stdio; terminal-specific helpers add cursor,
+input-mode and control operations over that stream. terminal starts gsh with
+redirected descriptors. Its graphical frontend uses libfenster; its headless
+frontend uses the input pipeline above.
+
+== Firmware and power
+
+[source,mermaid]
+----
+flowchart TB
+    apps(["Applications"])
+    api["libapi power API"]
+    kernel[["Kernel power coordinator"]]
+    acpi["acpidriver"]
+    interpreter["Bundled uACPI"]
+    pci["pcidriver"]
+    participants["Registered power participants"]
+    queries["libacpi"]
+
+    apps -->|"shutdown / reboot"| api
+    api -->|"syscalls"| kernel
+    kernel -->|"ACPI info / prepare / cancel"| acpi
+    kernel -->|"PCI power configuration"| pci
+    kernel -->|"prepare and quiesce"| participants
+    acpi -->|"firmware interpreter"| interpreter
+    acpi -->|"PCI configuration IPC"| pci
+    queries -->|"ACPI info queries"| acpi
+
+    classDef callers fill:#f3f4f6,stroke:#718096,color:#172b3d
+    class apps callers
+----
+
+Power coordination uses the PCI/ACPI protocols defined in libapi. The current
+registered participants are pcidriver (platform), ahcidriver (storage) and editor
+(application). libacpi provides an information-query helper, although no current
+production target explicitly links it. See <<power#,Shutdown and reboot>>.
+
+== Graphics libraries
+
+[source,mermaid]
+----
+flowchart TB
+    clients(["Graphics consumers"])
+    ui["libfenster"]
+    cairo["Cairo"]
+    fonts["FreeType"]
+    pixels["Pixman"]
+    png["libpng"]
+    zlib["zlib"]
+
+    clients -->|"declared graphics links"| cairo
+    clients --> fonts
+    clients --> pixels
+    clients --> png
+    clients --> zlib
+    ui -.->|"public graphics types"| cairo
+    ui -.->|"font types"| fonts
+    cairo --> fonts
+    cairo --> pixels
+    cairo --> png
+    cairo --> zlib
+    fonts --> zlib
+    png --> zlib
+
+    classDef callers fill:#f3f4f6,stroke:#718096,color:#172b3d
+    class clients callers
+----
+
+The graphics link set is used by ƒenster, editor, navigator and terminal.
+FreeType and libpng use zlib; Cairo and Pixman also use libc's math functions.
+The installed Cairo script interpreter is a companion port with no project
+consumer. Other bundled implementations are musl in libc, uACPI in acpidriver
+and Duktape in the js interpreter.
+
+== Service startup
+
+[source,mermaid]
+----
+flowchart TB
+    kernel[["Kernel"]]
+    platform["Platform services"]
+    manager["devicemanager"]
+    storage["Storage services"]
+    video["Selected video driver"]
+    server["ƒenster"]
+    desktop["navigator"]
+    apps(["User-selected applications"])
+
+    kernel -->|"PCI / ACPI / PS2 services"| platform
+    kernel -->|"device manager"| manager
+    kernel -->|"window server"| server
+    manager -->|"AHCI / storage manager / FAT worker"| storage
+    manager -->|"EFI framebuffer or VMware SVGA"| video
+    server -->|"desktop"| desktop
+    desktop -->|"launchers and executable files"| apps
+
+    classDef callers fill:#f3f4f6,stroke:#718096,color:#172b3d
+    class apps callers
+----
+
+Platform services are pcidriver, acpidriver and ps2driver; storage services are
+ahcidriver, storagemanager and fatdriver. Navigator launches user-selected programs.
+terminal starts gsh, which launches commands and pipelines. Navigator can also
+forward later invocations to the existing desktop instance. The Doom launcher
+references an optional binary absent from the current source/build targets.
+
+== Exact build reference
+
+[%collapsible]
+.Per-component library links and additional source/header dependencies
+====
+Common libc/libapi/C++ dependencies apply to all userspace targets. The additional
+direct dependencies are listed here; static archives resolve symbols at their final
+consumer's link step.
+
+[cols="1,2,2",options="header"]
+|===
+|Component |Declared library links |Additional source/header dependencies
+|`acpidriver` |— |`uACPI (bundled)`
+|`ahcidriver` |`libdevice`, `libpci` |`libahci`, `libblockdevice`
+|`calculator` |`libfenster`, `libinput`, `libproperties` |—
+|`devicemanager` |`libpci` |`libdevice`
+|`editor` |`Cairo`, `FreeType`, `Pixman`, `libfenster`, `libinput`, `libpng`, `libproperties`, `zlib` |—
+|`efifbdriver` |`libdevice` |`libvideo`
+|`fatdriver` |`libblockdevice`, `libstorage` |—
+|ƒenster (target: `fenster`) |`Cairo`, `FreeType`, `Pixman`, `libfenster`, `libinput`, `libpng`, `libproperties`, `libps2driver`, `libvideo`, `zlib` |—
+|`gsh` |`libterminal` |—
+|`install` |`libblockdevice`, `libfenster`, `libstorage` |—
+|`js` |— |`Duktape (bundled)`, `libterminal`
+|`navigator` |`Cairo`, `FreeType`, `Pixman`, `libfenster`, `libinput`, `libpng`, `libproperties`, `zlib` |—
+|`pcidriver` |— |`libpci`
+|`ps2driver` |`libps2` |`libps2driver`
+|`terminal` |`Cairo`, `FreeType`, `Pixman`, `libfenster`, `libinput`, `libpng`, `libproperties`, `libps2driver`, `libterminal`, `zlib` |—
+|`tester` (source: testprogram) |`libfenster`, `libps2driver` |—
+|`vmsvgadriver` |`libdevice`, `libpci` |`libfenster`, `libvideo`
+|`storagemanager` |`libblockdevice` |`libstorage`
+|`blockdevice` (core) |`libblockdevice` |—
+|`copy` (core) |— |—
+|`device` (core) |`libdevice` |—
+|`disk` (core) |`libstorage` |—
+|`echo` (core) |— |—
+|`lines` (core) |— |—
+|`ls` (core) |— |—
+|`process` (core) |— |—
+|`read` (core) |— |—
+|`reverse` (core) |— |—
+|`topic` (core) |— |—
+|`volume` (core) |`libstorage` |—
+|`write` (core) |— |—
+|`libacpi` |— |—
+|`libahci` |— |—
+|`libblockdevice` |— |`libdevice`
+|`libdevice` |— |—
+|`libfenster` |— |`Cairo`, `FreeType`, `libinput`
+|`libinput` |— |`libproperties`, `libps2driver`
+|`libpci` |— |—
+|`libproperties` |— |—
+|`libps2` |— |—
+|`libps2driver` |— |—
+|`libterminal` |— |—
+|`libvideo` |— |`libdevice`
+|`libstorage` |— |`libdevice`
+|===
+====
+

@@ -1,13 +1,27 @@
 = Debugging
 :toc: left
+:last-update-label!:
+
 include::../common/homelink.adoc[]
 
-== Serial log
-By default, the kernel writes its logs to the serial output 1.
+Kernel and driver logs use the first serial port. Capture them while booting
+QEMU:
 
-== VirtualBox
-There is a debugger that can be started with VirtualBox:
+[source,sh]
+----
+qemu-system-x86_64 -cdrom target/ghost.iso -m 1024 -smp 2 \
+  -serial file:/tmp/ghost.serial.log -no-reboot
+----
 
-    VirtualBoxVM.exe --startvm Ghost --debug
+For GDB, add `-s -S` to pause before execution and expose a server on port 1234.
+Use an x86-64-capable GDB with `kernel/kernel` as the symbol file:
 
-Documentation: https://www.virtualbox.org/manual/ch12.html#ts_debugger
+[source,text]
+----
+target remote localhost:1234
+break kernelMain
+continue
+----
+
+When debugging container-built artifacts, map `/ghost/source` to the local
+checkout. Use distinct serial-log paths for concurrent VMs.

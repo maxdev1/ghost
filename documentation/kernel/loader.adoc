@@ -1,54 +1,25 @@
-# Loader
+= Boot
 :toc: left
 :last-update-label!:
 
 include::../common/homelink.adoc[]
 
-About
------
-The loader is a multiboot compliant binary which is loaded by GRUB on startup.
-The binary is loaded to `0x00100000`. It itself reserves some memory (in its BSS)
-which it uses as it's own stack.
+Ghost boots through Limine into an x86-64 ELF kernel. The kernel entry point is
+`kernelMain`; Limine supplies a framebuffer, physical memory map, four-level
+page tables, the RSDP and boot modules.
 
-The purpose of this loader is to provide a basic memory setup and load the kernel
-binary to the expected start location.
+The required higher-half direct-map offset is `0xffff800000000000`. Kernel
+initialization sets up memory, interrupts and scheduling before starting the
+userspace services.
 
-1. *Memory setup*
-+
-A basic GDT is loaded which contains only kernel segment & data descriptors.
-Information from the GRUB memory map is interpreted to find all free physical memory
-and the physical memory allocator `g_bitmap_page_allocator` is initialized.
-+
+== Root filesystem
 
-2. *Paging*
-+
-A page directory is allocated. The directory maps recursively.
-The memory from `0x00000000` to the end of all memory used by the loader is identity-mapped.
-The remaining multiboot-modules get relocated so they are mapped after the end
-of the loader binary.
-+
+* Live ISO: Limine loads `/boot/ramdisk`, which contains the system files.
+* Installed disk: `root=fat:XXXXXXXX:YYYYYYYY` identifies the MBR disk signature
+  and the FAT volume's starting LBA as eight hexadecimal digits each. Limine loads
+  individual bootstrap services/libraries; FAT mounts that volume as `/`.
+  The older disk-only selector remains accepted. An explicit LBA allows partition
+  2 or 3 to supply the root independently of other FAT mounts.
 
-3. *Loading kernel*
-+
-The kernel itself is a simple ELF32 binary which has `0xC0000000` as its start address.
-The loader searches for the module at `"/boot/kernel"` and loads it. The page tables in the
-kernel area are pre-allocated and zeroed.
-An initialization stack is allocated after the kernel image and after the stack
-the kernel heap is allocated with an initial size of 16MiB.
-+
-
-4. *Enter kernel main*
-+
-The loader finally switches to the prepared kernel stack and enters the kernels main
-entry function.
-+
-
-
-Memory layout
--------------
-When entering the kernel, the initial page directory is layout as follows:
-
-image::../diagrams/Loader-Prepared-Memory.png[]
-
-For visualization, the sizes of each area are greatly exaggerated; actually the empty memory
-is much larger than depicted.
+Installed boots do not require a ramdisk file. The boot configuration and
+bootstrap module list are generated from the installed files.
