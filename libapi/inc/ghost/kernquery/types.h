@@ -42,6 +42,7 @@ typedef int g_kernquery_status;
 #define G_KERNQUERY_TASK_COUNT 0x600
 #define G_KERNQUERY_TASK_LIST 0x601
 #define G_KERNQUERY_TASK_GET_BY_ID 0x602
+#define G_KERNQUERY_PROCESS_GET_BY_ID 0x603
 
 /**
  * Used in the {G_KERNQUERY_TASK_COUNT} query to retrieve the number
@@ -66,7 +67,9 @@ typedef struct
 
 /**
  * Used in the {G_KERNQUERY_TASK_GET_BY_ID} query to retrieve
- * information about a specific task.
+ * information about a specific task. G_KERNQUERY_PROCESS_GET_BY_ID uses the
+ * same structure with a process ID and returns CPU time across all its threads,
+ * including exited threads. A thread ID is not accepted as a process ID.
  */
 typedef struct
 {
@@ -78,7 +81,15 @@ typedef struct
 	char identifier[512];
 	char source_path[G_PATH_MAX];
 
+	/**
+	 * Resident user-mapped bytes for the process, shared by all its threads.
+	 * Includes shared RAM mappings; excludes MMIO, kernel memory and uncommitted pages.
+	 */
 	g_virtual_address memory_used;
+	/**
+	 * Elapsed scheduled nanoseconds, including kernel work on behalf of the task.
+	 * Without HPET, resolution is limited to timer ticks.
+	 */
 	uint64_t cpu_time;
 } __attribute__((packed)) g_kernquery_task_get_data;
 

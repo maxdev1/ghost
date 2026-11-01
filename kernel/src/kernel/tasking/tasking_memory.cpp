@@ -19,14 +19,14 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/tasking/tasking_memory.hpp"
-#include "kernel/system/system.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/memory/constants.hpp"
 #include "kernel/memory/lower_heap.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
-#include "kernel/system/processor/processor.hpp"
-#include "kernel/memory/constants.hpp"
-#include "kernel/logger/logger.hpp"
 #include "kernel/panic.hpp"
+#include "kernel/system/processor/processor.hpp"
+#include "kernel/system/system.hpp"
 
 bool taskingMemoryExtendHeap(g_task* task, int32_t amount, g_address* outAddress)
 {
@@ -39,8 +39,8 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, g_address* outAddress
 	// The heap ends where the separately allocated user ranges begin. Validate
 	// before unsigned arithmetic, including INT32_MIN and shrinking below start.
 	if(!start || (start & G_PAGE_ALIGN_MASK) || oldBrk < start || oldBrk > G_USER_MAXIMUM_HEAP_BREAK ||
-	   (delta < 0 && (uint64_t)(-delta) > oldBrk - start) ||
-	   (delta >= 0 && (uint64_t)delta > G_USER_MAXIMUM_HEAP_BREAK - oldBrk))
+	   (delta < 0 && (uint64_t) (-delta) > oldBrk - start) ||
+	   (delta >= 0 && (uint64_t) delta > G_USER_MAXIMUM_HEAP_BREAK - oldBrk))
 	{
 		mutexRelease(&process->lock);
 		return false;
@@ -126,7 +126,7 @@ bool taskingMemoryInitializeStacks(g_task* task)
 	if(task->securityLevel != G_SECURITY_LEVEL_KERNEL)
 	{
 		task->interruptStack = taskingMemoryCreateStack(memoryVirtualRangePool, G_PAGE_TABLE_KERNEL_DEFAULT,
-		                                                G_PAGE_KERNEL_DEFAULT, G_TASKING_MEMORY_INTERRUPT_STACK_PAGES);
+														G_PAGE_KERNEL_DEFAULT, G_TASKING_MEMORY_INTERRUPT_STACK_PAGES);
 		if(!task->interruptStack.start)
 			return false;
 	}
@@ -146,18 +146,18 @@ bool taskingMemoryInitializeStacks(g_task* task)
 	else if(task->securityLevel == G_SECURITY_LEVEL_KERNEL)
 	{
 		task->stack = taskingMemoryCreateStack(memoryVirtualRangePool, G_PAGE_TABLE_KERNEL_DEFAULT,
-		                                       G_PAGE_KERNEL_DEFAULT, G_TASKING_MEMORY_KERNEL_STACK_PAGES);
+											   G_PAGE_KERNEL_DEFAULT, G_TASKING_MEMORY_KERNEL_STACK_PAGES);
 	}
 	else
 	{
 		task->stack = taskingMemoryCreateStack(task->process->virtualRangePool, G_PAGE_TABLE_USER_DEFAULT,
-		                                       G_PAGE_USER_DEFAULT, G_TASKING_MEMORY_USER_STACK_PAGES);
+											   G_PAGE_USER_DEFAULT, G_TASKING_MEMORY_USER_STACK_PAGES);
 	}
 	return task->stack.start != 0;
 }
 
 g_stack taskingMemoryCreateStack(g_address_range_pool* addressRangePool, uint32_t tableFlags, uint32_t pageFlags,
-                                 int pages)
+								 int pages)
 {
 	if(pages < 2)
 		return {};
@@ -165,19 +165,31 @@ g_stack taskingMemoryCreateStack(g_address_range_pool* addressRangePool, uint32_
 	if(!stackVirt)
 		return {};
 
-	// Only allocate and map the last page of the stack; when the process faults, lazy-allocate more physical space.
-	// The first page of the allocated virtual range is used as a "guard page" and makes the process fault when accessed.
-	g_physical_address pagePhys = memoryPhysicalTryAllocate();
-	if(!pagePhys)
-	{
-		addressRangePoolFree(addressRangePool, stackVirt);
-		return {};
-	}
-	memorySetBytes((void*) G_MEM_PHYS_TO_VIRT(pagePhys), 0, G_PAGE_SIZE);
 	g_address stackEnd = stackVirt + pages * G_PAGE_SIZE;
-	if(!pagingMapPage(stackEnd - G_PAGE_SIZE, pagePhys, tableFlags, pageFlags))
+	auto wanted = (pageFlags & G_PAGE_USER_FLAG) ? 1 : pages - 1;
+	int installed = 0;
+	for(; installed < wanted; ++installed)
 	{
-		memoryPhysicalFree(pagePhys);
+		auto physical = memoryPhysicalTryAllocate();
+		if(!physical)
+			break;
+
+		memorySetBytes((void*) G_MEM_PHYS_TO_VIRT(physical), 0, G_PAGE_SIZE);
+		if(!pagingMapPage(stackEnd - (installed + 1) * G_PAGE_SIZE, physical, tableFlags, pageFlags))
+		{
+			memoryPhysicalFree(physical);
+			break;
+		}
+	}
+	if(installed != wanted)
+	{
+		while(installed)
+		{
+			auto address = stackEnd - installed-- * G_PAGE_SIZE;
+			auto physical = pagingVirtualToPhysical(address);
+			pagingUnmapPage(address);
+			memoryPhysicalFree(physical);
+		}
 		addressRangePoolFree(addressRangePool, stackVirt);
 		return {};
 	}
@@ -341,7 +353,7 @@ bool taskingMemoryInitializeTls(g_task* task)
 				requiredPages = 1;
 
 			g_virtual_address tlsStart = addressRangePoolAllocate(process->virtualRangePool, requiredPages,
-			                                                       G_PROC_VIRTUAL_RANGE_FLAG_INTERNAL);
+																  G_PROC_VIRTUAL_RANGE_FLAG_INTERNAL);
 			if(!tlsStart)
 				return false;
 			g_virtual_address tlsEnd = tlsStart + requiredPages * G_PAGE_SIZE;
@@ -373,7 +385,7 @@ bool taskingMemoryInitializeTls(g_task* task)
 			task->threadLocal.end = tlsEnd;
 
 			logDebug("%! created tls copy in process %i, thread %i at %h", "threadmgr", process->id, task->id,
-			         task->threadLocal.start);
+					 task->threadLocal.start);
 		}
 	}
 	return true;

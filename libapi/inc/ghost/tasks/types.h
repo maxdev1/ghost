@@ -150,6 +150,16 @@ extern g_process_info* g_current_process_info;
 #define G_SPAWN_COMMAND_SPAWN_REQUEST	1
 #define G_SPAWN_COMMAND_SPAWN_RESPONSE	2
 
+/**
+ * Launch context is metadata, not a security boundary. Ordinary spawns inherit
+ * it; interactive launchers explicitly select UI or terminal mode.
+ */
+typedef uint8_t g_launch_mode;
+#define G_LAUNCH_MODE_UNKNOWN            ((g_launch_mode) 0)
+#define G_LAUNCH_MODE_UI                 ((g_launch_mode) 1)
+#define G_LAUNCH_MODE_TERMINAL           ((g_launch_mode) 2)
+#define G_LAUNCH_MODE_INHERIT            ((g_launch_mode) 255)
+
 // status codes for spawning
 typedef uint8_t g_spawn_status;
 #define G_SPAWN_STATUS_SUCCESSFUL 						((g_spawn_status) 0)

@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/tasking/clock.hpp"
+#include "kernel/memory/memory.hpp"
 #include "kernel/memory/heap.hpp"
 #include "kernel/system/configuration.hpp"
 #include "kernel/system/processor/processor.hpp"
@@ -98,6 +99,13 @@ void clockInitialize()
 g_clock_local* clockGetLocal()
 {
 	return _clockGetLocalForProcessor(processorGetCurrentId());
+}
+
+uint64_t clockGetNanoseconds(uint32_t processor)
+{
+	if(hpetIsAvailable())
+		return hpetGetNanos();
+	return memoryAtomicLoad(&_clockGetLocalForProcessor(processor)->time, G_MEMORY_ORDER_ACQUIRE) * 1000000ULL;
 }
 
 void clockWaitForTime(g_tid task, uint64_t wakeTime)

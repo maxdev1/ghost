@@ -56,6 +56,16 @@ void syscallHandle(g_task* task);
 void syscall(uint32_t callId, void* data);
 
 /**
+ * Classifies system calls that create a process or task.
+ */
+bool syscallStartsTask(uint32_t call);
+
+/**
+ * Classifies system calls that mutate task or filesystem state.
+ */
+bool syscallMutatesState(uint32_t call);
+
+/**
  * Creates the system call table.
  */
 void syscallRegisterAll();

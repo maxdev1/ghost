@@ -41,7 +41,7 @@ void taskingDirectoryTaskRemoved(g_tid task);
 /**
  * Registers the given task in the directory. The priority decides if registering is valid,
  * a task with a stronger security level always overrides weaker, and weaker can't override
- * stronger entries.
+ * stronger entries. An occupied name rejects another task at the same security level.
  */
 bool taskingDirectoryRegister(const char* name, g_tid tid, g_security_level priority);
 

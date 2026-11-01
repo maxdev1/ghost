@@ -28,6 +28,7 @@
 #include "kernel/memory/paging.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/tasking/task.hpp"
+#include "kernel/tasking/tasking_memory.hpp"
 #include "kernel/logger/logger.hpp"
 
 g_address_range_pool* memoryVirtualRangePool = nullptr;
@@ -282,4 +283,61 @@ void* memoryCopy(void* target, const void* source, int32_t size)
 		*targetPtr++ = *sourcePtr++;
 
 	return target;
+}
+
+static bool memoryCopyUser(g_task* task, void* target, const void* source, size_t length, bool toUser)
+{
+	auto address = reinterpret_cast<g_address>(toUser ? target : source);
+	if(address > G_MEM_LOWER_HALF_END || length > G_MEM_LOWER_HALF_END - address + 1)
+		return false;
+
+	auto kernelTarget = static_cast<uint8_t*>(target);
+	auto kernelSource = static_cast<const uint8_t*>(source);
+	while(length)
+	{
+		mutexAcquire(&task->process->lock);
+		auto entry = pagingVirtualToPageEntry(address);
+		if(!(entry & G_PAGE_PRESENT))
+		{
+			mutexRelease(&task->process->lock);
+			if(!taskingMemoryHandleStackOverflow(task, address) && !memoryOnDemandHandlePageFault(task, address))
+				return false;
+			continue;
+		}
+
+		uint64_t required = G_PAGE_PRESENT | G_PAGE_USER_FLAG | (toUser ? G_PAGE_WRITABLE_FLAG : 0);
+		if((entry & required) != required || (entry & (G_PAGE_UNMANAGED_FLAG | G_PAGE_LARGE_PAGE_FLAG)))
+		{
+			mutexRelease(&task->process->lock);
+			return false;
+		}
+
+		auto offset = address & G_PAGE_ALIGN_MASK;
+		auto count = length < G_PAGE_SIZE - offset ? length : G_PAGE_SIZE - offset;
+		auto physical = reinterpret_cast<void*>(G_MEM_PHYS_TO_VIRT((entry & G_PAGE_PHYSICAL_MASK) + offset));
+		if(toUser)
+		{
+			memoryCopy(physical, kernelSource, count);
+			kernelSource += count;
+		}
+		else
+		{
+			memoryCopy(kernelTarget, physical, count);
+			kernelTarget += count;
+		}
+		mutexRelease(&task->process->lock);
+		address += count;
+		length -= count;
+	}
+	return true;
+}
+
+bool memoryCopyFromUser(g_task* task, void* target, g_address source, size_t length)
+{
+	return memoryCopyUser(task, target, reinterpret_cast<const void*>(source), length, false);
+}
+
+bool memoryCopyToUser(g_task* task, g_address target, const void* source, size_t length)
+{
+	return memoryCopyUser(task, reinterpret_cast<void*>(target), source, length, true);
 }

@@ -87,7 +87,6 @@ target_compile() {
 		if [ $? -eq 1 ]; then
 			headers_have_changed=1
 		fi
-		changes -s $file
 	done
 	
 	# compile sources
@@ -117,6 +116,10 @@ target_compile() {
 			changes -s $file
 		fi
 	done
+	# Record header changes only after every consumer compiled successfully.
+	for file in $(find "$srcdir" -iname "*.hpp" -o -iname "*.h"); do
+		changes -s $file
+	done
 }
 
 #
@@ -138,6 +141,7 @@ target_link() {
 # Performs everything necessary to build the OS image
 #
 target_all() {
+	rm -f "$OBJ_KERNEL"/uacpi_*.o
 	target_compile_ap_startup
 	target_compile $SRC_KERNEL $OBJ_KERNEL "-I$SRC"
 	target_link $ARTIFACT_KERNEL $LINKSCRIPT_KERNEL "$OBJ_KERNEL/*"

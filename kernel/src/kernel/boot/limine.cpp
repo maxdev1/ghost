@@ -25,6 +25,9 @@ static limine_framebuffer* fb = nullptr;
 
 limine_file* limineFindModule(limine_module_response* info, const char* path)
 {
+	if(!info)
+		return nullptr;
+
 	for(uint64_t i = 0; i < info->module_count; i++)
 	{
 		auto module = info->modules[i];

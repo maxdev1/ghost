@@ -32,6 +32,30 @@
 #define G_ALIGN_UP(value, boundary)    (((value) + ((boundary) - 1)) & ~((boundary) - 1))
 #define G_ALIGN_DOWN(value, boundary)  ((value) & ~((boundary) - 1))
 
+/**
+ * Atomic operations on integers, booleans and pointers. Order arguments must be
+ * compile-time G_MEMORY_ORDER_* constants. Loads allow relaxed/acquire ordering,
+ * stores allow relaxed/release ordering, and read-modify-write operations allow
+ * all orders below. Compare-exchange updates expected on failure; its failure
+ * order must be relaxed/acquire and no stronger than its success order.
+ * FetchAdd/FetchSub return the old value; AddFetch/SubFetch return the new value.
+ */
+#define G_MEMORY_ORDER_RELAXED __ATOMIC_RELAXED
+#define G_MEMORY_ORDER_ACQUIRE __ATOMIC_ACQUIRE
+#define G_MEMORY_ORDER_RELEASE __ATOMIC_RELEASE
+#define G_MEMORY_ORDER_ACQ_REL __ATOMIC_ACQ_REL
+
+#define memoryAtomicLoad(pointer, order) __atomic_load_n((pointer), (order))
+#define memoryAtomicStore(pointer, value, order) __atomic_store_n((pointer), (value), (order))
+#define memoryAtomicExchange(pointer, value, order) __atomic_exchange_n((pointer), (value), (order))
+#define memoryAtomicCompareExchange(pointer, expected, value, weak, successOrder, failureOrder) \
+	__atomic_compare_exchange_n((pointer), (expected), (value), (weak), (successOrder), (failureOrder))
+#define memoryAtomicAddFetch(pointer, value, order) __atomic_add_fetch((pointer), (value), (order))
+#define memoryAtomicSubFetch(pointer, value, order) __atomic_sub_fetch((pointer), (value), (order))
+#define memoryAtomicFetchAdd(pointer, value, order) __atomic_fetch_add((pointer), (value), (order))
+#define memoryAtomicFetchSub(pointer, value, order) __atomic_fetch_sub((pointer), (value), (order))
+#define memoryAtomicFence(order) __atomic_thread_fence((order))
+
 class g_task;
 class g_process;
 
@@ -118,5 +142,18 @@ void* memorySetWords(void* target, uint16_t value, int32_t number);
  * @param size		number of bytes to copy
  */
 void* memoryCopy(void* target, const void* source, int32_t size);
+
+/**
+ * Copies from managed user pages into kernel memory. The task must own the active
+ * address space. Demand pages are resolved without holding the process lock.
+ * Returns false on invalid memory; preceding bytes may already have been copied.
+ */
+bool memoryCopyFromUser(g_task* task, void* target, g_address source, size_t length);
+
+/**
+ * Copies kernel bytes to writable managed user pages, with the same address-space
+ * and partial-copy contract as memoryCopyFromUser.
+ */
+bool memoryCopyToUser(g_task* task, g_address target, const void* source, size_t length);
 
 #endif

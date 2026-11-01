@@ -25,13 +25,37 @@
 #include "kernel/memory/memory.hpp"
 #include "kernel/panic.hpp"
 
+static uint64_t pagingCountResidentTable(g_physical_address physical, unsigned level)
+{
+	auto table = (uint64_t*) G_MEM_PHYS_TO_VIRT(physical);
+	uint64_t bytes = 0;
+	unsigned count = level == 4 ? 256 : 512;
+	for(unsigned i = 0; i < count; ++i)
+	{
+		uint64_t entry = memoryAtomicLoad(&table[i], G_MEMORY_ORDER_ACQUIRE);
+		if((entry & (G_PAGE_PRESENT | G_PAGE_USER_FLAG)) != (G_PAGE_PRESENT | G_PAGE_USER_FLAG) ||
+		   (entry & G_PAGE_UNMANAGED_FLAG))
+			continue;
+		if(level == 1 || ((level == 2 || level == 3) && (entry & G_PAGE_LARGE_PAGE_FLAG)))
+			bytes += 1ULL << (12 + (level - 1) * 9);
+		else
+			bytes += pagingCountResidentTable(entry & G_PAGE_PHYSICAL_MASK, level - 1);
+	}
+	return bytes;
+}
+
+uint64_t pagingCountResidentUserBytes(g_physical_address directory)
+{
+	return directory ? pagingCountResidentTable(directory, 4) : 0;
+}
+
 g_physical_address pagingVirtualToPageEntry(g_virtual_address addr)
 {
     auto table = (uint64_t*) G_MEM_PHYS_TO_VIRT(pagingGetCurrentSpace());
     const unsigned shifts[] = {39, 30, 21, 12};
     for(unsigned level = 0; level < 4; ++level)
     {
-        const auto entry = __atomic_load_n(&table[(addr >> shifts[level]) & 511], __ATOMIC_ACQUIRE);
+        const auto entry = memoryAtomicLoad(&table[(addr >> shifts[level]) & 511], G_MEMORY_ORDER_ACQUIRE);
         if(!(entry & G_PAGE_PRESENT))
             return 0;
         if(level == 3 || ((level == 1 || level == 2) && (entry & G_PAGE_LARGE_PAGE_FLAG)))
@@ -51,7 +75,7 @@ g_physical_address pagingVirtualToPhysical(g_virtual_address addr)
 
 	auto pml4 = (g_address*) G_MEM_PHYS_TO_VIRT(pagingGetCurrentSpace());
 	uint64_t pml4Index = G_PML4_INDEX(addr);
-	uint64_t pml4Value = __atomic_load_n(&pml4[pml4Index], __ATOMIC_ACQUIRE);
+	uint64_t pml4Value = memoryAtomicLoad(&pml4[pml4Index], G_MEMORY_ORDER_ACQUIRE);
 	if(!(pml4Value & G_PAGE_PRESENT))
 		return 0;
 	uint64_t pdptAddr = pml4Value & addressMask4KiB;
@@ -60,7 +84,7 @@ g_physical_address pagingVirtualToPhysical(g_virtual_address addr)
 
 	auto pdpt = (g_address*) G_MEM_PHYS_TO_VIRT(pdptAddr);
 	uint64_t pdptIndex = G_PDPT_INDEX(addr);
-	uint64_t pdptValue = __atomic_load_n(&pdpt[pdptIndex], __ATOMIC_ACQUIRE);
+	uint64_t pdptValue = memoryAtomicLoad(&pdpt[pdptIndex], G_MEMORY_ORDER_ACQUIRE);
 	if(!(pdptValue & G_PAGE_PRESENT))
 		return 0;
 	if(pdptValue & G_PAGE_LARGE_PAGE_FLAG)
@@ -72,7 +96,7 @@ g_physical_address pagingVirtualToPhysical(g_virtual_address addr)
 
 	auto pd = (g_address*) G_MEM_PHYS_TO_VIRT(pdAddr);
 	uint64_t pdIndex = G_PD_INDEX(addr);
-	uint64_t pdValue = __atomic_load_n(&pd[pdIndex], __ATOMIC_ACQUIRE);
+	uint64_t pdValue = memoryAtomicLoad(&pd[pdIndex], G_MEMORY_ORDER_ACQUIRE);
 	if(!(pdValue & G_PAGE_PRESENT))
 		return 0;
 	if(pdValue & G_PAGE_LARGE_PAGE_FLAG)
@@ -84,7 +108,7 @@ g_physical_address pagingVirtualToPhysical(g_virtual_address addr)
 
 	auto pt = (g_address*) G_MEM_PHYS_TO_VIRT(ptAddr);
 	uint64_t ptIndex = G_PT_INDEX(addr);
-	uint64_t ptValue = __atomic_load_n(&pt[ptIndex], __ATOMIC_ACQUIRE);
+	uint64_t ptValue = memoryAtomicLoad(&pt[ptIndex], G_MEMORY_ORDER_ACQUIRE);
 	if(!(ptValue & G_PAGE_PRESENT))
 		return 0;
 
@@ -98,7 +122,7 @@ void pagingSwitchToSpace(g_physical_address dir)
 
 static volatile uint64_t* _pagingGetOrCreateTable(volatile uint64_t* parent, uint64_t index, uint64_t flags)
 {
-	uint64_t entry = __atomic_load_n(&parent[index], __ATOMIC_ACQUIRE);
+	uint64_t entry = memoryAtomicLoad(&parent[index], G_MEMORY_ORDER_ACQUIRE);
 	if(!entry)
 	{
 		auto physical = bitmapPageAllocatorTryAllocate(&memoryPhysicalAllocator, 0);
@@ -110,8 +134,8 @@ static volatile uint64_t* _pagingGetOrCreateTable(volatile uint64_t* parent, uin
 
 		uint64_t expected = 0;
 		entry = physical | flags;
-		if(!__atomic_compare_exchange_n(&parent[index], &expected, entry, false,
-		                                __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
+		if(!memoryAtomicCompareExchange(&parent[index], &expected, entry, false,
+		                                G_MEMORY_ORDER_ACQ_REL, G_MEMORY_ORDER_ACQUIRE))
 		{
 			bitmapPageAllocatorMarkFree(&memoryPhysicalAllocator, physical);
 			entry = expected;
@@ -158,9 +182,9 @@ bool pagingMapPage(g_virtual_address virt, g_physical_address phys,
 	uint64_t expected = 0;
 	uint64_t entry = phys | pageFlags;
 	if(allowOverride)
-		__atomic_store_n(&pt[ptIndex], entry, __ATOMIC_RELEASE);
-	else if(!__atomic_compare_exchange_n(&pt[ptIndex], &expected, entry, false,
-	                                      __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
+		memoryAtomicStore(&pt[ptIndex], entry, G_MEMORY_ORDER_RELEASE);
+	else if(!memoryAtomicCompareExchange(&pt[ptIndex], &expected, entry, false,
+	                                      G_MEMORY_ORDER_ACQ_REL, G_MEMORY_ORDER_ACQUIRE))
 	{
 		logInfo("%! failed to write paging entry for %x since it is already set to: %x", "paging", virt, expected);
 		return false;
@@ -179,14 +203,14 @@ void pagingUnmapPage(g_virtual_address virt)
     const unsigned shifts[] = {39, 30, 21};
     for(unsigned level = 0; level < 3; ++level)
     {
-        const auto entry = __atomic_load_n(&table[(virt >> shifts[level]) & 511], __ATOMIC_ACQUIRE);
+        const auto entry = memoryAtomicLoad(&table[(virt >> shifts[level]) & 511], G_MEMORY_ORDER_ACQUIRE);
         if(!(entry & G_PAGE_PRESENT))
             return;
         if(level && (entry & G_PAGE_LARGE_PAGE_FLAG))
             panic("%! attempted 4 KiB unmap inside a huge mapping", "paging");
         table = (uint64_t*) G_MEM_PHYS_TO_VIRT(entry & G_PAGE_PHYSICAL_MASK);
     }
-    if(__atomic_exchange_n(&table[G_PT_INDEX(virt)], 0, __ATOMIC_ACQ_REL))
+    if(memoryAtomicExchange(&table[G_PT_INDEX(virt)], 0, G_MEMORY_ORDER_ACQ_REL))
         pagingSynchronizePage(virt);
 }
 

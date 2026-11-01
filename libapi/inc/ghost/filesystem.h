@@ -23,6 +23,7 @@
 
 #include "common.h"
 #include "filesystem/types.h"
+#include "filesystem/delegate.h"
 #include "memory.h"
 
 __BEGIN_C
@@ -296,54 +297,63 @@ g_fs_pipe_status g_pipe(g_fd* out_write, g_fd* out_read);
 g_fs_pipe_status g_pipe_b(g_fd* out_write, g_fd* out_read, g_bool blocking);
 
 /**
- * Creates a mountpoint and registers the current thread as its filesystem delegate.
+ * Registers the calling thread as a filesystem task delegate mounted at /mount/name.
+ * The root's phys_mountpoint_id is opaque to the kernel. On success, the kernel
+ * returns a shared control page and sends g_fs_delegate_request notifications to
+ * this thread. The delegate must keep its code and dependencies outside its mount.
  *
- * @note This legacy system call has no handler in the current kernel; its return
- *       value and outputs are unspecified.
- *
- * @param name Null-terminated mountpoint name.
- * @param phys_mountpoint_id Physical filesystem identifier for the mountpoint.
- * @param[out] out_mountpoint_id Non-null pointer receiving the virtual mountpoint
- *                              identifier on success.
- * @param[out] out_transaction_storage Non-null pointer receiving the transaction
- *                                    storage address on success.
- * @return A g_fs_register_as_delegate_status code when supported.
+ * @param name Nonempty mountpoint component, without slashes.
+ * @param phys_mountpoint_id Filesystem-provided root identifier.
+ * @param[out] out_mountpoint_id Receives the mount ID, or G_FS_VIRT_ID_NONE on failure.
+ * @param[out] out_transaction_storage Receives the control page, or null on failure.
+ * @return G_FS_DELEGATE_SUCCESSFUL or a delegate error status.
  * @security-level DRIVER
  */
-g_fs_register_as_delegate_status g_fs_register_as_delegate(const char* name, g_fs_phys_id phys_mountpoint_id,
-                                                           g_fs_virt_id* out_mountpoint_id,
-                                                           g_address* out_transaction_storage);
+g_fs_delegate_status g_fs_delegate_register(const char* name, g_fs_phys_id phys_mountpoint_id,
+	g_fs_virt_id* out_mountpoint_id, g_fs_delegate_transaction_storage** out_transaction_storage);
 
 /**
- * Updates the status of a filesystem transaction.
+ * Publishes the selected operation's result and acknowledges an owned transaction.
+ * SUCCESSFUL and STALE_TRANSACTION both acknowledge that the delegate has stopped
+ * using the transaction's inputs and I/O mapping. STALE_TRANSACTION discards late
+ * results. The delegate must not access the I/O mapping after either status. Any
+ * other status leaves the transaction unacknowledged; the control page must not be
+ * reused. The kernel must retain mappings until acknowledgement or serving-task exit.
  *
- * @note This legacy system call has no handler in the current kernel and has no
- *       effect.
- *
- * @param id Transaction identifier.
- * @param status One of G_FS_TRANSACTION_WAITING, G_FS_TRANSACTION_FINISHED, or
- *               G_FS_TRANSACTION_REPEAT.
+ * @param transaction Nonzero ID from the current notification and storage header.
+ * @return A delegate status; operation results are stored in the shared payload.
  * @security-level DRIVER
  */
-void g_fs_set_transaction_status(g_fs_transaction_id id, g_fs_transaction_status status);
+g_fs_delegate_status g_fs_delegate_transaction_complete(g_fs_transaction_id transaction);
 
 /**
- * Creates or updates a node in the virtual filesystem.
+ * Stages a file/folder node during an owned lookup or directory refresh. Nodes
+ * become visible on successful completion. The parent must be the requested
+ * directory; existing names must retain their type and physical ID. On lookup
+ * success, place the returned ID in lookup.result_node_id before completion.
  *
- * @note This legacy system call has no handler in the current kernel; its return
- *       value and outputs are unspecified.
- *
- * @param parent Virtual identifier of the parent node.
- * @param name Null-terminated node name.
- * @param type One of the G_FS_NODE_TYPE_* constants.
- * @param fs_id Physical filesystem identifier of the node.
- * @param[out] out_created_id Non-null pointer receiving the virtual identifier of
- *                           the created or updated node on success.
- * @return A g_fs_create_node_status code when supported.
+ * @param transaction Active transaction authorizing publication.
+ * @param parent Parent's virtual ID.
+ * @param name Nonempty filename component, without slashes.
+ * @param type G_FS_NODE_TYPE_FILE or G_FS_NODE_TYPE_FOLDER.
+ * @param phys_fs_id Filesystem-provided identifier for the child.
+ * @param[out] out_created_id Receives the node ID, or G_FS_VIRT_ID_NONE on failure.
+ * @return G_FS_DELEGATE_SUCCESSFUL for a new or matching node, or a delegate error.
  * @security-level DRIVER
  */
-g_fs_create_node_status g_fs_create_node(uint32_t parent, char* name, g_fs_node_type type, uint64_t fs_id,
-                                         uint32_t* out_created_id);
+g_fs_delegate_status g_fs_delegate_node_create(g_fs_transaction_id transaction, g_fs_virt_id parent,
+	const char* name, g_fs_node_type type, g_fs_phys_id phys_fs_id, g_fs_virt_id* out_created_id);
+
+/**
+ * Detaches an owned delegate mount between transactions, invalidating further
+ * access through that mount. Returns BUSY while a transaction is unacknowledged;
+ * the serving task's exit triggers kernel cleanup without this call.
+ *
+ * @param mountpoint_id ID returned by delegate_register.
+ * @return G_FS_DELEGATE_SUCCESSFUL or a delegate error status.
+ * @security-level DRIVER
+ */
+g_fs_delegate_status g_fs_delegate_unregister(g_fs_virt_id mountpoint_id);
 
 /**
  * Clones a file descriptor into a newly allocated descriptor in a target process.
@@ -461,6 +471,25 @@ g_fs_stat_status g_fs_stat_l(const char* path, g_fs_stat_data* out, g_bool follo
  * @security-level APPLICATION
  */
 g_fs_stat_status g_fs_fstat(g_fd fd, g_fs_stat_data* out);
+
+/**
+ * Creates an empty directory. Names and permissions follow the mounted filesystem.
+ */
+g_fs_mutation_status g_create_directory(const char* path);
+
+/**
+ * Removes a file name. Open descriptors retain the unlinked file until last close.
+ */
+g_fs_mutation_status g_unlink(const char* path);
+
+g_fs_mutation_status g_unlink_directory(const char* path);
+
+g_fs_mutation_status g_truncate(g_fd fd, uint64_t length);
+
+/**
+ * Flushes file data and metadata through the underlying block device's cache.
+ */
+g_fs_mutation_status g_sync(g_fd fd);
 
 __END_C
 

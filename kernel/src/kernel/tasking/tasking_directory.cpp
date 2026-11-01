@@ -81,6 +81,11 @@ bool taskingDirectoryRegister(const char* name, g_tid tid, g_security_level prio
 	mutexAcquire(&entryLock);
 
 	auto entry = _taskingDirectoryGetOrCreateEntry(name);
+	if(entry->task != G_TID_NONE && entry->task != tid && priority == entry->priority)
+	{
+		mutexRelease(&entryLock);
+		return false;
+	}
 	if(priority > entry->priority)
 	{
 		logInfo("%! tried to override task %s with weaker security level", "taskdir", name);

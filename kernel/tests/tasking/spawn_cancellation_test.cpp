@@ -7,7 +7,7 @@ namespace
 
 using g_tid = int;
 constexpr int G_TID_NONE = -1;
-struct g_task { int id, spawnParent; bool spawnPending; };
+struct g_task { int id, spawnParent; bool spawnPending, spawnReleased = false; };
 g_hashmap<int, g_task*>* taskGlobalMap;
 g_task* taskingAcquireTask(int id) { return hashmapGet(taskGlobalMap, id, static_cast<g_task*>(nullptr)); }
 void taskingReleaseTask(g_task*) {}
@@ -18,13 +18,27 @@ void taskingRequestTermination(g_task* task) { requested.push_back(task->id); }
 
 TEST(SpawnCancellation, TargetsOnlyPendingChildrenOfTheExitingParent) {
     taskGlobalMap = hashmapCreateNumeric<int, g_task*>(16);
-    g_task children[] = {{9, 42, true}, {8, 42, true}, {7, 43, true}, {3, 42, false}, {1, 42, true}};
+    g_task children[] = {{9, 42, true}, {8, 42, true}, {7, 43, true}, {3, 42, false}, {1, 42, true},
+        {5, 42, true, true}};
     for(auto& child : children) hashmapPut(taskGlobalMap, child.id, &child);
     taskingCancelPendingSpawns(42);
     EXPECT_TRUE((requested == std::vector<int>{1, 8, 9}));
     requested.clear();
     taskingCancelPendingSpawns(99);
     EXPECT_TRUE(requested.empty());
+    hashmapDestroy(taskGlobalMap);
+    EXPECT_TRUE(heapBlocks.empty());
+}
+
+TEST(SpawnCancellation, PreservesReleasedChildrenBeforeTheyFinishTheirHandshake)
+{
+    taskGlobalMap = hashmapCreateNumeric<int, g_task*>(16);
+    g_task child{17, 42, true, true};
+    hashmapPut(taskGlobalMap, child.id, &child);
+    requested.clear();
+    taskingCancelPendingSpawns(42);
+    EXPECT_TRUE(requested.empty());
+    EXPECT_TRUE(child.spawnPending);
     hashmapDestroy(taskGlobalMap);
     EXPECT_TRUE(heapBlocks.empty());
 }

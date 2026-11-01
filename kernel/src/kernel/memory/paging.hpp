@@ -124,4 +124,11 @@ g_physical_address pagingVirtualToPhysical(g_virtual_address addr);
 
 g_physical_address pagingVirtualToPageEntry(g_virtual_address addr);
 
+/**
+ * Counts resident user mappings in the lower half of an address space. Device
+ * mappings and shared kernel mappings are excluded. The process must be pinned
+ * and its lock held to prevent unmapping during the walk.
+ */
+uint64_t pagingCountResidentUserBytes(g_physical_address directory);
+
 #endif

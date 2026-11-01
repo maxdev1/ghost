@@ -46,6 +46,12 @@ void ramdiskLoadFromBootloaderFile(limine_file* file);
 void ramdiskParseContents(limine_file* file);
 
 /**
+ * Builds the temporary bootstrap namespace from individual Limine files. File
+ * contents remain in bootloader-owned module memory; no archive is required.
+ */
+void ramdiskLoadBootModules(limine_module_response* modules);
+
+/**
  * Searches in the folder parent for a file/folder with the given name
  *
  * @param parent the parent folder to search through

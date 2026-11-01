@@ -19,8 +19,11 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/calls/syscall_kernquery.hpp"
+#include "kernel/memory/memory.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking_directory.hpp"
+#include "kernel/tasking/scheduler/scheduler.hpp"
+#include "kernel/memory/paging.hpp"
 #include "kernel/utils/hashmap.hpp"
 #include "kernel/utils/string.hpp"
 
@@ -48,16 +51,18 @@ void syscallKernQuery(g_task* task, g_syscall_kernquery* data)
 		data->status = G_KERNQUERY_STATUS_SUCCESSFUL;
 		out->count = hashmapSize(taskGlobalMap);
 	}
-	else if(data->command == G_KERNQUERY_TASK_GET_BY_ID)
+	else if(data->command == G_KERNQUERY_TASK_GET_BY_ID || data->command == G_KERNQUERY_PROCESS_GET_BY_ID)
 	{
 		auto out = (g_kernquery_task_get_data*) data->buffer;
 
 		auto target = taskingAcquireTask(out->id);
-		if(!target)
+		bool processQuery = data->command == G_KERNQUERY_PROCESS_GET_BY_ID;
+		if(!target || (processQuery && target->id != target->process->id))
 		{
 			data->status = G_KERNQUERY_STATUS_UNKNOWN_ID;
 			out->found = false;
 			out->id = -1;
+			taskingReleaseTask(target);
 			return;
 		}
 
@@ -76,7 +81,12 @@ void syscallKernQuery(g_task* task, g_syscall_kernquery* data)
 			out->id = target->id;
 			out->parent = target->process->id;
 			out->type = target->type;
+		}
+		mutexRelease(&target->lock);
 
+		if(out->found)
+		{
+			mutexAcquire(&target->process->lock);
 			if(target->process->environment.executablePath)
 				stringCopy(out->source_path, target->process->environment.executablePath);
 			else
@@ -86,11 +96,18 @@ void syscallKernQuery(g_task* task, g_syscall_kernquery* data)
 			taskingDirectoryCopyIdentifier(target->id, identifier, sizeof(identifier));
 			stringCopy(out->identifier, identifier);
 
-			out->cpu_time = target->statistics.timesScheduled;
-			out->memory_used = 0; // TODO
+			if(processQuery)
+			{
+				for(auto entry = target->process->tasks; entry; entry = entry->next)
+					schedulerGetCpuTime(entry->task);
+				out->cpu_time = memoryAtomicLoad(&target->process->cpuTime, G_MEMORY_ORDER_RELAXED);
+			}
+			else
+				out->cpu_time = schedulerGetCpuTime(target);
+			out->memory_used = pagingCountResidentUserBytes(target->process->pageSpace);
+			mutexRelease(&target->process->lock);
 		}
 
-		mutexRelease(&target->lock);
 		taskingReleaseTask(target);
 	}
 	else

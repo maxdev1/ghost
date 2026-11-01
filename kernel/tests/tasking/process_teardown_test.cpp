@@ -12,6 +12,7 @@ struct g_process_info {};
 struct g_process_spawn_arguments {};
 struct g_memory_file_ondemand { g_memory_file_ondemand* next; };
 struct g_address_range_pool {};
+#include "production/launch_mode_types.inc"
 #include "production/process_layout.inc"
 
 int callbacks;

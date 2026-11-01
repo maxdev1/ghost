@@ -63,6 +63,12 @@ struct g_clock_local
 void clockInitialize();
 
 /**
+ * Reads a processor's monotonic time in nanoseconds. Without HPET, precision is
+ * limited to that processor's timer ticks.
+ */
+uint64_t clockGetNanoseconds(uint32_t processor);
+
+/**
  * Returns the processor-local clock structure.
  */
 g_clock_local* clockGetLocal();

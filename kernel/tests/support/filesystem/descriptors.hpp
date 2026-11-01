@@ -12,8 +12,8 @@ constexpr int G_FD_NONE = -1, G_PID_NONE = -1;
 constexpr int G_FS_OPEN_SUCCESSFUL = 0, G_FS_OPEN_ERROR = 1;
 constexpr int G_FS_CLOSE_SUCCESSFUL = 0, G_FS_CLOSE_INVALID_FD = 1;
 constexpr int G_FS_READ_SUCCESSFUL = 0, G_FS_READ_BUSY = 1, G_FS_READ_ERROR = 2, G_FS_READ_INVALID_FD = 3;
-constexpr int G_FS_WRITE_SUCCESSFUL = 0, G_FS_WRITE_BUSY = 1, G_FS_WRITE_ERROR = 2, G_FS_WRITE_INVALID_FD = 3;
-constexpr int G_FILE_FLAG_MODE_BLOCKING = 1, G_FILE_FLAG_MODE_APPEND = 2, G_FS_LENGTH_SUCCESSFUL = 0;
+constexpr int G_FS_WRITE_SUCCESSFUL = 0, G_FS_WRITE_BUSY = 1, G_FS_WRITE_ERROR = 2, G_FS_WRITE_INVALID_FD = 3, G_FS_WRITE_NOT_SUPPORTED = 4;
+constexpr int G_FILE_FLAG_MODE_WRITE = 4, G_FILE_FLAG_MODE_BLOCKING = 1, G_FILE_FLAG_MODE_APPEND = 2, G_FS_LENGTH_SUCCESSFUL = 0;
 struct g_wait_queue { uint64_t bits; };
 struct g_process { int id; } process{42};
 struct g_task { g_process* process; int id; std::atomic<bool> waiting; } task{&process, 1, {false}};
@@ -23,7 +23,7 @@ void waitQueueRemove(g_wait_queue* q, int id) { q->bits &= ~(1ULL << id); }
 void waitQueueRemoveTask(int) {}
 void taskingWake(g_task* t) { t->waiting = false; }
 void waitQueueWake(g_wait_queue* q) { if(q->bits) taskingWake(&task); q->bits = 0; }
-struct g_fs_node { int id; } nodes[8] = {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}};
+struct g_fs_node { int id; g_mutex lock{}; } nodes[8] = {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}};
 struct g_fs_delegate {
     int (*open)(g_fs_node*, int);
     int (*close)(g_fs_node*, int);
@@ -53,24 +53,44 @@ template<class P, class A> bool taskingWaitIf(P prepare, A after) {
     taskingHandleTerminationRequest();
     return true;
 }
-int filesystemRead(g_fs_node*, uint8_t*, uint64_t, uint64_t, int64_t* out) {
+static thread_local bool ioInterruptsEnabled;
+void interruptsEnable() { ioInterruptsEnabled = true; }
+void interruptsDisable() { ioInterruptsEnabled = false; }
+int readStatus = G_FS_READ_SUCCESSFUL, readCalls = 0;
+int64_t readCount = 1;
+uint64_t readOffset = 0;
+int filesystemRead(g_fs_node*, uint8_t*, uint64_t offset, uint64_t, int64_t* out) {
+    EXPECT_TRUE(ioInterruptsEnabled);
+    ++readCalls; readOffset = offset;
     if(mode == 2) {
         std::unique_lock<std::mutex> lock(phaseLock);
         inRead = true; phaseChanged.notify_all();
         phaseChanged.wait(lock, [] { return allowRead; });
     }
-    *out = mode == 1 ? 0 : 1;
-    return mode == 1 ? G_FS_READ_BUSY : G_FS_READ_SUCCESSFUL;
+    *out = mode == 1 ? 0 : readCount;
+    return mode == 1 ? G_FS_READ_BUSY : readStatus;
 }
 int writeStatus = G_FS_WRITE_BUSY, lengthStatus = G_FS_LENGTH_SUCCESSFUL;
 int writeCalls = 0;
 int64_t writeCount = 0;
 uint64_t writeOffset = 0;
+std::atomic<uint64_t> appendLength{0};
+std::vector<uint64_t> appendOffsets;
 int filesystemWrite(g_fs_node*, uint8_t*, uint64_t offset, uint64_t, int64_t* out) {
+    EXPECT_TRUE(ioInterruptsEnabled);
+    if(mode == 3) {
+        std::lock_guard<std::mutex> guard(phaseLock);
+        appendOffsets.push_back(offset); appendLength = offset + 1;
+        *out = 1; return G_FS_WRITE_SUCCESSFUL;
+    }
     ++writeCalls; writeOffset = offset;
     *out = writeCount; return writeStatus;
 }
-int filesystemGetLength(g_fs_node*, uint64_t* out) { *out = 4; return lengthStatus; }
+int filesystemGetLength(g_fs_node*, uint64_t* out) {
+    *out = mode == 3 ? appendLength.load() : 4;
+    if(mode == 3) std::this_thread::yield();
+    return lengthStatus;
+}
 
 #include "production/filesystem_process_hpp.inc"
 #include "production/filesystem_process_cpp.inc"

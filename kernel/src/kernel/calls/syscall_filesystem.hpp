@@ -54,4 +54,22 @@ void syscallFsCloseDirectory(g_task* task, g_syscall_fs_close_directory* data);
 
 void syscallFsRealPath(g_task* task, g_syscall_fs_real_path* data);
 
+void syscallFsDelegateRegister(g_task* task, g_syscall_fs_delegate_register* data);
+
+void syscallFsDelegateTransactionComplete(g_task* task, g_syscall_fs_delegate_transaction_complete* data);
+
+void syscallFsDelegateNodeCreate(g_task* task, g_syscall_fs_delegate_node_create* data);
+
+void syscallFsDelegateUnregister(g_task* task, g_syscall_fs_delegate_unregister* data);
+
+void syscallFsCreateDirectory(g_task* task, g_syscall_fs_path_mutation* data);
+
+void syscallFsUnlink(g_task* task, g_syscall_fs_path_mutation* data);
+
+void syscallFsUnlinkDirectory(g_task* task, g_syscall_fs_path_mutation* data);
+
+void syscallFsTruncate(g_task* task, g_syscall_fs_fd_mutation* data);
+
+void syscallFsSync(g_task* task, g_syscall_fs_fd_mutation* data);
+
 #endif

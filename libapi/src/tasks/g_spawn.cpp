@@ -49,7 +49,31 @@ g_spawn_status g_spawn_poid(const char* path, const char* args, const char* work
                             g_pid* outPid, g_fd outStdio[3],
                             const g_fd inStdio[3], g_spawn_validation_details* outValidationDetails)
 {
-	g_syscall_spawn data;
+	return g_spawn_poidm(path, args, workdir, securityLevel, outPid, outStdio, inStdio,
+	                    outValidationDetails, G_LAUNCH_MODE_INHERIT);
+}
+
+g_launch_mode g_get_launch_mode()
+{
+	g_syscall_get_launch_mode data{};
+	g_syscall(G_SYSCALL_GET_LAUNCH_MODE, (g_address) &data);
+	return data.mode;
+}
+
+g_spawn_status g_spawn_poim(const char* path, const char* args, const char* workdir,
+                           g_security_level securityLevel, g_pid* outPid, g_fd outStdio[3],
+                           const g_fd inStdio[3], g_launch_mode mode)
+{
+	return g_spawn_poidm(path, args, workdir, securityLevel, outPid, outStdio, inStdio, nullptr, mode);
+}
+
+g_spawn_status g_spawn_poidm(const char* path, const char* args, const char* workdir,
+                            g_security_level securityLevel, g_pid* outPid, g_fd outStdio[3],
+                            const g_fd inStdio[3], g_spawn_validation_details* outValidationDetails,
+                            g_launch_mode mode)
+{
+	g_syscall_spawn data{};
+	data.mode = mode;
 	data.path = (char*) path;
 	data.args = args;
 	data.workdir = workdir;

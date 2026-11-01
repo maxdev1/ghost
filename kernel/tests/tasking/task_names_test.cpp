@@ -18,6 +18,35 @@ g_hashmap<int, const char*>* reverseMap;
 
 #include "production/taskingDirectoryCopyIdentifier.inc"
 
+
+using g_security_level = int;
+constexpr int G_TID_NONE = -1;
+struct g_wait_queue {};
+struct g_task_directory_entry { int task = G_TID_NONE, priority = 2; g_wait_queue waitQueue; } directoryEntry;
+g_task_directory_entry* _taskingDirectoryGetOrCreateEntry(const char*) { return &directoryEntry; }
+std::atomic<int> wakes{0};
+void waitQueueWake(g_wait_queue*) { ++wakes; }
+#include "production/taskingDirectoryRegister.inc"
+
+TEST(TaskNames, ConcurrentSingletonRegistrationRejectsEqualPriorityReplacement)
+{
+    reverseMap = hashmapCreateNumeric<int, const char*>(8);
+    directoryEntry = {}; wakes = 0;
+    std::atomic<int> winners{0};
+    std::thread first([&] { if(taskingDirectoryRegister("navigator", 10, 2)) ++winners; });
+    std::thread second([&] { if(taskingDirectoryRegister("navigator", 11, 2)) ++winners; });
+    first.join(); second.join();
+    EXPECT_EQ(winners, 1); EXPECT_EQ(wakes, 1);
+    auto winner = directoryEntry.task;
+    EXPECT_TRUE(taskingDirectoryRegister("navigator", winner, 2));
+    EXPECT_FALSE(taskingDirectoryRegister("navigator", 12, 2));
+    EXPECT_TRUE(taskingDirectoryRegister("navigator", 13, 1));
+    EXPECT_FALSE(taskingDirectoryRegister("navigator", 14, 2));
+    EXPECT_EQ(directoryEntry.task, 13);
+    for(int id : {winner, 13}) heapFree((void*)hashmapGet(reverseMap, id, (const char*)nullptr));
+    hashmapDestroy(reverseMap); EXPECT_TRUE(heapBlocks.empty());
+}
+
 TEST(TaskNames, CopiesBoundedSnapshotsThatSurviveRenameAndSourceDestruction) {
     reverseMap = hashmapCreateNumeric<int, const char*>(8);
     auto name = stringDuplicate("abcdefgh");

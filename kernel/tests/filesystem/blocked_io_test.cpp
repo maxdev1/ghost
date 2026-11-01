@@ -8,7 +8,7 @@ namespace
 
 void make(int fd, int node = 1) {
     g_file_descriptor* created;
-    EXPECT_EQ(0, filesystemProcessCreateDescriptor(42, node, 1, &created, fd));
+    EXPECT_EQ(0, filesystemProcessCreateDescriptor(42, node, 1 | G_FILE_FLAG_MODE_WRITE, &created, fd));
     filesystemProcessReleaseDescriptor(created);
 }
 void waitPrepared() {

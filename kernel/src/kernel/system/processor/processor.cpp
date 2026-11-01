@@ -258,6 +258,16 @@ g_processor* processorGetList()
 	return processors;
 }
 
+g_processor* processorGetBsp()
+{
+	for(auto processor = processors; processor; processor = processor->next)
+	{
+		if(processor->bsp)
+			return processor;
+	}
+	return nullptr;
+}
+
 void processorReadMsr(uint32_t msr, uint32_t* lo, uint32_t* hi)
 {
 	asm volatile("rdmsr"

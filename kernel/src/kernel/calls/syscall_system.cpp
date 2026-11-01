@@ -19,6 +19,9 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/calls/syscall_system.hpp"
+#include "kernel/memory/memory.hpp"
+#include "kernel/system/acpi/platform.hpp"
+#include "kernel/system/power/power.hpp"
 #include "kernel/system/interrupts/requests.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/tasking/clock.hpp"
@@ -175,4 +178,76 @@ void syscallGetEfiFramebuffer(g_task* task, g_syscall_get_efi_framebuffer* data)
 	data->height = framebuffer->height;
 	data->bpp = framebuffer->bpp;
 	data->pitch = framebuffer->pitch;
+}
+
+void syscallSystemPower(g_task* task, g_syscall_system_power* output)
+{
+	g_syscall_system_power data;
+	if(!memoryCopyFromUser(task, &data, (g_address) output, sizeof(data)))
+		return;
+
+	data.status = G_POWER_NOT_SUPPORTED;
+	if(powerIsReady())
+	{
+		switch(data.operation)
+		{
+			case G_POWER_CALL_REQUEST:
+				data.status = powerRequest(data.action);
+				break;
+			case G_POWER_CALL_REGISTER:
+				data.status = powerRegister(task, data.role);
+				break;
+			case G_POWER_CALL_ACKNOWLEDGE:
+				data.status = powerAcknowledge(task, data.request, data.ready != 0);
+				break;
+			default:
+				data.status = G_POWER_INVALID_ARGUMENT;
+				break;
+		}
+	}
+
+	memoryCopyToUser(task, (g_address) output, &data, sizeof(data));
+}
+
+void syscallAcpiPlatform(g_task* task, g_syscall_acpi_platform* output)
+{
+	g_syscall_acpi_platform data;
+	if(!memoryCopyFromUser(task, &data, (g_address) output, sizeof(data)))
+		return;
+
+	data.status = G_ACPI_NOT_PERMITTED;
+	if(task->securityLevel <= G_SECURITY_LEVEL_DRIVER)
+	{
+		switch(data.operation)
+		{
+			case G_ACPI_PLATFORM_INFO:
+				data.address = acpiPlatformGetRsdp();
+				data.ioapic = ioapicAreAvailable();
+				data.status = data.address ? G_ACPI_SUCCESSFUL : G_ACPI_NOT_SUPPORTED;
+				break;
+			case G_ACPI_PLATFORM_MAP:
+				data.address = acpiPlatformMap(task, data.address, data.size);
+				data.status = data.address ? G_ACPI_SUCCESSFUL : G_ACPI_INVALID_ARGUMENT;
+				break;
+			case G_ACPI_PLATFORM_IRQ_WAIT:
+				data.status = acpiPlatformWait(task, data.irq);
+				break;
+			case G_ACPI_PLATFORM_IRQ_INSTALL:
+				data.status = acpiPlatformInstallIrq(task, data.irq);
+				break;
+			case G_ACPI_PLATFORM_IRQ_REARM:
+				data.status = acpiPlatformRearmIrq(task, data.irq);
+				break;
+			case G_ACPI_PLATFORM_IRQ_REMOVE:
+				data.status = acpiPlatformRemoveIrq(task, data.irq);
+				break;
+			case G_ACPI_PLATFORM_IRQ_MASK:
+				data.status = acpiPlatformMaskIrq(task, data.irq);
+				break;
+			default:
+				data.status = G_ACPI_INVALID_ARGUMENT;
+				break;
+		}
+	}
+	memoryCopyToUser(task, (g_address) output, &data, sizeof(data));
 }

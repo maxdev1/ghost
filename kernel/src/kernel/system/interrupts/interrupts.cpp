@@ -19,6 +19,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/interrupts/interrupts.hpp"
+#include "kernel/system/power/power.hpp"
+#include "kernel/system/acpi/platform.hpp"
 #include "kernel/memory/gdt.hpp"
 #include "kernel/memory/paging_shootdown.hpp"
 #include "kernel/logger/logger.hpp"
@@ -102,7 +104,8 @@ extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_st
 		}
 		else
 		{
-			requestsHandle(task, irq);
+			if(!acpiPlatformHandleIrq(task, irq))
+				requestsHandle(task, irq);
 		}
 		_interruptsSendEndOfInterrupt(irq);
 	}
@@ -113,6 +116,7 @@ extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_st
 	if(newTask != task)
 		taskingRestoreState(newTask);
 
+	powerProcessorCheckpoint();
 	return newTask->state;
 }
 

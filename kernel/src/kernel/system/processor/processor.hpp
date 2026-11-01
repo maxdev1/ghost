@@ -158,6 +158,11 @@ void processorAdd(uint32_t apicId, uint32_t hardwareId);
 g_processor* processorGetList();
 
 /**
+ * Returns the bootstrap processor, or nullptr if it has not been registered.
+ */
+g_processor* processorGetBsp();
+
+/**
  * Checks if the list of processors was already loaded.
  */
 bool processorListAvailable();

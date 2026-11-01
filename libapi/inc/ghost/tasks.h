@@ -132,6 +132,11 @@ g_tid g_task_await_by_name(const char* name);
 g_tid g_task_get_by_name(const char* name);
 
 /**
+ * Returns the launch context selected by the launcher, or UNKNOWN for boot tasks.
+ */
+g_launch_mode g_get_launch_mode();
+
+/**
  * Spawns a program binary.
  *
  * @param path absolute path of the executable
@@ -156,6 +161,19 @@ g_spawn_status g_spawn_poi(const char* path, const char* args, const char* workd
 g_spawn_status g_spawn_poid(const char* path, const char* args, const char* workdir, g_security_level securityLevel,
                             g_pid* outPid, g_fd outStdio[3], const g_fd inStdio[3],
                             g_spawn_validation_details* outValidationDetails);
+
+/**
+ * Spawns with an explicit launch context. INHERIT keeps the parent's context.
+ * The variants without a mode argument inherit automatically.
+ */
+g_spawn_status g_spawn_poim(const char* path, const char* args, const char* workdir,
+                           g_security_level securityLevel, g_pid* outPid, g_fd outStdio[3],
+                           const g_fd inStdio[3], g_launch_mode mode);
+
+g_spawn_status g_spawn_poidm(const char* path, const char* args, const char* workdir,
+                            g_security_level securityLevel, g_pid* outPid, g_fd outStdio[3],
+                            const g_fd inStdio[3], g_spawn_validation_details* outValidationDetails,
+                            g_launch_mode mode);
 
 /**
  * Returns and releases the command line arguments for the executing process.

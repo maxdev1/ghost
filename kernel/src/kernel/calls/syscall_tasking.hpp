@@ -21,8 +21,8 @@
 #ifndef __KERNEL_SYSCALL_TASKING__
 #define __KERNEL_SYSCALL_TASKING__
 
-#include "kernel/tasking/tasking.hpp"
 #include <ghost/tasks/callstructs.h>
+#include "kernel/tasking/tasking.hpp"
 
 void syscallExit(g_task* task, g_syscall_exit* data);
 
@@ -43,6 +43,8 @@ void syscallJoin(g_task* task, g_syscall_join* data);
 void syscallSleep(g_task* task, g_syscall_sleep* data);
 
 void syscallSpawn(g_task* task, g_syscall_spawn* data);
+
+void syscallGetLaunchMode(g_task* task, g_syscall_get_launch_mode* data);
 
 void syscallTaskGetTls(g_task* task, g_syscall_task_get_tls* data);
 

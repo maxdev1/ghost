@@ -23,8 +23,8 @@
 
 #include "kernel/tasking/tasking.hpp"
 
-#define G_TASKING_MEMORY_INTERRUPT_STACK_PAGES 2
-#define G_TASKING_MEMORY_KERNEL_STACK_PAGES 2
+#define G_TASKING_MEMORY_INTERRUPT_STACK_PAGES 9
+#define G_TASKING_MEMORY_KERNEL_STACK_PAGES 9
 #define G_TASKING_MEMORY_USER_STACK_PAGES 10
 
 /**
@@ -55,10 +55,12 @@ void taskingMemoryInitializeUtility(g_task* task);
 bool taskingMemoryInitializeStacks(g_task* task);
 
 /**
- * Creates and maps a stack.
+ * Creates a guarded stack. Kernel and interrupt stacks are fully committed:
+ * ring-zero faults cannot grow the stack they need to push their fault frame on.
+ * User stacks use lazy page allocation.
  */
 g_stack taskingMemoryCreateStack(g_address_range_pool* addressRangePool, uint32_t tableFlags, uint32_t pageFlags,
-                                 int pages);
+								 int pages);
 
 /**
  * Destroys stacks and utility memory of a task.

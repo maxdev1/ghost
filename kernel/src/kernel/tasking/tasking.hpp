@@ -29,6 +29,9 @@
 #include <ghost/system/types.h>
 #include <ghost/tasks/types.h>
 
+#define G_TASK_NAME_PREFIX_IDLE "idle:"
+#define G_TASK_NAME_PREFIX_CLEANUP "cleanup:"
+
 extern g_hashmap<g_tid, g_task*>* taskGlobalMap;
 
 struct g_schedule_entry
@@ -71,7 +74,10 @@ struct g_tasking_local
         g_task* current;
 
         g_task* idleTask;
+        g_task* cleanupTask;
+        bool cleanupPending;
         g_tid preferredTask;
+        uint64_t lastAccountingTime;
     } scheduling;
 };
 

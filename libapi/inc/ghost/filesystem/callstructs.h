@@ -22,6 +22,7 @@
 #define GHOST_API_FILESYSTEM_CALLS
 
 #include "types.h"
+#include "delegate.h"
 #include "../tasks/types.h"
 #include "../memory/types.h"
 
@@ -292,76 +293,64 @@ typedef struct
 }__attribute__((packed)) g_syscall_fs_tell;
 
 /**
- * @field name
- * 		the name to use for delegate registration
- *
- * @field result
- * 		one of the {G_FS_REGISTER_AS_DELEGATE_*} status codes
- *
- * @field phys_mountpoint_id
- * 		the physical id to set for the mountpoint
- *
- * @field mountpoint_id
- * 		contains the mountpoint id on success
- *
- * @field transaction_storage
- * 		contains the transaction storage address on success
+ * Registers the calling task as a delegate. version and storage_size negotiate
+ * the shared-storage ABI before the mount becomes visible.
  *
  * @security-level DRIVER
  */
 typedef struct
 {
-    char* name;
-    g_fs_phys_id phys_mountpoint_id;
+	const char* name;
+	g_fs_phys_id phys_mountpoint_id;
+	uint32_t version;
+	uint32_t storage_size;
 
-    g_fs_virt_id mountpoint_id;
-    g_address transaction_storage;
-    g_fs_register_as_delegate_status result;
-}__attribute__((packed)) g_syscall_fs_register_as_delegate;
+	g_fs_virt_id mountpoint_id;
+	g_fs_delegate_transaction_storage* transaction_storage;
+	g_fs_delegate_status result;
+} __attribute__((packed)) g_syscall_fs_delegate_register;
 
 /**
- * @field transaction
- * 		the transaction to set the status for
- *
- * @field status
- * 		the status to set
+ * Completes an owned transaction using its shared operation result. The kernel
+ * validates results against its private request snapshot, including on cancellation.
  *
  * @security-level DRIVER
  */
 typedef struct
 {
-    g_fs_transaction_id transaction;
-    g_fs_transaction_status status;
-}__attribute__((packed)) g_syscall_fs_set_transaction_status;
+	g_fs_transaction_id transaction;
+
+	g_fs_delegate_status result;
+} __attribute__((packed)) g_syscall_fs_delegate_transaction_complete;
 
 /**
- * @field parent_id
- * 		id of the parent node
- *
- * @field name
- *		the name to set
- *
- * @field type
- * 		the type to set
- *
- * @field phys_fs_id
- * 		physical fs unique id for the node
- *
- * @field create_id
- * 		is filled with the id of the created node
- *
+ * Publishes a node for an active lookup or directory-refresh transaction.
+ * The parent must belong to that transaction's delegate mount.
  * @security-level DRIVER
  */
 typedef struct
 {
-    g_fs_virt_id parent_id;
-    char* name;
-    g_fs_node_type type;
-    g_fs_phys_id phys_fs_id;
+	g_fs_transaction_id transaction;
+	g_fs_virt_id parent_id;
+	const char* name;
+	g_fs_node_type type;
+	g_fs_phys_id phys_fs_id;
 
-    g_fs_create_node_status result;
-    g_fs_virt_id created_id;
-}__attribute__((packed)) g_syscall_fs_create_node;
+	g_fs_virt_id created_id;
+	g_fs_delegate_status result;
+} __attribute__((packed)) g_syscall_fs_delegate_node_create;
+
+/**
+ * Unregisters an owned mount between transactions. An active transaction must
+ * first be completed or acknowledged as cancelled.
+ * @security-level DRIVER
+ */
+typedef struct
+{
+	g_fs_virt_id mountpoint_id;
+
+	g_fs_delegate_status result;
+} __attribute__((packed)) g_syscall_fs_delegate_unregister;
 
 /**
  * @field path
@@ -425,5 +414,18 @@ typedef struct
 
     g_fs_real_path_status status;
 } __attribute__((packed)) g_syscall_fs_real_path;
+
+typedef struct
+{
+	const char* path;
+	g_fs_mutation_status status;
+} __attribute__((packed)) g_syscall_fs_path_mutation;
+
+typedef struct
+{
+	g_fd fd;
+	uint64_t length;
+	g_fs_mutation_status status;
+} __attribute__((packed)) g_syscall_fs_fd_mutation;
 
 #endif

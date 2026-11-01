@@ -11,6 +11,9 @@ int calls; void handler(g_task*, void*) { ++calls; }
 struct g_syscall_registration { void (*handler)(g_task*, void*); bool interruptible; };
 g_syscall_registration registrations[1], *syscallRegistrations = registrations;
 
+bool powerSyscallEnter(uint32_t) { return false; }
+void powerSyscallLeave(bool) {}
+
 #include "production/syscall.inc"
 
 TEST(SyscallDispatch, RejectsNumbersAtAndAboveTheExclusiveLimit) {

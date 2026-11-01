@@ -29,7 +29,7 @@ g_fs_open_status filesystemRamdiskDelegateOpen(g_fs_node* node, g_file_flag_mode
 
 g_fs_close_status filesystemRamdiskDelegateClose(g_fs_node* node, g_file_flag_mode openFlags);
 
-g_fs_open_status filesystemRamdiskDelegateDiscover(g_fs_node* parent, const char* name, g_fs_node** outNode);
+g_fs_open_status filesystemRamdiskDelegateLookup(g_fs_node* parent, const char* name, g_fs_node** outNode);
 
 g_fs_read_status filesystemRamdiskDelegateRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length,
                                                int64_t* outRead);

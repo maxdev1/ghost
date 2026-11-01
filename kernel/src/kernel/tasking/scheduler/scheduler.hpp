@@ -39,6 +39,12 @@ void schedulerPrepareEntry(g_schedule_entry* entry);
 void schedulerSetCurrent(g_tasking_local* local, g_task* task);
 
 /**
+ * Reads scheduled nanoseconds, including the current execution interval.
+ * The caller must pin the task against teardown.
+ */
+uint64_t schedulerGetCpuTime(g_task* task);
+
+/**
  * Schedules to the next task.
  */
 void schedulerSchedule(g_tasking_local* local);

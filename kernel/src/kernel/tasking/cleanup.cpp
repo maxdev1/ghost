@@ -19,8 +19,62 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/memory/heap.hpp"
-#include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking.hpp"
+
+/**
+ * Consumes cleanup notifications under the scheduler lock. Destruction stays
+ * runnable because it can yield on task mutexes; notifications received meanwhile
+ * prevent the reaper from sleeping before another pass.
+ */
+static void taskingCleanupTasks(g_tasking_local* local, g_task* self)
+{
+	mutexAcquire(&local->lock);
+	local->scheduling.cleanupPending = false;
+
+	g_schedule_entry* deadList = nullptr;
+	g_schedule_entry* entry = local->scheduling.list;
+	g_schedule_entry* previous = nullptr;
+	while(entry)
+	{
+		g_schedule_entry* next = entry->next;
+
+		auto task = entry->task;
+		mutexAcquire(&task->lock);
+
+		if(task->status == G_TASK_STATUS_DEAD && taskingTryRetireTask(task))
+		{
+			if(previous)
+				previous->next = next;
+			else
+				local->scheduling.list = next;
+
+			entry->next = deadList;
+			deadList = entry;
+		}
+		else
+		{
+			previous = entry;
+		}
+		entry = next;
+
+		mutexRelease(&task->lock);
+	}
+
+	mutexRelease(&local->lock);
+
+	while(deadList)
+	{
+		g_schedule_entry* next = deadList->next;
+		taskingDestroyTask(deadList->task);
+		heapFree(deadList);
+		deadList = next;
+	}
+
+	mutexAcquire(&local->lock);
+	if(!local->scheduling.cleanupPending)
+		taskingPrepareWait(self, "cleanup");
+	mutexRelease(&local->lock);
+}
 
 void taskingCleanupThread()
 {
@@ -28,53 +82,7 @@ void taskingCleanupThread()
 	g_task* self = taskingGetCurrentTask();
 	for(;;)
 	{
-		// Find and remove dead tasks from local scheduling list
-		mutexAcquire(&local->lock);
-
-		g_schedule_entry* deadList = nullptr;
-		g_schedule_entry* entry = local->scheduling.list;
-		g_schedule_entry* previous = nullptr;
-		while(entry)
-		{
-			g_schedule_entry* next = entry->next;
-
-			auto task = entry->task;
-			mutexAcquire(&task->lock);
-
-			if(task->status == G_TASK_STATUS_DEAD && taskingTryRetireTask(task))
-			{
-				if(previous)
-					previous->next = next;
-				else
-					local->scheduling.list = next;
-
-				entry->next = deadList;
-				deadList = entry;
-			}
-			else
-			{
-				previous = entry;
-			}
-			entry = next;
-
-			mutexRelease(&task->lock);
-		}
-
-		mutexRelease(&local->lock);
-
-		// Remove each task
-		while(deadList)
-		{
-			g_schedule_entry* next = deadList->next;
-			taskingDestroyTask(deadList->task);
-			heapFree(deadList);
-			deadList = next;
-		}
-
-		// Sleep for some time
-		taskingWait(self, "cleanup-sleep", [self]()
-		{
-			clockWaitForTime(self->id, clockGetLocal()->time + 3000);
-		});
+		taskingCleanupTasks(local, self);
+		taskingYield();
 	}
 }

@@ -21,8 +21,10 @@
 #include "kernel/calls/syscall_filesystem.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
-#include "kernel/system/interrupts/requests.hpp"
 #include "kernel/logger/logger.hpp"
+#include "kernel/memory/constants.hpp"
+#include "kernel/memory/memory.hpp"
+#include "kernel/system/interrupts/requests.hpp"
 #include "kernel/utils/string.hpp"
 
 void syscallFsOpen(g_task* task, g_syscall_fs_open* data)
@@ -44,22 +46,46 @@ void syscallFsSeek(g_task* task, g_syscall_fs_seek* data)
 	data->status = filesystemSeek(task, data->fd, data->mode, data->amount, &data->result);
 }
 
-void syscallFsRead(g_task* task, g_syscall_fs_read* data)
+void syscallFsRead(g_task* task, g_syscall_fs_read* output)
 {
-	data->status = filesystemRead(task, data->fd, data->buffer, data->length, &data->result);
-	if(data->status != G_FS_READ_SUCCESSFUL)
+	g_syscall_fs_read data;
+	if(!memoryCopyFromUser(task, &data, (g_address) output, sizeof(data)))
+		return;
+
+	auto address = (g_address) data.buffer;
+	data.result = -1;
+	data.status = G_FS_READ_ERROR;
+
+	if(data.length >= 0 && data.length <= INT32_MAX && address <= G_MEM_LOWER_HALF_END &&
+	   uint64_t(data.length) <= G_MEM_LOWER_HALF_END - address + 1)
 	{
-		data->result = G_FD_NONE;
+		int64_t read = -1;
+		data.status = filesystemRead(task, data.fd, data.buffer, data.length, &read);
+		data.result = data.status == G_FS_READ_SUCCESSFUL ? read : -1;
 	}
+
+	memoryCopyToUser(task, (g_address) output, &data, sizeof(data));
 }
 
-void syscallFsWrite(g_task* task, g_syscall_fs_write* data)
+void syscallFsWrite(g_task* task, g_syscall_fs_write* output)
 {
-	data->status = filesystemWrite(task, data->fd, data->buffer, data->length, &data->result);
-	if(data->status != G_FS_WRITE_SUCCESSFUL)
+	g_syscall_fs_write data;
+	if(!memoryCopyFromUser(task, &data, (g_address) output, sizeof(data)))
+		return;
+
+	auto address = (g_address) data.buffer;
+	data.result = -1;
+	data.status = G_FS_WRITE_ERROR;
+
+	if(data.length >= 0 && data.length <= INT32_MAX && address <= G_MEM_LOWER_HALF_END &&
+	   uint64_t(data.length) <= G_MEM_LOWER_HALF_END - address + 1)
 	{
-		data->result = G_FD_NONE;
+		int64_t written = -1;
+		data.status = filesystemWrite(task, data.fd, data.buffer, data.length, &written);
+		data.result = data.status == G_FS_WRITE_SUCCESSFUL ? written : -1;
 	}
+
+	memoryCopyToUser(task, (g_address) output, &data, sizeof(data));
 }
 
 void syscallFsClose(g_task* task, g_syscall_fs_close* data)
@@ -77,7 +103,7 @@ void syscallFsLength(g_task* task, g_syscall_fs_length* data)
 void syscallFsCloneFd(g_task* task, g_syscall_fs_clonefd* data)
 {
 	data->status = filesystemProcessCloneDescriptor(data->source_pid, data->source_fd, data->target_pid,
-	                                                data->target_fd, &data->result);
+													data->target_fd, &data->result);
 }
 
 void syscallFsTell(g_task* task, g_syscall_fs_tell* data)
@@ -117,7 +143,7 @@ void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 	if(writeOpen != G_FS_OPEN_SUCCESSFUL)
 	{
 		logInfo("%! failed to open write end of pipe %i for task %i with status %i", "filesystem", pipeNode->id,
-		        task->id, writeOpen);
+				task->id, writeOpen);
 		data->status = G_FS_PIPE_ERROR;
 		return;
 	}
@@ -130,10 +156,10 @@ void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 		if(filesystemClose(task->process->id, writeOpen, true) != G_FS_CLOSE_SUCCESSFUL)
 		{
 			logInfo("%! failed to close write end of pipe %i for task %i after failing to open read end", "filesystem",
-			        pipeNode->id, task->id);
+					pipeNode->id, task->id);
 		}
 		logInfo("%! failed to open read end of pipe %i for task %i with status %i", "filesystem", pipeNode->id,
-		        task->id, readOpen);
+				task->id, readOpen);
 		data->status = G_FS_PIPE_ERROR;
 		return;
 	}

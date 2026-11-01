@@ -22,14 +22,15 @@
 #include "kernel/filesystem/filesystem_pipedelegate.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/filesystem/filesystem_ramdiskdelegate.hpp"
+#include "kernel/filesystem/filesystem_taskdelegate.hpp"
 #include "kernel/ipc/pipes.hpp"
-#include "kernel/memory/memory.hpp"
-#include "kernel/tasking/tasking.hpp"
-#include "kernel/system/mutex.hpp"
-#include "kernel/panic.hpp"
-#include "kernel/utils/string.hpp"
 #include "kernel/logger/logger.hpp"
+#include "kernel/memory/memory.hpp"
+#include "kernel/panic.hpp"
+#include "kernel/system/mutex.hpp"
 #include "kernel/tasking/clock.hpp"
+#include "kernel/tasking/tasking.hpp"
+#include "kernel/utils/string.hpp"
 
 static g_fs_node* filesystemRoot;
 static g_fs_node* mountFolder;
@@ -50,6 +51,7 @@ void filesystemInitialize()
 	filesystemNodes = hashmapCreateNumeric<g_fs_virt_id, g_fs_node*>(1024);
 
 	filesystemProcessInitialize();
+	filesystemDelegateInitialize();
 	filesystemCreateRoot();
 }
 
@@ -58,7 +60,7 @@ void filesystemCreateRoot()
 	// Mount ramdisk
 	g_fs_delegate* ramdiskDelegate = filesystemCreateDelegate();
 	ramdiskDelegate->open = filesystemRamdiskDelegateOpen;
-	ramdiskDelegate->discover = filesystemRamdiskDelegateDiscover;
+	ramdiskDelegate->lookup = filesystemRamdiskDelegateLookup;
 	ramdiskDelegate->read = filesystemRamdiskDelegateRead;
 	ramdiskDelegate->write = filesystemRamdiskDelegateWrite;
 	ramdiskDelegate->truncate = filesystemRamdiskDelegateTruncate;
@@ -93,6 +95,61 @@ void filesystemCreateRoot()
 	pipesFolder = filesystemCreateNode(G_FS_NODE_TYPE_MOUNTPOINT, "pipes");
 	pipesFolder->delegate = pipeDelegate;
 	filesystemAddChild(mountFolder, pipesFolder);
+}
+
+g_fs_node* filesystemGetMountFolder() { return mountFolder; }
+
+g_fs_node* filesystemCreateDetachedNode(g_fs_node_type type, const char* name)
+{
+	auto length = stringLength(name);
+	auto node = static_cast<g_fs_node*>(heapTryAllocate(sizeof(g_fs_node)));
+	auto copy = static_cast<char*>(heapTryAllocate(length + 1));
+	if(!node || !copy)
+	{
+		if(node)
+			heapFree(node);
+		if(copy)
+			heapFree(copy);
+		return nullptr;
+	}
+	memorySetBytes(node, 0, sizeof(*node));
+	memoryCopy(copy, name, length + 1);
+	node->id = filesystemGetNextNodeId();
+	node->type = type;
+	node->name = copy;
+	mutexInitializeTask(&node->lock, __func__);
+	return node;
+}
+
+void filesystemDiscardDetachedNode(g_fs_node* node)
+{
+	heapFree(node->name);
+	heapFree(node);
+}
+
+void filesystemPublishNode(g_fs_node* node, g_fs_node_entry* entry)
+{
+	hashmapPut(filesystemNodes, node->id, node);
+	g_mutex_guard guard(&node->parent->lock);
+	entry->node = node;
+	entry->next = node->parent->children;
+	node->parent->children = entry;
+}
+
+/**
+ * Only the directory entry is reclaimed. Nodes retain the VFS cache lifetime
+ * because descriptors, iterators and concurrent path walks hold raw pointers.
+ */
+void filesystemDetachNode(g_fs_node* node, g_fs_node_entry* entry)
+{
+	mutexAcquire(&node->parent->lock);
+	auto link = &node->parent->children;
+	while(*link && *link != entry)
+		link = &(*link)->next;
+	if(*link)
+		*link = entry->next;
+	mutexRelease(&node->parent->lock);
+	heapFree(entry);
 }
 
 g_fs_node* filesystemCreateNode(g_fs_node_type type, const char* name)
@@ -136,10 +193,7 @@ g_fs_virt_id filesystemGetNextNodeId()
 	return nextId;
 }
 
-g_fs_node* filesystemGetNode(g_fs_virt_id id)
-{
-	return hashmapGet<g_fs_virt_id, g_fs_node*>(filesystemNodes, id, 0);
-}
+g_fs_node* filesystemGetNode(g_fs_virt_id id) { return hashmapGet<g_fs_virt_id, g_fs_node*>(filesystemNodes, id, 0); }
 
 void filesystemRemovePipeNode(g_fs_phys_id pipe)
 {
@@ -163,9 +217,33 @@ void filesystemRemovePipeNode(g_fs_phys_id pipe)
 	mutexRelease(&pipesFolder->lock);
 }
 
-g_fs_node* filesystemGetRoot()
+g_fs_node* filesystemGetRoot() { return memoryAtomicLoad(&filesystemRoot, G_MEMORY_ORDER_ACQUIRE); }
+
+/**
+ * Called once during disk bootstrap, before ordinary services start. Preserve
+ * existing nodes and descriptors while moving the synthetic mount namespace.
+ */
+void filesystemAdoptRoot(g_fs_node* root)
 {
-	return filesystemRoot;
+	auto previous = filesystemGetRoot();
+	mutexAcquire(&previous->lock);
+
+	auto link = &previous->children;
+	while(*link && (*link)->node != mountFolder)
+		link = &(*link)->next;
+
+	if(*link)
+	{
+		auto entry = *link;
+		*link = entry->next;
+		heapFree(entry);
+	}
+
+	mutexRelease(&previous->lock);
+	root->parent = nullptr;
+	root->type = G_FS_NODE_TYPE_ROOT;
+	filesystemAddChild(root, mountFolder);
+	memoryAtomicStore(&filesystemRoot, root, G_MEMORY_ORDER_RELEASE);
 }
 
 g_fs_delegate* filesystemCreateDelegate()
@@ -198,6 +276,8 @@ bool filesystemFindExistingChild(g_fs_node* parent, const char* name, g_fs_node*
 	if(stringEquals(name, ".."))
 	{
 		child = parent->parent;
+		if(!child && parent->type == G_FS_NODE_TYPE_ROOT)
+			child = parent;
 	}
 	else if(stringEquals(name, "."))
 	{
@@ -226,22 +306,24 @@ bool filesystemFindExistingChild(g_fs_node* parent, const char* name, g_fs_node*
 
 g_fs_open_status filesystemFindChild(g_fs_node* parent, const char* name, g_fs_node** outChild)
 {
+	if(!filesystemDelegateAvailable(parent))
+		return G_FS_OPEN_ERROR;
 	if(filesystemFindExistingChild(parent, name, outChild))
 		return G_FS_OPEN_SUCCESSFUL;
 
 	g_fs_delegate* delegate = filesystemFindDelegate(parent);
-	if(!delegate->discover)
+	if(!delegate->lookup)
 	{
 		*outChild = 0;
 		return G_FS_OPEN_ERROR;
 	}
-	return delegate->discover(parent, name, outChild);
+	return delegate->lookup(parent, name, outChild);
 }
 
 g_filesystem_find_result filesystemFind(g_fs_node* parent, const char* path)
 {
 	if(parent == nullptr)
-		parent = filesystemRoot;
+		parent = filesystemGetRoot();
 
 	g_fs_node* node = parent;
 	g_fs_node* lastFoundParent = node;
@@ -272,7 +354,7 @@ g_filesystem_find_result filesystemFind(g_fs_node* parent, const char* path)
 		{
 			status = G_FS_OPEN_ERROR;
 			logInfo("%! tried to resolve path with filename (%i) longer than max (%i): %s", "fs", remaining,
-			        G_FILENAME_MAX, path);
+					G_FILENAME_MAX, path);
 			break;
 		}
 
@@ -295,11 +377,11 @@ g_filesystem_find_result filesystemFind(g_fs_node* parent, const char* path)
 	heapFree(buf);
 
 	return {
-			status: status,
-			node: node,
-			foundAllButLast: ((nameEnd - nameStart) > 0),
-			lastFoundParent: lastFoundParent,
-			fileNameStart: path + (nameStart - buf)
+		status : status,
+		node : node,
+		foundAllButLast : ((nameEnd - nameStart) > 0),
+		lastFoundParent : lastFoundParent,
+		fileNameStart : path + (nameStart - buf)
 	};
 }
 
@@ -316,6 +398,8 @@ g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task
 	// Handle different open cases
 	if(findRes.status == G_FS_OPEN_SUCCESSFUL)
 	{
+		if((flags & G_FILE_FLAG_MODE_CREATE) && (flags & G_FILE_FLAG_MODE_EXCLUSIVE))
+			return G_FS_OPEN_ERROR;
 		if(findRes.node->type == G_FS_NODE_TYPE_FOLDER)
 		{
 			logInfo("%! tried to open folder", "fs");
@@ -324,6 +408,8 @@ g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task
 
 		if(flags & G_FILE_FLAG_MODE_TRUNCATE)
 		{
+			if(!(flags & G_FILE_FLAG_MODE_WRITE))
+				return G_FS_OPEN_ERROR;
 			if(filesystemTruncate(findRes.node) != G_FS_OPEN_SUCCESSFUL)
 			{
 				logInfo("%! failed to truncate file %i", "fs", findRes.node->id);
@@ -338,11 +424,11 @@ g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task
 			if(!findRes.foundAllButLast)
 			{
 				logInfo("%! failed to create file '%s' in parent %i because folders do not exist", "fs", path,
-				        origin->id);
+						origin->id);
 				return G_FS_OPEN_ERROR;
 			}
 			else if(filesystemCreateFile(findRes.lastFoundParent, findRes.fileNameStart, &findRes.node) !=
-			        G_FS_OPEN_SUCCESSFUL)
+					G_FS_OPEN_SUCCESSFUL)
 			{
 				logInfo("%! failed to create file '%s' in parent %i", "fs", path, origin->id);
 				return G_FS_OPEN_ERROR;
@@ -363,7 +449,7 @@ g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task
 }
 
 g_fs_open_status filesystemOpenNode(g_fs_node* file, g_file_flag_mode flags, g_pid process,
-                                    g_file_descriptor** outDescriptor, g_fd optionalTargetFd, uint64_t initialOffset)
+									g_file_descriptor** outDescriptor, g_fd optionalTargetFd, uint64_t initialOffset)
 {
 	g_fs_delegate* delegate = filesystemFindDelegate(file);
 	if(!delegate->open)
@@ -375,28 +461,29 @@ g_fs_open_status filesystemOpenNode(g_fs_node* file, g_file_flag_mode flags, g_p
 	g_fs_open_status status = delegate->open(file, flags);
 	if(status == G_FS_OPEN_SUCCESSFUL && process != G_PID_NONE)
 	{
-		status = filesystemProcessCreateDescriptor(process, file->id, flags, outDescriptor, optionalTargetFd, initialOffset);
-        if(status != G_FS_OPEN_SUCCESSFUL && delegate->close)
-            delegate->close(file, flags);
+		status = filesystemProcessCreateDescriptor(process, file->id, flags, outDescriptor, optionalTargetFd,
+												   initialOffset);
+		if(status != G_FS_OPEN_SUCCESSFUL && delegate->close)
+			delegate->close(file, flags);
 	}
 	return status;
 }
 
 g_fs_open_status filesystemOpenNodeFd(g_fs_node* file, g_file_flag_mode flags, g_pid process, g_fd* outFd,
-                                      g_fd optionalTargetFd)
+									  g_fd optionalTargetFd)
 {
 	g_file_descriptor* descriptor = nullptr;
 	auto status = filesystemOpenNode(file, flags, process, &descriptor, optionalTargetFd);
 	if(descriptor)
-    {
-        *outFd = descriptor->id;
-        filesystemProcessReleaseDescriptor(descriptor);
-    }
+	{
+		*outFd = descriptor->id;
+		filesystemProcessReleaseDescriptor(descriptor);
+	}
 	return status;
 }
 
-static g_fs_read_status filesystemReadDescriptor(g_file_descriptor* descriptor, uint8_t* buffer,
-                                                uint64_t length, int64_t* outRead)
+static g_fs_read_status filesystemReadDescriptor(g_file_descriptor* descriptor, uint8_t* buffer, uint64_t length,
+												 int64_t* outRead)
 {
 	g_mutex_guard lock(&descriptor->operationLock);
 	auto status = filesystemRead(descriptor->node, buffer, descriptor->offset, length, outRead);
@@ -405,6 +492,10 @@ static g_fs_read_status filesystemReadDescriptor(g_file_descriptor* descriptor, 
 	return status;
 }
 
+/**
+ * Descriptor pins keep interruptible I/O alive. Readiness checks and sleep
+ * registration run with interrupts masked; delegate calls and mutex waits do not.
+ */
 g_fs_read_status filesystemRead(g_task* task, g_fd fd, uint8_t* buffer, uint64_t length, int64_t* outRead)
 {
 	uint64_t generation = 0;
@@ -414,41 +505,45 @@ g_fs_read_status filesystemRead(g_task* task, g_fd fd, uint8_t* buffer, uint64_t
 	while(true)
 	{
 		bool retryRead = false;
-		taskingWaitIf([&]()
-		{
-			auto descriptor = filesystemProcessAcquireDescriptor(task->process->id, fd, generation);
-			if(!descriptor)
-			{
-				status = G_FS_READ_INVALID_FD;
-				bytesRead = -1;
-				return false;
-			}
+		taskingWaitIf(
+				[&]()
+				{
+					auto descriptor = filesystemProcessAcquireDescriptor(task->process->id, fd, generation);
+					if(!descriptor)
+					{
+						status = G_FS_READ_INVALID_FD;
+						bytesRead = -1;
+						return false;
+					}
 
-			generation = descriptor->generation;
-			waitQueueRemove(&descriptor->waiters, task->id);
-			status = filesystemReadDescriptor(descriptor, buffer, length, &bytesRead);
-			if(status != G_FS_READ_BUSY || !(descriptor->openFlags & G_FILE_FLAG_MODE_BLOCKING))
-			{
-				filesystemProcessReleaseDescriptor(descriptor);
-				return false;
-			}
+					generation = descriptor->generation;
+					waitQueueRemove(&descriptor->waiters, task->id);
+					interruptsEnable();
+					status = filesystemReadDescriptor(descriptor, buffer, length, &bytesRead);
+					interruptsDisable();
+					if(status != G_FS_READ_BUSY || !(descriptor->openFlags & G_FILE_FLAG_MODE_BLOCKING))
+					{
+						filesystemProcessReleaseDescriptor(descriptor);
+						return false;
+					}
 
-			auto delegate = filesystemFindDelegate(descriptor->node);
-			if(!delegate->waitForRead)
-			{
-				status = G_FS_READ_ERROR;
-				filesystemProcessReleaseDescriptor(descriptor);
-				return false;
-			}
+					auto delegate = filesystemFindDelegate(descriptor->node);
+					if(!delegate->waitForRead)
+					{
+						status = G_FS_READ_ERROR;
+						filesystemProcessReleaseDescriptor(descriptor);
+						return false;
+					}
 
-			// Retry even if readiness changed and no sleep is needed.
-			retryRead = true;
-			bool shouldWait = delegate->waitForRead(task, descriptor->node, length);
-			if(shouldWait)
-				filesystemProcessRegisterDescriptorWait(descriptor, task);
-			filesystemProcessReleaseDescriptor(descriptor);
-			return shouldWait;
-		}, [task]() { waitQueueRemoveTask(task->id); });
+					// Retry even if readiness changed and no sleep is needed.
+					retryRead = true;
+					bool shouldWait = delegate->waitForRead(task, descriptor->node, length);
+					if(shouldWait)
+						filesystemProcessRegisterDescriptorWait(descriptor, task);
+					filesystemProcessReleaseDescriptor(descriptor);
+					return shouldWait;
+				},
+				[task]() { waitQueueRemoveTask(task->id); });
 
 		if(!retryRead)
 		{
@@ -499,10 +594,13 @@ g_fs_length_status filesystemGetLength(g_fs_node* node, uint64_t* outLength)
 	return delegate->getLength(node, outLength);
 }
 
-static g_fs_write_status filesystemWriteDescriptor(g_file_descriptor* descriptor, uint8_t* buffer,
-                                                  uint64_t length, int64_t* outWrote)
+static g_fs_write_status filesystemWriteDescriptor(g_file_descriptor* descriptor, uint8_t* buffer, uint64_t length,
+												   int64_t* outWrote)
 {
+	if(!(descriptor->openFlags & G_FILE_FLAG_MODE_WRITE))
+		return G_FS_WRITE_NOT_SUPPORTED;
 	g_mutex_guard lock(&descriptor->operationLock);
+	g_mutex_guard nodeLock(&descriptor->node->lock);
 	uint64_t startOffset = descriptor->offset;
 	if((descriptor->openFlags & G_FILE_FLAG_MODE_APPEND) &&
 	   filesystemGetLength(descriptor->node, &startOffset) != G_FS_LENGTH_SUCCESSFUL)
@@ -525,40 +623,44 @@ g_fs_write_status filesystemWrite(g_task* task, g_fd fd, uint8_t* buffer, uint64
 	while(true)
 	{
 		bool retryWrite = false;
-		taskingWaitIf([&]()
-		{
-			auto descriptor = filesystemProcessAcquireDescriptor(task->process->id, fd, generation);
-			if(!descriptor)
-			{
-				status = G_FS_WRITE_INVALID_FD;
-				bytesWritten = -1;
-				return false;
-			}
+		taskingWaitIf(
+				[&]()
+				{
+					auto descriptor = filesystemProcessAcquireDescriptor(task->process->id, fd, generation);
+					if(!descriptor)
+					{
+						status = G_FS_WRITE_INVALID_FD;
+						bytesWritten = -1;
+						return false;
+					}
 
-			generation = descriptor->generation;
-			waitQueueRemove(&descriptor->waiters, task->id);
-			status = filesystemWriteDescriptor(descriptor, buffer, length, &bytesWritten);
-			if(status != G_FS_WRITE_BUSY || !(descriptor->openFlags & G_FILE_FLAG_MODE_BLOCKING))
-			{
-				filesystemProcessReleaseDescriptor(descriptor);
-				return false;
-			}
+					generation = descriptor->generation;
+					waitQueueRemove(&descriptor->waiters, task->id);
+					interruptsEnable();
+					status = filesystemWriteDescriptor(descriptor, buffer, length, &bytesWritten);
+					interruptsDisable();
+					if(status != G_FS_WRITE_BUSY || !(descriptor->openFlags & G_FILE_FLAG_MODE_BLOCKING))
+					{
+						filesystemProcessReleaseDescriptor(descriptor);
+						return false;
+					}
 
-			auto delegate = filesystemFindDelegate(descriptor->node);
-			if(!delegate->waitForWrite)
-			{
-				status = G_FS_WRITE_ERROR;
-				filesystemProcessReleaseDescriptor(descriptor);
-				return false;
-			}
+					auto delegate = filesystemFindDelegate(descriptor->node);
+					if(!delegate->waitForWrite)
+					{
+						status = G_FS_WRITE_ERROR;
+						filesystemProcessReleaseDescriptor(descriptor);
+						return false;
+					}
 
-			retryWrite = true;
-			bool shouldWait = delegate->waitForWrite(task, descriptor->node, length);
-			if(shouldWait)
-				filesystemProcessRegisterDescriptorWait(descriptor, task);
-			filesystemProcessReleaseDescriptor(descriptor);
-			return shouldWait;
-		}, [task]() { waitQueueRemoveTask(task->id); });
+					retryWrite = true;
+					bool shouldWait = delegate->waitForWrite(task, descriptor->node, length);
+					if(shouldWait)
+						filesystemProcessRegisterDescriptorWait(descriptor, task);
+					filesystemProcessReleaseDescriptor(descriptor);
+					return shouldWait;
+				},
+				[task]() { waitQueueRemoveTask(task->id); });
 
 		if(!retryWrite)
 		{
@@ -591,6 +693,7 @@ g_fs_open_status filesystemCreateFile(g_fs_node* parent, const char* name, g_fs_
 
 g_fs_open_status filesystemTruncate(g_fs_node* file)
 {
+	g_mutex_guard lock(&file->lock);
 	g_fs_delegate* delegate = filesystemFindDelegate(file);
 	if(!delegate->truncate)
 		return G_FS_OPEN_ERROR;
@@ -625,9 +728,9 @@ g_fs_pipe_status filesystemCreatePipe(g_bool blocking, g_fs_node** outPipeNode)
 
 g_fs_close_status filesystemClose(g_pid pid, g_fd fd, g_bool removeDescriptor)
 {
-    // Closing always invalidates the number immediately. The delegate's final
-    // close is deferred until operations that already pinned it have completed.
-    return filesystemProcessCloseDescriptor(pid, fd);
+	// Closing always invalidates the number immediately. The delegate's final
+	// close is deferred until operations that already pinned it have completed.
+	return filesystemProcessCloseDescriptor(pid, fd);
 }
 
 g_fs_seek_status filesystemSeek(g_task* task, g_fd fd, g_fs_seek_mode mode, int64_t amount, int64_t* outResult)
@@ -654,29 +757,34 @@ g_fs_seek_status filesystemSeek(g_task* task, g_fd fd, g_fs_seek_mode mode, int6
 	}
 
 	mutexAcquire(&descriptor->operationLock);
-	// add amount to offset
-	if(mode == G_FS_SEEK_CUR)
+
+	uint64_t base = mode == G_FS_SEEK_SET ? 0 : mode == G_FS_SEEK_CUR ? descriptor->offset : length;
+	bool valid = mode == G_FS_SEEK_SET || mode == G_FS_SEEK_CUR || mode == G_FS_SEEK_END;
+	uint64_t offset = base;
+	if(amount < 0)
 	{
-		descriptor->offset += amount;
+		auto magnitude = uint64_t(-(amount + 1)) + 1;
+		valid = valid && magnitude <= base;
+		if(valid)
+			offset = base - magnitude;
 	}
-	else if(mode == G_FS_SEEK_SET)
+	else
 	{
-		descriptor->offset = amount;
-	}
-	else if(mode == G_FS_SEEK_END)
-	{
-		descriptor->offset = length - amount;
+		valid = valid && base <= uint64_t(INT64_MAX) - uint64_t(amount);
+		if(valid)
+			offset = base + amount;
 	}
 
-	// validate offset
-	if(descriptor->offset > length)
+	if(!valid)
 	{
-		descriptor->offset = length;
+		mutexRelease(&descriptor->operationLock);
+		filesystemProcessReleaseDescriptor(descriptor);
+		return G_FS_SEEK_ERROR;
 	}
-	if(descriptor->offset < 0)
-	{
-		descriptor->offset = 0;
-	}
+
+	if(node->type != G_FS_NODE_TYPE_FILE && offset > length)
+		offset = length;
+	descriptor->offset = offset;
 
 	*outResult = descriptor->offset;
 	mutexRelease(&descriptor->operationLock);
@@ -738,8 +846,10 @@ int filesystemGetAbsolutePath(g_fs_node* node, char* buffer)
 
 g_fs_open_directory_status filesystemOpenDirectory(g_fs_node* dir)
 {
-	if(!(dir->type == G_FS_NODE_TYPE_FOLDER || dir->type == G_FS_NODE_TYPE_MOUNTPOINT || dir->type ==
-	     G_FS_NODE_TYPE_ROOT))
+	if(!filesystemDelegateAvailable(dir))
+		return G_FS_OPEN_DIRECTORY_ERROR;
+	if(!(dir->type == G_FS_NODE_TYPE_FOLDER || dir->type == G_FS_NODE_TYPE_MOUNTPOINT ||
+		 dir->type == G_FS_NODE_TYPE_ROOT))
 		return G_FS_OPEN_DIRECTORY_ERROR;
 
 	if(dir->upToDate)
@@ -764,8 +874,9 @@ g_fs_open_directory_status filesystemOpenDirectory(g_fs_node* dir)
 
 g_fs_read_directory_status filesystemReadDirectory(g_fs_node* dir, uint32_t index, g_fs_node** outChild)
 {
-	if(!dir->children)
+	if(!filesystemDelegateAvailable(dir))
 		return G_FS_READ_DIRECTORY_ERROR;
+	g_mutex_guard guard(&dir->lock);
 
 	auto entry = dir->children;
 	while(entry)
@@ -797,8 +908,8 @@ bool filesystemReadToMemory(g_fd fd, size_t offset, uint8_t* buffer, uint64_t le
 		return false;
 	}
 	uint64_t fileLength;
-	if(filesystemGetLength(node, &fileLength) != G_FS_LENGTH_SUCCESSFUL ||
-	   offset > fileLength || len > fileLength - offset)
+	if(filesystemGetLength(node, &fileLength) != G_FS_LENGTH_SUCCESSFUL || offset > fileLength ||
+	   len > fileLength - offset)
 	{
 		filesystemProcessReleaseDescriptor(descriptor);
 		return false;

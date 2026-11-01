@@ -20,20 +20,45 @@
 
 #include "kernel/calls/syscall.hpp"
 #include "kernel/calls/syscall_filesystem.hpp"
-#include "kernel/calls/syscall_system.hpp"
+#include "kernel/calls/syscall_kernquery.hpp"
 #include "kernel/calls/syscall_memory.hpp"
 #include "kernel/calls/syscall_messaging.hpp"
-#include "kernel/calls/syscall_tasking.hpp"
 #include "kernel/calls/syscall_mutex.hpp"
-#include "kernel/calls/syscall_kernquery.hpp"
-#include "kernel/system/interrupts/interrupts.hpp"
-#include "kernel/tasking/tasking.hpp"
-#include "kernel/panic.hpp"
+#include "kernel/calls/syscall_system.hpp"
+#include "kernel/calls/syscall_tasking.hpp"
 #include "kernel/logger/logger.hpp"
+#include "kernel/panic.hpp"
+#include "kernel/system/interrupts/interrupts.hpp"
+#include "kernel/system/power/power.hpp"
+#include "kernel/tasking/tasking.hpp"
 
 #include <ghost/syscall.h>
 
 g_syscall_registration* syscallRegistrations = nullptr;
+
+bool syscallStartsTask(uint32_t call) { return call == G_SYSCALL_SPAWN || call == G_SYSCALL_CREATE_TASK; }
+
+bool syscallMutatesState(uint32_t call)
+{
+	switch(call)
+	{
+		case G_SYSCALL_SPAWN:
+		case G_SYSCALL_CREATE_TASK:
+		case G_SYSCALL_FS_OPEN:
+		case G_SYSCALL_FS_WRITE:
+		case G_SYSCALL_FS_CLOSE:
+		case G_SYSCALL_FS_CREATE_DIRECTORY:
+		case G_SYSCALL_FS_UNLINK:
+		case G_SYSCALL_FS_UNLINK_DIRECTORY:
+		case G_SYSCALL_FS_TRUNCATE:
+		case G_SYSCALL_FS_SYNC:
+		case G_SYSCALL_FS_DELEGATE_REGISTER:
+		case G_SYSCALL_FS_DELEGATE_UNREGISTER:
+			return true;
+		default:
+			return false;
+	}
+}
 
 void syscallHandle(g_task* task)
 {
@@ -66,7 +91,9 @@ void syscall(uint32_t callId, void* syscallData)
 	if(reg->interruptible)
 		interruptsEnable();
 
+	auto powerTracked = powerSyscallEnter(callId);
 	reg->handler(task, syscallData);
+	powerSyscallLeave(powerTracked);
 	asm volatile("" ::: "memory");
 
 	interruptsDisable();
@@ -106,6 +133,7 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_TASK_GET_TLS, (g_syscall_handler) syscallTaskGetTls);
 	_syscallRegister(G_SYSCALL_PROCESS_GET_INFO, (g_syscall_handler) syscallProcessGetInfo);
 	_syscallRegister(G_SYSCALL_SPAWN, (g_syscall_handler) syscallSpawn, true);
+	_syscallRegister(G_SYSCALL_GET_LAUNCH_MODE, (g_syscall_handler) syscallGetLaunchMode);
 	_syscallRegister(G_SYSCALL_CREATE_TASK, (g_syscall_handler) syscallCreateTask);
 	_syscallRegister(G_SYSCALL_GET_TASK_ENTRY, (g_syscall_handler) syscallGetTaskEntry);
 	_syscallRegister(G_SYSCALL_EXIT_TASK, (g_syscall_handler) syscallExitTask);
@@ -155,6 +183,18 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_FS_CLOSE_DIRECTORY, (g_syscall_handler) syscallFsCloseDirectory, true);
 	_syscallRegister(G_SYSCALL_FS_REAL_PATH, (g_syscall_handler) syscallFsRealPath, true);
 
+	_syscallRegister(G_SYSCALL_FS_DELEGATE_REGISTER, (g_syscall_handler) syscallFsDelegateRegister, true);
+	_syscallRegister(G_SYSCALL_FS_DELEGATE_TRANSACTION_COMPLETE,
+					 (g_syscall_handler) syscallFsDelegateTransactionComplete, true);
+	_syscallRegister(G_SYSCALL_FS_DELEGATE_NODE_CREATE, (g_syscall_handler) syscallFsDelegateNodeCreate, true);
+	_syscallRegister(G_SYSCALL_FS_DELEGATE_UNREGISTER, (g_syscall_handler) syscallFsDelegateUnregister, true);
+
+	_syscallRegister(G_SYSCALL_FS_CREATE_DIRECTORY, (g_syscall_handler) syscallFsCreateDirectory, true);
+	_syscallRegister(G_SYSCALL_FS_UNLINK, (g_syscall_handler) syscallFsUnlink, true);
+	_syscallRegister(G_SYSCALL_FS_UNLINK_DIRECTORY, (g_syscall_handler) syscallFsUnlinkDirectory, true);
+	_syscallRegister(G_SYSCALL_FS_TRUNCATE, (g_syscall_handler) syscallFsTruncate, true);
+	_syscallRegister(G_SYSCALL_FS_SYNC, (g_syscall_handler) syscallFsSync, true);
+
 	// System
 	_syscallRegister(G_SYSCALL_LOG, (g_syscall_handler) syscallLog);
 	_syscallRegister(G_SYSCALL_OPEN_LOG_PIPE, (g_syscall_handler) syscallOpenLogPipe);
@@ -164,8 +204,9 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_IRQ_CREATE_REDIRECT, (g_syscall_handler) syscallIrqCreateRedirect);
 	_syscallRegister(G_SYSCALL_AWAIT_IRQ, (g_syscall_handler) syscallAwaitIrq, true);
 	_syscallRegister(G_SYSCALL_GET_EFI_FRAMEBUFFER, (g_syscall_handler) syscallGetEfiFramebuffer);
+	_syscallRegister(G_SYSCALL_SYSTEM_POWER, (g_syscall_handler) syscallSystemPower, true);
+	_syscallRegister(G_SYSCALL_ACPI_PLATFORM, (g_syscall_handler) syscallAcpiPlatform, true);
 
 	// Kernquery
 	_syscallRegister(G_SYSCALL_KERNQUERY, (g_syscall_handler) syscallKernQuery);
-
 }

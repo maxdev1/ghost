@@ -23,7 +23,7 @@
 
 uint8_t* bitmapFontGetChar(char c)
 {
-	uint16_t offset = c - bitmapFontAsciiOffset;
+	uint16_t offset = static_cast<uint8_t>(c) - bitmapFontAsciiOffset;
 	if(offset >= bitmapFontCharCount)
 		return nullptr;
 	return bitmapFontCharSet[offset];

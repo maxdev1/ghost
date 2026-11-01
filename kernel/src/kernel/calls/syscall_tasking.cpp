@@ -85,6 +85,15 @@ void syscallJoin(g_task* task, g_syscall_join* data)
 
 void syscallSpawn(g_task* task, g_syscall_spawn* data)
 {
+	auto mode = data->mode;
+	if(mode == G_LAUNCH_MODE_INHERIT)
+		mode = task->process->environment.launchMode;
+	if(mode > G_LAUNCH_MODE_TERMINAL)
+	{
+		data->status = G_SPAWN_STATUS_TASKING_ERROR;
+		return;
+	}
+
 	const g_security_level securityLevel = data->securityLevel;
 	if(securityLevel > G_SECURITY_LEVEL_APPLICATION || securityLevel < task->securityLevel)
 	{
@@ -93,7 +102,6 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 				securityLevel);
 		return;
 	}
-
 
 	g_fd fd;
 	g_fs_open_status open = filesystemOpen(data->path, G_FILE_FLAG_MODE_READ, task, &fd);
@@ -110,6 +118,7 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 			data->pid = target.process->id;
 			filesystemProcessCreateStdio(task->process->id, data->inStdio, target.process->id, data->outStdio);
 
+			target.process->environment.launchMode = mode;
 			target.process->environment.executablePath = stringDuplicate(data->path);
 			if(data->args)
 				target.process->environment.arguments = stringDuplicate(data->args);
@@ -126,6 +135,11 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 	}
 }
 
+void syscallGetLaunchMode(g_task* task, g_syscall_get_launch_mode* data)
+{
+	data->mode = task->process->environment.launchMode;
+}
+
 void syscallTaskGetTls(g_task* task, g_syscall_task_get_tls* data)
 {
 	data->userThreadLocal = task->threadLocal.userThreadLocal;
@@ -139,7 +153,11 @@ void syscallProcessGetInfo(g_task* task, g_syscall_process_get_info* data)
 void syscallKill(g_task* task, g_syscall_kill* data)
 {
 	auto target = taskingAcquireTask(data->pid);
-	if(target)
+	if(target && target->securityLevel < task->securityLevel)
+	{
+		data->status = G_KILL_STATUS_FAILED;
+	}
+	else if(target)
 	{
 		data->status = G_KILL_STATUS_SUCCESSFUL;
 		taskingTerminateProcess(target->process);

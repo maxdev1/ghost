@@ -19,82 +19,88 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/kernel.hpp"
-#include "kernel/memory/constants.hpp"
-#include "kernel/memory/paging_shootdown.hpp"
+#include "kernel/boot/fat_root.hpp"
+#include "kernel/boot/limine.hpp"
 #include "kernel/calls/syscall.hpp"
 #include "kernel/filesystem/filesystem.hpp"
+#include "kernel/filesystem/filesystem_taskdelegate.hpp"
 #include "kernel/filesystem/ramdisk.hpp"
 #include "kernel/ipc/message_queues.hpp"
 #include "kernel/ipc/message_topics.hpp"
 #include "kernel/ipc/pipes.hpp"
 #include "kernel/logger/kernel_logger.hpp"
+#include "kernel/logger/logger.hpp"
+#include "kernel/memory/constants.hpp"
 #include "kernel/memory/memory.hpp"
-#include "kernel/system/processor/processor.hpp"
+#include "kernel/memory/paging_shootdown.hpp"
+#include "kernel/panic.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
+#include "kernel/system/mutex.hpp"
+#include "kernel/system/power/power.hpp"
+#include "kernel/system/processor/processor.hpp"
 #include "kernel/system/system.hpp"
-#include "kernel/tasking/user_mutex.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "kernel/system/mutex.hpp"
-#include "kernel/panic.hpp"
+#include "kernel/tasking/user_mutex.hpp"
+#include "kernel/utils/string.hpp"
 #include "kernel/video/console_video.hpp"
 #include "kernel/video/pretty_boot.hpp"
-#include "kernel/logger/logger.hpp"
-#include "kernel/boot/limine.hpp"
-#include "kernel/utils/string.hpp"
 
 static g_mutex bootstrapCoreLock;
 static g_mutex applicationCoreLock;
+static char kernelRootArguments[32]{};
 
-__attribute__((used, section(".limine_requests")))
-static volatile LIMINE_BASE_REVISION(3);
+__attribute__((used, section(".limine_requests"))) static volatile LIMINE_BASE_REVISION(3);
 
-__attribute__((used, section(".limine_requests")))
-volatile limine_framebuffer_request framebufferRequest = {
-		.id = LIMINE_FRAMEBUFFER_REQUEST,
-		.revision = 0
-};
+__attribute__((used, section(".limine_requests"))) volatile limine_framebuffer_request framebufferRequest = {
+		.id = LIMINE_FRAMEBUFFER_REQUEST, .revision = 0};
 
-__attribute__((used, section(".limine_requests")))
-volatile limine_memmap_request memoryMapRequest = {
-		.id = LIMINE_MEMMAP_REQUEST,
-		.revision = 0
-};
+__attribute__((used, section(".limine_requests"))) volatile limine_memmap_request memoryMapRequest = {
+		.id = LIMINE_MEMMAP_REQUEST, .revision = 0};
 
-__attribute__((used, section(".limine_requests")))
-volatile limine_paging_mode_request pagingModeRequest = {
-		.id = LIMINE_PAGING_MODE_REQUEST,
-		.revision = 0,
-		.mode = LIMINE_PAGING_MODE_X86_64_4LVL
-};
+__attribute__((used, section(".limine_requests"))) volatile limine_paging_mode_request pagingModeRequest = {
+		.id = LIMINE_PAGING_MODE_REQUEST, .revision = 0, .mode = LIMINE_PAGING_MODE_X86_64_4LVL};
 
-__attribute__((used, section(".limine_requests")))
-volatile limine_module_request moduleRequest = {
+__attribute__((used, section(".limine_requests"))) volatile limine_module_request moduleRequest = {
 		.id = LIMINE_MODULE_REQUEST,
 		.revision = 0,
 };
 
-__attribute__((used, section(".limine_requests")))
-volatile limine_rsdp_request rsdpRequest = {
+__attribute__((used, section(".limine_requests"))) volatile limine_kernel_file_request kernelFileRequest = {
+		.id = LIMINE_KERNEL_FILE_REQUEST,
+		.revision = 0,
+};
+
+__attribute__((used, section(".limine_requests"))) volatile limine_rsdp_request rsdpRequest = {
 		.id = LIMINE_RSDP_REQUEST,
 		.revision = 0,
 };
 
-__attribute__((used, section(".limine_requests")))
-volatile limine_hhdm_request hhdmRequest = {
+__attribute__((used, section(".limine_requests"))) volatile limine_hhdm_request hhdmRequest = {
 		.id = LIMINE_HHDM_REQUEST,
 		.revision = 0,
 };
 
-__attribute__((used, section(".limine_requests_start")))
-static volatile LIMINE_REQUESTS_START_MARKER;
+__attribute__((used, section(".limine_requests_start"))) static volatile LIMINE_REQUESTS_START_MARKER;
 
-__attribute__((used, section(".limine_requests_end")))
-static volatile LIMINE_REQUESTS_END_MARKER;
+__attribute__((used, section(".limine_requests_end"))) static volatile LIMINE_REQUESTS_END_MARKER;
 
-void failEarly()
+void failEarly() { asm("cli; hlt;"); }
+
+static void kernelLoadBootFilesystem()
 {
-	asm("cli; hlt;");
+	auto ramdiskFile = limineFindModule(moduleRequest.response, "/boot/ramdisk");
+	if(!ramdiskFile)
+	{
+		auto file = kernelFileRequest.response ? kernelFileRequest.response->kernel_file : nullptr;
+		if(!file)
+			panic("%! bootloader did not provide executable metadata", "boot");
+		if(!kernelFatRootArguments(file->cmdline, kernelRootArguments))
+			panic("%! no ramdisk and unsupported FAT root selector '%s'", "boot", file->cmdline ? file->cmdline : "");
+		ramdiskLoadBootModules(moduleRequest.response);
+	}
+	else
+		ramdiskLoadFromBootloaderFile(ramdiskFile);
 }
 
 extern "C" void kernelMain()
@@ -120,17 +126,11 @@ extern "C" void kernelMain()
 	// TODO Just use the value instead of failing if its different:
 	if(hhdmRequest.response->offset != G_MEM_HIGHER_HALF_DIRECT_MAP_OFFSET)
 		panic("%! higher half mapping not at expected offset %x but %x", "error", G_MEM_HIGHER_HALF_DIRECT_MAP_OFFSET,
-		      hhdmRequest.response->offset);
+			  hhdmRequest.response->offset);
 
 	memoryInitialize(memoryMapRequest.response);
 
-	auto ramdiskFile = limineFindModule(moduleRequest.response, "/boot/ramdisk");
-	if(!ramdiskFile)
-	{
-		G_PRETTY_BOOT_FAIL("Ramdisk file not found");
-		panic("%! ramdisk file not found", "kern");
-	}
-	ramdiskLoadFromBootloaderFile(ramdiskFile);
+	kernelLoadBootFilesystem();
 
 	// TODO unmap loader memory
 	kernelRunBootstrapCore();
@@ -158,7 +158,7 @@ void kernelRunBootstrapCore()
 
 	auto initializationProcess = taskingCreateProcess(G_SECURITY_LEVEL_KERNEL);
 	auto initializationTask = taskingCreateTask((g_virtual_address) kernelInitializationThread, initializationProcess,
-	                                            G_SECURITY_LEVEL_KERNEL);
+												G_SECURITY_LEVEL_KERNEL);
 	taskingAssign(taskingGetLocal(), initializationTask);
 
 	systemWaitForApplicationCores();
@@ -218,35 +218,42 @@ void kernelSpawnService(const char* path, const char* args, g_security_level sec
 	}
 }
 
+static void kernelMountBootRoot()
+{
+	if(!kernelRootArguments[0])
+		return;
+	auto deadline = clockGetLocal()->time + 30000;
+	while(!filesystemDelegateMountRoot("fat-root"))
+	{
+		if(clockGetLocal()->time >= deadline)
+			panic("%! FAT boot disk did not become ready", "boot");
+		auto task = taskingGetCurrentTask();
+		taskingWait(task, __func__, [task]() { clockWaitForTime(task->id, clockGetLocal()->time + 10); });
+	}
+	logInfo("%! FAT filesystem is now /", "boot");
+}
+
 void kernelInitializationThread()
 {
 	logInfo("%! loading system services", "init");
+	powerInitialize((g_physical_address) rsdpRequest.response->address);
 
 	G_PRETTY_BOOT_STATUS_P(20);
 	kernelSpawnService("/applications/pcidriver.bin", "", G_SECURITY_LEVEL_DRIVER);
+	kernelSpawnService("/applications/acpidriver.bin", "", G_SECURITY_LEVEL_DRIVER);
+	powerWaitForInitialization();
 
 	G_PRETTY_BOOT_STATUS_P(20);
-	kernelSpawnService("/applications/devicemanager.bin", "", G_SECURITY_LEVEL_DRIVER);
+	kernelSpawnService("/applications/devicemanager.bin", kernelRootArguments, G_SECURITY_LEVEL_DRIVER);
+
+	kernelMountBootRoot();
+
 	G_PRETTY_BOOT_STATUS_P(40);
 	kernelSpawnService("/applications/ps2driver.bin", "", G_SECURITY_LEVEL_DRIVER);
 
 	G_PRETTY_BOOT_STATUS_P(80);
 	kernelSpawnService("/applications/fenster.bin", "", G_SECURITY_LEVEL_APPLICATION);
-	//kernelSpawnService("/applications/tester.bin", "", G_SECURITY_LEVEL_APPLICATION);
-	// G_PRETTY_BOOT_STATUS_P(80);
-	// kernelSpawnService("/applications/terminal.bin", "--headless", G_SECURITY_LEVEL_DRIVER);
 
 	G_PRETTY_BOOT_STATUS("initializing...", 100);
-
-	// logInfo("do stuff...");
-	// for(;;)
-	// {
-	// 	auto task = taskingGetCurrentTask();
-	// 	taskingWait(task, __func__, [task]()
-	// 	{
-	// 		clockWaitForTime(task->id, clockGetLocal()->time + 1000);
-	// 	});
-	// 	logInfo("alive...");
-	// }
 	taskingExit();
 }

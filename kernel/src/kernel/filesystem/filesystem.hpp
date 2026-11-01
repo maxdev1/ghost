@@ -21,9 +21,9 @@
 #ifndef __KERNEL_FILESYSTEM__
 #define __KERNEL_FILESYSTEM__
 
-#include "kernel/tasking/tasking.hpp"
-#include "kernel/system/mutex.hpp"
 #include <ghost/filesystem/types.h>
+#include "kernel/system/mutex.hpp"
+#include "kernel/tasking/tasking.hpp"
 
 struct g_fs_node;
 struct g_fs_node_entry;
@@ -35,28 +35,29 @@ struct g_file_descriptor;
  */
 struct g_fs_node
 {
-    g_fs_virt_id id;
-    g_fs_phys_id physicalId;
-    g_fs_node_type type;
-    g_mutex lock;
+	g_fs_virt_id id;
+	g_fs_phys_id physicalId;
+	g_fs_node_type type;
+	g_mutex lock;
 
-    char* name;
-    g_fs_node* parent;
-    g_fs_node_entry* children;
+	char* name;
+	g_fs_node* parent;
+	g_fs_node_entry* children;
 
-    g_fs_delegate* delegate;
+	g_fs_delegate* delegate;
 
-    bool blocking;
-    bool upToDate;
- };
+	bool blocking;
+	bool upToDate;
+	bool removed;
+};
 
 /**
  * An entry in the node tree.
  */
 struct g_fs_node_entry
 {
-    g_fs_node* node;
-    g_fs_node_entry* next;
+	g_fs_node* node;
+	g_fs_node_entry* next;
 };
 
 /**
@@ -64,30 +65,33 @@ struct g_fs_node_entry
  */
 struct g_fs_delegate
 {
-    g_mutex lock;
+	g_mutex lock;
 
-    g_fs_open_status (*open)(g_fs_node* node, g_file_flag_mode flags);
-    g_fs_open_status (*discover)(g_fs_node* parent, const char* name, g_fs_node** outNode);
-    g_fs_read_status (*read)(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
-    g_fs_write_status (*write)(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote);
-    g_fs_length_status (*getLength)(g_fs_node* node, uint64_t* outLength);
-    g_fs_open_status (*create)(g_fs_node* parent, const char* name, g_fs_node** outFile);
-    g_fs_open_status (*truncate)(g_fs_node* file);
-    g_fs_close_status (*close)(g_fs_node* node, g_file_flag_mode openFlags);
-    g_fs_directory_refresh_status (*refreshDir)(g_fs_node* node);
+	g_fs_open_status (*open)(g_fs_node* node, g_file_flag_mode flags);
+	g_fs_open_status (*lookup)(g_fs_node* parent, const char* name, g_fs_node** outNode);
+	g_fs_read_status (*read)(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outRead);
+	g_fs_write_status (*write)(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length, int64_t* outWrote);
+	g_fs_length_status (*getLength)(g_fs_node* node, uint64_t* outLength);
+	g_fs_open_status (*create)(g_fs_node* parent, const char* name, g_fs_node** outFile);
+	g_fs_open_status (*truncate)(g_fs_node* file);
+	g_fs_close_status (*close)(g_fs_node* node, g_file_flag_mode openFlags);
+	g_fs_directory_refresh_status (*refreshDir)(g_fs_node* node);
 
-    bool (*waitForRead)(g_task* task, g_fs_node* node, uint64_t length);
-    bool (*waitForWrite)(g_task* task, g_fs_node* node, uint64_t length);
+	g_fs_mutation_status (*makeDirectory)(g_fs_node* parent, const char* name, g_fs_node** out);
+	g_fs_mutation_status (*mutate)(g_fs_node* node, g_fs_delegate_request_type type, uint64_t length);
+
+	bool (*waitForRead)(g_task* task, g_fs_node* node, uint64_t length);
+	bool (*waitForWrite)(g_task* task, g_fs_node* node, uint64_t length);
 };
 
 struct g_filesystem_find_result
 {
-    g_fs_open_status status;
-    g_fs_node* node;
+	g_fs_open_status status;
+	g_fs_node* node;
 
-    bool foundAllButLast;
-    g_fs_node* lastFoundParent;
-    const char* fileNameStart;
+	bool foundAllButLast;
+	g_fs_node* lastFoundParent;
+	const char* fileNameStart;
 };
 
 /**
@@ -99,6 +103,28 @@ void filesystemInitialize();
  * Creates the filesystem root and mounts the ramdisk.
  */
 void filesystemCreateRoot();
+
+/**
+ * @return the node of the /mount folder
+ */
+g_fs_node* filesystemGetMountFolder();
+
+void filesystemUnlinkNode(g_fs_node* node);
+
+g_fs_mutation_status filesystemMakeDirectory(g_task* task, const char* path);
+
+g_fs_mutation_status filesystemRemove(g_task* task, const char* path, bool directory);
+
+g_fs_mutation_status filesystemMutateDescriptor(g_task* task, g_fd fd, g_fs_delegate_request_type type,
+												uint64_t length);
+
+g_fs_node* filesystemCreateDetachedNode(g_fs_node_type type, const char* name);
+
+void filesystemDiscardDetachedNode(g_fs_node* node);
+
+void filesystemPublishNode(g_fs_node* node, g_fs_node_entry* entry);
+
+void filesystemDetachNode(g_fs_node* node, g_fs_node_entry* entry);
 
 /**
  * Returns the next free virtual node id.
@@ -156,6 +182,11 @@ g_fs_delegate* filesystemCreateDelegate();
 g_fs_node* filesystemGetRoot();
 
 /**
+ * Makes the given node the new root filesystem node.
+ */
+void filesystemAdoptRoot(g_fs_node* root);
+
+/**
  * Searches for the delegate responsible for this node.
  */
 g_fs_delegate* filesystemFindDelegate(g_fs_node* node);
@@ -165,10 +196,10 @@ g_fs_delegate* filesystemFindDelegate(g_fs_node* node);
  */
 g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task* task, g_fd* outFd);
 g_fs_open_status filesystemOpenNode(g_fs_node* file, g_file_flag_mode flags, g_pid process,
-                                    g_file_descriptor** outDescriptor, g_fd optionalTargetFd = G_FD_NONE,
-                                    uint64_t initialOffset = 0);
+									g_file_descriptor** outDescriptor, g_fd optionalTargetFd = G_FD_NONE,
+									uint64_t initialOffset = 0);
 g_fs_open_status filesystemOpenNodeFd(g_fs_node* file, g_file_flag_mode flags, g_pid process, g_fd* outFd,
-                                      g_fd optionalTargetFd = G_FD_NONE);
+									  g_fd optionalTargetFd = G_FD_NONE);
 
 /**
  * Reads bytes from a file.
@@ -181,7 +212,7 @@ g_fs_read_status filesystemRead(g_fs_node* file, uint8_t* buffer, uint64_t offse
  */
 g_fs_write_status filesystemWrite(g_task* task, g_fd fd, uint8_t* buffer, uint64_t length, int64_t* outWrote);
 g_fs_write_status filesystemWrite(g_fs_node* file, uint8_t* buffer, uint64_t offset, uint64_t length,
-                                  int64_t* outWrote);
+								  int64_t* outWrote);
 
 /**
  * Closes a file descriptor.

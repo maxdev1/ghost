@@ -9,10 +9,11 @@ constexpr int G_CREATE_TASK_STATUS_FAILED = 1, G_CREATE_TASK_STATUS_SUCCESSFUL =
 constexpr int G_SPAWN_STATUS_SUCCESSFUL = 0, G_SPAWN_STATUS_TASKING_ERROR = 1, G_SPAWN_STATUS_IO_ERROR = 2;
 constexpr int G_FS_OPEN_SUCCESSFUL = 0, G_FILE_FLAG_MODE_READ = 1;
 #include "production/create_task_callstruct.inc"
+#include "production/launch_mode_types.inc"
 #include "production/spawn_callstruct.inc"
 
 struct g_task;
-struct g_process { g_task* main; int id; struct { const char* executablePath; const char* arguments; char* workingDirectory; } environment; };
+struct g_process { g_task* main; int id; struct { const char* executablePath; g_launch_mode launchMode; const char* arguments; char* workingDirectory; } environment; };
 struct g_task { g_process* process; int securityLevel, id; struct { void* function; void* data; } userEntry; } child{};
 g_syscall_create_task* mutateCreate; g_syscall_spawn* mutateSpawn;
 int created, assignedCore = -1, opened, spawnedLevel = -1;
@@ -29,11 +30,17 @@ int filesystemOpen(const char*, int, g_task*, int* fd) {
     *fd = 7; ++opened; if(mutateSpawn) mutateSpawn->securityLevel = 0; return 0;
 }
 struct g_spawn_result { int status, validation; g_process* process; };
-g_spawn_result taskingSpawn(int, uint8_t level) { spawnedLevel = level; return {2, 0, nullptr}; }
+bool spawnSuccess = false;
+g_process spawnedProcess{};
+g_launch_mode releasedMode = G_LAUNCH_MODE_UNKNOWN;
+g_spawn_result taskingSpawn(int, uint8_t level) {
+    spawnedLevel = level;
+    return {spawnSuccess ? G_SPAWN_STATUS_SUCCESSFUL : G_SPAWN_STATUS_IO_ERROR, 0, spawnSuccess ? &spawnedProcess : nullptr};
+}
 void filesystemClose(int, int, bool) {}
 void filesystemProcessCreateStdio(int, const int*, int, int*) {}
-char* stringDuplicate(const char*) { std::abort(); }
-void taskingReleaseSpawn(g_process*) {}
+char* stringDuplicate(const char* value) { return const_cast<char*>(value); }
+void taskingReleaseSpawn(g_process* process) { releasedMode = process->environment.launchMode; }
 
 #include "production/syscallCreateTask_and_spawn.inc"
 

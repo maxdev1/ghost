@@ -80,6 +80,7 @@ struct g_task
      * Lookup pins prevent teardown while another core uses this task/process.
      */
     uint32_t references;
+    uint32_t powerCalls;
     bool terminationRequested;
     bool spawnPending;
     g_tid spawnParent;
@@ -105,6 +106,11 @@ struct g_task
         int timesScheduled;
         int timesYielded;
     } statistics;
+
+    /**
+     * Elapsed scheduled time in nanoseconds, protected by the assigned scheduler lock.
+     */
+    uint64_t cpuTime;
 
     /**
      * Sometimes a task needs to do work in the address space of a different process.
@@ -247,6 +253,11 @@ struct g_process
     g_pid id;
     g_mutex lock;
 
+    /**
+     * Scheduled time across all threads, including threads that have exited.
+     */
+    uint64_t cpuTime;
+
     // Main task metadata stays alive until the last sibling has been reaped.
     g_task* main;
     g_task_entry* tasks;
@@ -282,6 +293,7 @@ struct g_process
     {
         const char* arguments;
         const char* executablePath;
+        g_launch_mode launchMode;
         char* workingDirectory;
     } environment;
 

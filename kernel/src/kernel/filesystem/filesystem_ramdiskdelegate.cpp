@@ -32,7 +32,7 @@ g_fs_close_status filesystemRamdiskDelegateClose(g_fs_node* node, g_file_flag_mo
 	return G_FS_CLOSE_SUCCESSFUL;
 }
 
-g_fs_open_status filesystemRamdiskDelegateDiscover(g_fs_node* parent, const char* name, g_fs_node** outNode)
+g_fs_open_status filesystemRamdiskDelegateLookup(g_fs_node* parent, const char* name, g_fs_node** outNode)
 {
 	g_ramdisk_entry* parentEntry;
 
@@ -67,12 +67,21 @@ g_fs_open_status filesystemRamdiskDelegateDiscover(g_fs_node* parent, const char
 g_fs_read_status filesystemRamdiskDelegateRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length,
                                                int64_t* outRead)
 {
+	*outRead = -1;
 	g_ramdisk_entry* entry = ramdiskFindById(node->physicalId);
 	if(!entry)
 		return G_FS_READ_ERROR;
 
-	if(offset + length > entry->dataSize)
-		length = entry->dataSize - offset;
+	if(offset >= entry->dataSize || length == 0)
+	{
+		*outRead = 0;
+		return G_FS_READ_SUCCESSFUL;
+	}
+	uint64_t available = entry->dataSize - offset;
+	if(length > available)
+		length = available;
+	if(length > INT32_MAX)
+		length = INT32_MAX;
 
 	memoryCopy(buffer, &entry->data[offset], length);
 	*outRead = length;
@@ -82,45 +91,49 @@ g_fs_read_status filesystemRamdiskDelegateRead(g_fs_node* node, uint8_t* buffer,
 g_fs_write_status filesystemRamdiskDelegateWrite(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length,
                                                  int64_t* outWrote)
 {
+	*outWrote = -1;
 	g_ramdisk_entry* entry = ramdiskFindById(node->physicalId);
 	if(!entry)
 		return G_FS_WRITE_ERROR;
-
-	// copy data from ramdisk memory into variable memory
-	if(entry->dataOnRamdisk)
+	if(length == 0)
 	{
-		uint32_t buflen = entry->dataSize * 1.2;
-		uint8_t* new_buffer = (uint8_t*) heapAllocate(sizeof(uint8_t) * buflen);
-		memoryCopy(new_buffer, entry->data, entry->dataSize);
-		entry->data = new_buffer;
-		entry->notOnRdBufferLength = buflen;
+		*outWrote = 0;
+		return G_FS_WRITE_SUCCESSFUL;
 	}
-	else if(entry->data == nullptr)
+	if(offset > INT32_MAX || length > INT32_MAX - offset || entry->dataSize > INT32_MAX)
+		return G_FS_WRITE_ERROR;
+
+	uint32_t end = offset + length;
+	if(entry->dataOnRamdisk || end > entry->notOnRdBufferLength)
 	{
-		uint32_t initbuflen = 32;
-		entry->data = (uint8_t*) heapAllocate(sizeof(uint8_t) * initbuflen);
-		entry->notOnRdBufferLength = initbuflen;
+		uint32_t capacity = entry->dataOnRamdisk ? entry->dataSize : entry->notOnRdBufferLength;
+		if(capacity < 32)
+			capacity = 32;
+		if(capacity < end)
+		{
+			uint64_t grown = uint64_t(capacity) * 2;
+			capacity = grown > INT32_MAX ? INT32_MAX : grown;
+			if(capacity < end)
+				capacity = end;
+		}
+		auto* data = static_cast<uint8_t*>(heapAllocate(capacity));
+		if(!data)
+			return G_FS_WRITE_ERROR;
+		if(entry->dataSize)
+			memoryCopy(data, entry->data, entry->dataSize);
+		if(!entry->dataOnRamdisk && entry->data)
+			heapFree(entry->data);
+		entry->data = data;
+		entry->notOnRdBufferLength = capacity;
+		entry->dataOnRamdisk = false;
 	}
 
-	entry->dataOnRamdisk = false;
-
-	// expand buffer until enough space is available
-	uint32_t space;
-	while((space = entry->notOnRdBufferLength - offset) < length)
-	{
-		uint32_t buflen = entry->notOnRdBufferLength * 1.2;
-		uint8_t* new_buffer = new uint8_t[buflen];
-		memoryCopy(new_buffer, entry->data, entry->dataSize);
-		heapFree(entry->data);
-		entry->data = new_buffer;
-		entry->notOnRdBufferLength = buflen;
-	}
-
-	// copy data
-	memoryCopy(&entry->data[offset], buffer, length);
-	entry->dataSize = offset + length;
+	if(offset > entry->dataSize)
+		memorySetBytes(entry->data + entry->dataSize, 0, offset - entry->dataSize);
+	memoryCopy(entry->data + offset, buffer, length);
+	if(end > entry->dataSize)
+		entry->dataSize = end;
 	*outWrote = length;
-
 	return G_FS_WRITE_SUCCESSFUL;
 }
 
@@ -156,14 +169,12 @@ g_fs_open_status filesystemRamdiskDelegateTruncate(g_fs_node* file)
 	if(!entry)
 		return G_FS_OPEN_ERROR;
 
-	if(!entry->dataOnRamdisk)
-	{
-		entry->dataSize = 0;
-		entry->notOnRdBufferLength = 0;
-		if(entry->data)
-			heapFree(entry->data);
-		entry->data = 0;
-	}
+	if(!entry->dataOnRamdisk && entry->data)
+		heapFree(entry->data);
+	entry->dataOnRamdisk = false;
+	entry->dataSize = 0;
+	entry->notOnRdBufferLength = 0;
+	entry->data = nullptr;
 	return G_FS_OPEN_SUCCESSFUL;
 }
 

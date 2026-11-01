@@ -1,5 +1,26 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2026, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include "kernel/memory/paging_shootdown.hpp"
 #include "kernel/memory/constants.hpp"
+#include "kernel/memory/memory.hpp"
 #include "kernel/memory/paging.hpp"
 #include "kernel/panic.hpp"
 #include "kernel/system/interrupts/apic/lapic.hpp"
@@ -37,20 +58,20 @@ void pagingInitializeSmp()
 			panic("%! invalid xAPIC CPU topology", "paging");
 		mailboxes[cpu->id].apicId = cpu->apicId;
 	}
-	__atomic_store_n(&enabled, cpuCount > 1, __ATOMIC_RELEASE);
+	memoryAtomicStore(&enabled, cpuCount > 1, G_MEMORY_ORDER_RELEASE);
 }
 
 bool pagingHandleShootdownNmi()
 {
-	if(!__atomic_load_n(&enabled, __ATOMIC_ACQUIRE))
+	if(!memoryAtomicLoad(&enabled, G_MEMORY_ORDER_ACQUIRE))
 		return false;
 
 	// GS can be changing when an NMI arrives during a context switch.
 	auto cpu = processorGetCurrentIdFromApic();
 	auto& mailbox = mailboxes[cpu];
-	const auto request = __atomic_load_n(&mailbox.requested, __ATOMIC_ACQUIRE);
+	const auto request = memoryAtomicLoad(&mailbox.requested, G_MEMORY_ORDER_ACQUIRE);
 
-	if(request == __atomic_load_n(&mailbox.completed, __ATOMIC_RELAXED))
+	if(request == memoryAtomicLoad(&mailbox.completed, G_MEMORY_ORDER_RELAXED))
 		return false;
 
 	if(mailbox.address > G_MEM_LOWER_HALF_END || pagingGetCurrentSpace() == mailbox.space)
@@ -58,14 +79,14 @@ bool pagingHandleShootdownNmi()
 
 	// No mailbox data is accessed after acknowledgement: the next sender can
 	// reuse it while this CPU is still returning from the previous NMI
-	__atomic_store_n(&mailbox.completed, request, __ATOMIC_RELEASE);
+	memoryAtomicStore(&mailbox.completed, request, G_MEMORY_ORDER_RELEASE);
 	return true;
 }
 
 void pagingSynchronizePage(g_virtual_address address)
 {
 	pagingInvalidatePage(address);
-	if(!__atomic_load_n(&enabled, __ATOMIC_ACQUIRE))
+	if(!memoryAtomicLoad(&enabled, G_MEMORY_ORDER_ACQUIRE))
 		return;
 
 	g_interrupt_guard interrupts;
@@ -82,14 +103,14 @@ void pagingSynchronizePage(g_virtual_address address)
 		auto& mailbox = mailboxes[cpu];
 		mailbox.space = space;
 		mailbox.address = address;
-		__atomic_store_n(&mailbox.requested, request, __ATOMIC_RELEASE);
+		memoryAtomicStore(&mailbox.requested, request, G_MEMORY_ORDER_RELEASE);
 
 		lapicSendNmi(mailbox.apicId);
 	}
 
 	for(uint32_t cpu = 0; cpu < cpuCount; ++cpu)
 		if(cpu != current)
-			while(__atomic_load_n(&mailboxes[cpu].completed, __ATOMIC_ACQUIRE) != request)
+			while(memoryAtomicLoad(&mailboxes[cpu].completed, G_MEMORY_ORDER_ACQUIRE) != request)
 				asm volatile("pause");
 
 	G_SPINLOCK_RELEASE(shootdownLock);

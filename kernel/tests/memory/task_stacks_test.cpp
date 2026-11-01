@@ -33,4 +33,30 @@ TEST(TaskStacks, KeepsGuardAndEndUnmappedAndReclaimsFailedPagePublications) {
     }
     EXPECT_TRUE(frames.empty() && allocations == frees);
 }
+
+TEST(TaskStacks, CommitsAllKernelPagesAndUnwindsPartialFailures) {
+    int pool;
+    for(int failure : {0, 1, 3}) {
+        reset(); failPhysical = failure;
+        EXPECT_FALSE(taskingMemoryCreateStack(&pool, 3, 3, 9).start);
+        EXPECT_TRUE(frames.empty() && allocations == frees && !ranges);
+        reset(); failMapping = failure;
+        EXPECT_FALSE(taskingMemoryCreateStack(&pool, 3, 3, 9).start);
+        EXPECT_TRUE(frames.empty() && allocations == frees && !ranges);
+    }
+    reset();
+    auto stack = taskingMemoryCreateStack(&pool, 3, 3, 9);
+    ASSERT_NE(0U, stack.start);
+    EXPECT_EQ(8U, mappings.size());
+    EXPECT_FALSE(mappings.count(stack.start));
+    EXPECT_FALSE(mappings.count(stack.end));
+    for(auto address = stack.start + 4096; address < stack.end; address += 4096)
+        EXPECT_TRUE(mappings.count(address));
+    while(!mappings.empty()) {
+        auto item = mappings.begin(); auto physical = item->second;
+        mappings.erase(item); memoryPhysicalFree(physical);
+    }
+    addressRangePoolFree(&pool, stack.start);
+    EXPECT_TRUE(frames.empty() && allocations == frees && !ranges);
+}
 }

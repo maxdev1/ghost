@@ -19,13 +19,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/filesystem/ramdisk.hpp"
+#include "kernel/logger/logger.hpp"
 #include "kernel/memory/heap.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/paging.hpp"
-#include "kernel/memory/memory.hpp"
 #include "kernel/panic.hpp"
 #include "kernel/utils/string.hpp"
-#include "kernel/logger/logger.hpp"
 
 g_ramdisk* ramdiskMain = nullptr;
 
@@ -38,7 +37,7 @@ void ramdiskLoadFromBootloaderFile(limine_file* file)
 	ramdiskParseContents(file);
 	logInfo("%! module loaded: %i MB", "ramdisk", file->size / 1024 / 1024);
 	logDebug("%! relocated to kernel space: %h -> %h", "ramdisk", module->moduleStart,
-	         G_PAGE_ALIGN_UP(module->moduleEnd));
+			 G_PAGE_ALIGN_UP(module->moduleEnd));
 }
 
 void ramdiskParseContents(limine_file* file)
@@ -160,11 +159,7 @@ g_ramdisk_entry* ramdiskFindById(g_ramdisk_id id)
 	return foundNode;
 }
 
-g_ramdisk_entry* ramdiskFindAbsolute(const char* path)
-{
-
-	return ramdiskFindRelative(ramdiskMain->root, path);
-}
+g_ramdisk_entry* ramdiskFindAbsolute(const char* path) { return ramdiskFindRelative(ramdiskMain->root, path); }
 
 g_ramdisk_entry* ramdiskFindRelative(g_ramdisk_entry* node, const char* path)
 {
@@ -236,10 +231,7 @@ g_ramdisk_entry* ramdiskGetChildAt(g_ramdisk_id id, uint32_t index)
 	return 0;
 }
 
-g_ramdisk_entry* ramdiskGetRoot()
-{
-	return ramdiskMain->root;
-}
+g_ramdisk_entry* ramdiskGetRoot() { return ramdiskMain->root; }
 
 g_ramdisk_entry* ramdiskCreateFile(g_ramdisk_entry* parent, const char* filename)
 {
@@ -261,4 +253,68 @@ g_ramdisk_entry* ramdiskCreateFile(g_ramdisk_entry* parent, const char* filename
 	entry->notOnRdBufferLength = 0;
 
 	return entry;
+}
+
+void ramdiskLoadBootModules(limine_module_response* modules)
+{
+	if(ramdiskMain || !modules || !modules->module_count || modules->module_count > 64)
+		panic("%! invalid bootstrap modules", "boot");
+
+	ramdiskMain = new g_ramdisk{};
+	ramdiskMain->root = new g_ramdisk_entry{};
+	ramdiskMain->root->id = 0;
+	ramdiskMain->root->type = G_RAMDISK_ENTRY_TYPE_FOLDER;
+	ramdiskMain->nextUnusedId = 1;
+
+	for(uint64_t i = 0; i < modules->module_count; ++i)
+	{
+		auto file = modules->modules[i];
+		if(!file || !file->path || !file->address || file->size > UINT32_MAX || file->path[0] != '/' ||
+		   stringLength(file->path) >= G_RAMDISK_MAXIMUM_PATH_LENGTH)
+			panic("%! invalid bootstrap file", "boot");
+
+		auto parent = ramdiskMain->root;
+		auto path = file->path + 1;
+		while(*path)
+		{
+			char name[G_RAMDISK_MAXIMUM_PATH_LENGTH];
+			unsigned length = 0;
+			while(path[length] && path[length] != '/')
+			{
+				name[length] = path[length];
+				++length;
+			}
+			name[length] = 0;
+
+			if(!length || stringEquals(name, ".") || stringEquals(name, ".."))
+				panic("%! invalid bootstrap path", "boot");
+
+			auto entry = ramdiskFindChild(parent, name);
+			if(path[length])
+			{
+				if(!entry)
+				{
+					entry = ramdiskCreateFile(parent, name);
+					entry->type = G_RAMDISK_ENTRY_TYPE_FOLDER;
+				}
+				if(entry->type != G_RAMDISK_ENTRY_TYPE_FOLDER)
+					panic("%! conflicting bootstrap path", "boot");
+
+				parent = entry;
+				path += length + 1;
+			}
+			else
+			{
+				if(entry)
+					panic("%! duplicate bootstrap file", "boot");
+
+				entry = ramdiskCreateFile(parent, name);
+				entry->data = static_cast<uint8_t*>(file->address);
+				entry->dataSize = file->size;
+				entry->dataOnRamdisk = true;
+				break;
+			}
+		}
+	}
+	logDebug("%! loaded %i bootstrap files", "boot", modules->module_count);
 }

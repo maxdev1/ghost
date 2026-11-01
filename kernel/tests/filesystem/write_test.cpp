@@ -15,7 +15,8 @@ protected:
         filesystemProcessInitialize();
         filesystemProcessCreate(42);
         ASSERT_EQ(G_FS_OPEN_SUCCESSFUL,
-                  filesystemProcessCreateDescriptor(42, 1, 0, &descriptor, 7, 2));
+                  filesystemProcessCreateDescriptor(42, 1, G_FILE_FLAG_MODE_WRITE, &descriptor, 7, 2));
+        mode = 0;
         writeStatus = G_FS_WRITE_SUCCESSFUL;
         writeCount = 1;
         writeCalls = 0;
@@ -37,6 +38,15 @@ protected:
     }
 };
 
+TEST_F(FilesystemWrite, ReadOnlyDescriptorDoesNotReachTheDriver)
+{
+    descriptor->openFlags = 0;
+    int64_t count = 99;
+    EXPECT_EQ(G_FS_WRITE_NOT_SUPPORTED, filesystemWrite(&task, 7, nullptr, 8, &count));
+    EXPECT_EQ(-1, count);
+    EXPECT_EQ(0, writeCalls);
+}
+
 TEST_F(FilesystemWrite, AdvancesOffsetByPartialWriteCount)
 {
     int64_t count = -1;
@@ -48,7 +58,7 @@ TEST_F(FilesystemWrite, AdvancesOffsetByPartialWriteCount)
 
 TEST_F(FilesystemWrite, AppendsAtFileLength)
 {
-    descriptor->openFlags = G_FILE_FLAG_MODE_APPEND;
+    descriptor->openFlags = G_FILE_FLAG_MODE_WRITE | G_FILE_FLAG_MODE_APPEND;
     int64_t count = -1;
     EXPECT_EQ(G_FS_WRITE_SUCCESSFUL, filesystemWrite(&task, 7, nullptr, 8, &count));
     EXPECT_EQ(1, count);
@@ -58,7 +68,7 @@ TEST_F(FilesystemWrite, AppendsAtFileLength)
 
 TEST_F(FilesystemWrite, FailedAppendLengthLeavesOffsetAndReleasesLock)
 {
-    descriptor->openFlags = G_FILE_FLAG_MODE_APPEND;
+    descriptor->openFlags = G_FILE_FLAG_MODE_WRITE | G_FILE_FLAG_MODE_APPEND;
     lengthStatus = 1;
     int64_t count = 99;
     EXPECT_EQ(G_FS_WRITE_ERROR, filesystemWrite(&task, 7, nullptr, 8, &count));
@@ -81,7 +91,7 @@ TEST_F(FilesystemWrite, NonblockingBusyReturnsWithoutWaiting)
 
 TEST_F(FilesystemWrite, MissingWaitImplementationReturnsError)
 {
-    descriptor->openFlags = G_FILE_FLAG_MODE_BLOCKING;
+    descriptor->openFlags = G_FILE_FLAG_MODE_WRITE | G_FILE_FLAG_MODE_BLOCKING;
     delegate.waitForWrite = nullptr;
     writeStatus = G_FS_WRITE_BUSY;
     writeCount = 0;
@@ -93,7 +103,7 @@ TEST_F(FilesystemWrite, MissingWaitImplementationReturnsError)
 
 TEST_F(FilesystemWrite, RetriesWhenReadyBeforeSleepAndRechecksAppendPosition)
 {
-    descriptor->openFlags = G_FILE_FLAG_MODE_BLOCKING | G_FILE_FLAG_MODE_APPEND;
+    descriptor->openFlags = G_FILE_FLAG_MODE_WRITE | G_FILE_FLAG_MODE_BLOCKING | G_FILE_FLAG_MODE_APPEND;
     writeStatus = G_FS_WRITE_BUSY;
     writeCount = 0;
     delegate.waitForWrite = [](g_task*, g_fs_node*, uint64_t)
@@ -120,7 +130,7 @@ TEST_F(FilesystemWrite, RetriesWhenReadyBeforeSleepAndRechecksAppendPosition)
 
 TEST_F(FilesystemWrite, CancellationReleasesReferenceAndOperationLock)
 {
-    descriptor->openFlags = G_FILE_FLAG_MODE_BLOCKING;
+    descriptor->openFlags = G_FILE_FLAG_MODE_WRITE | G_FILE_FLAG_MODE_BLOCKING;
     writeStatus = G_FS_WRITE_BUSY;
     writeCount = 0;
     delegate.waitForWrite = [](g_task*, g_fs_node*, uint64_t)
@@ -131,4 +141,28 @@ TEST_F(FilesystemWrite, CancellationReleasesReferenceAndOperationLock)
     int64_t count = -1;
     EXPECT_THROW(filesystemWrite(&task, 7, nullptr, 8, &count), Cancelled);
 }
+TEST_F(FilesystemWrite, SerializesAppendAcrossSeparateDescriptors)
+{
+    mode = 3;
+    appendLength = 0;
+    appendOffsets.clear();
+    descriptor->openFlags = G_FILE_FLAG_MODE_WRITE | G_FILE_FLAG_MODE_APPEND;
+    g_file_descriptor* second;
+    ASSERT_EQ(G_FS_OPEN_SUCCESSFUL, filesystemProcessCreateDescriptor(42, 1,
+        G_FILE_FLAG_MODE_WRITE | G_FILE_FLAG_MODE_APPEND, &second, 8));
+    filesystemProcessReleaseDescriptor(second);
+    auto append = [&](int fd) {
+        for(unsigned i = 0; i < 100; ++i) {
+            int64_t written = -1;
+            EXPECT_EQ(G_FS_WRITE_SUCCESSFUL, filesystemWrite(&task, fd, nullptr, 1, &written));
+            EXPECT_EQ(1, written);
+        }
+    };
+    std::thread firstWriter(append, 7), secondWriter(append, 8);
+    firstWriter.join(); secondWriter.join();
+    ASSERT_EQ(200U, appendOffsets.size());
+    for(size_t i = 0; i < appendOffsets.size(); ++i) EXPECT_EQ(i, appendOffsets[i]);
+    EXPECT_EQ(200U, appendLength.load());
+}
+
 }

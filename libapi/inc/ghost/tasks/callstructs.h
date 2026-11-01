@@ -176,6 +176,8 @@ typedef struct
  *
  * @field securityLevel target process security level
  *
+ * @field mode launch context, or INHERIT for the parent's context
+ *
  * @field status result of spawning
  */
 typedef struct
@@ -190,7 +192,13 @@ typedef struct
 	g_pid pid;
 	g_spawn_status status;
 	g_spawn_validation_details validationDetails;
+	g_launch_mode mode;
 }__attribute__((packed)) g_syscall_spawn;
+
+typedef struct
+{
+    g_launch_mode mode;
+}__attribute__((packed)) g_syscall_get_launch_mode;
 
 /**
  * @field initialEntry the initial thread entry

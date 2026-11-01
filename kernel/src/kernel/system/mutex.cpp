@@ -84,7 +84,6 @@ void mutexAcquire(g_mutex* mutex)
 			panic("%! early acquire of task-mutex initialized at <%s>", "mutex", mutex->location);
 	}
 
-	// No interruption during acquiry, only explicit yield allowed
 	bool hadIF = interruptsAreEnabled();
 	interruptsDisable();
 
@@ -103,7 +102,12 @@ void mutexAcquire(g_mutex* mutex)
 		}
 		else
 		{
+			// Interrupts must run while a contended task mutex yields if the caller enabled
+			// them. Otherwise a lone runnable waiter can starve the timer and I/O interrupts
+			// needed by the lock owner. Acquisition still runs with interrupts disabled.
+			if(hadIF) interruptsEnable();
 			taskingYield();
+			interruptsDisable();
 		}
 
 		// Check for deadlocks

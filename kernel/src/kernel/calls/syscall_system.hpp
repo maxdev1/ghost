@@ -22,7 +22,9 @@
 #define __KERNEL_SYSCALL_SYSTEM__
 
 #include "kernel/tasking/tasking.hpp"
+#include <ghost/system/acpi.h>
 #include <ghost/system/callstructs.h>
+#include <ghost/system/power.h>
 
 void syscallLog(g_task* task, g_syscall_log* data);
 
@@ -39,5 +41,9 @@ void syscallIrqCreateRedirect(g_task* task, g_syscall_irq_create_redirect* data)
 void syscallAwaitIrq(g_task* task, g_syscall_await_irq* data);
 
 void syscallGetEfiFramebuffer(g_task* task, g_syscall_get_efi_framebuffer* data);
+
+void syscallSystemPower(g_task* task, g_syscall_system_power* data);
+
+void syscallAcpiPlatform(g_task* task, g_syscall_acpi_platform* data);
 
 #endif

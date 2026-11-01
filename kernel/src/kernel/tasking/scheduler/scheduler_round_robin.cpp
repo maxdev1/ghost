@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/tasking/scheduler/scheduler.hpp"
+#include "kernel/memory/memory.hpp"
 #include "kernel/logger/logger.hpp"
 
 #include "kernel/tasking/clock.hpp"
@@ -30,6 +31,7 @@
 void schedulerInitializeLocal()
 {
 	taskingGetLocal()->scheduling.preferredTask = G_TID_NONE;
+	taskingGetLocal()->scheduling.lastAccountingTime = 0;
 }
 
 void schedulerPrepareEntry(g_schedule_entry* entry)
@@ -80,9 +82,41 @@ g_schedule_entry* schedulerGetNextTask(g_tasking_local* local)
 	return entry;
 }
 
+/**
+ * Charges the running interval to both the thread and its process. Callers hold
+ * the processor's scheduler lock; process totals are shared across processors.
+ */
+static void schedulerAccountTime(g_tasking_local* local)
+{
+	uint64_t now = clockGetNanoseconds(local->processor);
+	auto current = local->scheduling.current;
+	if(current && now >= local->scheduling.lastAccountingTime)
+	{
+		uint64_t elapsed = now - local->scheduling.lastAccountingTime;
+		current->cpuTime += elapsed;
+		memoryAtomicFetchAdd(&current->process->cpuTime, elapsed, G_MEMORY_ORDER_RELAXED);
+	}
+	local->scheduling.lastAccountingTime = now;
+}
+
+uint64_t schedulerGetCpuTime(g_task* task)
+{
+	auto local = task->assignment;
+	if(!local)
+		return task->cpuTime;
+
+	mutexAcquire(&local->lock);
+	schedulerAccountTime(local);
+	uint64_t result = task->cpuTime;
+	mutexRelease(&local->lock);
+
+	return result;
+}
+
 void schedulerSetCurrent(g_tasking_local* local, g_task* task)
 {
 	mutexAcquire(&local->lock);
+	schedulerAccountTime(local);
 	local->scheduling.current = task;
 	mutexRelease(&local->lock);
 }
@@ -113,6 +147,7 @@ void schedulerPreferTask(g_task* task)
 void schedulerSchedule(g_tasking_local* local)
 {
 	mutexAcquire(&local->lock);
+	schedulerAccountTime(local);
 
 	if(!local->scheduling.current)
 	{
@@ -130,7 +165,7 @@ void schedulerSchedule(g_tasking_local* local)
 		bool done = false;
 
 		mutexAcquire(&task->lock);
-		if(!task->spawnPending && __atomic_load_n(&task->terminationRequested, __ATOMIC_ACQUIRE) &&
+		if(!task->spawnPending && memoryAtomicLoad(&task->terminationRequested, G_MEMORY_ORDER_ACQUIRE) &&
 		   task->state && (task->state->cs & 3) == 3)
 			task->status = G_TASK_STATUS_DEAD;
 		if(task->status == G_TASK_STATUS_RUNNING)
@@ -154,7 +189,15 @@ void schedulerSchedule(g_tasking_local* local)
 				done = true;
 			}
 		}
+
+		bool needsCleanup = task->status == G_TASK_STATUS_DEAD &&
+			memoryAtomicLoad(&task->references, G_MEMORY_ORDER_ACQUIRE) == 0;
 		mutexRelease(&task->lock);
+		if(needsCleanup)
+		{
+			local->scheduling.cleanupPending = true;
+			taskingWake(local->scheduling.cleanupTask);
+		}
 
 		if(done)
 			break;

@@ -42,7 +42,6 @@ const auto lower_heap_cpp = source("kernel/src/kernel/memory/lower_heap.cpp");
 const auto heap_cpp = source("kernel/src/kernel/memory/heap.cpp");
 const auto message_topics_cpp = source("kernel/src/kernel/ipc/message_topics.cpp");
 const auto pipes_cpp = source("kernel/src/kernel/ipc/pipes.cpp");
-const auto terminal_cpp = source("applications/terminal/src/terminal.cpp");
 const auto tasks_callstructs_h = source("libapi/inc/ghost/tasks/callstructs.h");
 const auto syscall_tasking_cpp = source("kernel/src/kernel/calls/syscall_tasking.cpp");
 const auto exceptions_cpp = source("kernel/src/kernel/system/interrupts/exceptions.cpp");
@@ -57,6 +56,7 @@ const auto paging_shootdown_cpp = source("kernel/src/kernel/memory/paging_shootd
 const auto address_range_pool_hpp = source("kernel/src/kernel/memory/address_range_pool.hpp");
 const auto address_range_pool_cpp = source("kernel/src/kernel/memory/address_range_pool.cpp");
 
+emit("memory_atomic.inc", between(source("kernel/src/kernel/memory/memory.hpp"), "#define G_MEMORY_ORDER_RELAXED", "class g_task;"));
 emit("mutex_layout.inc", (before(mutex_hpp, "/**")) + std::string("\n#endif\n"));
 emit("direct_map_offset.inc", (defines(constants_hpp, "G_MEM_HIGHER_HALF_DIRECT_MAP_OFFSET")));
 emit("physical_to_virtual.inc", (defines(constants_hpp, "G_MEM_PHYS_TO_VIRT")));
@@ -98,6 +98,11 @@ emit("user_mutex_layout.inc", (between(user_mutex_hpp, "struct g_user_mutex_entr
 emit("user_mutex_cpp.inc", user_mutex_cpp);
 emit("syscall_share_and_unmap.inc", (between(syscall_memory_cpp, "void syscallUnmap(", "void syscallMapMmioArea(")));
 emit("schedulerSchedule.inc", (function(scheduler_round_robin_cpp, "void schedulerSchedule(")));
+emit("schedulerAccounting.inc", between(scheduler_round_robin_cpp, "static void schedulerAccountTime(", "void schedulerPrefer("));
+emit("syscallKernQuery.inc", function(source("kernel/src/kernel/calls/syscall_kernquery.cpp"), "void syscallKernQuery("));
+emit("schedulerGetNextTask.inc", function(scheduler_round_robin_cpp, "g_schedule_entry* schedulerGetNextTask("));
+emit("tasking_local_layout.inc", between(tasking_hpp, "struct g_schedule_entry", "struct g_spawn_result"));
+emit("taskingCleanupTasks.inc", function(source("kernel/src/kernel/tasking/cleanup.cpp"), "static void taskingCleanupTasks("));
 emit("taskingCancelPendingSpawns.inc", (function(tasking_cpp, "static void taskingCancelPendingSpawns(")));
 emit("taskingCompleteSpawn.inc", (function(tasking_cpp, "static void taskingCompleteSpawn(")));
 emit("elfObjectValidateLoadRange.inc", (function(elf_object_cpp, "static bool _elfObjectValidateLoadRange(")));
@@ -109,6 +114,7 @@ emit("message_queues_cpp.inc", message_queues_cpp);
 emit("memorySizeToPageCount.inc", (function(memory_cpp, "bool memorySizeToPageCount(")));
 emit("syscallAllocateMemory.inc", (function(syscall_memory_cpp, "void syscallAllocateMemory(")));
 emit("taskingDirectoryCopyIdentifier.inc", (function(tasking_directory_cpp, "void taskingDirectoryCopyIdentifier(")));
+emit("taskingDirectoryRegister.inc", function(tasking_directory_cpp, "bool taskingDirectoryRegister("));
 emit("lower_heap_cpp.inc", lower_heap_cpp);
 emit("heap_host_cpp.inc", std::string("\ng_allocator heapAllocator;\ng_mutex heapLock;\nbool heapInitialized = true;\ng_size heapAmountInUse;\nbool _heapExpand() { return false; }\n")
     + (function(heap_cpp, "void* heapAllocate(")) + std::string("\n")
@@ -116,9 +122,6 @@ emit("heap_host_cpp.inc", std::string("\ng_allocator heapAllocator;\ng_mutex hea
     + (function(heap_cpp, "g_size heapGetUsedAmount(")));
 emit("messageTopicsPost.inc", (function(message_topics_cpp, "g_message_send_status messageTopicsPost(")));
 emit("pipeGetLength.inc", (function(pipes_cpp, "g_fs_length_status pipeGetLength(")));
-const auto terminalStart = find(terminal_cpp, "{", find(terminal_cpp, "int main(")) + 1;
-emit("terminal_exit_initialization.inc", slice(terminal_cpp, terminalStart, find(terminal_cpp, "terminalInitializeScreen(", terminalStart)));
-emit("terminalTerminationRoutine.inc", (function(terminal_cpp, "void terminalTerminationRoutine(")));
 emit("taskingMemoryExtendHeap.inc", (function(tasking_memory_cpp, "bool taskingMemoryExtendHeap(")));
 emit("tasking_stack.inc", (function(tasking_memory_cpp, "g_stack taskingMemoryCreateStack("))
     + (function(tasking_memory_cpp, "bool taskingMemoryHandleStackOverflow(")));
@@ -129,9 +132,12 @@ emit("taskingPrepareWait.inc", (function(tasking_cpp, "void taskingPrepareWait("
 emit("taskingWake.inc", (function(tasking_cpp, "void taskingWake(")));
 emit("taskingWaitForExit.inc", (function(tasking_cpp, "bool taskingWaitForExit(")));
 emit("create_task_callstruct.inc", callstruct(tasks_callstructs_h, "g_syscall_create_task", false));
-emit("spawn_callstruct.inc", callstruct(tasks_callstructs_h, "g_syscall_spawn", false));
+emit("launch_mode_types.inc", between(tasks_types_h, "typedef uint8_t g_launch_mode;", "typedef uint8_t g_spawn_status;"));
+emit("spawn_callstruct.inc", callstruct(tasks_callstructs_h, "g_syscall_spawn", false)
+    + callstruct(tasks_callstructs_h, "g_syscall_get_launch_mode", false));
 emit("syscallCreateTask_and_spawn.inc", (function(syscall_tasking_cpp, "void syscallCreateTask("))
-    + (function(syscall_tasking_cpp, "void syscallSpawn(")));
+    + function(syscall_tasking_cpp, "void syscallSpawn(")
+    + function(syscall_tasking_cpp, "void syscallGetLaunchMode("));
 emit("taskingCreateTask.inc", (function(tasking_cpp, "g_task* taskingCreateTask(")));
 emit("tasking_tls.inc", (function(tasking_memory_cpp, "bool taskingMemoryInitializeTls("))
     + (function(tasking_memory_cpp, "static void _taskingMemoryReleasePage("))
@@ -159,6 +165,7 @@ emit("pipeWaitForWrite.inc", (function(pipes_cpp, "bool pipeWaitForWrite(")));
 emit("filesystem_process_hpp.inc", filesystem_process_hpp);
 emit("filesystem_process_cpp.inc", (before(filesystem_process_cpp, "g_fs_clonefd_status filesystemProcessCloneDescriptor(")));
 emit("filesystem_task_io.inc", between(mutex_hpp, "class g_mutex_guard", "#endif")
+    + (function(filesystem_cpp, "static g_fs_read_status filesystemReadDescriptor("))
     + (function(filesystem_cpp, "static g_fs_write_status filesystemWriteDescriptor("))
     + (function(filesystem_cpp, "g_fs_read_status filesystemRead(g_task*"))
     + (function(filesystem_cpp, "g_fs_write_status filesystemWrite(g_task*")));
@@ -176,3 +183,61 @@ emit("address_range_free.inc", (function(address_range_pool_cpp, "bool addressRa
 // Alignment checks use actual task/API layouts, including trailing packing attributes.
 emit("task_api_types.inc", replace(replace(tasks_types_h, "__BEGIN_C", ""), "__END_C", ""));
 emit("task_layout.inc", between(task_hpp, "struct g_stack\n{", "/**\n * Task entry used"));
+
+const auto delegate_hpp = source("kernel/src/kernel/filesystem/filesystem_taskdelegate.hpp");
+const auto filesystem_hpp = source("kernel/src/kernel/filesystem/filesystem.hpp");
+emit("filesystem_delegate_layout.inc", between(filesystem_hpp, "struct g_fs_node;", "struct g_filesystem_find_result"));
+emit("filesystem_delegate_mutex.inc", between(mutex_hpp, "class g_mutex_guard", "#endif"));
+emit("filesystem_delegate_hpp.inc", delegate_hpp);
+emit("filesystem_delegate_cpp.inc", source("kernel/src/kernel/filesystem/filesystem_taskdelegate.cpp"));
+emit("filesystem_delegate_memory.inc", source("kernel/src/kernel/filesystem/filesystem_taskdelegate_memory.cpp"));
+emit("filesystem_delegate_syscalls.inc", source("kernel/src/kernel/calls/syscall_filesystem_delegate.cpp"));
+emit("filesystem_delegate_nodes.inc", between(filesystem_cpp, "g_fs_node* filesystemGetMountFolder(", "g_fs_node* filesystemCreateNode("));
+emit("filesystem_adopt_root.inc", function(filesystem_cpp, "void filesystemAddChild(")
+    + function(filesystem_cpp, "void filesystemAdoptRoot("));
+emit("filesystem_absolute_path.inc", function(filesystem_cpp, "int filesystemGetAbsolutePathLength(")
+    + function(filesystem_cpp, "int filesystemGetAbsolutePath("));
+emit("filesystem_find_existing_child.inc", function(filesystem_cpp, "bool filesystemFindExistingChild("));
+const auto boot_ramdisk_cpp = source("kernel/src/kernel/filesystem/ramdisk.cpp");
+emit("boot_modules.inc", function(boot_ramdisk_cpp, "g_ramdisk_entry* ramdiskCreateFile(")
+    + function(boot_ramdisk_cpp, "g_ramdisk_entry* ramdiskFindChild(")
+    + function(boot_ramdisk_cpp, "void ramdiskLoadBootModules("));
+
+const auto syscall_filesystem_cpp = source("kernel/src/kernel/calls/syscall_filesystem.cpp");
+emit("filesystem_delegate_io_syscalls.inc", function(syscall_filesystem_cpp, "void syscallFsRead(")
+    + function(syscall_filesystem_cpp, "void syscallFsWrite("));
+
+emit("memory_user_copy.inc", function(memory_cpp, "static bool memoryCopyUser(")
+    + function(memory_cpp, "bool memoryCopyFromUser(")
+    + function(memory_cpp, "bool memoryCopyToUser("));
+
+emit("ramdisk_entry.inc", source("kernel/src/kernel/filesystem/ramdisk_entry.hpp"));
+const auto ramdisk_delegate_cpp = source("kernel/src/kernel/filesystem/filesystem_ramdiskdelegate.cpp");
+emit("ramdisk_io.inc", function(ramdisk_delegate_cpp, "g_fs_read_status filesystemRamdiskDelegateRead(")
+    + function(ramdisk_delegate_cpp, "g_fs_write_status filesystemRamdiskDelegateWrite(")
+    + function(ramdisk_delegate_cpp, "g_fs_open_status filesystemRamdiskDelegateTruncate("));
+
+emit("filesystem_unlink_node.inc", function(source("kernel/src/kernel/filesystem/filesystem_mutation.cpp"), "void filesystemUnlinkNode("));
+
+emit("filesystem_mutation_syscalls.inc", source("kernel/src/kernel/calls/syscall_filesystem_mutation.cpp"));
+emit("filesystem_path_mutations.inc", between(source("kernel/src/kernel/filesystem/filesystem_mutation.cpp"),
+    "static g_fs_mutation_status filesystemMutationLookupStatus(", "g_fs_mutation_status filesystemMutateDescriptor("));
+
+emit("mutex_acquire.inc", replace(function(source("kernel/src/kernel/system/mutex.cpp"), "void mutexAcquire("), "asm volatile(\"pause\")", "std::this_thread::yield()"));
+
+emit("syscall_classification.inc", function(syscall_cpp, "bool syscallStartsTask(")
+    + "\n" + function(syscall_cpp, "bool syscallMutatesState("));
+emit("power_coordinator.inc", source("kernel/src/kernel/system/power/power.cpp"));
+emit("power_syscall.inc", function(source("kernel/src/kernel/calls/syscall_system.cpp"), "void syscallSystemPower("));
+emit("pci_driver.inc", source("kernel/src/kernel/system/pci_driver.cpp"));
+
+emit("power_pci_driver.inc", between(source("applications/pcidriver/src/pcidriver.cpp"), "static std::vector", "int main()"));
+emit("pci_resource_access.inc", function(source("applications/pcidriver/src/pcidriver.cpp"), "void pciDriverHandleEnableResourceAccess("));
+
+emit("acpi_driver.inc", source("kernel/src/kernel/system/acpi_driver.cpp"));
+emit("acpi_power_bridge.inc", replace(source("kernel/src/kernel/system/power/acpi_power.cpp"), "asm volatile(\"pause\")", "(void)0"));
+emit("acpi_irq_bridge.inc", between(source("kernel/src/kernel/system/acpi/platform.cpp"), "static void acpiPlatformMask(", "uint64_t acpiPlatformMap("));
+emit("acpi_platform_syscall.inc", function(source("kernel/src/kernel/calls/syscall_system.cpp"), "void syscallAcpiPlatform("));
+emit("tasking_wait_if.inc", between(tasking_hpp, "template<typename PrepareWait, typename AfterYield>", "/** Marks the task waiting, attaches"));
+
+emit("ioapic_flags.inc", defines(source("kernel/src/kernel/system/interrupts/apic/ioapic.hpp"), "IOAPIC_REDTBL"));

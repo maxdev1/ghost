@@ -25,15 +25,17 @@
 #include "../stdint.h"
 
 __BEGIN_C
+
 /**
  * Types
  */
 typedef int32_t g_fd; // a file descriptor
 typedef int32_t g_fs_virt_id; // a vfs node id
-typedef int32_t g_fs_phys_id; // a physical filesystem node identifier
+typedef uint64_t g_fs_phys_id; // opaque filesystem-provided node identifier, scoped to its delegate.
 typedef int32_t g_device; // a device id
 
 #define G_FD_NONE		((g_fd) -1)
+#define G_FS_VIRT_ID_NONE ((g_fs_virt_id) -1)
 
 /**
  * Limit constants
@@ -82,55 +84,65 @@ typedef int g_fs_node_type;
 #define G_FS_NODE_TYPE_PIPE ((g_fs_node_type) 5)
 
 /**
- * Create delegate status
+ * Delegate syscall results. Operation results are stored separately in the
+ * shared transaction payload using the corresponding filesystem status type.
  */
-typedef int32_t g_fs_register_as_delegate_status;
-#define G_FS_REGISTER_AS_DELEGATE_SUCCESSFUL ((g_fs_register_as_delegate_status) 0)
-#define G_FS_REGISTER_AS_DELEGATE_FAILED_EXISTING ((g_fs_register_as_delegate_status) 1)
-#define G_FS_REGISTER_AS_DELEGATE_FAILED_DELEGATE_CREATION ((g_fs_register_as_delegate_status) 2)
+typedef int32_t g_fs_delegate_status;
+#define G_FS_DELEGATE_SUCCESSFUL ((g_fs_delegate_status) 0)
+#define G_FS_DELEGATE_INVALID_ARGUMENT ((g_fs_delegate_status) 1)
+#define G_FS_DELEGATE_ALREADY_EXISTS ((g_fs_delegate_status) 2)
+#define G_FS_DELEGATE_NOT_FOUND ((g_fs_delegate_status) 3)
+#define G_FS_DELEGATE_NOT_OWNER ((g_fs_delegate_status) 4)
+#define G_FS_DELEGATE_NO_MEMORY ((g_fs_delegate_status) 5)
+#define G_FS_DELEGATE_BUSY ((g_fs_delegate_status) 6)
+#define G_FS_DELEGATE_STALE_TRANSACTION ((g_fs_delegate_status) 7)
+#define G_FS_DELEGATE_INVALID_RESULT ((g_fs_delegate_status) 8)
+#define G_FS_DELEGATE_UNSUPPORTED ((g_fs_delegate_status) 9)
+#define G_FS_DELEGATE_ERROR ((g_fs_delegate_status) 10)
+
+typedef int32_t g_fs_mutation_status;
+#define G_FS_MUTATION_SUCCESSFUL ((g_fs_mutation_status) 0)
+#define G_FS_MUTATION_INVALID_ARGUMENT ((g_fs_mutation_status) 1)
+#define G_FS_MUTATION_NOT_FOUND ((g_fs_mutation_status) 2)
+#define G_FS_MUTATION_ALREADY_EXISTS ((g_fs_mutation_status) 3)
+#define G_FS_MUTATION_NOT_EMPTY ((g_fs_mutation_status) 4)
+#define G_FS_MUTATION_BUSY ((g_fs_mutation_status) 5)
+#define G_FS_MUTATION_NO_SPACE ((g_fs_mutation_status) 6)
+#define G_FS_MUTATION_READ_ONLY ((g_fs_mutation_status) 7)
+#define G_FS_MUTATION_NOT_SUPPORTED ((g_fs_mutation_status) 8)
+#define G_FS_MUTATION_ERROR ((g_fs_mutation_status) 9)
 
 /**
- * Transaction IDs
+ * Filesystem transaction IDs are carried in the message payload, independently
+ * of the messaging API's narrower transaction identifiers.
  */
 typedef uint64_t g_fs_transaction_id;
-#define G_FS_TRANSACTION_NO_REPEAT_ID ((g_fs_transaction_id) -1)
+#define G_FS_TRANSACTION_NONE ((g_fs_transaction_id) 0)
 
 /**
- * Status codes for transactions
+ * Status codes for internal use during lookup
  */
-typedef int g_fs_transaction_status;
-#define G_FS_TRANSACTION_WAITING ((g_fs_transaction_status) 0) // transaction is waiting for the delegate
-#define G_FS_TRANSACTION_FINISHED ((g_fs_transaction_status) 1) // transaction is finished
-#define G_FS_TRANSACTION_REPEAT ((g_fs_transaction_status) 2) // transaction must call handler again
+typedef int g_fs_lookup_status;
+#define G_FS_LOOKUP_SUCCESSFUL ((g_fs_lookup_status) 0)
+#define G_FS_LOOKUP_NOT_FOUND ((g_fs_lookup_status) 1)
+#define G_FS_LOOKUP_BUSY ((g_fs_lookup_status) 2)
+#define G_FS_LOOKUP_ERROR ((g_fs_lookup_status) 3)
 
 /**
- * Status codes for the {g_fs_create_node} system call
+ * Operations requested from a filesystem delegate
  */
-typedef int g_fs_create_node_status;
-#define G_FS_CREATE_NODE_STATUS_CREATED ((g_fs_create_node_status) 0)
-#define G_FS_CREATE_NODE_STATUS_UPDATED ((g_fs_create_node_status) 1)
-#define G_FS_CREATE_NODE_STATUS_FAILED_NO_PARENT ((g_fs_create_node_status) 2)
-
-/**
- * Status codes for internal use during discovery
- */
-typedef int g_fs_discovery_status;
-#define G_FS_DISCOVERY_SUCCESSFUL ((g_fs_discovery_status) 0)
-#define G_FS_DISCOVERY_NOT_FOUND ((g_fs_discovery_status) 1)
-#define G_FS_DISCOVERY_BUSY ((g_fs_discovery_status) 2)
-#define G_FS_DISCOVERY_ERROR ((g_fs_discovery_status) 3)
-
-/**
- * Types of request messages that the kernel might send to a tasked fs delegate
- */
-typedef int g_fs_tasked_delegate_request_type;
-#define G_FS_TASKED_DELEGATE_REQUEST_TYPE_DISCOVER ((g_fs_tasked_delegate_request_type) 0)
-#define G_FS_TASKED_DELEGATE_REQUEST_TYPE_READ ((g_fs_tasked_delegate_request_type) 1)
-#define G_FS_TASKED_DELEGATE_REQUEST_TYPE_WRITE ((g_fs_tasked_delegate_request_type) 2)
-#define G_FS_TASKED_DELEGATE_REQUEST_TYPE_GET_LENGTH ((g_fs_tasked_delegate_request_type) 3)
-#define G_FS_TASKED_DELEGATE_REQUEST_TYPE_READ_DIRECTORY ((g_fs_tasked_delegate_request_type) 4)
-#define G_FS_TASKED_DELEGATE_REQUEST_TYPE_OPEN ((g_fs_tasked_delegate_request_type) 5)
-#define G_FS_TASKED_DELEGATE_REQUEST_TYPE_CLOSE ((g_fs_tasked_delegate_request_type) 6)
+typedef uint32_t g_fs_delegate_request_type;
+#define G_FS_DELEGATE_REQUEST_LOOKUP ((g_fs_delegate_request_type) 0)
+#define G_FS_DELEGATE_REQUEST_READ ((g_fs_delegate_request_type) 1)
+#define G_FS_DELEGATE_REQUEST_WRITE ((g_fs_delegate_request_type) 2)
+#define G_FS_DELEGATE_REQUEST_GET_LENGTH ((g_fs_delegate_request_type) 3)
+#define G_FS_DELEGATE_REQUEST_READ_DIRECTORY ((g_fs_delegate_request_type) 4)
+#define G_FS_DELEGATE_REQUEST_OPEN ((g_fs_delegate_request_type) 5)
+#define G_FS_DELEGATE_REQUEST_CLOSE ((g_fs_delegate_request_type) 6)
+#define G_FS_DELEGATE_REQUEST_CREATE ((g_fs_delegate_request_type) 7)
+#define G_FS_DELEGATE_REQUEST_RESIZE ((g_fs_delegate_request_type) 8)
+#define G_FS_DELEGATE_REQUEST_REMOVE ((g_fs_delegate_request_type) 9)
+#define G_FS_DELEGATE_REQUEST_FLUSH ((g_fs_delegate_request_type) 10)
 
 /**
  * Status codes for the {g_fs_open} system call
@@ -159,6 +171,7 @@ typedef int g_fs_write_status;
 #define G_FS_WRITE_NOT_SUPPORTED ((g_fs_write_status) 2)
 #define G_FS_WRITE_BUSY ((g_fs_write_status) 3)
 #define G_FS_WRITE_ERROR ((g_fs_write_status) 4)
+#define G_FS_WRITE_NO_SPACE ((g_fs_write_status) 5)
 
 /**
  * Status codes for the {g_fs_close} system call

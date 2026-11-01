@@ -51,7 +51,8 @@ __BEGIN_C
 #define G_SYSCALL_GET_MILLISECONDS				23
 #define G_SYSCALL_DUMP							24
 #define G_SYSCALL_GET_NANOSECONDS				25
-#define G_SYSCALL_TASK_AWAIT_BY_NAME		26
+#define G_SYSCALL_TASK_AWAIT_BY_NAME		    26
+#define G_SYSCALL_GET_LAUNCH_MODE               28
 
 // Memory
 #define G_SYSCALL_LOWER_MEMORY_ALLOCATE			40
@@ -87,13 +88,19 @@ __BEGIN_C
 #define G_SYSCALL_FS_LENGTH						88
 #define G_SYSCALL_FS_SEEK						89
 #define G_SYSCALL_FS_TELL						90
-#define G_SYSCALL_FS_REGISTER_AS_DELEGATE		91
-#define G_SYSCALL_FS_SET_TRANSACTION_STATUS		92
-#define G_SYSCALL_FS_CREATE_NODE				93
+#define G_SYSCALL_FS_DELEGATE_REGISTER          91
+#define G_SYSCALL_FS_DELEGATE_TRANSACTION_COMPLETE 92
+#define G_SYSCALL_FS_DELEGATE_NODE_CREATE       93
 #define G_SYSCALL_FS_OPEN_DIRECTORY				94
 #define G_SYSCALL_FS_READ_DIRECTORY				95
 #define G_SYSCALL_FS_CLOSE_DIRECTORY			96
-#define G_SYSCALL_FS_REAL_PATH					97
+#define G_SYSCALL_FS_CREATE_DIRECTORY           97
+#define G_SYSCALL_FS_UNLINK_DIRECTORY           98
+#define G_SYSCALL_FS_REAL_PATH					99
+#define G_SYSCALL_FS_DELEGATE_UNREGISTER        100
+#define G_SYSCALL_FS_UNLINK                     101
+#define G_SYSCALL_FS_TRUNCATE                   102
+#define G_SYSCALL_FS_SYNC                       103
 
 // System
 #define G_SYSCALL_CALL_VM86						120
@@ -104,11 +111,11 @@ __BEGIN_C
 #define G_SYSCALL_AWAIT_IRQ         			125
 #define G_SYSCALL_GET_EFI_FRAMEBUFFER			126
 #define G_SYSCALL_OPEN_LOG_PIPE					127
-
-// Kernquery
+#define G_SYSCALL_SYSTEM_POWER                  128
 #define G_SYSCALL_KERNQUERY						129
+#define G_SYSCALL_ACPI_PLATFORM                 130
 
-#define G_SYSCALL_MAX							130
+#define G_SYSCALL_MAX                           131
 
 __END_C
 

@@ -25,9 +25,12 @@
 #include "stdint.h"
 #include "filesystem/types.h"
 #include "system/types.h"
+#include "system/power.h"
 #include "memory/types.h"
+#include "system/acpi.h"
 
 __BEGIN_C
+
 // not implemented warning
 #define __G_NOT_IMPLEMENTED_WARN(name)		g_log("'" #name "' is not implemented");
 #define __G_NOT_IMPLEMENTED(name)		    __G_NOT_IMPLEMENTED_WARN(name) g_exit(0);

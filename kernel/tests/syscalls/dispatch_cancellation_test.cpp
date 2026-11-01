@@ -17,6 +17,9 @@ void handler(g_task* t, void*) { EXPECT_TRUE(irq && checks == 1); t->state = 42;
 struct g_syscall_registration { void (*handler)(g_task*, void*); bool interruptible; };
 g_syscall_registration registrations[2], *syscallRegistrations = registrations;
 
+bool powerSyscallEnter(uint32_t) { return false; }
+void powerSyscallLeave(bool) {}
+
 #include "production/syscall.inc"
 
 TEST(SyscallDispatch, ChecksTerminationWithInterruptsDisabledBeforeAndAfterHandler) {

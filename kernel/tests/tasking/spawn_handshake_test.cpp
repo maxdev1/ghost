@@ -14,9 +14,15 @@ struct g_task {
     bool spawnPending, spawnFinished, spawnReleased;
 } child, parent;
 bool parentPresent;
-int mode, waits, exits, pins, checks;
+int mode, waits, exits, pins, checks, acquisitions;
 g_task* taskingAcquireTask(int id) {
     EXPECT_EQ(42, id);
+    if(++acquisitions == 2 && mode == 3)
+    {
+        heapFree(process.spawnArgs); process.spawnArgs = nullptr;
+        child.spawnReleased = true;
+        parentPresent = false;
+    }
     if(!parentPresent) return nullptr;
     ++pins;
     return &parent;
@@ -44,12 +50,13 @@ void run(int scenario) {
     child = g_task{}; child.spawnParent = 42; child.spawnPending = true;
     child.process = &process;
     process.spawnArgs = heapAllocate(32);
-    waits = exits = pins = checks = 0;
+    waits = exits = pins = checks = acquisitions = 0;
     taskingCompleteSpawn(&child);
     EXPECT_TRUE(heapBlocks.empty() && !pins && !process.spawnArgs);
     if(mode < 2) EXPECT_TRUE(exits == 1 && child.status == 3);
-    else EXPECT_TRUE(!exits && waits == 1 && child.spawnFinished && !child.spawnPending && checks == 1);
-    EXPECT_EQ((mode == 0 ? 0 : 1), waits);
+    else EXPECT_TRUE(!exits && child.spawnFinished && !child.spawnPending && checks == 1);
+    EXPECT_EQ((mode == 0 || mode == 3 ? 0 : 1), waits);
 }
 TEST(SpawnHandshake, ReleasesOrphanedChildrenAndCompletesParentAcknowledgement) { run(0); run(1); run(2); }
+TEST(SpawnHandshake, ReleasedChildSurvivesParentExitBeforeItsNextLookup) { run(3); }
 }

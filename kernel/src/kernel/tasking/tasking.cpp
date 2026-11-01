@@ -20,6 +20,7 @@
 
 #include "kernel/tasking/tasking.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
+#include "kernel/filesystem/filesystem_taskdelegate.hpp"
 #include "kernel/ipc/message_queues.hpp"
 #include "kernel/logger/logger.hpp"
 #include "kernel/memory/constants.hpp"
@@ -29,6 +30,7 @@
 #include "kernel/panic.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/interrupts/requests.hpp"
+#include "kernel/system/power/power.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/system/system.hpp"
 #include "kernel/tasking/cleanup.hpp"
@@ -40,6 +42,7 @@
 #include "kernel/tasking/tasking_state.hpp"
 #include "kernel/tasking/user_mutex.hpp"
 #include "kernel/utils/hashmap.hpp"
+#include "kernel/utils/string.hpp"
 #include "kernel/utils/wait_queue.hpp"
 
 static g_tasking_local* taskingLocal = 0;
@@ -80,7 +83,7 @@ g_task* taskingAcquireTask(g_tid id)
 	if(entry && entry->value->status != G_TASK_STATUS_DEAD)
 	{
 		task = entry->value;
-		__atomic_add_fetch(&task->references, 1, __ATOMIC_ACQUIRE);
+		memoryAtomicAddFetch(&task->references, 1, G_MEMORY_ORDER_ACQUIRE);
 	}
 	mutexRelease(&taskGlobalMap->lock);
 	return task;
@@ -89,13 +92,13 @@ g_task* taskingAcquireTask(g_tid id)
 void taskingReleaseTask(g_task* task)
 {
 	if(task)
-		__atomic_sub_fetch(&task->references, 1, __ATOMIC_RELEASE);
+		memoryAtomicSubFetch(&task->references, 1, G_MEMORY_ORDER_RELEASE);
 }
 
 bool taskingTryRetireTask(g_task* task)
 {
 	mutexAcquire(&taskGlobalMap->lock);
-	bool retire = task->status == G_TASK_STATUS_DEAD && __atomic_load_n(&task->references, __ATOMIC_ACQUIRE) == 0;
+	bool retire = task->status == G_TASK_STATUS_DEAD && memoryAtomicLoad(&task->references, G_MEMORY_ORDER_ACQUIRE) == 0;
 	if(retire)
 		hashmapRemove(taskGlobalMap, task->id);
 	mutexRelease(&taskGlobalMap->lock);
@@ -104,7 +107,7 @@ bool taskingTryRetireTask(g_task* task)
 
 void taskingRequestTermination(g_task* task)
 {
-	__atomic_store_n(&task->terminationRequested, true, __ATOMIC_RELEASE);
+	memoryAtomicStore(&task->terminationRequested, true, G_MEMORY_ORDER_RELEASE);
 	taskingWake(task);
 }
 
@@ -120,7 +123,7 @@ void taskingTerminateProcess(g_process* process)
 void taskingHandleTerminationRequest()
 {
 	auto task = taskingGetCurrentTask();
-	if(task && !task->spawnPending && __atomic_load_n(&task->terminationRequested, __ATOMIC_ACQUIRE))
+	if(task && !task->spawnPending && memoryAtomicLoad(&task->terminationRequested, G_MEMORY_ORDER_ACQUIRE))
 		taskingExit();
 }
 
@@ -155,6 +158,7 @@ void taskingIdleThread()
 void taskingExit()
 {
 	auto task = taskingGetCurrentTask();
+	powerTaskStopped(task);
 	if(task == task->process->main)
 		taskingTerminateProcess(task->process);
 	mutexAcquire(&task->lock);
@@ -174,8 +178,8 @@ void taskingInitializeBsp()
 	taskingLocal = (g_tasking_local*) heapAllocate(sizeof(g_tasking_local) * numProcs);
 	taskGlobalMap = hashmapCreateNumeric<g_tid, g_task*>(128);
 
-	taskingInitializeLocal();
 	taskingDirectoryInitialize();
+	taskingInitializeLocal();
 }
 
 void taskingInitializeAp() { taskingInitializeLocal(); }
@@ -190,6 +194,8 @@ void taskingInitializeLocal()
 	local->scheduling.current = nullptr;
 	local->scheduling.list = nullptr;
 	local->scheduling.idleTask = nullptr;
+	local->scheduling.cleanupTask = nullptr;
+	local->scheduling.cleanupPending = false;
 	local->scheduling.preferredTask = G_TID_NONE;
 
 	mutexInitializeGlobal(&local->lock, __func__);
@@ -208,6 +214,14 @@ void taskingCreateEssentialTasks()
 	if(!local->scheduling.idleTask)
 		panic("%! failed to create idle task", "tasking");
 	local->scheduling.idleTask->type = G_TASK_TYPE_VITAL;
+	local->scheduling.idleTask->assignment = local;
+
+	char idleName[32];
+	stringCopy(idleName, G_TASK_NAME_PREFIX_IDLE);
+	char* idleNameEnd = stringWriteNumber(&idleName[stringLength(G_TASK_NAME_PREFIX_IDLE)], local->processor);
+	*idleNameEnd = 0;
+	taskingDirectoryRegister(idleName, local->scheduling.idleTask->id, G_SECURITY_LEVEL_KERNEL);
+
 	logInfo("%! core: %i idle task: %i", "tasking", processorGetCurrentId(), idle->main->id);
 
 	// Before switching to the very first task, we must initialize this so that there is
@@ -219,7 +233,15 @@ void taskingCreateEssentialTasks()
 	if(!cleanupTask)
 		panic("%! failed to create cleanup task", "tasking");
 	cleanupTask->type = G_TASK_TYPE_VITAL;
-	taskingAssign(taskingGetLocal(), cleanupTask);
+	local->scheduling.cleanupTask = cleanupTask;
+	taskingAssign(local, cleanupTask);
+
+	char cleanupName[32];
+	stringCopy(cleanupName, G_TASK_NAME_PREFIX_CLEANUP);
+	char* cleanupNameEnd = stringWriteNumber(&cleanupName[stringLength(G_TASK_NAME_PREFIX_CLEANUP)], local->processor);
+	*cleanupNameEnd = 0;
+	taskingDirectoryRegister(cleanupName, local->scheduling.cleanupTask->id, G_SECURITY_LEVEL_KERNEL);
+
 	logInfo("%! core: %i cleanup task: %i", "tasking", processorGetCurrentId(), cleanup->main->id);
 }
 
@@ -494,9 +516,13 @@ g_task* taskingCreateTaskVm86(g_process* process, uint32_t intr, g_vm86_register
 	panic("no vm86");
 }
 
+/**
+ * Cancels children whose parent disappeared before releasing their spawn.
+ * Released children can still be completing the handshake on another CPU.
+ * Visit IDs in order without holding the global map lock while waking a task.
+ */
 static void taskingCancelPendingSpawns(g_tid parent)
 {
-	// Visit IDs in order without holding the global map lock while waking a task.
 	g_tid after = 0;
 	while(true)
 	{
@@ -505,8 +531,8 @@ static void taskingCancelPendingSpawns(g_tid parent)
 		while(hashmapIteratorHasNext(&iter))
 		{
 			auto child = hashmapIteratorNext(&iter)->value;
-			if(child->spawnPending && child->spawnParent == parent && child->id > after &&
-			   (next == G_TID_NONE || child->id < next))
+			if(child->spawnPending && !memoryAtomicLoad(&child->spawnReleased, G_MEMORY_ORDER_ACQUIRE) &&
+			   child->spawnParent == parent && child->id > after && (next == G_TID_NONE || child->id < next))
 				next = child->id;
 		}
 		hashmapIteratorEnd(&iter);
@@ -534,6 +560,7 @@ void taskingDestroyTask(g_task* task)
 		taskingTerminateProcess(process);
 
 	// Unlink all external references before releasing the task's memory.
+	filesystemDelegateTaskRemoved(task);
 	taskingCancelPendingSpawns(task->id);
 	clockUnwaitForTime(task);
 	requestsTaskRemoved(task);
@@ -634,16 +661,16 @@ g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel)
 	// A wake-up can be unrelated to spawning, so wait for the published completion flag.
 	child->spawnParent = parent->id;
 	child->spawnPending = true;
-	__atomic_store_n(&child->spawnFinished, false, __ATOMIC_RELAXED);
-	__atomic_store_n(&child->spawnReleased, false, __ATOMIC_RELAXED);
+	memoryAtomicStore(&child->spawnFinished, false, G_MEMORY_ORDER_RELAXED);
+	memoryAtomicStore(&child->spawnReleased, false, G_MEMORY_ORDER_RELAXED);
 	taskingAssignBalanced(child);
-	while(!__atomic_load_n(&child->spawnFinished, __ATOMIC_ACQUIRE))
+	while(!memoryAtomicLoad(&child->spawnFinished, G_MEMORY_ORDER_ACQUIRE))
 	{
 		taskingWait(parent, __func__,
 					[parent, child]()
 					{
 						// Recheck after entering WAITING so completion cannot race with going to sleep.
-						if(__atomic_load_n(&child->spawnFinished, __ATOMIC_ACQUIRE))
+						if(memoryAtomicLoad(&child->spawnFinished, G_MEMORY_ORDER_ACQUIRE))
 							taskingWake(parent);
 					});
 	}
@@ -670,7 +697,7 @@ void taskingReleaseSpawn(g_process* process)
 {
 	auto task = process->main;
 	mutexAcquire(&task->lock);
-	__atomic_store_n(&task->spawnReleased, true, __ATOMIC_RELEASE);
+	memoryAtomicStore(&task->spawnReleased, true, G_MEMORY_ORDER_RELEASE);
 	if(task->status == G_TASK_STATUS_WAITING)
 		task->status = G_TASK_STATUS_RUNNING;
 	// A failed child may exit and be cleaned up as soon as this lock is released.
@@ -690,20 +717,22 @@ static void taskingCompleteSpawn(g_task* task)
 		return;
 	}
 	mutexAcquire(&parent->lock);
-	__atomic_store_n(&task->spawnFinished, true, __ATOMIC_RELEASE);
+	memoryAtomicStore(&task->spawnFinished, true, G_MEMORY_ORDER_RELEASE);
 	if(parent->status == G_TASK_STATUS_WAITING)
 		parent->status = G_TASK_STATUS_RUNNING;
 	// Publication lets the parent finish spawning and even exit on another core.
 	mutexRelease(&parent->lock);
 	taskingReleaseTask(parent);
 
-	while(!__atomic_load_n(&task->spawnReleased, __ATOMIC_ACQUIRE))
+	while(!memoryAtomicLoad(&task->spawnReleased, G_MEMORY_ORDER_ACQUIRE))
 	{
 		// The parent may have died after completion was published but before release.
 		{
 			auto parentCheck = taskingAcquireTask(parentId);
 			if(!parentCheck)
 			{
+				if(memoryAtomicLoad(&task->spawnReleased, G_MEMORY_ORDER_ACQUIRE))
+					break;
 				if(task->process->spawnArgs)
 					heapFree(task->process->spawnArgs);
 				task->process->spawnArgs = nullptr;
@@ -715,7 +744,7 @@ static void taskingCompleteSpawn(g_task* task)
 		taskingWait(task, __func__,
 					[task]()
 					{
-						if(__atomic_load_n(&task->spawnReleased, __ATOMIC_ACQUIRE))
+						if(memoryAtomicLoad(&task->spawnReleased, G_MEMORY_ORDER_ACQUIRE))
 							taskingWake(task);
 					});
 	}
