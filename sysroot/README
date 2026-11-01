@@ -1,13 +1,13 @@
-Welcome to the Ghost OS!
+Welcome to Ghost!
 
-This is the terminal. It allows you to navigate through the filesystem and
-execute programs and commands.
+Thanks for trying it out. A few things to try:
+- Browse folders with Navigator and open text files in Editor.
+- Write a note in Editor and save it somewhere.
+- Try Calculator or open Terminal to explore the shell.
 
-The '/applications' folder contains some programs to try out.
+Open apps from the Start menu and switch windows using the taskbar.
+The Start menu also has shortcuts to Computer and Home, plus options
+to shut down or restart.
 
-Tip: The ramdisk filesystem is writable. To write stuff into a file,
-pipe it into the 'write' program.
-'echo Hello! | write test.txt'
-
-Have fun! :-)
+Have fun exploring!
 Max

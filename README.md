@@ -1,4 +1,4 @@
-# ABOUT GHOST
+# Ghost OS
 
 **Ghost** is an x86-64 operating system written in C, C++ and assembly, with a
 microkernel, userspace drivers and the ƒenster desktop.
@@ -38,4 +38,13 @@ empty AHCI disk for persistent FAT-backed boot.
   terminal, shell, editor, file browser and [Doom](applications/doom/README.md).
 - Ported Cairo, FreeType, Pixman, libpng, zlib and musl mathematical routines.
 
-Contact: Max Schlüssel, lokoxe@gmail.com.
+![Screenshot of 0.12.0](https://ghostkernel.org/files/ghost-0.22.2.png)
+
+## Contact
+If you want to get in contact, contribute to the project or have any questions,
+feel free to contact me at:
+
+	lokoxe@gmail.com
+
+-Max Schlüssel
+

@@ -22,6 +22,7 @@
 #define __GHOST_LIBC_ERRNO__
 
 #include "ghost/common.h"
+#include "ghost/filesystem/types.h"
 
 __BEGIN_C
 
