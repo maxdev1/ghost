@@ -38,7 +38,7 @@ empty AHCI disk for persistent FAT-backed boot.
   terminal, shell, editor, file browser and [Doom](applications/doom/README.md).
 - Ported Cairo, FreeType, Pixman, libpng, zlib and musl mathematical routines.
 
-![Screenshot of 0.12.0](https://ghostkernel.org/files/ghost-0.22.2.png)
+![Screenshot of 1.5.0](https://ghostkernel.org/files/ghost-1.5.0.png)
 
 ## Contact
 If you want to get in contact, contribute to the project or have any questions,
