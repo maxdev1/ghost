@@ -32,13 +32,14 @@ function processBitmap(filePath) {
     //
     // Write the C file
     //
-    let code = `${topComment}
-#include <stdint.h>
+    let code = `#include <stdint.h>
 
 uint8_t bitmapFontCharWidth = ${charWidth};
 uint8_t bitmapFontCharHeight = ${charHeight};
-uint8_t bitmapFontCharCount = ${charCount};
+uint16_t bitmapFontCharCount = ${charCount};
 uint8_t bitmapFontAsciiOffset = ${asciiOffset};
+
+${topComment}
 
 uint8_t bitmapFontCharSet[${charCount}][${charWidth * charHeight}] = {
 `
@@ -68,26 +69,28 @@ uint8_t bitmapFontCharSet[${charCount}][${charWidth * charHeight}] = {
     }
     code += "};"
 
-    fs.writeFileSync("../../kernel/src/shared/video/bitmap_font_data.cpp", code);
+    fs.writeFileSync(`${__dirname}/../../kernel/src/kernel/video/bitmap_font_data.cpp`, code);
 
 
     //
     // Write the header
     //
-    const header = `${topComment}
+    const header = `
 #ifndef __BITMAP_FONT_DATA__
 #define __BITMAP_FONT_DATA__
 #include <stdint.h>
+
+${topComment}
 
 extern uint8_t bitmapFontCharSet[${charCount}][${charWidth * charHeight}];
 #endif
     `;
 
-    fs.writeFileSync("../../kernel/inc/shared/video/bitmap_font_data.hpp", header);
+    fs.writeFileSync(`${__dirname}/../../kernel/src/kernel/video/bitmap_font_data.hpp`, header);
 }
 
 function isBlack(pixel) {
     return pixel[0] === 0 && pixel[1] === 0 && pixel[2] === 0;
 }
 
-processBitmap('font.bmp');
+processBitmap(process.argv[2] || `${__dirname}/font.bmp`);

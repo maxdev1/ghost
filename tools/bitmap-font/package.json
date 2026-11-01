@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "convert": "node convert.js"
+    "convert": "node convert.js",
+    "editor": "java BitmapFontEditor.java"
   },
   "author": "",
   "license": "ISC",
