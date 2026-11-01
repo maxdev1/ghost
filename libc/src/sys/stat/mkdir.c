@@ -18,15 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "sys/stat.h"
-#include "stdint.h"
-#include <ghost/filesystem.h>
+#include <errno.h>
+#include <sys/stat.h>
 
-/**
- *
- */
-int mkdir(const char *path, mode_t mode) {
-
-	klog("warning: mkdir(%s, %i) is not implemented", path, mode);
-	return -1;
+int mkdir(const char* path, mode_t mode)
+{
+	(void) mode;
+	return __g_fs_mutation_result_set_errno(g_create_directory(path));
 }

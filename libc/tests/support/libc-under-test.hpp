@@ -15,6 +15,7 @@ char* ghost_strchr(const char* str, int value);
 char* ghost_strrchr(const char* str, int value);
 char* ghost_strncat(char* dest, const char* src, size_t max);
 char* ghost_strcpy(char* dest, const char* src);
+char* ghost_strerror(int errnum);
 size_t ghost_strlen(const char* str);
 int ghost_vcbprintf(void* param,
                     ssize_t (*callback)(void* param, const char* buf, size_t maximum),
@@ -64,6 +65,11 @@ inline char* strncat(char* dest, const char* src, size_t max)
 inline char* strcpy(char* dest, const char* src)
 {
 	return ::ghost_strcpy(dest, src);
+}
+
+inline char* strerror(int errnum)
+{
+	return ::ghost_strerror(errnum);
 }
 
 inline size_t strlen(const char* str)

@@ -18,23 +18,16 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "stdio.h"
-#include "stdio_internal.h"
-#include "errno.h"
+#include <errno.h>
+#include <stdio.h>
+#include <unistd.h>
 
-/**
- *
- */
-int remove(const char *filename) {
-
-	klog("warning: remove(\"%s\") is not implemented", filename);
-	return 0;
+int remove(const char* path)
+{
+	g_fs_mutation_status status = g_unlink(path);
+	if(status == G_FS_MUTATION_INVALID_ARGUMENT)
+		status = g_unlink_directory(path);
+	return __g_fs_mutation_result_set_errno(status);
 }
 
-/**
- *
- */
-int unlink(const char* filename) {
-
-	return remove(filename);
-}
+int unlink(const char* path) { return __g_fs_mutation_result_set_errno(g_unlink(path)); }

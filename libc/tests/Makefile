@@ -7,19 +7,21 @@ TEST_SOURCES := $(sort $(wildcard */*_test.cpp))
 TEST_BINARIES := $(addprefix $(BUILD_DIR)/,$(TEST_SOURCES:.cpp=))
 LIBC_SOURCES := errno/errno.c ctype/tolower.c ctype/toupper.c stdio/vcbprintf.c \
     sys/___tls_get_addr.c stdlib/qsort.c string/memset.c string/strchr.c \
-    string/strcpy.c string/strlen.c string/strncat.c string/strrchr.c
+    stdio/remove.c stdio/fgets.c sys/stat/mkdir.c sys/stat/stat.c unistd/rmdir.c unistd/fsync.c \
+    string/strcpy.c string/strerror.c string/strlen.c string/strncat.c string/strrchr.c
 LIBC_OBJECTS := $(addprefix $(BUILD_DIR)/libc/,$(LIBC_SOURCES:.c=.o))
-RENAMED_SYMBOLS := errno memset qsort strchr strcpy strlen strncat strrchr \
-    tolower toupper vcbprintf
+RENAMED_SYMBOLS := errno stat memset qsort strchr strcpy strerror strlen strncat strrchr \
+    tolower toupper vcbprintf remove unlink mkdir rmdir ftruncate fsync fgets fgetc ferror
 HOST_FLAGS := -O2 -g -pthread -Wall -Wextra
 SANITIZER_FLAGS :=
 ifeq ($(SANITIZE),1)
 SANITIZER_FLAGS += -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer
 endif
 LIBC_FLAGS := $(HOST_FLAGS) $(SANITIZER_FLAGS) -std=c11 -fno-builtin \
-    -I../inc -I$(ROOT)/libapi/inc $(foreach symbol,$(RENAMED_SYMBOLS),-D$(symbol)=ghost_$(symbol)) \
+    -I../inc -I$(ROOT)/libapi/inc -include support/errno-under-test.h \
+    $(foreach symbol,$(RENAMED_SYMBOLS),-D$(symbol)=ghost_$(symbol)) \
     -D___tls_get_addr=ghost___tls_get_addr -D__tls_get_addr=ghost__tls_get_addr
-TEST_FLAGS := $(HOST_FLAGS) $(SANITIZER_FLAGS) -std=c++17 -Isupport -I$(GTEST_ROOT)/include
+TEST_FLAGS := $(HOST_FLAGS) $(SANITIZER_FLAGS) -std=c++17 -I$(ROOT)/libapi/inc -Isupport -I$(GTEST_ROOT)/include
 GTEST_OBJECTS := $(BUILD_DIR)/gtest-all.o $(BUILD_DIR)/gtest_main.o
 
 .PHONY: all clean
@@ -45,9 +47,11 @@ $(LIBC_OBJECTS): $(BUILD_DIR)/libc/%.o: ../src/%.c Makefile
 # alone supplies g_task_get_tls, so its object must stay out of other binaries.
 $(BUILD_DIR)/ctype/ctype_test: $(addprefix $(BUILD_DIR)/libc/ctype/,tolower.o toupper.o)
 $(BUILD_DIR)/stdio/vcbprintf_test: $(BUILD_DIR)/libc/stdio/vcbprintf.o $(BUILD_DIR)/libc/errno/errno.o $(BUILD_DIR)/libc/string/strlen.o
+$(BUILD_DIR)/stdio/fgets_test: $(BUILD_DIR)/libc/stdio/fgets.o
 $(BUILD_DIR)/stdlib/qsort_test: $(BUILD_DIR)/libc/stdlib/qsort.o
 $(BUILD_DIR)/string/memset_test: $(BUILD_DIR)/libc/string/memset.o
 $(BUILD_DIR)/string/strchr_test: $(addprefix $(BUILD_DIR)/libc/string/,strchr.o strrchr.o strlen.o)
+$(BUILD_DIR)/string/strerror_test: $(BUILD_DIR)/libc/string/strerror.o $(BUILD_DIR)/libc/errno/errno.o
 $(BUILD_DIR)/string/strncat_test: $(addprefix $(BUILD_DIR)/libc/string/,strncat.o strcpy.o strlen.o)
 $(BUILD_DIR)/sys/tls_test: $(BUILD_DIR)/libc/sys/___tls_get_addr.o
 
@@ -59,3 +63,7 @@ clean:
 	rm -rf "$(BUILD_DIR)"
 
 -include $(GTEST_OBJECTS:.o=.d) $(LIBC_OBJECTS:.o=.d) $(addsuffix .d,$(TEST_BINARIES))
+
+$(BUILD_DIR)/sys/filesystem_mutation_test: $(addprefix $(BUILD_DIR)/libc/,stdio/remove.o sys/stat/mkdir.o unistd/rmdir.o unistd/fsync.o errno/errno.o)
+
+$(BUILD_DIR)/sys/stat_test: $(addprefix $(BUILD_DIR)/libc/,sys/stat/stat.o errno/errno.o)

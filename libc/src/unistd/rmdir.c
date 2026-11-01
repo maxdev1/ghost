@@ -18,13 +18,7 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "unistd.h"
-#include "errno.h"
+#include <errno.h>
+#include <unistd.h>
 
-/**
- *
- */
-int rmdir(const char* path) {
-	klog("warning: rmdir(%s) is not implemented", path);
-	return -1;
-}
+int rmdir(const char* path) { return __g_fs_mutation_result_set_errno(g_unlink_directory(path)); }

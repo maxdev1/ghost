@@ -84,7 +84,11 @@ size_t strlen(const char* str);
 
 char* strdup(const char *s);
 
-char* strerror(int errno);
+/**
+ * Returns a static error message for errnum, or "Unknown error" if unrecognized.
+ * The returned string must not be modified or freed. Leaves errno unchanged.
+ */
+char* strerror(int errnum);
 
 __END_C
 

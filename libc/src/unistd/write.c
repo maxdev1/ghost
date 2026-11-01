@@ -35,6 +35,9 @@ ssize_t write(int fd, const void* buf, size_t count) {
 	} else if (stat == G_FS_WRITE_INVALID_FD) {
 		errno = EBADF;
 
+	} else if (stat == G_FS_WRITE_NO_SPACE) {
+		errno = ENOSPC;
+
 	} else if (stat == G_FS_WRITE_BUSY) {
 		errno = EIO;
 

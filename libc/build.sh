@@ -5,10 +5,11 @@ if [ -f "$ROOT/variables.sh" ]; then
 fi
 . "$ROOT/ghost.sh"
 
-
-TARGET=$@
-
-with TARGET					"all"
+ARGS=("$@")
+if [ ${#ARGS[@]} -eq 0 ]; then
+	ARGS=("all")
+fi
+TARGET="${ARGS[*]}"
 with SRC					"src"
 with OBJ					"obj"
 with INC					"inc"
@@ -174,9 +175,9 @@ target_install() {
 	$CROSS_AR -r $SYSROOT_SYSTEM_LIB/libm.a
 }
 
-
 # execute targets
-for var in $TARGET; do
+for ((i = 0; i < ${#ARGS[@]}; i++)); do
+	var="${ARGS[$i]}"
 	if [[ $var == "install-headers" ]]; then
 		target_install_headers
 		

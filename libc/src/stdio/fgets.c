@@ -19,25 +19,31 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "stdio.h"
-#include "stdio_internal.h"
-#include "string.h"
-#include "errno.h"
 
 /**
- *
+ * Reads at most n - 1 bytes, including the first newline, and terminates the
+ * result. EOF before any input and read errors return a null pointer.
  */
-char* fgets(char* s, int n, FILE* stream) {
-
+char* fgets(char* s, int n, FILE* stream)
+{
+	if(n <= 0)
+		return NULL;
 	char* p = s;
-	--n;
-	int c;
-	while (n && (c = fgetc(stream)) != EOF) {
+	while(n > 1)
+	{
+		int c = fgetc(stream);
+		if(c == EOF)
+		{
+			if(p == s || ferror(stream))
+				return NULL;
+			break;
+		}
 		*p++ = c;
 		--n;
+		if(c == '\n')
+			break;
 	}
 	*p = 0;
-
-	klog("fgets -> \"%s\"", s);
 	return s;
 }
 
