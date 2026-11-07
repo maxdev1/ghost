@@ -29,6 +29,14 @@
 #include <string.h>
 #include <algorithm>
 #include <list>
+#include <stdexcept>
+#include <cstdint>
+#include <cerrno>
+#include <memory>
+#include <vector>
+
+static const uint32_t RAMDISK_PATH_MAX = 4096;
+static const uint32_t RAMDISK_FILENAME_MAX = 512;
 
 /**
  *
@@ -69,7 +77,15 @@ int main(int argc, char** argv)
 			}
 		}
 
-		ramdisk.create(argv[1], argv[2]);
+		try
+		{
+			ramdisk.create(argv[1], argv[2]);
+		}
+		catch(const std::exception& error)
+		{
+			std::cerr << "error: " << error.what() << std::endl;
+			return 1;
+		}
 		return 0;
 	} else
 	{
@@ -81,15 +97,14 @@ int main(int argc, char** argv)
 /**
  *
  */
-std::string trim(std::string& str)
+static std::string ramdiskTrim(const std::string& text)
 {
-	if(str.length() > 0)
-	{
-		size_t first = str.find_first_not_of(" \r\n\t");
-		size_t last = str.find_last_not_of(" \r\n\t");
-		return str.substr(first, (last - first + 1));
-	}
-	return str;
+	auto first = text.find_first_not_of(" \r\n\t");
+	if(first == std::string::npos)
+		return "";
+
+	auto last = text.find_last_not_of(" \r\n\t");
+	return text.substr(first, last - first + 1);
 }
 
 /**
@@ -105,44 +120,49 @@ void ghost_ramdisk::create(const char* sourcePath, const char* targetPath)
 		std::string line;
 		while(std::getline(rdignore, line))
 		{
-			if(line.length() > 0)
-			{
-				ignores.push_back(trim(line));
-			}
+			line = ramdiskTrim(line);
+			if(!line.empty())
+				ignores.push_back(line);
 		}
 	}
 
-	try
-	{
-		out.open(targetPath, std::ios::out | std::ios::binary);
+	out.exceptions(std::ios::badbit | std::ios::failbit);
+	out.open(targetPath, std::ios::out | std::ios::binary);
 
-		if(out.good())
-		{
-			std::cout << "status: packing folder \"" << sourcePath << "\" to ramdisk file \"" << targetPath << "\":" << std::endl;
-			int64_t pos = out.tellp();
-			writeRecursive(sourcePath, sourcePath, "", 0, 0, false);
-			int64_t written = out.tellp() - pos;
-			std::cout << "status: ramdisk successfully created, wrote " << written << " bytes" << std::endl;
-		} else
-		{
-			std::cerr << "error: could not write to file '" << targetPath << "'" << std::endl;
-		}
+	std::cout << "status: packing folder \"" << sourcePath << "\" to ramdisk file \"" << targetPath << "\":" << std::endl;
+	int64_t pos = out.tellp();
+	writeRecursive(sourcePath, sourcePath, "", 0, 0, false);
+	int64_t written = out.tellp() - pos;
+	out.close();
+	std::cout << "status: ramdisk successfully created, wrote " << written << " bytes" << std::endl;
+}
 
-	} catch(std::exception& e)
-	{
-		std::cerr << "error: an error occured while creating the ramdisk" << std::endl;
-	}
+static bool ramdiskIsLinkName(const char* name)
+{
+	auto length = strlen(name);
+	if(length < 5)
+		return false;
 
-	if(out.is_open())
-	{
-		out.close();
-	}
+	auto suffix = name + length - 5;
+	return suffix[0] == '.' &&
+	       (suffix[1] == 'l' || suffix[1] == 'L') &&
+	       (suffix[2] == 'i' || suffix[2] == 'I') &&
+	       (suffix[3] == 'n' || suffix[3] == 'N') &&
+	       (suffix[4] == 'k' || suffix[4] == 'K');
+}
+
+static void ramdiskWriteInteger(std::ostream& output, uint32_t value)
+{
+	char bytes[4];
+	for(unsigned i = 0; i < sizeof(bytes); ++i)
+		bytes[i] = static_cast<char>(value >> (8 * i));
+	output.write(bytes, sizeof(bytes));
 }
 
 /**
  *
  */
-void ghost_ramdisk::writeRecursive(const char* basePath, const char* path, const char* name, uint32_t contentLength, uint32_t parentId, bool isFile)
+void ghost_ramdisk::writeRecursive(const char* basePath, const char* path, const char* name, uint64_t contentLength, uint32_t parentId, bool isFile)
 {
 
 	// check whether to skip the file
@@ -184,8 +204,32 @@ void ghost_ramdisk::writeRecursive(const char* basePath, const char* path, const
 		}
 	}
 
-	uint32_t bufferSize = 0x10000;
-	char* buffer = new char[bufferSize];
+	std::string linkBytes;
+	struct stat metadata;
+	if(lstat(path, &metadata) == 0 && S_ISLNK(metadata.st_mode))
+	{
+		if(!ramdiskIsLinkName(name))
+			throw std::runtime_error("native symbolic links must have a .link suffix");
+		char target[RAMDISK_PATH_MAX];
+		auto count = readlink(path, target, sizeof(target));
+		if(count <= 0 || count >= RAMDISK_PATH_MAX)
+			throw std::runtime_error("invalid native link target");
+
+		for(ssize_t i = 0; i < count; ++i)
+		{
+			auto value = (uint8_t) target[i];
+			if(value < 32 || value == 127)
+				throw std::runtime_error("invalid native link target");
+		}
+
+		linkBytes = "target=" + std::string(target, count) + "\n";
+		contentLength = linkBytes.size();
+		isFile = true;
+	}
+
+	if(contentLength > INT32_MAX || strlen(name) >= RAMDISK_FILENAME_MAX)
+		throw std::runtime_error(std::string("unsupported ramdisk entry size or name: ") + path);
+
 	uint32_t entryId = idCounter++;
 
 	if(verbose)
@@ -195,112 +239,89 @@ void ghost_ramdisk::writeRecursive(const char* basePath, const char* path, const
 		std::cout << msg.str() << std::endl;
 	}
 
-	// Root must not be written
 	if(entryId > 0)
 	{
-		// file or folder
-		buffer[0] = isFile ? 1 : 0;
-		out.write(buffer, 1);
-
-		// id
-		buffer[0] = ((entryId >> 0) & 0xFF);
-		buffer[1] = ((entryId >> 8) & 0xFF);
-		buffer[2] = ((entryId >> 16) & 0xFF);
-		buffer[3] = ((entryId >> 24) & 0xFF);
-		out.write(buffer, 4);
-
-		// parent id
-		buffer[0] = ((parentId >> 0) & 0xFF);
-		buffer[1] = ((parentId >> 8) & 0xFF);
-		buffer[2] = ((parentId >> 16) & 0xFF);
-		buffer[3] = ((parentId >> 24) & 0xFF);
-		out.write(buffer, 4);
-
-		// name length
-		int32_t namelen = strlen(name);
-		buffer[0] = ((namelen >> 0) & 0xFF);
-		buffer[1] = ((namelen >> 8) & 0xFF);
-		buffer[2] = ((namelen >> 16) & 0xFF);
-		buffer[3] = ((namelen >> 24) & 0xFF);
-		out.write(buffer, 4);
-
-		// name
-		memcpy(buffer, name, namelen);
-		out.write(buffer, namelen);
+		out.put(isFile ? 1 : 0);
+		ramdiskWriteInteger(out, entryId);
+		ramdiskWriteInteger(out, parentId);
+		ramdiskWriteInteger(out, strlen(name));
+		out.write(name, strlen(name));
 	}
 
 	if(isFile)
 	{
-		// file length
-		buffer[0] = ((contentLength >> 0) & 0xFF);
-		buffer[1] = ((contentLength >> 8) & 0xFF);
-		buffer[2] = ((contentLength >> 16) & 0xFF);
-		buffer[3] = ((contentLength >> 24) & 0xFF);
-		out.write(buffer, 4);
+		ramdiskWriteInteger(out, contentLength);
 
-		// file content
-		std::ifstream fileInput;
-		fileInput.open(path, std::ios::in | std::ios::binary);
-
-		int32_t length;
-		while(fileInput.good())
+		if(!linkBytes.empty())
 		{
-			fileInput.read(buffer, bufferSize);
-			length = fileInput.gcount();
-			out.write(buffer, length);
+			out.write(linkBytes.data(), linkBytes.size());
+			return;
 		}
 
+		constexpr size_t bufferSize = 0x10000;
+		std::vector<char> buffer(bufferSize);
+		std::ifstream fileInput(path, std::ios::in | std::ios::binary);
+		if(!fileInput.is_open())
+			throw std::runtime_error(std::string("could not open ramdisk input: ") + path);
+		for(int64_t remaining = contentLength; remaining > 0;)
+		{
+			auto count = std::min(int64_t(bufferSize), remaining);
+			fileInput.read(buffer.data(), count);
+			if(fileInput.gcount() != count)
+				throw std::runtime_error(std::string("ramdisk input changed or could not be read: ") + path);
+			out.write(buffer.data(), count);
+			remaining -= count;
+		}
+		if(fileInput.peek() != std::char_traits<char>::eof())
+			throw std::runtime_error(std::string("ramdisk input grew while packing: ") + path);
 		fileInput.close();
 	} else
 	{
-		DIR *directory;
-		dirent *entry;
+		std::unique_ptr<DIR, decltype(&closedir)> directory(opendir(path), closedir);
+		dirent* entry;
 
-		if((directory = opendir(path)) != NULL)
+		if(directory)
 		{
-			while((entry = readdir(directory)) != NULL)
+			for(;;)
 			{
-				char entryPath[260];
-
-				std::stringstream str;
-				str << path;
-				str << '/';
-				str << entry->d_name;
-
-				str >> entryPath;
+				errno = 0;
+				entry = readdir(directory.get());
+				if(!entry)
+				{
+					if(errno) throw std::runtime_error(std::string("could not list ramdisk input: ") + path);
+					break;
+				}
+				std::string entryPath = std::string(path) + '/' + entry->d_name;
 
 				struct stat s;
-				int32_t statr = stat(entryPath, &s);
+				int32_t statr = lstat(entryPath.c_str(), &s);
 				if(statr == 0)
 				{
 
-					if(s.st_mode & S_IFREG)
+					if(S_ISREG(s.st_mode) || S_ISLNK(s.st_mode))
 					{
-						writeRecursive(basePath, entryPath, entry->d_name, s.st_size, entryId, true);
+						writeRecursive(basePath, entryPath.c_str(), entry->d_name, s.st_size, entryId, true);
 
-					} else if(s.st_mode & S_IFDIR)
+					} else if(S_ISDIR(s.st_mode))
 					{
 						if(!(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0))
 						{
-							writeRecursive(basePath, entryPath, entry->d_name, 0, entryId, false);
+							writeRecursive(basePath, entryPath.c_str(), entry->d_name, 0, entryId, false);
 						}
 					}
 				} else
 				{
-					std::cerr << "error: could not read directory: '" << path << "'";
-					break;
+					throw std::runtime_error("could not inspect ramdisk input: " + entryPath);
 				}
 			}
 
-			closedir(directory);
+			if(closedir(directory.release()))
+				throw std::runtime_error(std::string("could not close ramdisk input directory: ") + path);
 		} else
 		{
-			std::cerr << "error: could not open directory: '" << path << "'";
+			throw std::runtime_error(std::string("could not open ramdisk input directory: ") + path);
 		}
 	}
 
-	// entry done
 	out.flush();
-
-	delete buffer;
 }

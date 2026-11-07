@@ -38,7 +38,7 @@ private:
 	std::ofstream out;
 	std::list<std::string> ignores;
 
-	void writeRecursive(const char* basePath, const char* path, const char* name, uint32_t contentLength, uint32_t parentId, bool isFile);
+	void writeRecursive(const char* basePath, const char* path, const char* name, uint64_t contentLength, uint32_t parentId, bool isFile);
 
 public:
 	ghost_ramdisk() :
