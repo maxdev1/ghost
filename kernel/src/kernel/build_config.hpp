@@ -51,6 +51,6 @@
 // version
 #define G_VERSION_MAJOR 1
 #define G_VERSION_MINOR 5
-#define G_VERSION_PATCH 0
+#define G_VERSION_PATCH 1
 
 #endif
