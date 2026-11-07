@@ -61,6 +61,9 @@ void pitPerformSleep()
 	while(!(ioPortReadByte(0x61) & 0x20))
 	{
 	}
+
+	// Lower channel 2's gate so the timer is idle between uses, including after the last AP startup delay
+	ioPortWriteByte(0x61, ioPortReadByte(0x61) & ~1u);
 }
 
 void pitStartTimer()
