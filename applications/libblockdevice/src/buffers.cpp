@@ -42,11 +42,11 @@ static bool blockDeviceLockBuffer(g_block_buffer* buffer, uint32_t* previous)
 	if(!buffer)
 		return false;
 
-	*previous = __atomic_load_n(&buffer->state, __ATOMIC_ACQUIRE);
+	*previous = memoryAtomicLoad(&buffer->state, G_MEMORY_ORDER_ACQUIRE);
 	while(*previous != G_BLOCK_BUFFER_BUSY)
 	{
-		if(__atomic_compare_exchange_n(&buffer->state, previous, G_BLOCK_BUFFER_BUSY, false, __ATOMIC_ACQUIRE,
-									   __ATOMIC_RELAXED))
+		if(memoryAtomicCompareExchange(&buffer->state, previous, G_BLOCK_BUFFER_BUSY, false, G_MEMORY_ORDER_ACQUIRE,
+									   G_MEMORY_ORDER_RELAXED))
 			return true;
 	}
 
@@ -55,7 +55,7 @@ static bool blockDeviceLockBuffer(g_block_buffer* buffer, uint32_t* previous)
 
 static void blockDeviceUnlockBuffer(g_block_buffer* buffer, uint32_t state)
 {
-	__atomic_store_n(&buffer->state, state, __ATOMIC_RELEASE);
+	memoryAtomicStore(&buffer->state, state, G_MEMORY_ORDER_RELEASE);
 }
 
 /**
@@ -79,10 +79,12 @@ static g_block_status blockDeviceTransferBuffer(g_block_buffer* buffer, g_device
 		return G_BLOCK_INVALID_REQUEST;
 	}
 
-	auto request = blockDeviceCreateRequest(device, write ? G_BLOCK_WRITE : G_BLOCK_READ, lba, sectors, buffer->handle,
-											offset);
-	__atomic_thread_fence(__ATOMIC_SEQ_CST);
-	auto status = blockDeviceExchange(buffer->handler, request, nullptr, 0, sectors);
+	g_block_transfer_request request{{G_BLOCK_MAGIC, G_BLOCK_VERSION, write ? G_BLOCK_WRITE : G_BLOCK_READ},
+										 device, lba, sectors, buffer->handle, offset};
+	g_block_transfer_response response;
+
+	memoryAtomicFence(G_MEMORY_ORDER_SEQ_CST);
+	auto status = blockDeviceExchange(buffer->handler, request, &response);
 
 	bool uncertain = status == G_BLOCK_TIMEOUT || status == G_BLOCK_UNAVAILABLE || status == G_BLOCK_PROTOCOL_ERROR ||
 					 status == G_BLOCK_IO_ERROR;
@@ -112,9 +114,10 @@ g_block_status blockDeviceOpenBuffer(g_tid handler, g_block_buffer* buffer)
 		buffer->handle = uint64_t(static_cast<uint32_t>(g_get_message_tx_id())) + 1;
 	}
 
-	g_block_buffer_mapping mapping{};
-	auto request = blockDeviceCreateRequest(0, G_BLOCK_OPEN_BUFFER, 0, 0, buffer->handle);
-	auto status = blockDeviceExchange(handler, request, &mapping, sizeof(mapping), 0);
+	g_block_open_buffer_request request{{G_BLOCK_MAGIC, G_BLOCK_VERSION, G_BLOCK_OPEN_BUFFER}, buffer->handle};
+	g_block_open_buffer_response response;
+	auto status = blockDeviceExchange(handler, request, &response);
+	const auto& mapping = response.mapping;
 	if(status == G_BLOCK_SUCCESS)
 	{
 		if(!blockDeviceIsMappingValid(mapping))
@@ -145,9 +148,11 @@ g_block_status blockDeviceCloseBuffer(g_block_buffer* buffer)
 		return G_BLOCK_SUCCESS;
 	}
 
-	g_block_buffer_mapping mapping{};
-	auto request = blockDeviceCreateRequest(0, G_BLOCK_CLOSE_BUFFER, 0, 0, buffer->handle);
-	auto status = blockDeviceExchange(buffer->handler, request, &mapping, sizeof(mapping), 0);
+	g_block_close_buffer_request request{{G_BLOCK_MAGIC, G_BLOCK_VERSION, G_BLOCK_CLOSE_BUFFER}, buffer->handle};
+	g_block_close_buffer_response response;
+	auto status = blockDeviceExchange(buffer->handler, request, &response);
+
+	const auto& mapping = response.mapping;
 	if(status == G_BLOCK_SUCCESS)
 	{
 		if(!blockDeviceIsMappingValid(mapping) || (buffer->data && uintptr_t(buffer->data) != mapping.address))
@@ -160,8 +165,9 @@ g_block_status blockDeviceCloseBuffer(g_block_buffer* buffer)
 			buffer->data = nullptr;
 			buffer->size = 0;
 
-			auto release = blockDeviceCreateRequest(0, G_BLOCK_RELEASE_BUFFER, 0, 0, buffer->handle);
-			status = blockDeviceExchange(buffer->handler, release, nullptr, 0, 0);
+			g_block_release_buffer_request release{{G_BLOCK_MAGIC, G_BLOCK_VERSION, G_BLOCK_RELEASE_BUFFER}, buffer->handle};
+			g_block_release_buffer_response acknowledgement;
+			status = blockDeviceExchange(buffer->handler, release, &acknowledgement);
 		}
 	}
 	else if(status == G_BLOCK_DEVICE_NOT_FOUND)

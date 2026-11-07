@@ -80,6 +80,7 @@ g_ahci_device* ahciInitializeDisk(uint8_t number, volatile g_ahci_hba_port* port
 		ahciDiscardDisk(disk);
 		return nullptr;
 	}
+
 	ahciWriteRegister(&port->cmd, ahciReadRegister(&port->cmd) | G_AHCI_CMD_START);
 	disk->online = true;
 	auto status = ahciExecuteCommand(disk, G_ATA_COMMAND_IDENTIFY, 0, 0, G_BLOCK_SECTOR_SIZE, false);
@@ -91,5 +92,6 @@ g_ahci_device* ahciInitializeDisk(uint8_t number, volatile g_ahci_hba_port* port
 		ahciDiscardDisk(disk);
 		return nullptr;
 	}
+
 	return disk;
 }

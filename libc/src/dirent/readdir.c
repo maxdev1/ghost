@@ -40,7 +40,10 @@ struct dirent* readdir(DIR* dir) {
 		dir->entbuf->d_dev = -1; // TODO
 		dir->entbuf->d_namlen = strlen(entry->name);
 		dir->entbuf->d_reclen = -1; // TODO
-		dir->entbuf->d_type = -1; // TODO
+		dir->entbuf->d_type = entry->type == G_FS_NODE_TYPE_SYMLINK ? DT_LNK :
+			entry->type == G_FS_NODE_TYPE_FILE ? DT_REG :
+			(entry->type == G_FS_NODE_TYPE_FOLDER || entry->type == G_FS_NODE_TYPE_MOUNTPOINT ||
+			 entry->type == G_FS_NODE_TYPE_ROOT) ? DT_DIR : DT_UNKNOWN;
 		strcpy(ent->d_name, entry->name);
 		return ent;
 

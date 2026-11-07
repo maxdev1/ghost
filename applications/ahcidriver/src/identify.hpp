@@ -32,6 +32,7 @@ inline void ahciDecodeIdentifyString(const uint16_t* words, size_t count, char* 
 		out[2 * i] = static_cast<char>(words[i] >> 8);
 		out[2 * i + 1] = static_cast<char>(words[i]);
 	}
+
 	size_t length = count * 2;
 	while(length && out[length - 1] == ' ')
 		--length;

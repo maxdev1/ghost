@@ -46,6 +46,7 @@ int main(int argc, char** argv)
 		else
 			path = argv[i];
 	}
+
 	if(!path)
 	{
 		fprintf(stderr, "Usage: write [-a] FILE\n");
@@ -58,6 +59,7 @@ int main(int argc, char** argv)
 		coreReportError("write", "stat", "standard input");
 		return 1;
 	}
+
 	if(stat(path, &outputInfo) == 0 && inputInfo.st_dev == outputInfo.st_dev &&
 	   inputInfo.st_ino == outputInfo.st_ino)
 	{
@@ -71,6 +73,7 @@ int main(int argc, char** argv)
 		coreReportError("write", "open", path);
 		return 1;
 	}
+
 	int result = coreTransfer(STDIN_FILENO, output, "write", "standard input", path) ? 1 : 0;
 	if(coreClose(output, "write", path))
 		result = 1;

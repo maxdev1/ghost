@@ -16,6 +16,11 @@ $SH lines.sh $@
 $SH read.sh $@
 $SH write.sh $@
 $SH copy.sh $@
+failOnError
+$SH file.sh $@
+failOnError
+$SH folder.sh $@
+failOnError
 $SH topic.sh $@
 $SH blockdevice.sh $@
 failOnError

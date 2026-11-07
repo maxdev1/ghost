@@ -78,12 +78,13 @@ g_block_status blockDeviceGetInfo(g_tid handler, g_device_id device, g_block_dev
 	if(!outInfo)
 		return G_BLOCK_INVALID_REQUEST;
 
-	g_block_device_info info{};
-	auto request = blockDeviceCreateRequest(device, G_BLOCK_GET_INFO);
-	auto status = blockDeviceExchange(handler, request, &info, sizeof(info), 0);
+	g_block_get_info_request request{{G_BLOCK_MAGIC, G_BLOCK_VERSION, G_BLOCK_GET_INFO}, device};
+	g_block_get_info_response response;
+	auto status = blockDeviceExchange(handler, request, &response);
 	if(status != G_BLOCK_SUCCESS)
 		return status;
 
+	const auto& info = response.info;
 	if(!info.sectorCount || info.sectorSize != G_BLOCK_SECTOR_SIZE || !info.maxTransferSectors ||
 	   info.maxTransferSectors > G_BLOCK_DMA_BUFFER_BYTES / info.sectorSize || info.model[sizeof(info.model) - 1] ||
 	   info.serial[sizeof(info.serial) - 1])
@@ -107,6 +108,7 @@ g_block_status blockDeviceWrite(g_tid handler, g_device_id device, uint64_t lba,
 
 g_block_status blockDeviceFlush(g_tid handler, g_device_id device)
 {
-	auto request = blockDeviceCreateRequest(device, G_BLOCK_FLUSH);
-	return blockDeviceExchange(handler, request, nullptr, 0, 0);
+	g_block_flush_request request{{G_BLOCK_MAGIC, G_BLOCK_VERSION, G_BLOCK_FLUSH}, device};
+	g_block_flush_response response;
+	return blockDeviceExchange(handler, request, &response);
 }

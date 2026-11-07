@@ -22,16 +22,26 @@
 #include "ghost/filesystem.h"
 #include "internal.h"
 #include "stdbool.h"
+#include <errno.h>
 
 /**
  *
  */
 int lstat(const char* pathname, struct stat* buf)
 {
-	g_fs_stat_data data;
-	auto status = g_fs_stat_l(pathname, &data, false);
-	if(status != G_FS_STAT_SUCCESS)
+	if(!pathname || !buf)
+	{
+		errno = EINVAL;
 		return -1;
+	}
+
+	g_fs_stat_data data;
+	g_fs_stat_status status = g_fs_stat_l(pathname, &data, false);
+	if(status != G_FS_STAT_SUCCESS)
+	{
+		errno = __g_fs_stat_errno(status);
+		return -1;
+	}
 
 	_stat_from_g_fs_stat(buf, &data);
 	return 0;

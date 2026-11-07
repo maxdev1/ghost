@@ -28,12 +28,14 @@ int fsync(int fd)
 		errno = EBADF;
 		return -1;
 	}
+
 	g_fs_mutation_status status = g_sync(fd);
 	if(status == G_FS_MUTATION_NOT_FOUND)
 	{
 		errno = EBADF;
 		return -1;
 	}
+
 	return __g_fs_mutation_result_set_errno(status);
 }
 
@@ -44,16 +46,19 @@ int ftruncate(int fd, off_t length)
 		errno = EBADF;
 		return -1;
 	}
+
 	if(length < 0)
 	{
 		errno = EINVAL;
 		return -1;
 	}
+
 	g_fs_mutation_status status = g_truncate(fd, length);
 	if(status == G_FS_MUTATION_NOT_FOUND || status == G_FS_MUTATION_READ_ONLY)
 	{
 		errno = status == G_FS_MUTATION_NOT_FOUND ? EBADF : EROFS;
 		return -1;
 	}
+
 	return __g_fs_mutation_result_set_errno(status);
 }

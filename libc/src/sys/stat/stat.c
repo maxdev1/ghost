@@ -34,7 +34,7 @@ int stat(const char* pathname, struct stat* buf)
 	g_fs_stat_status status = g_fs_stat(pathname, &data);
 	if(status != G_FS_STAT_SUCCESS)
 	{
-		errno = status == G_FS_STAT_NOT_FOUND ? ENOENT : status == G_FS_STAT_INVALID_FD ? EBADF : EIO;
+		errno = __g_fs_stat_errno(status);
 		return -1;
 	}
 

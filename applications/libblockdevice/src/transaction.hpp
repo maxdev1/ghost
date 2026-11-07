@@ -22,19 +22,54 @@
 #define LIBBLOCKDEVICE_TRANSACTION
 
 #include <cstddef>
+#include <type_traits>
 #include <libblockdevice/driver.hpp>
 
 /**
  * Sends a control request once accepted and waits for an authenticated reply.
  * A failed exchange does not establish that a shared DMA page is idle.
  */
-g_block_status blockDeviceExchange(g_tid handler, const g_block_request& request, void* result, size_t resultBytes,
-								   uint32_t expectedSectors);
+g_block_status blockDeviceExchangePacket(g_tid handler, const void* request, size_t requestSize,
+											void* response, size_t responseSize);
 
-inline g_block_request blockDeviceCreateRequest(g_device_id device, g_block_command command, uint64_t lba = 0,
-												uint32_t sectors = 0, uint64_t buffer = 0, uint32_t offset = 0)
+template<typename Request, typename Response>
+g_block_status blockDeviceExchange(g_tid handler, const Request& request, Response* response)
 {
-	return {G_BLOCK_MAGIC, G_BLOCK_VERSION, command, device, 0, lba, sectors, buffer, offset};
+	static_assert(std::is_standard_layout<Request>::value && std::is_trivially_copyable<Request>::value,
+				  "block requests have a fixed wire layout");
+	static_assert(std::is_standard_layout<Response>::value && std::is_trivially_copyable<Response>::value,
+				  "block responses have a fixed wire layout");
+
+	if(!response || blockDeviceRequestSize(request.header.command) != sizeof(Request) ||
+	   blockDeviceResponseSize(request.header.command) != sizeof(Response))
+		return G_BLOCK_INVALID_REQUEST;
+
+	auto status = blockDeviceExchangePacket(handler, &request, sizeof(request), response, sizeof(*response));
+	if(status != G_BLOCK_SUCCESS)
+		return status;
+
+	if constexpr(std::is_same<Request, g_block_device_request>::value ||
+				 std::is_same<Request, g_block_transfer_request>::value)
+	{
+		if(response->device != request.device)
+			return G_BLOCK_PROTOCOL_ERROR;
+	}
+
+	if constexpr(std::is_same<Request, g_block_buffer_request>::value ||
+				 std::is_same<Request, g_block_transfer_request>::value)
+	{
+		if(response->buffer != request.buffer)
+			return G_BLOCK_PROTOCOL_ERROR;
+	}
+
+	if constexpr(std::is_same<Request, g_block_transfer_request>::value)
+	{
+		auto expected = response->header.status == G_BLOCK_SUCCESS ? request.sectorCount : 0;
+		if(response->sectorsTransferred != expected)
+			return G_BLOCK_PROTOCOL_ERROR;
+	}
+
+	return response->header.status;
 }
 
 #endif

@@ -34,6 +34,9 @@ void _stat_from_g_fs_stat(struct stat* to, g_fs_stat_data* from)
 	mode_t mode = 0;
 	switch(from->type)
 	{
+		case G_FS_NODE_TYPE_SYMLINK:
+			mode |= S_IFLNK;
+			break;
 		case G_FS_NODE_TYPE_FILE:
 			mode |= S_IFREG;
 			break;

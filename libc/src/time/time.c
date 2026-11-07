@@ -19,15 +19,13 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "time.h"
+#include <ghost/tasks.h>
 
-/**
- *
- */
-time_t time(time_t* out) {
-
-	// TODO g_millis must be reworked to return an actual time
-	uint64_t millis = g_millis();
-	if(out) *out = millis;
-	return millis;
+time_t time(time_t* out)
+{
+	int64_t unixSeconds;
+	time_t result = g_time(&unixSeconds) ? (time_t) unixSeconds : (time_t) -1;
+	if(out)
+		*out = result;
+	return result;
 }
-

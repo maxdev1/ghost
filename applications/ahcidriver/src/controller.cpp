@@ -57,6 +57,7 @@ static bool ahciAcquireController(volatile g_ahci_hba_ghc* hba)
 			return false;
 		}
 	}
+
 	ahciWriteRegister(&hba->ghc,
 					  (ahciReadRegister(&hba->ghc) | G_AHCI_CONTROLLER_ENABLE) & ~G_AHCI_CONTROLLER_INTERRUPTS);
 	return true;
@@ -95,10 +96,12 @@ static bool ahciInitializeController(const g_pci_device_data& pci)
 	{
 		if(!(implemented & (1u << number)))
 			continue;
+
 		auto disk = ahciInitializeDisk(number, &ports[number], supports64BitDma);
 		if(disk)
 			ahciDisks.push_back(disk);
 	}
+
 	return true;
 }
 
@@ -107,6 +110,7 @@ g_ahci_device* ahciFindDisk(g_device_id id)
 	for(auto disk: ahciDisks)
 		if(disk->id == id)
 			return disk;
+
 	return nullptr;
 }
 
@@ -137,6 +141,7 @@ bool ahciPowerFlush()
 		if(disk->flushCommand && ahciExecuteCommand(disk, disk->flushCommand, 0, 0, 0, false) != G_BLOCK_SUCCESS)
 			return false;
 	}
+
 	return true;
 }
 
@@ -151,6 +156,7 @@ void ahciRegisterDevices()
 			klog("ahci: failed to register port %i", disk->portNumber);
 			continue;
 		}
+
 		disk->id = id;
 		klog("ahci: block device %i port %i model %s sectors %lu sector-size %i", id, disk->portNumber,
 			 disk->info.model, disk->info.sectorCount, disk->info.sectorSize);

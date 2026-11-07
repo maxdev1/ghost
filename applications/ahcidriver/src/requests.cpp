@@ -22,66 +22,51 @@
 #include <cstddef>
 #include <cstring>
 
-struct g_ahci_response
+template<typename Response>
+static void ahciSendResponse(const g_message_header* message, Response& response)
 {
-	g_block_response header;
-	uint8_t payload[sizeof(g_block_device_info)];
-	size_t payloadBytes = 0;
-};
-
-static_assert(offsetof(g_ahci_response, payload) == sizeof(g_block_response), "block response payload ABI");
-
-static bool ahciIsBufferCommand(g_block_command command)
-{
-	return command == G_BLOCK_OPEN_BUFFER || command == G_BLOCK_CLOSE_BUFFER || command == G_BLOCK_RELEASE_BUFFER;
+	g_send_message_tm(message->sender, &response, sizeof(response), message->transaction,
+					  G_MESSAGE_SEND_MODE_NON_BLOCKING);
 }
 
-static g_block_status ahciHandleBufferCommand(const g_block_request& request, g_tid sender, g_ahci_response& response)
+static void ahciRejectRequest(const g_message_header* message, const g_block_header& header)
 {
-	g_block_buffer_mapping mapping{};
-	auto status = ahciHandleBufferRequest(request, sender, &mapping);
-	if(status == G_BLOCK_SUCCESS && request.command != G_BLOCK_RELEASE_BUFFER)
+	auto reply = [&](auto response)
 	{
-		memcpy(response.payload, &mapping, sizeof(mapping));
-		response.payloadBytes = sizeof(mapping);
-	}
-	return status;
-}
+		response.header.command = header.command;
+		ahciSendResponse(message, response);
+	};
 
-static g_block_status ahciHandleDeviceCommand(const g_block_request& request, g_tid sender, g_ahci_response& response)
-{
-	auto disk = ahciFindDisk(request.device);
-	if(!disk)
-		return G_BLOCK_DEVICE_NOT_FOUND;
-	if(!disk->online)
-		return G_BLOCK_UNAVAILABLE;
-
-	switch(request.command)
+	switch(header.command)
 	{
-		case G_BLOCK_GET_INFO:
-		case G_BLOCK_FLUSH:
-			if(request.lba || request.sectorCount || request.buffer || request.offset)
-				return G_BLOCK_INVALID_REQUEST;
-			if(request.command == G_BLOCK_GET_INFO)
-			{
-				memcpy(response.payload, &disk->info, sizeof(disk->info));
-				response.payloadBytes = sizeof(disk->info);
-				return G_BLOCK_SUCCESS;
-			}
-			if(!disk->flushCommand)
-				return G_BLOCK_UNSUPPORTED;
-			return ahciExecuteCommand(disk, disk->flushCommand, 0, 0, 0, false);
+		case G_BLOCK_GET_INFO: return reply(g_block_get_info_response{});
+		case G_BLOCK_FLUSH: return reply(g_block_flush_response{});
 		case G_BLOCK_READ:
-		case G_BLOCK_WRITE:
-		{
-			auto status = ahciTransfer(disk, request, sender);
-			if(status == G_BLOCK_SUCCESS)
-				response.header.sectorsTransferred = request.sectorCount;
-			return status;
-		}
+		case G_BLOCK_WRITE: return reply(g_block_transfer_response{});
+		case G_BLOCK_OPEN_BUFFER:
+		case G_BLOCK_CLOSE_BUFFER: return reply(g_block_buffer_mapping_response{});
+		case G_BLOCK_RELEASE_BUFFER: return reply(g_block_release_buffer_response{});
 		default:
-			return G_BLOCK_UNSUPPORTED;
+		{
+			g_block_response_header response{G_BLOCK_MAGIC, G_BLOCK_VERSION, header.command, G_BLOCK_UNSUPPORTED};
+			ahciSendResponse(message, response);
+		}
 	}
+}
+
+template<typename Response>
+static g_ahci_device* ahciResponseDevice(g_device_id device, Response& response)
+{
+	response.device = device;
+	auto disk = ahciFindDisk(device);
+	if(!disk)
+		response.header.status = G_BLOCK_DEVICE_NOT_FOUND;
+	else if(!disk->online)
+		response.header.status = G_BLOCK_UNAVAILABLE;
+	else
+		return disk;
+
+	return nullptr;
 }
 
 [[noreturn]] void ahciReceiveMessages()
@@ -104,22 +89,101 @@ void ahciHandleRequest(const g_message_header* message, const uint8_t* content)
 			g_power_acknowledge(event.request, ahciPowerFlush());
 		return;
 	}
-	if(message->length < sizeof(g_block_request) || message->length > G_MESSAGE_MAXIMUM_MESSAGE_LENGTH)
-		return;
-	g_block_request request;
-	memcpy(&request, content, sizeof(request));
-	g_ahci_response response{};
-	response.header = {G_BLOCK_MAGIC, G_BLOCK_VERSION, request.command, request.device, 0, G_BLOCK_INVALID_REQUEST, 0,
-					   request.buffer};
 
-	if(message->length == sizeof(request) && request.magic == G_BLOCK_MAGIC && request.version == G_BLOCK_VERSION &&
-	   !request.reserved)
+	if(message->length < sizeof(g_block_header))
+		return;
+
+	g_block_header header;
+	memcpy(&header, content, sizeof(header));
+	if(header.magic != G_BLOCK_MAGIC)
+		return;
+	if(header.version != G_BLOCK_VERSION || blockDeviceRequestSize(header.command) != message->length)
 	{
-		response.header.status = ahciIsBufferCommand(request.command)
-										 ? ahciHandleBufferCommand(request, message->sender, response)
-										 : ahciHandleDeviceCommand(request, message->sender, response);
+		ahciRejectRequest(message, header);
+		return;
 	}
 
-	g_send_message_tm(message->sender, &response, sizeof(response.header) + response.payloadBytes, message->transaction,
-					  G_MESSAGE_SEND_MODE_NON_BLOCKING);
+	switch(header.command)
+	{
+		case G_BLOCK_GET_INFO:
+		{
+			g_block_get_info_request request;
+			memcpy(&request, content, sizeof(request));
+
+			g_block_get_info_response response;
+			response.header.command = header.command;
+			if(auto disk = ahciResponseDevice(request.device, response))
+			{
+				response.info = disk->info;
+				response.header.status = G_BLOCK_SUCCESS;
+			}
+
+			ahciSendResponse(message, response);
+			break;
+		}
+		case G_BLOCK_FLUSH:
+		{
+			g_block_flush_request request;
+			memcpy(&request, content, sizeof(request));
+
+			g_block_flush_response response;
+			response.header.command = header.command;
+			if(auto disk = ahciResponseDevice(request.device, response))
+				response.header.status = disk->flushCommand ?
+					ahciExecuteCommand(disk, disk->flushCommand, 0, 0, 0, false) : G_BLOCK_UNSUPPORTED;
+
+			ahciSendResponse(message, response);
+			break;
+		}
+		case G_BLOCK_READ:
+		case G_BLOCK_WRITE:
+		{
+			g_block_transfer_request request;
+			memcpy(&request, content, sizeof(request));
+
+			g_block_transfer_response response;
+			response.header.command = header.command;
+			response.buffer = request.buffer;
+			if(auto disk = ahciResponseDevice(request.device, response))
+			{
+				response.header.status = ahciTransfer(disk, request, message->sender);
+				if(response.header.status == G_BLOCK_SUCCESS)
+					response.sectorsTransferred = request.sectorCount;
+			}
+
+			ahciSendResponse(message, response);
+			break;
+		}
+		case G_BLOCK_OPEN_BUFFER:
+		case G_BLOCK_CLOSE_BUFFER:
+		{
+			g_block_buffer_request request;
+			memcpy(&request, content, sizeof(request));
+
+			g_block_buffer_mapping_response response;
+			response.header.command = header.command;
+			response.buffer = request.buffer;
+			response.header.status = ahciHandleBufferRequest(request, message->sender, &response.mapping);
+
+			ahciSendResponse(message, response);
+			break;
+		}
+		case G_BLOCK_RELEASE_BUFFER:
+		{
+			g_block_release_buffer_request request;
+			memcpy(&request, content, sizeof(request));
+
+			g_block_release_buffer_response response;
+			response.header.command = header.command;
+			response.buffer = request.buffer;
+			g_block_buffer_mapping mapping{};
+			response.header.status = ahciHandleBufferRequest(request, message->sender, &mapping);
+
+			ahciSendResponse(message, response);
+			break;
+		}
+		default:
+			ahciRejectRequest(message, header);
+			break;
+	}
 }

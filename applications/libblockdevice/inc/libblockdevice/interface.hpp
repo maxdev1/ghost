@@ -21,11 +21,12 @@
 #ifndef LIBBLOCKDEVICE_INTERFACE
 #define LIBBLOCKDEVICE_INTERFACE
 
+#include <cstddef>
 #include <cstdint>
 #include <libdevice/interface.hpp>
 
 constexpr uint32_t G_BLOCK_MAGIC = 0x47424c4b;
-constexpr uint16_t G_BLOCK_VERSION = 2;
+constexpr uint16_t G_BLOCK_VERSION = 3;
 constexpr uint32_t G_BLOCK_DMA_BUFFER_BYTES = 4096;
 constexpr uint32_t G_BLOCK_SECTOR_SIZE = 512;
 constexpr uint64_t G_BLOCK_IPC_TIMEOUT_MS = 15000;
@@ -67,30 +68,52 @@ struct g_block_device_info
 	char serial[21];
 } __attribute__((packed));
 
-struct g_block_request
+struct g_block_header
 {
-	uint32_t magic;
-	uint16_t version;
-	g_block_command command;
-	g_device_id device;
-	uint16_t reserved;
-	uint64_t lba;
-	uint32_t sectorCount;
-	uint64_t buffer;
-	uint32_t offset;
+	uint32_t magic = G_BLOCK_MAGIC;
+	uint16_t version = G_BLOCK_VERSION;
+	g_block_command command = G_BLOCK_GET_INFO;
 } __attribute__((packed));
 
-struct g_block_response
+struct g_block_response_header
 {
-	uint32_t magic;
-	uint16_t version;
-	g_block_command command;
-	g_device_id device;
-	uint16_t reserved;
-	g_block_status status;
-	uint32_t sectorsTransferred;
-	uint64_t buffer;
+	uint32_t magic = G_BLOCK_MAGIC;
+	uint16_t version = G_BLOCK_VERSION;
+	g_block_command command = G_BLOCK_GET_INFO;
+	g_block_status status = G_BLOCK_INVALID_REQUEST;
 } __attribute__((packed));
+
+struct g_block_device_request
+{
+	g_block_header header;
+	g_device_id device = 0;
+} __attribute__((packed));
+
+using g_block_get_info_request = g_block_device_request;
+using g_block_flush_request = g_block_device_request;
+
+struct g_block_transfer_request
+{
+	g_block_header header;
+	g_device_id device = 0;
+	uint64_t lba = 0;
+	uint32_t sectorCount = 0;
+	uint64_t buffer = 0;
+	uint32_t offset = 0;
+} __attribute__((packed));
+
+using g_block_read_request = g_block_transfer_request;
+using g_block_write_request = g_block_transfer_request;
+
+struct g_block_buffer_request
+{
+	g_block_header header;
+	uint64_t buffer = 0;
+} __attribute__((packed));
+
+using g_block_open_buffer_request = g_block_buffer_request;
+using g_block_close_buffer_request = g_block_buffer_request;
+using g_block_release_buffer_request = g_block_buffer_request;
 
 /**
  * DMA window alias in the requesting process, created through g_share_mem.
@@ -101,5 +124,75 @@ struct g_block_buffer_mapping
 	uint32_t size;
 	uint32_t reserved;
 } __attribute__((packed));
+
+struct g_block_get_info_response
+{
+	g_block_response_header header;
+	g_device_id device = 0;
+	g_block_device_info info{};
+} __attribute__((packed));
+
+struct g_block_flush_response
+{
+	g_block_response_header header;
+	g_device_id device = 0;
+} __attribute__((packed));
+
+struct g_block_transfer_response
+{
+	g_block_response_header header;
+	g_device_id device = 0;
+	uint64_t buffer = 0;
+	uint32_t sectorsTransferred = 0;
+} __attribute__((packed));
+
+using g_block_read_response = g_block_transfer_response;
+using g_block_write_response = g_block_transfer_response;
+
+struct g_block_buffer_mapping_response
+{
+	g_block_response_header header;
+	uint64_t buffer = 0;
+	g_block_buffer_mapping mapping{};
+} __attribute__((packed));
+
+using g_block_open_buffer_response = g_block_buffer_mapping_response;
+using g_block_close_buffer_response = g_block_buffer_mapping_response;
+
+struct g_block_release_buffer_response
+{
+	g_block_response_header header;
+	uint64_t buffer = 0;
+} __attribute__((packed));
+
+constexpr size_t blockDeviceRequestSize(g_block_command command)
+{
+	switch(command)
+	{
+		case G_BLOCK_GET_INFO:
+		case G_BLOCK_FLUSH: return sizeof(g_block_device_request);
+		case G_BLOCK_READ:
+		case G_BLOCK_WRITE: return sizeof(g_block_transfer_request);
+		case G_BLOCK_OPEN_BUFFER:
+		case G_BLOCK_CLOSE_BUFFER:
+		case G_BLOCK_RELEASE_BUFFER: return sizeof(g_block_buffer_request);
+		default: return 0;
+	}
+}
+
+constexpr size_t blockDeviceResponseSize(g_block_command command)
+{
+	switch(command)
+	{
+		case G_BLOCK_GET_INFO: return sizeof(g_block_get_info_response);
+		case G_BLOCK_FLUSH: return sizeof(g_block_flush_response);
+		case G_BLOCK_READ:
+		case G_BLOCK_WRITE: return sizeof(g_block_transfer_response);
+		case G_BLOCK_OPEN_BUFFER:
+		case G_BLOCK_CLOSE_BUFFER: return sizeof(g_block_buffer_mapping_response);
+		case G_BLOCK_RELEASE_BUFFER: return sizeof(g_block_release_buffer_response);
+		default: return 0;
+	}
+}
 
 #endif

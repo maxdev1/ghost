@@ -96,9 +96,9 @@ g_ahci_device* ahciFindDisk(g_device_id id);
  * mapping on retries. Close forbids further I/O but retains the driver page
  * until Release acknowledges that the client has unmapped its alias.
  */
-g_block_status ahciHandleBufferRequest(const g_block_request& request, g_tid sender, g_block_buffer_mapping* mapping);
+g_block_status ahciHandleBufferRequest(const g_block_buffer_request& request, g_tid sender, g_block_buffer_mapping* mapping);
 
-g_block_status ahciTransfer(g_ahci_device* disk, const g_block_request& request, g_tid sender);
+g_block_status ahciTransfer(g_ahci_device* disk, const g_block_transfer_request& request, g_tid sender);
 
 /**
  * Dispatches control-only IPC in the serial service loop. Replies are sent

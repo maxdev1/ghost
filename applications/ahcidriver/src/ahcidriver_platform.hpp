@@ -22,12 +22,13 @@
 #define AHCIDRIVER_PLATFORM
 
 #include <cstdint>
+#include <ghost/memory.h>
 
 inline uint32_t ahciReadRegister(volatile uint32_t* reg) { return *reg; }
 
 inline void ahciWriteRegister(volatile uint32_t* reg, uint32_t value) { *reg = value; }
 
-inline void ahciDmaFence() { __atomic_thread_fence(__ATOMIC_SEQ_CST); }
+inline void ahciDmaFence() { memoryAtomicFence(G_MEMORY_ORDER_SEQ_CST); }
 
 inline void ahciPollPause() { asm volatile("pause"); }
 

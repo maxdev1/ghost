@@ -32,6 +32,7 @@ static int copyOpenSource(const char* source, struct stat& inputInfo)
 		coreReportError("copy", "open", source);
 		return -1;
 	}
+
 	if(fstat(input, &inputInfo) < 0 || !S_ISREG(inputInfo.st_mode))
 	{
 		fprintf(stderr, "copy: source '%s' must be a readable regular file\n", source);
@@ -51,6 +52,7 @@ static bool copyPrepareDestination(const char* source, const struct stat& inputI
 		destination += '/';
 		destination += basename ? basename + 1 : source;
 	}
+
 	if(stat(destination.c_str(), &outputInfo) == 0)
 	{
 		if(inputInfo.st_dev == outputInfo.st_dev && inputInfo.st_ino == outputInfo.st_ino)
@@ -58,6 +60,7 @@ static bool copyPrepareDestination(const char* source, const struct stat& inputI
 			fprintf(stderr, "copy: '%s' and '%s' are the same file\n", source, destination.c_str());
 			return false;
 		}
+
 		if(!S_ISREG(outputInfo.st_mode))
 		{
 			fprintf(stderr, "copy: destination '%s' must be a regular file\n", destination.c_str());
@@ -77,6 +80,7 @@ int main(int argc, char** argv)
 			   "file.\n");
 		return 0;
 	}
+
 	if(argc > 1 && strcmp(argv[1], "--") == 0)
 		++first;
 	if(argc - first != 2 || (first == 1 && argv[first][0] == '-'))
@@ -105,6 +109,7 @@ int main(int argc, char** argv)
 		coreClose(input, "copy", source);
 		return 1;
 	}
+
 	int result = coreTransfer(input, output, "copy", source, destination.c_str()) ? 1 : 0;
 	if(coreClose(output, "copy", destination.c_str()))
 		result = 1;

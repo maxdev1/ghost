@@ -28,9 +28,10 @@ __BEGIN_C
 
 
 // declaration of the <errno> error variable (N1548-7.5-2)
-#undef errno
 extern __thread int errno;
+#ifndef errno
 #define errno errno
+#endif
 
 // existing error codes, partially POSIX
 #define E2BIG 1 // argument list too long
@@ -111,6 +112,35 @@ extern __thread int errno;
 #define EWOULDBLOCK 81 // operation would block (may be the same value as [EAGAIN])
 #define EXDEV 82 // cross-device link
 
+static inline int __g_fs_open_errno(g_fs_open_status status)
+{
+	switch(status)
+	{
+		case G_FS_OPEN_NOT_FOUND: return ENOENT;
+		case G_FS_OPEN_LOOP: return ELOOP;
+		case G_FS_OPEN_NAME_TOO_LONG: return ENAMETOOLONG;
+		case G_FS_OPEN_NOT_DIRECTORY: return ENOTDIR;
+		case G_FS_OPEN_INVALID_LINK: return EINVAL;
+		case G_FS_OPEN_ALREADY_EXISTS: return EEXIST;
+		case G_FS_OPEN_BUSY: return EBUSY;
+		default: return EIO;
+	}
+}
+
+static inline int __g_fs_stat_errno(g_fs_stat_status status)
+{
+	switch(status)
+	{
+		case G_FS_STAT_NOT_FOUND: return ENOENT;
+		case G_FS_STAT_INVALID_FD: return EBADF;
+		case G_FS_STAT_LOOP: return ELOOP;
+		case G_FS_STAT_NAME_TOO_LONG: return ENAMETOOLONG;
+		case G_FS_STAT_NOT_DIRECTORY: return ENOTDIR;
+		case G_FS_STAT_INVALID_LINK: return EINVAL;
+		default: return EIO;
+	}
+}
+
 static inline int __g_fs_mutation_result_set_errno(g_fs_mutation_status status)
 {
 	if(status == G_FS_MUTATION_SUCCESSFUL)
@@ -139,6 +169,13 @@ static inline int __g_fs_mutation_result_set_errno(g_fs_mutation_status status)
 		case G_FS_MUTATION_READ_ONLY:
 			errno = EROFS;
 			break;
+		case G_FS_MUTATION_LOOP: errno = ELOOP; break;
+		case G_FS_MUTATION_NAME_TOO_LONG: errno = ENAMETOOLONG; break;
+		case G_FS_MUTATION_NOT_DIRECTORY: errno = ENOTDIR; break;
+		case G_FS_MUTATION_INVALID_LINK: errno = EINVAL; break;
+		case G_FS_MUTATION_CROSS_DEVICE:
+			errno = EXDEV;
+			break;
 		case G_FS_MUTATION_NOT_SUPPORTED:
 			errno = ENOSYS;
 			break;
@@ -146,6 +183,7 @@ static inline int __g_fs_mutation_result_set_errno(g_fs_mutation_status status)
 			errno = EIO;
 			break;
 	}
+
 	return -1;
 }
 

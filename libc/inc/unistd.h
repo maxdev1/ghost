@@ -97,7 +97,8 @@ int rmdir(const char* path);
 int unlink(const char* path);
 int ftruncate(int fd, off_t length);
 int fsync(int fd);
-int symlink(const char* path1, const char* path2);
+int symlink(const char* target, const char* path);
+ssize_t readlink(const char* path, char* buffer, size_t capacity);
 int chdir(const char *path);
 int fchdir(int fd);
 

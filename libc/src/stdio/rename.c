@@ -18,16 +18,11 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "stdio.h"
-#include "stdio_internal.h"
-#include "errno.h"
-#include <ghost/system.h>
+#include <stdio.h>
+#include <errno.h>
+#include <ghost/filesystem.h>
 
-/**
- *
- */
-int rename(const char *old_name, const char *new_name) {
-
-	// TODO
-	__G_NOT_IMPLEMENTED("rename");
+int rename(const char* source, const char* destination)
+{
+	return __g_fs_mutation_result_set_errno(g_rename(source, destination, 1));
 }

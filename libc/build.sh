@@ -9,6 +9,7 @@ ARGS=("$@")
 if [ ${#ARGS[@]} -eq 0 ]; then
 	ARGS=("all")
 fi
+
 TARGET="${ARGS[*]}"
 with SRC					"src"
 with OBJ					"obj"

@@ -110,6 +110,7 @@ static g_block_status ahciWaitCommandCompletion(g_ahci_device* disk, uint32_t by
 	auto header = static_cast<g_hba_command_header*>(disk->commandList.mapped);
 	if(bytes && header->prdbc != bytes)
 		return ahciFailCommand(disk, G_BLOCK_IO_ERROR);
+
 	disk->dmaSafe = true;
 	return G_BLOCK_SUCCESS;
 }
@@ -121,8 +122,10 @@ bool ahciWaitRegisterClear(volatile uint32_t* reg, uint32_t bits, uint64_t timeo
 	{
 		if(g_millis() - started >= timeout)
 			return false;
+
 		g_sleep(1);
 	}
+
 	return true;
 }
 
@@ -136,6 +139,7 @@ bool ahciAllocateDmaPage(g_ahci_dma_page& page, bool supports64BitDma)
 		page = {};
 		return false;
 	}
+
 	memset(page.mapped, 0, G_PAGE_SIZE);
 	return true;
 }
@@ -156,6 +160,7 @@ bool ahciStopPortCommands(volatile g_ahci_hba_port* port)
 	ahciWriteRegister(&port->cmd, ahciReadRegister(&port->cmd) & ~G_AHCI_CMD_START);
 	if(!ahciWaitRegisterClear(&port->cmd, G_AHCI_CMD_RUNNING, G_AHCI_ENGINE_TIMEOUT_MS))
 		return false;
+
 	ahciWriteRegister(&port->cmd, ahciReadRegister(&port->cmd) & ~G_AHCI_CMD_FIS_RECEIVE);
 	return ahciWaitRegisterClear(&port->cmd, G_AHCI_CMD_FIS_RUNNING, G_AHCI_ENGINE_TIMEOUT_MS);
 }

@@ -48,6 +48,7 @@ int main(int argc, char** argv)
 			fprintf(stderr, "read: unknown option '%s' (use -- before filenames beginning with '-')\n", path);
 			return 1;
 		}
+
 		bool standardInput = strcmp(path, "-") == 0;
 		int input = standardInput ? STDIN_FILENO : open(path, O_RDONLY);
 		if(input < 0)
@@ -56,6 +57,7 @@ int main(int argc, char** argv)
 			result = 1;
 			continue;
 		}
+
 		int transfer = coreTransfer(input, STDOUT_FILENO, "read", path, "standard output");
 		if(transfer)
 			result = 1;
@@ -64,5 +66,6 @@ int main(int argc, char** argv)
 		if(transfer == 2)
 			break;
 	}
+
 	return result;
 }

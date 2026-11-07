@@ -37,9 +37,11 @@ static int topicReceive(const char* topic, bool follow)
 			fprintf(stderr, "topic: cannot receive from '%s' (status %d)\n", topic, status);
 			return 1;
 		}
+
 		auto message = reinterpret_cast<g_message_header*>(buffer);
 		if(!coreWriteAll(STDOUT_FILENO, G_MESSAGE_CONTENT(buffer), message->length, "topic", "standard output"))
 			return 1;
+
 		cursor = message->transaction;
 	}
 }
@@ -69,6 +71,7 @@ int main(int argc, char** argv)
 		else
 			topic = argv[i];
 	}
+
 	if(!topic)
 	{
 		fprintf(stderr, "Usage: topic [-f] TOPIC\n");

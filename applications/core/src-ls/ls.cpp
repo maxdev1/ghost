@@ -75,6 +75,10 @@ int main(int argc, char** argv)
 			{
 				printf("   ");
 			}
+			else if(entry->type == G_FS_NODE_TYPE_SYMLINK)
+			{
+				printf(" @ ");
+			}
 			else if(entry->type == G_FS_NODE_TYPE_FOLDER)
 			{
 				printf(" + ");

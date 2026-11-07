@@ -63,6 +63,7 @@ static bool blockDeviceDiscover(std::vector<g_blockdevice_entry>& devices)
 		cursor = message->transaction;
 		if(message->sender != manager || message->length != sizeof(g_device_event_device_registered))
 			continue;
+
 		g_device_event_device_registered event;
 		memcpy(&event, G_MESSAGE_CONTENT(incoming), sizeof(event));
 		if(event.header.event != G_DEVICE_EVENT_DEVICE_REGISTERED || event.type != G_DEVICE_TYPE_BLOCK || !event.id ||
@@ -107,6 +108,7 @@ static bool blockDeviceQuery(const g_blockdevice_entry& device, g_block_device_i
 	auto status = blockDeviceGetInfo(device.driver, device.id, &info);
 	if(status == G_BLOCK_SUCCESS)
 		return true;
+
 	fprintf(stderr, "blockdevice: cannot query device %u: %s (status %u)\n", unsigned(device.id),
 			blockDeviceStatusText(status), unsigned(status));
 	return false;
@@ -124,6 +126,7 @@ static int blockDeviceList(const std::vector<g_blockdevice_entry>& devices)
 		printf("No block devices found.\n");
 		return 0;
 	}
+
 	printf("ID\tMODEL\tSIZE (MiB)\n");
 	int result = 0;
 	for(const auto& device: devices)
@@ -138,6 +141,7 @@ static int blockDeviceList(const std::vector<g_blockdevice_entry>& devices)
 			result = 1;
 		}
 	}
+
 	return result;
 }
 
@@ -146,6 +150,7 @@ static int blockDevicePrintInfo(const g_blockdevice_entry& device)
 	g_block_device_info info{};
 	if(!blockDeviceQuery(device, info))
 		return 1;
+
 	printf("ID: %u\nDriver task: %d\nModel: %s\nSerial: %s\n"
 		   "Capacity: %llu MiB\nSectors: %llu\nSector size: %u bytes\n"
 		   "Maximum transfer: %u sectors\nWritable: %s\nFlush supported: %s\n",
@@ -162,6 +167,7 @@ static bool blockDeviceParseId(const char* text, g_device_id& id)
 	uint64_t value;
 	if(!coreParseUnsigned(text, &value, UINT16_MAX) || !value)
 		return false;
+
 	id = value;
 	return true;
 }
@@ -174,6 +180,7 @@ int main(int argc, char** argv)
 		printf("%sList block devices or query a device's driver. IDs are decimal.\n", usage);
 		return 0;
 	}
+
 	bool list = argc == 2 && strcmp(argv[1], "list") == 0;
 	bool get = argc == 3 && strcmp(argv[2], "get") == 0;
 	if(!list && !get)
@@ -181,6 +188,7 @@ int main(int argc, char** argv)
 		fprintf(stderr, "%s", usage);
 		return 1;
 	}
+
 	g_device_id id = 0;
 	if(get && !blockDeviceParseId(argv[1], id))
 	{
@@ -193,9 +201,11 @@ int main(int argc, char** argv)
 		return 1;
 	if(list)
 		return blockDeviceList(devices);
+
 	for(const auto& device: devices)
 		if(device.id == id)
 			return blockDevicePrintInfo(device);
+
 	fprintf(stderr, "blockdevice: device %u not found\n", unsigned(id));
 	return 1;
 }

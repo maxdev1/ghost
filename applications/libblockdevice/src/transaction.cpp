@@ -22,43 +22,36 @@
 #include <cstring>
 #include <ghost.h>
 
-static_assert(sizeof(g_block_request) <= G_MESSAGE_MAXIMUM_MESSAGE_LENGTH, "block control request fits IPC");
-static_assert(sizeof(g_block_response) + sizeof(g_block_device_info) <= G_MESSAGE_MAXIMUM_MESSAGE_LENGTH,
-			  "block control response fits IPC");
+static_assert(sizeof(g_block_transfer_request) <= G_MESSAGE_MAXIMUM_MESSAGE_LENGTH, "block request fits IPC");
+static_assert(sizeof(g_block_get_info_response) <= G_MESSAGE_MAXIMUM_MESSAGE_LENGTH, "block response fits IPC");
 
-static g_block_status blockDeviceReadResponse(const g_message_header* message, const g_block_request& request,
-											  void* result, size_t resultBytes, uint32_t expectedSectors)
+static g_block_status blockDeviceReadResponse(const g_message_header* message, const g_block_header& request,
+											  void* response, size_t responseSize)
 {
-	if(message->length < sizeof(g_block_response) || message->length > G_MESSAGE_MAXIMUM_MESSAGE_LENGTH)
+	if(message->length != responseSize || responseSize < sizeof(g_block_response_header))
 		return G_BLOCK_PROTOCOL_ERROR;
 
 	auto content = reinterpret_cast<const uint8_t*>(message) + sizeof(*message);
-	g_block_response response;
-	memcpy(&response, content, sizeof(response));
-	if(response.magic != G_BLOCK_MAGIC || response.version != G_BLOCK_VERSION || response.command != request.command ||
-	   response.device != request.device || response.buffer != request.buffer || response.reserved ||
-	   response.status > G_BLOCK_BUSY)
+	g_block_response_header header;
+	memcpy(&header, content, sizeof(header));
+	if(header.magic != G_BLOCK_MAGIC || header.version != G_BLOCK_VERSION || header.command != request.command ||
+	   header.status > G_BLOCK_BUSY)
 		return G_BLOCK_PROTOCOL_ERROR;
 
-	if(response.status != G_BLOCK_SUCCESS)
-	{
-		if(message->length != sizeof(response) || response.sectorsTransferred)
-			return G_BLOCK_PROTOCOL_ERROR;
-		return response.status;
-	}
-
-	if(message->length != sizeof(response) + resultBytes || response.sectorsTransferred != expectedSectors)
-		return G_BLOCK_PROTOCOL_ERROR;
-
-	__atomic_thread_fence(__ATOMIC_SEQ_CST);
-	if(resultBytes)
-		memcpy(result, content + sizeof(response), resultBytes);
+	memcpy(response, content, responseSize);
+	memoryAtomicFence(G_MEMORY_ORDER_SEQ_CST);
 	return G_BLOCK_SUCCESS;
 }
 
-g_block_status blockDeviceExchange(g_tid handler, const g_block_request& request, void* result, size_t resultBytes,
-								   uint32_t expectedSectors)
+g_block_status blockDeviceExchangePacket(g_tid handler, const void* request, size_t requestSize,
+											void* response, size_t responseSize)
 {
+	if(!request || !response || requestSize < sizeof(g_block_header) || requestSize > G_MESSAGE_MAXIMUM_MESSAGE_LENGTH ||
+	   responseSize > G_MESSAGE_MAXIMUM_MESSAGE_LENGTH)
+		return G_BLOCK_INVALID_REQUEST;
+
+	g_block_header requestHeader;
+	memcpy(&requestHeader, request, sizeof(requestHeader));
 	auto tx = g_get_message_tx_id();
 	auto started = g_millis();
 	unsigned quickWaits = 0;
@@ -76,7 +69,7 @@ g_block_status blockDeviceExchange(g_tid handler, const g_block_request& request
 
 	for(;;)
 	{
-		auto status = g_send_message_tm(handler, const_cast<g_block_request*>(&request), sizeof(request), tx,
+		auto status = g_send_message_tm(handler, const_cast<void*>(request), requestSize, tx,
 										G_MESSAGE_SEND_MODE_NON_BLOCKING);
 		if(status == G_MESSAGE_SEND_STATUS_SUCCESSFUL)
 			break;
@@ -85,6 +78,7 @@ g_block_status blockDeviceExchange(g_tid handler, const g_block_request& request
 
 		if(g_millis() - started >= G_BLOCK_IPC_TIMEOUT_MS)
 			return G_BLOCK_TIMEOUT;
+
 		wait();
 	}
 
@@ -97,13 +91,14 @@ g_block_status blockDeviceExchange(g_tid handler, const g_block_request& request
 		{
 			auto message = reinterpret_cast<g_message_header*>(incoming);
 			if(message->sender == handler)
-				return blockDeviceReadResponse(message, request, result, resultBytes, expectedSectors);
+				return blockDeviceReadResponse(message, requestHeader, response, responseSize);
 		}
 		else if(status != G_MESSAGE_RECEIVE_STATUS_EMPTY)
 			return G_BLOCK_UNAVAILABLE;
 
 		if(g_millis() - started >= G_BLOCK_IPC_TIMEOUT_MS)
 			return G_BLOCK_TIMEOUT;
+
 		wait();
 	}
 }

@@ -31,6 +31,8 @@ static const char* deviceTypeText(uint16_t type)
 			return "video";
 		case G_DEVICE_TYPE_BLOCK:
 			return "block";
+		case G_DEVICE_TYPE_NETWORK:
+			return "network";
 		default:
 			return "unknown";
 	}
@@ -48,11 +50,13 @@ static int deviceList()
 			fprintf(stderr, "device: failed to list devices from device manager\n");
 			return 1;
 		}
+
 		if(!heading)
 		{
 			printf("ID\tTYPE\tHANDLER\n");
 			heading = true;
 		}
+
 		for(uint16_t i = 0; i < response.count; ++i)
 		{
 			const auto& device = response.devices[i];
@@ -60,14 +64,17 @@ static int deviceList()
 				   device.handler);
 			afterId = device.id;
 		}
+
 		if(response.count < G_DEVICE_MANAGER_LIST_MAX_DEVICES)
 			break;
 	}
+
 	if(fflush(stdout) == EOF || ferror(stdout))
 	{
 		fprintf(stderr, "device: cannot write standard output\n");
 		return 1;
 	}
+
 	return 0;
 }
 
@@ -78,8 +85,10 @@ int main(int argc, char** argv)
 		printf("Usage: device list\nList devices registered with device manager.\n");
 		return 0;
 	}
+
 	if(argc == 2 && strcmp(argv[1], "list") == 0)
 		return deviceList();
+
 	fprintf(stderr, "Usage: device list\n");
 	return 1;
 }

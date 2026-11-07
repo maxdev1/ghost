@@ -42,14 +42,8 @@ int open(const char* pathname, int flags, ...) {
 	// perform opening syscall
 	g_fd fd = g_open_fs(pathname, flags, &status);
 
-	if (status == G_FS_OPEN_SUCCESSFUL) {
+	if(status == G_FS_OPEN_SUCCESSFUL)
 		return fd;
-	} else if (status == G_FS_OPEN_NOT_FOUND) {
-		errno = ENOENT;
-	} else {
-		// TODO set error codes, improve kernel error codes
-		errno = EIO;
-	}
-
+	errno = __g_fs_open_errno(status);
 	return -1;
 }

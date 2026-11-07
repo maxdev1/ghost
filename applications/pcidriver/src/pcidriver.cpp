@@ -53,9 +53,11 @@ static void pciDriverRestorePower()
 static bool pciDriverHandlePower(const g_message_header* header, const uint8_t* content)
 {
     if(header->sender != G_TID_NONE || header->length != sizeof(g_power_event)) return false;
+
     g_power_event event;
     memcpy(&event, content, sizeof(event));
     if(event.magic != G_POWER_EVENT_MAGIC) return true;
+
     if(event.type == G_POWER_EVENT_CANCEL)
     {
         if(event.request == pciPowerRequest)
@@ -63,9 +65,12 @@ static bool pciDriverHandlePower(const g_message_header* header, const uint8_t* 
             pciDriverRestorePower();
             g_power_acknowledge(event.request, 1);
         }
+
         return true;
     }
+
     if(event.type != G_POWER_EVENT_PREPARE) return true;
+
     pciPowerRequest = event.request;
     pciPowerCoordinator = event.coordinator;
     bool ready = true;
@@ -75,6 +80,7 @@ static bool pciDriverHandlePower(const g_message_header* header, const uint8_t* 
         {
             auto command = pciConfigReadWord(device, PCI_CONFIG_OFF_COMMAND);
             if(!(command & 4)) continue;
+
             pciPowerCommands.push_back({device, command});
             pciConfigWriteWord(device, PCI_CONFIG_OFF_COMMAND, command & ~4u);
             if(pciConfigReadWord(device, PCI_CONFIG_OFF_COMMAND) & 4) { ready = false; break; }
@@ -106,6 +112,7 @@ static void pciDriverRejectPowerRequest(const g_message_header* header, g_pci_co
         break;
     default: return;
     }
+
     g_send_message_tm(header->sender, response, command == G_PCI_LIST_DEVICES ? 0 : length,
         header->transaction, G_MESSAGE_SEND_MODE_NON_BLOCKING);
 }

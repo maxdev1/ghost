@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2026, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,13 +18,19 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "unistd.h"
-#include "errno.h"
+#include <unistd.h>
+#include <errno.h>
+#include <ghost/filesystem.h>
 
-/**
- *
- */
-int symlink(const char* path1, const char* path2) {
-	klog("warning: symlink(%s, %s) is not implemented", path1, path2);
-	return -1;
+int symlink(const char* target, const char* path)
+{
+	return __g_fs_mutation_result_set_errno(g_symlink(target, path));
+}
+
+ssize_t readlink(const char* path, char* buffer, size_t capacity)
+{
+	g_fs_open_status status;
+	int64_t result = g_readlink_s(path, buffer, capacity, &status);
+	if(result < 0) errno = __g_fs_open_errno(status);
+	return result;
 }

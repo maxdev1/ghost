@@ -70,6 +70,7 @@ static g_ahci_shared_buffer* ahciFindSharedBuffer(g_pid owner, uint64_t handle)
 	for(auto& buffer: ahciSharedBuffers)
 		if(buffer.owner == owner && buffer.handle == handle)
 			return &buffer;
+
 	return nullptr;
 }
 
@@ -100,7 +101,7 @@ static g_block_status ahciCreateSharedBuffer(g_tid sender, g_pid owner, uint64_t
 	return G_BLOCK_SUCCESS;
 }
 
-static bool ahciValidateTransfer(const g_ahci_device* disk, const g_block_request& request)
+static bool ahciValidateTransfer(const g_ahci_device* disk, const g_block_transfer_request& request)
 {
 	uint32_t count = request.sectorCount;
 	return count && count <= disk->info.maxTransferSectors && request.lba < disk->info.sectorCount &&
@@ -109,20 +110,20 @@ static bool ahciValidateTransfer(const g_ahci_device* disk, const g_block_reques
 		   count <= (G_BLOCK_DMA_BUFFER_BYTES - request.offset) / disk->info.sectorSize;
 }
 
-g_block_status ahciHandleBufferRequest(const g_block_request& request, g_tid sender, g_block_buffer_mapping* mapping)
+g_block_status ahciHandleBufferRequest(const g_block_buffer_request& request, g_tid sender, g_block_buffer_mapping* mapping)
 {
-	if(request.device || request.lba || request.sectorCount || request.offset || !request.buffer)
+	if(!request.buffer)
 		return G_BLOCK_INVALID_REQUEST;
 
 	auto owner = g_get_pid_for_tid(sender);
 	if(owner == G_PID_NONE)
 		return G_BLOCK_INVALID_REQUEST;
 
-	if(request.command == G_BLOCK_OPEN_BUFFER || request.command == G_BLOCK_RELEASE_BUFFER)
+	if(request.header.command == G_BLOCK_OPEN_BUFFER || request.header.command == G_BLOCK_RELEASE_BUFFER)
 		ahciReapSharedBuffers();
 
 	auto buffer = ahciFindSharedBuffer(owner, request.buffer);
-	if(request.command == G_BLOCK_OPEN_BUFFER && !buffer)
+	if(request.header.command == G_BLOCK_OPEN_BUFFER && !buffer)
 	{
 		auto status = ahciCreateSharedBuffer(sender, owner, request.buffer, &buffer);
 		if(status != G_BLOCK_SUCCESS)
@@ -130,9 +131,9 @@ g_block_status ahciHandleBufferRequest(const g_block_request& request, g_tid sen
 	}
 
 	if(!buffer)
-		return request.command == G_BLOCK_RELEASE_BUFFER ? G_BLOCK_SUCCESS : G_BLOCK_DEVICE_NOT_FOUND;
+		return request.header.command == G_BLOCK_RELEASE_BUFFER ? G_BLOCK_SUCCESS : G_BLOCK_DEVICE_NOT_FOUND;
 
-	switch(request.command)
+	switch(request.header.command)
 	{
 		case G_BLOCK_OPEN_BUFFER:
 			if(buffer->closing)
@@ -144,6 +145,7 @@ g_block_status ahciHandleBufferRequest(const g_block_request& request, g_tid sen
 		case G_BLOCK_RELEASE_BUFFER:
 			if(!buffer->closing)
 				return G_BLOCK_INVALID_REQUEST;
+
 			ahciReleaseSharedBuffer(buffer - ahciSharedBuffers.data());
 			return G_BLOCK_SUCCESS;
 		default:
@@ -154,7 +156,7 @@ g_block_status ahciHandleBufferRequest(const g_block_request& request, g_tid sen
 	return G_BLOCK_SUCCESS;
 }
 
-g_block_status ahciTransfer(g_ahci_device* disk, const g_block_request& request, g_tid sender)
+g_block_status ahciTransfer(g_ahci_device* disk, const g_block_transfer_request& request, g_tid sender)
 {
 	if(!ahciValidateTransfer(disk, request))
 		return G_BLOCK_INVALID_REQUEST;
@@ -167,9 +169,10 @@ g_block_status ahciTransfer(g_ahci_device* disk, const g_block_request& request,
 	if(buffer->poisoned)
 		return G_BLOCK_UNAVAILABLE;
 
-	bool write = request.command == G_BLOCK_WRITE;
+	bool write = request.header.command == G_BLOCK_WRITE;
 	if(write && !(disk->info.flags & G_BLOCK_WRITABLE))
 		return G_BLOCK_UNSUPPORTED;
+
 	auto status = ahciExecuteCommand(disk, write ? G_ATA_COMMAND_WRITE_DMA_EXT : G_ATA_COMMAND_READ_DMA_EXT,
 									 request.lba, request.sectorCount, request.sectorCount * disk->info.sectorSize,
 									 write, &buffer->page, request.offset);
