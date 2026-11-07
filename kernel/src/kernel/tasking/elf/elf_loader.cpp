@@ -20,7 +20,6 @@
 
 #include "kernel/tasking/elf/elf_loader.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
-#include "kernel/calls/syscall.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/memory/constants.hpp"
@@ -144,7 +143,6 @@ g_virtual_address elfUserProcessCreateInfo(g_process* process, g_elf_object* roo
 	}
 	hashmapIteratorEnd(&it);
 
-	info->syscallKernelEntry = syscall;
 	process->userProcessInfo = info;
 
 	return imageEnd + G_PAGE_ALIGN_UP(totalRequired);

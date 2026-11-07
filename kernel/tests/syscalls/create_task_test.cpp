@@ -12,7 +12,7 @@ TEST(CreateTask, ValidatesAffinityAndSnapshotsUserEntryBeforeCreatingTask)
     create.coreAffinity = 2;
     syscallCreateTask(&task, &create);
     EXPECT_TRUE(create.status == G_CREATE_TASK_STATUS_FAILED && create.threadId == G_TID_NONE && !created);
-    create.coreAffinity = 1; mutateCreate = &create;
+    create.coreAffinity = 1; create.initialEntry = (void*) 0x1000; mutateCreate = &create;
     create.userData = (void*)0x1234; create.userEntry = (void*)0x5678;
     syscallCreateTask(&task, &create);
     EXPECT_TRUE(create.status == G_CREATE_TASK_STATUS_SUCCESSFUL && create.threadId == 42 && assignedCore == 1);

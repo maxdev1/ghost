@@ -60,3 +60,31 @@ g_fs_mutation_status g_truncate(g_fd fd, uint64_t length)
 }
 
 g_fs_mutation_status g_sync(g_fd fd) { return __g_fs_mutate_descriptor(G_SYSCALL_FS_SYNC, fd, 0); }
+
+g_fs_mutation_status g_rename(const char* source, const char* destination, g_bool replace)
+{
+	if(!source || !*source || !destination || !*destination)
+		return G_FS_MUTATION_INVALID_ARGUMENT;
+
+	g_syscall_fs_rename data{source, destination, replace, G_FS_MUTATION_NOT_SUPPORTED};
+	g_syscall(G_SYSCALL_FS_RENAME, (g_address) &data);
+	return data.status;
+}
+
+g_fs_mutation_status g_symlink(const char* target, const char* path)
+{
+	if(!target || !path || !*target || !*path)
+		return G_FS_MUTATION_INVALID_ARGUMENT;
+	g_syscall_fs_symlink data{target, path, G_FS_MUTATION_NOT_SUPPORTED};
+	g_syscall(G_SYSCALL_FS_SYMLINK, (g_address) &data);
+	return data.status;
+}
+
+int64_t g_readlink_s(const char* path, char* buffer, uint64_t capacity, g_fs_open_status* out_status)
+{
+	g_syscall_fs_readlink data{path, buffer, capacity, -1, G_FS_OPEN_INVALID_LINK};
+	if(path && *path && buffer && capacity)
+		g_syscall(G_SYSCALL_FS_READLINK, (g_address) &data);
+	if(out_status) *out_status = data.status;
+	return data.result;
+}

@@ -27,15 +27,16 @@
 __BEGIN_C
 
 /**
- * Executes the given kernquery.
+ * Queries kernel task, process or system resource information.
  *
- * @param command
- * 		query command
+ * The command selects the structure layout; this call has no buffer-size argument. Task lists may
+ * be truncated to id_buffer_size; filled_ids reports the number written.
  *
- * @param buffer
- * 		communication buffer
- *
- * @return one of the {g_kernquery_status} codes
+ * @param[in] command One of the G_KERNQUERY_* query commands.
+ * @param[in,out] buffer Non-null command-specific g_kernquery_*_data structure. Initialize query
+ *                       inputs and any nested buffer pointers and capacities before calling.
+ * @return A g_kernquery_status code; output fields are valid only as specified for that status.
+ * @security-level APPLICATION
  */
 g_kernquery_status g_kernquery(uint16_t command, uint8_t* buffer);
 

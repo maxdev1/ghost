@@ -21,6 +21,7 @@ g_task* taskingGetCurrentTask() { return current; }
 void taskingPrepareWait(g_task*, const char*) {}
 struct clock_state { uint64_t time; } clockState{0};
 clock_state* clockGetLocal() { return &clockState; }
+uint64_t clockGetMilliseconds() { return clockGetLocal()->time; }
 void clockWaitForTime(int, uint64_t) {}
 void clockUnwaitForTime(int) {}
 bool clockHasTimedOut(int) { return false; }

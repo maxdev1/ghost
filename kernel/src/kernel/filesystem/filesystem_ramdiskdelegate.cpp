@@ -24,16 +24,30 @@
 
 g_fs_open_status filesystemRamdiskDelegateOpen(g_fs_node* node, g_file_flag_mode flags)
 {
+	g_mutex_guard guard(&node->lock);
+	auto entry = ramdiskFindById(node->physicalId);
+	if(!entry || entry->opens == UINT32_MAX)
+		return G_FS_OPEN_ERROR;
+
+	++entry->opens;
 	return G_FS_OPEN_SUCCESSFUL;
 }
 
 g_fs_close_status filesystemRamdiskDelegateClose(g_fs_node* node, g_file_flag_mode openFlags)
 {
+	g_mutex_guard guard(&node->lock);
+	auto entry = ramdiskFindById(node->physicalId);
+	if(entry && entry->opens)
+		--entry->opens;
+	filesystemRamdiskDelegateReclaim(node);
 	return G_FS_CLOSE_SUCCESSFUL;
 }
 
 g_fs_open_status filesystemRamdiskDelegateLookup(g_fs_node* parent, const char* name, g_fs_node** outNode)
 {
+	g_mutex_guard namespaceGuard(&filesystemFindDelegate(parent)->lock);
+	if(filesystemFindExistingChild(parent, name, outNode))
+		return G_FS_OPEN_SUCCESSFUL;
 	g_ramdisk_entry* parentEntry;
 
 	if(parent->type == G_FS_NODE_TYPE_MOUNTPOINT)
@@ -67,6 +81,7 @@ g_fs_open_status filesystemRamdiskDelegateLookup(g_fs_node* parent, const char* 
 g_fs_read_status filesystemRamdiskDelegateRead(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length,
                                                int64_t* outRead)
 {
+	g_mutex_guard nodeGuard(&node->lock);
 	*outRead = -1;
 	g_ramdisk_entry* entry = ramdiskFindById(node->physicalId);
 	if(!entry)
@@ -77,6 +92,7 @@ g_fs_read_status filesystemRamdiskDelegateRead(g_fs_node* node, uint8_t* buffer,
 		*outRead = 0;
 		return G_FS_READ_SUCCESSFUL;
 	}
+
 	uint64_t available = entry->dataSize - offset;
 	if(length > available)
 		length = available;
@@ -91,6 +107,7 @@ g_fs_read_status filesystemRamdiskDelegateRead(g_fs_node* node, uint8_t* buffer,
 g_fs_write_status filesystemRamdiskDelegateWrite(g_fs_node* node, uint8_t* buffer, uint64_t offset, uint64_t length,
                                                  int64_t* outWrote)
 {
+	g_mutex_guard nodeGuard(&node->lock);
 	*outWrote = -1;
 	g_ramdisk_entry* entry = ramdiskFindById(node->physicalId);
 	if(!entry)
@@ -100,6 +117,7 @@ g_fs_write_status filesystemRamdiskDelegateWrite(g_fs_node* node, uint8_t* buffe
 		*outWrote = 0;
 		return G_FS_WRITE_SUCCESSFUL;
 	}
+
 	if(offset > INT32_MAX || length > INT32_MAX - offset || entry->dataSize > INT32_MAX)
 		return G_FS_WRITE_ERROR;
 
@@ -116,6 +134,7 @@ g_fs_write_status filesystemRamdiskDelegateWrite(g_fs_node* node, uint8_t* buffe
 			if(capacity < end)
 				capacity = end;
 		}
+
 		auto* data = static_cast<uint8_t*>(heapAllocate(capacity));
 		if(!data)
 			return G_FS_WRITE_ERROR;
@@ -139,6 +158,7 @@ g_fs_write_status filesystemRamdiskDelegateWrite(g_fs_node* node, uint8_t* buffe
 
 g_fs_length_status filesystemRamdiskDelegateGetLength(g_fs_node* node, uint64_t* outLength)
 {
+	g_mutex_guard nodeGuard(&node->lock);
 	g_ramdisk_entry* entry = ramdiskFindById(node->physicalId);
 	if(!entry)
 		return G_FS_LENGTH_ERROR;
@@ -149,9 +169,14 @@ g_fs_length_status filesystemRamdiskDelegateGetLength(g_fs_node* node, uint64_t*
 
 g_fs_open_status filesystemRamdiskDelegateCreate(g_fs_node* parent, const char* name, g_fs_node** outFile)
 {
+	*outFile = nullptr;
+	g_mutex_guard namespaceGuard(&filesystemFindDelegate(parent)->lock);
 	g_ramdisk_entry* entry = ramdiskFindById(parent->physicalId);
 	if(!entry)
 		return G_FS_OPEN_ERROR;
+
+	if(ramdiskFindChild(entry, name))
+		return G_FS_OPEN_ALREADY_EXISTS;
 
 	g_ramdisk_entry* newFile = ramdiskCreateFile(entry, name);
 
@@ -165,6 +190,7 @@ g_fs_open_status filesystemRamdiskDelegateCreate(g_fs_node* parent, const char* 
 
 g_fs_open_status filesystemRamdiskDelegateTruncate(g_fs_node* file)
 {
+	g_mutex_guard nodeGuard(&file->lock);
 	g_ramdisk_entry* entry = ramdiskFindById(file->physicalId);
 	if(!entry)
 		return G_FS_OPEN_ERROR;
@@ -180,6 +206,7 @@ g_fs_open_status filesystemRamdiskDelegateTruncate(g_fs_node* file)
 
 g_fs_directory_refresh_status filesystemRamdiskDelegateRefreshDir(g_fs_node* dir)
 {
+	g_mutex_guard namespaceGuard(&filesystemFindDelegate(dir)->lock);
 	g_ramdisk_entry* dirEntry = ramdiskFindById(dir->physicalId);
 	if(!dirEntry)
 		return G_FS_DIRECTORY_REFRESH_ERROR;

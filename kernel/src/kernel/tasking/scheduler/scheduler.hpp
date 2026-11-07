@@ -24,6 +24,17 @@
 #include "kernel/tasking/tasking.hpp"
 
 /**
+ * Requests one remote scheduling pass after publishing runnable work. Requests
+ * coalesce until the destination acknowledges its IPI before scanning tasks.
+ */
+void schedulerRequestReschedule(uint32_t processor);
+
+/**
+ * Consumes this processor's pending notification before its scheduling pass.
+ */
+void schedulerAcknowledgeReschedule();
+
+/**
  * Initializes the scheduler locally.
  */
 void schedulerInitializeLocal();
@@ -43,6 +54,12 @@ void schedulerSetCurrent(g_tasking_local* local, g_task* task);
  * The caller must pin the task against teardown.
  */
 uint64_t schedulerGetCpuTime(g_task* task);
+
+/**
+ * Reads total and idle nanoseconds across configured processors. Each CPU's
+ * counters are sampled together under its scheduler lock.
+ */
+void schedulerGetSystemCpuTime(uint64_t* total, uint64_t* idle);
 
 /**
  * Schedules to the next task.

@@ -43,6 +43,8 @@ typedef int g_kernquery_status;
 #define G_KERNQUERY_TASK_LIST 0x601
 #define G_KERNQUERY_TASK_GET_BY_ID 0x602
 #define G_KERNQUERY_PROCESS_GET_BY_ID 0x603
+#define G_KERNQUERY_TASK_GET_SECURITY 0x604
+#define G_KERNQUERY_SYSTEM_RESOURCES 0x605
 
 /**
  * Used in the {G_KERNQUERY_TASK_COUNT} query to retrieve the number
@@ -92,6 +94,35 @@ typedef struct
 	 */
 	uint64_t cpu_time;
 } __attribute__((packed)) g_kernquery_task_get_data;
+
+/**
+ * Used in {G_KERNQUERY_TASK_GET_SECURITY} to retrieve a live task's security
+ * level. The found flag is zero when the task no longer exists.
+ */
+typedef struct
+{
+	g_tid id;
+	uint8_t found;
+	g_security_level security_level;
+} __attribute__((packed)) g_kernquery_task_security_data;
+
+/**
+ * System resource counters for G_KERNQUERY_SYSTEM_RESOURCES. CPU times are
+ * summed nanoseconds across all processors; usage is the change in total minus
+ * idle time divided by the change in total time. Memory includes usable,
+ * kernel/module, bootloader and ACPI RAM, excluding reserved firmware regions.
+ * Free bytes count currently available physical frames, without double-counting
+ * shared mappings. sampled_at is the monotonic clock in nanoseconds.
+ */
+typedef struct
+{
+	uint64_t sampled_at;
+	uint64_t cpu_total_time;
+	uint64_t cpu_idle_time;
+	uint64_t memory_total;
+	uint64_t memory_free;
+	uint32_t processor_count;
+} __attribute__((packed)) g_kernquery_system_resources_data;
 
 __END_C
 

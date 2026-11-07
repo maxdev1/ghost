@@ -29,21 +29,15 @@
 __BEGIN_C
 
 /**
- * Performs the software interrupt necessary for the system call passing the
- * given data (usually a pointer to a call struct).
+ * Invokes a kernel system call with its operation-specific data block.
  *
- * @param call
- * 		the call to execute
- * @param data
- * 		the data to pass
+ * The operation determines the layout, pointer requirements and result fields. Prefer the typed
+ * libapi wrappers when available.
  *
- * Clobber flags (more: https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html):
- * - The "cc" clobber indicates that the assembler code modifies the FLAGS register
- * - The "memory" clobber tells the compiler that the assembly code performs memory reads
- *   or writes to items other than those listed in the input and output operands. Causes
- *   GCC to assume that anything in memory could have changed (the system call could do so).
- *
- * @security-level APPLICATION
+ * @param[in] call A G_SYSCALL_* operation number.
+ * @param[in,out] data Address of the operation's request/response structure, or zero for
+ *                     operations without one.
+ * @security-level APPLICATION; the selected operation may require DRIVER or KERNEL.
  */
 void g_syscall(uint32_t call, g_address data);
 

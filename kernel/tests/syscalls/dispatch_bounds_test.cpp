@@ -14,6 +14,10 @@ g_syscall_registration registrations[1], *syscallRegistrations = registrations;
 bool powerSyscallEnter(uint32_t) { return false; }
 void powerSyscallLeave(bool) {}
 
+void memoryUserReleaseAll(g_task*) {}
+static void _syscallInvoke(g_task* task, const g_syscall_registration* registration, void* address) {
+    registration->handler(task, address);
+}
 #include "production/syscall.inc"
 
 TEST(SyscallDispatch, RejectsNumbersAtAndAboveTheExclusiveLimit) {

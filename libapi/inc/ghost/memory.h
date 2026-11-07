@@ -56,97 +56,96 @@
 __BEGIN_C
 
 /**
- * Allocates a memory region with the size of at least the given
- * size in bytes. This region can for example be used as shared memory.
+ * Allocates zero-filled, page-aligned memory in the calling process.
  *
- * Allocating memory using this call makes the requesting process the physical owner of the
- * pages in its virtual space (important for unmapping).
+ * Equivalent to g_alloc_mem_p(size, 0). This is a separate mapping, not a malloc() heap
+ * allocation.
  *
- * @param size
- * 		the size in bytes
- *
- * @param out_phys
- *		optionally, the physical output, only for security-level DRIVER and only
- *		if just one page was allocated
- *
- * @return a pointer to the allocated memory region, or 0 if failed
- *
+ * @param[in] size Positive minimum size in bytes, rounded up to whole pages.
+ * @return The allocation's base address, or null on failure. Release it with g_unmap().
  * @security-level APPLICATION
  */
 void* g_alloc_mem(g_size size);
+
+/**
+ * Allocates zero-filled pages and optionally reports a physical address.
+ *
+ * @param[in] size Positive minimum size in bytes, rounded up to whole pages.
+ * @param[out] out_phys Receives the physical address only for a single-page allocation by a DRIVER
+ *                      or KERNEL caller; otherwise receives null. May be null.
+ * @return The page-aligned virtual base, or null on failure. Release it with g_unmap().
+ * @security-level APPLICATION
+ */
 void* g_alloc_mem_p(g_size size, void** out_phys);
 
 /**
- * Shares a memory area with another process.
+ * Maps pages from the calling process into another process.
  *
- * @param memory
- * 		a pointer to the memory area to share
- * @param size
- * 		the size of the memory area
- * @param pid
- * 		the id of the target process
+ * Both mappings access the same writable pages. Each process releases its own mapping with
+ * g_unmap(); managed pages remain allocated until their final mapping is released.
  *
- * @return a pointer to the shared memory location within the target address space
- *
+ * @param[in] memory Page-aligned base of mapped source memory.
+ * @param[in] size Positive number of bytes to share, rounded up to whole pages.
+ * @param[in] pid ID of the target process.
+ * @return The mapping's base in the target process, or null on failure; it is not a local pointer.
  * @security-level APPLICATION
  */
 void* g_share_mem(void* memory, int32_t size, g_pid pid);
 
 /**
- * Maps the given physical address to the executing processes address space so
- * it can access it directly.
+ * Maps a physical memory region into the calling process.
  *
- * @param addr
- * 		the physical memory address that should be mapped
- * @param size
- * 		the size that should be mapped
+ * Release the mapping with g_unmap(). Unmapping does not free the underlying physical device
+ * memory.
  *
- * @return a pointer to the mapped area within the executing processes address space
- *
+ * @param[in] addr Page-aligned physical base address, expressed as a pointer.
+ * @param[in] size Positive minimum mapping size in bytes, rounded up to whole pages.
+ * @return The page-aligned virtual base, or null on failure or insufficient privilege.
  * @security-level DRIVER
  */
 void* g_map_mmio(void* addr, uint32_t size);
 
 /**
- * Unmaps the given memory area.
+ * Releases an entire separately allocated or shared virtual mapping.
  *
- * @param area
- * 		a pointer to the area
+ * The mapping is removed from the calling process. Managed pages are freed when no mappings retain
+ * them; device pages are not freed. This does not accept malloc() blocks or interior pointers.
  *
- * @security-level DRIVER
+ * @param[in] area Exact page-aligned mapping base returned by g_alloc_mem(), g_share_mem() in this
+ *                 process, or g_map_mmio().
+ * @security-level APPLICATION
  */
 void g_unmap(void* area);
 
 /**
- * Frees a memory area allocated with {g_lower_malloc}.
+ * Releases an allocation from the lower-memory allocator.
  *
- * @param memory
- * 		a pointer to the memory area
- *
+ * @param[in] memory Allocation returned by g_lower_malloc(); must not already be freed.
  * @security-level DRIVER
  */
 void g_lower_free(void* memory);
 
 /**
- * Allocates a memory area in the lower 1MiB. This can be used
- * for example for the virtual 8086 mode.
+ * Allocates memory from the legacy lower 1 MiB region.
  *
- * @param size
- * 		the size to allocate
+ * The current allocator panics on exhaustion rather than returning a recoverable allocation
+ * failure.
  *
+ * @param[in] size Number of bytes to allocate.
+ * @return The allocation to release with g_lower_free(), or null for an unprivileged caller.
  * @security-level DRIVER
  */
 void* g_lower_malloc(uint32_t size);
 
 /**
- * Adjusts the program heap break.
+ * Adjusts the calling process's heap break by a signed byte count.
  *
- * @param amount
- * 		the value to adjust the break by
- * @param out_brk	is filled with the result
+ * Coordinate direct use with the process allocator, which may also manage this heap.
  *
- * @return whether adjusting was successful
- *
+ * @param[in] amount Bytes to add or remove; zero queries the current break.
+ * @param[out] out_brk Non-null output receiving the previous break on success, or the all-bits-set
+ *                     address on failure.
+ * @return Nonzero on success, or zero on failure; failure leaves the heap unchanged.
  * @security-level APPLICATION
  */
 uint8_t g_sbrk(int amount, void** out_brk);

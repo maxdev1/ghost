@@ -20,13 +20,12 @@
 
 #include "kernel/calls/syscall_system.hpp"
 #include "kernel/memory/memory.hpp"
+#include "kernel/memory/memory_user.hpp"
 #include "kernel/system/acpi/platform.hpp"
 #include "kernel/system/power/power.hpp"
-#include "kernel/system/interrupts/requests.hpp"
-#include "kernel/system/processor/processor.hpp"
-#include "kernel/tasking/clock.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/system/interrupts/apic/ioapic.hpp"
+#include "kernel/system/interrupts/irq.hpp"
 #include "kernel/logger/logger.hpp"
 #include "kernel/tasking/elf/elf_object.hpp"
 #include "kernel/utils/string.hpp"
@@ -49,16 +48,20 @@ void _getBinaryNameWithoutExtension(g_task* task, char buf[], int len)
 
 void syscallLog(g_task* task, g_syscall_log* data)
 {
+	char message[G_PATH_MAX];
+	if(!memoryCopyUserString(task, data->message, message, sizeof(message)))
+		return;
+
 	if(task->process->object && task->process->object->name)
 	{
 		int nameBufLen = 64;
 		char name[nameBufLen];
 		_getBinaryNameWithoutExtension(task, name, nameBufLen);
-		logInfo("%! (%i) %s", name, task->id, data->message);
+		logInfo("%! (%i) %s", name, task->id, message);
 	}
 	else
 	{
-		logInfo("%! (%i) %s", "unknown", task->id, data->message);
+		logInfo("%! (%i) %s", "unknown", task->id, message);
 	}
 }
 
@@ -97,74 +100,10 @@ void syscallTest(g_task* task, g_syscall_test* data)
 
 void syscallCallVm86(g_task* task, g_syscall_call_vm86* data)
 {
-	if(task->securityLevel > G_SECURITY_LEVEL_DRIVER)
-	{
-		data->status = G_VM86_CALL_STATUS_FAILED_NOT_PERMITTED;
-		return;
-	}
-
-	auto registerStore = (g_vm86_registers*) heapAllocate(sizeof(g_vm86_registers));
-
-	g_task* vm86task = taskingCreateTaskVm86(task->process, data->interrupt, data->in, registerStore);
-	taskingAssign(taskingGetLocal(), vm86task);
-
-	for(;;)
-	{
-		if(vm86task == nullptr || vm86task->status == G_TASK_STATUS_DEAD)
-		{
-			/* VM86 task has finished, copy out registers */
-			*data->out = *registerStore;
-
-			heapFree(registerStore);
-
-			data->status = G_VM86_CALL_STATUS_SUCCESSFUL;
-			break;
-		}
-
-		taskingYield();
-	}
+	data->status = task->securityLevel > G_SECURITY_LEVEL_DRIVER
+			? G_VM86_CALL_STATUS_FAILED_NOT_PERMITTED : G_VM86_CALL_STATUS_NOT_SUPPORTED;
 }
 
-
-void syscallIrqCreateRedirect(g_task* task, g_syscall_irq_create_redirect* data)
-{
-	if(task->securityLevel > G_SECURITY_LEVEL_DRIVER)
-		return;
-
-	if(!ioapicAreAvailable())
-	{
-		logWarn("%! failed to register IRQ redirect for interrupt %i, no ioapic available", "call", data->source);
-		return;
-	}
-
-	ioapicCreateRedirectionEntry(data->source, data->irq, 0);
-}
-
-void syscallAwaitIrq(g_task* task, g_syscall_await_irq* data)
-{
-	if(task->securityLevel > G_SECURITY_LEVEL_DRIVER)
-		return;
-
-	if(processorGetCurrentId() != 0)
-	{
-		logWarn("%! awaiting IRQs only possible on core 0", "call");
-		return taskingExit();
-	}
-
-	taskingWaitIf([&]()
-	{
-		if(!requestsWaitForIrq(data->irq, task))
-			return false;
-		if(data->timeout)
-			clockWaitForTime(task->id, clockGetLocal()->time + data->timeout);
-		return true;
-	}, [&]()
-	{
-		requestsClearWait(data->irq, task);
-		if(data->timeout)
-			clockUnwaitForTime(task->id);
-	});
-}
 
 void syscallGetEfiFramebuffer(g_task* task, g_syscall_get_efi_framebuffer* data)
 {
@@ -180,74 +119,81 @@ void syscallGetEfiFramebuffer(g_task* task, g_syscall_get_efi_framebuffer* data)
 	data->pitch = framebuffer->pitch;
 }
 
-void syscallSystemPower(g_task* task, g_syscall_system_power* output)
+void syscallSystemPower(g_task* task, g_syscall_system_power* data)
 {
-	g_syscall_system_power data;
-	if(!memoryCopyFromUser(task, &data, (g_address) output, sizeof(data)))
-		return;
-
-	data.status = G_POWER_NOT_SUPPORTED;
+	data->status = G_POWER_NOT_SUPPORTED;
 	if(powerIsReady())
 	{
-		switch(data.operation)
+		switch(data->operation)
 		{
 			case G_POWER_CALL_REQUEST:
-				data.status = powerRequest(data.action);
+				data->status = powerRequest(data->action);
 				break;
 			case G_POWER_CALL_REGISTER:
-				data.status = powerRegister(task, data.role);
+				data->status = powerRegister(task, data->role);
 				break;
 			case G_POWER_CALL_ACKNOWLEDGE:
-				data.status = powerAcknowledge(task, data.request, data.ready != 0);
+				data->status = powerAcknowledge(task, data->request, data->ready != 0);
 				break;
 			default:
-				data.status = G_POWER_INVALID_ARGUMENT;
+				data->status = G_POWER_INVALID_ARGUMENT;
 				break;
 		}
 	}
-
-	memoryCopyToUser(task, (g_address) output, &data, sizeof(data));
 }
 
-void syscallAcpiPlatform(g_task* task, g_syscall_acpi_platform* output)
+static g_irq_status syscallIrqOperation(g_task* task, const g_syscall_irq& request, g_irq_handle& handle)
 {
-	g_syscall_acpi_platform data;
-	if(!memoryCopyFromUser(task, &data, (g_address) output, sizeof(data)))
-		return;
+	if(task->securityLevel > G_SECURITY_LEVEL_DRIVER)
+		return G_IRQ_NOT_PERMITTED;
 
-	data.status = G_ACPI_NOT_PERMITTED;
-	if(task->securityLevel <= G_SECURITY_LEVEL_DRIVER)
+	switch(request.operation)
 	{
-		switch(data.operation)
-		{
-			case G_ACPI_PLATFORM_INFO:
-				data.address = acpiPlatformGetRsdp();
-				data.ioapic = ioapicAreAvailable();
-				data.status = data.address ? G_ACPI_SUCCESSFUL : G_ACPI_NOT_SUPPORTED;
-				break;
-			case G_ACPI_PLATFORM_MAP:
-				data.address = acpiPlatformMap(task, data.address, data.size);
-				data.status = data.address ? G_ACPI_SUCCESSFUL : G_ACPI_INVALID_ARGUMENT;
-				break;
-			case G_ACPI_PLATFORM_IRQ_WAIT:
-				data.status = acpiPlatformWait(task, data.irq);
-				break;
-			case G_ACPI_PLATFORM_IRQ_INSTALL:
-				data.status = acpiPlatformInstallIrq(task, data.irq);
-				break;
-			case G_ACPI_PLATFORM_IRQ_REARM:
-				data.status = acpiPlatformRearmIrq(task, data.irq);
-				break;
-			case G_ACPI_PLATFORM_IRQ_REMOVE:
-				data.status = acpiPlatformRemoveIrq(task, data.irq);
-				break;
-			case G_ACPI_PLATFORM_IRQ_MASK:
-				data.status = acpiPlatformMaskIrq(task, data.irq);
-				break;
-			default:
-				data.status = G_ACPI_INVALID_ARGUMENT;
-				break;
-		}
+		case G_IRQ_BIND:
+			return irqInstall(task, request.source, request.line, &handle);
+		case G_IRQ_WAIT:
+			return irqWait(task, handle, request.timeoutMs);
+		case G_IRQ_COMPLETE:
+			return irqComplete(task, handle);
+		case G_IRQ_MASK:
+			return irqMask(task, handle);
+		case G_IRQ_RELEASE:
+			return irqRelease(task, handle);
+		default:
+			return G_IRQ_INVALID_ARGUMENT;
 	}
-	memoryCopyToUser(task, (g_address) output, &data, sizeof(data));
+}
+
+void syscallIrq(g_task* task, g_syscall_irq* request)
+{
+	g_irq_handle handle = request->operation == G_IRQ_BIND ? G_IRQ_HANDLE_NONE : request->handle;
+	request->status = syscallIrqOperation(task, *request, handle);
+	request->handle = handle;
+}
+
+void syscallAcpiGetPlatformInfo(g_task* task, g_syscall_acpi_platform_info* data)
+{
+	if(task->securityLevel > G_SECURITY_LEVEL_DRIVER)
+	{
+		data->status = G_ACPI_NOT_PERMITTED;
+		return;
+	}
+
+	data->rsdp = acpiPlatformGetRsdp();
+	data->ioapic = ioapicAreAvailable();
+	data->status = data->rsdp ? G_ACPI_SUCCESSFUL : G_ACPI_NOT_SUPPORTED;
+}
+
+void syscallAcpiMap(g_task* task, g_syscall_acpi_map* data)
+{
+	data->virtualAddress = 0;
+
+	if(task->securityLevel > G_SECURITY_LEVEL_DRIVER)
+	{
+		data->status = G_ACPI_NOT_PERMITTED;
+		return;
+	}
+
+	data->virtualAddress = acpiPlatformMap(task, data->physicalAddress, data->size);
+	data->status = data->virtualAddress ? G_ACPI_SUCCESSFUL : G_ACPI_INVALID_ARGUMENT;
 }

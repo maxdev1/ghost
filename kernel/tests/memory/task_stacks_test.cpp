@@ -1,3 +1,23 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2026, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include "support/fixture.hpp"
 
 namespace
@@ -38,14 +58,19 @@ TEST(TaskStacks, CommitsAllKernelPagesAndUnwindsPartialFailures) {
     int pool;
     for(int failure : {0, 1, 3}) {
         reset(); failPhysical = failure;
+
         EXPECT_FALSE(taskingMemoryCreateStack(&pool, 3, 3, 9).start);
         EXPECT_TRUE(frames.empty() && allocations == frees && !ranges);
+
         reset(); failMapping = failure;
+
         EXPECT_FALSE(taskingMemoryCreateStack(&pool, 3, 3, 9).start);
         EXPECT_TRUE(frames.empty() && allocations == frees && !ranges);
     }
+
     reset();
     auto stack = taskingMemoryCreateStack(&pool, 3, 3, 9);
+
     ASSERT_NE(0U, stack.start);
     EXPECT_EQ(8U, mappings.size());
     EXPECT_FALSE(mappings.count(stack.start));
@@ -56,7 +81,27 @@ TEST(TaskStacks, CommitsAllKernelPagesAndUnwindsPartialFailures) {
         auto item = mappings.begin(); auto physical = item->second;
         mappings.erase(item); memoryPhysicalFree(physical);
     }
+
     addressRangePoolFree(&pool, stack.start);
+
     EXPECT_TRUE(frames.empty() && allocations == frees && !ranges);
+}
+
+TEST(TaskStacks, BatchesTeardownWithoutFreeingGuardsOrUnmanagedFrames) {
+    reset();
+    int pool;
+    auto stack = taskingMemoryCreateStack(&pool, 3, 3, 9);
+    ASSERT_NE(0U, stack.start);
+    const auto unmanaged = stack.start + G_PAGE_SIZE;
+    const auto physical = mappings.at(unmanaged);
+    mappings.erase(unmanaged); mappingFlags.erase(unmanaged);
+    memoryPhysicalFree(physical);
+    mappings[unmanaged] = 0xbeef000;
+    mappingFlags[unmanaged] = G_PAGE_PRESENT | G_PAGE_UNMANAGED_FLAG;
+    taskingMemoryDestroyStack(&pool, stack);
+    EXPECT_EQ(1, unmapBatches);
+    EXPECT_TRUE(mappings.empty() && frames.empty());
+    EXPECT_EQ(0, ranges); EXPECT_EQ(0U, stack.start); EXPECT_EQ(0U, stack.end);
+    EXPECT_EQ(allocations, frees);
 }
 }

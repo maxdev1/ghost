@@ -69,6 +69,10 @@ struct g_bitmap_page_allocator
     g_mutex lock;
     uint32_t freePageCount;
     g_bitmap_index_page_header* indexPage;
+    // firstBitmap is protected by lock; each firstWord by its bitmap lock.
+    // Keep these lower bounds outside the one-page metadata structures.
+    uint16_t firstBitmap;
+    uint16_t firstWord[G_BITMAP_INDEX_MAX_ENTRIES];
 
     struct
     {

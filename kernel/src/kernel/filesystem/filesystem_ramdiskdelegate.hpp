@@ -45,4 +45,13 @@ g_fs_open_status filesystemRamdiskDelegateTruncate(g_fs_node* file);
 
 g_fs_directory_refresh_status filesystemRamdiskDelegateRefreshDir(g_fs_node* dir);
 
+void filesystemRamdiskDelegateReclaim(g_fs_node* node);
+
+g_fs_mutation_status filesystemRamdiskDelegateMakeDirectory(g_fs_node* parent, const char* name, g_fs_node** out);
+
+g_fs_mutation_status filesystemRamdiskDelegateMutate(g_fs_node* node, g_fs_delegate_request_type type, uint64_t length);
+
+g_fs_mutation_status filesystemRamdiskDelegateRename(g_fs_node* node, g_fs_node* parent, const char* name,
+	g_fs_node* replaced);
+
 #endif

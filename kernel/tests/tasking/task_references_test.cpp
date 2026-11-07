@@ -6,7 +6,9 @@ namespace
 
 using g_tid = int;
 constexpr int G_TID_NONE = -1, G_TASK_STATUS_DEAD = 3;
-struct g_task { int id, status; uint32_t references; };
+struct g_tasking_local { uint32_t processor; };
+struct g_task { int id, status; uint32_t references; g_mutex lock; g_tasking_local* assignment; };
+void schedulerRequestReschedule(uint32_t) {}
 #include "production/task_reference_hpp.inc"
 #include "production/hashmap_hpp.inc"
 

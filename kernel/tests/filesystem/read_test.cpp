@@ -1,3 +1,23 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2026, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include "support/fixture.hpp"
 #include <condition_variable>
 
@@ -40,6 +60,7 @@ protected:
 TEST_F(FilesystemRead, AdvancesOffsetByPartialReadCount)
 {
     int64_t count = -1;
+
     EXPECT_EQ(G_FS_READ_SUCCESSFUL, filesystemRead(&task, 7, nullptr, 8, &count));
     EXPECT_EQ(1, count);
     EXPECT_EQ(2, readOffset);
@@ -51,6 +72,7 @@ TEST_F(FilesystemRead, BlockingEndOfFileReturnsWithoutWaiting)
     descriptor->openFlags = G_FILE_FLAG_MODE_BLOCKING;
     readCount = 0;
     int64_t count = -1;
+
     EXPECT_EQ(G_FS_READ_SUCCESSFUL, filesystemRead(&task, 7, nullptr, 8, &count));
     EXPECT_EQ(0, count);
     EXPECT_EQ(1, readCalls);
@@ -63,6 +85,7 @@ TEST_F(FilesystemRead, ReadErrorLeavesOffsetAndReleasesLock)
     readStatus = G_FS_READ_ERROR;
     readCount = -1;
     int64_t count = 99;
+
     EXPECT_EQ(G_FS_READ_ERROR, filesystemRead(&task, 7, nullptr, 8, &count));
     EXPECT_EQ(-1, count);
     EXPECT_EQ(2, descriptor->offset);
@@ -73,6 +96,7 @@ TEST_F(FilesystemRead, NonblockingBusyReturnsWithoutWaiting)
     readStatus = G_FS_READ_BUSY;
     readCount = 0;
     int64_t count = -1;
+
     EXPECT_EQ(G_FS_READ_BUSY, filesystemRead(&task, 7, nullptr, 8, &count));
     EXPECT_EQ(0, count);
     EXPECT_EQ(1, readCalls);
@@ -87,6 +111,7 @@ TEST_F(FilesystemRead, MissingWaitImplementationReturnsError)
     readStatus = G_FS_READ_BUSY;
     readCount = 0;
     int64_t count = -1;
+
     EXPECT_EQ(G_FS_READ_ERROR, filesystemRead(&task, 7, nullptr, 8, &count));
     EXPECT_EQ(1, readCalls);
     EXPECT_FALSE(task.waiting);
@@ -101,13 +126,17 @@ TEST_F(FilesystemRead, RetriesAtCurrentOffsetWhenReadyBeforeSleep)
     {
         auto info = hashmapGet(filesystemProcessInfo, 42, (g_filesystem_process*)nullptr);
         auto open = hashmapGet(info->descriptors, 7, (g_file_descriptor*)nullptr);
+
         EXPECT_EQ(0, open->operationLock.depth);
+
         open->offset = 7;
         readStatus = G_FS_READ_SUCCESSFUL;
         readCount = 1;
         return false;
     };
+
     int64_t count = -1;
+
     EXPECT_EQ(G_FS_READ_SUCCESSFUL, filesystemRead(&task, 7, nullptr, 8, &count));
     EXPECT_EQ(2, readCalls);
     EXPECT_EQ(1, count);

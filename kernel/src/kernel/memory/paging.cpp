@@ -41,6 +41,7 @@ static uint64_t pagingCountResidentTable(g_physical_address physical, unsigned l
 		else
 			bytes += pagingCountResidentTable(entry & G_PAGE_PHYSICAL_MASK, level - 1);
 	}
+
 	return bytes;
 }
 
@@ -53,13 +54,15 @@ g_physical_address pagingVirtualToPageEntry(g_virtual_address addr)
 {
     auto table = (uint64_t*) G_MEM_PHYS_TO_VIRT(pagingGetCurrentSpace());
     const unsigned shifts[] = {39, 30, 21, 12};
+    uint64_t permissions = G_PAGE_USER_FLAG | G_PAGE_WRITABLE_FLAG;
     for(unsigned level = 0; level < 4; ++level)
     {
         const auto entry = memoryAtomicLoad(&table[(addr >> shifts[level]) & 511], G_MEMORY_ORDER_ACQUIRE);
         if(!(entry & G_PAGE_PRESENT))
             return 0;
+        permissions &= entry;
         if(level == 3 || ((level == 1 || level == 2) && (entry & G_PAGE_LARGE_PAGE_FLAG)))
-            return entry;
+            return (entry & ~(G_PAGE_USER_FLAG | G_PAGE_WRITABLE_FLAG)) | permissions;
         table = (uint64_t*) G_MEM_PHYS_TO_VIRT(entry & G_PAGE_PHYSICAL_MASK);
     }
     return 0;
@@ -197,7 +200,7 @@ bool pagingMapPage(g_virtual_address virt, g_physical_address phys,
 	return true;
 }
 
-void pagingUnmapPage(g_virtual_address virt)
+static uint64_t pagingClearPage(g_virtual_address virt)
 {
     auto table = (uint64_t*) G_MEM_PHYS_TO_VIRT(pagingGetCurrentSpace());
     const unsigned shifts[] = {39, 30, 21};
@@ -205,13 +208,35 @@ void pagingUnmapPage(g_virtual_address virt)
     {
         const auto entry = memoryAtomicLoad(&table[(virt >> shifts[level]) & 511], G_MEMORY_ORDER_ACQUIRE);
         if(!(entry & G_PAGE_PRESENT))
-            return;
+            return 0;
         if(level && (entry & G_PAGE_LARGE_PAGE_FLAG))
             panic("%! attempted 4 KiB unmap inside a huge mapping", "paging");
         table = (uint64_t*) G_MEM_PHYS_TO_VIRT(entry & G_PAGE_PHYSICAL_MASK);
     }
-    if(memoryAtomicExchange(&table[G_PT_INDEX(virt)], 0, G_MEMORY_ORDER_ACQ_REL))
-        pagingSynchronizePage(virt);
+
+    return memoryAtomicExchange(&table[G_PT_INDEX(virt)], 0, G_MEMORY_ORDER_ACQ_REL);
+}
+
+void pagingUnmapPages(g_virtual_address virt, uint32_t pages, uint64_t* entries)
+{
+    bool removed = false;
+    bool global = false;
+    for(uint32_t page = 0; page < pages; ++page)
+    {
+        const auto address = virt + (g_virtual_address) page * G_PAGE_SIZE;
+        const auto entry = pagingClearPage(address);
+        entries[page] = entry;
+        removed |= entry != 0;
+        global |= (entry & G_PAGE_GLOBAL_FLAG) != 0;
+    }
+    if(removed)
+        pagingSynchronizePages(virt, pages, global);
+}
+
+void pagingUnmapPage(g_virtual_address virt)
+{
+    uint64_t entry;
+    pagingUnmapPages(virt, 1, &entry);
 }
 
 g_physical_address pagingGetCurrentSpace()

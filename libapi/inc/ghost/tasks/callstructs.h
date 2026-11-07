@@ -90,14 +90,6 @@ typedef struct
 } __attribute__((packed)) g_syscall_sleep;
 
 /**
- * @field irq the IRQ to wait for
- */
-typedef struct
-{
-	uint8_t irq;
-} __attribute__((packed)) g_syscall_wait_for_irq;
-
-/**
  * @field name the name
  * @field successful whether the registration was successful
  */
@@ -145,6 +137,11 @@ typedef struct
 {
     uint64_t nanos;
 } __attribute__((packed)) g_syscall_nanos;
+
+typedef struct
+{
+	int64_t unixSeconds;
+} __attribute__((packed)) g_syscall_time;
 
 /**
  * @field forkedId id of the forked process

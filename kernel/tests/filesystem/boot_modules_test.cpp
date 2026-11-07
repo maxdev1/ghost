@@ -1,3 +1,23 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2026, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include "support/fixture.hpp"
 
 using g_ramdisk_entry_type = uint8_t;
@@ -24,15 +44,22 @@ TEST(BootModules, PublishesIndividualFilesWithoutCopyingTheirContents)
 	limine_module_response response{2, files};
 	ramdiskLoadBootModules(&response);
 	auto application = ramdiskFindChild(ramdiskMain->root, "applications");
+
 	ASSERT_NE(nullptr, application);
+
 	auto file = ramdiskFindChild(application, "pcidriver.bin");
+
 	ASSERT_NE(nullptr, file);
 	EXPECT_EQ(a, file->data);
 	EXPECT_EQ(sizeof(a), file->dataSize);
 	EXPECT_TRUE(file->dataOnRamdisk);
+
 	auto system = ramdiskFindChild(ramdiskMain->root, "system");
+
 	ASSERT_NE(nullptr, system);
+
 	auto library = ramdiskFindChild(ramdiskFindChild(system, "lib"), "libc.so");
+
 	ASSERT_NE(nullptr, library);
 	EXPECT_EQ(b, library->data);
 	while(ramdiskMain->firstEntry)
@@ -42,6 +69,7 @@ TEST(BootModules, PublishesIndividualFilesWithoutCopyingTheirContents)
 		std::free(entry->name);
 		std::free(entry);
 	}
+
 	delete ramdiskMain->root;
 	delete ramdiskMain;
 	ramdiskMain = nullptr;

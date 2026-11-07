@@ -97,6 +97,11 @@ bool pagingMapPage(g_virtual_address virt, g_physical_address phys,
 void pagingUnmapPage(g_virtual_address virt);
 
 /**
+ * Removes mappings and completes all TLB acknowledgments before returning the old PTEs.
+ */
+void pagingUnmapPages(g_virtual_address virt, uint32_t pages, uint64_t* entries);
+
+/**
  * Returns the currently set page directory.
  *
  * @return the page directory

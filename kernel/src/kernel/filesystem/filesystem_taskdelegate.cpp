@@ -81,6 +81,7 @@ static void filesystemDelegateDetach(g_fs_task_delegate* delegate)
 {
 	if(!delegate->online)
 		return;
+
 	delegate->online = false;
 
 	--filesystemDelegateActiveCount;
@@ -118,7 +119,7 @@ bool filesystemDelegateAvailable(g_fs_node* node)
 	if(!node->delegate || node->delegate->open != filesystemDelegateOpen)
 		return true;
 
-	auto delegate = reinterpret_cast<g_fs_task_delegate*>(node->delegate);
+	auto delegate = (g_fs_task_delegate*) node->delegate;
 	g_mutex_guard guard(&filesystemDelegateLock);
 
 	if(delegate->online && !filesystemDelegateOwnerAlive(delegate))
@@ -137,7 +138,7 @@ static void filesystemDelegateWait(g_fs_task_delegate* delegate, g_task* task, u
 	waitQueueAdd(&delegate->waiters, task->id);
 
 	taskingPrepareWait(task, "filesystem-delegate");
-	auto poll = clockGetLocal()->time + 10;
+	auto poll = clockGetMilliseconds() + 10;
 	clockWaitForTime(task->id, poll < deadline ? poll : deadline);
 
 	mutexRelease(&filesystemDelegateLock);
@@ -160,7 +161,7 @@ static void filesystemDelegatePrepare(g_fs_delegate_transaction_storage* storage
  */
 static bool filesystemDelegateAcquireSlot(g_fs_task_delegate* delegate, g_task* task, uint64_t deadline)
 {
-	while(delegate->online && delegate->transaction && clockGetLocal()->time < deadline &&
+	while(delegate->online && delegate->transaction && clockGetMilliseconds() < deadline &&
 		  !memoryAtomicLoad(&task->terminationRequested, G_MEMORY_ORDER_ACQUIRE))
 	{
 		if(!filesystemDelegateOwnerAlive(delegate))
@@ -168,15 +169,17 @@ static bool filesystemDelegateAcquireSlot(g_fs_task_delegate* delegate, g_task* 
 			filesystemDelegateDetach(delegate);
 			break;
 		}
+
 		filesystemDelegateWait(delegate, task, deadline);
 	}
 
 	if(delegate->online && !filesystemDelegateOwnerAlive(delegate))
 		filesystemDelegateDetach(delegate);
 
-	if(!delegate->online || delegate->transaction || clockGetLocal()->time >= deadline ||
+	if(!delegate->online || delegate->transaction || clockGetMilliseconds() >= deadline ||
 	   memoryAtomicLoad(&task->terminationRequested, G_MEMORY_ORDER_ACQUIRE))
 		return false;
+
 	return true;
 }
 
@@ -199,15 +202,15 @@ static g_fs_delegate_transaction* filesystemDelegateBeginTransaction(g_fs_task_d
 	storage->header.transaction = filesystemDelegateNextTransaction;
 	storage->header.mountpoint_id = delegate->root->id;
 
-	auto io = reinterpret_cast<void*>(G_MEM_PHYS_TO_VIRT(delegate->ioPage));
+	auto io = (void*) G_MEM_PHYS_TO_VIRT(delegate->ioPage);
 	memorySetBytes(io, 0, G_PAGE_SIZE);
 
 	if(storage->header.type == G_FS_DELEGATE_REQUEST_READ)
-		storage->data.read.mapped_buffer = reinterpret_cast<void*>(delegate->mapping + G_PAGE_SIZE);
+		storage->data.read.mapped_buffer = (void*) (delegate->mapping + G_PAGE_SIZE);
 
 	if(storage->header.type == G_FS_DELEGATE_REQUEST_WRITE)
 	{
-		storage->data.write.mapped_buffer = reinterpret_cast<void*>(delegate->mapping + G_PAGE_SIZE);
+		storage->data.write.mapped_buffer = (void*) (delegate->mapping + G_PAGE_SIZE);
 		memoryCopy(io, buffer, storage->data.write.length);
 	}
 
@@ -217,7 +220,7 @@ static g_fs_delegate_transaction* filesystemDelegateBeginTransaction(g_fs_task_d
 	transaction->client = task->id;
 	delegate->transaction = transaction;
 
-	auto control = reinterpret_cast<void*>(G_MEM_PHYS_TO_VIRT(delegate->controlPage));
+	auto control = (void*) G_MEM_PHYS_TO_VIRT(delegate->controlPage);
 	memorySetBytes(control, 0, G_PAGE_SIZE);
 	memoryCopy(control, storage, sizeof(*storage));
 	memoryAtomicFence(G_MEMORY_ORDER_RELEASE);
@@ -230,13 +233,14 @@ static g_fs_delegate_transaction* filesystemDelegateBeginTransaction(g_fs_task_d
 		heapFree(transaction);
 		return nullptr;
 	}
+
 	return transaction;
 }
 
 static bool filesystemDelegateAwaitResult(g_fs_task_delegate* delegate, g_fs_delegate_transaction* transaction,
 										  g_fs_delegate_transaction_storage* storage, g_task* task, uint64_t deadline)
 {
-	while(!transaction->completed && clockGetLocal()->time < deadline &&
+	while(!transaction->completed && clockGetMilliseconds() < deadline &&
 		  !memoryAtomicLoad(&task->terminationRequested, G_MEMORY_ORDER_ACQUIRE))
 	{
 		if(!filesystemDelegateOwnerAlive(delegate))
@@ -244,6 +248,7 @@ static bool filesystemDelegateAwaitResult(g_fs_task_delegate* delegate, g_fs_del
 			filesystemDelegateDetach(delegate);
 			break;
 		}
+
 		filesystemDelegateWait(delegate, task, deadline);
 	}
 
@@ -262,6 +267,7 @@ static bool filesystemDelegateAwaitResult(g_fs_task_delegate* delegate, g_fs_del
 		transaction->buffer = nullptr;
 		filesystemDelegateDiscardPending(transaction);
 	}
+
 	return successful;
 }
 
@@ -269,11 +275,11 @@ static bool filesystemDelegateTransact(g_fs_node* node, g_fs_delegate_transactio
 									   uint8_t* buffer = nullptr)
 {
 	auto task = taskingGetCurrentTask();
-	auto delegate = reinterpret_cast<g_fs_task_delegate*>(node->delegate);
+	auto delegate = (g_fs_task_delegate*) node->delegate;
 	if(task->id == delegate->owner)
 		return false;
 
-	auto deadline = clockGetLocal()->time + G_FS_DELEGATE_TIMEOUT_MS;
+	auto deadline = clockGetMilliseconds() + G_FS_DELEGATE_TIMEOUT_MS;
 	g_interrupt_guard interrupts;
 	g_mutex_guard guard(&filesystemDelegateLock);
 
@@ -296,7 +302,10 @@ static g_fs_open_status filesystemDelegateOpen(g_fs_node* node, g_file_flag_mode
 	filesystemDelegatePrepare(&storage, G_FS_DELEGATE_REQUEST_OPEN);
 	storage.data.open.phys_fs_id = node->physicalId;
 	storage.data.open.result_status = G_FS_OPEN_ERROR;
-	stringCopy(storage.data.open.name, node->name);
+	{
+		g_mutex_guard nodeGuard(&node->lock);
+		stringCopy(storage.data.open.name, node->name);
+	}
 	storage.data.open.flags = flags;
 	return filesystemDelegateTransact(node, &storage) ? storage.data.open.result_status : G_FS_OPEN_ERROR;
 }
@@ -319,6 +328,7 @@ static g_fs_open_status filesystemDelegateLookup(g_fs_node* node, const char* na
 		return G_FS_OPEN_NOT_FOUND;
 	if(stringLength(name) >= G_FILENAME_MAX)
 		return G_FS_OPEN_ERROR;
+
 	g_fs_delegate_transaction_storage storage;
 	filesystemDelegatePrepare(&storage, G_FS_DELEGATE_REQUEST_LOOKUP);
 	storage.data.lookup.parent_phys_fs_id = node->physicalId;
@@ -328,6 +338,7 @@ static g_fs_open_status filesystemDelegateLookup(g_fs_node* node, const char* na
 	stringCopy(storage.data.lookup.name, name);
 	if(!filesystemDelegateTransact(node, &storage))
 		return G_FS_OPEN_ERROR;
+
 	switch(storage.data.lookup.result_status)
 	{
 		case G_FS_LOOKUP_SUCCESSFUL:
@@ -351,12 +362,15 @@ static g_fs_read_status filesystemDelegateRead(g_fs_node* node, uint8_t* buffer,
 		*out = 0;
 		return G_FS_READ_SUCCESSFUL;
 	}
+
 	uint32_t count = length < G_PAGE_SIZE ? length : G_PAGE_SIZE;
 	if(offset > UINT64_MAX - count)
 		return G_FS_READ_ERROR;
+
 	auto bytes = static_cast<uint8_t*>(heapTryAllocate(count));
 	if(!bytes)
 		return G_FS_READ_ERROR;
+
 	g_fs_delegate_transaction_storage storage;
 	filesystemDelegatePrepare(&storage, G_FS_DELEGATE_REQUEST_READ);
 	storage.data.read.phys_fs_id = node->physicalId;
@@ -376,6 +390,7 @@ static g_fs_read_status filesystemDelegateRead(g_fs_node* node, uint8_t* buffer,
 				status = G_FS_READ_ERROR;
 		}
 	}
+
 	heapFree(bytes);
 	return status;
 }
@@ -389,12 +404,15 @@ static g_fs_write_status filesystemDelegateWrite(g_fs_node* node, uint8_t* buffe
 		*out = 0;
 		return G_FS_WRITE_SUCCESSFUL;
 	}
+
 	uint32_t count = length < G_PAGE_SIZE ? length : G_PAGE_SIZE;
 	if(offset > UINT64_MAX - count)
 		return G_FS_WRITE_ERROR;
+
 	auto bytes = static_cast<uint8_t*>(heapTryAllocate(count));
 	if(!bytes)
 		return G_FS_WRITE_ERROR;
+
 	g_fs_delegate_transaction_storage storage;
 	filesystemDelegatePrepare(&storage, G_FS_DELEGATE_REQUEST_WRITE);
 	storage.data.write.phys_fs_id = node->physicalId;
@@ -410,6 +428,7 @@ static g_fs_write_status filesystemDelegateWrite(g_fs_node* node, uint8_t* buffe
 		if(status == G_FS_WRITE_SUCCESSFUL)
 			*out = storage.data.write.result_write;
 	}
+
 	heapFree(bytes);
 	return status;
 }
@@ -444,6 +463,7 @@ static g_fs_mutation_status filesystemDelegateCreateEntry(g_fs_node* parent, con
 	*out = nullptr;
 	if(stringLength(name) >= G_FILENAME_MAX)
 		return G_FS_MUTATION_INVALID_ARGUMENT;
+
 	g_fs_delegate_transaction_storage storage;
 	filesystemDelegatePrepare(&storage, G_FS_DELEGATE_REQUEST_CREATE);
 	storage.data.create.parent_phys_fs_id = parent->physicalId;
@@ -461,14 +481,30 @@ static g_fs_mutation_status filesystemDelegateCreateEntry(g_fs_node* parent, con
 
 static g_fs_open_status filesystemDelegateCreate(g_fs_node* parent, const char* name, g_fs_node** out)
 {
-	return filesystemDelegateCreateEntry(parent, name, G_FS_NODE_TYPE_FILE, out) == G_FS_MUTATION_SUCCESSFUL
-				   ? G_FS_OPEN_SUCCESSFUL
-				   : G_FS_OPEN_ERROR;
+	auto status = filesystemDelegateCreateEntry(parent, name, G_FS_NODE_TYPE_FILE, out);
+	if(status == G_FS_MUTATION_SUCCESSFUL) return G_FS_OPEN_SUCCESSFUL;
+	return status == G_FS_MUTATION_ALREADY_EXISTS ? G_FS_OPEN_ALREADY_EXISTS : G_FS_OPEN_ERROR;
 }
 
 static g_fs_mutation_status filesystemDelegateMakeDirectory(g_fs_node* parent, const char* name, g_fs_node** out)
 {
 	return filesystemDelegateCreateEntry(parent, name, G_FS_NODE_TYPE_FOLDER, out);
+}
+
+static g_fs_mutation_status filesystemDelegateRename(g_fs_node* node, g_fs_node* parent, const char* name,
+													g_fs_node* replaced)
+{
+	g_fs_delegate_transaction_storage storage;
+	filesystemDelegatePrepare(&storage, G_FS_DELEGATE_REQUEST_RENAME);
+	storage.data.rename.phys_fs_id = node->physicalId;
+	storage.data.rename.parent_phys_fs_id = parent->physicalId;
+	storage.data.rename.replaced_phys_fs_id = replaced ? replaced->physicalId : UINT64_MAX;
+	stringCopy(storage.data.rename.name, name);
+	storage.data.rename.result_status = G_FS_MUTATION_ERROR;
+	if(!filesystemDelegateTransact(node, &storage))
+		return G_FS_MUTATION_ERROR;
+
+	return storage.data.rename.result_status;
 }
 
 static g_fs_mutation_status filesystemDelegateMutate(g_fs_node* node, g_fs_delegate_request_type type, uint64_t length)
@@ -494,8 +530,10 @@ static g_fs_mutation_status filesystemDelegateMutate(g_fs_node* node, g_fs_deleg
 		default:
 			return G_FS_MUTATION_NOT_SUPPORTED;
 	}
+
 	if(!filesystemDelegateTransact(node, &storage))
 		return G_FS_MUTATION_ERROR;
+
 	switch(type)
 	{
 		case G_FS_DELEGATE_REQUEST_RESIZE:
@@ -523,6 +561,7 @@ bool filesystemDelegateFlushAll(g_tid coordinator)
 			roots[count++] = delegate->root;
 		}
 	}
+
 	mutexRelease(&filesystemDelegateLock);
 
 	for(uint32_t i = 0; i < count; ++i)
@@ -532,6 +571,7 @@ bool filesystemDelegateFlushAll(g_tid coordinator)
 			return false;
 		}
 	}
+
 	return true;
 }
 
@@ -553,6 +593,7 @@ static g_fs_task_delegate* filesystemDelegateFindMount(g_fs_virt_id mount)
 	for(auto delegate = filesystemDelegates; delegate; delegate = delegate->next)
 		if(delegate->root->id == mount)
 			return delegate;
+
 	return nullptr;
 }
 
@@ -561,6 +602,7 @@ static g_fs_task_delegate* filesystemDelegateFindTransaction(g_fs_transaction_id
 	for(auto delegate = filesystemDelegates; delegate; delegate = delegate->next)
 		if(delegate->transaction && delegate->transaction->request.header.transaction == id)
 			return delegate;
+
 	return nullptr;
 }
 
@@ -569,6 +611,7 @@ static g_fs_node* filesystemDelegateFindResultNode(g_fs_delegate_transaction* tr
 	for(auto pending = transaction->pending; pending; pending = pending->next)
 		if(pending->node->id == id)
 			return pending->node;
+
 	return filesystemGetNode(id);
 }
 
@@ -596,6 +639,8 @@ static size_t filesystemDelegateInputSize(g_fs_delegate_request_type type)
 			return offsetof(g_fs_delegate_resize, result_status);
 		case G_FS_DELEGATE_REQUEST_REMOVE:
 			return offsetof(g_fs_delegate_remove, result_status);
+		case G_FS_DELEGATE_REQUEST_RENAME:
+			return offsetof(g_fs_delegate_rename, result_status);
 		case G_FS_DELEGATE_REQUEST_FLUSH:
 			return offsetof(g_fs_delegate_flush, result_status);
 		default:
@@ -606,12 +651,13 @@ static size_t filesystemDelegateInputSize(g_fs_delegate_request_type type)
 static bool filesystemDelegateValidateResult(g_fs_delegate_transaction* transaction,
 											 const g_fs_delegate_transaction_storage& result)
 {
-	auto expected = reinterpret_cast<const uint8_t*>(&transaction->request);
-	auto actual = reinterpret_cast<const uint8_t*>(&result);
+	auto expected = (const uint8_t*) (&transaction->request);
+	auto actual = (const uint8_t*) (&result);
 	auto size = sizeof(result.header) + filesystemDelegateInputSize(transaction->request.header.type);
 	for(size_t i = 0; i < size; ++i)
 		if(expected[i] != actual[i])
 			return false;
+
 	switch(transaction->request.header.type)
 	{
 		case G_FS_DELEGATE_REQUEST_LOOKUP:
@@ -622,6 +668,7 @@ static bool filesystemDelegateValidateResult(g_fs_delegate_transaction* transact
 				auto node = filesystemDelegateFindResultNode(transaction, result.data.lookup.result_node_id);
 				return node && node->parent == transaction->node && node->delegate == transaction->node->delegate;
 			}
+
 			return true;
 		case G_FS_DELEGATE_REQUEST_READ:
 			return result.data.read.result_status >= 0 && result.data.read.result_status <= G_FS_READ_ERROR &&
@@ -650,13 +697,16 @@ static bool filesystemDelegateValidateResult(g_fs_delegate_transaction* transact
 			{
 				auto node = filesystemDelegateFindResultNode(transaction, result.data.create.result_node_id);
 				return node && node->parent == transaction->node && node->delegate == transaction->node->delegate &&
-					   node->type == transaction->request.data.create.type;
+					   node->type == filesystemStorageNodeType(transaction->request.data.create.type, transaction->request.data.create.name);
 			}
+
 			return true;
 		case G_FS_DELEGATE_REQUEST_RESIZE:
 			return result.data.resize.result_status >= 0 && result.data.resize.result_status <= G_FS_MUTATION_ERROR;
 		case G_FS_DELEGATE_REQUEST_REMOVE:
 			return result.data.remove.result_status >= 0 && result.data.remove.result_status <= G_FS_MUTATION_ERROR;
+		case G_FS_DELEGATE_REQUEST_RENAME:
+			return result.data.rename.result_status >= 0 && result.data.rename.result_status <= G_FS_MUTATION_CROSS_DEVICE;
 		case G_FS_DELEGATE_REQUEST_FLUSH:
 			return result.data.flush.result_status >= 0 && result.data.flush.result_status <= G_FS_MUTATION_ERROR;
 		default:
@@ -680,6 +730,7 @@ static void filesystemDelegatePublishResult(g_fs_delegate_transaction* transacti
 		filesystemPublishNode(pending->node, pending->entry);
 		heapFree(pending);
 	}
+
 	filesystemDelegateDiscardPending(transaction);
 }
 
@@ -691,6 +742,7 @@ g_fs_delegate_status filesystemDelegateComplete(g_task* task, g_fs_transaction_i
 		return G_FS_DELEGATE_NOT_FOUND;
 	if(delegate->owner != task->id)
 		return G_FS_DELEGATE_NOT_OWNER;
+
 	auto transaction = delegate->transaction;
 	if(transaction->cancelled)
 	{
@@ -703,9 +755,10 @@ g_fs_delegate_status filesystemDelegateComplete(g_task* task, g_fs_transaction_i
 		waitQueueWake(&delegate->waiters);
 		return G_FS_DELEGATE_STALE_TRANSACTION;
 	}
+
 	g_fs_delegate_transaction_storage result;
 	memoryAtomicFence(G_MEMORY_ORDER_ACQUIRE);
-	memoryCopy(&result, reinterpret_cast<void*>(G_MEM_PHYS_TO_VIRT(delegate->controlPage)), sizeof(result));
+	memoryCopy(&result, (void*) G_MEM_PHYS_TO_VIRT(delegate->controlPage), sizeof(result));
 	if(!filesystemDelegateValidateResult(transaction, result))
 		return G_FS_DELEGATE_INVALID_RESULT;
 	if(result.header.type == G_FS_DELEGATE_REQUEST_REMOVE &&
@@ -716,7 +769,7 @@ g_fs_delegate_status filesystemDelegateComplete(g_task* task, g_fs_transaction_i
 		transaction->node->upToDate = false;
 	filesystemDelegatePublishResult(transaction, result);
 	if(result.header.type == G_FS_DELEGATE_REQUEST_READ && result.data.read.result_status == G_FS_READ_SUCCESSFUL)
-		memoryCopy(transaction->buffer, reinterpret_cast<void*>(G_MEM_PHYS_TO_VIRT(delegate->ioPage)),
+		memoryCopy(transaction->buffer, (void*) G_MEM_PHYS_TO_VIRT(delegate->ioPage),
 				   result.data.read.result_read);
 	transaction->result = result;
 	transaction->completed = true;
@@ -734,11 +787,12 @@ static bool filesystemDelegateValidateNodeCreation(g_fs_delegate_transaction* tr
 	   (transaction->request.header.type != G_FS_DELEGATE_REQUEST_LOOKUP &&
 		transaction->request.header.type != G_FS_DELEGATE_REQUEST_READ_DIRECTORY &&
 		transaction->request.header.type != G_FS_DELEGATE_REQUEST_CREATE) ||
-	   (data->type != G_FS_NODE_TYPE_FILE && data->type != G_FS_NODE_TYPE_FOLDER))
+	   (data->type != G_FS_NODE_TYPE_FILE && data->type != G_FS_NODE_TYPE_FOLDER && data->type != G_FS_NODE_TYPE_SYMLINK))
 		return false;
 	if(transaction->request.header.type == G_FS_DELEGATE_REQUEST_CREATE &&
 	   data->type != transaction->request.data.create.type)
 		return false;
+
 	return true;
 }
 
@@ -750,11 +804,13 @@ g_fs_delegate_status filesystemDelegateCreateNode(g_task* task, g_syscall_fs_del
 		return G_FS_DELEGATE_NOT_FOUND;
 	if(delegate->owner != task->id)
 		return G_FS_DELEGATE_NOT_OWNER;
+
 	auto transaction = delegate->transaction;
 	if(transaction->cancelled)
 		return G_FS_DELEGATE_STALE_TRANSACTION;
 	if(!filesystemDelegateValidateNodeCreation(transaction, data))
 		return G_FS_DELEGATE_INVALID_ARGUMENT;
+
 	g_fs_node* existing = nullptr;
 	filesystemFindExistingChild(transaction->node, data->name, &existing);
 	for(auto pending = transaction->pending; !existing && pending; pending = pending->next)
@@ -762,13 +818,16 @@ g_fs_delegate_status filesystemDelegateCreateNode(g_task* task, g_syscall_fs_del
 			existing = pending->node;
 	if(existing)
 	{
-		if(existing->physicalId != data->phys_fs_id || existing->type != data->type)
+		if(existing->physicalId != data->phys_fs_id || existing->type != filesystemStorageNodeType(data->type, data->name))
 			return G_FS_DELEGATE_INVALID_ARGUMENT;
+
 		data->created_id = existing->id;
 		return G_FS_DELEGATE_SUCCESSFUL;
 	}
+
 	if(filesystemDelegateNodeCount >= G_FS_DELEGATE_MAX_NODES)
 		return G_FS_DELEGATE_NO_MEMORY;
+
 	auto pending = static_cast<g_fs_delegate_pending_node*>(heapTryAllocate(sizeof(g_fs_delegate_pending_node)));
 	auto entry = static_cast<g_fs_node_entry*>(heapTryAllocate(sizeof(g_fs_node_entry)));
 	auto node = filesystemCreateDetachedNode(data->type, data->name);
@@ -782,6 +841,7 @@ g_fs_delegate_status filesystemDelegateCreateNode(g_task* task, g_syscall_fs_del
 			filesystemDiscardDetachedNode(node);
 		return G_FS_DELEGATE_NO_MEMORY;
 	}
+
 	node->physicalId = data->phys_fs_id;
 	node->parent = transaction->node;
 	node->delegate = &delegate->base;
@@ -805,6 +865,7 @@ static void filesystemDelegateInitializeCallbacks(g_fs_task_delegate* delegate)
 	delegate->base.refreshDir = filesystemDelegateRefresh;
 	delegate->base.create = filesystemDelegateCreate;
 	delegate->base.truncate = filesystemDelegateTruncate;
+	delegate->base.rename = filesystemDelegateRename;
 	delegate->base.makeDirectory = filesystemDelegateMakeDirectory;
 	delegate->base.mutate = filesystemDelegateMutate;
 }
@@ -814,6 +875,7 @@ static g_fs_task_delegate* filesystemDelegateAllocate(g_task* task, const char* 
 	auto delegate = static_cast<g_fs_task_delegate*>(heapTryAllocate(sizeof(g_fs_task_delegate)));
 	if(!delegate)
 		return nullptr;
+
 	memorySetBytes(delegate, 0, sizeof(*delegate));
 	delegate->root = filesystemCreateDetachedNode(G_FS_NODE_TYPE_MOUNTPOINT, name);
 	delegate->mountEntry = static_cast<g_fs_node_entry*>(heapTryAllocate(sizeof(g_fs_node_entry)));
@@ -826,6 +888,7 @@ static g_fs_task_delegate* filesystemDelegateAllocate(g_task* task, const char* 
 		heapFree(delegate);
 		return nullptr;
 	}
+
 	return delegate;
 }
 
@@ -833,6 +896,7 @@ g_fs_delegate_status filesystemDelegateRegister(g_task* task, g_syscall_fs_deleg
 {
 	if(data->version != G_FS_DELEGATE_VERSION || data->storage_size != sizeof(g_fs_delegate_transaction_storage))
 		return G_FS_DELEGATE_UNSUPPORTED;
+
 	g_mutex_guard guard(&filesystemDelegateLock);
 	if(filesystemFindExistingChild(filesystemGetMountFolder(), data->name))
 		return G_FS_DELEGATE_ALREADY_EXISTS;
@@ -840,9 +904,11 @@ g_fs_delegate_status filesystemDelegateRegister(g_task* task, g_syscall_fs_deleg
 	   filesystemDelegateRecordCount >= G_FS_DELEGATE_MAX_RECORDS ||
 	   filesystemDelegateNodeCount >= G_FS_DELEGATE_MAX_NODES)
 		return G_FS_DELEGATE_BUSY;
+
 	auto delegate = filesystemDelegateAllocate(task, data->name);
 	if(!delegate)
 		return G_FS_DELEGATE_NO_MEMORY;
+
 	filesystemDelegateInitializeCallbacks(delegate);
 	delegate->owner = task->id;
 	delegate->root->physicalId = data->phys_mountpoint_id;
@@ -856,7 +922,7 @@ g_fs_delegate_status filesystemDelegateRegister(g_task* task, g_syscall_fs_deleg
 	++filesystemDelegateNodeCount;
 	filesystemPublishNode(delegate->root, delegate->mountEntry);
 	data->mountpoint_id = delegate->root->id;
-	data->transaction_storage = reinterpret_cast<g_fs_delegate_transaction_storage*>(delegate->mapping);
+	data->transaction_storage = (g_fs_delegate_transaction_storage*) delegate->mapping;
 	return G_FS_DELEGATE_SUCCESSFUL;
 }
 
@@ -871,11 +937,13 @@ bool filesystemDelegateMountRoot(const char* name)
 	{
 		if(!delegate->online || !delegate->mountEntry || !stringEquals(delegate->root->name, name))
 			continue;
+
 		filesystemDetachNode(delegate->root, delegate->mountEntry);
 		delegate->mountEntry = nullptr;
 		filesystemAdoptRoot(delegate->root);
 		return true;
 	}
+
 	return false;
 }
 
@@ -889,6 +957,7 @@ g_fs_delegate_status filesystemDelegateUnregister(g_task* task, g_fs_virt_id mou
 		return G_FS_DELEGATE_NOT_OWNER;
 	if(delegate->transaction && !force)
 		return G_FS_DELEGATE_BUSY;
+
 	filesystemDelegateDetach(delegate);
 	filesystemDelegateReleasePages(task, delegate);
 	return G_FS_DELEGATE_SUCCESSFUL;
@@ -901,6 +970,7 @@ void filesystemDelegateTaskRemoved(g_task* task)
 	{
 		if(delegate->owner != task->id)
 			continue;
+
 		filesystemDelegateDetach(delegate);
 		filesystemDelegateReleasePages(task, delegate);
 	}

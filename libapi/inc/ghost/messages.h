@@ -28,104 +28,228 @@
 __BEGIN_C
 
 /**
- * Returns the next transaction id that can be used for messaging.
- * When sending a message, a transaction can be added so that one can wait
- * for an answer with the same transaction. This method always returns a
- * new transaction id each time it is called and is thread-safe.
+ * Allocates a transaction ID from the kernel's shared counter.
  *
- * @return a new transaction id
+ * Allocation is serialized across threads.
  *
+ * @return A new transaction ID for correlating requests and replies.
  * @security-level APPLICATION
  */
 g_message_transaction g_get_message_tx_id();
 
 /**
- * Sends a message to the given task. This means that <len> bytes from the
- * buffer <buf> are copied to a message that is then sent to the <target> task.
- * The message may be no longer than {G_MESSAGE_MAXIMUM_MESSAGE_LENGTH}.
+ * Sends a message without a transaction ID, waiting for queue space.
  *
- * The mode specifies how the function shall block:
- * - {G_MESSAGE_SEND_MODE_BLOCKING} the executing task will bock if the target tasks
- * 		message queue is full
- * - {G_MESSAGE_SEND_MODE_NON_BLOCKING} the function will return {G_MESSAGE_SEND_STATUS_FULL}
- * 		if the target tasks message queue is full
+ * Equivalent to g_send_message_tm(target, buf, len, G_MESSAGE_TRANSACTION_NONE,
+ * G_MESSAGE_SEND_MODE_BLOCKING).
  *
- * @param target id of the target task
- * @param buf message content buffer
- * @param len number of bytes to copy from the buffer
- * @param-opt mode determines how the function blocks when given, default is {G_MESSAGE_SEND_MODE_BLOCKING}
- * @param-opt tx transaction id
- *
- * @return one of the <g_message_send_status> codes
- *
+ * @param[in] target ID of the destination thread.
+ * @param[in] buf Source payload containing at least len bytes; its contents are copied.
+ * @param[in] len Payload size in bytes, at most G_MESSAGE_MAXIMUM_MESSAGE_LENGTH.
+ * @return A g_message_send_status code; success means the message was queued, not processed.
  * @security-level APPLICATION
  */
 g_message_send_status g_send_message(g_tid target, void* buf, size_t len);
+
+/**
+ * Sends a message without a transaction ID using the requested blocking mode.
+ *
+ * Equivalent to g_send_message_tm(target, buf, len, G_MESSAGE_TRANSACTION_NONE, mode).
+ *
+ * @param[in] target ID of the destination thread.
+ * @param[in] buf Source payload containing at least len bytes; its contents are copied.
+ * @param[in] len Payload size in bytes, at most G_MESSAGE_MAXIMUM_MESSAGE_LENGTH.
+ * @param[in] mode G_MESSAGE_SEND_MODE_BLOCKING waits for queue space;
+ *                 G_MESSAGE_SEND_MODE_NON_BLOCKING returns FULL instead.
+ * @return A g_message_send_status code; success means the message was queued, not processed.
+ * @security-level APPLICATION
+ */
 g_message_send_status g_send_message_m(g_tid target, void* buf, size_t len, g_message_send_mode mode);
+
+/**
+ * Sends a transaction-tagged message, waiting for queue space.
+ *
+ * Equivalent to g_send_message_tm(target, buf, len, tx, G_MESSAGE_SEND_MODE_BLOCKING).
+ *
+ * @param[in] target ID of the destination thread.
+ * @param[in] buf Source payload containing at least len bytes; its contents are copied.
+ * @param[in] len Payload size in bytes, at most G_MESSAGE_MAXIMUM_MESSAGE_LENGTH.
+ * @param[in] tx Transaction ID copied into the message header, or G_MESSAGE_TRANSACTION_NONE.
+ * @return A g_message_send_status code; success means the message was queued, not processed.
+ * @security-level APPLICATION
+ */
 g_message_send_status g_send_message_t(g_tid target, void* buf, size_t len, g_message_transaction tx);
+
+/**
+ * Copies a payload into a destination thread's message queue.
+ *
+ * The kernel supplies the sender ID. A full queue blocks only in blocking mode; an absent
+ * destination or oversized payload fails without queueing the message.
+ *
+ * @param[in] target ID of the destination thread.
+ * @param[in] buf Source payload containing at least len bytes; its contents are copied.
+ * @param[in] len Payload size in bytes, at most G_MESSAGE_MAXIMUM_MESSAGE_LENGTH.
+ * @param[in] tx Transaction ID copied into the message header, or G_MESSAGE_TRANSACTION_NONE.
+ * @param[in] mode G_MESSAGE_SEND_MODE_BLOCKING waits for queue space;
+ *                 G_MESSAGE_SEND_MODE_NON_BLOCKING returns FULL instead.
+ * @return A g_message_send_status code; success means the message was queued, not processed.
+ * @security-level APPLICATION
+ */
 g_message_send_status g_send_message_tm(g_tid target, void* buf, size_t len, g_message_transaction tx,
                                         g_message_send_mode mode);
 
 /**
- * Receives a message. At maximum <max> bytes will be attempted to be copied to
- * the buffer <buf>. Note that when receiving a message, a buffer with a size of
- * at least the size of {g_message_header} plus the size of the sent message
- * must be used.
+ * Waits for and removes the next message from the calling thread's queue.
  *
- * After successful completion, the buffer will contain the message header followed
- * by the content of the message.
- * - to access the header, use the buffer pointer: ((g_message_header*) buf)
- * - to access the content, use the helper macro:  G_MESSAGE_CONTENT(buf)
+ * Equivalent to g_receive_message_tm(buf, max, G_MESSAGE_TRANSACTION_NONE,
+ * G_MESSAGE_RECEIVE_MODE_BLOCKING).
  *
- * The mode specifies how the function shall block:
- * - {G_MESSAGE_RECEIVE_MODE_BLOCKING} the executing task will block if no messages
- * 		are available
- * - {G_MESSAGE_RECEIVE_MODE_NON_BLOCKING} the function will return {G_MESSAGE_RECEIVE_STATUS_EMPTY}
- * 		if the executing tasks message queue is empty
- *
- * When a transaction ID is given, only messages that were sent with the same
- * transaction ID will be received.
- *
- * @param buf output buffer
- * @param max maximum number of bytes to copy to the buffer
- * @param-opt mode determines how the function blocks when given, default is {G_MESSAGE_RECEIVE_MODE_BLOCKING}
- * @param-opt tx transaction id
- * @param-opt break_condition can be used to break the waiting process by setting its value to 1
- *
+ * @param[out] buf Destination for a g_message_header followed by its payload, with at least max
+ *                 bytes of storage.
+ * @param[in] max Total buffer capacity in bytes, including the message header.
+ * @return A g_message_receive_status code; inspect the buffer only on
+ *         G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL.
  * @security-level APPLICATION
  */
 g_message_receive_status g_receive_message(void* buf, size_t max);
+
+/**
+ * Receives the next queued message using the requested blocking mode.
+ *
+ * Equivalent to g_receive_message_tm(buf, max, G_MESSAGE_TRANSACTION_NONE, mode).
+ *
+ * @param[out] buf Destination for a g_message_header followed by its payload, with at least max
+ *                 bytes of storage.
+ * @param[in] max Total buffer capacity in bytes, including the message header.
+ * @param[in] mode G_MESSAGE_RECEIVE_MODE_BLOCKING waits for a matching message;
+ *                 G_MESSAGE_RECEIVE_MODE_NON_BLOCKING returns EMPTY instead.
+ * @return A g_message_receive_status code; inspect the buffer only on
+ *         G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL.
+ * @security-level APPLICATION
+ */
 g_message_receive_status g_receive_message_m(void* buf, size_t max, g_message_receive_mode mode);
+
+/**
+ * Waits for and removes a message matching a transaction ID.
+ *
+ * Equivalent to g_receive_message_tm(buf, max, tx, G_MESSAGE_RECEIVE_MODE_BLOCKING).
+ *
+ * @param[out] buf Destination for a g_message_header followed by its payload, with at least max
+ *                 bytes of storage.
+ * @param[in] max Total buffer capacity in bytes, including the message header.
+ * @param[in] tx Required transaction ID, or G_MESSAGE_TRANSACTION_NONE to accept any transaction.
+ * @return A g_message_receive_status code; inspect the buffer only on
+ *         G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL.
+ * @security-level APPLICATION
+ */
 g_message_receive_status g_receive_message_t(void* buf, size_t max, g_message_transaction tx);
+
+/**
+ * Receives a matching message from the calling thread's queue.
+ *
+ * On success, cast buf to g_message_header* and use G_MESSAGE_CONTENT(buf) for the payload. The
+ * maximum-sized message needs sizeof(g_message_header) + G_MESSAGE_MAXIMUM_MESSAGE_LENGTH bytes. A
+ * message exceeding max remains queued; unrelated transactions also remain queued.
+ *
+ * @param[out] buf Destination for a g_message_header followed by its payload, with at least max
+ *                 bytes of storage.
+ * @param[in] max Total buffer capacity in bytes, including the message header.
+ * @param[in] tx Required transaction ID, or G_MESSAGE_TRANSACTION_NONE to accept any transaction.
+ * @param[in] mode G_MESSAGE_RECEIVE_MODE_BLOCKING waits for a matching message;
+ *                 G_MESSAGE_RECEIVE_MODE_NON_BLOCKING returns EMPTY instead.
+ * @return A g_message_receive_status code; inspect the buffer only on
+ *         G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL.
+ * @security-level APPLICATION
+ */
 g_message_receive_status g_receive_message_tm(void* buf, size_t max, g_message_transaction tx,
                                               g_message_receive_mode mode);
+
+/**
+ * Receives a message with a legacy cancellation argument.
+ *
+ * Otherwise behaves as g_receive_message_tm(). The current kernel does not implement the break
+ * condition, so it cannot interrupt a blocking receive.
+ *
+ * @param[out] buf Destination for a g_message_header followed by its payload, with at least max
+ *                 bytes of storage.
+ * @param[in] max Total buffer capacity in bytes, including the message header.
+ * @param[in] tx Required transaction ID, or G_MESSAGE_TRANSACTION_NONE to accept any transaction.
+ * @param[in] mode G_MESSAGE_RECEIVE_MODE_BLOCKING waits for a matching message;
+ *                 G_MESSAGE_RECEIVE_MODE_NON_BLOCKING returns EMPTY instead.
+ * @param[in] break_condition Legacy mutex handle; ignored by the current kernel. Pass zero.
+ * @return A g_message_receive_status code; inspect the buffer only on
+ *         G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL.
+ * @security-level APPLICATION
+ */
 g_message_receive_status g_receive_message_tmb(void* buf, size_t max, g_message_transaction tx,
                                                g_message_receive_mode mode, g_user_mutex break_condition);
 
 /**
- * Sends a message to a topic.
+ * Publishes a message to a topic using blocking send mode.
  *
- * @param topic the target topic name
- * @param buf content buffer
- * @param len message length
- * @param-opt mode the send mode
- * @return send status
+ * Equivalent to g_send_topic_message_m(topic, buf, len, G_MESSAGE_SEND_MODE_BLOCKING).
+ *
+ * @param[in] topic Non-null, null-terminated topic name.
+ * @param[in] buf Source payload containing at least len bytes; its contents are copied.
+ * @param[in] len Payload size in bytes, at most G_MESSAGE_MAXIMUM_MESSAGE_LENGTH.
+ * @return A g_message_send_status code.
+ * @security-level APPLICATION
  */
 g_message_send_status g_send_topic_message(const char* topic, void* buf, size_t len);
+
+/**
+ * Copies a message into a topic's shared message history.
+ *
+ * Creates the topic if needed. The kernel assigns the sender ID and a topic-local transaction
+ * sequence number; readers advance independently through that history.
+ *
+ * @param[in] topic Non-null, null-terminated topic name.
+ * @param[in] buf Source payload containing at least len bytes; its contents are copied.
+ * @param[in] len Payload size in bytes, at most G_MESSAGE_MAXIMUM_MESSAGE_LENGTH.
+ * @param[in] mode Requested G_MESSAGE_SEND_MODE_* behavior; current topic storage has no full
+ *                 condition.
+ * @return A g_message_send_status code.
+ * @security-level APPLICATION
+ */
 g_message_send_status g_send_topic_message_m(const char* topic, void* buf, size_t len, g_message_send_mode mode);
 
 /**
- * Receives a message from a topic.
+ * Waits for the next topic message after a caller-maintained cursor.
  *
- * @param topic the source topic name
- * @param buf output buffer
- * @param max maximum message length
- * @param start_after transaction number of the last received message or {G_MESSAGE_TOPIC_TRANSACTION_START}
- * @param-opt mode the reception mode
- * @return send status
+ * Equivalent to g_receive_topic_message_m(topic, buf, max, start_after,
+ * G_MESSAGE_RECEIVE_MODE_BLOCKING).
+ *
+ * @param[in] topic Non-null, null-terminated topic name.
+ * @param[out] buf Destination for the message header and payload, with at least max bytes of
+ *                 storage.
+ * @param[in] max Total destination capacity in bytes, including g_message_header.
+ * @param[in] start_after Last received topic transaction, or G_MESSAGE_TOPIC_TRANSACTION_START to
+ *                        start at the oldest message.
+ * @return A G_MESSAGE_RECEIVE_STATUS_* code.
+ * @security-level APPLICATION
  */
-g_message_send_status g_receive_topic_message(const char* topic, void* buf, size_t max, g_message_transaction start_after);
-g_message_send_status g_receive_topic_message_m(const char* topic, void* buf, size_t max, g_message_transaction start_after, g_message_receive_mode mode);
+g_message_receive_status g_receive_topic_message(const char* topic, void* buf, size_t max, g_message_transaction start_after);
+
+/**
+ * Reads a topic message after the supplied transaction without consuming it.
+ *
+ * On success, advance the cursor to the returned header's transaction. Other readers are
+ * unaffected. The buffer contains g_message_header followed by its payload, accessible with
+ * G_MESSAGE_CONTENT(buf). An undersized buffer returns
+ * G_MESSAGE_RECEIVE_STATUS_EXCEEDS_BUFFER_SIZE.
+ *
+ * @param[in] topic Non-null, null-terminated topic name.
+ * @param[out] buf Destination for the message header and payload, with at least max bytes of
+ *                 storage.
+ * @param[in] max Total destination capacity in bytes, including g_message_header.
+ * @param[in] start_after Last received topic transaction, or G_MESSAGE_TOPIC_TRANSACTION_START to
+ *                        start at the oldest message.
+ * @param[in] mode G_MESSAGE_RECEIVE_MODE_BLOCKING waits for a matching message;
+ *                 G_MESSAGE_RECEIVE_MODE_NON_BLOCKING returns EMPTY instead.
+ * @return A G_MESSAGE_RECEIVE_STATUS_* code.
+ * @security-level APPLICATION
+ */
+g_message_receive_status g_receive_topic_message_m(const char* topic, void* buf, size_t max, g_message_transaction start_after, g_message_receive_mode mode);
 
 __END_C
 

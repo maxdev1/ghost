@@ -1,28 +1,48 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2026, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include "support/fixture.hpp"
 #define GHOST_API_STDINT
 #include <ghost/system/acpi.h>
 
 namespace {
-constexpr int G_SECURITY_LEVEL_DRIVER = 1;
 struct g_task { int securityLevel; } driver{1}, application{2};
-uint64_t acpiPlatformRsdp;
+uint64_t acpiPlatformRsdp, mappingResult;
 bool ioapicAvailable, readable;
-unsigned copies, maps, waits, configurations;
+size_t readableBytes;
+unsigned copies, maps;
 uint64_t mappedAddress;
-uint32_t configuredIrq, mappedSize;
-uint8_t configuredOperation;
+uint32_t mappedSize;
 
 bool memoryCopyFromUser(g_task*, void* output, g_address input, size_t size)
 {
-	if(!readable) return false;
-	memcpy(output, reinterpret_cast<void*>(input), size);
+	if(!readable || size > readableBytes) return false;
+
+	memcpy(output, (void*) input, size);
 	return true;
 }
 
 bool memoryCopyToUser(g_task*, g_address output, const void* input, size_t size)
 {
 	++copies;
-	memcpy(reinterpret_cast<void*>(output), input, size);
+	memcpy((void*) output, input, size);
 	return true;
 }
 
@@ -33,99 +53,95 @@ uint64_t acpiPlatformMap(g_task*, uint64_t address, uint32_t size)
 	++maps;
 	mappedAddress = address;
 	mappedSize = size;
-	return 0x9000;
+	return mappingResult;
 }
-g_acpi_status acpiPlatformWait(g_task*, uint32_t irq)
-{
-	++waits;
-	configuredIrq = irq;
-	return G_ACPI_BUSY;
-}
-g_acpi_status acpiTestConfigureIrq(uint32_t irq, uint8_t operation)
-{
-	++configurations;
-	configuredIrq = irq;
-	configuredOperation = operation;
-	return G_ACPI_SUCCESSFUL;
-}
-g_acpi_status acpiPlatformInstallIrq(g_task*, uint32_t irq) { return acpiTestConfigureIrq(irq, G_ACPI_PLATFORM_IRQ_INSTALL); }
-g_acpi_status acpiPlatformRearmIrq(g_task*, uint32_t irq) { return acpiTestConfigureIrq(irq, G_ACPI_PLATFORM_IRQ_REARM); }
-g_acpi_status acpiPlatformRemoveIrq(g_task*, uint32_t irq) { return acpiTestConfigureIrq(irq, G_ACPI_PLATFORM_IRQ_REMOVE); }
-g_acpi_status acpiPlatformMaskIrq(g_task*, uint32_t irq) { return acpiTestConfigureIrq(irq, G_ACPI_PLATFORM_IRQ_MASK); }
 
+#include "support/memory_user.hpp"
 #include "production/acpi_platform_syscall.inc"
+#include "support/syscall_dispatch.hpp"
 
 class AcpiPlatform : public testing::Test
 {
 	void SetUp() override
 	{
 		acpiPlatformRsdp = 0x12345000;
+		mappingResult = 0x9000;
 		ioapicAvailable = readable = true;
-		copies = maps = waits = configurations = 0;
-		mappedAddress = mappedSize = configuredIrq = configuredOperation = 0;
+		readableBytes = SIZE_MAX;
+		copies = maps = 0;
+		mappedAddress = mappedSize = 0;
 	}
 };
 
 TEST_F(AcpiPlatform, HardwareOperationsRequireDriverPrivilege)
 {
-	for(uint8_t operation = G_ACPI_PLATFORM_INFO; operation <= G_ACPI_PLATFORM_IRQ_MASK; ++operation)
-	{
-		g_syscall_acpi_platform request{};
-		request.operation = operation;
-		syscallAcpiPlatform(&application, &request);
-		EXPECT_EQ(G_ACPI_NOT_PERMITTED, request.status);
-	}
-	EXPECT_EQ(0u, maps + waits + configurations);
+	g_syscall_acpi_platform_info info{123, 1, G_ACPI_SUCCESSFUL};
+	syscallTestInvoke(&application, (g_syscall_handler) syscallAcpiGetPlatformInfo, &info, sizeof(info), G_SYSCALL_OUTPUT);
+
+	EXPECT_EQ(G_ACPI_NOT_PERMITTED, info.status);
+	EXPECT_EQ(0u, uint64_t(info.rsdp));
+	EXPECT_EQ(0, info.ioapic);
+
+	g_syscall_acpi_map mapping{0x2003, 17, 123, G_ACPI_SUCCESSFUL};
+	syscallTestInvoke(&application, (g_syscall_handler) syscallAcpiMap, &mapping, sizeof(mapping));
+
+	EXPECT_EQ(G_ACPI_NOT_PERMITTED, mapping.status);
+	EXPECT_EQ(0u, uint64_t(mapping.virtualAddress));
+	EXPECT_EQ(0u, maps);
 }
 
-TEST_F(AcpiPlatform, ReturnsPlatformDataAndDispatchesTheRemainingOperations)
+TEST_F(AcpiPlatform, ReturnsPlatformDataAndKeepsMappingInputSeparateFromItsResult)
 {
-	g_syscall_acpi_platform request{};
-	request.operation = G_ACPI_PLATFORM_INFO;
-	syscallAcpiPlatform(&driver, &request);
-	EXPECT_EQ(G_ACPI_SUCCESSFUL, request.status);
-	EXPECT_EQ(acpiPlatformRsdp, request.address);
-	EXPECT_EQ(1, request.ioapic);
+	g_syscall_acpi_platform_info info{};
+	syscallTestInvoke(&driver, (g_syscall_handler) syscallAcpiGetPlatformInfo, &info, sizeof(info), G_SYSCALL_OUTPUT);
 
-	request.operation = G_ACPI_PLATFORM_MAP;
-	request.address = 0x2003;
-	request.size = 17;
-	syscallAcpiPlatform(&driver, &request);
-	EXPECT_EQ(G_ACPI_SUCCESSFUL, request.status);
-	EXPECT_EQ(0x9000u, request.address);
+	EXPECT_EQ(G_ACPI_SUCCESSFUL, info.status);
+	EXPECT_EQ(acpiPlatformRsdp, uint64_t(info.rsdp));
+	EXPECT_EQ(1, info.ioapic);
+
+	g_syscall_acpi_map mapping{0x2003, 17, 0, G_ACPI_NOT_SUPPORTED};
+	syscallTestInvoke(&driver, (g_syscall_handler) syscallAcpiMap, &mapping, sizeof(mapping));
+
+	EXPECT_EQ(G_ACPI_SUCCESSFUL, mapping.status);
+	EXPECT_EQ(0x9000u, uint64_t(mapping.virtualAddress));
+	EXPECT_EQ(0x2003u, uint64_t(mapping.physicalAddress));
 	EXPECT_EQ(0x2003u, mappedAddress);
 	EXPECT_EQ(17u, mappedSize);
-
-	request.operation = G_ACPI_PLATFORM_IRQ_WAIT;
-	request.irq = 9;
-	syscallAcpiPlatform(&driver, &request);
-	EXPECT_EQ(G_ACPI_BUSY, request.status);
-	EXPECT_EQ(1u, waits);
-	EXPECT_EQ(9u, configuredIrq);
-
-	for(auto operation : {G_ACPI_PLATFORM_IRQ_INSTALL, G_ACPI_PLATFORM_IRQ_REARM,
-		G_ACPI_PLATFORM_IRQ_REMOVE, G_ACPI_PLATFORM_IRQ_MASK})
-	{
-		request.operation = operation;
-		syscallAcpiPlatform(&driver, &request);
-		EXPECT_EQ(G_ACPI_SUCCESSFUL, request.status);
-		EXPECT_EQ(operation, configuredOperation);
-	}
-	EXPECT_EQ(4u, configurations);
 }
 
-TEST_F(AcpiPlatform, RejectsTheRemovedDiscoveryOperationAndUnreadableRequests)
+TEST_F(AcpiPlatform, ReportsUnavailableFirmwareAndFailedMappings)
 {
-	g_syscall_acpi_platform request{};
-	request.status = G_ACPI_SUCCESSFUL;
-	syscallAcpiPlatform(&driver, &request);
-	EXPECT_EQ(G_ACPI_INVALID_ARGUMENT, request.status);
-	EXPECT_EQ(0u, maps + waits + configurations);
+	acpiPlatformRsdp = 0;
+	ioapicAvailable = false;
+	g_syscall_acpi_platform_info info{};
+	syscallTestInvoke(&driver, (g_syscall_handler) syscallAcpiGetPlatformInfo, &info, sizeof(info), G_SYSCALL_OUTPUT);
 
+	EXPECT_EQ(G_ACPI_NOT_SUPPORTED, info.status);
+	EXPECT_EQ(0u, uint64_t(info.rsdp));
+	EXPECT_EQ(0, info.ioapic);
+
+	mappingResult = 0;
+	g_syscall_acpi_map mapping{0x2003, 17, 123, G_ACPI_SUCCESSFUL};
+	syscallTestInvoke(&driver, (g_syscall_handler) syscallAcpiMap, &mapping, sizeof(mapping));
+
+	EXPECT_EQ(G_ACPI_INVALID_ARGUMENT, mapping.status);
+	EXPECT_EQ(0u, uint64_t(mapping.virtualAddress));
+}
+
+TEST_F(AcpiPlatform, RejectsInaccessibleRequestsBeforeHardwareAccess)
+{
+	g_syscall_acpi_map request{0x2003, 17, 0, G_ACPI_NOT_SUPPORTED};
 	readable = false;
-	copies = 0;
-	request.operation = G_ACPI_PLATFORM_MAP;
-	syscallAcpiPlatform(&driver, &request);
+	syscallTestInvoke(&driver, (g_syscall_handler) syscallAcpiMap, &request, sizeof(request));
+
+	readable = true;
+	readableBytes = sizeof(request) - 1;
+	syscallTestInvoke(&driver, (g_syscall_handler) syscallAcpiMap, &request, sizeof(request));
+
+	g_syscall_acpi_platform_info info{};
+	readableBytes = sizeof(info) - 1;
+	syscallTestInvoke(&driver, (g_syscall_handler) syscallAcpiGetPlatformInfo, &info, sizeof(info), G_SYSCALL_OUTPUT);
+
 	EXPECT_EQ(0u, copies);
 	EXPECT_EQ(0u, maps);
 }

@@ -33,6 +33,7 @@ struct g_process;
 struct g_task;
 struct g_tasking_local;
 struct g_elf_object;
+struct g_user_memory;
 
 /**
  * Data used by virtual 8086 processes
@@ -81,6 +82,7 @@ struct g_task
      */
     uint32_t references;
     uint32_t powerCalls;
+    g_user_memory* userMemory;
     bool terminationRequested;
     bool spawnPending;
     g_tid spawnParent;

@@ -39,7 +39,7 @@ $(BUILD_DIR)/gtest_main.o: $(GTEST_ROOT)/src/gtest_main.cc
 
 $(TEST_BINARIES): $(BUILD_DIR)/%: %.cpp $(GTEST_OBJECTS) $(BUILD_DIR)/production/.stamp
 	@mkdir -p "$(@D)"
-	$(CXX) $(TEST_FLAGS) -include $(BUILD_DIR)/production/memory_atomic.inc -MMD -MP -MF "$@.d" $< $(GTEST_OBJECTS) -o "$@"
+	$(CXX) $(TEST_FLAGS) -include $(BUILD_DIR)/production/memory_atomic.inc -MMD -MP -MF "$@.d" $< $(filter %.o,$^) -o "$@"
 
 clean:
 	rm -rf "$(BUILD_DIR)"

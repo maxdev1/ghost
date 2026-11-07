@@ -23,6 +23,7 @@
 
 #include "common.h"
 #include "filesystem/types.h"
+#include "filesystem/link.h"
 #include "filesystem/delegate.h"
 #include "memory.h"
 
@@ -448,13 +449,13 @@ g_fs_stat_status g_fs_stat(const char* path, g_fs_stat_data* out);
 /**
  * Retrieves filesystem metadata with a requested symbolic-link policy.
  *
- * The kernel currently ignores follow_symlinks. It reports device as -1 and all
+ * The kernel follows the final link only when follow_symlinks is true. It reports device as -1 and all
  * timestamps as 0. If the file length cannot be retrieved, size is (uint64_t) -1;
  * this does not cause the stat operation to fail.
  *
  * @param path Null-terminated path; relative paths use the working directory.
  * @param[out] out Receives the node metadata on success.
- * @param follow_symlinks Whether to follow symbolic links; currently ignored.
+ * @param follow_symlinks Whether to follow the final symbolic link.
  * @return A g_fs_stat_status code, with G_FS_STAT_SUCCESS indicating success.
  * @security-level APPLICATION
  */
@@ -483,6 +484,24 @@ g_fs_mutation_status g_create_directory(const char* path);
 g_fs_mutation_status g_unlink(const char* path);
 
 g_fs_mutation_status g_unlink_directory(const char* path);
+
+/**
+ * Creates a fully written target= link at a new .link path. The target is stored
+ * verbatim and may be relative or dangling. Other destination suffixes are invalid.
+ */
+g_fs_mutation_status g_symlink(const char* target, const char* path);
+
+/**
+ * Reads the final link itself, copying at most capacity target bytes with no NUL.
+ * Returns the copied byte count, or -1 with out_status describing the error.
+ */
+int64_t g_readlink_s(const char* path, char* buffer, uint64_t capacity, g_fs_open_status* out_status);
+
+/**
+ * Moves an entry within one filesystem. Destinations are exact paths.
+ * Final links are not followed. Replacement permits files and links.
+ */
+g_fs_mutation_status g_rename(const char* source, const char* destination, g_bool replace);
 
 g_fs_mutation_status g_truncate(g_fd fd, uint64_t length);
 

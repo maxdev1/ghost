@@ -62,6 +62,8 @@ typedef uint32_t g_file_flag_mode;
 #define G_FILE_FLAG_MODE_CREATE				((g_file_flag_mode) (1 << 6))	// create mode
 #define G_FILE_FLAG_MODE_EXCLUSIVE			((g_file_flag_mode) (1 << 7))	// exclusive mode
 #define G_FILE_FLAG_MODE_BLOCKING			((g_file_flag_mode) (1 << 8))	// blocking mode
+#define G_FILE_FLAG_MODE_NOFOLLOW           ((g_file_flag_mode) (1 << 9))   // dont follow links
+#define G_FILE_FLAG_MODE_LINK_STORAGE       ((g_file_flag_mode) (1 << 10))  // link storage
 // currently, 15 bits are reserved for flags. adjust mode mask if necessary
 
 /**
@@ -82,6 +84,7 @@ typedef int g_fs_node_type;
 #define G_FS_NODE_TYPE_FOLDER ((g_fs_node_type) 3)
 #define G_FS_NODE_TYPE_FILE ((g_fs_node_type) 4)
 #define G_FS_NODE_TYPE_PIPE ((g_fs_node_type) 5)
+#define G_FS_NODE_TYPE_SYMLINK ((g_fs_node_type) 6)
 
 /**
  * Delegate syscall results. Operation results are stored separately in the
@@ -111,6 +114,11 @@ typedef int32_t g_fs_mutation_status;
 #define G_FS_MUTATION_READ_ONLY ((g_fs_mutation_status) 7)
 #define G_FS_MUTATION_NOT_SUPPORTED ((g_fs_mutation_status) 8)
 #define G_FS_MUTATION_ERROR ((g_fs_mutation_status) 9)
+#define G_FS_MUTATION_CROSS_DEVICE ((g_fs_mutation_status) 10)
+#define G_FS_MUTATION_LOOP ((g_fs_mutation_status) 11)
+#define G_FS_MUTATION_NAME_TOO_LONG ((g_fs_mutation_status) 12)
+#define G_FS_MUTATION_NOT_DIRECTORY ((g_fs_mutation_status) 13)
+#define G_FS_MUTATION_INVALID_LINK ((g_fs_mutation_status) 14)
 
 /**
  * Filesystem transaction IDs are carried in the message payload, independently
@@ -143,6 +151,7 @@ typedef uint32_t g_fs_delegate_request_type;
 #define G_FS_DELEGATE_REQUEST_RESIZE ((g_fs_delegate_request_type) 8)
 #define G_FS_DELEGATE_REQUEST_REMOVE ((g_fs_delegate_request_type) 9)
 #define G_FS_DELEGATE_REQUEST_FLUSH ((g_fs_delegate_request_type) 10)
+#define G_FS_DELEGATE_REQUEST_RENAME ((g_fs_delegate_request_type) 11)
 
 /**
  * Status codes for the {g_fs_open} system call
@@ -152,6 +161,11 @@ typedef int g_fs_open_status;
 #define G_FS_OPEN_NOT_FOUND ((g_fs_open_status) 1)
 #define G_FS_OPEN_ERROR ((g_fs_open_status) 2)
 #define G_FS_OPEN_BUSY ((g_fs_open_status) 3)
+#define G_FS_OPEN_LOOP ((g_fs_open_status) 4)
+#define G_FS_OPEN_NAME_TOO_LONG ((g_fs_open_status) 5)
+#define G_FS_OPEN_NOT_DIRECTORY ((g_fs_open_status) 6)
+#define G_FS_OPEN_INVALID_LINK ((g_fs_open_status) 7)
+#define G_FS_OPEN_ALREADY_EXISTS ((g_fs_open_status) 8)
 
 /**
  * Status codes for the {g_fs_read} system call
@@ -246,6 +260,10 @@ typedef int g_fs_open_directory_status;
 #define G_FS_OPEN_DIRECTORY_SUCCESSFUL ((g_fs_open_directory_status) 0)
 #define G_FS_OPEN_DIRECTORY_NOT_FOUND ((g_fs_open_directory_status) 1)
 #define G_FS_OPEN_DIRECTORY_ERROR ((g_fs_open_directory_status) 2)
+#define G_FS_OPEN_DIRECTORY_LOOP ((g_fs_open_directory_status) 4)
+#define G_FS_OPEN_DIRECTORY_NAME_TOO_LONG ((g_fs_open_directory_status) 5)
+#define G_FS_OPEN_DIRECTORY_NOT_DIRECTORY ((g_fs_open_directory_status) 6)
+#define G_FS_OPEN_DIRECTORY_INVALID_LINK ((g_fs_open_directory_status) 7)
 
 typedef int g_fs_read_directory_status;
 #define G_FS_READ_DIRECTORY_SUCCESSFUL ((g_fs_read_directory_status) 0)
@@ -278,6 +296,10 @@ typedef int g_fs_real_path_status;
 #define G_FS_REAL_PATH_SUCCESS ((g_fs_real_path_status) 0)
 #define G_FS_REAL_PATH_NOT_FOUND ((g_fs_real_path_status) 1)
 #define G_FS_REAL_PATH_ERROR ((g_fs_real_path_status) 2)
+#define G_FS_REAL_PATH_LOOP ((g_fs_real_path_status) 3)
+#define G_FS_REAL_PATH_NAME_TOO_LONG ((g_fs_real_path_status) 4)
+#define G_FS_REAL_PATH_NOT_DIRECTORY ((g_fs_real_path_status) 5)
+#define G_FS_REAL_PATH_INVALID_LINK ((g_fs_real_path_status) 6)
 
 /**
  * Status codes for stat
@@ -287,6 +309,10 @@ typedef int g_fs_stat_status;
 #define G_FS_STAT_NOT_FOUND ((g_fs_stat_status) 1)
 #define G_FS_STAT_ERROR ((g_fs_stat_status) 2)
 #define G_FS_STAT_INVALID_FD ((g_fs_stat_status) 3)
+#define G_FS_STAT_LOOP ((g_fs_stat_status) 4)
+#define G_FS_STAT_NAME_TOO_LONG ((g_fs_stat_status) 5)
+#define G_FS_STAT_NOT_DIRECTORY ((g_fs_stat_status) 6)
+#define G_FS_STAT_INVALID_LINK ((g_fs_stat_status) 7)
 
 typedef struct
 {

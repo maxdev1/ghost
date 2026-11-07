@@ -6,8 +6,6 @@ namespace
 
 #include "support/memory/task_pages.hpp"
 
-#define G_PAGE_UNMANAGED_FLAG 512
-#define G_PAGE_PHYSICAL_MASK 0x000ffffffffff000ULL
 uint32_t processorGetCurrentId() { return 0; }
 void memoryCopy(void* a, const void* b, size_t n) { std::memcpy(a, b, n); }
 

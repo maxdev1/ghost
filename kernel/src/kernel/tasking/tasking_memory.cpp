@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/tasking/tasking_memory.hpp"
+#include "kernel/memory/memory_user.hpp"
 #include "kernel/logger/logger.hpp"
 #include "kernel/memory/constants.hpp"
 #include "kernel/memory/lower_heap.hpp"
@@ -66,13 +67,8 @@ bool taskingMemoryExtendHeap(g_task* task, int32_t amount, g_address* outAddress
 	// On failure undo only the pages installed by this call. The previous break
 	// and contents stay valid; a conflicting mapping belongs to someone else.
 	const uint32_t keepPages = success ? wantedPages : oldPages;
-	while(installed > keepPages)
-	{
-		auto address = start + --installed * G_PAGE_SIZE;
-		auto physical = pagingVirtualToPhysical(address);
-		pagingUnmapPage(address);
-		memoryPhysicalFree(physical);
-	}
+	if(installed > keepPages)
+		memoryReleasePages(start + keepPages * G_PAGE_SIZE, installed - keepPages);
 	if(success)
 	{
 		process->heap.start = start;
@@ -181,6 +177,7 @@ g_stack taskingMemoryCreateStack(g_address_range_pool* addressRangePool, uint32_
 			break;
 		}
 	}
+
 	if(installed != wanted)
 	{
 		while(installed)
@@ -202,6 +199,7 @@ g_stack taskingMemoryCreateStack(g_address_range_pool* addressRangePool, uint32_
 
 void taskingMemoryDestroy(g_task* task)
 {
+	memoryUserReleaseAll(task);
 	taskingMemoryDestroyStacks(task);
 	taskingMemoryDestroyUtility(task);
 	taskingMemoryDestroyTls(task);
@@ -218,25 +216,13 @@ void taskingMemoryDestroyUtility(g_task* task)
 	}
 }
 
-static void _taskingMemoryReleasePage(g_virtual_address address)
-{
-	uint64_t entry = pagingVirtualToPageEntry(address);
-	if(!(entry & G_PAGE_PRESENT))
-		return;
-	pagingUnmapPage(address);
-	if(!(entry & G_PAGE_UNMANAGED_FLAG))
-		memoryPhysicalFree(entry & G_PAGE_PHYSICAL_MASK);
-}
-
 void taskingMemoryDestroyStacks(g_task* task)
 {
 	// Remove interrupt stack
 	if(task->interruptStack.start)
 	{
-		for(g_virtual_address virt = task->interruptStack.start; virt < task->interruptStack.end; virt += G_PAGE_SIZE)
-		{
-			_taskingMemoryReleasePage(virt);
-		}
+		memoryReleasePages(task->interruptStack.start,
+			(task->interruptStack.end - task->interruptStack.start) / G_PAGE_SIZE);
 		addressRangePoolFree(memoryVirtualRangePool, task->interruptStack.start);
 	}
 
@@ -259,10 +245,7 @@ void taskingMemoryDestroyStack(g_address_range_pool* addressRangePool, g_stack& 
 {
 	if(!stack.start)
 		return;
-	for(g_virtual_address page = stack.start; page < stack.end; page += G_PAGE_SIZE)
-	{
-		_taskingMemoryReleasePage(page);
-	}
+	memoryReleasePages(stack.start, (stack.end - stack.start) / G_PAGE_SIZE);
 
 	addressRangePoolFree(addressRangePool, stack.start);
 	stack = {};
@@ -395,10 +378,8 @@ void taskingMemoryDestroyTls(g_task* task)
 {
 	if(task->threadLocal.start)
 	{
-		for(g_virtual_address page = task->threadLocal.start; page < task->threadLocal.end; page += G_PAGE_SIZE)
-		{
-			_taskingMemoryReleasePage(page);
-		}
+		memoryReleasePages(task->threadLocal.start,
+			(task->threadLocal.end - task->threadLocal.start) / G_PAGE_SIZE);
 		addressRangePoolFree(task->process->virtualRangePool, task->threadLocal.start);
 	}
 

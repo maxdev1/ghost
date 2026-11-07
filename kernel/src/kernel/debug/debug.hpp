@@ -27,14 +27,14 @@
 		asm volatile("push %%ebp\n"                        \
 					 "pop %0"                              \
 					 : "=g"(ebpv));                        \
-		uint32_t* ebp = reinterpret_cast<uint32_t*>(ebpv); \
+		uint32_t* ebp = (uint32_t*) ebpv; \
 		logInfo("%# stack trace:");                        \
 		for(int frame = 0; frame < 8; ++frame)             \
 		{                                                  \
 			uint32_t eip = ebp[1];                         \
 			if(eip == 0)                                   \
 				break;                                     \
-			ebp = reinterpret_cast<uint32_t*>(ebp[0]);     \
+			ebp = (uint32_t*) ebp[0];     \
 			logInfo("%#  %h", eip);                        \
 		}                                                  \
 	}

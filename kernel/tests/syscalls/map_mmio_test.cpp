@@ -1,3 +1,23 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2026, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include "support/fixture.hpp"
 
 namespace
@@ -12,6 +32,8 @@ namespace
 #define G_SECURITY_LEVEL_DRIVER 1
 #define G_PROC_VIRTUAL_RANGE_FLAG_WEAK 1
 #define G_PAGE_UNMANAGED_FLAG (1ULL << 9)
+#define G_PAGE_WRITE_THROUGH (1ULL << 3)
+#define G_PAGE_CACHE_DISABLE (1ULL << 4)
 #define G_PAGE_TABLE_USER_DEFAULT 7
 #define G_PAGE_USER_DEFAULT 7
 struct g_address_range_pool {};
@@ -46,7 +68,7 @@ void addressRangePoolFree(g_address_range_pool*, uintptr_t base) {
     ++releases;
 }
 bool pagingMapPage(uintptr_t virt, uintptr_t phys, uint64_t tableFlags, uint64_t pageFlags) {
-    EXPECT_TRUE(tableFlags == G_PAGE_TABLE_USER_DEFAULT && pageFlags == (G_PAGE_USER_DEFAULT | G_PAGE_UNMANAGED_FLAG));
+    EXPECT_TRUE(tableFlags == G_PAGE_TABLE_USER_DEFAULT && pageFlags == (G_PAGE_USER_DEFAULT | G_PAGE_UNMANAGED_FLAG | G_PAGE_CACHE_DISABLE | G_PAGE_WRITE_THROUGH));
     if(static_cast<int>(mapAttempts++) == failAt) return false;
     mapped.emplace_back(virt, phys);
     return true;

@@ -29,59 +29,60 @@
 __BEGIN_C
 
 /**
- * Deallocates the given memory (which must have previously been allocated
- * with one of the allocation functions). (N1548-7.22.3.3)
+ * Releases memory obtained from a compatible C allocation function.
  *
- * @param ptr
- * 		pointer to memory to free, or NULL
+ * After the call, ptr and pointers into the allocation must no longer be used.
+ *
+ * @param[in] ptr Allocation to release, or null to do nothing.
+ * @security-level APPLICATION
  */
 void free(void* ptr);
 
 /**
- * Allocates <size> bytes of memory. (N1548-7.22.3.4)
+ * Allocates uninitialized memory from the process heap.
  *
- * @param size
- * 		size in bytes to allocate
- * @return
- * 		allocated memory
+ * This header declares the C allocator interface; its implementation is supplied by the linked
+ * allocator.
+ *
+ * @param[in] size Number of bytes to allocate.
+ * @return An allocation to release with free(), or null on failure.
+ * @security-level APPLICATION
  */
 void* malloc(size_t size);
 
 /**
- * Performs a memory allocation with a size of <size> that is aligned
- * to the <alignment>. (N1548-7.22.3.1)
+ * Allocates memory at the requested alignment.
  *
- * @param alignment
- * 		alignment to use
- * @param size
- * 		size to request
- * @return
- * 		allocated space or 0 if not successful
+ * The linked allocator must supply this entry point; libapi only declares it.
+ *
+ * @param[in] alignment Supported power-of-two alignment in bytes.
+ * @param[in] size Number of bytes to allocate; must be a multiple of alignment.
+ * @return An aligned allocation to release with free(), or null on failure.
+ * @security-level APPLICATION
  */
 void* aligned_alloc(size_t alignment, size_t size);
 
 /**
- * Allocates <num> objects of <size> bytes, all bits set to zero. (N1548-7.22.3.2)
+ * Allocates an array and initializes all its bytes to zero.
  *
- * @param num
- * 		number of objects
- * @param size
- * 		size of each object
- * @return
- * 		allocated space or 0 if not successful
+ * @param[in] num Number of elements.
+ * @param[in] size Size of each element in bytes.
+ * @return An allocation to release with free(), or null on failure, including size overflow.
+ * @security-level APPLICATION
  */
 void* calloc(size_t num, size_t size);
 
 /**
- * Reallocates the memory pointed to by <ptr> to have at least
- * <size> bytes after the allocation. (N1548-7.22.3.5)
+ * Changes the size of a heap allocation, moving it if necessary.
  *
- * @param ptr
- * 		memory to reallocate
- * @param size
- * 		size in bytes to allocate
- * @return
- * 		allocated memory
+ * Preserves the first min(old size, size) bytes. After success, use only the returned pointer.
+ * Zero-size behavior depends on the linked allocator; use free() to release a block explicitly.
+ *
+ * @param[in] ptr Allocation to resize, or null to allocate a new block.
+ * @param[in] size Requested allocation size in bytes.
+ * @return The resized allocation, or null on failure; a failed nonzero-size request leaves ptr
+ *         valid.
+ * @security-level APPLICATION
  */
 void* realloc(void* ptr, size_t size);
 

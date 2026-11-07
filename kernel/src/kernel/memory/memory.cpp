@@ -22,22 +22,46 @@
 #include "kernel/debug/debug_interface.hpp"
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/kernel.hpp"
-#include "kernel/memory/heap.hpp"
+#include "kernel/logger/logger.hpp"
 #include "kernel/memory/constants.hpp"
+#include "kernel/memory/heap.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/memory/paging.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/tasking/task.hpp"
 #include "kernel/tasking/tasking_memory.hpp"
-#include "kernel/logger/logger.hpp"
 
 g_address_range_pool* memoryVirtualRangePool = nullptr;
 g_bitmap_page_allocator memoryPhysicalAllocator;
+static uint64_t memoryPhysicalTotal;
+
+static uint64_t memoryCountPhysicalBytes(limine_memmap_response* memoryMap)
+{
+	uint64_t total = 0;
+	for(uint64_t i = 0; i < memoryMap->entry_count; ++i)
+	{
+		auto entry = memoryMap->entries[i];
+		if(entry->type == LIMINE_MEMMAP_USABLE || entry->type == LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE ||
+		   entry->type == LIMINE_MEMMAP_KERNEL_AND_MODULES || entry->type == LIMINE_MEMMAP_ACPI_RECLAIMABLE ||
+		   entry->type == LIMINE_MEMMAP_ACPI_NVS)
+			total += entry->length;
+	}
+	return total;
+}
+
+void memoryGetPhysicalUsage(uint64_t* total, uint64_t* free)
+{
+	*total = memoryPhysicalTotal;
+	mutexAcquire(&memoryPhysicalAllocator.lock);
+	*free = static_cast<uint64_t>(memoryPhysicalAllocator.freePageCount) * G_PAGE_SIZE;
+	mutexRelease(&memoryPhysicalAllocator.lock);
+}
 
 void memoryInitialize(limine_memmap_response* memoryMap)
 {
 	logInfo("%! initializing kernel memory with map at %x", "mem", memoryMap);
 
+	memoryPhysicalTotal = memoryCountPhysicalBytes(memoryMap);
 	bitmapPageAllocatorInitialize(&memoryPhysicalAllocator, memoryMap);
 	logInfo("%! available: %i MiB", "memory", (memoryPhysicalAllocator.freePageCount * G_PAGE_SIZE) / 1024 / 1024);
 
@@ -140,6 +164,23 @@ g_virtual_address memoryAllocateKernel(int32_t pages)
 	return virt;
 }
 
+void memoryReleasePages(g_virtual_address address, uint32_t pages)
+{
+	uint64_t retired[256];
+	while(pages)
+	{
+		const uint32_t batch = pages > 256 ? 256 : pages;
+		pagingUnmapPages(address, batch, retired);
+
+		for(uint32_t page = 0; page < batch; ++page)
+			if((retired[page] & G_PAGE_PRESENT) && !(retired[page] & G_PAGE_UNMANAGED_FLAG))
+				memoryPhysicalFree(retired[page] & G_PAGE_PHYSICAL_MASK);
+
+		address += (g_virtual_address) batch * G_PAGE_SIZE;
+		pages -= batch;
+	}
+}
+
 void memoryFreeKernelRange(g_virtual_address address)
 {
 	uint32_t pages;
@@ -149,19 +190,13 @@ void memoryFreeKernelRange(g_virtual_address address)
 		return;
 	}
 
-	for(uint32_t i = 0; i < pages; i++)
-	{
-		g_virtual_address virt = address + i * G_PAGE_SIZE;
-		g_physical_address phys = pagingVirtualToPhysical(virt);
-		pagingUnmapPage(virt);
-		memoryPhysicalFree(phys);
-	}
+	memoryReleasePages(address, pages);
 
 	addressRangePoolFree(memoryVirtualRangePool, address);
 }
 
 void memoryOnDemandMapFile(g_process* process, g_fd file, g_offset fileOffset, g_address fileStart, g_ptrsize fileSize,
-                           g_ptrsize memorySize)
+						   g_ptrsize memorySize)
 {
 	g_memory_file_ondemand* mapping = (g_memory_file_ondemand*) heapAllocate(sizeof(g_memory_file_ondemand));
 	mapping->fd = file;
@@ -251,7 +286,7 @@ void* memorySetWords(void* target, uint16_t value, int32_t length)
 	auto pos = (uint16_t*) target;
 
 	while(length--)
-		*pos++ =  value;
+		*pos++ = value;
 
 	return target;
 }
@@ -283,61 +318,4 @@ void* memoryCopy(void* target, const void* source, int32_t size)
 		*targetPtr++ = *sourcePtr++;
 
 	return target;
-}
-
-static bool memoryCopyUser(g_task* task, void* target, const void* source, size_t length, bool toUser)
-{
-	auto address = reinterpret_cast<g_address>(toUser ? target : source);
-	if(address > G_MEM_LOWER_HALF_END || length > G_MEM_LOWER_HALF_END - address + 1)
-		return false;
-
-	auto kernelTarget = static_cast<uint8_t*>(target);
-	auto kernelSource = static_cast<const uint8_t*>(source);
-	while(length)
-	{
-		mutexAcquire(&task->process->lock);
-		auto entry = pagingVirtualToPageEntry(address);
-		if(!(entry & G_PAGE_PRESENT))
-		{
-			mutexRelease(&task->process->lock);
-			if(!taskingMemoryHandleStackOverflow(task, address) && !memoryOnDemandHandlePageFault(task, address))
-				return false;
-			continue;
-		}
-
-		uint64_t required = G_PAGE_PRESENT | G_PAGE_USER_FLAG | (toUser ? G_PAGE_WRITABLE_FLAG : 0);
-		if((entry & required) != required || (entry & (G_PAGE_UNMANAGED_FLAG | G_PAGE_LARGE_PAGE_FLAG)))
-		{
-			mutexRelease(&task->process->lock);
-			return false;
-		}
-
-		auto offset = address & G_PAGE_ALIGN_MASK;
-		auto count = length < G_PAGE_SIZE - offset ? length : G_PAGE_SIZE - offset;
-		auto physical = reinterpret_cast<void*>(G_MEM_PHYS_TO_VIRT((entry & G_PAGE_PHYSICAL_MASK) + offset));
-		if(toUser)
-		{
-			memoryCopy(physical, kernelSource, count);
-			kernelSource += count;
-		}
-		else
-		{
-			memoryCopy(kernelTarget, physical, count);
-			kernelTarget += count;
-		}
-		mutexRelease(&task->process->lock);
-		address += count;
-		length -= count;
-	}
-	return true;
-}
-
-bool memoryCopyFromUser(g_task* task, void* target, g_address source, size_t length)
-{
-	return memoryCopyUser(task, target, reinterpret_cast<const void*>(source), length, false);
-}
-
-bool memoryCopyToUser(g_task* task, g_address target, const void* source, size_t length)
-{
-	return memoryCopyUser(task, reinterpret_cast<void*>(target), source, length, true);
 }

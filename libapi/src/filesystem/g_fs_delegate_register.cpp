@@ -49,5 +49,6 @@ g_fs_delegate_status g_fs_delegate_register(const char* name, g_fs_phys_id phys_
 		*out_mountpoint_id = data.mountpoint_id;
 		*out_transaction_storage = data.transaction_storage;
 	}
+
 	return data.result;
 }

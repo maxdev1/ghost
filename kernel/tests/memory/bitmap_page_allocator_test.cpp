@@ -4,6 +4,19 @@
 
 namespace
 {
+#include "support/synchronization.hpp"
+
+thread_local g_mutex* observedBitmap = nullptr;
+thread_local unsigned observedAcquires = 0;
+
+void observeBitmapAcquire(g_mutex* mutex)
+{
+    if(mutex == observedBitmap) ++observedAcquires;
+    realAcquire(mutex);
+}
+
+#undef mutexAcquire
+#define mutexAcquire observeBitmapAcquire
 #include "support/memory/bitmap_page_allocator.hpp"
 
 TEST_F(BitmapPageAllocator, ExcludesBitmapAndIndexMetadataFromAllocations)
@@ -34,6 +47,28 @@ TEST_F(BitmapPageAllocator, KeepsDisjointUsableRegionsSeparateFromReservedGaps)
     auto expected = expectedPages(16);
     for(unsigned page = 33; page < 44; ++page) expected.insert(physicalBase + page * G_PAGE_SIZE);
     expectUniquePages(drain(), expected);
+}
+
+TEST_F(BitmapPageAllocator, PreservesLowMemoryEvenWhenFirmwareReportsItUsable)
+{
+    std::memset(lowPhysicalArena, 0xa5, G_MEM_LOWER_END);
+    initialize({{0, G_MEM_LOWER_END, LIMINE_MEMMAP_USABLE},
+                {physicalBase, 12 * G_PAGE_SIZE, LIMINE_MEMMAP_USABLE}});
+    expectUniquePages(drain(), expectedPages(12));
+    for(unsigned byte = 0; byte < G_MEM_LOWER_END; ++byte)
+        ASSERT_EQ(0xa5, lowPhysicalArena[byte]) << byte;
+}
+
+TEST_F(BitmapPageAllocator, UsesOnlyHighPagesOfAUsableRegionCrossingTheLowMemoryBoundary)
+{
+    std::memset(lowPhysicalArena, 0xa5, G_MEM_LOWER_END);
+    initialize({{0, G_MEM_LOWER_END + 12 * G_PAGE_SIZE, LIMINE_MEMMAP_USABLE}});
+    std::set<uintptr_t> expected;
+    for(unsigned page = 1; page < 11; ++page)
+        expected.insert(G_MEM_LOWER_END + page * G_PAGE_SIZE);
+    expectUniquePages(drain(), expected);
+    for(unsigned byte = 0; byte < G_MEM_LOWER_END; ++byte)
+        ASSERT_EQ(0xa5, lowPhysicalArena[byte]) << byte;
 }
 
 TEST_F(BitmapPageAllocator, AccountsForExactCapacityAcross64BitWordBoundaries)
@@ -69,6 +104,54 @@ TEST_F(BitmapPageAllocator, StartsAnotherBitmapOnlyWhenItCanDescribeAFrame)
     ASSERT_NE(nullptr, allocator.indexPage->entries[1]);
     const auto bitmap = allocator.indexPage->entries[1];
     EXPECT_EQ(G_PAGE_SIZE, bitmap->end - bitmap->base);
+}
+
+TEST_F(BitmapPageAllocator, SkipsExhaustedBitmapLocksAndAdvancesAcrossWords)
+{
+    // Index and bitmap consume two pages from the first region, one from the second.
+    initialize({{physicalBase, 194 * G_PAGE_SIZE, LIMINE_MEMMAP_USABLE},
+                {physicalBase + 256 * G_PAGE_SIZE, 193 * G_PAGE_SIZE, LIMINE_MEMMAP_USABLE}});
+    for(unsigned frame = 0; frame < 192; ++frame)
+    {
+        ASSERT_EQ(physicalBase + (frame + 1) * G_PAGE_SIZE, bitmapPageAllocatorAllocate(&allocator));
+        ASSERT_EQ((frame + 1) / 64, allocator.firstWord[0]);
+    }
+    ASSERT_EQ(physicalBase + 257 * G_PAGE_SIZE, bitmapPageAllocatorAllocate(&allocator));
+    ASSERT_EQ(1U, allocator.firstBitmap);
+    observedAcquires = 0;
+    observedBitmap = &allocator.indexPage->entries[0]->lock;
+    for(unsigned frame = 1; frame < 192; ++frame)
+    {
+        EXPECT_EQ(physicalBase + (257 + frame) * G_PAGE_SIZE, bitmapPageAllocatorAllocate(&allocator));
+        EXPECT_EQ((frame + 1) / 64, allocator.firstWord[1]);
+    }
+    observedBitmap = nullptr;
+    EXPECT_EQ(0U, observedAcquires);
+}
+
+TEST_F(BitmapPageAllocator, ReopensEarlierWordsAndBitmapsAfterConcurrentFastBufferSpills)
+{
+    initialize({{physicalBase, 194 * G_PAGE_SIZE, LIMINE_MEMMAP_USABLE},
+                {physicalBase + 256 * G_PAGE_SIZE, 193 * G_PAGE_SIZE, LIMINE_MEMMAP_USABLE}});
+    const auto frames = drain();
+    ASSERT_EQ(384U, frames.size());
+    ASSERT_EQ(1U, allocator.firstBitmap);
+    // Fill the fast buffer from the second region, then spill across both regions.
+    for(unsigned i = 192; i < 192 + G_BITMAP_ALLOCATOR_FASTBUFFER_SIZE; ++i)
+        bitmapPageAllocatorMarkFree(&allocator, frames[i]);
+    const std::vector<unsigned> indices{2, 66, 182, 353};
+    std::vector<std::thread> threads;
+    for(unsigned i : indices)
+        threads.emplace_back([&, i] { bitmapPageAllocatorMarkFree(&allocator, frames[i]); });
+    for(auto& thread : threads) thread.join();
+    EXPECT_EQ(0U, allocator.firstBitmap);
+    EXPECT_EQ(0U, allocator.firstWord[0]);
+    for(unsigned i = 192 + G_BITMAP_ALLOCATOR_FASTBUFFER_SIZE; i > 192; --i)
+        EXPECT_EQ(frames[i - 1], bitmapPageAllocatorAllocate(&allocator));
+    for(unsigned i : indices)
+        EXPECT_EQ(frames[i], bitmapPageAllocatorAllocate(&allocator));
+    EXPECT_EQ(0U, allocator.freePageCount);
+    EXPECT_EQ(0U, bitmapPageAllocatorTryAllocate(&allocator, 0));
 }
 
 TEST_F(BitmapPageAllocator, StopsAtReserveAndReusesBudgetAfterFree)

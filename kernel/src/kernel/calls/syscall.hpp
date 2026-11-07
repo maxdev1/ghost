@@ -30,13 +30,28 @@ struct g_task;
  */
 typedef void (*g_syscall_handler)(g_task*, void*);
 
+#define G_SYSCALL_MAX_REQUEST_SIZE 256
+
 /**
- * Registration structure
+ * Defines the transfers performed for a fixed-size syscall request.
+ */
+enum g_syscall_access
+{
+    G_SYSCALL_INPUT,
+    G_SYSCALL_OUTPUT,
+    G_SYSCALL_IN_OUT
+};
+
+/**
+ * Describes a syscall and its fixed request. A zero request size passes the
+ * original address only to handlers that do not access a request.
  */
 struct g_syscall_registration
 {
     g_syscall_handler handler;
     bool interruptible;
+    uint16_t requestSize;
+    g_syscall_access access;
 };
 
 /**

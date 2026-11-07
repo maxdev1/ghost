@@ -1,3 +1,23 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2026, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include <ghost.h>
 #include <ghost/system/acpi.h>
 #include <cstdio>
@@ -12,6 +32,7 @@ static uint8_t powerTestApprove;
 static void powerTestRequire(bool condition, const char* what)
 {
     if(condition) return;
+
     klog("power-test: FAIL %s", what);
     g_exit(1);
 }
@@ -20,7 +41,7 @@ static g_acpi_info powerTestFirmwareInfo()
 {
     auto service = g_task_get_by_name(G_ACPI_DRIVER_NAME);
     powerTestRequire(service != G_TID_NONE, "ACPI service");
-    g_acpi_request request{G_ACPI_MAGIC, G_ACPI_VERSION, G_ACPI_GET_INFO, 0, G_TID_NONE, 0};
+    g_acpi_get_info_request request{{G_ACPI_MAGIC, G_ACPI_VERSION, G_ACPI_GET_INFO}};
     auto transaction = g_get_message_tx_id();
     auto deadline = g_millis() + G_ACPI_TIMEOUT_MS;
     while(g_send_message_tm(service, &request, sizeof(request), transaction, G_MESSAGE_SEND_MODE_NON_BLOCKING) !=
@@ -29,7 +50,8 @@ static g_acpi_info powerTestFirmwareInfo()
         powerTestRequire(g_millis() < deadline, "send firmware query");
         g_sleep(1);
     }
-    uint8_t bytes[sizeof(g_message_header) + sizeof(g_acpi_response)];
+
+    uint8_t bytes[sizeof(g_message_header) + sizeof(g_acpi_get_info_response)];
     while(g_millis() < deadline)
     {
         powerTestRequire(g_task_get_by_name(G_ACPI_DRIVER_NAME) == service, "ACPI service remains available");
@@ -39,15 +61,18 @@ static g_acpi_info powerTestFirmwareInfo()
             g_sleep(1);
             continue;
         }
+
         auto header = reinterpret_cast<g_message_header*>(bytes);
-        if(header->sender != service || header->length != sizeof(g_acpi_response)) continue;
-        g_acpi_response response;
+        if(header->sender != service || header->length != sizeof(g_acpi_get_info_response)) continue;
+
+        g_acpi_get_info_response response;
         memcpy(&response, G_MESSAGE_CONTENT(bytes), sizeof(response));
-        powerTestRequire(response.magic == G_ACPI_MAGIC && response.version == G_ACPI_VERSION &&
-            response.command == G_ACPI_GET_INFO && response.token == 0 && response.status == G_ACPI_SUCCESSFUL,
+        powerTestRequire(response.header.magic == G_ACPI_MAGIC && response.header.version == G_ACPI_VERSION &&
+            response.header.command == G_ACPI_GET_INFO && response.header.status == G_ACPI_SUCCESSFUL,
             "firmware query response");
         return response.info;
     }
+
     powerTestRequire(false, "firmware query deadline");
     return {};
 }
@@ -60,6 +85,7 @@ static void powerTestParticipant()
     for(;;)
     {
         if(g_receive_message(buffer, sizeof(buffer)) != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL) continue;
+
         auto header = reinterpret_cast<g_message_header*>(buffer);
         auto event = reinterpret_cast<g_power_event*>(G_MESSAGE_CONTENT(buffer));
         if(header->sender == G_TID_NONE && header->length == sizeof(*event) &&
@@ -77,14 +103,22 @@ int main()
     uint64_t rsdp = 0; uint8_t ioapic = 0;
     powerTestRequire(g_acpi_get_platform_info(&rsdp, &ioapic) == G_ACPI_NOT_PERMITTED, "firmware bootstrap privilege");
     powerTestRequire(g_acpi_map(0x1000, 4096) == nullptr, "firmware mapping privilege");
-    powerTestRequire(g_acpi_configure_irq(9, G_ACPI_PLATFORM_IRQ_INSTALL) == G_ACPI_NOT_PERMITTED, "SCI privilege");
-    g_acpi_request spoof{G_ACPI_MAGIC, G_ACPI_VERSION, G_ACPI_PREPARE, 123, g_get_tid(), G_POWER_SHUTDOWN};
+    g_irq_handle binding;
+    powerTestRequire(g_irq_bind(G_IRQ_SOURCE_ACPI, 9, &binding) == G_IRQ_NOT_PERMITTED &&
+        binding == G_IRQ_HANDLE_NONE, "SCI binding privilege");
+
+    const g_irq_handle unowned = 1;
+    powerTestRequire(g_irq_complete(unowned) == G_IRQ_NOT_PERMITTED, "IRQ complete privilege");
+    powerTestRequire(g_irq_wait(unowned, 1) == G_IRQ_NOT_PERMITTED, "IRQ wait privilege");
+    powerTestRequire(g_irq_mask(unowned) == G_IRQ_NOT_PERMITTED, "IRQ mask privilege");
+    powerTestRequire(g_irq_release(unowned) == G_IRQ_NOT_PERMITTED, "IRQ release privilege");
+    g_acpi_prepare_request spoof{{G_ACPI_MAGIC, G_ACPI_VERSION, G_ACPI_PREPARE}, 123, g_get_tid(), G_POWER_SHUTDOWN};
     auto tx = g_get_message_tx_id();
     auto service = g_task_get_by_name(G_ACPI_DRIVER_NAME);
     powerTestRequire(g_send_message_t(service, &spoof, sizeof(spoof), tx) == G_MESSAGE_SEND_STATUS_SUCCESSFUL, "send spoofed preparation");
-    uint8_t reply[sizeof(g_message_header) + sizeof(g_acpi_response)];
+    uint8_t reply[sizeof(g_message_header) + sizeof(g_acpi_prepare_response)];
     powerTestRequire(g_receive_message_t(reply, sizeof(reply), tx) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL &&
-        reinterpret_cast<g_acpi_response*>(G_MESSAGE_CONTENT(reply))->status == G_ACPI_NOT_PERMITTED,
+        reinterpret_cast<g_acpi_prepare_response*>(G_MESSAGE_CONTENT(reply))->header.status == G_ACPI_NOT_PERMITTED,
         "reject preparation outside kernel coordinator");
     klog("power-test: userspace ACPI and privilege checks PASS");
     powerTestRequire(g_system_power(99) == G_POWER_INVALID_ARGUMENT, "invalid action");
@@ -108,8 +142,10 @@ int main()
                 if(std::strncmp(entry->name, "fat", 3) == 0) mount = std::string("/mount/") + entry->name;
             g_close_directory(directory);
         }
+
         if(mount.empty()) g_sleep(10);
     }
+
     powerTestRequire(!mount.empty(), "FAT mount");
     auto path = mount + "/powerchk.txt";
     char previous[32]{};
@@ -122,6 +158,7 @@ int main()
         powerTestRequire(std::strcmp(previous, "power-test-reboot\n") == 0, "data survived reboot");
         klog("power-test: actual reboot and disk persistence PASS");
     }
+
     fd = open(path.c_str(), O_CREAT | O_TRUNC | O_WRONLY, 0);
     powerTestRequire(fd >= 0, "create file after cancelled shutdown");
     const char* text = rebooted ? "power-test-shutdown\n" : "power-test-reboot\n";

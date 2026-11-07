@@ -1,3 +1,23 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2026, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include "support/fixture.hpp"
 
 namespace
@@ -6,6 +26,9 @@ namespace
 
 #include "support/synchronization.hpp"
 
+using g_address = uintptr_t;
+constexpr int G_PATH_MAX = 4096;
+void* heapTryAllocate(size_t size) { return heapAllocate(size); }
 constexpr int G_GET_WORKING_DIRECTORY_SUCCESSFUL = 0, G_GET_WORKING_DIRECTORY_SIZE_EXCEEDED = 1;
 constexpr int G_SET_WORKING_DIRECTORY_SUCCESSFUL = 0, G_SET_WORKING_DIRECTORY_NOT_A_FOLDER = 1;
 constexpr int G_SET_WORKING_DIRECTORY_NOT_FOUND = 2, G_SET_WORKING_DIRECTORY_ERROR = 3;
@@ -19,10 +42,18 @@ struct node { int type; } directory{0};
 struct find_result { int status; struct node* node; };
 find_result filesystemFind(void*, const char*) { return {0, &directory}; }
 int filesystemGetAbsolutePathLength(node*) { return 8; }
-void filesystemGetAbsolutePath(node*, char* out) { std::strcpy(out, "/updated"); }
+int filesystemGetAbsolutePath(node*, char* out, size_t) { std::strcpy(out, "/updated"); return 8; }
 size_t stringLength(const char* p) { return std::strlen(p); }
 void stringCopy(char* out, const char* p) { std::strcpy(out, p); }
 
+bool memoryCopyUserString(g_task*, const char* source, char* target, size_t capacity) {
+    const char* path = source ? source : "/updated";
+    if(strlen(path) >= capacity) return false;
+    strcpy(target, path); return true;
+}
+bool memoryCopyToUser(g_task*, g_address address, const void* source, size_t count) {
+    memcpy((void*) address, source, count); return true;
+}
 #include "production/syscall_working_directory.inc"
 
 TEST(WorkingDirectory, ReturnsBoundedSnapshotsDuringConcurrentDirectoryChanges) {

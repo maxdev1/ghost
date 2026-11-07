@@ -5,7 +5,9 @@ namespace
 {
 constexpr int G_TASK_STATUS_DEAD = 3, G_TASK_STATUS_WAITING = 2, G_TASK_STATUS_RUNNING = 1;
 using g_tid = int;
-struct g_task { g_mutex lock; int status, id, waitersJoin; const char* waitsFor; } tasks[2] = {
+struct g_tasking_local { uint32_t processor; };
+void schedulerRequestReschedule(uint32_t) {}
+struct g_task { g_mutex lock; int status, id, waitersJoin; const char* waitsFor; g_tasking_local* assignment = nullptr; } tasks[2] = {
     {{}, G_TASK_STATUS_RUNNING, 0, 0, nullptr}, {{}, G_TASK_STATUS_RUNNING, 1, 0, nullptr}};
 std::mutex taskLocks[2]; thread_local int held;
 void acquire(g_mutex* m) {

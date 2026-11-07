@@ -9,6 +9,8 @@
 #define G_ADDRESS_MAX UINTPTR_MAX
 #define G_MEM_PHYS_TO_VIRT(p) (p)
 #define G_PAGE_PRESENT 1
+#define G_PAGE_UNMANAGED_FLAG 512
+#define G_PAGE_PHYSICAL_MASK 0x000FFFFFFFFFF000ULL
 #define G_PAGE_USER_FLAG 4
 #define G_PAGE_TABLE_USER_DEFAULT 7
 #define G_PAGE_USER_DEFAULT 7
@@ -35,9 +37,10 @@ struct g_task {
 alignas(4096) uint8_t arena[16 * 4096];
 #define G_USER_MAXIMUM_HEAP_BREAK ((uintptr_t)arena + 8 * G_PAGE_SIZE)
 std::map<uintptr_t, uintptr_t> mappings;
+std::map<uintptr_t, uint64_t> mappingFlags;
 std::unordered_set<uintptr_t> frames;
 uintptr_t currentSpace = 0x1000;
-int allocations, frees, mapAttempts, invalidations, ranges;
+int allocations, frees, mapAttempts, invalidations, ranges, unmapBatches;
 int failPhysical = -1, failMapping = -1;
 bool noRange;
 uintptr_t memoryPhysicalTryAllocate() {
@@ -51,17 +54,25 @@ void memoryPhysicalFree(uintptr_t p) {
     EXPECT_EQ(1, frames.erase(p)); std::free((void*)p); ++frees;
 }
 void memorySetBytes(void* p, int v, size_t n) { std::memset(p, v, n); }
-bool pagingMapPage(uintptr_t v, uintptr_t p, uint32_t, uint32_t) {
+bool pagingMapPage(uintptr_t v, uintptr_t p, uint32_t, uint32_t flags) {
     for(size_t i = 0; i < 4096; ++i) EXPECT_EQ(0, ((uint8_t*)p)[i]);
     if(mapAttempts++ == failMapping) { mappings[v] = 0xbeef000; return false; }
     if(mappings.count(v)) return false;
-    mappings[v] = p; return true;
+    mappings[v] = p; mappingFlags[v] = flags; return true;
 }
 uintptr_t pagingVirtualToPhysical(uintptr_t v) { return mappings.at(v); }
 uintptr_t pagingVirtualToPageEntry(uintptr_t v) {
-    auto i = mappings.find(v); return i == mappings.end() ? 0 : i->second | 1;
+    auto i = mappings.find(v); return i == mappings.end() ? 0 : i->second | (mappingFlags.count(v) ? mappingFlags[v] : 1);
 }
 void pagingUnmapPage(uintptr_t v) { EXPECT_EQ(1, mappings.erase(v)); }
+void pagingUnmapPages(uintptr_t v, uint32_t pages, uintptr_t* retired) {
+    ++unmapBatches;
+    for(uint32_t i = 0; i < pages; ++i) {
+        const auto address = v + i * G_PAGE_SIZE;
+        retired[i] = pagingVirtualToPageEntry(address);
+        mappings.erase(address); mappingFlags.erase(address);
+    }
+}
 void pagingInvalidatePage(uintptr_t) { ++invalidations; }
 uintptr_t taskingMemoryTemporarySwitchTo(uintptr_t p) {
     auto old = currentSpace; currentSpace = p; return old;
@@ -73,6 +84,8 @@ uintptr_t addressRangePoolAllocate(int*, uint32_t pages, uint8_t flags) {
 }
 void addressRangePoolFree(int*, uintptr_t p) { EXPECT_EQ((uintptr_t)arena, p); --ranges; }
 void reset() {
-    EXPECT_TRUE(frames.empty()); mappings.clear(); allocations = frees = mapAttempts = invalidations = ranges = 0;
+    EXPECT_TRUE(frames.empty()); mappings.clear(); mappingFlags.clear(); allocations = frees = mapAttempts = invalidations = ranges = unmapBatches = 0;
     failPhysical = failMapping = -1; noRange = false;
 }
+
+#include "production/memoryReleasePages.inc"

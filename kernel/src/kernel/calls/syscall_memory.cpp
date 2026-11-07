@@ -114,16 +114,7 @@ void syscallUnmap(g_task* task, g_syscall_unmap* data)
 	auto range = addressRangePoolFind(process->virtualRangePool, data->virtualBase);
 	if(range && range->used && !(range->flags & G_PROC_VIRTUAL_RANGE_FLAG_INTERNAL))
 	{
-		for(uint32_t i = 0; i < range->pages; i++)
-		{
-			g_virtual_address virt = range->base + i * G_PAGE_SIZE;
-			uint64_t entry = pagingVirtualToPageEntry(virt);
-			if(!(entry & G_PAGE_PRESENT))
-				continue;
-			pagingUnmapPage(virt);
-			if(!(entry & G_PAGE_UNMANAGED_FLAG))
-				memoryPhysicalFree(entry & G_PAGE_PHYSICAL_MASK);
-		}
+		memoryReleasePages(range->base, range->pages);
 		addressRangePoolFree(process->virtualRangePool, range->base);
 	}
 	mutexRelease(&process->lock);
@@ -169,9 +160,11 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 	for(; retained < pages; ++retained)
 	{
 		uint64_t entry = pagingVirtualToPageEntry(memory + retained * G_PAGE_SIZE);
-		if(!(entry & G_PAGE_PRESENT))
+		const uint64_t required = G_PAGE_PRESENT | G_PAGE_USER_FLAG | G_PAGE_WRITABLE_FLAG;
+		if((entry & required) != required || (entry & G_PAGE_LARGE_PAGE_FLAG))
 			break;
-		snapshot[retained] = {entry & G_PAGE_PHYSICAL_MASK, entry & G_PAGE_UNMANAGED_FLAG};
+		snapshot[retained] = {entry & G_PAGE_PHYSICAL_MASK,
+							 entry & (G_PAGE_UNMANAGED_FLAG | G_PAGE_CACHE_DISABLE | G_PAGE_WRITE_THROUGH)};
 		if(!(entry & G_PAGE_UNMANAGED_FLAG))
 		{
 			pageReferenceTrackerIncrement(snapshot[retained].address);
@@ -243,7 +236,8 @@ void syscallMapMmioArea(g_task* task, g_syscall_map_mmio* data)
 	for(uint32_t i = 0; i < pages; i++)
 	{
 		if(!pagingMapPage(virtualRangeBase + i * G_PAGE_SIZE, physicalAddress + i * G_PAGE_SIZE,
-						  G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT | G_PAGE_UNMANAGED_FLAG))
+						  G_PAGE_TABLE_USER_DEFAULT, G_PAGE_USER_DEFAULT | G_PAGE_UNMANAGED_FLAG |
+						  G_PAGE_CACHE_DISABLE | G_PAGE_WRITE_THROUGH))
 		{
 			// Only undo mappings installed by this call. Device pages are never freed.
 			for(uint32_t mapped = 0; mapped < i; mapped++)

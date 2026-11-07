@@ -31,7 +31,7 @@ void taskingTerminateProcess(g_process* p) { p->terminating = true; }
 void taskingCancelPendingSpawns(int) {}
 void clockUnwaitForTime(g_task*) {}
 void filesystemDelegateTaskRemoved(g_task*) {}
-void requestsTaskRemoved(g_task*) {}
+void irqTaskStopped(g_task*) {}
 void waitQueueRemoveTask(int) {}
 void waitQueueWake(int*) {}
 void taskingDirectoryTaskRemoved(int) {}

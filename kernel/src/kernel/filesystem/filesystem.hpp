@@ -24,6 +24,7 @@
 #include <ghost/filesystem/types.h>
 #include "kernel/system/mutex.hpp"
 #include "kernel/tasking/tasking.hpp"
+#include <ghost/filesystem/link.h>
 
 struct g_fs_node;
 struct g_fs_node_entry;
@@ -76,7 +77,7 @@ struct g_fs_delegate
 	g_fs_open_status (*truncate)(g_fs_node* file);
 	g_fs_close_status (*close)(g_fs_node* node, g_file_flag_mode openFlags);
 	g_fs_directory_refresh_status (*refreshDir)(g_fs_node* node);
-
+	g_fs_mutation_status (*rename)(g_fs_node* node, g_fs_node* parent, const char* name, g_fs_node* replaced);
 	g_fs_mutation_status (*makeDirectory)(g_fs_node* parent, const char* name, g_fs_node** out);
 	g_fs_mutation_status (*mutate)(g_fs_node* node, g_fs_delegate_request_type type, uint64_t length);
 
@@ -91,8 +92,14 @@ struct g_filesystem_find_result
 
 	bool foundAllButLast;
 	g_fs_node* lastFoundParent;
-	const char* fileNameStart;
+	char fileNameStart[G_FILENAME_MAX];
 };
+
+bool filesystemIsLinkName(const char* name);
+
+g_fs_node_type filesystemStorageNodeType(g_fs_node_type type, const char* name);
+
+int32_t filesystemParseLink(const char* bytes, uint32_t length, char* target);
 
 /**
  * Initializes the basic file system structures.
@@ -109,9 +116,16 @@ void filesystemCreateRoot();
  */
 g_fs_node* filesystemGetMountFolder();
 
+/**
+ * Selects the root for absolute paths or a snapshot of the task's working directory.
+ */
+g_fs_open_status filesystemChooseOrigin(const char* path, g_task* task, g_fs_node*& origin);
+
 void filesystemUnlinkNode(g_fs_node* node);
 
 g_fs_mutation_status filesystemMakeDirectory(g_task* task, const char* path);
+
+g_fs_mutation_status filesystemRename(g_task* task, const char* source, const char* destination, bool replace);
 
 g_fs_mutation_status filesystemRemove(g_task* task, const char* path, bool directory);
 
@@ -157,6 +171,16 @@ bool filesystemGetFileName(g_fd fd, const char** outName);
  * to search for a child.
  */
 g_filesystem_find_result filesystemFind(g_fs_node* parent, const char* path);
+
+g_filesystem_find_result filesystemFindPolicy(g_fs_node* parent, const char* path, bool followFinal);
+
+g_fs_open_status filesystemReadLink(g_fs_node* node, char* target, uint32_t* length);
+
+g_fs_open_status filesystemReadLinkPath(g_task* task, const char* path, char* target, uint32_t* length);
+
+g_fs_mutation_status filesystemMutationLookupStatus(g_fs_open_status status);
+
+g_fs_mutation_status filesystemSymlink(g_task* task, const char* target, const char* path);
 
 /**
  * Retrieves a node by its virtual id.
@@ -250,7 +274,7 @@ g_fs_pipe_status filesystemCreatePipe(g_bool blocking, g_fs_node** outPipeNode);
  *
  * @return the number of bytes written
  */
-int filesystemGetAbsolutePath(g_fs_node* node, char* buffer);
+int filesystemGetAbsolutePath(g_fs_node* node, char* buffer, size_t capacity);
 
 /**
  * Calculates the absolute path length of node.
@@ -282,7 +306,7 @@ g_fs_real_path_status filesystemRealPath(g_task* task, const char* in, char* out
 /**
  * Retrieves stats of a path, file descriptor or node.
  */
-g_fs_stat_status filesystemStat(g_task* task, const char* path, g_fs_stat_data* out);
+g_fs_stat_status filesystemStat(g_task* task, const char* path, g_fs_stat_data* out, bool followFinal = true);
 g_fs_stat_status filesystemFstat(g_task* task, g_fd fd, g_fs_stat_data* out);
 g_fs_stat_status filesystemStatNode(g_fs_node* node, g_fs_stat_data* out);
 

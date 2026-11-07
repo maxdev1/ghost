@@ -27,30 +27,25 @@
 #define G_SMP_STARTUP_AREA_AP_COUNTER		      	0x510	// counter for stack pointer array indexing
 #define G_SMP_STARTUP_AREA_AP_STACK_ARRAY	    	0x518	// array of stack pointers
 #define G_SMP_STARTUP_AREA_CODE_START		    	0x1000	// must be 000XX000, used for SIPI
-#define G_SMP_STARTUP_AREA_END				        0x7BFF
+#define G_SMP_STARTUP_AREA_END				        0x7C00
 
-// TODO change values
-#define G_USER_MAXIMUM_HEAP_BREAK				    0xA0000000
-#define G_USER_VIRTUAL_RANGES_START			        0xA0000000
-#define G_USER_VIRTUAL_RANGES_END				    0xC0000000
+#define G_USER_MAXIMUM_HEAP_BREAK				    0x00000000A0000000ULL
+#define G_USER_VIRTUAL_RANGES_START			        G_USER_MAXIMUM_HEAP_BREAK
+#define G_USER_VIRTUAL_RANGES_END				    0x0000000100000000ULL
 
-#define G_KERNEL_AREA_START					        0xC0000000
-
-
-// TODO new constants
-#define G_MEM_LOWER_END                             0x100000
-#define G_MEM_LOWER_HALF_END                        0x7fffffffffff
+#define G_MEM_LOWER_END                             0x0000000000100000ULL
+#define G_MEM_LOWER_HALF_END                        0x00007fffffffffffULL
 
 /**
  * Due to the Higher Half Direct Map feature, every physical address is mapped
  * to this higher-half offset in virtual memory by default.
  */
-#define G_MEM_HIGHER_HALF_DIRECT_MAP_OFFSET         0xffff800000000000
+#define G_MEM_HIGHER_HALF_DIRECT_MAP_OFFSET         0xffff800000000000ULL
 #define G_MEM_PHYS_TO_VIRT(phys)                    ((G_MEM_HIGHER_HALF_DIRECT_MAP_OFFSET) + (g_address) (phys))
 
-#define G_MEM_KERN_VIRT_RANGES_START			    0xffffff8090000000
-#define G_MEM_KERN_VIRT_RANGES_END			        0xffffff89ffc00000
-#define G_MEM_HEAP_START                            0xffffff8a00000000
+#define G_MEM_KERN_VIRT_RANGES_START			    0xffffff8090000000ULL
+#define G_MEM_KERN_VIRT_RANGES_END			        0xffffff89ffc00000ULL
+#define G_MEM_HEAP_START                            0xffffff8a00000000ULL
 #define G_MEM_HEAP_INITIAL_SIZE                     0x100000
 #define G_MEM_KERN_HEAP_EXPAND_STEP			    	0x100000
 

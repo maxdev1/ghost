@@ -60,7 +60,7 @@ void ramdiskParseContents(limine_file* file)
 		if(currentHeader == 0)
 		{
 			ramdiskMain->firstEntry = entry;
-			currentHeader = ramdiskMain->firstEntry;
+			currentHeader = memoryAtomicLoad(&ramdiskMain->firstEntry, G_MEMORY_ORDER_ACQUIRE);
 		}
 		else
 		{
@@ -123,7 +123,7 @@ void ramdiskParseContents(limine_file* file)
 
 g_ramdisk_entry* ramdiskFindChild(g_ramdisk_entry* parent, const char* childName)
 {
-	g_ramdisk_entry* current = ramdiskMain->firstEntry;
+	g_ramdisk_entry* current = memoryAtomicLoad(&ramdiskMain->firstEntry, G_MEMORY_ORDER_ACQUIRE);
 	while(current)
 	{
 		if(current->parentid == parent->id && stringEquals(current->name, childName))
@@ -144,7 +144,7 @@ g_ramdisk_entry* ramdiskFindById(g_ramdisk_id id)
 		return ramdiskMain->root;
 	}
 
-	g_ramdisk_entry* currentNode = ramdiskMain->firstEntry;
+	g_ramdisk_entry* currentNode = memoryAtomicLoad(&ramdiskMain->firstEntry, G_MEMORY_ORDER_ACQUIRE);
 	while(currentNode != 0)
 	{
 		if(currentNode->id == id)
@@ -198,7 +198,7 @@ uint32_t ramdiskGetChildCount(g_ramdisk_id id)
 {
 	uint32_t count = 0;
 
-	g_ramdisk_entry* currentNode = ramdiskMain->firstEntry;
+	g_ramdisk_entry* currentNode = memoryAtomicLoad(&ramdiskMain->firstEntry, G_MEMORY_ORDER_ACQUIRE);
 	while(currentNode != 0)
 	{
 		if(currentNode->parentid == id)
@@ -216,7 +216,7 @@ g_ramdisk_entry* ramdiskGetChildAt(g_ramdisk_id id, uint32_t index)
 
 	uint32_t pos = 0;
 
-	g_ramdisk_entry* currentNode = ramdiskMain->firstEntry;
+	g_ramdisk_entry* currentNode = memoryAtomicLoad(&ramdiskMain->firstEntry, G_MEMORY_ORDER_ACQUIRE);
 	while(currentNode)
 	{
 		if(currentNode->parentid == id)
@@ -236,8 +236,7 @@ g_ramdisk_entry* ramdiskGetRoot() { return ramdiskMain->root; }
 g_ramdisk_entry* ramdiskCreateFile(g_ramdisk_entry* parent, const char* filename)
 {
 	g_ramdisk_entry* entry = (g_ramdisk_entry*) heapAllocate(sizeof(g_ramdisk_entry));
-	entry->next = ramdiskMain->firstEntry;
-	ramdiskMain->firstEntry = entry;
+	entry->next = memoryAtomicLoad(&ramdiskMain->firstEntry, G_MEMORY_ORDER_ACQUIRE);
 
 	int namelen = stringLength(filename);
 	entry->name = (char*) heapAllocate(sizeof(char) * (namelen + 1));
@@ -247,11 +246,13 @@ g_ramdisk_entry* ramdiskCreateFile(g_ramdisk_entry* parent, const char* filename
 	entry->id = ramdiskMain->nextUnusedId++;
 	entry->parentid = parent->id;
 
+	entry->opens = 0;
 	entry->data = nullptr;
 	entry->dataSize = 0;
 	entry->dataOnRamdisk = false;
 	entry->notOnRdBufferLength = 0;
 
+	memoryAtomicStore(&ramdiskMain->firstEntry, entry, G_MEMORY_ORDER_RELEASE);
 	return entry;
 }
 
@@ -284,6 +285,7 @@ void ramdiskLoadBootModules(limine_module_response* modules)
 				name[length] = path[length];
 				++length;
 			}
+
 			name[length] = 0;
 
 			if(!length || stringEquals(name, ".") || stringEquals(name, ".."))
@@ -297,6 +299,7 @@ void ramdiskLoadBootModules(limine_module_response* modules)
 					entry = ramdiskCreateFile(parent, name);
 					entry->type = G_RAMDISK_ENTRY_TYPE_FOLDER;
 				}
+
 				if(entry->type != G_RAMDISK_ENTRY_TYPE_FOLDER)
 					panic("%! conflicting bootstrap path", "boot");
 
@@ -316,5 +319,6 @@ void ramdiskLoadBootModules(limine_module_response* modules)
 			}
 		}
 	}
+
 	logDebug("%! loaded %i bootstrap files", "boot", modules->module_count);
 }

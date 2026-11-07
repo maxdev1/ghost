@@ -1,4 +1,26 @@
-#pragma once
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2026, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+#ifndef GHOST_TESTS_FILESYSTEM_DESCRIPTORS
+#define GHOST_TESTS_FILESYSTEM_DESCRIPTORS
+
 #include "support/tracked_heap.hpp"
 
 #include "support/synchronization.hpp"
@@ -53,6 +75,7 @@ template<class P, class A> bool taskingWaitIf(P prepare, A after) {
     taskingHandleTerminationRequest();
     return true;
 }
+
 static thread_local bool ioInterruptsEnabled;
 void interruptsEnable() { ioInterruptsEnabled = true; }
 void interruptsDisable() { ioInterruptsEnabled = false; }
@@ -67,6 +90,7 @@ int filesystemRead(g_fs_node*, uint8_t*, uint64_t offset, uint64_t, int64_t* out
         inRead = true; phaseChanged.notify_all();
         phaseChanged.wait(lock, [] { return allowRead; });
     }
+
     *out = mode == 1 ? 0 : readCount;
     return mode == 1 ? G_FS_READ_BUSY : readStatus;
 }
@@ -86,6 +110,7 @@ int filesystemWrite(g_fs_node*, uint8_t*, uint64_t offset, uint64_t, int64_t* ou
     ++writeCalls; writeOffset = offset;
     *out = writeCount; return writeStatus;
 }
+
 int filesystemGetLength(g_fs_node*, uint64_t* out) {
     *out = mode == 3 ? appendLength.load() : 4;
     if(mode == 3) std::this_thread::yield();
@@ -95,3 +120,5 @@ int filesystemGetLength(g_fs_node*, uint64_t* out) {
 #include "production/filesystem_process_hpp.inc"
 #include "production/filesystem_process_cpp.inc"
 #include "production/filesystem_task_io.inc"
+
+#endif

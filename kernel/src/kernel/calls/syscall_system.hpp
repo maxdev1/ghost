@@ -36,14 +36,14 @@ void syscallTest(g_task* task, g_syscall_test* data);
 
 void syscallCallVm86(g_task* task, g_syscall_call_vm86* data);
 
-void syscallIrqCreateRedirect(g_task* task, g_syscall_irq_create_redirect* data);
-
-void syscallAwaitIrq(g_task* task, g_syscall_await_irq* data);
-
 void syscallGetEfiFramebuffer(g_task* task, g_syscall_get_efi_framebuffer* data);
 
 void syscallSystemPower(g_task* task, g_syscall_system_power* data);
 
-void syscallAcpiPlatform(g_task* task, g_syscall_acpi_platform* data);
+void syscallIrq(g_task* task, g_syscall_irq* request);
+
+void syscallAcpiGetPlatformInfo(g_task* task, g_syscall_acpi_platform_info* data);
+
+void syscallAcpiMap(g_task* task, g_syscall_acpi_map* data);
 
 #endif

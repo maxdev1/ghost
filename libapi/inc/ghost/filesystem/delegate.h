@@ -26,7 +26,7 @@
 
 __BEGIN_C
 
-#define G_FS_DELEGATE_VERSION ((uint32_t) 2)
+#define G_FS_DELEGATE_VERSION ((uint32_t) 3)
 #define G_FS_DELEGATE_MESSAGE_SENDER ((int32_t) -1)
 
 /**
@@ -157,6 +157,15 @@ typedef struct
 	g_fs_mutation_status result_status;
 } g_fs_delegate_flush;
 
+typedef struct
+{
+	g_fs_phys_id phys_fs_id;
+	g_fs_phys_id parent_phys_fs_id;
+	g_fs_phys_id replaced_phys_fs_id;
+	char name[G_FILENAME_MAX];
+	g_fs_mutation_status result_status;
+} g_fs_delegate_rename;
+
 /**
  * One shared control page per registered delegate, with one active transaction
  * per page. The kernel publishes the header and selected payload before sending
@@ -181,6 +190,7 @@ typedef struct
 		g_fs_delegate_resize resize;
 		g_fs_delegate_remove remove;
 		g_fs_delegate_flush flush;
+		g_fs_delegate_rename rename;
 	} data;
 } g_fs_delegate_transaction_storage;
 

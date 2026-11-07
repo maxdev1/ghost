@@ -6,6 +6,7 @@ void processorInitializeBsp() {}
 void acpiInitialize(uintptr_t) {}
 void apicDetect() {}
 void hpetInitialize() {}
+void clockInitializeReference() {}
 bool processorListAvailable() { return true; }
 void gdtInitialize() {}
 void gdtInitializeLocal() {}

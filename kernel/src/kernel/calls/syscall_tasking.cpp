@@ -21,10 +21,11 @@
 #include "kernel/calls/syscall_tasking.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/logger/logger.hpp"
+#include "kernel/memory/constants.hpp"
 #include "kernel/memory/memory.hpp"
+#include "kernel/memory/memory_user.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/processor/processor.hpp"
-#include "kernel/system/timing/hpet.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/scheduler/scheduler.hpp"
 #include "kernel/tasking/tasking_directory.hpp"
@@ -35,7 +36,7 @@
 void syscallSleep(g_task* task, g_syscall_sleep* data)
 {
 	taskingWait(task, __func__,
-				[task, data]() { clockWaitForTime(task->id, clockGetLocal()->time + data->milliseconds); });
+				[task, data]() { clockWaitForTime(task->id, clockGetMilliseconds() + data->milliseconds); });
 }
 
 void syscallYield(g_task* task, g_syscall_yield* data)
@@ -58,9 +59,15 @@ void syscallExitTask(g_task* task)
 	taskingExit();
 }
 
-void syscallGetProcessId(g_task* task, g_syscall_get_pid* data) { data->id = taskingGetCurrentTask()->process->id; }
+void syscallGetProcessId(g_task* task, g_syscall_get_pid* data)
+{
+	data->id = taskingGetCurrentTask()->process->id;
+}
 
-void syscallGetTaskId(g_task* task, g_syscall_get_tid* data) { data->id = taskingGetCurrentTask()->id; }
+void syscallGetTaskId(g_task* task, g_syscall_get_tid* data)
+{
+	data->id = taskingGetCurrentTask()->id;
+}
 
 void syscallGetProcessIdForTaskId(g_task* task, g_syscall_get_pid_for_tid* data)
 {
@@ -85,6 +92,17 @@ void syscallJoin(g_task* task, g_syscall_join* data)
 
 void syscallSpawn(g_task* task, g_syscall_spawn* data)
 {
+	char path[G_PATH_MAX];
+	char arguments[G_CLIARGS_BUFFER_LENGTH];
+	char workdir[G_PATH_MAX];
+
+	data->status = G_SPAWN_STATUS_TASKING_ERROR;
+	data->pid = G_PID_NONE;
+	if(!memoryCopyUserString(task, data->path, path, sizeof(path)) ||
+	   (data->args && !memoryCopyUserString(task, data->args, arguments, sizeof(arguments))) ||
+	   (data->workdir && !memoryCopyUserString(task, data->workdir, workdir, sizeof(workdir))))
+		return;
+
 	auto mode = data->mode;
 	if(mode == G_LAUNCH_MODE_INHERIT)
 		mode = task->process->environment.launchMode;
@@ -98,13 +116,13 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 	if(securityLevel > G_SECURITY_LEVEL_APPLICATION || securityLevel < task->securityLevel)
 	{
 		data->status = G_SPAWN_STATUS_TASKING_ERROR;
-		logInfo("%! task %i doesn't have privilege to spawn '%s' as security level %i", "kernel", task->id, data->path,
+		logInfo("%! task %i doesn't have privilege to spawn '%s' as security level %i", "kernel", task->id, path,
 				securityLevel);
 		return;
 	}
 
 	g_fd fd;
-	g_fs_open_status open = filesystemOpen(data->path, G_FILE_FLAG_MODE_READ, task, &fd);
+	g_fs_open_status open = filesystemOpen(path, G_FILE_FLAG_MODE_READ, task, &fd);
 	if(open == G_FS_OPEN_SUCCESSFUL)
 	{
 		auto target = taskingSpawn(fd, securityLevel);
@@ -119,11 +137,11 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 			filesystemProcessCreateStdio(task->process->id, data->inStdio, target.process->id, data->outStdio);
 
 			target.process->environment.launchMode = mode;
-			target.process->environment.executablePath = stringDuplicate(data->path);
+			target.process->environment.executablePath = stringDuplicate(path);
 			if(data->args)
-				target.process->environment.arguments = stringDuplicate(data->args);
+				target.process->environment.arguments = stringDuplicate(arguments);
 			if(data->workdir)
-				target.process->environment.workingDirectory = stringDuplicate(data->workdir);
+				target.process->environment.workingDirectory = stringDuplicate(workdir);
 
 			taskingReleaseSpawn(target.process);
 		}
@@ -177,8 +195,13 @@ void syscallCreateTask(g_task* task, g_syscall_create_task* data)
 	void* const userData = data->userData;
 	data->threadId = G_TID_NONE;
 	data->status = G_CREATE_TASK_STATUS_FAILED;
+
+	if(task->securityLevel != G_SECURITY_LEVEL_KERNEL && (!initialEntry || initialEntry > G_MEM_LOWER_HALF_END))
+		return;
+
 	if(affinity != G_TASK_CORE_AFFINITY_NONE && affinity >= processorGetNumberOfProcessors())
 		return;
+
 	g_task* newTask = taskingCreateTask(initialEntry, task->process, task->process->main->securityLevel);
 	if(newTask)
 	{
@@ -215,22 +238,27 @@ void syscallGetParentProcessId(g_task* task, g_syscall_get_parent_pid* data)
 	logInfo("syscall not implemented: syscallGetParentProcessId");
 }
 
-void syscallGetMilliseconds(g_task* task, g_syscall_millis* data) { data->millis = clockGetLocal()->time; }
+void syscallGetTime(g_task*, g_syscall_time* data)
+{
+	data->unixSeconds = clockGetWallTime();
+}
+
+void syscallGetMilliseconds(g_task* task, g_syscall_millis* data)
+{
+	data->millis = clockGetMilliseconds();
+}
 
 void syscallGetNanoseconds(g_task* task, g_syscall_nanos* data)
 {
-	if(hpetIsAvailable())
-		data->nanos = hpetGetNanos();
-	else
-		data->nanos = clockGetLocal()->time * 1000000LL;
+	data->nanos = clockGetNanoseconds(processorGetCurrentId());
 }
 
 void syscallGetExecutablePath(g_task* task, g_syscall_get_executable_path* data)
 {
-	if(task->process->environment.executablePath)
-		stringCopy(data->buffer, task->process->environment.executablePath);
-	else
-		data->buffer[0] = 0;
+	auto path = task->process->environment.executablePath;
+	if(!path)
+		path = "";
+	memoryCopyToUser(task, (g_address) data->buffer, path, stringLength(path) + 1);
 }
 
 void syscallGetWorkingDirectory(g_task* task, g_syscall_get_working_directory* data)
@@ -243,23 +271,40 @@ void syscallGetWorkingDirectory(g_task* task, g_syscall_get_working_directory* d
 		data->result = G_GET_WORKING_DIRECTORY_SIZE_EXCEEDED;
 	else
 	{
-		stringCopy(data->buffer, snapshot);
-		data->result = G_GET_WORKING_DIRECTORY_SUCCESSFUL;
+		data->result = memoryCopyToUser(task, (g_address) data->buffer, snapshot, stringLength(snapshot) + 1)
+							   ? G_GET_WORKING_DIRECTORY_SUCCESSFUL
+							   : G_GET_WORKING_DIRECTORY_SIZE_EXCEEDED;
 	}
 	heapFree(snapshot);
 }
 
 void syscallSetWorkingDirectory(g_task* task, g_syscall_set_working_directory* data)
 {
-	auto findRes = filesystemFind(nullptr, data->path);
+	char path[G_PATH_MAX];
+	data->result = G_SET_WORKING_DIRECTORY_ERROR;
+	if(!memoryCopyUserString(task, data->path, path, sizeof(path)))
+		return;
+
+	auto findRes = filesystemFind(nullptr, path);
 	if(findRes.status == G_FS_OPEN_SUCCESSFUL)
 	{
 		if(findRes.node->type == G_FS_NODE_TYPE_FOLDER || findRes.node->type == G_FS_NODE_TYPE_MOUNTPOINT ||
 		   findRes.node->type == G_FS_NODE_TYPE_ROOT)
 		{
 			int length = filesystemGetAbsolutePathLength(findRes.node);
-			auto replacement = (char*) heapAllocate(length + 1);
-			filesystemGetAbsolutePath(findRes.node, replacement);
+			if(length >= G_PATH_MAX)
+			{
+				data->result = G_SET_WORKING_DIRECTORY_ERROR;
+				return;
+			}
+			auto replacement = static_cast<char*>(heapTryAllocate(length + 1));
+			if(!replacement || filesystemGetAbsolutePath(findRes.node, replacement, length + 1) < 0)
+			{
+				if(replacement)
+					heapFree(replacement);
+				data->result = G_SET_WORKING_DIRECTORY_ERROR;
+				return;
+			}
 
 			mutexAcquire(&task->process->lock);
 			auto previous = task->process->environment.workingDirectory;
@@ -287,31 +332,40 @@ void syscallSetWorkingDirectory(g_task* task, g_syscall_set_working_directory* d
 
 void syscallReleaseCliArguments(g_task* task, g_syscall_cli_args_release* data)
 {
-	if(task->process->environment.arguments)
-		stringCopy(data->buffer, task->process->environment.arguments);
-	else
-		data->buffer[0] = 0;
+	auto arguments = task->process->environment.arguments;
+	if(!arguments)
+		arguments = "";
+	memoryCopyToUser(task, (g_address) data->buffer, arguments, stringLength(arguments) + 1);
 }
 
 void syscallTaskRegisterName(g_task* task, g_syscall_task_register_name* data)
 {
-	data->successful = taskingDirectoryRegister(data->name, task->id, task->securityLevel);
+	char name[G_FILENAME_MAX];
+	data->successful = memoryCopyUserString(task, data->name, name, sizeof(name)) &&
+					   taskingDirectoryRegister(name, task->id, task->securityLevel);
 }
 
 void syscallTaskAwaitByName(g_task* task, g_syscall_task_await_by_name* data)
 {
+	char name[G_FILENAME_MAX];
+	data->task = G_TID_NONE;
+	if(!memoryCopyUserString(task, data->name, name, sizeof(name)))
+		return;
+
 	g_tid target;
-	while((target = taskingDirectoryGet(data->name)) == G_TID_NONE)
+	while((target = taskingDirectoryGet(name)) == G_TID_NONE)
 	{
-		if(taskingWaitIf([&]() { return taskingDirectoryWaitForRegister(data->name, task); }))
-			taskingDirectoryUnwaitForRegister(data->name, task->id);
+		if(taskingWaitIf([&]() { return taskingDirectoryWaitForRegister(name, task); }))
+			taskingDirectoryUnwaitForRegister(name, task->id);
 	}
 	data->task = target;
 }
 
 void syscallGetTaskByName(g_task* task, g_syscall_task_get_by_name* data)
 {
-	data->resultTaskId = taskingDirectoryGet(data->name);
+	char name[G_FILENAME_MAX];
+	data->resultTaskId =
+			memoryCopyUserString(task, data->name, name, sizeof(name)) ? taskingDirectoryGet(name) : G_TID_NONE;
 }
 
 void syscallDump() { schedulerDump(); }

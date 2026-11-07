@@ -67,32 +67,6 @@ typedef struct
 	int32_t coordinator;
 } __attribute__((packed)) g_power_event;
 
-/**
- * Requests orderly power-off or reset. All applications in Ghost's single-user
- * session may request it; the kernel owns the hardware operation. The call only
- * returns on failure. There is no force option: vetoes and I/O failures cancel it.
- */
-g_power_status g_system_power(g_power_action action);
-
-/**
- * Registers the calling task as a preparation endpoint. It must receive kernel
- * power events and acknowledge each request within 30 seconds. Non-application
- * endpoints require DRIVER privilege. Storage producers and platform endpoints
- * acknowledge without blocking, restore service on cancellation and acknowledge
- * that cancellation. Registration during shutdown returns BUSY.
- */
-g_power_status g_power_register(g_power_role role);
-
-/**
- * Acknowledges the current request on behalf of the registered calling task.
- * A false ready value cancels shutdown. Stale or foreign acknowledgements fail.
- * Successful STORAGE acknowledgements block until cancellation; the endpoint
- * resumes service when the call returns.
- */
-g_power_status g_power_acknowledge(uint32_t request, uint8_t ready);
-
-const char* g_power_status_string(g_power_status status);
-
 #define G_POWER_CALL_REQUEST 0
 #define G_POWER_CALL_REGISTER 1
 #define G_POWER_CALL_ACKNOWLEDGE 2

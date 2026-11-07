@@ -33,6 +33,7 @@ typedef uint8_t g_vm86_call_status;
 
 #define G_VM86_CALL_STATUS_SUCCESSFUL 0
 #define G_VM86_CALL_STATUS_FAILED_NOT_PERMITTED 1
+#define G_VM86_CALL_STATUS_NOT_SUPPORTED 2
 
 typedef struct
 {

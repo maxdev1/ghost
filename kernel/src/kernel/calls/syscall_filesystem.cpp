@@ -24,13 +24,19 @@
 #include "kernel/logger/logger.hpp"
 #include "kernel/memory/constants.hpp"
 #include "kernel/memory/memory.hpp"
-#include "kernel/system/interrupts/requests.hpp"
+#include "kernel/memory/memory_user.hpp"
 #include "kernel/utils/string.hpp"
 
 void syscallFsOpen(g_task* task, g_syscall_fs_open* data)
 {
+	char path[G_PATH_MAX];
+	data->fd = G_FD_NONE;
+	data->status = G_FS_OPEN_ERROR;
+	if(!memoryCopyUserString(task, data->path, path, sizeof(path)))
+		return;
+
 	g_fd fd;
-	data->status = filesystemOpen(data->path, data->flags, task, &fd);
+	data->status = filesystemOpen(path, data->flags, task, &fd);
 	if(data->status == G_FS_OPEN_SUCCESSFUL)
 	{
 		data->fd = fd;
@@ -46,46 +52,50 @@ void syscallFsSeek(g_task* task, g_syscall_fs_seek* data)
 	data->status = filesystemSeek(task, data->fd, data->mode, data->amount, &data->result);
 }
 
-void syscallFsRead(g_task* task, g_syscall_fs_read* output)
+void syscallFsRead(g_task* task, g_syscall_fs_read* data)
 {
-	g_syscall_fs_read data;
-	if(!memoryCopyFromUser(task, &data, (g_address) output, sizeof(data)))
-		return;
+	auto address = (g_address) data->buffer;
+	data->result = -1;
+	data->status = G_FS_READ_ERROR;
 
-	auto address = (g_address) data.buffer;
-	data.result = -1;
-	data.status = G_FS_READ_ERROR;
-
-	if(data.length >= 0 && data.length <= INT32_MAX && address <= G_MEM_LOWER_HALF_END &&
-	   uint64_t(data.length) <= G_MEM_LOWER_HALF_END - address + 1)
+	if(data->length >= 0 && data->length <= INT32_MAX && address <= G_MEM_LOWER_HALF_END &&
+	   uint64_t(data->length) <= G_MEM_LOWER_HALF_END - address + 1)
 	{
-		int64_t read = -1;
-		data.status = filesystemRead(task, data.fd, data.buffer, data.length, &read);
-		data.result = data.status == G_FS_READ_SUCCESSFUL ? read : -1;
-	}
+		auto destination = memoryUserAcquire(task, address, data->length, true);
+		auto bytes = memoryUserBuffer(destination);
+		if(!bytes)
+		{
+			return;
+		}
 
-	memoryCopyToUser(task, (g_address) output, &data, sizeof(data));
+		int64_t read = -1;
+		data->status = filesystemRead(task, data->fd, (uint8_t*) bytes, data->length, &read);
+		data->result = data->status == G_FS_READ_SUCCESSFUL ? read : -1;
+		if(read > 0)
+			memoryUserWrite(destination, bytes, read);
+	}
 }
 
-void syscallFsWrite(g_task* task, g_syscall_fs_write* output)
+void syscallFsWrite(g_task* task, g_syscall_fs_write* data)
 {
-	g_syscall_fs_write data;
-	if(!memoryCopyFromUser(task, &data, (g_address) output, sizeof(data)))
-		return;
+	auto address = (g_address) data->buffer;
+	data->result = -1;
+	data->status = G_FS_WRITE_ERROR;
 
-	auto address = (g_address) data.buffer;
-	data.result = -1;
-	data.status = G_FS_WRITE_ERROR;
-
-	if(data.length >= 0 && data.length <= INT32_MAX && address <= G_MEM_LOWER_HALF_END &&
-	   uint64_t(data.length) <= G_MEM_LOWER_HALF_END - address + 1)
+	if(data->length >= 0 && data->length <= INT32_MAX && address <= G_MEM_LOWER_HALF_END &&
+	   uint64_t(data->length) <= G_MEM_LOWER_HALF_END - address + 1)
 	{
-		int64_t written = -1;
-		data.status = filesystemWrite(task, data.fd, data.buffer, data.length, &written);
-		data.result = data.status == G_FS_WRITE_SUCCESSFUL ? written : -1;
-	}
+		auto source = memoryUserAcquire(task, address, data->length, false);
+		auto bytes = memoryUserBuffer(source);
+		if(!bytes || !memoryUserRead(source, bytes, data->length))
+		{
+			return;
+		}
 
-	memoryCopyToUser(task, (g_address) output, &data, sizeof(data));
+		int64_t written = -1;
+		data->status = filesystemWrite(task, data->fd, (uint8_t*) bytes, data->length, &written);
+		data->result = data->status == G_FS_WRITE_SUCCESSFUL ? written : -1;
+	}
 }
 
 void syscallFsClose(g_task* task, g_syscall_fs_close* data)
@@ -95,7 +105,7 @@ void syscallFsClose(g_task* task, g_syscall_fs_close* data)
 
 void syscallFsLength(g_task* task, g_syscall_fs_length* data)
 {
-	uint64_t length;
+	uint64_t length = 0;
 	data->status = filesystemGetLength(task, data->fd, &length);
 	data->length = length;
 }
@@ -125,6 +135,8 @@ void syscallFsTell(g_task* task, g_syscall_fs_tell* data)
 
 void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 {
+	data->write_fd = G_FD_NONE;
+	data->read_fd = G_FD_NONE;
 	g_fs_node* pipeNode;
 	data->status = filesystemCreatePipe(data->blocking, &pipeNode);
 
@@ -153,7 +165,7 @@ void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 	g_fs_open_status readOpen = filesystemOpenNodeFd(pipeNode, readFlags, task->process->id, &data->read_fd);
 	if(readOpen != G_FS_OPEN_SUCCESSFUL)
 	{
-		if(filesystemClose(task->process->id, writeOpen, true) != G_FS_CLOSE_SUCCESSFUL)
+		if(filesystemClose(task->process->id, data->write_fd, true) != G_FS_CLOSE_SUCCESSFUL)
 		{
 			logInfo("%! failed to close write end of pipe %i for task %i after failing to open read end", "filesystem",
 					pipeNode->id, task->id);
@@ -169,26 +181,51 @@ void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data)
 
 void syscallFsOpenDirectory(g_task* task, g_syscall_fs_open_directory* data)
 {
-	auto findRes = filesystemFind(nullptr, data->path);
+	char path[G_PATH_MAX];
+	data->status = G_FS_OPEN_DIRECTORY_ERROR;
+	if(!memoryCopyUserString(task, data->path, path, sizeof(path)))
+		return;
+
+	auto iteratorOutput = memoryUserAcquire(task, (g_address) data->iterator, sizeof(g_fs_directory_iterator), true);
+	g_fs_directory_iterator iterator;
+	if(!iteratorOutput || !memoryUserRead(iteratorOutput, &iterator, sizeof(iterator)))
+		return;
+
+	g_fs_node* origin = nullptr;
+	auto status = filesystemChooseOrigin(path, task, origin);
+	if(status != G_FS_OPEN_SUCCESSFUL)
+	{
+		data->status = status == G_FS_OPEN_NOT_FOUND ? G_FS_OPEN_DIRECTORY_NOT_FOUND : G_FS_OPEN_DIRECTORY_ERROR;
+		return;
+	}
+
+	auto findRes = filesystemFind(origin, path);
 	if(findRes.status == G_FS_OPEN_SUCCESSFUL)
 	{
 		data->status = filesystemOpenDirectory(findRes.node);
 
 		if(data->status == G_FS_OPEN_DIRECTORY_SUCCESSFUL)
 		{
-			data->iterator->node_id = findRes.node->id;
-			data->iterator->position = 0;
+			iterator.node_id = findRes.node->id;
+			iterator.position = 0;
+			memoryUserWrite(iteratorOutput, &iterator, sizeof(iterator));
 		}
 	}
 	else
 	{
-		data->status = G_FS_OPEN_DIRECTORY_NOT_FOUND;
+		data->status = static_cast<g_fs_open_directory_status>(findRes.status);
 	}
 }
 
 void syscallFsReadDirectory(g_task* task, g_syscall_fs_read_directory* data)
 {
-	g_fs_node* directory = filesystemGetNode(data->iterator->node_id);
+	data->status = G_FS_READ_DIRECTORY_ERROR;
+	auto iteratorOutput = memoryUserAcquire(task, (g_address) data->iterator, sizeof(g_fs_directory_iterator), true);
+	g_fs_directory_iterator iterator;
+	if(!iteratorOutput || !memoryUserRead(iteratorOutput, &iterator, sizeof(iterator)))
+		return;
+
+	g_fs_node* directory = filesystemGetNode(iterator.node_id);
 	if(!directory)
 	{
 		data->status = G_FS_READ_DIRECTORY_ERROR;
@@ -202,13 +239,25 @@ void syscallFsReadDirectory(g_task* task, g_syscall_fs_read_directory* data)
 	}
 
 	g_fs_node* child = nullptr;
-	data->status = filesystemReadDirectory(directory, data->iterator->position, &child);
+	data->status = filesystemReadDirectory(directory, iterator.position, &child);
 	if(data->status == G_FS_READ_DIRECTORY_SUCCESSFUL)
 	{
-		data->iterator->entry_buffer.node_id = child->id;
-		data->iterator->entry_buffer.type = child->type;
-		stringCopy(data->iterator->entry_buffer.name, child->name);
-		++data->iterator->position;
+		iterator.entry_buffer.node_id = child->id;
+		iterator.entry_buffer.type = child->type;
+
+		char name[G_FILENAME_MAX];
+		mutexAcquire(&child->lock);
+		stringCopy(name, child->name);
+		mutexRelease(&child->lock);
+
+		if(!memoryCopyToUser(task, (g_address) iterator.entry_buffer.name, name, stringLength(name) + 1))
+		{
+			data->status = G_FS_READ_DIRECTORY_ERROR;
+			return;
+		}
+
+		++iterator.position;
+		memoryUserWrite(iteratorOutput, &iterator, sizeof(iterator));
 	}
 }
 
@@ -219,15 +268,35 @@ void syscallFsCloseDirectory(g_task* task, g_syscall_fs_close_directory* data)
 
 void syscallFsRealPath(g_task* task, g_syscall_fs_real_path* data)
 {
-	data->status = filesystemRealPath(task, data->in, data->out);
+	char path[G_PATH_MAX];
+	char result[G_PATH_MAX];
+	data->status = G_FS_REAL_PATH_ERROR;
+	if(!memoryCopyUserString(task, data->in, path, sizeof(path)))
+		return;
+
+	data->status = filesystemRealPath(task, path, result);
+	if(data->status == G_FS_REAL_PATH_SUCCESS &&
+	   !memoryCopyToUser(task, (g_address) data->out, result, stringLength(result) + 1))
+		data->status = G_FS_REAL_PATH_ERROR;
 }
 
 void syscallFsStat(g_task* task, g_syscall_fs_stat* data)
 {
-	data->status = filesystemStat(task, data->path, data->out);
+	char path[G_PATH_MAX];
+	g_fs_stat_data result{};
+	data->status = G_FS_STAT_ERROR;
+	if(!memoryCopyUserString(task, data->path, path, sizeof(path)))
+		return;
+
+	data->status = filesystemStat(task, path, &result, data->follow_symlinks);
+	if(data->status == G_FS_STAT_SUCCESS && !memoryCopyToUser(task, (g_address) data->out, &result, sizeof(result)))
+		data->status = G_FS_STAT_ERROR;
 }
 
 void syscallFsFstat(g_task* task, g_syscall_fs_fstat* data)
 {
-	data->status = filesystemFstat(task, data->fd, data->out);
+	g_fs_stat_data result{};
+	data->status = filesystemFstat(task, data->fd, &result);
+	if(data->status == G_FS_STAT_SUCCESS && !memoryCopyToUser(task, (g_address) data->out, &result, sizeof(result)))
+		data->status = G_FS_STAT_ERROR;
 }

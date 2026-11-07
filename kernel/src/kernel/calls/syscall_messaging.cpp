@@ -21,39 +21,53 @@
 #include "kernel/calls/syscall_messaging.hpp"
 #include "kernel/ipc/message_queues.hpp"
 #include "kernel/ipc/message_topics.hpp"
-#include "kernel/tasking/user_mutex.hpp"
 #include "kernel/logger/logger.hpp"
+#include "kernel/memory/memory.hpp"
+#include "kernel/memory/memory_user.hpp"
+#include "kernel/tasking/user_mutex.hpp"
 
 void syscallMessageSend(g_task* task, g_syscall_send_message* data)
 {
-	while((data->status = messageQueueSend(task->id, data->receiver, data->buffer, data->length, data->transaction)) ==
-	      G_MESSAGE_SEND_STATUS_FULL &&
-	      data->mode == G_MESSAGE_SEND_MODE_BLOCKING)
+	uint8_t bytes[G_MESSAGE_MAXIMUM_MESSAGE_LENGTH];
+	data->status = G_MESSAGE_SEND_STATUS_EXCEEDS_MAXIMUM;
+	if(data->length > sizeof(bytes))
+		return;
+
+	data->status = G_MESSAGE_SEND_STATUS_FAILED;
+	if(!memoryCopyFromUser(task, bytes, (g_address) data->buffer, data->length))
+		return;
+
+	while((data->status = messageQueueSend(task->id, data->receiver, bytes, data->length, data->transaction)) ==
+				  G_MESSAGE_SEND_STATUS_FULL &&
+		  data->mode == G_MESSAGE_SEND_MODE_BLOCKING)
 	{
-		taskingWaitIf([&]()
-		{
-			return messageQueueWaitForSend(task, data->receiver, data->length);
-		});
+		taskingWaitIf([&]() { return messageQueueWaitForSend(task, data->receiver, data->length); });
 	}
 	messageQueueUnwaitForSend(task->id, data->receiver);
 }
 
 void syscallMessageReceive(g_task* task, g_syscall_receive_message* data)
 {
-	while((data->status = messageQueueReceive(task->id, data->buffer, data->maximum, data->transaction)) ==
-	      G_MESSAGE_RECEIVE_STATUS_EMPTY &&
-	      data->mode == G_MESSAGE_RECEIVE_MODE_BLOCKING)
+	alignas(g_message_header) uint8_t bytes[sizeof(g_message_header) + G_MESSAGE_MAXIMUM_MESSAGE_LENGTH];
+	auto count = data->maximum < sizeof(bytes) ? data->maximum : sizeof(bytes);
+	data->status = G_MESSAGE_RECEIVE_STATUS_EXCEEDS_BUFFER_SIZE;
+	auto destination = memoryUserAcquire(task, (g_address) data->buffer, count, true);
+	if(!destination)
+		return;
+
+	auto message = (g_message_header*) bytes;
+	while((data->status = messageQueueReceive(task->id, message, count, data->transaction)) ==
+				  G_MESSAGE_RECEIVE_STATUS_EMPTY &&
+		  data->mode == G_MESSAGE_RECEIVE_MODE_BLOCKING)
 	{
-		// TODO: "Break condition" can't work anymore:
-		// if(data->break_condition && userMutexAcquire(task, data->break_condition, true, false))
-		//{
-		//	data->status = G_MESSAGE_RECEIVE_STATUS_INTERRUPTED;
-		//	break;
-		// }
-		taskingWaitIf([&]()
-		{
-			return messageQueueWaitForReceive(task, data->transaction);
-		});
+		taskingWaitIf([&]() { return messageQueueWaitForReceive(task, data->transaction); });
+	}
+
+	if(data->status == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	{
+		message->previous = nullptr;
+		message->next = nullptr;
+		memoryUserWrite(destination, bytes, sizeof(g_message_header) + message->length);
 	}
 }
 
@@ -64,9 +78,21 @@ void syscallMessageNextTxId(g_task* task, g_syscall_message_next_txid* data)
 
 void syscallMessageTopicSend(g_task* task, g_syscall_send_topic_message* data)
 {
-	while((data->status = messageTopicsPost(data->topic, task->id, data->buffer, data->length)) ==
-	      G_MESSAGE_SEND_STATUS_FULL &&
-	      data->mode == G_MESSAGE_SEND_MODE_BLOCKING)
+	uint8_t bytes[G_MESSAGE_MAXIMUM_MESSAGE_LENGTH];
+	data->status = G_MESSAGE_SEND_STATUS_EXCEEDS_MAXIMUM;
+	if(data->length > sizeof(bytes))
+		return;
+
+	data->status = G_MESSAGE_SEND_STATUS_FAILED;
+	if(!memoryCopyFromUser(task, bytes, (g_address) data->buffer, data->length))
+		return;
+
+	char topic[512];
+	if(!memoryCopyUserString(task, data->topic, topic, sizeof(topic)))
+		return;
+
+	while((data->status = messageTopicsPost(topic, task->id, bytes, data->length)) == G_MESSAGE_SEND_STATUS_FULL &&
+		  data->mode == G_MESSAGE_SEND_MODE_BLOCKING)
 	{
 		// TODO topics can never go full at the moment
 		logInfo("%# bug: message queues should never be full");
@@ -77,14 +103,30 @@ void syscallMessageTopicSend(g_task* task, g_syscall_send_topic_message* data)
 
 void syscallMessageTopicReceive(g_task* task, g_syscall_receive_topic_message* data)
 {
-	while((data->status = messageTopicsReceive(data->topic, data->start_after, data->buffer, data->maximum)) ==
-	      G_MESSAGE_RECEIVE_STATUS_EMPTY &&
-	      data->mode == G_MESSAGE_RECEIVE_MODE_BLOCKING)
+	char topic[512];
+	data->status = G_MESSAGE_RECEIVE_STATUS_EXCEEDS_BUFFER_SIZE;
+	if(!memoryCopyUserString(task, data->topic, topic, sizeof(topic)))
+		return;
+
+	alignas(g_message_header) uint8_t bytes[sizeof(g_message_header) + G_MESSAGE_MAXIMUM_MESSAGE_LENGTH];
+	auto count = data->maximum < sizeof(bytes) ? data->maximum : sizeof(bytes);
+	auto destination = memoryUserAcquire(task, (g_address) data->buffer, count, true);
+	if(!destination)
+		return;
+
+	auto message = (g_message_header*) bytes;
+	while((data->status = messageTopicsReceive(topic, data->start_after, message, count)) ==
+				  G_MESSAGE_RECEIVE_STATUS_EMPTY &&
+		  data->mode == G_MESSAGE_RECEIVE_MODE_BLOCKING)
 	{
-		taskingWaitIf([&]()
-		{
-			return messageTopicsWaitForReceive(data->topic, task, data->start_after);
-		});
+		taskingWaitIf([&]() { return messageTopicsWaitForReceive(topic, task, data->start_after); });
 	}
-	messageTopicsUnwaitForReceive(data->topic, task->id);
+	messageTopicsUnwaitForReceive(topic, task->id);
+
+	if(data->status == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	{
+		message->previous = nullptr;
+		message->next = nullptr;
+		memoryUserWrite(destination, bytes, sizeof(g_message_header) + message->length);
+	}
 }

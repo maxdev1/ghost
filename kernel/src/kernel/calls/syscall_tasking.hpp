@@ -64,6 +64,8 @@ void syscallGetMilliseconds(g_task* task, g_syscall_millis* data);
 
 void syscallGetNanoseconds(g_task* task, g_syscall_nanos* data);
 
+void syscallGetTime(g_task*, g_syscall_time* data);
+
 void syscallGetExecutablePath(g_task* task, g_syscall_get_executable_path* data);
 
 void syscallGetWorkingDirectory(g_task* task, g_syscall_get_working_directory* data);

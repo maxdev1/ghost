@@ -41,8 +41,6 @@ static g_mutex filesystemNextNodeIdLock;
 
 static g_hashmap<g_fs_virt_id, g_fs_node*>* filesystemNodes;
 
-g_fs_open_status _filesystemChooseOrigin(const char* path, g_task* task, g_fs_node*& origin);
-
 void filesystemInitialize()
 {
 	mutexInitializeTask(&filesystemNextNodeIdLock, __func__);
@@ -68,6 +66,9 @@ void filesystemCreateRoot()
 	ramdiskDelegate->getLength = filesystemRamdiskDelegateGetLength;
 	ramdiskDelegate->close = filesystemRamdiskDelegateClose;
 	ramdiskDelegate->refreshDir = filesystemRamdiskDelegateRefreshDir;
+	ramdiskDelegate->makeDirectory = filesystemRamdiskDelegateMakeDirectory;
+	ramdiskDelegate->mutate = filesystemRamdiskDelegateMutate;
+	ramdiskDelegate->rename = filesystemRamdiskDelegateRename;
 
 	filesystemRoot = filesystemCreateNode(G_FS_NODE_TYPE_ROOT, "root");
 	filesystemRoot->delegate = ramdiskDelegate;
@@ -112,10 +113,11 @@ g_fs_node* filesystemCreateDetachedNode(g_fs_node_type type, const char* name)
 			heapFree(copy);
 		return nullptr;
 	}
+
 	memorySetBytes(node, 0, sizeof(*node));
 	memoryCopy(copy, name, length + 1);
 	node->id = filesystemGetNextNodeId();
-	node->type = type;
+	node->type = filesystemStorageNodeType(type, name);
 	node->name = copy;
 	mutexInitializeTask(&node->lock, __func__);
 	return node;
@@ -156,7 +158,7 @@ g_fs_node* filesystemCreateNode(g_fs_node_type type, const char* name)
 {
 	g_fs_node* node = (g_fs_node*) heapAllocateClear(sizeof(g_fs_node));
 	node->id = filesystemGetNextNodeId();
-	node->type = type;
+	node->type = filesystemStorageNodeType(type, name);
 	node->name = stringDuplicate(name);
 	node->parent = 0;
 	node->children = 0;
@@ -317,135 +319,60 @@ g_fs_open_status filesystemFindChild(g_fs_node* parent, const char* name, g_fs_n
 		*outChild = 0;
 		return G_FS_OPEN_ERROR;
 	}
+
 	return delegate->lookup(parent, name, outChild);
-}
-
-g_filesystem_find_result filesystemFind(g_fs_node* parent, const char* path)
-{
-	if(parent == nullptr)
-		parent = filesystemGetRoot();
-
-	g_fs_node* node = parent;
-	g_fs_node* lastFoundParent = node;
-	g_fs_open_status status = G_FS_OPEN_SUCCESSFUL;
-
-	char* buf = (char*) heapAllocate(G_PATH_MAX); // TODO SLOW
-	stringCopy(buf, path);
-
-	char* nameStart = buf;
-	char* nameEnd = nameStart;
-
-	while(nameStart)
-	{
-		// Find where next name starts and ends
-		while(*nameStart == '/')
-			++nameStart;
-
-		nameEnd = nameStart;
-		while(*nameEnd && *nameEnd != '/')
-			++nameEnd;
-
-		// Nothing left to resolve, we found the node
-		int remaining = nameEnd - nameStart;
-		if(remaining == 0)
-			break;
-
-		if(remaining > G_FILENAME_MAX)
-		{
-			status = G_FS_OPEN_ERROR;
-			logInfo("%! tried to resolve path with filename (%i) longer than max (%i): %s", "fs", remaining,
-					G_FILENAME_MAX, path);
-			break;
-		}
-
-		// Temporary modify our path buffer
-		char clobberedChar = nameStart[remaining];
-		nameStart[remaining] = 0;
-
-		// Find child with this name
-		lastFoundParent = node;
-		status = filesystemFindChild(node, nameStart, &node);
-
-		// Unclobber
-		nameStart[remaining] = clobberedChar;
-
-		if(status != G_FS_OPEN_SUCCESSFUL)
-			break;
-
-		nameStart = nameEnd;
-	}
-	heapFree(buf);
-
-	return {
-		status : status,
-		node : node,
-		foundAllButLast : ((nameEnd - nameStart) > 0),
-		lastFoundParent : lastFoundParent,
-		fileNameStart : path + (nameStart - buf)
-	};
 }
 
 g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task* task, g_fd* outFd)
 {
 	g_fs_node* origin = nullptr;
-	g_fs_open_status findOriginStatus = _filesystemChooseOrigin(path, task, origin);
+	g_fs_open_status findOriginStatus = filesystemChooseOrigin(path, task, origin);
 	if(findOriginStatus != G_FS_OPEN_SUCCESSFUL)
 		return findOriginStatus;
 
-	// Try to find existing node
-	auto findRes = filesystemFind(origin, path);
-
-	// Handle different open cases
-	if(findRes.status == G_FS_OPEN_SUCCESSFUL)
+	const bool raw = flags & G_FILE_FLAG_MODE_LINK_STORAGE;
+	const bool exclusive = (flags & G_FILE_FLAG_MODE_CREATE) && (flags & G_FILE_FLAG_MODE_EXCLUSIVE);
+	const bool followFinal = !raw && !exclusive && !(flags & G_FILE_FLAG_MODE_NOFOLLOW);
+	for(unsigned attempt = 0; attempt < 4; ++attempt)
 	{
-		if((flags & G_FILE_FLAG_MODE_CREATE) && (flags & G_FILE_FLAG_MODE_EXCLUSIVE))
-			return G_FS_OPEN_ERROR;
-		if(findRes.node->type == G_FS_NODE_TYPE_FOLDER)
+		auto found = filesystemFindPolicy(origin, path, followFinal);
+		if(found.status == G_FS_OPEN_NOT_FOUND)
 		{
-			logInfo("%! tried to open folder", "fs");
-			return G_FS_OPEN_ERROR;
-		}
+			if(!(flags & G_FILE_FLAG_MODE_CREATE) || !found.foundAllButLast)
+				return G_FS_OPEN_NOT_FOUND;
+			if(filesystemIsLinkName(found.fileNameStart) && !raw)
+				return G_FS_OPEN_INVALID_LINK;
 
-		if(flags & G_FILE_FLAG_MODE_TRUNCATE)
-		{
-			if(!(flags & G_FILE_FLAG_MODE_WRITE))
-				return G_FS_OPEN_ERROR;
-			if(filesystemTruncate(findRes.node) != G_FS_OPEN_SUCCESSFUL)
-			{
-				logInfo("%! failed to truncate file %i", "fs", findRes.node->id);
-				return G_FS_OPEN_ERROR;
-			}
+			auto status = filesystemCreateFile(found.lastFoundParent, found.fileNameStart, &found.node);
+			if(status == G_FS_OPEN_ALREADY_EXISTS && !exclusive)
+				continue;
+			if(status != G_FS_OPEN_SUCCESSFUL)
+				return status;
 		}
-	}
-	else if(findRes.status == G_FS_OPEN_NOT_FOUND)
-	{
-		if(flags & G_FILE_FLAG_MODE_CREATE)
-		{
-			if(!findRes.foundAllButLast)
-			{
-				logInfo("%! failed to create file '%s' in parent %i because folders do not exist", "fs", path,
-						origin->id);
-				return G_FS_OPEN_ERROR;
-			}
-			else if(filesystemCreateFile(findRes.lastFoundParent, findRes.fileNameStart, &findRes.node) !=
-					G_FS_OPEN_SUCCESSFUL)
-			{
-				logInfo("%! failed to create file '%s' in parent %i", "fs", path, origin->id);
-				return G_FS_OPEN_ERROR;
-			}
-		}
+		else if(found.status != G_FS_OPEN_SUCCESSFUL)
+			return found.status;
 		else
 		{
-			return G_FS_OPEN_NOT_FOUND;
-		}
-	}
-	else
-	{
-		return findRes.status;
-	}
+			if(exclusive)
+				return G_FS_OPEN_ALREADY_EXISTS;
+			if(found.node->type == G_FS_NODE_TYPE_SYMLINK && !raw)
+				return G_FS_OPEN_LOOP;
+			if(found.node->type == G_FS_NODE_TYPE_FOLDER || found.node->type == G_FS_NODE_TYPE_ROOT ||
+			   found.node->type == G_FS_NODE_TYPE_MOUNTPOINT)
+				return G_FS_OPEN_ERROR;
 
-	// Actually open the file
-	return filesystemOpenNodeFd(findRes.node, flags, task->process->id, outFd);
+			if(flags & G_FILE_FLAG_MODE_TRUNCATE)
+			{
+				if(!(flags & G_FILE_FLAG_MODE_WRITE))
+					return G_FS_OPEN_ERROR;
+				if(filesystemTruncate(found.node) != G_FS_OPEN_SUCCESSFUL)
+					return G_FS_OPEN_ERROR;
+			}
+		}
+
+		return filesystemOpenNodeFd(found.node, flags, task->process->id, outFd);
+	}
+	return G_FS_OPEN_BUSY;
 }
 
 g_fs_open_status filesystemOpenNode(g_fs_node* file, g_file_flag_mode flags, g_pid process,
@@ -479,6 +406,7 @@ g_fs_open_status filesystemOpenNodeFd(g_fs_node* file, g_file_flag_mode flags, g
 		*outFd = descriptor->id;
 		filesystemProcessReleaseDescriptor(descriptor);
 	}
+
 	return status;
 }
 
@@ -782,7 +710,7 @@ g_fs_seek_status filesystemSeek(g_task* task, g_fd fd, g_fs_seek_mode mode, int6
 		return G_FS_SEEK_ERROR;
 	}
 
-	if(node->type != G_FS_NODE_TYPE_FILE && offset > length)
+	if(node->type != G_FS_NODE_TYPE_FILE && node->type != G_FS_NODE_TYPE_SYMLINK && offset > length)
 		offset = length;
 	descriptor->offset = offset;
 
@@ -794,54 +722,63 @@ g_fs_seek_status filesystemSeek(g_task* task, g_fd fd, g_fs_seek_mode mode, int6
 
 int filesystemGetAbsolutePathLength(g_fs_node* node)
 {
-	if(node->type == G_FS_NODE_TYPE_ROOT)
-	{
-		return 1;
-	}
-
 	int length = 0;
-	if(node->parent)
+	while(node)
 	{
-		length = filesystemGetAbsolutePathLength(node->parent);
-	}
+		g_mutex_guard nodeGuard(&node->lock);
+		if(node->type == G_FS_NODE_TYPE_ROOT)
+			return length ? length : 1;
 
-	int calced;
-	if(length == 1)
-	{
-		calced = stringLength(node->name);
+		auto count = stringLength(node->name);
+		if(count >= G_PATH_MAX - length - 1)
+			return G_PATH_MAX;
+		length += count + 1;
+		node = node->parent;
 	}
-	else
-	{
-		calced = stringLength(node->name) + 1;
-	}
-	return length + calced;
+	return G_PATH_MAX;
 }
 
-int filesystemGetAbsolutePath(g_fs_node* node, char* buffer)
+int filesystemGetAbsolutePath(g_fs_node* node, char* buffer, size_t capacity)
 {
-	if(node->type == G_FS_NODE_TYPE_ROOT)
+	if(!capacity)
+		return -1;
+	buffer[0] = 0;
+	if(capacity > G_PATH_MAX)
+		capacity = G_PATH_MAX;
+	auto scratch = static_cast<char*>(heapTryAllocate(capacity));
+	if(!scratch)
+		return -1;
+
+	size_t offset = capacity - 1;
+	scratch[offset] = 0;
+	int length = -1;
+	while(node)
 	{
-		stringCopy(buffer, "/");
-		return 1;
+		g_mutex_guard nodeGuard(&node->lock);
+		if(node->type == G_FS_NODE_TYPE_ROOT)
+		{
+			if(offset == capacity - 1)
+			{
+				if(!offset)
+					break;
+				scratch[--offset] = '/';
+			}
+			length = capacity - 1 - offset;
+			memoryCopy(buffer, scratch + offset, length + 1);
+			break;
+		}
+
+		auto count = stringLength(node->name);
+		if(static_cast<size_t>(count) >= offset)
+			break;
+		offset -= count;
+		memoryCopy(scratch + offset, node->name, count);
+		scratch[--offset] = '/';
+		node = node->parent;
 	}
 
-	int length = 0;
-	if(node->parent)
-	{
-		length = filesystemGetAbsolutePath(node->parent, buffer);
-	}
-
-	int copied;
-	if(length == 1)
-	{
-		copied = stringCopy(&buffer[length], node->name);
-	}
-	else
-	{
-		buffer[length] = '/';
-		copied = stringCopy(&buffer[length + 1], node->name) + 1;
-	}
-	return length + copied;
+	heapFree(scratch);
+	return length;
 }
 
 g_fs_open_directory_status filesystemOpenDirectory(g_fs_node* dir)
@@ -876,6 +813,7 @@ g_fs_read_directory_status filesystemReadDirectory(g_fs_node* dir, uint32_t inde
 {
 	if(!filesystemDelegateAvailable(dir))
 		return G_FS_READ_DIRECTORY_ERROR;
+
 	g_mutex_guard guard(&dir->lock);
 
 	auto entry = dir->children;
@@ -949,7 +887,9 @@ bool filesystemGetFileName(g_fd fd, const char** outName)
 		return false;
 	}
 
+	mutexAcquire(&node->lock);
 	*outName = stringDuplicate(node->name);
+	mutexRelease(&node->lock);
 	filesystemProcessReleaseDescriptor(descriptor);
 	return true;
 }
@@ -957,22 +897,39 @@ bool filesystemGetFileName(g_fd fd, const char** outName)
 g_fs_real_path_status filesystemRealPath(g_task* task, const char* in, char* out)
 {
 	g_fs_node* origin;
-	auto findOriginStatus = _filesystemChooseOrigin(in, task, origin);
-	if(findOriginStatus != G_FS_OPEN_SUCCESSFUL)
-		return findOriginStatus;
+	auto findOriginStatus = filesystemChooseOrigin(in, task, origin);
 
-	auto findResult = filesystemFind(origin, in);
+	g_filesystem_find_result findResult{};
+	findResult.status = findOriginStatus;
+	if(findOriginStatus == G_FS_OPEN_SUCCESSFUL)
+		findResult = filesystemFind(origin, in);
 	if(findResult.status == G_FS_OPEN_NOT_FOUND)
 		return G_FS_REAL_PATH_NOT_FOUND;
-	if(findResult.status != G_FS_OPEN_SUCCESSFUL)
-		return G_FS_REAL_PATH_ERROR;
 
-	filesystemGetAbsolutePath(findResult.node, out);
+	if(findResult.status != G_FS_OPEN_SUCCESSFUL)
+	{
+		switch(findResult.status)
+		{
+			case G_FS_OPEN_LOOP:
+				return G_FS_REAL_PATH_LOOP;
+			case G_FS_OPEN_NAME_TOO_LONG:
+				return G_FS_REAL_PATH_NAME_TOO_LONG;
+			case G_FS_OPEN_NOT_DIRECTORY:
+				return G_FS_REAL_PATH_NOT_DIRECTORY;
+			case G_FS_OPEN_INVALID_LINK:
+				return G_FS_REAL_PATH_INVALID_LINK;
+			default:
+				return G_FS_REAL_PATH_ERROR;
+		}
+	}
+
+	if(filesystemGetAbsolutePath(findResult.node, out, G_PATH_MAX) < 0)
+		return G_FS_REAL_PATH_NAME_TOO_LONG;
 	return G_FS_REAL_PATH_SUCCESS;
 }
 
 
-g_fs_open_status _filesystemChooseOrigin(const char* path, g_task* task, g_fs_node*& origin)
+g_fs_open_status filesystemChooseOrigin(const char* path, g_task* task, g_fs_node*& origin)
 {
 	if(path[0] == '/')
 	{
@@ -982,7 +939,7 @@ g_fs_open_status _filesystemChooseOrigin(const char* path, g_task* task, g_fs_no
 	{
 		mutexAcquire(&task->process->lock);
 		auto current = task->process->environment.workingDirectory;
-		auto cwd = stringDuplicate(current ? current : "/");
+		auto cwd = stringDuplicate(current && *current ? current : "/");
 		mutexRelease(&task->process->lock);
 
 		origin = nullptr;
@@ -997,19 +954,35 @@ g_fs_open_status _filesystemChooseOrigin(const char* path, g_task* task, g_fs_no
 	return G_FS_OPEN_SUCCESSFUL;
 }
 
-g_fs_stat_status filesystemStat(g_task* task, const char* path, g_fs_stat_data* out)
+g_fs_stat_status filesystemStat(g_task* task, const char* path, g_fs_stat_data* out, bool followFinal)
 {
 
 	g_fs_node* origin;
-	g_fs_open_status findOriginStatus = _filesystemChooseOrigin(path, task, origin);
-	if(findOriginStatus != G_FS_OPEN_SUCCESSFUL)
-		return findOriginStatus;
+	g_fs_open_status findOriginStatus = filesystemChooseOrigin(path, task, origin);
 
-	auto findRes = filesystemFind(origin, path);
+	g_filesystem_find_result findRes{};
+	findRes.status = findOriginStatus;
+	if(findOriginStatus == G_FS_OPEN_SUCCESSFUL)
+		findRes = filesystemFindPolicy(origin, path, followFinal);
 	if(findRes.status == G_FS_OPEN_NOT_FOUND)
 		return G_FS_STAT_NOT_FOUND;
+
 	if(findRes.status != G_FS_OPEN_SUCCESSFUL)
-		return G_FS_STAT_ERROR;
+	{
+		switch(findRes.status)
+		{
+			case G_FS_OPEN_LOOP:
+				return G_FS_STAT_LOOP;
+			case G_FS_OPEN_NAME_TOO_LONG:
+				return G_FS_STAT_NAME_TOO_LONG;
+			case G_FS_OPEN_NOT_DIRECTORY:
+				return G_FS_STAT_NOT_DIRECTORY;
+			case G_FS_OPEN_INVALID_LINK:
+				return G_FS_STAT_INVALID_LINK;
+			default:
+				return G_FS_STAT_ERROR;
+		}
+	}
 
 	return filesystemStatNode(findRes.node, out);
 }
@@ -1030,6 +1003,8 @@ g_fs_stat_status filesystemFstat(g_task* task, g_fd fd, g_fs_stat_data* out)
 	}
 
 	auto status = filesystemStatNode(node, out);
+	if(descriptor->openFlags & G_FILE_FLAG_MODE_LINK_STORAGE)
+		filesystemGetLength(node, &out->size);
 	filesystemProcessReleaseDescriptor(descriptor);
 	return status;
 }
@@ -1044,6 +1019,13 @@ g_fs_stat_status filesystemStatNode(g_fs_node* node, g_fs_stat_data* out)
 	{
 		logInfo("%! failed to stat file %i with get-length error %i", "filesystem", node->id, lengthStatus);
 		out->size = -1;
+	}
+
+	if(node->type == G_FS_NODE_TYPE_SYMLINK)
+	{
+		uint32_t length = 0;
+		filesystemReadLink(node, nullptr, &length);
+		out->size = length;
 	}
 
 	// TODO

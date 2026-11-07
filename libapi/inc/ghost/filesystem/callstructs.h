@@ -428,4 +428,28 @@ typedef struct
 	g_fs_mutation_status status;
 } __attribute__((packed)) g_syscall_fs_fd_mutation;
 
+typedef struct
+{
+	const char* source;
+	const char* destination;
+	g_bool replace;
+	g_fs_mutation_status status;
+} __attribute__((packed)) g_syscall_fs_rename;
+
+typedef struct
+{
+	const char* target;
+	const char* path;
+	g_fs_mutation_status status;
+} __attribute__((packed)) g_syscall_fs_symlink;
+
+typedef struct
+{
+	const char* path;
+	char* buffer;
+	uint64_t capacity;
+	int64_t result;
+	g_fs_open_status status;
+} __attribute__((packed)) g_syscall_fs_readlink;
+
 #endif

@@ -18,12 +18,14 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "kernel/tasking/scheduler/scheduler.hpp"
-#include "kernel/memory/memory.hpp"
 #include "kernel/logger/logger.hpp"
+#include "kernel/memory/memory.hpp"
+#include "kernel/tasking/scheduler/scheduler.hpp"
 
-#include "kernel/tasking/clock.hpp"
+#include "kernel/system/interrupts/apic/lapic.hpp"
 #include "kernel/system/processor/processor.hpp"
+#include "kernel/system/system.hpp"
+#include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking_directory.hpp"
 
 #define G_DEBUG_LOG_PAUSE 5000
@@ -32,19 +34,33 @@ void schedulerInitializeLocal()
 {
 	taskingGetLocal()->scheduling.preferredTask = G_TID_NONE;
 	taskingGetLocal()->scheduling.lastAccountingTime = 0;
+	taskingGetLocal()->scheduling.apicId = lapicReadId();
+	taskingGetLocal()->scheduling.reschedulePending = false;
 }
 
-void schedulerPrepareEntry(g_schedule_entry* entry)
+void schedulerRequestReschedule(uint32_t processor)
 {
+	if(!systemIsReady() || processor == processorGetCurrentId())
+		return;
+
+	auto local = taskingGetLocalForProcessor(processor);
+	if(!local)
+		return;
+
+	if(!memoryAtomicExchange(&local->scheduling.reschedulePending, true, G_MEMORY_ORDER_ACQ_REL))
+		lapicSendIpi(local->scheduling.apicId, G_INTR_SCHEDULER_RESCHEDULE);
 }
+
+void schedulerAcknowledgeReschedule()
+{
+	memoryAtomicExchange(&taskingGetLocal()->scheduling.reschedulePending, false, G_MEMORY_ORDER_ACQ_REL);
+}
+
+void schedulerPrepareEntry(g_schedule_entry* entry) {}
 
 g_schedule_entry* schedulerGetNextTask(g_tasking_local* local)
 {
 	g_schedule_entry* entry = local->scheduling.list;
-	if(local->scheduling.current == local->scheduling.idleTask)
-	{
-		return entry;
-	}
 
 	// Check if there is a local "preferred task" to do next.
 	if(local->scheduling.preferredTask != G_TID_NONE)
@@ -56,11 +72,15 @@ g_schedule_entry* schedulerGetNextTask(g_tasking_local* local)
 				local->scheduling.preferredTask = G_TID_NONE;
 				return entry;
 			}
+
 			entry = entry->next;
 		}
 
 		local->scheduling.preferredTask = G_TID_NONE;
 	}
+
+	if(local->scheduling.current == local->scheduling.idleTask)
+		return local->scheduling.list;
 
 	// Otherwise just find our current tasks entry and choose the next one
 	while(entry)
@@ -96,6 +116,7 @@ static void schedulerAccountTime(g_tasking_local* local)
 		current->cpuTime += elapsed;
 		memoryAtomicFetchAdd(&current->process->cpuTime, elapsed, G_MEMORY_ORDER_RELAXED);
 	}
+
 	local->scheduling.lastAccountingTime = now;
 }
 
@@ -111,6 +132,25 @@ uint64_t schedulerGetCpuTime(g_task* task)
 	mutexRelease(&local->lock);
 
 	return result;
+}
+
+void schedulerGetSystemCpuTime(uint64_t* total, uint64_t* idle)
+{
+	*total = 0;
+	*idle = 0;
+	for(uint32_t processor = 0; processor < processorGetNumberOfProcessors(); ++processor)
+	{
+		auto local = taskingGetLocalForProcessor(processor);
+		mutexAcquire(&local->lock);
+
+		schedulerAccountTime(local);
+		*total += local->scheduling.lastAccountingTime;
+
+		if(local->scheduling.idleTask)
+			*idle += local->scheduling.idleTask->cpuTime;
+
+		mutexRelease(&local->lock);
+	}
 }
 
 void schedulerSetCurrent(g_tasking_local* local, g_task* task)
@@ -139,9 +179,12 @@ void schedulerPreferTask(g_task* task)
 	if(!task || !task->assignment)
 		return;
 
-	mutexAcquire(&task->assignment->lock);
-	task->assignment->scheduling.preferredTask = task->id;
-	mutexRelease(&task->assignment->lock);
+	auto local = task->assignment;
+	mutexAcquire(&local->lock);
+	local->scheduling.preferredTask = task->id;
+	mutexRelease(&local->lock);
+
+	schedulerRequestReschedule(local->processor);
 }
 
 void schedulerSchedule(g_tasking_local* local)
@@ -185,29 +228,43 @@ void schedulerSchedule(g_tasking_local* local)
 			if(entry == start)
 			{
 				local->scheduling.current = local->scheduling.idleTask;
-				local->scheduling.idleTask->statistics.timesScheduled++;
 				done = true;
 			}
 		}
 
-		bool needsCleanup = task->status == G_TASK_STATUS_DEAD &&
-			memoryAtomicLoad(&task->references, G_MEMORY_ORDER_ACQUIRE) == 0;
+		bool needsCleanup =
+				task->status == G_TASK_STATUS_DEAD && memoryAtomicLoad(&task->references, G_MEMORY_ORDER_ACQUIRE) == 0;
 		mutexRelease(&task->lock);
-		if(needsCleanup)
+		if(needsCleanup && !local->scheduling.cleanupPending)
 		{
 			local->scheduling.cleanupPending = true;
-			taskingWake(local->scheduling.cleanupTask);
+			if(!local->scheduling.cleanupInProgress)
+				taskingWake(local->scheduling.cleanupTask);
 		}
 
 		if(done)
 			break;
 	}
+
+	if(local->scheduling.current == local->scheduling.idleTask)
+	{
+		auto cleanup = local->scheduling.cleanupTask;
+		if(cleanup)
+		{
+			mutexAcquire(&cleanup->lock);
+			if(cleanup->status == G_TASK_STATUS_RUNNING)
+				local->scheduling.current = cleanup;
+			mutexRelease(&cleanup->lock);
+		}
+
+		local->scheduling.current->statistics.timesScheduled++;
+	}
 	mutexRelease(&local->lock);
 
 #if G_DEBUG_THREAD_DUMPING
-	if(processorGetCurrentId() == 0 && (clockGetLocal()->time - clockGetLocal()->lastLogTime) > G_DEBUG_LOG_PAUSE)
+	if(processorGetCurrentId() == 0 && (clockGetMilliseconds() - clockGetLocal()->lastLogTime) > G_DEBUG_LOG_PAUSE)
 	{
-		clockGetLocal()->lastLogTime = clockGetLocal()->time;
+		clockGetLocal()->lastLogTime = clockGetMilliseconds();
 		schedulerDump();
 	}
 #endif
@@ -255,9 +312,8 @@ void schedulerDump()
 				char identifier[512];
 				taskingDirectoryCopyIdentifier(task->id, identifier, sizeof(identifier));
 				logInfo("%# - (%i:%i) usage: %i, %s %s %s", task->process->id, task->id,
-				        USAGE(task->statistics.timesScheduled, task->statistics.timesYielded),
-				        identifier, taskState,
-				        task->status == G_TASK_STATUS_WAITING ? task->waitsFor : "");
+						USAGE(task->statistics.timesScheduled, task->statistics.timesYielded), identifier, taskState,
+						task->status == G_TASK_STATUS_WAITING ? task->waitsFor : "");
 				task->statistics.timesScheduled = 0;
 				task->statistics.timesYielded = 0;
 			}
@@ -266,10 +322,8 @@ void schedulerDump()
 		}
 
 		g_task* idle = local->scheduling.idleTask;
-		logInfo("%# - (%i:%i) usage: %i, idle",
-		        idle->process->id, idle->id,
-		        USAGE(idle->statistics.timesScheduled, idle->statistics.timesYielded)
-				);
+		logInfo("%# - (%i:%i) usage: %i, idle", idle->process->id, idle->id,
+				USAGE(idle->statistics.timesScheduled, idle->statistics.timesYielded));
 		idle->statistics.timesScheduled = 0;
 		idle->statistics.timesYielded = 0;
 

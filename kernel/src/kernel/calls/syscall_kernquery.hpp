@@ -24,6 +24,6 @@
 #include "kernel/tasking/tasking.hpp"
 #include <ghost/kernquery/callstructs.h>
 
-void syscallKernQuery(g_task * task, g_syscall_kernquery * data);
+void syscallKernQuery(g_task* task, g_syscall_kernquery* data);
 
 #endif

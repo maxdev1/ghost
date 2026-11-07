@@ -2,6 +2,7 @@
 
 namespace
 {
+void pagingPollShootdown() {}
 #include "support/tracked_heap.hpp"
 
 using g_tid = int;

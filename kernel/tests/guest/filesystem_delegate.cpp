@@ -1,3 +1,23 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2026, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include <ghost.h>
 #include <cstdio>
 #include <cstdlib>
@@ -45,6 +65,7 @@ static uint64_t delegateTestSize(g_fs_phys_id id)
 	if(id == G_TEST_BIG) return G_TEST_BIG_SIZE;
 	if(id == G_TEST_SCRATCH) return sizeof(testScratch);
 	if(id == G_TEST_SLOW || id == G_TEST_DIE || id == G_TEST_PAUSE) return 64;
+
 	return 0;
 }
 
@@ -81,6 +102,7 @@ static void delegateTestHandle(g_fs_transaction_id transaction)
 			else if(!strcmp(lookup.name, "empty")) id = G_TEST_EMPTY;
 			else if(!strcmp(lookup.name, "pause")) id = G_TEST_PAUSE;
 		}
+
 		if(id)
 		{
 			lookup.result_node_id = delegateTestPublish(transaction, lookup.parent_virt_fs_id, canonical,
@@ -100,6 +122,7 @@ static void delegateTestHandle(g_fs_transaction_id transaction)
 			delegateTestPublish(transaction, directory.parent_virt_fs_id, "big.bin", G_FS_NODE_TYPE_FILE, G_TEST_BIG);
 			delegateTestPublish(transaction, directory.parent_virt_fs_id, "empty", G_FS_NODE_TYPE_FOLDER, G_TEST_EMPTY);
 		}
+
 		directory.result_status = G_FS_DIRECTORY_REFRESH_SUCCESSFUL;
 		break;
 	}
@@ -125,6 +148,7 @@ static void delegateTestHandle(g_fs_transaction_id transaction)
 			__atomic_store_n(&pauseStarted, true, __ATOMIC_RELEASE);
 			g_sleep(500);
 		}
+
 		auto size = delegateTestSize(read.phys_fs_id);
 		auto count = read.offset < size ? size - read.offset : 0;
 		if(count > read.length) count = read.length;
@@ -135,6 +159,7 @@ static void delegateTestHandle(g_fs_transaction_id transaction)
 			else if(read.phys_fs_id == G_TEST_SCRATCH) buffer[i] = testScratch[read.offset + i];
 			else buffer[i] = uint8_t((read.offset + i) % 251);
 		}
+
 		read.result_read = count;
 		read.result_status = G_FS_READ_SUCCESSFUL;
 		break;
@@ -147,6 +172,7 @@ static void delegateTestHandle(g_fs_transaction_id transaction)
 			write.result_status = G_FS_WRITE_NOT_SUPPORTED;
 			break;
 		}
+
 		auto count = sizeof(testScratch) - write.offset;
 		if(count > write.length) count = write.length;
 		memcpy(testScratch + write.offset, write.mapped_buffer, count);
@@ -162,6 +188,7 @@ static void delegateTestServe()
 	delegateTestRequire(g_fs_delegate_register("delegate-test", 0, &testMount, &testStorage) ==
 		G_FS_DELEGATE_SUCCESSFUL, "register mount");
 	__atomic_store_n(&serverReady, true, __ATOMIC_RELEASE);
+
 	for(;;)
 	{
 		uint8_t incoming[sizeof(g_message_header) + G_MESSAGE_MAXIMUM_MESSAGE_LENGTH];
@@ -178,8 +205,10 @@ static void delegateTestServe()
 				return;
 			}
 		}
+
 		if(message->sender != G_FS_DELEGATE_MESSAGE_SENDER || message->length != sizeof(g_fs_delegate_request))
 			continue;
+
 		g_fs_delegate_request request;
 		memcpy(&request, G_MESSAGE_CONTENT(incoming), sizeof(request));
 		delegateTestRequire(request.version == G_FS_DELEGATE_VERSION && request.mountpoint_id == testMount &&
@@ -208,6 +237,7 @@ static void delegateTestBigFile()
 			delegateTestRequire(buffer[i] == uint8_t((offset + i) % 251), "large file data");
 		offset += count;
 	}
+
 	delegateTestRequire(offset == G_TEST_BIG_SIZE && g_read(fd, buffer, 1) == 0, "EOF");
 	delegateTestRequire(g_seek(fd, 4093, G_FS_SEEK_SET) == 4093 && g_read(fd, buffer, 17) == 17,
 		"seek and unaligned read");
@@ -226,6 +256,7 @@ static int delegateTestClient(g_tid parent, bool cancel)
 		g_read(fd, buffer, sizeof(buffer));
 		delegateTestRequire(false, "terminated caller resumed userspace");
 	}
+
 	g_fs_virt_id mount;
 	g_fs_delegate_transaction_storage* storage;
 	delegateTestRequire(g_fs_delegate_register("not-privileged", 0, &mount, &storage) == G_FS_DELEGATE_NOT_OWNER,
@@ -282,6 +313,7 @@ int main(int argc, char** argv)
 {
 	if(argc >= 3)
 		return delegateTestClient(g_tid(strtol(argv[2], nullptr, 10)), !strcmp(argv[1], "cancel"));
+
 	coordinator = g_get_tid();
 	klog("fs-delegate-test: START");
 	auto server = delegateTestStartServer();
@@ -305,6 +337,7 @@ int main(int argc, char** argv)
 		reader = g_create_task(reinterpret_cast<void*>(delegateTestReader));
 		delegateTestRequire(reader != G_TID_NONE, "reader creation");
 	}
+
 	for(auto reader : readers) g_join(reader);
 	klog("fs-delegate-test: concurrent clients PASS");
 	__atomic_store_n(&pauseStarted, false, __ATOMIC_RELEASE);

@@ -1,3 +1,23 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2026, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include <ghost.h>
 #include <cstdio>
 #include <cstring>
@@ -65,7 +85,7 @@ static std::string processTestTool(const std::string& arguments, bool success = 
 	processTestRequire(output >= 0 && error >= 0, "create tool output");
 	g_fd streams[3]{G_FD_NONE, output, error};
 	g_pid child;
-	processTestRequire(g_spawn_poi("/applications/process.bin", arguments.c_str(), "/", G_SECURITY_LEVEL_APPLICATION,
+	processTestRequire(g_spawn_poi("/applications/Process Manager.app/process.bin", arguments.c_str(), "/", G_SECURITY_LEVEL_APPLICATION,
 	                              &child, nullptr, streams) == G_SPAWN_STATUS_SUCCESSFUL, "spawn process tool");
 	close(output); close(error);
 	g_join(child);
@@ -83,8 +103,10 @@ int main(int argc, char** argv)
 		processTestRequire(g_receive_message(&message, sizeof(message)) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL,
 		                   "receive worker stop request");
 		__atomic_store_n(&processTestStop, 1, __ATOMIC_RELEASE);
+
 		for(;;) g_sleep(1000);
 	}
+
 	klog("process-test: START");
 	auto baseline = processTestQuery(g_get_pid());
 	const size_t allocationSize = 32 * 4096;
@@ -135,6 +157,7 @@ int main(int argc, char** argv)
 		processTestRequire(g_kernquery(G_KERNQUERY_TASK_GET_BY_ID, reinterpret_cast<uint8_t*>(&info)) ==
 		                   G_KERNQUERY_STATUS_UNKNOWN_ID, "kill terminates all process threads");
 	}
+
 	klog("process-test: PASS list/threads/kill/CPU/resident-memory");
 	return 0;
 }

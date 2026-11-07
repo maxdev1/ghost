@@ -1,3 +1,23 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2026, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include "support/fixture.hpp"
 #include <map>
 
@@ -17,7 +37,12 @@ bool memorySizeToPageCount(uint64_t size, uint32_t* pages) {
 #define G_PAGE_ALIGN_MASK (G_PAGE_SIZE - 1)
 #define G_PAGE_ALIGN_UP(p) (((p) + 4095) & ~4095ULL)
 #define G_PAGE_PRESENT 1
+#define G_PAGE_USER_FLAG 4
+#define G_PAGE_WRITABLE_FLAG 2
+#define G_PAGE_LARGE_PAGE_FLAG 128
 #define G_PAGE_UNMANAGED_FLAG (1ULL << 9)
+#define G_PAGE_WRITE_THROUGH (1ULL << 3)
+#define G_PAGE_CACHE_DISABLE (1ULL << 4)
 #define G_PAGE_PHYSICAL_MASK 0x000FFFFFFFFFF000ULL
 #define G_MEM_LOWER_HALF_END 0x7fffffffffffULL
 #define G_PAGE_TABLE_USER_DEFAULT 7
@@ -38,7 +63,7 @@ g_task* taskingAcquireTask(int id) { EXPECT_EQ(2, id); ++pins; return &targetTas
 void taskingReleaseTask(g_task* task) { if(task) --pins; }
 constexpr uintptr_t ram = 0x100000000ULL, mmio = 0xfd000000ULL, targetBase = 0xa0000000;
 uintptr_t currentSpace = 1;
-int failAt = -1, mapAttempts, allocated, freedRanges;
+int failAt = -1, mapAttempts, allocated, freedRanges, unmapBatches;
 std::map<uintptr_t, uint64_t> sourceEntries, targetEntries;
 std::map<uintptr_t, int> references;
 uint64_t pagingVirtualToPageEntry(uintptr_t virt) {
@@ -78,6 +103,16 @@ bool pagingMapPage(uintptr_t virt, uintptr_t physical, uint64_t, uint64_t flags)
     targetEntries[virt] = physical | flags; return true;
 }
 void pagingUnmapPage(uintptr_t virt) { EXPECT_EQ(2, currentSpace); targetEntries.erase(virt); }
+void pagingUnmapPages(uintptr_t virt, uint32_t pages, uint64_t* retired) {
+    EXPECT_EQ(2, currentSpace); EXPECT_LE(pages, 256u); ++unmapBatches;
+    for(uint32_t page = 0; page < pages; ++page) {
+        const auto address = virt + page * G_PAGE_SIZE;
+        retired[page] = pagingVirtualToPageEntry(address);
+        targetEntries.erase(address);
+    }
+}
+
+#include "production/memoryReleasePages.inc"
 
 #include "production/syscall_share_and_unmap.inc"
 
@@ -86,11 +121,11 @@ void reset() {
     EXPECT_TRUE(heapBlocks.empty());
     sourceEntries.clear(); targetEntries.clear(); references.clear();
     sourceEntries[0x400000] = ram | 7;
-    sourceEntries[0x401000] = mmio | 7 | G_PAGE_UNMANAGED_FLAG;
+    sourceEntries[0x401000] = mmio | 7 | G_PAGE_UNMANAGED_FLAG | G_PAGE_CACHE_DISABLE | G_PAGE_WRITE_THROUGH;
     references[ram] = 1;
     targetProcess.terminating = false;
     targetRange.used = false;
-    failAt = -1; mapAttempts = allocated = freedRanges = 0;
+    failAt = -1; mapAttempts = allocated = freedRanges = unmapBatches = 0;
     currentSpace = 1;
 }
 TEST(ShareMemory, RetainsRamPreservesDeviceOwnershipAndRollsBackFailures) {
@@ -114,6 +149,9 @@ TEST(ShareMemory, RetainsRamPreservesDeviceOwnershipAndRollsBackFailures) {
         EXPECT_TRUE(references[ram] == 2 && targetEntries.size() == 2);
         EXPECT_FALSE((targetEntries[targetBase] & G_PAGE_UNMANAGED_FLAG));
         EXPECT_TRUE(targetEntries[targetBase + 4096] & G_PAGE_UNMANAGED_FLAG);
+        EXPECT_EQ(0u, targetEntries[targetBase] & (G_PAGE_CACHE_DISABLE | G_PAGE_WRITE_THROUGH));
+        EXPECT_EQ(G_PAGE_CACHE_DISABLE | G_PAGE_WRITE_THROUGH,
+                  targetEntries[targetBase + 4096] & (G_PAGE_CACHE_DISABLE | G_PAGE_WRITE_THROUGH));
         EXPECT_TRUE(heapBlocks.empty());
         currentSpace = 2;
         g_syscall_unmap unmap{targetBase};
@@ -156,4 +194,79 @@ TEST(ShareMemory, RetainsRamPreservesDeviceOwnershipAndRollsBackFailures) {
     EXPECT_TRUE(freedRanges == 1 && currentSpace == 1);
     EXPECT_EQ(0, pins);
 }
+
+TEST(ShareMemory, PreservesEachSourceCachePolicyWhenCreatingAliases) {
+    for(uint64_t cacheFlags: {0ULL, G_PAGE_WRITE_THROUGH, G_PAGE_CACHE_DISABLE,
+                             G_PAGE_WRITE_THROUGH | G_PAGE_CACHE_DISABLE}) {
+        reset();
+        sourceEntries[0x400000] |= cacheFlags;
+        g_syscall_share_mem share{reinterpret_cast<void*>(0x400000), 4096, 2, nullptr};
+        syscallShareMemory(&sourceTask, &share);
+        ASSERT_EQ(reinterpret_cast<void*>(targetBase), share.virtualAddress);
+        EXPECT_EQ(cacheFlags, targetEntries[targetBase] & (G_PAGE_CACHE_DISABLE | G_PAGE_WRITE_THROUGH));
+        EXPECT_EQ(2, references[ram]);
+
+        currentSpace = 2;
+        g_syscall_unmap unmap{targetBase};
+        syscallUnmap(&targetTask, &unmap);
+        EXPECT_EQ(1, references[ram]);
+        EXPECT_TRUE(targetEntries.empty());
+    }
+}
+
+TEST(ShareMemory, BulkUnmapPreservesSourceReferencesAndDeviceFramesAcrossBatches) {
+    reset();
+    targetRange = {targetBase, 600, G_PROC_VIRTUAL_RANGE_FLAG_NONE, true};
+    for(uint32_t page = 0; page < 600; ++page) {
+        if(page == 1) continue; // An unmapped guard/hole is harmless.
+        targetEntries[targetBase + page * G_PAGE_SIZE] = page == 2 ?
+            mmio | G_PAGE_USER_DEFAULT | G_PAGE_UNMANAGED_FLAG : ram | G_PAGE_USER_DEFAULT;
+    }
+    references[ram] = 599; // Original source plus 598 managed aliases.
+    currentSpace = 2;
+    g_syscall_unmap call{targetBase};
+    syscallUnmap(&targetTask, &call);
+    EXPECT_EQ(3, unmapBatches); EXPECT_EQ(1, references[ram]);
+    EXPECT_EQ(0u, references.count(mmio)); EXPECT_TRUE(targetEntries.empty());
+    EXPECT_FALSE(targetRange.used); EXPECT_EQ(1, freedRanges);
+    EXPECT_EQ(0, targetProcess.lock.depth);
+}
+
+TEST(ShareMemory, RollsBackUncachedAliasesWithoutReleasingDeviceFrames) {
+    reset();
+    const uint64_t deviceFlags = G_PAGE_USER_DEFAULT | G_PAGE_UNMANAGED_FLAG |
+                                 G_PAGE_CACHE_DISABLE | G_PAGE_WRITE_THROUGH;
+    sourceEntries[0x402000] = (mmio + 4096) | deviceFlags;
+    targetEntries[targetBase + 8192] = 0x300000007ULL;
+    failAt = 2;
+    g_syscall_share_mem share{reinterpret_cast<void*>(0x400000), 12288, 2, nullptr};
+    syscallShareMemory(&sourceTask, &share);
+
+    EXPECT_EQ(nullptr, share.virtualAddress);
+    EXPECT_EQ(1u, targetEntries.size());
+    EXPECT_EQ(0x300000007ULL, targetEntries[targetBase + 8192]);
+    EXPECT_EQ(mmio | deviceFlags, sourceEntries[0x401000]);
+    EXPECT_EQ(1, references[ram]);
+    EXPECT_EQ(0u, references.count(mmio));
+    EXPECT_EQ(0u, references.count(mmio + 4096));
+    EXPECT_EQ(1, freedRanges);
+    EXPECT_EQ(1u, currentSpace);
+    EXPECT_EQ(0, pins);
+    EXPECT_TRUE(heapBlocks.empty());
+}
+
+TEST(ShareMemory, RejectsSupervisorReadOnlyAndLargeSourcePages) {
+    for(uint64_t flags : {uint64_t(G_PAGE_PRESENT), uint64_t(G_PAGE_PRESENT | G_PAGE_USER_FLAG),
+                          uint64_t(G_PAGE_USER_DEFAULT | G_PAGE_LARGE_PAGE_FLAG)}) {
+        reset();
+        sourceEntries[0x400000] = ram | flags;
+        g_syscall_share_mem share{(void*) 0x400000, 4096, 2, nullptr};
+        syscallShareMemory(&sourceTask, &share);
+        EXPECT_EQ(nullptr, share.virtualAddress);
+        EXPECT_EQ(1, references[ram]);
+        EXPECT_TRUE(targetEntries.empty());
+        EXPECT_EQ(0, pins);
+    }
+}
+
 }

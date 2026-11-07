@@ -20,40 +20,111 @@
 
 #include "kernel/calls/syscall_kernquery.hpp"
 #include "kernel/memory/memory.hpp"
+#include "kernel/memory/memory_user.hpp"
+#include "kernel/memory/heap.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking_directory.hpp"
 #include "kernel/tasking/scheduler/scheduler.hpp"
 #include "kernel/memory/paging.hpp"
+#include "kernel/system/processor/processor.hpp"
 #include "kernel/utils/hashmap.hpp"
 #include "kernel/utils/string.hpp"
 
 void syscallKernQuery(g_task* task, g_syscall_kernquery* data)
 {
-	if(data->command == G_KERNQUERY_TASK_LIST)
+	if(data->command == G_KERNQUERY_SYSTEM_RESOURCES)
 	{
-		auto out = (g_kernquery_task_list_data*) data->buffer;
+		g_kernquery_system_resources_data result{};
+		uint64_t total, idle, memoryTotal, memoryFree;
+		schedulerGetSystemCpuTime(&total, &idle);
+		memoryGetPhysicalUsage(&memoryTotal, &memoryFree);
 
-		uint32_t rem = out->id_buffer_size;
-		out->filled_ids = 0;
+		result.sampled_at = clockGetNanoseconds(processorGetCurrentId());
+		result.cpu_total_time = total;
+		result.cpu_idle_time = idle;
+		result.memory_total = memoryTotal;
+		result.memory_free = memoryFree;
+		result.processor_count = processorGetNumberOfProcessors();
+
+		data->status = memoryCopyToUser(task, (g_address) data->buffer, &result, sizeof(result))
+			? G_KERNQUERY_STATUS_SUCCESSFUL : G_KERNQUERY_STATUS_ERROR;
+	}
+	else if(data->command == G_KERNQUERY_TASK_LIST)
+	{
+		g_kernquery_task_list_data result;
+		data->status = G_KERNQUERY_STATUS_ERROR;
+		if(!memoryCopyFromUser(task, &result, (g_address) data->buffer, sizeof(result)))
+			return;
+
+		auto count = hashmapSize(taskGlobalMap);
+		if(count > result.id_buffer_size)
+			count = result.id_buffer_size;
+		if(count > UINT32_MAX / sizeof(g_tid))
+			return;
+
+		auto idsOutput = memoryUserAcquire(task, (g_address) result.id_buffer, count * sizeof(g_tid), true);
+		if(!idsOutput)
+			return;
+
+		auto ids = static_cast<g_tid*>(heapTryAllocate(count * sizeof(g_tid) + 1));
+		if(!ids)
+			return;
+
+		result.filled_ids = 0;
 		auto iter = hashmapIteratorStart(taskGlobalMap);
-		while(rem-- && hashmapIteratorHasNext(&iter))
-		{
-			auto next = hashmapIteratorNext(&iter)->value;
-			out->id_buffer[out->filled_ids++] = next->id;
-		}
-		data->status = G_KERNQUERY_STATUS_SUCCESSFUL;
+		while(result.filled_ids < count && hashmapIteratorHasNext(&iter))
+			ids[result.filled_ids++] = hashmapIteratorNext(&iter)->value->id;
 		hashmapIteratorEnd(&iter);
+
+		memoryUserWrite(idsOutput, ids, result.filled_ids * sizeof(g_tid));
+		heapFree(ids);
+		data->status = memoryCopyToUser(task, (g_address) data->buffer, &result, sizeof(result))
+				? G_KERNQUERY_STATUS_SUCCESSFUL : G_KERNQUERY_STATUS_ERROR;
 	}
 	else if(data->command == G_KERNQUERY_TASK_COUNT)
 	{
-		auto out = (g_kernquery_task_count_data*) data->buffer;
+		g_kernquery_task_count_data result{};
+		result.count = hashmapSize(taskGlobalMap);
+		data->status = memoryCopyToUser(task, (g_address) data->buffer, &result, sizeof(result))
+				? G_KERNQUERY_STATUS_SUCCESSFUL : G_KERNQUERY_STATUS_ERROR;
+	}
+	else if(data->command == G_KERNQUERY_TASK_GET_SECURITY)
+	{
+		g_kernquery_task_security_data result;
+		data->status = G_KERNQUERY_STATUS_ERROR;
+		if(!memoryCopyFromUser(task, &result, (g_address) data->buffer, sizeof(result)))
+			return;
 
-		data->status = G_KERNQUERY_STATUS_SUCCESSFUL;
-		out->count = hashmapSize(taskGlobalMap);
+		auto target = taskingAcquireTask(result.id);
+		result.found = false;
+		result.security_level = UINT8_MAX;
+		data->status = G_KERNQUERY_STATUS_UNKNOWN_ID;
+		if(target)
+		{
+			mutexAcquire(&target->lock);
+			if(target->status != G_TASK_STATUS_DEAD)
+			{
+				result.found = true;
+				result.security_level = target->securityLevel;
+				data->status = G_KERNQUERY_STATUS_SUCCESSFUL;
+			}
+
+			mutexRelease(&target->lock);
+			taskingReleaseTask(target);
+		}
+
+		if(!result.found)
+			result.id = G_TID_NONE;
+		if(!memoryCopyToUser(task, (g_address) data->buffer, &result, sizeof(result)))
+			data->status = G_KERNQUERY_STATUS_ERROR;
 	}
 	else if(data->command == G_KERNQUERY_TASK_GET_BY_ID || data->command == G_KERNQUERY_PROCESS_GET_BY_ID)
 	{
-		auto out = (g_kernquery_task_get_data*) data->buffer;
+		g_kernquery_task_get_data result{};
+		auto out = &result;
+		data->status = G_KERNQUERY_STATUS_ERROR;
+		if(!memoryCopyFromUser(task, &result.id, (g_address) data->buffer, sizeof(result.id)))
+			return;
 
 		auto target = taskingAcquireTask(out->id);
 		bool processQuery = data->command == G_KERNQUERY_PROCESS_GET_BY_ID;
@@ -63,6 +134,8 @@ void syscallKernQuery(g_task* task, g_syscall_kernquery* data)
 			out->found = false;
 			out->id = -1;
 			taskingReleaseTask(target);
+			if(!memoryCopyToUser(task, (g_address) data->buffer, &result, sizeof(result)))
+				data->status = G_KERNQUERY_STATUS_ERROR;
 			return;
 		}
 
@@ -82,13 +155,22 @@ void syscallKernQuery(g_task* task, g_syscall_kernquery* data)
 			out->parent = target->process->id;
 			out->type = target->type;
 		}
+
 		mutexRelease(&target->lock);
 
 		if(out->found)
 		{
 			mutexAcquire(&target->process->lock);
 			if(target->process->environment.executablePath)
-				stringCopy(out->source_path, target->process->environment.executablePath);
+				{
+					unsigned i = 0;
+					while(i + 1 < sizeof(out->source_path) && target->process->environment.executablePath[i])
+					{
+						out->source_path[i] = target->process->environment.executablePath[i];
+						++i;
+					}
+					out->source_path[i] = 0;
+				}
 			else
 				out->source_path[0] = 0;
 
@@ -109,6 +191,8 @@ void syscallKernQuery(g_task* task, g_syscall_kernquery* data)
 		}
 
 		taskingReleaseTask(target);
+		if(!memoryCopyToUser(task, (g_address) data->buffer, &result, sizeof(result)))
+			data->status = G_KERNQUERY_STATUS_ERROR;
 	}
 	else
 	{

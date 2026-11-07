@@ -26,7 +26,9 @@ TEST(ProcessHeap, BoundsGrowthPreservesDataOnShrinkAndRollsBackPartialMappings) 
     EXPECT_TRUE(change(-4096) && !process.heap.pages && frames.empty());
     EXPECT_TRUE(change(8 * 4096) && process.heap.brk == G_USER_MAXIMUM_HEAP_BREAK);
     EXPECT_TRUE(!change(1) && process.heap.pages == 8);
+    const int beforeShrink = unmapBatches;
     EXPECT_TRUE(change(-8 * 4096) && frames.empty());
+    EXPECT_EQ(beforeShrink + 1, unmapBatches);
     for(int fail = 0; fail < 3; ++fail) {
         reset(); failPhysical = fail;
         EXPECT_TRUE(!change(3 * 4096) && frames.empty() && allocations == frees && !process.heap.pages);

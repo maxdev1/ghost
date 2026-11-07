@@ -70,6 +70,12 @@ void syscallFsUnlinkDirectory(g_task* task, g_syscall_fs_path_mutation* data);
 
 void syscallFsTruncate(g_task* task, g_syscall_fs_fd_mutation* data);
 
+void syscallFsSymlink(g_task* task, g_syscall_fs_symlink* data);
+
+void syscallFsReadlink(g_task* task, g_syscall_fs_readlink* data);
+
+void syscallFsRename(g_task* task, g_syscall_fs_rename* data);
+
 void syscallFsSync(g_task* task, g_syscall_fs_fd_mutation* data);
 
 #endif

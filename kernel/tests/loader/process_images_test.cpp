@@ -1,4 +1,6 @@
 #include "support/fixture.hpp"
+#define GHOST_API_STDINT
+#include <ghost/tasks/types.h>
 
 namespace
 {
@@ -9,7 +11,6 @@ namespace
 #define G_USER_MAXIMUM_HEAP_BREAK UINTPTR_MAX
 #define G_PAGE_TABLE_USER_DEFAULT 7
 #define G_PAGE_USER_DEFAULT 7
-using g_fd = int; using g_security_level = int;
 struct g_elf_object;
 struct object_entry { g_elf_object* value; };
 struct object_list { std::vector<object_entry> entries; };
@@ -19,17 +20,11 @@ struct g_elf_object {
     struct { uint32_t totalSize, userThreadOffset; } tlsMaster;
     struct { uint8_t* content; uint32_t offset, copysize; } tlsPart;
     object_list* loadedObjects;
-    void *preinitArray, *init, *initArray, *fini, *finiArray;
+    void (*init)(), (*fini)();
+    void (**preinitArray)(), (**initArray)(), (**finiArray)();
     uint32_t preinitArraySize, initArraySize, finiArraySize;
 };
-struct g_object_info {
-    char* name;
-    void *preinitArray, *init, *initArray, *fini, *finiArray;
-    uint32_t preinitArraySize, initArraySize, finiArraySize;
-};
-struct g_user_threadlocal { void* self; };
 void memoryPhysicalFree(uintptr_t) { std::abort(); }
-struct g_process_info { int objectInfosSize; g_object_info* objectInfos; void (*syscallKernelEntry)(uint32_t, void*); };
 struct g_process {
     int* virtualRangePool;
     struct { uintptr_t location; uint32_t size, userThreadOffset; } tlsMaster;
@@ -51,7 +46,6 @@ object_entry* hashmapIteratorNext(object_iterator* it) { return &it->list->entri
 void hashmapIteratorEnd(object_iterator*) {}
 size_t stringLength(const char* p) { return std::strlen(p); }
 void stringCopy(char* a, const char* b) { std::strcpy(a, b); }
-void syscall(uint32_t, void*) {}
 
 #include "production/elfTlsCreateMasterImage.inc"
 #include "production/elfUserProcessCreateInfo.inc"
@@ -72,6 +66,8 @@ TEST(ElfProcessImages, ZeroesTlsAndProcessInfoPagePadding) {
     ASSERT_EQ(start + 4096, elfUserProcessCreateInfo(&process, &root, start, 2));
     ASSERT_NE(nullptr, process.userProcessInfo);
     EXPECT_TRUE(process.userProcessInfo->objectInfosSize == 2 && mapped == 2);
+    EXPECT_STREQ(process.userProcessInfo->objectInfos[0].name, "root");
+    EXPECT_STREQ(process.userProcessInfo->objectInfos[1].name, "lib");
     const size_t used = sizeof(g_process_info) + 2 * sizeof(g_object_info) + 5 + 4;
     for(size_t i = used; i < 4096; ++i) EXPECT_EQ(0, arena[4096 + i]);
 }

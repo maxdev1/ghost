@@ -21,22 +21,25 @@
 #include "kernel/filesystem/filesystem_taskdelegate.hpp"
 #include "kernel/memory/constants.hpp"
 #include "kernel/memory/memory.hpp"
+#include "kernel/memory/memory_user.hpp"
 #include "kernel/memory/paging.hpp"
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/tasking/tasking_memory.hpp"
 
 bool filesystemDelegateCopyFromCaller(g_task* task, void* buffer, const void* caller, size_t length)
 {
-	if(reinterpret_cast<g_address>(caller) <= G_MEM_LOWER_HALF_END)
-		return memoryCopyFromUser(task, buffer, reinterpret_cast<g_address>(caller), length);
+	if((g_address) caller <= G_MEM_LOWER_HALF_END)
+		return memoryCopyFromUser(task, buffer, (g_address) caller, length);
+
 	memoryCopy(buffer, caller, length);
 	return true;
 }
 
 bool filesystemDelegateCopyToCaller(g_task* task, void* caller, const void* buffer, size_t length)
 {
-	if(reinterpret_cast<g_address>(caller) <= G_MEM_LOWER_HALF_END)
-		return memoryCopyToUser(task, reinterpret_cast<g_address>(caller), buffer, length);
+	if((g_address) caller <= G_MEM_LOWER_HALF_END)
+		return memoryCopyToUser(task, (g_address) caller, buffer, length);
+
 	memoryCopy(caller, buffer, length);
 	return true;
 }
@@ -45,7 +48,7 @@ bool filesystemDelegateCopyName(g_task* task, const char* name, char* copy)
 {
 	for(size_t i = 0; i < G_FILENAME_MAX; ++i)
 	{
-		auto address = reinterpret_cast<g_address>(name);
+		auto address = (g_address) name;
 		if(address > G_MEM_LOWER_HALF_END - i || !memoryCopyFromUser(task, copy + i, address + i, 1))
 			return false;
 		if(!copy[i])
@@ -53,6 +56,7 @@ bool filesystemDelegateCopyName(g_task* task, const char* name, char* copy)
 		if(copy[i] == '/')
 			return false;
 	}
+
 	return false;
 }
 
@@ -70,8 +74,8 @@ bool filesystemDelegateMapPages(g_task* task, g_fs_task_delegate* delegate)
 		return false;
 	}
 
-	memorySetBytes(reinterpret_cast<void*>(G_MEM_PHYS_TO_VIRT(delegate->controlPage)), 0, G_PAGE_SIZE);
-	memorySetBytes(reinterpret_cast<void*>(G_MEM_PHYS_TO_VIRT(delegate->ioPage)), 0, G_PAGE_SIZE);
+	memorySetBytes((void*) G_MEM_PHYS_TO_VIRT(delegate->controlPage), 0, G_PAGE_SIZE);
+	memorySetBytes((void*) G_MEM_PHYS_TO_VIRT(delegate->ioPage), 0, G_PAGE_SIZE);
 
 	mutexAcquire(&task->process->lock);
 	delegate->mapping =
@@ -91,6 +95,7 @@ bool filesystemDelegateMapPages(g_task* task, g_fs_task_delegate* delegate)
 				break;
 			}
 		}
+
 		if(installed != 2)
 		{
 			for(uint32_t i = 0; i < installed; ++i)
@@ -98,10 +103,12 @@ bool filesystemDelegateMapPages(g_task* task, g_fs_task_delegate* delegate)
 				pagingUnmapPage(delegate->mapping + i * G_PAGE_SIZE);
 				memoryPhysicalFree(pages[i]);
 			}
+
 			addressRangePoolFree(task->process->virtualRangePool, delegate->mapping);
 			delegate->mapping = 0;
 		}
 	}
+
 	mutexRelease(&task->process->lock);
 
 	if(!delegate->mapping)
@@ -128,6 +135,7 @@ void filesystemDelegateReleasePages(g_task* task, g_fs_task_delegate* delegate)
 		mutexRelease(&task->process->lock);
 		delegate->mapping = 0;
 	}
+
 	if(delegate->controlPage)
 		memoryPhysicalFree(delegate->controlPage);
 	if(delegate->ioPage)

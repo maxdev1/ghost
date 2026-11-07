@@ -1,3 +1,23 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2026, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include "support/fixture.hpp"
 #include <condition_variable>
 
@@ -42,6 +62,7 @@ TEST_F(FilesystemWrite, ReadOnlyDescriptorDoesNotReachTheDriver)
 {
     descriptor->openFlags = 0;
     int64_t count = 99;
+
     EXPECT_EQ(G_FS_WRITE_NOT_SUPPORTED, filesystemWrite(&task, 7, nullptr, 8, &count));
     EXPECT_EQ(-1, count);
     EXPECT_EQ(0, writeCalls);
@@ -50,6 +71,7 @@ TEST_F(FilesystemWrite, ReadOnlyDescriptorDoesNotReachTheDriver)
 TEST_F(FilesystemWrite, AdvancesOffsetByPartialWriteCount)
 {
     int64_t count = -1;
+
     EXPECT_EQ(G_FS_WRITE_SUCCESSFUL, filesystemWrite(&task, 7, nullptr, 8, &count));
     EXPECT_EQ(1, count);
     EXPECT_EQ(2, writeOffset);
@@ -60,6 +82,7 @@ TEST_F(FilesystemWrite, AppendsAtFileLength)
 {
     descriptor->openFlags = G_FILE_FLAG_MODE_WRITE | G_FILE_FLAG_MODE_APPEND;
     int64_t count = -1;
+
     EXPECT_EQ(G_FS_WRITE_SUCCESSFUL, filesystemWrite(&task, 7, nullptr, 8, &count));
     EXPECT_EQ(1, count);
     EXPECT_EQ(4, writeOffset);
@@ -71,6 +94,7 @@ TEST_F(FilesystemWrite, FailedAppendLengthLeavesOffsetAndReleasesLock)
     descriptor->openFlags = G_FILE_FLAG_MODE_WRITE | G_FILE_FLAG_MODE_APPEND;
     lengthStatus = 1;
     int64_t count = 99;
+
     EXPECT_EQ(G_FS_WRITE_ERROR, filesystemWrite(&task, 7, nullptr, 8, &count));
     EXPECT_EQ(-1, count);
     EXPECT_EQ(0, writeCalls);
@@ -82,6 +106,7 @@ TEST_F(FilesystemWrite, NonblockingBusyReturnsWithoutWaiting)
     writeStatus = G_FS_WRITE_BUSY;
     writeCount = 0;
     int64_t count = -1;
+
     EXPECT_EQ(G_FS_WRITE_BUSY, filesystemWrite(&task, 7, nullptr, 8, &count));
     EXPECT_EQ(0, count);
     EXPECT_EQ(1, writeCalls);
@@ -96,6 +121,7 @@ TEST_F(FilesystemWrite, MissingWaitImplementationReturnsError)
     writeStatus = G_FS_WRITE_BUSY;
     writeCount = 0;
     int64_t count = -1;
+
     EXPECT_EQ(G_FS_WRITE_ERROR, filesystemWrite(&task, 7, nullptr, 8, &count));
     EXPECT_EQ(1, writeCalls);
     EXPECT_FALSE(task.waiting);
@@ -113,13 +139,17 @@ TEST_F(FilesystemWrite, RetriesWhenReadyBeforeSleepAndRechecksAppendPosition)
         // Another operation moved the offset while this write was busy.
         auto info = hashmapGet(filesystemProcessInfo, 42, (g_filesystem_process*)nullptr);
         auto open = hashmapGet(info->descriptors, 7, (g_file_descriptor*)nullptr);
+
         EXPECT_EQ(0, open->operationLock.depth);
+
         open->offset = 30;
         writeStatus = G_FS_WRITE_SUCCESSFUL;
         writeCount = 1;
         return false;
     };
+
     int64_t count = -1;
+
     EXPECT_EQ(G_FS_WRITE_SUCCESSFUL, filesystemWrite(&task, 7, nullptr, 8, &count));
     EXPECT_EQ(2, writeCalls);
     EXPECT_EQ(1, count);
@@ -138,9 +168,12 @@ TEST_F(FilesystemWrite, CancellationReleasesReferenceAndOperationLock)
         cancel = true;
         return false;
     };
+
     int64_t count = -1;
+
     EXPECT_THROW(filesystemWrite(&task, 7, nullptr, 8, &count), Cancelled);
 }
+
 TEST_F(FilesystemWrite, SerializesAppendAcrossSeparateDescriptors)
 {
     mode = 3;
@@ -148,20 +181,25 @@ TEST_F(FilesystemWrite, SerializesAppendAcrossSeparateDescriptors)
     appendOffsets.clear();
     descriptor->openFlags = G_FILE_FLAG_MODE_WRITE | G_FILE_FLAG_MODE_APPEND;
     g_file_descriptor* second;
+
     ASSERT_EQ(G_FS_OPEN_SUCCESSFUL, filesystemProcessCreateDescriptor(42, 1,
         G_FILE_FLAG_MODE_WRITE | G_FILE_FLAG_MODE_APPEND, &second, 8));
     filesystemProcessReleaseDescriptor(second);
     auto append = [&](int fd) {
         for(unsigned i = 0; i < 100; ++i) {
             int64_t written = -1;
+
             EXPECT_EQ(G_FS_WRITE_SUCCESSFUL, filesystemWrite(&task, fd, nullptr, 1, &written));
             EXPECT_EQ(1, written);
         }
     };
+
     std::thread firstWriter(append, 7), secondWriter(append, 8);
     firstWriter.join(); secondWriter.join();
+
     ASSERT_EQ(200U, appendOffsets.size());
     for(size_t i = 0; i < appendOffsets.size(); ++i) EXPECT_EQ(i, appendOffsets[i]);
+
     EXPECT_EQ(200U, appendLength.load());
 }
 

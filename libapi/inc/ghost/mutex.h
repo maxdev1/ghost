@@ -25,59 +25,86 @@
 #include "mutex/types.h"
 
 __BEGIN_C
+
 /**
- * Creates an mutex used for locking.
+ * Creates an unlocked, non-reentrant mutex.
  *
- * @returns mutex
- * 		the mutex
+ * Equivalent to g_mutex_initialize_r(0).
  *
+ * @return A mutex handle to release with g_mutex_destroy().
  * @security-level APPLICATION
  */
 g_user_mutex g_mutex_initialize();
+
+/**
+ * Creates an unlocked mutex with optional recursive acquisition.
+ *
+ * A reentrant mutex requires one release for each successful acquisition.
+ *
+ * @param[in] reentrant Nonzero to allow the owning thread to acquire the mutex repeatedly.
+ * @return A mutex handle to release with g_mutex_destroy().
+ * @security-level APPLICATION
+ */
 g_user_mutex g_mutex_initialize_r(g_bool reentrant);
 
 /**
- * Acquires the mutex. If the mutex is locked, the executing task must
- * wait until the task that owns the mutex has finished its work and sets
- * it to false.
+ * Waits until the mutex is acquired or its handle becomes invalid.
  *
- * @param mutex
- * 		the mutex to use
+ * Equivalent to g_mutex_acquire_to(mutex, 0), discarding the success result.
  *
+ * @param[in] mutex Handle returned by g_mutex_initialize() or g_mutex_initialize_r().
  * @security-level APPLICATION
  */
 void g_mutex_acquire(g_user_mutex mutex);
+
+/**
+ * Acquires a mutex, waiting until it becomes available or the deadline expires.
+ *
+ * @param[in] mutex Handle returned by g_mutex_initialize() or g_mutex_initialize_r().
+ * @param[in] timeout Timeout in milliseconds; zero waits without a deadline.
+ * @return Nonzero if acquired, or zero on timeout or an invalid or destroyed handle.
+ * @security-level APPLICATION
+ */
 g_bool g_mutex_acquire_to(g_user_mutex mutex, uint64_t timeout);
 
 /**
- * Trys acquire the mutex. If the lock is already locked, the function
- * returns 0. Otherwise, the lock is set as in {g_mutex_acquire} and the
- * function returns 1.
+ * Attempts to acquire a mutex without waiting.
  *
- * @param mutex
- * 		the mutex to use
- *
+ * @param[in] mutex Handle returned by g_mutex_initialize() or g_mutex_initialize_r().
+ * @return Nonzero if acquired, or zero if unavailable or invalid.
  * @security-level APPLICATION
  */
 g_bool g_mutex_try_acquire(g_user_mutex mutex);
+
+/**
+ * Attempts to acquire a mutex once, with an optional deadline.
+ *
+ * Contention returns immediately; a nonzero timeout does not make this call wait.
+ *
+ * @param[in] mutex Handle returned by g_mutex_initialize() or g_mutex_initialize_r().
+ * @param[in] timeout Deadline offset in milliseconds; zero disables it. The attempt remains
+ *                    nonblocking.
+ * @return Nonzero if acquired, or zero if unavailable, invalid, or the deadline has expired.
+ * @security-level APPLICATION
+ */
 g_bool g_mutex_try_acquire_to(g_user_mutex mutex, uint64_t timeout);
 
 /**
- * Unlocks the mutex.
+ * Releases one acquisition of a mutex and wakes waiters when it becomes unlocked.
  *
- * @param mutex
- * 		the mutex to use
+ * Recursive acquisitions require matching releases.
  *
+ * @param[in] mutex Handle returned by g_mutex_initialize() or g_mutex_initialize_r().
  * @security-level APPLICATION
  */
 void g_mutex_release(g_user_mutex mutex);
 
 /**
- * Frees a mutex when no longer needed.
+ * Destroys a mutex and wakes its waiting threads.
  *
- * @param mutex
- * 		the mutex to use
+ * The handle becomes invalid. Coordinate destruction so no caller continues to use it.
  *
+ * @param[in] mutex Handle returned by g_mutex_initialize() or g_mutex_initialize_r().
  * @security-level APPLICATION
  */
 void g_mutex_destroy(g_user_mutex mutex);

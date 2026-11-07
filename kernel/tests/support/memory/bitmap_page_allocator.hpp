@@ -8,7 +8,8 @@
 #define LIMINE_MEMMAP_USABLE 0
 constexpr uintptr_t physicalBase = UINT64_C(0x100000000);
 alignas(4096) uint8_t physicalArena[160 * 1024 * 1024];
-#define G_MEM_PHYS_TO_VIRT(p) (reinterpret_cast<uintptr_t>(physicalArena) + (p) - physicalBase)
+alignas(4096) uint8_t lowPhysicalArena[2 * 1024 * 1024];
+#define G_MEM_PHYS_TO_VIRT(p) ((p) < physicalBase ? reinterpret_cast<uintptr_t>(lowPhysicalArena) + (p) : reinterpret_cast<uintptr_t>(physicalArena) + (p) - physicalBase)
 struct limine_memmap_entry { uint64_t base, length, type; };
 struct limine_memmap_response { uint64_t entry_count; limine_memmap_entry** entries; };
 

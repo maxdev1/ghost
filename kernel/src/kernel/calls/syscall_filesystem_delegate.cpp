@@ -21,80 +21,58 @@
 #include "kernel/calls/syscall_filesystem.hpp"
 #include "kernel/filesystem/filesystem_taskdelegate.hpp"
 #include "kernel/memory/memory.hpp"
+#include "kernel/memory/memory_user.hpp"
 
-void syscallFsDelegateRegister(g_task* task, g_syscall_fs_delegate_register* output)
+void syscallFsDelegateRegister(g_task* task, g_syscall_fs_delegate_register* data)
 {
-	g_syscall_fs_delegate_register data;
-	if(!memoryCopyFromUser(task, &data, (g_address) output, sizeof(data)))
-		return;
-
-	data.mountpoint_id = G_FS_VIRT_ID_NONE;
-	data.transaction_storage = nullptr;
-	data.result = G_FS_DELEGATE_NOT_OWNER;
+	data->mountpoint_id = G_FS_VIRT_ID_NONE;
+	data->transaction_storage = nullptr;
+	data->result = G_FS_DELEGATE_NOT_OWNER;
 
 	char name[G_FILENAME_MAX];
 	if(task->securityLevel <= G_SECURITY_LEVEL_DRIVER)
 	{
-		if(filesystemDelegateCopyName(task, data.name, name))
+		if(filesystemDelegateCopyName(task, data->name, name))
 		{
-			auto original = data.name;
-			data.name = name;
-			data.result = filesystemDelegateRegister(task, &data);
-			data.name = original;
+			auto original = data->name;
+			data->name = name;
+			data->result = filesystemDelegateRegister(task, data);
+			data->name = original;
 		}
 		else
-			data.result = G_FS_DELEGATE_INVALID_ARGUMENT;
+			data->result = G_FS_DELEGATE_INVALID_ARGUMENT;
 	}
-
-	if(!memoryCopyToUser(task, (g_address) output, &data, sizeof(data)) && data.result == G_FS_DELEGATE_SUCCESSFUL)
-		filesystemDelegateUnregister(task, data.mountpoint_id, true);
 }
 
-void syscallFsDelegateTransactionComplete(g_task* task, g_syscall_fs_delegate_transaction_complete* output)
+void syscallFsDelegateTransactionComplete(g_task* task, g_syscall_fs_delegate_transaction_complete* data)
 {
-	g_syscall_fs_delegate_transaction_complete data;
-	if(!memoryCopyFromUser(task, &data, (g_address) output, sizeof(data)))
-		return;
-	data.result = task->securityLevel <= G_SECURITY_LEVEL_DRIVER ? filesystemDelegateComplete(task, data.transaction)
+	data->result = task->securityLevel <= G_SECURITY_LEVEL_DRIVER ? filesystemDelegateComplete(task, data->transaction)
 																 : G_FS_DELEGATE_NOT_OWNER;
-	memoryCopyToUser(task, (g_address) output, &data, sizeof(data));
 }
 
-void syscallFsDelegateNodeCreate(g_task* task, g_syscall_fs_delegate_node_create* output)
+void syscallFsDelegateNodeCreate(g_task* task, g_syscall_fs_delegate_node_create* data)
 {
-	g_syscall_fs_delegate_node_create data;
-	if(!memoryCopyFromUser(task, &data, (g_address) output, sizeof(data)))
-		return;
-
-	data.created_id = G_FS_VIRT_ID_NONE;
-	data.result = G_FS_DELEGATE_NOT_OWNER;
+	data->created_id = G_FS_VIRT_ID_NONE;
+	data->result = G_FS_DELEGATE_NOT_OWNER;
 
 	char name[G_FILENAME_MAX];
 	if(task->securityLevel <= G_SECURITY_LEVEL_DRIVER)
 	{
-		if(filesystemDelegateCopyName(task, data.name, name))
+		if(filesystemDelegateCopyName(task, data->name, name))
 		{
-			auto original = data.name;
-			data.name = name;
-			data.result = filesystemDelegateCreateNode(task, &data);
-			data.name = original;
+			auto original = data->name;
+			data->name = name;
+			data->result = filesystemDelegateCreateNode(task, data);
+			data->name = original;
 		}
 		else
-			data.result = G_FS_DELEGATE_INVALID_ARGUMENT;
+			data->result = G_FS_DELEGATE_INVALID_ARGUMENT;
 	}
-
-	memoryCopyToUser(task, (g_address) output, &data, sizeof(data));
 }
 
-void syscallFsDelegateUnregister(g_task* task, g_syscall_fs_delegate_unregister* output)
+void syscallFsDelegateUnregister(g_task* task, g_syscall_fs_delegate_unregister* data)
 {
-	g_syscall_fs_delegate_unregister data;
-	if(!memoryCopyFromUser(task, &data, (g_address) output, sizeof(data)))
-		return;
-
-	data.result = task->securityLevel <= G_SECURITY_LEVEL_DRIVER
-						  ? filesystemDelegateUnregister(task, data.mountpoint_id)
+	data->result = task->securityLevel <= G_SECURITY_LEVEL_DRIVER
+						  ? filesystemDelegateUnregister(task, data->mountpoint_id)
 						  : G_FS_DELEGATE_NOT_OWNER;
-
-	memoryCopyToUser(task, (g_address) output, &data, sizeof(data));
 }

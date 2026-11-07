@@ -1,3 +1,23 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2026, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #ifndef GHOST_TEST_POWER_DISK
 #define GHOST_TEST_POWER_DISK
 
@@ -16,6 +36,7 @@ inline std::vector<uint8_t> powerTestDiskImage()
         bytes[offset] = value;
         bytes[offset + 1] = value >> 8;
     };
+
     bytes[0] = 0xeb;
     bytes[1] = 0x3c;
     bytes[2] = 0x90;
@@ -37,6 +58,7 @@ inline std::vector<uint8_t> powerTestDiskImage()
         put16(offset, 0xfff8);
         put16(offset + 2, 0xffff);
     }
+
     return bytes;
 }
 

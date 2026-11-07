@@ -3,6 +3,8 @@ using g_security_level = uint8_t;
 using g_pid = int; using g_tid = int; using g_fd = int;
 using g_create_task_status = int; using g_spawn_status = int;
 using g_spawn_validation_details = int; using g_fs_open_status = int;
+constexpr uintptr_t G_MEM_LOWER_HALF_END = 0x7fffffffffffULL;
+constexpr int G_PATH_MAX = 4096, G_CLIARGS_BUFFER_LENGTH = 1024, G_PID_NONE = -1;
 constexpr int G_TID_NONE = -1, G_TASK_CORE_AFFINITY_NONE = 255;
 constexpr int G_SECURITY_LEVEL_KERNEL = 0, G_SECURITY_LEVEL_DRIVER = 1, G_SECURITY_LEVEL_APPLICATION = 2;
 constexpr int G_CREATE_TASK_STATUS_FAILED = 1, G_CREATE_TASK_STATUS_SUCCESSFUL = 0;
@@ -42,5 +44,9 @@ void filesystemProcessCreateStdio(int, const int*, int, int*) {}
 char* stringDuplicate(const char* value) { return const_cast<char*>(value); }
 void taskingReleaseSpawn(g_process* process) { releasedMode = process->environment.launchMode; }
 
+bool memoryCopyUserString(g_task*, const char* source, char* target, size_t capacity) {
+    if(!source || strlen(source) >= capacity) return false;
+    strcpy(target, source); return true;
+}
 #include "production/syscallCreateTask_and_spawn.inc"
 

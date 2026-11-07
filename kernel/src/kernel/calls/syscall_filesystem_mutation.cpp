@@ -22,6 +22,7 @@
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/memory/heap.hpp"
 #include "kernel/memory/memory.hpp"
+#include "kernel/memory/memory_user.hpp"
 
 static bool syscallFsCopyMutationPath(g_task* task, const char* source, char* path)
 {
@@ -32,33 +33,29 @@ static bool syscallFsCopyMutationPath(g_task* task, const char* source, char* pa
 			return false;
 		if(path[i])
 			continue;
+
 		while(i > 1 && path[i - 1] == '/')
 			path[--i] = 0;
 		return i != 0;
 	}
+
 	return false;
 }
 
-static void syscallFsMutatePath(g_task* task, g_syscall_fs_path_mutation* output,
+static void syscallFsMutatePath(g_task* task, g_syscall_fs_path_mutation* data,
 								g_fs_mutation_status (*operation)(g_task*, const char*))
 {
-	g_syscall_fs_path_mutation data;
-	if(!memoryCopyFromUser(task, &data, (g_address) output, sizeof(data)))
-		return;
-
-	data.status = G_FS_MUTATION_INVALID_ARGUMENT;
+	data->status = G_FS_MUTATION_INVALID_ARGUMENT;
 
 	auto path = static_cast<char*>(heapTryAllocate(G_PATH_MAX));
 	if(!path)
-		data.status = G_FS_MUTATION_ERROR;
+		data->status = G_FS_MUTATION_ERROR;
 	else
 	{
-		if(syscallFsCopyMutationPath(task, data.path, path))
-			data.status = operation(task, path);
+		if(syscallFsCopyMutationPath(task, data->path, path))
+			data->status = operation(task, path);
 		heapFree(path);
 	}
-
-	memoryCopyToUser(task, (g_address) output, &data, sizeof(data));
 }
 
 static g_fs_mutation_status syscallFsRemoveFile(g_task* task, const char* path)
@@ -86,13 +83,9 @@ void syscallFsUnlinkDirectory(g_task* task, g_syscall_fs_path_mutation* data)
 	syscallFsMutatePath(task, data, syscallFsRemoveDirectory);
 }
 
-static void syscallFsMutateDescriptor(g_task* task, g_syscall_fs_fd_mutation* output, g_fs_delegate_request_type type)
+static void syscallFsMutateDescriptor(g_task* task, g_syscall_fs_fd_mutation* data, g_fs_delegate_request_type type)
 {
-	g_syscall_fs_fd_mutation data;
-	if(!memoryCopyFromUser(task, &data, (g_address) output, sizeof(data)))
-		return;
-	data.status = filesystemMutateDescriptor(task, data.fd, type, data.length);
-	memoryCopyToUser(task, (g_address) output, &data, sizeof(data));
+	data->status = filesystemMutateDescriptor(task, data->fd, type, data->length);
 }
 
 void syscallFsTruncate(g_task* task, g_syscall_fs_fd_mutation* data)
@@ -103,4 +96,22 @@ void syscallFsTruncate(g_task* task, g_syscall_fs_fd_mutation* data)
 void syscallFsSync(g_task* task, g_syscall_fs_fd_mutation* data)
 {
 	syscallFsMutateDescriptor(task, data, G_FS_DELEGATE_REQUEST_FLUSH);
+}
+
+void syscallFsRename(g_task* task, g_syscall_fs_rename* data)
+{
+	data->status = G_FS_MUTATION_INVALID_ARGUMENT;
+	auto paths = static_cast<char*>(heapTryAllocate(2 * G_PATH_MAX));
+	if(!paths)
+	{
+		data->status = G_FS_MUTATION_ERROR;
+	}
+	else
+	{
+		if(syscallFsCopyMutationPath(task, data->source, paths) &&
+		   syscallFsCopyMutationPath(task, data->destination, paths + G_PATH_MAX))
+			data->status = filesystemRename(task, paths, paths + G_PATH_MAX, data->replace);
+
+		heapFree(paths);
+	}
 }

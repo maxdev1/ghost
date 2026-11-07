@@ -22,14 +22,15 @@
 #include "kernel/tasking/tasking.hpp"
 
 /**
- * Consumes cleanup notifications under the scheduler lock. Destruction stays
- * runnable because it can yield on task mutexes; notifications received meanwhile
- * prevent the reaper from sleeping before another pass.
+ * Consumes cleanup notifications under the scheduler lock. Destruction may
+ * block on task mutexes. Work arriving then requires another pass once
+ * the reaper finishes the current batch.
  */
 static void taskingCleanupTasks(g_tasking_local* local, g_task* self)
 {
 	mutexAcquire(&local->lock);
 	local->scheduling.cleanupPending = false;
+	local->scheduling.cleanupInProgress = true;
 
 	g_schedule_entry* deadList = nullptr;
 	g_schedule_entry* entry = local->scheduling.list;
@@ -55,6 +56,7 @@ static void taskingCleanupTasks(g_tasking_local* local, g_task* self)
 		{
 			previous = entry;
 		}
+
 		entry = next;
 
 		mutexRelease(&task->lock);
@@ -71,6 +73,7 @@ static void taskingCleanupTasks(g_tasking_local* local, g_task* self)
 	}
 
 	mutexAcquire(&local->lock);
+	local->scheduling.cleanupInProgress = false;
 	if(!local->scheduling.cleanupPending)
 		taskingPrepareWait(self, "cleanup");
 	mutexRelease(&local->lock);

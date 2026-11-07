@@ -101,21 +101,26 @@ __BEGIN_C
 #define G_SYSCALL_FS_UNLINK                     101
 #define G_SYSCALL_FS_TRUNCATE                   102
 #define G_SYSCALL_FS_SYNC                       103
+#define G_SYSCALL_FS_RENAME                     104
+#define G_SYSCALL_FS_SYMLINK                    105
+#define G_SYSCALL_FS_READLINK                   106
 
 // System
 #define G_SYSCALL_CALL_VM86						120
 #define G_SYSCALL_LOG							121
 #define G_SYSCALL_SET_VIDEO_LOG					122
 #define G_SYSCALL_TEST							123
-#define G_SYSCALL_IRQ_CREATE_REDIRECT           124
-#define G_SYSCALL_AWAIT_IRQ         			125
 #define G_SYSCALL_GET_EFI_FRAMEBUFFER			126
 #define G_SYSCALL_OPEN_LOG_PIPE					127
 #define G_SYSCALL_SYSTEM_POWER                  128
 #define G_SYSCALL_KERNQUERY						129
-#define G_SYSCALL_ACPI_PLATFORM                 130
+#define G_SYSCALL_ACPI_GET_PLATFORM_INFO        130
+#define G_SYSCALL_ACPI_MAP                      131
+#define G_SYSCALL_IRQ                           132
 
-#define G_SYSCALL_MAX                           131
+#define G_SYSCALL_GET_TIME                      133
+
+#define G_SYSCALL_MAX                           134
 
 __END_C
 

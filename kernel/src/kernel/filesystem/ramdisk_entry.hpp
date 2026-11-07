@@ -36,6 +36,7 @@ struct g_ramdisk_entry
 
 	char* name;
 
+	uint32_t opens = 0;
 	uint32_t dataSize;
 	uint8_t* data;
 

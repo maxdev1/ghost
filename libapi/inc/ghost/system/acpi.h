@@ -23,13 +23,14 @@
 
 #include "../common.h"
 #include "../stdint.h"
+#include "../tasks/types.h"
 #include "power.h"
 
 __BEGIN_C
 
 #define G_ACPI_DRIVER_NAME "acpidriver"
 #define G_ACPI_MAGIC 0x47414350u
-#define G_ACPI_VERSION 1
+#define G_ACPI_VERSION 2
 #define G_ACPI_TIMEOUT_MS 30000ULL
 #define G_ACPI_MAX_WRITES 8
 
@@ -90,54 +91,76 @@ typedef struct g_acpi_power_plan
 	g_acpi_register_write writes[G_ACPI_MAX_WRITES];
 } __attribute__((packed)) g_acpi_power_plan;
 
-typedef struct g_acpi_request
+typedef struct g_acpi_header
 {
 	uint32_t magic;
 	uint16_t version;
 	g_acpi_command command;
-	uint32_t token;
-	int32_t coordinator;
-	g_power_action action;
-} __attribute__((packed)) g_acpi_request;
+} __attribute__((packed)) g_acpi_header;
 
-typedef struct g_acpi_response
+typedef struct g_acpi_response_header
 {
 	uint32_t magic;
 	uint16_t version;
 	g_acpi_command command;
-	uint32_t token;
 	g_acpi_status status;
-	g_acpi_info info;
-	g_acpi_power_plan plan;
-} __attribute__((packed)) g_acpi_response;
+} __attribute__((packed)) g_acpi_response_header;
 
-#define G_ACPI_PLATFORM_INFO 1
-#define G_ACPI_PLATFORM_MAP 2
-#define G_ACPI_PLATFORM_IRQ_INSTALL 3
-#define G_ACPI_PLATFORM_IRQ_REARM 4
-#define G_ACPI_PLATFORM_IRQ_REMOVE 5
-#define G_ACPI_PLATFORM_IRQ_WAIT 6
-#define G_ACPI_PLATFORM_IRQ_MASK 7
+typedef struct g_acpi_get_info_request
+{
+	g_acpi_header header;
+} __attribute__((packed)) g_acpi_get_info_request;
+
+typedef struct g_acpi_power_request
+{
+	g_acpi_header header;
+	uint32_t token;
+	g_tid coordinator;
+	g_power_action action;
+} __attribute__((packed)) g_acpi_power_request;
+
+typedef g_acpi_power_request g_acpi_prepare_request;
+typedef g_acpi_power_request g_acpi_cancel_request;
+
+typedef struct g_acpi_get_info_response
+{
+	g_acpi_response_header header;
+	g_acpi_info info;
+} __attribute__((packed)) g_acpi_get_info_response;
+
+typedef struct g_acpi_prepare_response
+{
+	g_acpi_response_header header;
+	uint32_t token;
+	g_acpi_power_plan plan;
+} __attribute__((packed)) g_acpi_prepare_response;
+
+typedef struct g_acpi_cancel_response
+{
+	g_acpi_response_header header;
+	uint32_t token;
+} __attribute__((packed)) g_acpi_cancel_response;
 
 /**
- * Kernel backing for the ACPI service. Firmware addresses, uncached mappings and
- * SCI ownership require DRIVER privilege.
+ * Returns firmware-table and interrupt-controller information to a driver.
  */
-typedef struct
+typedef struct g_syscall_acpi_platform_info
 {
-	uint64_t address;
-	uint32_t size;
-	uint32_t irq;
-	uint8_t operation;
+	uint64_t rsdp;
 	uint8_t ioapic;
 	g_acpi_status status;
-} __attribute__((packed)) g_syscall_acpi_platform;
+} __attribute__((packed)) g_syscall_acpi_platform_info;
 
-g_acpi_status g_acpi_get_platform_info(uint64_t* rsdp, uint8_t* ioapic);
-
-void* g_acpi_map(uint64_t address, uint32_t size);
-
-g_acpi_status g_acpi_configure_irq(uint32_t irq, uint8_t operation);
+/**
+ * Maps a physical ACPI region for a driver and returns its virtual address.
+ */
+typedef struct g_syscall_acpi_map
+{
+	uint64_t physicalAddress;
+	uint32_t size;
+	uint64_t virtualAddress;
+	g_acpi_status status;
+} __attribute__((packed)) g_syscall_acpi_map;
 
 __END_C
 

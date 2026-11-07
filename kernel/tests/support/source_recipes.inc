@@ -1,3 +1,4 @@
+const auto memory_user_cpp = source("kernel/src/kernel/memory/memory_user.cpp");
 // Host views of production source. Hardware substitutions are explicit below.
 const auto mutex_hpp = source("kernel/src/kernel/system/mutex.hpp");
 const auto constants_hpp = source("kernel/src/kernel/memory/constants.hpp");
@@ -17,6 +18,7 @@ const auto bitmap_page_allocator_cpp = source("kernel/src/kernel/memory/bitmap_p
 const auto processor_hpp = source("kernel/src/kernel/system/processor/processor.hpp");
 const auto processor_cpp = source("kernel/src/kernel/system/processor/processor.cpp");
 const auto system_cpp = source("kernel/src/kernel/system/system.cpp");
+emit("pit_perform_sleep.inc", function(source("kernel/src/kernel/system/timing/pit.cpp"), "void pitPerformSleep("));
 const auto hashmap_hpp = source("kernel/src/kernel/utils/hashmap.hpp");
 const auto hashmap_string_hpp = source("kernel/src/kernel/utils/hashmap_string.hpp");
 const auto hashmap_string_cpp = source("kernel/src/kernel/utils/hashmap_string.cpp");
@@ -44,6 +46,22 @@ const auto message_topics_cpp = source("kernel/src/kernel/ipc/message_topics.cpp
 const auto pipes_cpp = source("kernel/src/kernel/ipc/pipes.cpp");
 const auto tasks_callstructs_h = source("libapi/inc/ghost/tasks/callstructs.h");
 const auto syscall_tasking_cpp = source("kernel/src/kernel/calls/syscall_tasking.cpp");
+const auto clock_cpp = source("kernel/src/kernel/tasking/clock.cpp");
+emit("time_syscalls.inc",
+    between(clock_cpp, "static bool hypervisorClock;", "static bool clockReferenceAvailable(")
+    + function(clock_cpp, "static bool clockReferenceAvailable(")
+    + function(clock_cpp, "static uint64_t clockReadHypervisorCounter(")
+    + function(clock_cpp, "static uint64_t clockReadVmwareNanos(")
+    + function(clock_cpp, "bool clockReadCalibrationNanos(")
+    + function(clock_cpp, "static uint64_t clockReadReferenceNanos(")
+    + function(clock_cpp, "uint64_t clockGetMilliseconds(")
+    + function(clock_cpp, "uint64_t clockGetNanoseconds(")
+    + function(clock_cpp, "int64_t clockGetWallTime(")
+    + function(syscall_tasking_cpp, "void syscallGetTime(")
+    + function(syscall_tasking_cpp, "void syscallGetMilliseconds(")
+    + function(syscall_tasking_cpp, "void syscallGetNanoseconds("));
+emit("time_callstructs.inc", between(source("libapi/inc/ghost/tasks/callstructs.h"),
+    "/**\n * @field millis local", "/**\n * @field forkedId"));
 const auto exceptions_cpp = source("kernel/src/kernel/system/interrupts/exceptions.cpp");
 const auto elf64_h = source("libapi/inc/ghost/elf64.h");
 const auto tasks_types_h = source("libapi/inc/ghost/tasks/types.h");
@@ -56,7 +74,7 @@ const auto paging_shootdown_cpp = source("kernel/src/kernel/memory/paging_shootd
 const auto address_range_pool_hpp = source("kernel/src/kernel/memory/address_range_pool.hpp");
 const auto address_range_pool_cpp = source("kernel/src/kernel/memory/address_range_pool.cpp");
 
-emit("memory_atomic.inc", between(source("kernel/src/kernel/memory/memory.hpp"), "#define G_MEMORY_ORDER_RELAXED", "class g_task;"));
+emit("memory_atomic.inc", between(source("libapi/inc/ghost/memory.h"), "#define G_MEMORY_ORDER_RELAXED", "__BEGIN_C"));
 emit("mutex_layout.inc", (before(mutex_hpp, "/**")) + std::string("\n#endif\n"));
 emit("direct_map_offset.inc", (defines(constants_hpp, "G_MEM_HIGHER_HALF_DIRECT_MAP_OFFSET")));
 emit("physical_to_virtual.inc", (defines(constants_hpp, "G_MEM_PHYS_TO_VIRT")));
@@ -75,6 +93,7 @@ emit("page_reference_tracker_cpp.inc", page_reference_tracker_cpp);
 emit("bitmap_page_allocator_hpp.inc", bitmap_page_allocator_hpp);
 emit("bitmap_page_allocator_cpp.inc", bitmap_page_allocator_cpp);
 emit("processor_layout.inc", before(slice(processor_hpp, find(processor_hpp, "struct g_processor")), "/**"));
+emit("processor_clock_rates.inc", between(processor_cpp, "bool processorHasHypervFeature(", "void processorGetVendor("));
 emit("processor_lookup_and_add.inc", (between(processor_cpp, "g_processor* _processorGetCurrent()", "void processorInitializeBsp()")) + (between(processor_cpp, "void processorAdd(", "uint16_t processorGetNumberOfProcessors()")));
 emit("system_host_cpp.inc", (replace((replace(system_cpp, "asm volatile(\"pause\");", "std::this_thread::yield();")), "asm(\"pause\");", "std::this_thread::yield();")));
 emit("hashmap_hpp.inc", hashmap_hpp);
@@ -123,7 +142,9 @@ emit("heap_host_cpp.inc", std::string("\ng_allocator heapAllocator;\ng_mutex hea
 emit("messageTopicsPost.inc", (function(message_topics_cpp, "g_message_send_status messageTopicsPost(")));
 emit("pipeGetLength.inc", (function(pipes_cpp, "g_fs_length_status pipeGetLength(")));
 emit("taskingMemoryExtendHeap.inc", (function(tasking_memory_cpp, "bool taskingMemoryExtendHeap(")));
+emit("memoryReleasePages.inc", function(memory_cpp, "void memoryReleasePages("));
 emit("tasking_stack.inc", (function(tasking_memory_cpp, "g_stack taskingMemoryCreateStack("))
+    + (function(tasking_memory_cpp, "void taskingMemoryDestroyStack("))
     + (function(tasking_memory_cpp, "bool taskingMemoryHandleStackOverflow(")));
 emit("tasking_fpu.inc", (function(tasking_memory_cpp, "void taskingMemoryInitializeUtility("))
     + (function(tasking_memory_cpp, "void taskingMemoryDestroyUtility(")));
@@ -140,7 +161,6 @@ emit("syscallCreateTask_and_spawn.inc", (function(syscall_tasking_cpp, "void sys
     + function(syscall_tasking_cpp, "void syscallGetLaunchMode("));
 emit("taskingCreateTask.inc", (function(tasking_cpp, "g_task* taskingCreateTask(")));
 emit("tasking_tls.inc", (function(tasking_memory_cpp, "bool taskingMemoryInitializeTls("))
-    + (function(tasking_memory_cpp, "static void _taskingMemoryReleasePage("))
     + (function(tasking_memory_cpp, "void taskingMemoryDestroyTls(")));
 emit("exceptionsHandlePageFault.inc", (function(exceptions_cpp, "bool exceptionsHandlePageFault(")));
 emit("elf64_types.inc", (replace((replace(elf64_h, "__BEGIN_C", "")), "__END_C", "")));
@@ -182,7 +202,7 @@ emit("address_range_free.inc", (function(address_range_pool_cpp, "bool addressRa
 
 // Alignment checks use actual task/API layouts, including trailing packing attributes.
 emit("task_api_types.inc", replace(replace(tasks_types_h, "__BEGIN_C", ""), "__END_C", ""));
-emit("task_layout.inc", between(task_hpp, "struct g_stack\n{", "/**\n * Task entry used"));
+emit("task_layout.inc", "struct g_user_memory;\n" + between(task_hpp, "struct g_stack\n{", "/**\n * Task entry used"));
 
 const auto delegate_hpp = source("kernel/src/kernel/filesystem/filesystem_taskdelegate.hpp");
 const auto filesystem_hpp = source("kernel/src/kernel/filesystem/filesystem.hpp");
@@ -207,12 +227,15 @@ const auto syscall_filesystem_cpp = source("kernel/src/kernel/calls/syscall_file
 emit("filesystem_delegate_io_syscalls.inc", function(syscall_filesystem_cpp, "void syscallFsRead(")
     + function(syscall_filesystem_cpp, "void syscallFsWrite("));
 
-emit("memory_user_copy.inc", function(memory_cpp, "static bool memoryCopyUser(")
-    + function(memory_cpp, "bool memoryCopyFromUser(")
-    + function(memory_cpp, "bool memoryCopyToUser("));
+emit("memory_user_copy.inc", function(memory_user_cpp, "static bool memoryCopyUser(")
+    + function(memory_user_cpp, "bool memoryCopyFromUser(")
+    + function(memory_user_cpp, "bool memoryCopyToUser("));
 
 emit("ramdisk_entry.inc", source("kernel/src/kernel/filesystem/ramdisk_entry.hpp"));
 const auto ramdisk_delegate_cpp = source("kernel/src/kernel/filesystem/filesystem_ramdiskdelegate.cpp");
+emit("ramdisk_namespace.inc", function(ramdisk_delegate_cpp, "g_fs_open_status filesystemRamdiskDelegateLookup(")
+    + function(ramdisk_delegate_cpp, "g_fs_open_status filesystemRamdiskDelegateCreate("));
+emit("filesystem_open_policy.inc", function(filesystem_cpp, "g_fs_open_status filesystemOpen("));
 emit("ramdisk_io.inc", function(ramdisk_delegate_cpp, "g_fs_read_status filesystemRamdiskDelegateRead(")
     + function(ramdisk_delegate_cpp, "g_fs_write_status filesystemRamdiskDelegateWrite(")
     + function(ramdisk_delegate_cpp, "g_fs_open_status filesystemRamdiskDelegateTruncate("));
@@ -221,7 +244,7 @@ emit("filesystem_unlink_node.inc", function(source("kernel/src/kernel/filesystem
 
 emit("filesystem_mutation_syscalls.inc", source("kernel/src/kernel/calls/syscall_filesystem_mutation.cpp"));
 emit("filesystem_path_mutations.inc", between(source("kernel/src/kernel/filesystem/filesystem_mutation.cpp"),
-    "static g_fs_mutation_status filesystemMutationLookupStatus(", "g_fs_mutation_status filesystemMutateDescriptor("));
+    "g_fs_mutation_status filesystemMutationLookupStatus(", "g_fs_mutation_status filesystemMutateDescriptor("));
 
 emit("mutex_acquire.inc", replace(function(source("kernel/src/kernel/system/mutex.cpp"), "void mutexAcquire("), "asm volatile(\"pause\")", "std::this_thread::yield()"));
 
@@ -236,8 +259,77 @@ emit("pci_resource_access.inc", function(source("applications/pcidriver/src/pcid
 
 emit("acpi_driver.inc", source("kernel/src/kernel/system/acpi_driver.cpp"));
 emit("acpi_power_bridge.inc", replace(source("kernel/src/kernel/system/power/acpi_power.cpp"), "asm volatile(\"pause\")", "(void)0"));
-emit("acpi_irq_bridge.inc", between(source("kernel/src/kernel/system/acpi/platform.cpp"), "static void acpiPlatformMask(", "uint64_t acpiPlatformMap("));
-emit("acpi_platform_syscall.inc", function(source("kernel/src/kernel/calls/syscall_system.cpp"), "void syscallAcpiPlatform("));
+emit("acpi_irq_layouts.inc", between(source("kernel/src/kernel/system/acpi/acpi.hpp"), "struct g_acpi_table_header", "/**\n * Generic address")
+    + between(source("kernel/src/kernel/system/acpi/madt.hpp"), "struct g_madt_header", "/**\n * Reads the Multiple"));
+emit("irq_backend_types.inc", source("kernel/src/kernel/system/interrupts/irq.hpp")
+    + source("kernel/src/kernel/system/interrupts/irq_route.hpp"));
+emit("irq_backend.inc", source("kernel/src/kernel/system/acpi/irq_routing.cpp")
+    + function(source("kernel/src/kernel/system/interrupts/pic.cpp"), "bool picSupportsTrigger(")
+    + function(source("kernel/src/kernel/system/interrupts/apic/lapic.cpp"), "bool lapicVectorIsBusy(")
+    + function(source("kernel/src/kernel/system/interrupts/apic/ioapic.cpp"), "bool ioapicVectorIsBusyElsewhere(")
+    + source("kernel/src/kernel/system/interrupts/irq_route.cpp")
+    + source("kernel/src/kernel/system/interrupts/irq.cpp"));
+
+emit("irq_syscall_types.inc", between(source("libapi/inc/ghost/system/callstructs.h"), "typedef uint8_t g_irq_operation;", "__END_C"));
+emit("irq_syscalls.inc", function(source("kernel/src/kernel/calls/syscall_system.cpp"), "static g_irq_status syscallIrqOperation(")
+    + function(source("kernel/src/kernel/calls/syscall_system.cpp"), "void syscallIrq("));
+emit("acpi_platform_syscall.inc", function(source("kernel/src/kernel/calls/syscall_system.cpp"), "void syscallAcpiGetPlatformInfo(")
+    + function(source("kernel/src/kernel/calls/syscall_system.cpp"), "void syscallAcpiMap("));
 emit("tasking_wait_if.inc", between(tasking_hpp, "template<typename PrepareWait, typename AfterYield>", "/** Marks the task waiting, attaches"));
 
 emit("ioapic_flags.inc", defines(source("kernel/src/kernel/system/interrupts/apic/ioapic.hpp"), "IOAPIC_REDTBL"));
+
+emit("filesystem_rename.inc", fromSignature(source("kernel/src/kernel/filesystem/filesystem_mutation.cpp"), "static bool filesystemRenameIsFile("));
+
+emit("filesystem_open_directory.inc", function(source("kernel/src/kernel/calls/syscall_filesystem.cpp"), "void syscallFsOpenDirectory("));
+
+auto filesystem_links_cpp = source("kernel/src/kernel/filesystem/filesystem_links.cpp");
+emit("filesystem_link_format.inc", between(filesystem_links_cpp, "bool filesystemIsLinkName(", "static bool filesystemIsDirectory("));
+emit("filesystem_links.inc", function(source("kernel/src/kernel/filesystem/filesystem_mutation.cpp"), "g_fs_mutation_status filesystemMutationLookupStatus(")
+    + fromSignature(filesystem_links_cpp, "static bool filesystemIsDirectory("));
+emit("filesystem_link_stat.inc", function(filesystem_cpp, "g_fs_stat_status filesystemStatNode(")
+    + function(filesystem_cpp, "g_fs_stat_status filesystemStat("));
+
+emit("filesystem_link_syscalls.inc", source("kernel/src/kernel/calls/syscall_filesystem_links.cpp"));
+
+emit("physicalResources.inc", function(source("kernel/src/kernel/memory/memory.cpp"), "static uint64_t memoryCountPhysicalBytes(")
+    + function(source("kernel/src/kernel/memory/memory.cpp"), "void memoryGetPhysicalUsage("));
+
+
+emit("memory_user_hpp.inc", source("kernel/src/kernel/memory/memory_user.hpp"));
+emit("memory_user_cpp.inc", memory_user_cpp);
+emit("syscall_registration.inc", source("kernel/src/kernel/calls/syscall.hpp"));
+emit("syscall_adapter.inc", function(syscall_cpp, "static void _syscallInvoke("));
+emit("syscall_messages.inc", source("kernel/src/kernel/calls/syscall_messaging.cpp"));
+
+emit("interrupt_handler.inc", function(source("kernel/src/kernel/system/interrupts/interrupts.cpp"), "extern \"C\" volatile g_processor_state* _interruptHandler("));
+emit("paging_shootdown_hpp.inc", source("kernel/src/kernel/memory/paging_shootdown.hpp"));
+emit("timer_configuration.inc", source("kernel/src/kernel/system/configuration.hpp"));
+
+emit("clock_hpp.inc", source("kernel/src/kernel/tasking/clock.hpp"));
+emit("clock_cpp.inc", clock_cpp);
+emit("scheduler_reschedule.inc", function(scheduler_round_robin_cpp, "void schedulerInitializeLocal(")
+    + function(scheduler_round_robin_cpp, "void schedulerRequestReschedule(")
+    + function(scheduler_round_robin_cpp, "void schedulerAcknowledgeReschedule("));
+emit("schedulerPreferTask.inc", function(scheduler_round_robin_cpp, "void schedulerPreferTask("));
+emit("taskingReleaseSpawn.inc", function(tasking_cpp, "void taskingReleaseSpawn("));
+emit("taskingAssign.inc", function(tasking_cpp, "void taskingAssign("));
+const auto power_platform_cpp = source("kernel/src/kernel/system/power/power_platform.cpp");
+emit("powerStopProcessors.inc", function(power_platform_cpp, "static bool powerStopProcessors("));
+emit("powerProcessorCheckpoint.inc", replace(function(power_platform_cpp, "void powerProcessorCheckpoint("), "asm volatile(\"pause\")", "std::this_thread::yield()"));
+const auto lapic_cpp = source("kernel/src/kernel/system/interrupts/apic/lapic.cpp");
+emit("lapic_timer_hpp.inc", source("kernel/src/kernel/system/interrupts/apic/lapic.hpp") + "\n"
+    + defines(source("kernel/src/kernel/system/configuration.hpp"), "G_TIMER_FREQUENCY"));
+emit("lapic_timer_state.inc", between(lapic_cpp, "enum class g_lapic_timer_mode", "// All APICs"));
+emit("lapic_timer.inc", between(lapic_cpp, "struct g_lapic_calibration_sample", "void lapicStartTimer(")
+    + function(lapic_cpp, "void lapicStartTimer(") + function(lapic_cpp, "void lapicConfigureTimer("));
+emit("lapic_ipi.inc", function(lapic_cpp, "void lapicSendIpi(")
+    + function(lapic_cpp, "void lapicSendIpiAllOthers("));
+emit("lapic_hypervisor.inc", function(source("kernel/src/kernel/system/processor/processor.cpp"), "bool processorHasHypervFeature(")
+    + between(lapic_cpp, "static bool hypervisorEoi;", "enum class g_lapic_timer_mode")
+    + function(lapic_cpp, "void lapicSendEndOfInterrupt("));
+emit("lapic_interrupt_guard.inc", between(source("kernel/src/kernel/system/interrupts/interrupts.hpp"),
+    "class g_interrupt_guard", "/**\n * Installs all ISRs"));
+emit("reschedule_vector.inc", defines(source("kernel/src/kernel/tasking/scheduler/scheduler.hpp"), "G_SCHEDULER_RESCHEDULE_VECTOR"));
+
+emit("taskingReleaseTask.inc", function(tasking_cpp, "void taskingReleaseTask("));

@@ -35,6 +35,7 @@ inline bool kernelFatRootParseHex(const char* text, uint32_t* value)
 		else
 			return false;
 	}
+
 	return true;
 }
 
@@ -42,15 +43,18 @@ inline bool kernelFatRootValidateSelector(const char* command, unsigned length)
 {
 	if(length != 17 && length != 26)
 		return false;
+
 	const char* prefix = "root=fat:";
 	for(unsigned i = 0; i < 9; ++i)
 		if(command[i] != prefix[i])
 			return false;
+
 	uint32_t disk;
 	if(!kernelFatRootParseHex(command + 9, &disk) || !disk)
 		return false;
 	if(length == 17)
 		return true;
+
 	uint32_t partition;
 	return command[17] == ':' && kernelFatRootParseHex(command + 18, &partition);
 }

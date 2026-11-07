@@ -24,6 +24,9 @@
 #include "../common.h"
 #include "../stdint.h"
 #include "types.h"
+#include "irq.h"
+#include "../filesystem/types.h"
+#include "../memory/types.h"
 
 __BEGIN_C
 
@@ -92,27 +95,6 @@ typedef struct
 }__attribute__((packed)) g_syscall_test;
 
 /**
- *
- */
-typedef struct
-{
-	uint32_t source;
-	uint32_t irq;
-} __attribute__((packed)) g_syscall_irq_create_redirect;
-
-/**
- * @field irq
- * 		irq to wait for
- * @field timeout
- *      timeout in milliseconds
- */
-typedef struct
-{
-	uint8_t irq;
-	uint32_t timeout;
-} __attribute__((packed)) g_syscall_await_irq;
-
-/**
  * @field address
  *		framebuffer address
  * @field width
@@ -132,6 +114,28 @@ typedef struct
 	uint16_t bpp;
 	uint32_t pitch;
 } __attribute__((packed)) g_syscall_get_efi_framebuffer;
+
+typedef uint8_t g_irq_operation;
+#define G_IRQ_BIND ((g_irq_operation) 1)
+#define G_IRQ_WAIT ((g_irq_operation) 2)
+#define G_IRQ_COMPLETE ((g_irq_operation) 3)
+#define G_IRQ_MASK ((g_irq_operation) 4)
+#define G_IRQ_RELEASE ((g_irq_operation) 5)
+
+/**
+ * Fixed-width syscall payload for all common IRQ operations. Only a bind
+ * supplies source and line. Only a wait supplies timeoutMs. The kernel
+ * returns the status and, for a successful bind, the opaque handle.
+ */
+typedef struct g_syscall_irq
+{
+	g_irq_handle handle;
+	uint32_t line;
+	uint32_t timeoutMs;
+	g_irq_operation operation;
+	g_irq_source source;
+	g_irq_status status;
+} __attribute__((packed)) g_syscall_irq;
 
 __END_C
 
