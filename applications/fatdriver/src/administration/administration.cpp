@@ -27,7 +27,7 @@
 
 struct g_fat_format_job
 {
-	g_volume_admin_request request;
+	g_volume_format_work_request request;
 	g_tid client;
 	g_message_transaction transaction;
 	g_volume_admin_response response;
@@ -39,19 +39,27 @@ static void fatAdminProgress(void* context, uint64_t done, uint64_t total)
 	auto job = static_cast<g_fat_format_job*>(context);
 	job->response.job.completed = done;
 	job->response.job.total = total;
-	if(done - job->reported < 64 && done != total)
+	if(done - job->reported < G_FAT_FORMAT_PROGRESS_SECTORS && done != total)
 		return;
+
 	job->reported = done;
 	g_send_message_tm(job->client, &job->response, sizeof(job->response), job->transaction,
 					  G_MESSAGE_SEND_MODE_NON_BLOCKING);
 }
 
-static void fatAdminSendResponse(g_fat_format_job* job)
+static void fatAdminSendResponse(g_tid client, g_message_transaction transaction, g_volume_admin_response* response)
 {
-	while(g_send_message_tm(job->client, &job->response, sizeof(job->response), job->transaction,
-							G_MESSAGE_SEND_MODE_NON_BLOCKING) == G_MESSAGE_SEND_STATUS_FULL &&
-		  g_get_pid_for_tid(job->client) != G_PID_NONE)
-		g_sleep(1);
+	for(;;)
+	{
+		auto status = g_send_message_tm(client, response, sizeof(*response), transaction,
+										G_MESSAGE_SEND_MODE_NON_BLOCKING);
+		if(status != G_MESSAGE_SEND_STATUS_FULL)
+			break;
+		if(g_get_pid_for_tid(client) == G_PID_NONE)
+			break;
+
+		g_sleep(G_FAT_IPC_RETRY_MS);
+	}
 }
 
 static void fatAdminAwaitAcknowledgement(g_fat_format_job* job)
@@ -63,16 +71,17 @@ static void fatAdminAwaitAcknowledgement(g_fat_format_job* job)
 		   G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 		{
 			auto header = reinterpret_cast<g_message_header*>(incoming);
-			if(header->sender == job->client && header->length == sizeof(g_volume_admin_request))
+			if(header->sender == job->client && header->length == sizeof(g_volume_format_ack_request))
 			{
-				g_volume_admin_request ack;
+				g_volume_format_ack_request ack;
 				memcpy(&ack, G_MESSAGE_CONTENT(incoming), sizeof(ack));
-				if(ack.magic == G_VOLUME_ADMIN_MAGIC && ack.version == G_VOLUME_ADMIN_VERSION &&
-				   ack.command == G_VOLUME_FORMAT_ACK && ack.job == job->request.job)
+				if(ack.header.magic == G_VOLUME_ADMIN_MAGIC && ack.header.version == G_VOLUME_ADMIN_VERSION &&
+				   ack.header.command == G_VOLUME_FORMAT_ACK && ack.job == job->request.job)
 					break;
 			}
 		}
-		g_sleep(1);
+
+		g_sleep(G_FAT_IPC_RETRY_MS);
 	}
 }
 
@@ -83,43 +92,52 @@ static void fatAdminFormat(void* argument)
 
 	g_fat_device device;
 	device.id = request.device;
-	device.handler = request.type;
+	device.handler = request.driver;
 
 	auto& response = job->response;
 	response.command = G_VOLUME_FORMAT_WORK;
 	response.status = G_VOLUME_OK;
 	response.job.id = request.job;
 	response.job.phase = G_VOLUME_JOB_FORMATTING;
-	fatAdminSendResponse(job);
+	fatAdminSendResponse(job->client, job->transaction, &response);
 
 	g_volume_status result = G_VOLUME_IO_ERROR;
-	if(blockDeviceGetInfo(device.handler, device.id, &device.info) == G_BLOCK_SUCCESS &&
-	   blockDeviceOpenBuffer(device.handler, &device.buffer) == G_BLOCK_SUCCESS)
+	auto infoStatus = blockDeviceGetInfo(device.handler, device.id, &device.info);
+	if(infoStatus == G_BLOCK_SUCCESS)
 	{
-		uint32_t serial = uint32_t(request.job ^ g_millis());
-		result = fatFormatVolume(&device, request.firstSector, request.sectorCount, serial ? serial : 1, request.label,
-								 fatAdminProgress, job);
+		auto openStatus = blockDeviceOpenBuffer(device.handler, &device.buffer);
+		if(openStatus == G_BLOCK_SUCCESS)
+		{
+			uint32_t serial = uint32_t(request.job ^ g_millis());
+			if(!serial)
+				serial = 1;
+			result = fatFormatVolume(&device, request.firstSector, request.sectorCount, serial, request.label,
+									 fatAdminProgress, job);
+		}
 	}
 
-	if(device.buffer.handle && !fatDeviceClose(&device))
+	if(device.buffer.handle)
 	{
-		response.job.ioSafe = 0;
-		result = G_VOLUME_IO_ERROR;
+		if(!fatDeviceClose(&device))
+		{
+			response.job.ioSafe = 0;
+			result = G_VOLUME_IO_ERROR;
+		}
 	}
 
 	response.status = result;
 	response.job.result = response.status;
 	response.job.state = result == G_VOLUME_OK ? G_VOLUME_JOB_SUCCEEDED : G_VOLUME_JOB_FAILED;
 
-	fatAdminSendResponse(job);
+	fatAdminSendResponse(job->client, job->transaction, &response);
 	fatAdminAwaitAcknowledgement(job);
 	delete job;
 }
 
-static bool fatAdminRequestValid(const g_volume_admin_request& request)
+static bool fatAdminRequestValid(const g_volume_format_work_request& request)
 {
-	return request.version == G_VOLUME_ADMIN_VERSION && !request.reserved && request.device &&
-		   request.type != uint32_t(G_TID_NONE) && request.job &&
+	return request.device &&
+		   request.driver != G_TID_NONE && request.job &&
 		   memchr(request.filesystem, 0, sizeof(request.filesystem)) && !strcmp(request.filesystem, "fat32") &&
 		   memchr(request.label, 0, sizeof(request.label));
 }
@@ -131,12 +149,12 @@ static bool fatAdminRequestValid(const g_volume_admin_request& request)
  */
 bool fatAdminReceive(const g_message_header* message, const void* content)
 {
-	if(message->length != sizeof(g_volume_admin_request))
+	if(message->length < sizeof(g_volume_admin_header))
 		return false;
 
-	g_volume_admin_request request;
-	memcpy(&request, content, sizeof(request));
-	if(request.magic != G_VOLUME_ADMIN_MAGIC)
+	g_volume_admin_header header;
+	memcpy(&header, content, sizeof(header));
+	if(header.magic != G_VOLUME_ADMIN_MAGIC)
 		return false;
 
 	auto manager = g_task_get_by_name(G_STORAGE_MANAGER_NAME);
@@ -144,31 +162,37 @@ bool fatAdminReceive(const g_message_header* message, const void* content)
 	   g_get_pid_for_tid(message->sender) != g_get_pid_for_tid(manager))
 		return true;
 
-	if(request.command == G_VOLUME_FORMAT_WORK)
+	g_volume_admin_response response;
+	response.command = header.command;
+	if(header.version != G_VOLUME_ADMIN_VERSION || header.command != G_VOLUME_FORMAT_WORK ||
+	   message->length != sizeof(g_volume_format_work_request))
 	{
-		g_volume_admin_response response;
-		response.command = G_VOLUME_FORMAT_WORK;
+		response.status = G_VOLUME_PROTOCOL_ERROR;
+	}
+	else
+	{
+		g_volume_format_work_request request;
+		memcpy(&request, content, sizeof(request));
 		response.job.id = request.job;
 		if(fatAdminRequestValid(request))
 		{
 			auto job = new(std::nothrow) g_fat_format_job{request, message->sender, message->transaction, {}, 0};
-			if(job && g_create_task_d(reinterpret_cast<void*>(fatAdminFormat), job) != G_TID_NONE)
-				return true;
+			if(job)
+			{
+				auto worker = g_create_task_d(reinterpret_cast<void*>(fatAdminFormat), job);
+				if(worker != G_TID_NONE)
+					return true;
 
-			delete job;
+				delete job;
+			}
+
 			response.status = G_VOLUME_UNAVAILABLE;
 		}
-
-		response.job.state = G_VOLUME_JOB_FAILED;
-		g_send_message_tm(message->sender, &response, sizeof(response), message->transaction,
-						  G_MESSAGE_SEND_MODE_NON_BLOCKING);
-		return true;
 	}
 
-	g_volume_admin_response response;
-	response.command = request.command;
-	response.status = G_VOLUME_PROTOCOL_ERROR;
-	g_send_message_tm(message->sender, &response, sizeof(response), message->transaction,
-					  G_MESSAGE_SEND_MODE_NON_BLOCKING);
+	response.job.state = G_VOLUME_JOB_FAILED;
+	response.job.result = response.status;
+
+	fatAdminSendResponse(message->sender, message->transaction, &response);
 	return true;
 }

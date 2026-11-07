@@ -24,6 +24,12 @@
 #include <cstring>
 #include <dirent.h>
 #include <fcntl.h>
+#ifndef O_LINKFILE
+#define O_LINKFILE 0
+#endif
+#ifndef O_NOFOLLOW
+#define O_NOFOLLOW 0
+#endif
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -38,10 +44,12 @@ static bool installSourceWalk(const std::string& root, const std::string& path, 
 {
 	if(depth > 64)
 		return installSourceError(error, "source directory nesting is too deep");
+
 	auto source = root + (path.empty() ? "" : "/") + path;
 	auto directory = opendir(source.c_str());
 	if(!directory)
 		return installSourceError(error, "could not read a source directory");
+
 	bool success = true;
 	for(;;)
 	{
@@ -53,19 +61,44 @@ static bool installSourceWalk(const std::string& root, const std::string& path, 
 				success = installSourceError(error, "source directory iteration failed");
 			break;
 		}
+
 		if(!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, ".."))
 			continue;
+
 		auto relative = path.empty() ? entry->d_name : path + "/" + entry->d_name;
 		if(relative == "system/install" || relative == "boot/ramdisk" || relative == "applications/install.bin" ||
+		   relative == "applications/Install.app" || relative == "applications/Install Ghost.app" ||
+		   relative == "applications/install.link" || relative == "user/desktop/Install Ghost.link" ||
 		   relative == "user/desktop/10-install.launcher" || relative == "user/start-menu/50-install.launcher")
 			continue;
+
 		struct stat info;
-		if(stat((root + "/" + relative).c_str(), &info) || (!S_ISREG(info.st_mode) && !S_ISDIR(info.st_mode)) ||
+		if(lstat((root + "/" + relative).c_str(), &info) ||
+		   (!S_ISREG(info.st_mode) && !S_ISDIR(info.st_mode) && !S_ISLNK(info.st_mode)) ||
 		   info.st_size < 0 || (S_ISREG(info.st_mode) && uint64_t(info.st_size) > UINT32_MAX))
 		{
 			success = installSourceError(error, "source file is unavailable or has an unsupported type or size");
 			break;
 		}
+
+		if(S_ISLNK(info.st_mode))
+		{
+			if(!O_LINKFILE)
+			{
+				success = installSourceError(error, "native symbolic links are not Ghost link files");
+				break;
+			}
+			auto file = open((root + "/" + relative).c_str(), O_RDONLY | O_LINKFILE);
+			if(file < 0 || fstat(file, &info) || info.st_size < 0 || uint64_t(info.st_size) > UINT32_MAX)
+			{
+				if(file >= 0)
+					close(file);
+				success = installSourceError(error, "cannot read link storage");
+				break;
+			}
+			close(file);
+		}
+
 		auto index = entries->size();
 		entries->push_back(
 				{relative, S_ISDIR(info.st_mode) ? 0 : uint64_t(info.st_size), parent, bool(S_ISDIR(info.st_mode))});
@@ -75,6 +108,7 @@ static bool installSourceWalk(const std::string& root, const std::string& path, 
 			break;
 		}
 	}
+
 	if(closedir(directory))
 		success = installSourceError(error, "could not close a source directory");
 	return success;
@@ -94,6 +128,7 @@ bool installSourceCollect(std::vector<g_install_entry>* entries, const char** er
 			for(const auto& other: *entries)
 				if(other.path == "limine.conf")
 					return installSourceError(error, "conflicting root Limine configuration in the live source");
+
 			entry.sourcePath = entry.path;
 			entry.path = "limine.conf";
 			entry.parent = 0;
@@ -121,6 +156,7 @@ bool installSourcePrepare(g_install_source_tree* tree, const char** error)
 	{
 		if(entry.size > UINT64_MAX - tree->plan.bytes)
 			return installSourceError(error, "source size overflow");
+
 		tree->plan.bytes += entry.size;
 
 		if(installSourcePath(entry) != "boot/limine/limine.conf")
@@ -129,7 +165,7 @@ bool installSourcePrepare(g_install_source_tree* tree, const char** error)
 		if(entry.directory || entry.size > 1048576)
 			return installSourceError(error, "invalid Limine configuration");
 
-		auto file = open((tree->root + "/" + installSourcePath(entry)).c_str(), O_RDONLY);
+		auto file = open((tree->root + "/" + installSourcePath(entry)).c_str(), O_RDONLY | O_LINKFILE | O_NOFOLLOW);
 		if(file < 0)
 			return installSourceError(error, "cannot read Limine configuration");
 
@@ -140,6 +176,7 @@ bool installSourcePrepare(g_install_source_tree* tree, const char** error)
 			auto count = read(file, data.data() + offset, data.size() - offset);
 			if(count <= 0)
 				break;
+
 			offset += count;
 		}
 
@@ -162,6 +199,7 @@ bool installSourcePrepare(g_install_source_tree* tree, const char** error)
 				found = true;
 			}
 	}
+
 	return found || installSourceError(error, "disk identity is absent from Limine configuration");
 }
 
@@ -181,7 +219,8 @@ bool installSourceRead(void* context, size_t index, uint64_t offset, uint8_t* by
 			tree->current = SIZE_MAX;
 			return false;
 		}
-		tree->file = open((tree->root + "/" + installSourcePath(entry)).c_str(), O_RDONLY);
+
+		tree->file = open((tree->root + "/" + installSourcePath(entry)).c_str(), O_RDONLY | O_LINKFILE | O_NOFOLLOW);
 		tree->current = index;
 	}
 
@@ -198,6 +237,7 @@ bool installSourceRead(void* context, size_t index, uint64_t offset, uint8_t* by
 			continue;
 		if(result <= 0)
 			return false;
+
 		done += result;
 	}
 
@@ -213,5 +253,6 @@ bool installSourceRead(void* context, size_t index, uint64_t offset, uint8_t* by
 				bytes[tree->partitionPatchOffset + i - offset] = hex[(tree->plan.firstSector >> (28 - i * 4)) & 15];
 		}
 	}
+
 	return true;
 }

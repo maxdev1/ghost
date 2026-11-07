@@ -18,21 +18,54 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef STORAGEMANAGER_ADMINISTRATION
-#define STORAGEMANAGER_ADMINISTRATION
+#ifndef STORAGEMANAGER_ADMIN_REQUESTS
+#define STORAGEMANAGER_ADMIN_REQUESTS
+
 #include <ghost/messages.h>
-#include "registry.hpp"
+#include "disk/storage.hpp"
 
-using g_volume_scan_function = g_volume_status (*)(g_volume_info, g_tid, g_volume_job_id, bool);
+/**
+ * An owned administrative request. Decoding retains only the operation's data;
+ * unused fields stay zero and the worker never refers to the receive buffer.
+ */
+struct g_volume_admin_request
+{
+	g_volume_admin_command command;
+	uint64_t operation;
+	uint64_t generation;
+	g_device_id device;
+	g_volume_id volume;
 
-void storageManagerAdminInitialize(g_volume_scan_function scan);
+	g_disk_layout layout;
+	uint32_t flags;
+	uint32_t partition;
+	g_disk_partition_options partitionCreate;
 
-bool storageManagerAdminReceive(g_volume_registry* registry, const g_message_header* message, const void* content);
+	char filesystem[16];
+	char label[12];
 
-void storageManagerAdminPoll(g_volume_registry* registry);
+	g_disk_boot_info boot;
+	uint64_t firstSector;
+	uint32_t dataSize;
+	uint8_t data[G_DISK_BOOT_CHUNK_SIZE];
+};
 
-bool storageManagerAdminQuiescing();
+struct g_volume_registry;
 
-void storageManagerAdminPollPower(bool controlsPending);
+/**
+ * Validates an administrative request, dispatches it and replies to its sender.
+ */
+void adminRequestHandle(g_volume_registry* registry, const g_message_header* message, const g_volume_admin_header* header);
+
+/**
+ * Compares operation identity and all retained request fields so retries can
+ * reuse a job only when the complete operation matches.
+ */
+bool adminRequestMatches(const g_volume_admin_request* left, const g_volume_admin_request* right);
+
+/**
+ * Identifies operations that intentionally erase or replace the disk layout.
+ */
+bool adminRequestDiscardsLayout(const g_volume_admin_request* request);
 
 #endif

@@ -24,11 +24,11 @@
 #include "volume/mount.hpp"
 
 static g_fs_delegate_status fatPublishNode(g_fat_mount* mount, g_fs_virt_id parent, const g_fat_directory_entry& entry,
-										   g_fs_virt_id* id)
+		g_fs_virt_id* id)
 {
 	return g_fs_delegate_node_create(mount->storage->header.transaction, parent, entry.name,
-									 entry.node.directory ? G_FS_NODE_TYPE_FOLDER : G_FS_NODE_TYPE_FILE, entry.node.id,
-									 id);
+		entry.node.directory ? G_FS_NODE_TYPE_FOLDER : G_FS_NODE_TYPE_FILE, entry.node.id,
+		id);
 }
 
 static void fatHandleLookup(g_fat_mount* mount)
@@ -39,7 +39,9 @@ static void fatHandleLookup(g_fat_mount* mount)
 
 	g_fat_node parent;
 	g_fat_directory directory;
-	if(!fatNodeRead(mount, lookup.parent_phys_fs_id, &parent) || !fatDirectoryOpen(mount, parent, &directory))
+	if(!fatNodeRead(mount, lookup.parent_phys_fs_id, &parent))
+		return;
+	if(!fatDirectoryOpen(mount, parent, &directory))
 		return;
 
 	for(;;)
@@ -51,6 +53,7 @@ static void fatHandleLookup(g_fat_mount* mount)
 			lookup.result_status = G_FS_LOOKUP_NOT_FOUND;
 			return;
 		}
+
 		if(result != G_FAT_SUCCESS)
 			return;
 		if(!fatNameEquals(lookup.name, entry.name) && !fatNameEquals(lookup.name, entry.alias))
@@ -69,7 +72,9 @@ static void fatHandleDirectory(g_fat_mount* mount)
 
 	g_fat_node parent;
 	g_fat_directory directory;
-	if(!fatNodeRead(mount, refresh.parent_phys_fs_id, &parent) || !fatDirectoryOpen(mount, parent, &directory))
+	if(!fatNodeRead(mount, refresh.parent_phys_fs_id, &parent))
+		return;
+	if(!fatDirectoryOpen(mount, parent, &directory))
 		return;
 
 	for(;;)
@@ -81,6 +86,7 @@ static void fatHandleDirectory(g_fat_mount* mount)
 			refresh.result_status = G_FS_DIRECTORY_REFRESH_SUCCESSFUL;
 			return;
 		}
+
 		if(result != G_FAT_SUCCESS)
 			return;
 
@@ -97,13 +103,15 @@ static void fatHandleRead(g_fat_mount* mount)
 	read.result_read = -1;
 
 	g_fat_node node;
+	if(!fatNodeRead(mount, read.phys_fs_id, &node))
+		return;
+
 	size_t count;
-	if(fatNodeRead(mount, read.phys_fs_id, &node) &&
-	   fatFileRead(mount, node, read.offset, read.mapped_buffer, read.length, &count))
-	{
-		read.result_read = count;
-		read.result_status = G_FS_READ_SUCCESSFUL;
-	}
+	if(!fatFileRead(mount, node, read.offset, read.mapped_buffer, read.length, &count))
+		return;
+
+	read.result_read = count;
+	read.result_status = G_FS_READ_SUCCESSFUL;
 }
 
 static void fatHandleLength(g_fat_mount* mount)
@@ -127,12 +135,16 @@ static void fatHandleOpen(g_fat_mount* mount)
 	g_fat_node node;
 	if(!fatNodeRead(mount, open.phys_fs_id, &node) || node.directory)
 		return;
+
 	auto inode = fatInodeFind(mount, open.phys_fs_id);
 	if(!inode || inode->opens == UINT32_MAX)
 		return;
-	if((open.flags & (G_FILE_FLAG_MODE_WRITE | G_FILE_FLAG_MODE_APPEND)) &&
-	   fatMutationAllowed(mount, inode) != G_FS_MUTATION_SUCCESSFUL)
-		return;
+	if(open.flags & (G_FILE_FLAG_MODE_WRITE | G_FILE_FLAG_MODE_APPEND))
+	{
+		if(fatMutationAllowed(mount, inode) != G_FS_MUTATION_SUCCESSFUL)
+			return;
+	}
+
 	++inode->opens;
 	open.result_status = G_FS_OPEN_SUCCESSFUL;
 }
@@ -156,10 +168,51 @@ static void fatHandleCreate(g_fat_mount* mount)
 	create.result_node_id = G_FS_VIRT_ID_NONE;
 	g_fat_directory_entry entry;
 	create.result_status = fatDirectoryCreate(mount, create.parent_phys_fs_id, create.name,
-											  create.type == G_FS_NODE_TYPE_FOLDER, &entry);
-	if(create.result_status == G_FS_MUTATION_SUCCESSFUL &&
-	   fatPublishNode(mount, create.parent_virt_fs_id, entry, &create.result_node_id) != G_FS_DELEGATE_SUCCESSFUL)
+		create.type == G_FS_NODE_TYPE_FOLDER, &entry);
+	if(create.result_status != G_FS_MUTATION_SUCCESSFUL)
+		return;
+
+	auto status = fatPublishNode(mount, create.parent_virt_fs_id, entry, &create.result_node_id);
+	if(status != G_FS_DELEGATE_SUCCESSFUL)
 		create.result_status = G_FS_MUTATION_ERROR;
+}
+
+static void fatHandleResize(g_fat_mount* mount)
+{
+	auto& resize = mount->storage->data.resize;
+	resize.result_status = fatFileResize(mount, resize.phys_fs_id, resize.length);
+}
+
+static void fatHandleRemove(g_fat_mount* mount)
+{
+	auto& remove = mount->storage->data.remove;
+	remove.result_status = fatNodeRemove(mount, remove.phys_fs_id);
+}
+
+static void fatHandleRename(g_fat_mount* mount)
+{
+	auto& rename = mount->storage->data.rename;
+	rename.result_status = fatNodeRename(mount, rename.phys_fs_id, rename.parent_phys_fs_id,
+		rename.name, rename.replaced_phys_fs_id);
+}
+
+static void fatHandleFlush(g_fat_mount* mount)
+{
+	auto& flush = mount->storage->data.flush;
+	if(fatMountFlush(mount))
+		flush.result_status = G_FS_MUTATION_SUCCESSFUL;
+	else
+		flush.result_status = G_FS_MUTATION_ERROR;
+}
+
+static void fatHandleClose(g_fat_mount* mount)
+{
+	auto& close = mount->storage->data.close;
+	auto status = fatInodeClose(mount, close.phys_fs_id);
+	if(status == G_FS_MUTATION_SUCCESSFUL)
+		close.result_status = G_FS_CLOSE_SUCCESSFUL;
+	else
+		close.result_status = G_FS_CLOSE_ERROR;
 }
 
 bool fatMountHandleRequest(g_fat_mount* mount, const g_message_header* message, const void* content)
@@ -200,22 +253,19 @@ bool fatMountHandleRequest(g_fat_mount* mount, const g_message_header* message, 
 				fatHandleCreate(mount);
 				break;
 			case G_FS_DELEGATE_REQUEST_RESIZE:
-				mount->storage->data.resize.result_status = fatFileResize(mount, mount->storage->data.resize.phys_fs_id,
-																		  mount->storage->data.resize.length);
+				fatHandleResize(mount);
 				break;
 			case G_FS_DELEGATE_REQUEST_REMOVE:
-				mount->storage->data.remove.result_status =
-						fatNodeRemove(mount, mount->storage->data.remove.phys_fs_id);
+				fatHandleRemove(mount);
+				break;
+			case G_FS_DELEGATE_REQUEST_RENAME:
+				fatHandleRename(mount);
 				break;
 			case G_FS_DELEGATE_REQUEST_FLUSH:
-				mount->storage->data.flush.result_status =
-						fatMountFlush(mount) ? G_FS_MUTATION_SUCCESSFUL : G_FS_MUTATION_ERROR;
+				fatHandleFlush(mount);
 				break;
 			case G_FS_DELEGATE_REQUEST_CLOSE:
-				mount->storage->data.close.result_status =
-						fatInodeClose(mount, mount->storage->data.close.phys_fs_id) == G_FS_MUTATION_SUCCESSFUL
-								? G_FS_CLOSE_SUCCESSFUL
-								: G_FS_CLOSE_ERROR;
+				fatHandleClose(mount);
 				break;
 			default:
 				return false;
@@ -235,6 +285,9 @@ bool fatMountHandleRequest(g_fat_mount* mount, const g_message_header* message, 
 			case G_FS_DELEGATE_REQUEST_REMOVE:
 				mount->storage->data.remove.result_status = G_FS_MUTATION_ERROR;
 				break;
+			case G_FS_DELEGATE_REQUEST_RENAME:
+				mount->storage->data.rename.result_status = G_FS_MUTATION_ERROR;
+				break;
 			case G_FS_DELEGATE_REQUEST_WRITE:
 				mount->storage->data.write.result_status = G_FS_WRITE_ERROR;
 				break;
@@ -247,10 +300,14 @@ bool fatMountHandleRequest(g_fat_mount* mount, const g_message_header* message, 
 	}
 
 	bool opened = request.type == G_FS_DELEGATE_REQUEST_OPEN &&
-				  mount->storage->data.open.result_status == G_FS_OPEN_SUCCESSFUL;
+		mount->storage->data.open.result_status == G_FS_OPEN_SUCCESSFUL;
 	auto openedId = opened ? mount->storage->data.open.phys_fs_id : G_FAT_ROOT;
 	auto status = g_fs_delegate_transaction_complete(request.transaction);
-	if(status == G_FS_DELEGATE_STALE_TRANSACTION && opened)
-		fatInodeClose(mount, openedId);
+	if(status == G_FS_DELEGATE_STALE_TRANSACTION)
+	{
+		if(opened)
+			fatInodeClose(mount, openedId);
+	}
+
 	return status == G_FS_DELEGATE_SUCCESSFUL || status == G_FS_DELEGATE_STALE_TRANSACTION;
 }

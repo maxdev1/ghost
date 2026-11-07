@@ -1,3 +1,23 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2026, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include "disk.hpp"
 
 int diskToolRun(int argc, char** argv)
@@ -17,16 +37,19 @@ int diskToolRun(int argc, char** argv)
 			   usage);
 		return 0;
 	}
+
 	if(argc == 2 && !strcmp(argv[1], "list"))
 		return diskList();
 	if(argc == 4 && !strcmp(argv[1], "job") && !strcmp(argv[3], "get"))
 		return storageJobQuery("disk", argv[2]);
+
 	uint64_t id;
 	if(argc < 3 || !coreParseUnsigned(argv[1], &id) || !id || id > UINT16_MAX)
 	{
 		fprintf(stderr, "%s", usage);
 		return 1;
 	}
+
 	g_disk_info disk;
 	auto status = diskGet(id, &disk);
 	if(status != G_VOLUME_OK)
@@ -36,16 +59,17 @@ int diskToolRun(int argc, char** argv)
 		diskPrint(disk);
 		return 0;
 	}
+
 	if(argc == 4 && !strcmp(argv[2], "partition") && !strcmp(argv[3], "list"))
 		return diskPartitionList(disk);
-	g_volume_admin_request request;
-	request.device = id;
-	request.generation = disk.generation;
 	if((argc == 5 || argc == 6) && !strcmp(argv[2], "table") && !strcmp(argv[3], "create"))
 	{
 		if(argc == 6 && strcmp(argv[5], "--replace"))
 			return storageError("disk", G_VOLUME_INVALID);
-		request.command = G_DISK_TABLE_CREATE;
+
+		g_disk_table_create_request request;
+		request.device = disk.device;
+		request.generation = disk.generation;
 		if(!strcmp(argv[4], "mbr"))
 			request.layout = G_DISK_MBR;
 		else if(!strcmp(argv[4], "gpt"))
@@ -54,14 +78,24 @@ int diskToolRun(int argc, char** argv)
 			return storageError("disk", G_VOLUME_INVALID);
 		if(argc == 6)
 			request.flags = G_DISK_TABLE_REPLACE;
+		return storageRunJob("disk", request);
 	}
 	else if(argc == 4 && !strcmp(argv[2], "wipe") && !strcmp(argv[3], "--zero"))
-		request.command = G_DISK_WIPE;
+	{
+		g_disk_wipe_request request;
+		request.device = disk.device;
+		request.generation = disk.generation;
+		return storageRunJob("disk", request);
+	}
 	else if(argc >= 6 && !strcmp(argv[2], "partition") && !strcmp(argv[3], "create"))
 	{
-		request.command = G_DISK_PARTITION_CREATE;
+		g_disk_partition_create_request request;
+		request.device = disk.device;
+		request.generation = disk.generation;
 		if(!diskPartitionOptions(argc, argv, disk, &request))
 			return storageError("disk", G_VOLUME_INVALID);
+
+		return storageRunJob("disk", request);
 	}
 	else if(argc == 5 && !strcmp(argv[2], "partition") && coreParseUnsigned(argv[3], &id) && id && id <= UINT32_MAX)
 	{
@@ -71,22 +105,27 @@ int diskToolRun(int argc, char** argv)
 			status = diskPartitionNext(disk.device, id - 1, &part);
 			if(status != G_VOLUME_OK || part.number != id)
 				return storageError("disk", status == G_VOLUME_OK ? G_VOLUME_NOT_FOUND : status);
+
 			printf("NUMBER\tVOLUME\tFIRST SECTOR\tSECTORS\tTYPE\tFLAGS\n");
 			diskPrintPartition(part);
 			return 0;
 		}
+
 		if(strcmp(argv[4], "delete"))
 		{
 			fprintf(stderr, "%s", usage);
 			return 1;
 		}
-		request.command = G_DISK_PARTITION_DELETE;
+
+		g_disk_partition_delete_request request;
+		request.device = disk.device;
+		request.generation = disk.generation;
 		request.partition = id;
+		return storageRunJob("disk", request);
 	}
 	else
 	{
 		fprintf(stderr, "%s", usage);
 		return 1;
 	}
-	return storageRunJob("disk", request);
 }

@@ -43,6 +43,7 @@ bool fatFileRead(g_fat_mount* mount, const g_fat_node& node, uint64_t offset, vo
 			G_BLOCK_SECTOR_SIZE;
 	if(!maximum)
 		return false;
+
 	while(remaining)
 	{
 		uint32_t cluster;
@@ -58,6 +59,7 @@ bool fatFileRead(g_fat_mount* mount, const g_fat_node& node, uint64_t offset, vo
 		offset += count;
 		remaining -= count;
 	}
+
 	*read = length;
 	return true;
 }

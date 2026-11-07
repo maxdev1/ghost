@@ -26,8 +26,7 @@ g_volume_status diskBootGet(g_device_id device, uint64_t claim, g_volume_id volu
 	if(!device || !claim || !volume || !sectors || !info)
 		return G_VOLUME_INVALID;
 
-	g_volume_admin_request request;
-	request.command = G_DISK_BOOT_GET;
+	g_disk_boot_get_request request;
 	request.device = device;
 	request.claim = claim;
 	request.volume = volume;
@@ -42,18 +41,6 @@ g_volume_status diskBootGet(g_device_id device, uint64_t claim, g_volume_id volu
 	return status;
 }
 
-static g_volume_admin_request diskBootRequest(const g_disk_boot_info& boot)
-{
-	g_volume_admin_request request;
-	request.device = boot.device;
-	request.volume = boot.volume;
-	request.claim = boot.claim;
-	request.generation = boot.generation;
-	request.diskIdentity = boot.diskIdentity;
-	request.sectorCount = boot.bootSectors;
-	return request;
-}
-
 g_volume_status diskBootWrite(const g_disk_boot_info& boot, uint64_t first, const void* bytes, size_t size,
 							  g_volume_job_info* job)
 {
@@ -61,8 +48,8 @@ g_volume_status diskBootWrite(const g_disk_boot_info& boot, uint64_t first, cons
 	   size / 512 > boot.bootSectors - first)
 		return G_VOLUME_INVALID;
 
-	auto request = diskBootRequest(boot);
-	request.command = G_DISK_BOOT_WRITE;
+	g_disk_boot_write_request request;
+	request.boot = boot;
 	request.firstSector = first;
 	request.dataSize = size;
 	memcpy(request.data, bytes, size);
@@ -75,10 +62,9 @@ g_volume_status diskBootCommit(const g_disk_boot_info& boot, const void* code, s
 	if(!code || size != G_DISK_BOOT_CODE_SIZE)
 		return G_VOLUME_INVALID;
 
-	auto request = diskBootRequest(boot);
-	request.command = G_DISK_BOOT_COMMIT;
+	g_disk_boot_commit_request request;
+	request.boot = boot;
 	request.flags = activate ? G_DISK_BOOT_ACTIVATE : 0;
-	request.dataSize = size;
-	memcpy(request.data, code, size);
+	memcpy(request.code, code, size);
 	return storageManagerAdminStart(request, job);
 }

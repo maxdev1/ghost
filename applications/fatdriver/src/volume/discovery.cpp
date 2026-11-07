@@ -40,8 +40,11 @@ static void fatProbeVolume(g_fat_mount* mount)
 	fatCacheInvalidate(mount);
 	mount->failed = false;
 
-	if(fatDeviceOpen(&mount->device) && fatVolumeProbe(&mount->device, &mount->volume))
-		volumeOffer(mount->source.id, "fat", nullptr);
+	if(fatDeviceOpen(&mount->device))
+	{
+		if(fatVolumeProbe(&mount->device, &mount->volume))
+			volumeOffer(mount->source.id, "fat", nullptr);
+	}
 
 	fatDeviceClose(&mount->device);
 }
@@ -59,32 +62,69 @@ static void fatServeVolume(void* argument)
 		fatMountStart(mount);
 
 	uint8_t incoming[sizeof(g_message_header) + G_MESSAGE_MAXIMUM_MESSAGE_LENGTH];
-	while(g_receive_message(incoming, sizeof(incoming)) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+	bool serving = true;
+	while(serving)
 	{
+		auto receiveStatus = g_receive_message(incoming, sizeof(incoming));
+		if(receiveStatus != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+			break;
+
 		auto message = reinterpret_cast<g_message_header*>(incoming);
 		if(message->sender == fatDiscoveryTask && message->length == sizeof(g_volume_event))
 		{
 			g_volume_event event;
 			memcpy(&event, G_MESSAGE_CONTENT(incoming), sizeof(event));
-			if(event.type == G_VOLUME_REMOVED && event.info.id == mount->source.id && !mount->storage)
-				break;
-			if(event.type == G_VOLUME_PROBE && event.info.id == mount->source.id)
-				fatProbeVolume(mount);
+			if(event.info.id != mount->source.id)
+				continue;
+
+			switch(event.type)
+			{
+				case G_VOLUME_REMOVED:
+					if(!mount->storage)
+						serving = false;
+					break;
+				case G_VOLUME_PROBE:
+					fatProbeVolume(mount);
+					break;
+				default:
+					break;
+			}
+			continue;
 		}
-		else if(!fatMountReceiveControl(mount, message, G_MESSAGE_CONTENT(incoming)) && mount->storage &&
-				!fatMountHandleRequest(mount, message, G_MESSAGE_CONTENT(incoming)))
+
+		auto content = G_MESSAGE_CONTENT(incoming);
+		bool controlHandled = fatMountReceiveControl(mount, message, content);
+		if(controlHandled)
+			continue;
+		if(!mount->storage)
+			continue;
+
+		bool requestHandled = fatMountHandleRequest(mount, message, content);
+		if(!requestHandled)
 			break;
 	}
 
-	bool detached = !mount->storage || g_fs_delegate_unregister(mount->id) == G_FS_DELEGATE_SUCCESSFUL;
+	bool detached = !mount->storage;
+	if(!detached)
+	{
+		auto status = g_fs_delegate_unregister(mount->id);
+		detached = status == G_FS_DELEGATE_SUCCESSFUL;
+	}
+
 	if(detached)
 		mount->storage = nullptr;
 
 	while(mount->claim)
 	{
-		if(detached ? fatMountFinishUnmount(mount) == G_VOLUME_OK : fatDeviceClose(&mount->device))
+		bool finished;
+		if(detached)
+			finished = fatMountFinishUnmount(mount) == G_VOLUME_OK;
+		else
+			finished = fatDeviceClose(&mount->device);
+		if(finished)
 			break;
-		g_sleep(100);
+
+		g_sleep(G_FAT_DISCOVERY_RETRY_MS);
 	}
 
 	fatMountRelease(mount);
@@ -110,46 +150,63 @@ static bool fatDiscoverVolume(g_tid manager, const g_message_header* message, co
 	if(event.type == G_VOLUME_REMOVED)
 	{
 		auto worker = fatVolumeWorkers.find(event.info.id);
-		if(worker != fatVolumeWorkers.end() &&
-		   g_send_message_tm(worker->second, &event, sizeof(event), G_MESSAGE_TRANSACTION_NONE,
-							 G_MESSAGE_SEND_MODE_NON_BLOCKING) == G_MESSAGE_SEND_STATUS_SUCCESSFUL)
+		if(worker == fatVolumeWorkers.end())
+			return false;
+
+		auto status = g_send_message_tm(worker->second, &event, sizeof(event), G_MESSAGE_TRANSACTION_NONE,
+										G_MESSAGE_SEND_MODE_NON_BLOCKING);
+		if(status == G_MESSAGE_SEND_STATUS_SUCCESSFUL)
 			fatVolumeWorkers.erase(worker);
 		return false;
 	}
 
 	auto previous = fatVolumeWorkers.find(event.info.id);
 	if(previous != fatVolumeWorkers.end() && g_get_pid_for_tid(previous->second) == G_PID_NONE)
-		fatVolumeWorkers.erase(previous);
-
-	bool created = false;
-	if(!fatVolumeWorkers.count(event.info.id))
 	{
-		auto mount = new(std::nothrow) g_fat_mount;
-		if(mount)
-		{
-			mount->device.id = event.info.device;
-			mount->device.handler = event.info.driver;
-			mount->source = event.info;
-			mount->probeOnly = event.type == G_VOLUME_PROBE;
-			mount->device.firstSector = event.info.firstSector;
-			mount->device.sectorCount = event.info.sectorCount;
-
-			auto worker = g_create_task_d(reinterpret_cast<void*>(fatServeVolume), mount);
-			if(worker == G_TID_NONE)
-				delete mount;
-			else
-			{
-				fatVolumeWorkers[event.info.id] = worker;
-				created = true;
-			}
-		}
+		fatVolumeWorkers.erase(previous);
+		previous = fatVolumeWorkers.end();
 	}
 
-	if(event.type == G_VOLUME_PROBE && !created && fatVolumeWorkers.count(event.info.id))
-		g_send_message_tm(fatVolumeWorkers[event.info.id], &event, sizeof(event), G_MESSAGE_TRANSACTION_NONE,
+	if(previous == fatVolumeWorkers.end())
+	{
+		auto mount = new(std::nothrow) g_fat_mount;
+		if(!mount)
+			return false;
+
+		try
+		{
+			previous = fatVolumeWorkers.emplace(event.info.id, G_TID_NONE).first;
+		}
+		catch(const std::bad_alloc&)
+		{
+			delete mount;
+			return false;
+		}
+
+		mount->device.id = event.info.device;
+		mount->device.handler = event.info.driver;
+		mount->source = event.info;
+		mount->probeOnly = event.type == G_VOLUME_PROBE;
+		mount->device.firstSector = event.info.firstSector;
+		mount->device.sectorCount = event.info.sectorCount;
+
+		auto worker = g_create_task_d(reinterpret_cast<void*>(fatServeVolume), mount);
+		if(worker == G_TID_NONE)
+		{
+			fatVolumeWorkers.erase(previous);
+			delete mount;
+			return false;
+		}
+
+		previous->second = worker;
+		return true;
+	}
+
+	if(event.type == G_VOLUME_PROBE)
+		g_send_message_tm(previous->second, &event, sizeof(event), G_MESSAGE_TRANSACTION_NONE,
 						  G_MESSAGE_SEND_MODE_NON_BLOCKING);
 
-	return created;
+	return false;
 }
 
 void fatDiscoverVolumes()

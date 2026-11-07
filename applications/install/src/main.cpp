@@ -48,8 +48,10 @@ static bool installCliParseId(const char* text, uint64_t* id)
 	{
 		if(*digit < '0' || *digit > '9' || *id > (UINT64_MAX - unsigned(*digit - '0')) / 10)
 			return false;
+
 		*id = *id * 10 + unsigned(*digit - '0');
 	}
+
 	return *id != 0;
 }
 
@@ -77,6 +79,7 @@ static bool installCliParseOptions(int argc, char** argv, g_install_options* opt
 
 	if(!installCliParseId(number, &options->id))
 		return false;
+
 	return options->target == g_install_cli_target::Volume || options->id <= UINT16_MAX;
 }
 
@@ -109,6 +112,7 @@ int main(int argc, char** argv)
 		fprintf(stderr, "%s", G_INSTALL_USAGE);
 		return 1;
 	}
+
 	for(const auto& target: installDiscoverDestinations())
 	{
 		if(options.target == g_install_cli_target::List)
@@ -118,10 +122,12 @@ int main(int argc, char** argv)
 		else if(options.target == g_install_cli_target::Disk && !target.volume.id && target.disk.id == options.id)
 			return installRun(target, options.confirmed);
 	}
+
 	if(options.target != g_install_cli_target::List)
 	{
 		fprintf(stderr, "install: target not found; run install list\n");
 		return 1;
 	}
+
 	return 0;
 }

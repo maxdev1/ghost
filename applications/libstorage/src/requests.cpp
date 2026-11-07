@@ -20,46 +20,81 @@
 
 #include "client.hpp"
 
-static bool storageManagerResponseValid(const g_volume_request& request, const g_volume_response& response)
+template<typename Request>
+static bool storageManagerResponseMatches(const void* bytes, const g_volume_info& info)
+{
+	Request request;
+	memcpy(&request, bytes, sizeof(request));
+	if constexpr(Request::COMMAND == G_VOLUME_LIST)
+		return info.id > request.volume && (!request.device || info.device == request.device);
+	else if constexpr(Request::COMMAND == G_VOLUME_RESCAN || Request::COMMAND == G_VOLUME_CLAIM_DISK ||
+					  Request::COMMAND == G_VOLUME_RELEASE_DISK)
+		return info.device == request.device;
+	else
+		return info.id == request.volume;
+}
+
+static bool storageManagerResponseValid(const g_volume_header& header, const void* bytes,
+										   const g_volume_response& response)
 {
 	const auto& info = response.info;
-	if(response.magic != G_VOLUME_MAGIC || response.version != G_VOLUME_VERSION ||
-	   response.command != request.command || response.status > G_VOLUME_PROTOCOL_ERROR ||
+	if(response.magic != G_VOLUME_RESPONSE_MAGIC || response.version != G_VOLUME_VERSION ||
+	   response.command != header.command || response.status > G_VOLUME_PROTOCOL_ERROR ||
 	   info.state > G_VOLUME_MOUNTED || info.scheme > G_VOLUME_GPT || info.filesystem[sizeof(info.filesystem) - 1] ||
 	   info.path[sizeof(info.path) - 1])
 		return false;
 	if(response.status != G_VOLUME_OK)
 		return true;
 
-	switch(request.command)
+	switch(header.command)
 	{
 		case G_VOLUME_GET:
-		case G_VOLUME_CLAIM:
-		case G_VOLUME_COMMIT:
-		case G_VOLUME_RELEASE:
-		case G_VOLUME_MOUNT:
-		case G_VOLUME_UNMOUNT:
-		case G_VOLUME_FLUSH:
-		case G_VOLUME_OFFER:
-		case G_VOLUME_STAT:
-			return info.id == request.volume;
+			return storageManagerResponseMatches<g_volume_get_request>(bytes, info);
 		case G_VOLUME_LIST:
-			return info.id > request.volume && (!request.device || info.device == request.device);
+			return storageManagerResponseMatches<g_volume_list_request>(bytes, info);
+		case G_VOLUME_CLAIM:
+			return storageManagerResponseMatches<g_volume_claim_request>(bytes, info);
+		case G_VOLUME_COMMIT:
+			return storageManagerResponseMatches<g_volume_commit_request>(bytes, info);
+		case G_VOLUME_RELEASE:
+			return storageManagerResponseMatches<g_volume_release_request>(bytes, info);
+		case G_VOLUME_MOUNT:
+			return storageManagerResponseMatches<g_volume_mount_request>(bytes, info);
+		case G_VOLUME_UNMOUNT:
+			return storageManagerResponseMatches<g_volume_unmount_request>(bytes, info);
+		case G_VOLUME_RESCAN:
+			return storageManagerResponseMatches<g_volume_rescan_request>(bytes, info);
+		case G_VOLUME_CLAIM_DISK:
+			return storageManagerResponseMatches<g_volume_claim_disk_request>(bytes, info);
+		case G_VOLUME_RELEASE_DISK:
+			return storageManagerResponseMatches<g_volume_release_disk_request>(bytes, info);
+		case G_VOLUME_FLUSH:
+			return storageManagerResponseMatches<g_volume_flush_request>(bytes, info);
+		case G_VOLUME_OFFER:
+			return storageManagerResponseMatches<g_volume_offer_request>(bytes, info);
+		case G_VOLUME_STAT:
+			return storageManagerResponseMatches<g_volume_stat_request>(bytes, info);
 		default:
-			return info.device == request.device;
+			return false;
 	}
 }
 
-g_volume_status storageManagerRequestProgress(const g_volume_request& request, g_volume_response* response,
+g_volume_status storageManagerRequestProgress(const void* request, size_t size, g_volume_response* response,
 											  g_volume_progress_callback progress, void* context)
 {
-	if(!response || request.magic != G_VOLUME_MAGIC || request.version != G_VOLUME_VERSION ||
-	   request.command < G_VOLUME_GET || request.command > G_VOLUME_STAT || request.reserved)
+	if(!request || !response || size < sizeof(g_volume_header) || size > G_MESSAGE_MAXIMUM_MESSAGE_LENGTH)
 		return G_VOLUME_INVALID;
+
+	g_volume_header header;
+	memcpy(&header, request, sizeof(header));
+	if(header.magic != G_VOLUME_MAGIC || header.version != G_VOLUME_VERSION ||
+	   storageManagerRequestSize(header.command) != size)
+		return G_VOLUME_INVALID;
+
 	*response = {};
 
 	g_volume_exchange exchange;
-	auto status = storageManagerClientSend(request, exchange);
+	auto status = storageManagerClientSend(request, size, exchange);
 	if(status != G_VOLUME_OK)
 		return status;
 
@@ -71,7 +106,7 @@ g_volume_status storageManagerRequestProgress(const g_volume_request& request, g
 		status = storageManagerClientReceive(exchange, &reply, sizeof(reply));
 		if(status != G_VOLUME_OK)
 			return status;
-		if(!storageManagerResponseValid(request, reply))
+		if(!storageManagerResponseValid(header, request, reply))
 			return G_VOLUME_PROTOCOL_ERROR;
 
 		if(!reply.total && !reply.completed)
@@ -80,7 +115,7 @@ g_volume_status storageManagerRequestProgress(const g_volume_request& request, g
 			return reply.status;
 		}
 
-		if(request.command != G_VOLUME_STAT || reply.status != G_VOLUME_OK || !reply.total ||
+		if(header.command != G_VOLUME_STAT || reply.status != G_VOLUME_OK || !reply.total ||
 		   reply.completed > reply.total || (total && (reply.total != total || reply.completed < completed)))
 			return G_VOLUME_PROTOCOL_ERROR;
 		if(!total || reply.completed > completed)
@@ -95,7 +130,7 @@ g_volume_status storageManagerRequestProgress(const g_volume_request& request, g
 	}
 }
 
-g_volume_status storageManagerRequest(const g_volume_request& request, g_volume_response* response)
+g_volume_status storageManagerRequest(const void* request, size_t size, g_volume_response* response)
 {
-	return storageManagerRequestProgress(request, response, nullptr, nullptr);
+	return storageManagerRequestProgress(request, size, response, nullptr, nullptr);
 }

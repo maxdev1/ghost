@@ -1,3 +1,23 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2026, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include "disk.hpp"
 
 enum g_disk_option
@@ -17,6 +37,7 @@ static unsigned diskHexDigit(char character)
 		return character - 'a' + 10;
 	if(character >= 'A' && character <= 'F')
 		return character - 'A' + 10;
+
 	return 16;
 }
 
@@ -27,21 +48,25 @@ static bool diskPartitionType(const char* text, uint32_t& type)
 		type = 0x0c;
 		return true;
 	}
+
 	if(strlen(text) != 4 || text[0] != '0' || text[1] != 'x')
 		return false;
+
 	auto high = diskHexDigit(text[2]);
 	auto low = diskHexDigit(text[3]);
 	if(high == 16 || low == 16)
 		return false;
+
 	auto value = high * 16 + low;
 	if(!value || value == 5 || value == 15 || value == 0x85 || value == 0xee)
 		return false;
+
 	type = value;
 	return true;
 }
 
 static bool diskPartitionOption(const char* key, const char* value, uint32_t sectorSize,
-								g_volume_admin_request& request, unsigned& option)
+								g_disk_partition_create_request& request, unsigned& option)
 {
 	if(!strcmp(key, "--size"))
 	{
@@ -51,47 +76,57 @@ static bool diskPartitionOption(const char* key, const char* value, uint32_t sec
 			request.flags |= G_DISK_PARTITION_REMAINING;
 			return true;
 		}
+
 		return storageSectors(value, sectorSize, &request.sectorCount);
 	}
+
 	if(!strcmp(key, "--start"))
 	{
 		option = G_DISK_OPTION_START;
 		request.flags |= G_DISK_PARTITION_HAS_START;
 		return storageSectors(value, sectorSize, &request.firstSector);
 	}
+
 	if(!strcmp(key, "--align"))
 	{
 		option = G_DISK_OPTION_ALIGNMENT;
 		return storageSectors(value, sectorSize, &request.alignment);
 	}
+
 	if(!strcmp(key, "--slot"))
 	{
 		option = G_DISK_OPTION_SLOT;
 		uint64_t slot;
 		if(!coreParseUnsigned(value, &slot, 4) || !slot)
 			return false;
+
 		request.slot = slot;
 		return true;
 	}
+
 	if(!strcmp(key, "--type"))
 	{
 		option = G_DISK_OPTION_TYPE;
 		return diskPartitionType(value, request.type);
 	}
+
 	return false;
 }
 
-bool diskPartitionOptions(int argc, char** argv, const g_disk_info& disk, g_volume_admin_request* request)
+bool diskPartitionOptions(int argc, char** argv, const g_disk_info& disk, g_disk_partition_create_request* request)
 {
 	unsigned seen = 0;
 	for(int index = 4; index < argc; index += 2)
 	{
 		if(index + 1 == argc)
 			return false;
+
 		unsigned option = 0;
 		if(!diskPartitionOption(argv[index], argv[index + 1], disk.sectorSize, *request, option) || (seen & option))
 			return false;
+
 		seen |= option;
 	}
+
 	return seen & G_DISK_OPTION_SIZE;
 }

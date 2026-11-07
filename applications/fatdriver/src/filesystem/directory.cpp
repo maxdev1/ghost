@@ -28,14 +28,16 @@ bool fatDirectoryOpen(g_fat_mount* mount, const g_fat_node& node, g_fat_director
 
 	*directory = {};
 	directory->node = node;
-	if(node.id != G_FAT_ROOT || mount->volume.fatBits == 32)
+	if(node.id != G_FAT_ROOT || mount->volume.fatBits == G_FAT32_ENTRY_BITS)
 	{
 		auto chain = fatChainGet(mount, node.firstCluster);
 		if(!chain)
 			return false;
+
 		directory->cluster = node.firstCluster;
 		directory->clustersRemaining = chain->count;
 	}
+
 	return true;
 }
 
@@ -43,25 +45,32 @@ static g_fat_result fatDirectoryLoadSector(g_fat_mount* mount, g_fat_directory* 
 {
 	auto& volume = mount->volume;
 	uint64_t sector;
-	if(directory->node.id == G_FAT_ROOT && volume.fatBits != 32)
+	if(directory->node.id == G_FAT_ROOT && volume.fatBits != G_FAT32_ENTRY_BITS)
 	{
 		if(directory->fixedSector >= volume.rootSectors)
 			return G_FAT_END;
-		sector = volume.rootSector + directory->fixedSector++;
+
+		sector = volume.rootSector + directory->fixedSector;
+		++directory->fixedSector;
 	}
 	else
 	{
 		if(directory->sectorInCluster == volume.sectorsPerCluster)
 		{
-			if(--directory->clustersRemaining == 0)
+			--directory->clustersRemaining;
+			if(directory->clustersRemaining == 0)
 				return G_FAT_END;
+
 			uint32_t next;
 			if(fatClusterNext(mount, directory->cluster, &next) != G_FAT_SUCCESS)
 				return G_FAT_ERROR;
+
 			directory->cluster = next;
 			directory->sectorInCluster = 0;
 		}
-		sector = fatClusterOffset(volume, directory->cluster) / G_BLOCK_SECTOR_SIZE + directory->sectorInCluster++;
+
+		sector = fatClusterOffset(volume, directory->cluster) / G_BLOCK_SECTOR_SIZE + directory->sectorInCluster;
+		++directory->sectorInCluster;
 	}
 
 	directory->sectorOffset = sector * G_BLOCK_SECTOR_SIZE;
@@ -76,10 +85,12 @@ static bool fatDirectoryIsDot(const uint8_t* raw)
 {
 	if(raw[0] != '.')
 		return false;
+
 	unsigned start = raw[1] == '.' ? 2 : 1;
-	for(unsigned i = start; i < 11; ++i)
+	for(unsigned i = start; i < G_FAT_SHORT_NAME_SIZE; ++i)
 		if(raw[i] != ' ')
 			return false;
+
 	return true;
 }
 
@@ -105,22 +116,24 @@ g_fat_result fatDirectoryNext(g_fat_mount* mount, g_fat_directory* directory, g_
 			directory->ended = true;
 			return G_FAT_END;
 		}
+
 		if(raw[0] == G_FAT_ENTRY_DELETED)
 		{
 			directory->longName.active = false;
 			continue;
 		}
-		if((raw[11] & 0x3f) == G_FAT_ATTRIBUTE_LONG_NAME)
+
+		if((raw[G_FAT_ENTRY_ATTRIBUTES_OFFSET] & G_FAT_LONG_NAME_ATTRIBUTE_MASK) == G_FAT_ATTRIBUTE_LONG_NAME)
 		{
 			fatLongNameAppend(&directory->longName, raw);
 			if(directory->longName.active)
-				directory->longOffsets[(raw[0] & 0x1f) - 1] = offset;
+				directory->longOffsets[(raw[0] & G_FAT_LONG_NAME_ORDINAL_MASK) - 1] = offset;
 			continue;
 		}
 
 		bool hasLongName = fatLongNameDecode(directory->longName, raw, entry->name);
 		directory->longName.active = false;
-		if((raw[11] & G_FAT_ATTRIBUTE_VOLUME) || fatDirectoryIsDot(raw))
+		if((raw[G_FAT_ENTRY_ATTRIBUTES_OFFSET] & G_FAT_ATTRIBUTE_VOLUME) || fatDirectoryIsDot(raw))
 			continue;
 		if(!fatShortNameDecode(raw, entry->alias))
 			return G_FAT_ERROR;
@@ -128,13 +141,15 @@ g_fat_result fatDirectoryNext(g_fat_mount* mount, g_fat_directory* directory, g_
 			strcpy(entry->name, entry->alias);
 		if(!fatNodeDecode(mount->volume, offset, raw, &entry->node))
 			return G_FAT_ERROR;
+
 		memcpy(entry->shortRaw, raw, sizeof(entry->shortRaw));
 		if(!fatInodeObserve(mount, &entry->node, directory->node.id, offset, directory->longOffsets,
-							hasLongName ? directory->longName.length / G_FAT_LONG_NAME_UNITS_PER_ENTRY : 0, raw[11]))
+							hasLongName ? directory->longName.length / G_FAT_LONG_NAME_UNITS_PER_ENTRY : 0, raw[G_FAT_ENTRY_ATTRIBUTES_OFFSET]))
 			return G_FAT_ERROR;
 
 		return G_FAT_SUCCESS;
 	}
+
 	return G_FAT_END;
 }
 
@@ -151,6 +166,7 @@ g_fat_result fatDirectoryRawNext(g_fat_mount* mount, g_fat_directory* directory,
 			return result;
 		}
 	}
+
 	*offset = directory->sectorOffset + directory->position;
 	memcpy(raw, directory->bytes + directory->position, G_FAT_DIRECTORY_ENTRY_SIZE);
 	directory->position += G_FAT_DIRECTORY_ENTRY_SIZE;

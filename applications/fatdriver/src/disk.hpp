@@ -21,48 +21,36 @@
 #ifndef FATDRIVER_DISK
 #define FATDRIVER_DISK
 
-#include <cstdint>
-
-constexpr unsigned G_FAT_DIRECTORY_ENTRY_SIZE = 32;
-constexpr unsigned G_FAT_SHORT_NAME_SIZE = 11;
-constexpr unsigned G_FAT_LONG_NAME_UNITS_PER_ENTRY = 13;
-constexpr unsigned G_FAT_LONG_NAME_MAX_ENTRIES = 20;
-constexpr uint8_t G_FAT_ATTRIBUTE_READ_ONLY = 0x01;
-constexpr uint8_t G_FAT_ATTRIBUTE_VOLUME = 0x08;
-constexpr uint8_t G_FAT_ATTRIBUTE_DIRECTORY = 0x10;
-constexpr uint8_t G_FAT_ATTRIBUTE_ARCHIVE = 0x20;
-constexpr uint8_t G_FAT_ATTRIBUTE_LONG_NAME = 0x0f;
-constexpr uint8_t G_FAT_ENTRY_DELETED = 0xe5;
-constexpr unsigned G_FAT_LONG_NAME_OFFSETS[] = {1, 3, 5, 7, 9, 14, 16, 18, 20, 22, 24, 28, 30};
+#include "constants.hpp"
 
 inline uint8_t fatShortNameChecksum(const uint8_t* raw)
 {
 	uint8_t checksum = 0;
 	for(unsigned i = 0; i < G_FAT_SHORT_NAME_SIZE; ++i)
-		checksum = uint8_t((checksum >> 1) | (checksum << 7)) + raw[i];
+		checksum = uint8_t((checksum >> 1) | (checksum << (G_FAT_BITS_PER_BYTE - 1))) + raw[i];
 	return checksum;
 }
 
 inline uint16_t fatRead16(const uint8_t* bytes)
 {
-	return uint16_t(bytes[0]) | (uint16_t(bytes[1]) << 8);
+	return uint16_t(bytes[0]) | (uint16_t(bytes[1]) << G_FAT_BITS_PER_BYTE);
 }
 
 inline uint32_t fatRead32(const uint8_t* bytes)
 {
-	return uint32_t(fatRead16(bytes)) | (uint32_t(fatRead16(bytes + 2)) << 16);
+	return uint32_t(fatRead16(bytes)) | (uint32_t(fatRead16(bytes + sizeof(uint16_t))) << (sizeof(uint16_t) * G_FAT_BITS_PER_BYTE));
 }
 
 inline void fatWrite16(uint8_t* bytes, uint16_t value)
 {
 	bytes[0] = value;
-	bytes[1] = value >> 8;
+	bytes[1] = value >> G_FAT_BITS_PER_BYTE;
 }
 
 inline void fatWrite32(uint8_t* bytes, uint32_t value)
 {
 	fatWrite16(bytes, value);
-	fatWrite16(bytes + 2, value >> 16);
+	fatWrite16(bytes + sizeof(uint16_t), value >> (sizeof(uint16_t) * G_FAT_BITS_PER_BYTE));
 }
 
 #endif

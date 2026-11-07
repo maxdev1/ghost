@@ -26,11 +26,15 @@
 
 int main(int argc, char** argv)
 {
-	if(argc == 3 && !strcmp(argv[1], "--root-disk") && !fatMountConfigureRoot(argv[2]))
-		return 1;
+	if(argc != 1)
+	{
+		if(argc != 3 || strcmp(argv[1], "--root-disk") || !fatMountConfigureRoot(argv[2]))
+			return 1;
+	}
 
-	if(!g_task_register_name(G_FAT_DRIVER_NAME) ||
-	   g_create_task(reinterpret_cast<void*>(fatDiscoverVolumes)) == G_TID_NONE)
+	if(!g_task_register_name(G_FAT_DRIVER_NAME))
+		return 1;
+	if(g_create_task(reinterpret_cast<void*>(fatDiscoverVolumes)) == G_TID_NONE)
 		return 1;
 
 	g_task_await_by_name(G_STORAGE_MANAGER_NAME);
@@ -40,8 +44,9 @@ int main(int argc, char** argv)
 	uint8_t incoming[sizeof(g_message_header) + G_MESSAGE_MAXIMUM_MESSAGE_LENGTH];
 	while(g_receive_message(incoming, sizeof(incoming)) == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 	{
-		auto message = (g_message_header*) incoming;
+		auto message = reinterpret_cast<g_message_header*>(incoming);
 		fatAdminReceive(message, G_MESSAGE_CONTENT(incoming));
 	}
+
 	return 1;
 }

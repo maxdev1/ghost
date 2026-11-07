@@ -36,6 +36,12 @@ bool fatFreeClusters(g_fat_mount* mount, const std::vector<uint32_t>& chain, siz
 
 bool fatInodeStore(g_fat_mount* mount, g_fat_inode* inode);
 
+/**
+ * Releases an unlinked inode after its data is reclaimed and no descriptors remain.
+ * The mount's monotonically increasing identity counter prevents stale-ID reuse.
+ */
+void fatInodeRelease(g_fat_mount* mount, g_fat_inode* inode);
+
 g_fs_mutation_status fatMutationAllowed(g_fat_mount* mount, const g_fat_inode* inode = nullptr);
 
 g_fat_result fatDirectoryRawNext(g_fat_mount* mount, g_fat_directory* directory, uint64_t* offset, uint8_t* raw);

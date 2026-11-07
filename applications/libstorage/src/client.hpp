@@ -38,29 +38,41 @@ struct g_volume_exchange
  * Retries only queue admission. Once the service accepts the request, callers
  * wait for its reply without submitting the operation again.
  */
-template<typename Request>
-static g_volume_status storageManagerClientSend(const Request& request, g_volume_exchange& exchange)
+static inline g_volume_status storageManagerClientSend(const void* request, size_t size, g_volume_exchange& exchange)
 {
-	static_assert(sizeof(Request) <= G_MESSAGE_MAXIMUM_MESSAGE_LENGTH, "volume request fits IPC");
+	if(!request || size > G_MESSAGE_MAXIMUM_MESSAGE_LENGTH)
+		return G_VOLUME_INVALID;
+
 	exchange.service = g_task_get_by_name(G_STORAGE_MANAGER_NAME);
 	if(exchange.service == G_TID_NONE)
 		return G_VOLUME_UNAVAILABLE;
 
 	exchange.transaction = g_get_message_tx_id();
 	exchange.started = g_millis();
-	auto outgoing = request;
+	uint8_t outgoing[G_MESSAGE_MAXIMUM_MESSAGE_LENGTH];
+	memcpy(outgoing, request, size);
+
 	for(;;)
 	{
-		auto status = g_send_message_tm(exchange.service, &outgoing, sizeof(outgoing), exchange.transaction,
+		auto status = g_send_message_tm(exchange.service, outgoing, size, exchange.transaction,
 										G_MESSAGE_SEND_MODE_NON_BLOCKING);
 		if(status == G_MESSAGE_SEND_STATUS_SUCCESSFUL)
 			return G_VOLUME_OK;
 		if(status != G_MESSAGE_SEND_STATUS_FULL)
 			return G_VOLUME_UNAVAILABLE;
+
 		if(g_millis() - exchange.started >= G_VOLUME_TIMEOUT_MS)
 			return G_VOLUME_TIMED_OUT;
+
 		g_sleep(1);
 	}
+}
+
+template<typename Request>
+static g_volume_status storageManagerClientSend(const Request& request, g_volume_exchange& exchange)
+{
+	static_assert(sizeof(Request) <= G_MESSAGE_MAXIMUM_MESSAGE_LENGTH, "volume request fits IPC");
+	return storageManagerClientSend(&request, sizeof(request), exchange);
 }
 
 /**
@@ -74,6 +86,7 @@ static inline g_volume_status storageManagerClientReceive(g_volume_exchange& exc
 	{
 		if(g_task_get_by_name(G_STORAGE_MANAGER_NAME) != exchange.service)
 			return G_VOLUME_UNAVAILABLE;
+
 		auto status =
 				g_receive_message_tm(bytes, sizeof(bytes), exchange.transaction, G_MESSAGE_RECEIVE_MODE_NON_BLOCKING);
 		if(status == G_MESSAGE_RECEIVE_STATUS_EMPTY)
@@ -81,6 +94,7 @@ static inline g_volume_status storageManagerClientReceive(g_volume_exchange& exc
 			g_sleep(1);
 			continue;
 		}
+
 		if(status != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 			return G_VOLUME_UNAVAILABLE;
 
@@ -89,13 +103,15 @@ static inline g_volume_status storageManagerClientReceive(g_volume_exchange& exc
 			continue;
 		if(header->length != size)
 			return G_VOLUME_PROTOCOL_ERROR;
+
 		memcpy(response, G_MESSAGE_CONTENT(bytes), size);
 		return G_VOLUME_OK;
 	}
+
 	return G_VOLUME_TIMED_OUT;
 }
 
-g_volume_status storageManagerRequestProgress(const g_volume_request& request, g_volume_response* response,
+g_volume_status storageManagerRequestProgress(const void* request, size_t size, g_volume_response* response,
 											  g_volume_progress_callback progress, void* context);
 
 #endif

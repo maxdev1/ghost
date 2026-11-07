@@ -27,5 +27,6 @@ bool installBootValidate(const uint8_t* boot, size_t length, const char** error)
 		*error = "invalid Limine boot files";
 		return false;
 	}
+
 	return true;
 }

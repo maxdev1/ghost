@@ -1,3 +1,23 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2026, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include "volume.hpp"
 
 const char* volumeToolStatusText(g_volume_status status)
@@ -58,16 +78,19 @@ int volumeToolList()
 				printf("No volumes found.\n");
 			return 0;
 		}
+
 		if(status != G_VOLUME_OK)
 		{
 			fprintf(stderr, "volume: cannot list volumes: %s\n", volumeToolStatusText(status));
 			return 1;
 		}
+
 		if(!heading)
 		{
 			printf("ID\tDISK\tFILESYSTEM\tSTATE\tMOUNT\n");
 			heading = true;
 		}
+
 		printf("%llu\t%u\t%s\t%s\t%s\n", static_cast<unsigned long long>(info.id), unsigned(info.device),
 			   info.filesystem[0] ? info.filesystem : "unknown", volumeToolStateText(info.state),
 			   info.path[0] ? info.path : "-");

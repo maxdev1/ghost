@@ -36,6 +36,7 @@ static uint32_t fatNameUpper(uint32_t value)
 		else
 			return (value - range.first) % range.step ? value : uint32_t(int64_t(value) + range.delta);
 	}
+
 	return value;
 }
 
@@ -46,23 +47,31 @@ static bool fatNameReadUtf8(const char** text, size_t* remaining, uint32_t* valu
 
 	auto bytes = reinterpret_cast<const uint8_t*>(*text);
 	uint32_t scalar = bytes[0];
-	unsigned count = scalar < 0x80						? 1
-					 : scalar >= 0xc2 && scalar <= 0xdf ? 2
-					 : scalar >= 0xe0 && scalar <= 0xef ? 3
-					 : scalar >= 0xf0 && scalar <= 0xf4 ? 4
-														: 0;
+	unsigned count = 0;
+	if(scalar < G_FAT_UTF8_TWO_BYTE_MIN)
+		count = 1;
+	else if(scalar >= G_FAT_UTF8_TWO_BYTE_LEAD_MIN && scalar <= G_FAT_UTF8_TWO_BYTE_LEAD_MAX)
+		count = 2;
+	else if(scalar >= G_FAT_UTF8_THREE_BYTE_LEAD_MIN && scalar <= G_FAT_UTF8_THREE_BYTE_LEAD_MAX)
+		count = 3;
+	else if(scalar >= G_FAT_UTF8_FOUR_BYTE_LEAD_MIN && scalar <= G_FAT_UTF8_FOUR_BYTE_LEAD_MAX)
+		count = 4;
 	if(!count || count > *remaining)
 		return false;
 	if(count > 1)
-		scalar &= (1U << (7 - count)) - 1;
+		scalar &= (1U << (G_FAT_BITS_PER_BYTE - 1 - count)) - 1;
 	for(unsigned i = 1; i < count; ++i)
 	{
-		if((bytes[i] & 0xc0) != 0x80)
+		if((bytes[i] & G_FAT_UTF8_CONTINUATION_MASK) != G_FAT_UTF8_CONTINUATION_TAG)
 			return false;
-		scalar = (scalar << 6) | (bytes[i] & 0x3f);
+
+		scalar = (scalar << G_FAT_UTF8_CONTINUATION_BITS) | (bytes[i] & G_FAT_UTF8_CONTINUATION_PAYLOAD_MASK);
 	}
-	if((count == 2 && scalar < 0x80) || (count == 3 && scalar < 0x800) || (count == 4 && scalar < 0x10000) ||
-	   scalar > 0x10ffff || (scalar >= 0xd800 && scalar <= 0xdfff))
+
+	if((count == 2 && scalar < G_FAT_UTF8_TWO_BYTE_MIN) ||
+	   (count == 3 && scalar < G_FAT_UTF8_THREE_BYTE_MIN) ||
+	   (count == 4 && scalar < G_FAT_UTF8_FOUR_BYTE_MIN) || scalar > G_FAT_UNICODE_MAX ||
+	   (scalar >= G_FAT_UTF16_SURROGATE_MIN && scalar <= G_FAT_UTF16_SURROGATE_MAX))
 		return false;
 
 	*text += count;
@@ -77,8 +86,11 @@ bool fatNameEquals(const char* left, const char* right)
 	for(;;)
 	{
 		uint32_t a, b;
-		if(!fatNameReadUtf8(&left, &leftRemaining, &a) || !fatNameReadUtf8(&right, &rightRemaining, &b) ||
-		   fatNameUpper(a) != fatNameUpper(b))
+		if(!fatNameReadUtf8(&left, &leftRemaining, &a))
+			return false;
+		if(!fatNameReadUtf8(&right, &rightRemaining, &b))
+			return false;
+		if(fatNameUpper(a) != fatNameUpper(b))
 			return false;
 		if(!a)
 			return true;
@@ -87,26 +99,37 @@ bool fatNameEquals(const char* left, const char* right)
 
 static bool fatNameAppendUtf8(char* name, size_t* length, size_t capacity, uint32_t value)
 {
-	if(!value || value < 0x20 || value == '/' || value == '\\' || value == ':' || value == '*' || value == '?' ||
-	   value == '"' || value == '<' || value == '>' || value == '|')
+	if(!value || value < G_FAT_ASCII_PRINTABLE_MIN || value == '/' || value == '\\' || value == ':' || value == '*' ||
+	   value == '?' || value == '"' || value == '<' || value == '>' || value == '|')
 		return false;
 
-	unsigned count = value < 0x80 ? 1 : value < 0x800 ? 2 : value < 0x10000 ? 3 : 4;
+	unsigned count;
+	if(value < G_FAT_UTF8_TWO_BYTE_MIN)
+		count = 1;
+	else if(value < G_FAT_UTF8_THREE_BYTE_MIN)
+		count = 2;
+	else if(value < G_FAT_UTF8_FOUR_BYTE_MIN)
+		count = 3;
+	else
+		count = 4;
 	if(*length + count >= capacity)
 		return false;
 	if(count == 1)
 		name[(*length)++] = value;
 	else
 	{
-		name[(*length)++] = (0xff << (8 - count)) | (value >> (6 * (count - 1)));
+		name[(*length)++] = (G_FAT_UTF8_LEAD_PREFIX_MASK << (G_FAT_BITS_PER_BYTE - count)) |
+						   (value >> (G_FAT_UTF8_CONTINUATION_BITS * (count - 1)));
 		for(unsigned i = count - 1; i > 0; --i)
-			name[(*length)++] = 0x80 | ((value >> (6 * (i - 1))) & 0x3f);
+			name[(*length)++] = G_FAT_UTF8_CONTINUATION_TAG |
+							   ((value >> (G_FAT_UTF8_CONTINUATION_BITS * (i - 1))) & G_FAT_UTF8_CONTINUATION_PAYLOAD_MASK);
 	}
+
 	name[*length] = 0;
 	return true;
 }
 
-static const uint16_t fatOemCharacters[128] = {
+static const uint16_t fatOemCharacters[G_FAT_OEM_EXTENDED_COUNT] = {
 		0x00c7, 0x00fc, 0x00e9, 0x00e2, 0x00e4, 0x00e0, 0x00e5, 0x00e7, 0x00ea, 0x00eb, 0x00e8, 0x00ef, 0x00ee,
 		0x00ec, 0x00c4, 0x00c5, 0x00c9, 0x00e6, 0x00c6, 0x00f4, 0x00f6, 0x00f2, 0x00fb, 0x00f9, 0x00ff, 0x00d6,
 		0x00dc, 0x00a2, 0x00a3, 0x00a5, 0x20a7, 0x0192, 0x00e1, 0x00ed, 0x00f3, 0x00fa, 0x00f1, 0x00d1, 0x00aa,
@@ -119,7 +142,7 @@ static const uint16_t fatOemCharacters[128] = {
 		0x2321, 0x00f7, 0x2248, 0x00b0, 0x2219, 0x00b7, 0x221a, 0x207f, 0x00b2, 0x25a0, 0x00a0,
 };
 
-static const uint16_t fatOemLowerCharacters[128] = {
+static const uint16_t fatOemLowerCharacters[G_FAT_OEM_EXTENDED_COUNT] = {
 		0x00e7, 0x00fc, 0x00e9, 0x00e2, 0x00e4, 0x00e0, 0x00e5, 0x00e7, 0x00ea, 0x00eb, 0x00e8, 0x00ef, 0x00ee,
 		0x00ec, 0x00e4, 0x00e5, 0x00e9, 0x00e6, 0x00e6, 0x00f4, 0x00f6, 0x00f2, 0x00fb, 0x00f9, 0x00ff, 0x00f6,
 		0x00fc, 0x00a2, 0x00a3, 0x00a5, 0x20a7, 0x0192, 0x00e1, 0x00ed, 0x00f3, 0x00fa, 0x00f1, 0x00f1, 0x00aa,
@@ -139,52 +162,69 @@ static bool fatShortNamePart(const uint8_t* raw, unsigned count, bool lower, cha
 	for(unsigned i = 0; i < count; ++i)
 	{
 		auto c = raw[i];
-		uint32_t scalar = c < 0x80 ? c : lower ? fatOemLowerCharacters[c - 0x80] : fatOemCharacters[c - 0x80];
+		uint32_t scalar = c;
+		if(c >= G_FAT_OEM_EXTENDED_FIRST)
+		{
+			if(lower)
+				scalar = fatOemLowerCharacters[c - G_FAT_OEM_EXTENDED_FIRST];
+			else
+				scalar = fatOemCharacters[c - G_FAT_OEM_EXTENDED_FIRST];
+		}
+
 		if(lower && scalar >= 'A' && scalar <= 'Z')
 			scalar += 'a' - 'A';
-		if(!fatNameAppendUtf8(name, length, 40, scalar))
+		if(!fatNameAppendUtf8(name, length, G_FAT_SHORT_NAME_BUFFER_SIZE, scalar))
 			return false;
 	}
+
 	return true;
 }
 
 bool fatShortNameDecode(const uint8_t* raw, char* name)
 {
-	uint8_t base[8];
+	uint8_t base[G_FAT_SHORT_BASE_SIZE];
 	memcpy(base, raw, sizeof(base));
-	if(base[0] == 0x05)
-		base[0] = 0xe5;
+	if(base[0] == G_FAT_ENTRY_ESCAPED_DELETED)
+		base[0] = G_FAT_ENTRY_DELETED;
 
 	size_t length = 0;
-	if(!fatShortNamePart(base, 8, raw[12] & 0x08, name, &length) || !length)
+	if(!fatShortNamePart(base, G_FAT_SHORT_BASE_SIZE,
+						raw[G_FAT_ENTRY_CASE_FLAGS_OFFSET] & G_FAT_SHORT_BASE_LOWER_CASE, name, &length))
 		return false;
-	if(raw[8] != ' ')
+	if(!length)
+		return false;
+	if(raw[G_FAT_SHORT_BASE_SIZE] != ' ')
 	{
 		name[length++] = '.';
-		if(!fatShortNamePart(raw + 8, 3, raw[12] & 0x10, name, &length))
+		if(!fatShortNamePart(raw + G_FAT_SHORT_BASE_SIZE, G_FAT_SHORT_EXTENSION_SIZE,
+							raw[G_FAT_ENTRY_CASE_FLAGS_OFFSET] & G_FAT_SHORT_EXTENSION_LOWER_CASE, name, &length))
 			return false;
 	}
+
 	name[length] = 0;
 	return true;
 }
 
 void fatLongNameAppend(g_fat_long_name* name, const uint8_t* raw)
 {
-	auto ordinal = unsigned(raw[0] & 0x1f);
-	if((raw[0] & 0xa0) || !ordinal || ordinal > G_FAT_LONG_NAME_MAX_ENTRIES || raw[12] || fatRead16(raw + 26))
+	auto ordinal = unsigned(raw[0] & G_FAT_LONG_NAME_ORDINAL_MASK);
+	if((raw[0] & G_FAT_LONG_NAME_INVALID_ORDINAL_MASK) || !ordinal || ordinal > G_FAT_LONG_NAME_MAX_ENTRIES ||
+	   raw[G_FAT_LONG_NAME_TYPE_OFFSET] || fatRead16(raw + G_FAT_LONG_NAME_CLUSTER_OFFSET))
 	{
 		name->active = false;
 		return;
 	}
-	if(raw[0] & 0x40)
+
+	if(raw[0] & G_FAT_LONG_NAME_LAST_FLAG)
 	{
 		*name = {};
 		name->active = true;
 		name->expected = ordinal;
-		name->checksum = raw[13];
+		name->checksum = raw[G_FAT_LONG_NAME_CHECKSUM_OFFSET];
 		name->length = ordinal * G_FAT_LONG_NAME_UNITS_PER_ENTRY;
 	}
-	if(!name->active || ordinal != name->expected || raw[13] != name->checksum)
+
+	if(!name->active || ordinal != name->expected || raw[G_FAT_LONG_NAME_CHECKSUM_OFFSET] != name->checksum)
 	{
 		name->active = false;
 		return;
@@ -203,6 +243,7 @@ bool fatLongNameDecode(const g_fat_long_name& name, const uint8_t* raw, char* te
 {
 	if(!name.active || name.expected)
 		return false;
+
 	auto checksum = fatShortNameChecksum(raw);
 	if(checksum != name.checksum)
 		return false;
@@ -214,29 +255,37 @@ bool fatLongNameDecode(const g_fat_long_name& name, const uint8_t* raw, char* te
 		auto scalar = uint32_t(name.units[i]);
 		if(ended)
 		{
-			if(scalar != 0xffff)
+			if(scalar != G_FAT_LONG_NAME_PADDING)
 				return false;
 			continue;
 		}
+
 		if(!scalar)
 		{
 			ended = true;
 			continue;
 		}
-		if(i >= 255 || scalar == 0xffff)
+
+		if(i >= G_FAT_LONG_NAME_MAX_UNITS || scalar == G_FAT_LONG_NAME_PADDING)
 			return false;
-		if(scalar >= 0xd800 && scalar <= 0xdbff)
+		if(scalar >= G_FAT_UTF16_SURROGATE_MIN && scalar <= G_FAT_UTF16_HIGH_SURROGATE_MAX)
 		{
-			if(++i >= name.length || i >= 255 || name.units[i] < 0xdc00 || name.units[i] > 0xdfff)
+			++i;
+			if(i >= name.length || i >= G_FAT_LONG_NAME_MAX_UNITS || name.units[i] < G_FAT_UTF16_LOW_SURROGATE_MIN ||
+			   name.units[i] > G_FAT_UTF16_SURROGATE_MAX)
 				return false;
-			scalar = 0x10000 + ((scalar - 0xd800) << 10) + name.units[i] - 0xdc00;
+
+			scalar = G_FAT_UTF16_SUPPLEMENTARY_MIN +
+					 ((scalar - G_FAT_UTF16_SURROGATE_MIN) << G_FAT_UTF16_SURROGATE_BITS) +
+					 name.units[i] - G_FAT_UTF16_LOW_SURROGATE_MIN;
 		}
-		else if(scalar >= 0xdc00 && scalar <= 0xdfff)
+		else if(scalar >= G_FAT_UTF16_LOW_SURROGATE_MIN && scalar <= G_FAT_UTF16_SURROGATE_MAX)
 			return false;
 
 		if(!fatNameAppendUtf8(text, &length, G_FILENAME_MAX, scalar))
 			return false;
 	}
+
 	return length && strcmp(text, ".") && strcmp(text, "..");
 }
 
@@ -245,33 +294,39 @@ bool fatNameEncode(const char* text, uint16_t* units, size_t* count)
 	*count = 0;
 	if(!*text || !strcmp(text, ".") || !strcmp(text, ".."))
 		return false;
+
 	auto bytes = strlen(text);
 	if(bytes >= G_FILENAME_MAX || text[bytes - 1] == ' ' || text[bytes - 1] == '.')
 		return false;
+
 	size_t remaining = G_FILENAME_MAX;
 	while(*text)
 	{
 		uint32_t scalar;
 		if(!fatNameReadUtf8(&text, &remaining, &scalar))
 			return false;
-		char encoded[5];
+
+		char encoded[G_FAT_UTF8_MAX_BYTES + 1];
 		size_t length = 0;
 		if(!fatNameAppendUtf8(encoded, &length, sizeof(encoded), scalar))
 			return false;
-		if(scalar < 0x10000)
+		if(scalar < G_FAT_UTF16_SUPPLEMENTARY_MIN)
 		{
-			if(*count >= 255)
+			if(*count >= G_FAT_LONG_NAME_MAX_UNITS)
 				return false;
+
 			units[(*count)++] = scalar;
 		}
 		else
 		{
-			if(*count > 253)
+			if(*count > G_FAT_LONG_NAME_MAX_UNITS - 2)
 				return false;
-			scalar -= 0x10000;
-			units[(*count)++] = 0xd800 | (scalar >> 10);
-			units[(*count)++] = 0xdc00 | (scalar & 0x3ff);
+
+			scalar -= G_FAT_UTF16_SUPPLEMENTARY_MIN;
+			units[(*count)++] = G_FAT_UTF16_SURROGATE_MIN | (scalar >> G_FAT_UTF16_SURROGATE_BITS);
+			units[(*count)++] = G_FAT_UTF16_LOW_SURROGATE_MIN | (scalar & G_FAT_UTF16_SURROGATE_MASK);
 		}
 	}
+
 	return true;
 }

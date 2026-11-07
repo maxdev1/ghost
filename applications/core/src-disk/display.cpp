@@ -1,3 +1,23 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2026, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include "disk.hpp"
 
 void diskPrint(const g_disk_info& disk)
@@ -13,6 +33,7 @@ int diskList()
 {
 	g_device_id after = 0;
 	printf("ID\tMODEL\tSECTORS\tTABLE\tPARTITIONS\tJOB\n");
+
 	for(;;)
 	{
 		g_disk_info disk;
@@ -21,6 +42,7 @@ int diskList()
 			return 0;
 		if(status != G_VOLUME_OK)
 			return storageError("disk", status);
+
 		printf("%u\t%s\t%llu\t%s\t%u\t%llu\n", unsigned(disk.device), disk.model, (unsigned long long) disk.sectorCount,
 			   storageLayoutText(disk.layout), disk.partitions, (unsigned long long) disk.activeJob);
 		after = disk.device;
@@ -46,6 +68,7 @@ int diskPartitionList(const g_disk_info& disk)
 	std::vector<g_disk_partition_info> parts;
 	uint32_t after = 0;
 	printf("NUMBER\tVOLUME\tFIRST SECTOR\tSECTORS\tTYPE\tFLAGS\n");
+
 	for(;;)
 	{
 		g_disk_partition_info part;
@@ -54,12 +77,15 @@ int diskPartitionList(const g_disk_info& disk)
 			break;
 		if(status != G_VOLUME_OK)
 			return storageError("disk", status);
+
 		diskPrintPartition(part);
 		parts.push_back(part);
 		after = part.number;
 	}
+
 	if(disk.layout != G_DISK_MBR && disk.layout != G_DISK_GPT)
 		return 0;
+
 	std::sort(parts.begin(), parts.end(), [](const g_disk_partition_info& a, const g_disk_partition_info& b)
 			  { return a.firstSector < b.firstSector; });
 	uint64_t cursor = disk.firstUsable;
@@ -70,6 +96,7 @@ int diskPartitionList(const g_disk_info& disk)
 				   (unsigned long long) (part.firstSector - cursor));
 		cursor = std::max(cursor, part.firstSector + part.sectorCount);
 	}
+
 	if(cursor <= disk.lastUsable)
 		printf("Free: sector %llu, %llu sectors\n", (unsigned long long) cursor,
 			   (unsigned long long) (disk.lastUsable - cursor + 1));

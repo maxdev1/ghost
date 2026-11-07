@@ -142,6 +142,7 @@ static bool installPrepareSource(const g_install_destination& destination, g_ins
 		return installError(error, "Boot files are unavailable; boot the live ISO.");
 	if(disk.info.sectorCount < G_INSTALL_MIN_SECTORS || disk.info.sectorCount > UINT32_MAX)
 		return installError(error, "disk capacity is unsupported by the Limine BIOS installation");
+
 	return installBootValidate(boot.data(), boot.size(), error);
 }
 
@@ -158,9 +159,11 @@ static bool installCheckDestination(const g_install_destination& destination, st
 	{
 		if(!strcmp(info.path, "/"))
 			return installError(error, "Cannot install onto the running system disk.");
+
 		volumes.push_back(info);
 		after = info.id;
 	}
+
 	if(status != G_VOLUME_NOT_FOUND)
 		return installError(error, installVolumeStatus(status));
 	if(!reuse)
@@ -209,15 +212,18 @@ static bool installWaitForJob(g_volume_status status, g_volume_job_info& job, co
 		g_sleep(20);
 		status = storageManagerJobGet(job.id, &job);
 	}
+
 	if(status == G_VOLUME_OK && job.state == G_VOLUME_JOB_SUCCEEDED)
 		return true;
+
 	char context[128];
 	snprintf(context, sizeof(context), "%s (job %lu): ", phase, static_cast<unsigned long>(job.id));
 	error = std::string(context) + installVolumeStatus(status == G_VOLUME_OK ? job.result : status);
 	return false;
 }
 
-static bool installRunJob(g_install_state& target, g_volume_admin_request request, const char* phase,
+template<typename Request>
+static bool installRunJob(g_install_state& target, Request request, const char* phase,
 						  const g_install_progress& report, std::string& error)
 {
 	report(phase, 0, 0);
@@ -228,7 +234,9 @@ static bool installRunJob(g_install_state& target, g_volume_admin_request reques
 		error = installVolumeStatus(status);
 		return false;
 	}
-	request.device = target.device;
+
+	if constexpr(Request::COMMAND != G_VOLUME_FORMAT)
+		request.device = target.device;
 	request.generation = current.generation;
 	g_volume_job_info job;
 	status = storageManagerAdminStart(request, &job);
@@ -241,21 +249,20 @@ static bool installRunJob(g_install_state& target, g_volume_admin_request reques
 
 static bool installFormatDisk(g_install_state& target, const g_install_progress& report, std::string& error)
 {
-	g_volume_admin_request request;
-	request.command = G_DISK_TABLE_CREATE;
-	request.flags = G_DISK_TABLE_REPLACE;
-	if(!installRunJob(target, request, "Replacing disk partition table", report, error))
+	g_disk_table_create_request table;
+	table.flags = G_DISK_TABLE_REPLACE;
+	if(!installRunJob(target, table, "Replacing disk partition table", report, error))
 		return false;
-	request = {};
-	request.command = G_DISK_PARTITION_CREATE;
-	request.flags = G_DISK_PARTITION_REMAINING;
-	if(!installRunJob(target, request, "Creating target partition", report, error))
+
+	g_disk_partition_create_request partition;
+	partition.flags = G_DISK_PARTITION_REMAINING;
+	if(!installRunJob(target, partition, "Creating target partition", report, error))
 		return false;
-	request = {};
-	request.command = G_VOLUME_FORMAT;
-	request.volume = target.volume.id;
-	strcpy(request.filesystem, "fat32");
-	return installRunJob(target, request, "Formatting FAT32", report, error);
+
+	g_volume_format_request format;
+	format.volume = target.volume.id;
+	strcpy(format.filesystem, "fat32");
+	return installRunJob(target, format, "Formatting FAT32", report, error);
 }
 
 static bool installWaitForFilesystem(g_volume_info& volume)
@@ -267,6 +274,7 @@ static bool installWaitForFilesystem(g_volume_info& volume)
 			break;
 		if(volume.handler != G_TID_NONE)
 			return true;
+
 		g_sleep(10);
 	} while(g_millis() - started < 10000);
 	return false;
@@ -277,6 +285,7 @@ static bool installWriteBootloader(const g_disk_boot_info& target, const std::ve
 {
 	const char* phase = "Installing bootloader";
 	report(phase, 0, boot.size());
+
 	for(size_t offset = G_INSTALL_SECTOR_SIZE; offset < boot.size();)
 	{
 		auto size = std::min(G_DISK_BOOT_CHUNK_SIZE, boot.size() - offset);
@@ -284,9 +293,11 @@ static bool installWriteBootloader(const g_disk_boot_info& target, const std::ve
 		auto status = diskBootWrite(target, offset / G_INSTALL_SECTOR_SIZE, boot.data() + offset, size, &job);
 		if(!installWaitForJob(status, job, phase, report, error))
 			return false;
+
 		offset += size;
 		report(phase, offset, boot.size());
 	}
+
 	return true;
 }
 
@@ -299,6 +310,7 @@ int installRun(const g_install_destination& destination, bool confirmed, std::st
 		if(progress)
 			progress(phase, done, total);
 	};
+
 	const char* error = nullptr;
 	std::string jobError;
 	g_install_source_tree source;
@@ -314,14 +326,17 @@ int installRun(const g_install_destination& destination, bool confirmed, std::st
 	g_install_state target{destination.disk.id, destination.volume};
 	g_install_cleanup cleanup{target, report};
 	report("Unmounting target disk volumes", 0, 0);
+
 	for(auto volume: volumes)
 	{
 		if(volume.state != G_VOLUME_AVAILABLE && volumeUnmount(volume.id, &volume, volume.claim) != G_VOLUME_OK)
 			return installFail("Disk is busy or could not be unmounted; close its files before installing.", failure);
 	}
+
 	auto status = diskClaim(target.device, &target.claim, reuse ? target.volume.id : 0);
 	if(status != G_VOLUME_OK)
 		return installFail(installVolumeStatus(status), failure);
+
 	status = diskRescan(target.device);
 	if(status != G_VOLUME_OK && (reuse || (status != G_VOLUME_INVALID && status != G_VOLUME_UNSUPPORTED)))
 		return installFail(installVolumeStatus(status), failure);
@@ -331,14 +346,17 @@ int installRun(const g_install_destination& destination, bool confirmed, std::st
 	report("Waiting for filesystem", 0, 0);
 	if(!installWaitForFilesystem(target.volume))
 		return installFail("selected volume has no recognized filesystem", failure);
+
 	status = diskClaim(target.device, &target.claim, target.volume.id);
 	if(status != G_VOLUME_OK)
 		return installFail(installVolumeStatus(status), failure);
+
 	g_disk_boot_info bootTarget;
 	status = diskBootGet(target.device, target.claim, target.volume.id, boot.size() / G_INSTALL_SECTOR_SIZE,
 						 source.plan.serial, &bootTarget);
 	if(status != G_VOLUME_OK)
 		return installFail(installVolumeStatus(status), failure);
+
 	source.plan.serial = bootTarget.diskIdentity;
 	source.plan.firstSector = bootTarget.firstSector;
 
@@ -349,6 +367,7 @@ int installRun(const g_install_destination& destination, bool confirmed, std::st
 	status = volumeMount(target.volume.id, name, &target.volume);
 	if(status != G_VOLUME_OK)
 		return installFail(installVolumeStatus(status), failure);
+
 	std::string path = target.volume.path;
 	g_volume_filesystem_info fs;
 	report("Checking free space", 0, 0);
@@ -359,24 +378,28 @@ int installRun(const g_install_destination& destination, bool confirmed, std::st
 		return installFail(std::string("Checking free space: ") + installVolumeStatus(status), failure);
 	if(strcmp(fs.type, "fat32") || !fs.writable)
 		return installFail("selected volume must be writable FAT32", failure);
+
 	report("Checking destination files", 0, 0);
 	if(!installCopyCheck(source, path, fs.allocationUnit, fs.freeBytes, &error))
 		return installFail(error, failure);
 
 	if(!installCopyFiles(&source, path, false, report, &error, reuse))
 		return installFail(error, failure);
+
 	report("Flushing target volume", 0, 0);
 	status = volumeFlush(target.volume.id, &target.volume);
 	if(status != G_VOLUME_OK)
 		return installFail(installVolumeStatus(status), failure);
 	if(!installCopyFiles(&source, path, true, report, &error))
 		return installFail(error, failure);
+
 	status = installUnmount(target, report);
 	if(status != G_VOLUME_OK)
 		return installFail(installVolumeStatus(status), failure);
 
 	if(!installWriteBootloader(bootTarget, boot, report, jobError))
 		return installFail(jobError, failure);
+
 	const char* phase = "Committing boot sector";
 	report(phase, 0, 0);
 	g_volume_job_info job;
@@ -388,9 +411,11 @@ int installRun(const g_install_destination& destination, bool confirmed, std::st
 	status = diskRescan(target.device);
 	if(status != G_VOLUME_OK)
 		return installFail(installVolumeStatus(status), failure);
+
 	status = diskRelease(target.device, target.claim);
 	if(status != G_VOLUME_OK)
 		return installFail(installVolumeStatus(status), failure);
+
 	target.claim = 0;
 	printf("Installation complete and verified. Shut down and boot this HDD without the ISO.\n");
 	klog("install: PASS disk %u volume %lu partition %u, %lu files and directories copied and verified", target.device,

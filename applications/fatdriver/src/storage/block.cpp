@@ -32,7 +32,10 @@ bool fatDeviceOpen(g_fat_device* device)
 		device->status = G_BLOCK_UNSUPPORTED;
 		return false;
 	}
+
 	device->status = blockDeviceOpenBuffer(device->handler, &device->buffer);
+	if(device->status == G_BLOCK_SUCCESS)
+		device->bufferUncertain = false;
 	return device->status == G_BLOCK_SUCCESS;
 }
 
@@ -41,7 +44,30 @@ bool fatDeviceClose(g_fat_device* device)
 	auto status = blockDeviceCloseBuffer(&device->buffer);
 	if(status != G_BLOCK_SUCCESS)
 		status = blockDeviceCloseBuffer(&device->buffer);
+	if(status == G_BLOCK_SUCCESS)
+		device->bufferUncertain = false;
 	return status == G_BLOCK_SUCCESS;
+}
+
+/**
+ * libblockdevice quarantines transfers whose completion is unknown. Mirror that
+ * state before any later writer can copy bytes into the shared DMA window.
+ */
+static bool fatDeviceTransferComplete(g_fat_device* device, g_block_status status)
+{
+	device->status = status;
+	if(status == G_BLOCK_TIMEOUT || status == G_BLOCK_UNAVAILABLE || status == G_BLOCK_PROTOCOL_ERROR ||
+	   status == G_BLOCK_IO_ERROR)
+		device->bufferUncertain = true;
+	return status == G_BLOCK_SUCCESS;
+}
+
+bool fatDeviceReadBuffer(g_fat_device* device, uint64_t sector, uint32_t count)
+{
+	if(device->bufferUncertain)
+		return false;
+
+	return fatDeviceTransferComplete(device, blockDeviceReadBuffer(&device->buffer, device->id, sector, count));
 }
 
 bool fatVolumeRead(g_fat_device* device, const g_fat_volume& volume, uint64_t offset, void* target, size_t length)
@@ -65,22 +91,23 @@ bool fatVolumeRead(g_fat_device* device, const g_fat_volume& volume, uint64_t of
 		if(count > length)
 			count = length;
 		auto sectors = (skip + count + G_BLOCK_SECTOR_SIZE - 1) / G_BLOCK_SECTOR_SIZE;
-		device->status = blockDeviceReadBuffer(&device->buffer, device->id,
-											   volume.firstSector + offset / G_BLOCK_SECTOR_SIZE, sectors);
-		if(device->status != G_BLOCK_SUCCESS)
+
+		if(!fatDeviceReadBuffer(device, volume.firstSector + offset / G_BLOCK_SECTOR_SIZE, sectors))
 			return false;
+
 		memcpy(bytes, device->buffer.data + skip, count);
 		bytes += count;
 		offset += count;
 		length -= count;
 	}
+
 	return true;
 }
 
 bool fatVolumeWritable(const g_fat_mount* mount)
 {
 	auto required = G_BLOCK_WRITABLE | G_BLOCK_FLUSH_SUPPORTED;
-	return !mount->failed && (mount->device.info.flags & required) == required;
+	return !mount->failed && !mount->device.bufferUncertain && (mount->device.info.flags & required) == required;
 }
 
 bool fatVolumeFlush(g_fat_mount* mount)
@@ -123,26 +150,32 @@ bool fatVolumeWrite(g_fat_mount* mount, uint64_t offset, const void* source, siz
 		auto lba = mount->volume.firstSector + offset / G_BLOCK_SECTOR_SIZE;
 		if(skip || count % G_BLOCK_SECTOR_SIZE)
 		{
-			bool cached = sectors == 1 && fatCacheReadSector(mount, offset / G_BLOCK_SECTOR_SIZE, device.buffer.data);
-			device.status = cached ? G_BLOCK_SUCCESS : blockDeviceReadBuffer(&device.buffer, device.id, lba, sectors);
-			if(device.status != G_BLOCK_SUCCESS)
+			bool cached = false;
+			if(sectors == 1)
+				cached = fatCacheReadSector(mount, offset / G_BLOCK_SECTOR_SIZE, device.buffer.data);
+
+			if(cached)
+				device.status = G_BLOCK_SUCCESS;
+			else if(!fatDeviceReadBuffer(&device, lba, sectors))
 			{
 				mount->failed = true;
 				return false;
 			}
 		}
+
 		memcpy(device.buffer.data + skip, bytes, count);
 		mount->dirty = true;
-		device.status = blockDeviceWriteBuffer(&device.buffer, device.id, lba, sectors);
-		if(device.status != G_BLOCK_SUCCESS)
+		if(!fatDeviceTransferComplete(&device, blockDeviceWriteBuffer(&device.buffer, device.id, lba, sectors)))
 		{
 			mount->failed = true;
 			return false;
 		}
+
 		fatCacheUpdate(mount, offset, bytes, count);
 		bytes += count;
 		offset += count;
 		length -= count;
 	}
+
 	return true;
 }

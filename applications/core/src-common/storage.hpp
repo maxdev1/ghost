@@ -1,3 +1,23 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2026, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #ifndef CORE_STORAGE
 #define CORE_STORAGE
 #include "arguments.hpp"
@@ -52,6 +72,7 @@ static inline bool storageSectors(const char* text, uint32_t sectorSize, uint64_
 {
 	if(!result)
 		return false;
+
 	uint64_t value;
 	auto c = text;
 	if(!coreParseUnsignedPrefix(c, value))
@@ -63,6 +84,7 @@ static inline bool storageSectors(const char* text, uint32_t sectorSize, uint64_
 		*result = value;
 		return true;
 	}
+
 	uint64_t multiplier = !strcmp(c, "KiB")	  ? 1024
 						  : !strcmp(c, "MiB") ? 1048576
 						  : !strcmp(c, "GiB") ? 1073741824
@@ -70,6 +92,7 @@ static inline bool storageSectors(const char* text, uint32_t sectorSize, uint64_
 											  : 0;
 	if(!multiplier || !sectorSize || value > UINT64_MAX / multiplier || value * multiplier % sectorSize)
 		return false;
+
 	*result = value * multiplier / sectorSize;
 	return true;
 }
@@ -122,24 +145,29 @@ static inline int storageJobQuery(const char* tool, const char* text)
 	uint64_t id;
 	if(!coreParseUnsigned(text, &id) || !id)
 		return storageError(tool, G_VOLUME_INVALID);
+
 	g_volume_job_info job;
 	auto status = storageManagerJobGet(id, &job);
 	if(status != G_VOLUME_OK)
 		return storageError(tool, status);
+
 	storagePrintJob(job);
 	return job.state == G_VOLUME_JOB_FAILED ? 1 : 0;
 }
 
-static inline int storageRunJob(const char* tool, g_volume_admin_request request, g_volume_job_info* final = nullptr)
+template<typename Request>
+static inline int storageRunJob(const char* tool, Request request, g_volume_job_info* final = nullptr)
 {
 	g_volume_job_info job;
 	auto status = storageManagerAdminStart(request, &job);
 	if(status != G_VOLUME_OK)
 		return storageError(tool, status);
+
 	printf("Job %llu accepted.\n", (unsigned long long) job.id);
 	fflush(stdout);
 	auto lastPhase = job.phase;
 	uint64_t reported = g_millis();
+
 	while(job.state == G_VOLUME_JOB_RUNNING)
 	{
 		g_sleep(50);
@@ -150,6 +178,7 @@ static inline int storageRunJob(const char* tool, g_volume_admin_request request
 					(unsigned long long) job.id, tool, (unsigned long long) job.id);
 			return storageError(tool, status);
 		}
+
 		if(job.state == G_VOLUME_JOB_RUNNING && (lastPhase != job.phase || g_millis() - reported >= 1000))
 		{
 			storagePrintJob(job);
@@ -158,6 +187,7 @@ static inline int storageRunJob(const char* tool, g_volume_admin_request request
 			reported = g_millis();
 		}
 	}
+
 	storagePrintJob(job);
 	if(final)
 		*final = job;

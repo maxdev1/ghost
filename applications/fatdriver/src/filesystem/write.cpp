@@ -25,6 +25,7 @@ g_fs_mutation_status fatMutationAllowed(g_fat_mount* mount, const g_fat_inode* i
 {
 	if(!fatVolumeWritable(mount) || (inode && (inode->attributes & G_FAT_ATTRIBUTE_READ_ONLY)))
 		return G_FS_MUTATION_READ_ONLY;
+
 	return G_FS_MUTATION_SUCCESSFUL;
 }
 
@@ -38,6 +39,7 @@ static bool fatWriteAllocatedRange(g_fat_mount* mount, uint32_t first, uint64_t 
 	auto cached = fatChainGet(mount, first);
 	if(!cached)
 		return false;
+
 	uint8_t zero[G_BLOCK_DMA_BUFFER_BYTES]{};
 	auto clusterBytes = uint64_t(mount->volume.sectorsPerCluster) * G_BLOCK_SECTOR_SIZE;
 	while(length)
@@ -55,6 +57,7 @@ static bool fatWriteAllocatedRange(g_fat_mount* mount, uint32_t first, uint64_t 
 		offset += count;
 		length -= count;
 	}
+
 	return true;
 }
 
@@ -68,36 +71,57 @@ g_fs_mutation_status fatFileResize(g_fat_mount* mount, g_fs_phys_id id, uint64_t
 	g_fat_node node;
 	if(!fatNodeRead(mount, id, &node))
 		return G_FS_MUTATION_NOT_FOUND;
+
 	auto inode = fatInodeFind(mount, id);
 	auto permission = fatMutationAllowed(mount, inode);
 	if(permission != G_FS_MUTATION_SUCCESSFUL)
 		return permission;
-	if(node.directory || length > UINT32_MAX)
+	if(node.directory || length > G_FAT_FILE_SIZE_MAX)
 		return G_FS_MUTATION_INVALID_ARGUMENT;
 	if(node.size == length && (length || !node.firstCluster))
 		return G_FS_MUTATION_SUCCESSFUL;
 
 	std::vector<uint32_t> chain, allocated;
-	auto cached = node.firstCluster ? fatChainGet(mount, node.firstCluster) : nullptr;
-	if(node.firstCluster && !cached)
-		return G_FS_MUTATION_ERROR;
-	auto oldCount = cached ? cached->count : 0;
-	auto oldLast = cached ? cached->last : 0;
+	uint32_t oldCount = 0;
+	uint32_t oldLast = 0;
+	if(node.firstCluster)
+	{
+		auto cached = fatChainGet(mount, node.firstCluster);
+		if(!cached)
+			return G_FS_MUTATION_ERROR;
+
+		oldCount = cached->count;
+		oldLast = cached->last;
+	}
+
 	auto clusterBytes = uint64_t(mount->volume.sectorsPerCluster) * G_BLOCK_SECTOR_SIZE;
 	if(oldCount < (uint64_t(node.size) + clusterBytes - 1) / clusterBytes)
 		return G_FS_MUTATION_ERROR;
+
 	auto needed = (length + clusterBytes - 1) / clusterBytes;
-	if(needed < oldCount && !fatCollectChain(mount, node.firstCluster, &chain))
-		return G_FS_MUTATION_ERROR;
+	if(needed < oldCount)
+	{
+		if(!fatCollectChain(mount, node.firstCluster, &chain))
+			return G_FS_MUTATION_ERROR;
+	}
+
 	if(needed > oldCount)
 	{
 		auto status = fatAllocateClusters(mount, needed - oldCount, &allocated);
 		if(status != G_FS_MUTATION_SUCCESSFUL)
 			return status;
-		if(oldCount && (!fatTableSet(mount, oldLast, allocated.front(), true) || !fatVolumeFlush(mount)))
-			return G_FS_MUTATION_ERROR;
-		if(!oldCount)
+		if(oldCount)
+		{
+			if(!fatTableSet(mount, oldLast, allocated.front(), true))
+				return G_FS_MUTATION_ERROR;
+			if(!fatVolumeFlush(mount))
+				return G_FS_MUTATION_ERROR;
+		}
+		else
+		{
 			node.firstCluster = allocated.front();
+		}
+
 		if(!fatChainRemember(mount, node.firstCluster, needed, allocated.back()))
 			return G_FS_MUTATION_ERROR;
 	}
@@ -106,10 +130,13 @@ g_fs_mutation_status fatFileResize(g_fat_mount* mount, g_fs_phys_id id, uint64_t
 	{
 		auto oldCapacity = uint64_t(oldCount) * clusterBytes;
 		auto zeroEnd = std::min(length, oldCapacity);
-		if(zeroEnd > node.size &&
-		   !fatWriteAllocatedRange(mount, node.firstCluster, node.size, nullptr, zeroEnd - node.size))
-			return G_FS_MUTATION_ERROR;
+		if(zeroEnd > node.size)
+		{
+			if(!fatWriteAllocatedRange(mount, node.firstCluster, node.size, nullptr, zeroEnd - node.size))
+				return G_FS_MUTATION_ERROR;
+		}
 	}
+
 	if(!length)
 		node.firstCluster = 0;
 	node.size = length;
@@ -119,14 +146,25 @@ g_fs_mutation_status fatFileResize(g_fat_mount* mount, g_fs_phys_id id, uint64_t
 
 	if(needed < oldCount)
 	{
-		if(needed && (!fatTableSet(mount, chain[needed - 1], 0x0fffffff) || !fatVolumeFlush(mount)))
-			return G_FS_MUTATION_ERROR;
+		if(needed)
+		{
+			if(!fatTableSet(mount, chain[needed - 1], G_FAT_CLUSTER_END))
+				return G_FS_MUTATION_ERROR;
+			if(!fatVolumeFlush(mount))
+				return G_FS_MUTATION_ERROR;
+		}
+
 		if(!fatFreeClusters(mount, chain, needed))
 			return G_FS_MUTATION_ERROR;
-		if(needed && !fatChainRemember(mount, node.firstCluster, needed, chain[needed - 1]))
-			return G_FS_MUTATION_ERROR;
+		if(needed)
+		{
+			if(!fatChainRemember(mount, node.firstCluster, needed, chain[needed - 1]))
+				return G_FS_MUTATION_ERROR;
+		}
+
 		inode->valid = true;
 	}
+
 	return G_FS_MUTATION_SUCCESSFUL;
 }
 
@@ -139,7 +177,7 @@ g_fs_write_status fatFileWrite(g_fat_mount* mount, g_fs_phys_id id, uint64_t off
 		return G_FS_WRITE_INVALID_FD;
 	if(fatMutationAllowed(mount, fatInodeFind(mount, id)) != G_FS_MUTATION_SUCCESSFUL)
 		return G_FS_WRITE_NOT_SUPPORTED;
-	if(node.directory || offset > UINT32_MAX || length > UINT32_MAX - offset)
+	if(node.directory || offset > G_FAT_FILE_SIZE_MAX || length > G_FAT_FILE_SIZE_MAX - offset)
 		return G_FS_WRITE_ERROR;
 	if(!length)
 		return G_FS_WRITE_SUCCESSFUL;
@@ -151,6 +189,7 @@ g_fs_write_status fatFileWrite(g_fat_mount* mount, g_fs_phys_id id, uint64_t off
 		if(!chain || chain->count < (uint64_t(node.size) + clusterBytes - 1) / clusterBytes)
 			return G_FS_WRITE_ERROR;
 	}
+
 	if(offset + length > node.size)
 	{
 		auto status = fatFileResize(mount, id, offset + length);
@@ -164,8 +203,12 @@ g_fs_write_status fatFileWrite(g_fat_mount* mount, g_fs_phys_id id, uint64_t off
 		return G_FS_WRITE_ERROR;
 
 	auto inode = fatInodeFind(mount, id);
-	if(!(inode->attributes & G_FAT_ATTRIBUTE_ARCHIVE) && !fatInodeStore(mount, inode))
-		return G_FS_WRITE_ERROR;
+	if(!(inode->attributes & G_FAT_ATTRIBUTE_ARCHIVE))
+	{
+		if(!fatInodeStore(mount, inode))
+			return G_FS_WRITE_ERROR;
+	}
+
 	*written = length;
 	return G_FS_WRITE_SUCCESSFUL;
 }

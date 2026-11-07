@@ -21,10 +21,11 @@
 #ifndef LIBSTORAGE_ADMIN
 #define LIBSTORAGE_ADMIN
 #include <cstddef>
+#include <type_traits>
 #include "volume.hpp"
 
 constexpr uint32_t G_VOLUME_ADMIN_MAGIC = 0x47564144;
-constexpr uint16_t G_VOLUME_ADMIN_VERSION = 2;
+constexpr uint16_t G_VOLUME_ADMIN_VERSION = 4;
 using g_volume_job_id = uint64_t;
 
 enum g_volume_admin_command : uint16_t
@@ -233,36 +234,189 @@ struct g_volume_job_info
 	uint32_t partition = 0;
 };
 
-struct g_volume_admin_request
+struct g_volume_admin_header
 {
 	uint32_t magic = G_VOLUME_ADMIN_MAGIC;
 	uint16_t version = G_VOLUME_ADMIN_VERSION;
 	g_volume_admin_command command = G_DISK_GET;
+};
+
+struct g_disk_get_request
+{
+	static constexpr g_volume_admin_command COMMAND = G_DISK_GET;
+	g_volume_admin_header header{G_VOLUME_ADMIN_MAGIC, G_VOLUME_ADMIN_VERSION, COMMAND};
 	g_device_id device = 0;
-	uint16_t reserved = 0;
+};
+
+struct g_disk_next_request
+{
+	static constexpr g_volume_admin_command COMMAND = G_DISK_NEXT;
+	g_volume_admin_header header{G_VOLUME_ADMIN_MAGIC, G_VOLUME_ADMIN_VERSION, COMMAND};
+	g_device_id device = 0;
+};
+
+struct g_disk_partition_next_request
+{
+	static constexpr g_volume_admin_command COMMAND = G_DISK_PARTITION_NEXT;
+	g_volume_admin_header header{G_VOLUME_ADMIN_MAGIC, G_VOLUME_ADMIN_VERSION, COMMAND};
+	g_device_id device = 0;
 	uint32_t partition = 0;
-	g_volume_id volume = 0;
-	g_volume_job_id job = 0;
+};
+
+struct g_disk_table_create_request
+{
+	static constexpr g_volume_admin_command COMMAND = G_DISK_TABLE_CREATE;
+	g_volume_admin_header header{G_VOLUME_ADMIN_MAGIC, G_VOLUME_ADMIN_VERSION, COMMAND};
 	uint64_t operation = 0;
 	uint64_t generation = 0;
+	g_device_id device = 0;
+	g_disk_layout layout = G_DISK_MBR;
+	uint32_t flags = 0;
+};
+
+struct g_disk_partition_create_request
+{
+	static constexpr g_volume_admin_command COMMAND = G_DISK_PARTITION_CREATE;
+	g_volume_admin_header header{G_VOLUME_ADMIN_MAGIC, G_VOLUME_ADMIN_VERSION, COMMAND};
+	uint64_t operation = 0;
+	uint64_t generation = 0;
+	g_device_id device = 0;
 	uint64_t firstSector = 0;
 	uint64_t sectorCount = 0;
 	uint64_t alignment = 2048;
 	uint32_t flags = 0;
 	uint32_t type = 0x0c;
 	uint32_t slot = 0;
-	g_disk_layout layout = G_DISK_MBR;
+};
+
+struct g_disk_partition_delete_request
+{
+	static constexpr g_volume_admin_command COMMAND = G_DISK_PARTITION_DELETE;
+	g_volume_admin_header header{G_VOLUME_ADMIN_MAGIC, G_VOLUME_ADMIN_VERSION, COMMAND};
+	uint64_t operation = 0;
+	uint64_t generation = 0;
+	g_device_id device = 0;
+	uint32_t partition = 0;
+};
+
+struct g_disk_wipe_request
+{
+	static constexpr g_volume_admin_command COMMAND = G_DISK_WIPE;
+	g_volume_admin_header header{G_VOLUME_ADMIN_MAGIC, G_VOLUME_ADMIN_VERSION, COMMAND};
+	uint64_t operation = 0;
+	uint64_t generation = 0;
+	g_device_id device = 0;
+};
+
+struct g_volume_format_request
+{
+	static constexpr g_volume_admin_command COMMAND = G_VOLUME_FORMAT;
+	g_volume_admin_header header{G_VOLUME_ADMIN_MAGIC, G_VOLUME_ADMIN_VERSION, COMMAND};
+	uint64_t operation = 0;
+	uint64_t generation = 0;
+	g_volume_id volume = 0;
 	char filesystem[16]{};
 	char label[12]{};
-	/**
-	 * Boot operations bind to a disk reservation and its observed generation.
-	 * sectorCount is the boot-area size; firstSector is a chunk's destination LBA.
-	 */
+};
+
+struct g_volume_wipe_request
+{
+	static constexpr g_volume_admin_command COMMAND = G_VOLUME_WIPE;
+	g_volume_admin_header header{G_VOLUME_ADMIN_MAGIC, G_VOLUME_ADMIN_VERSION, COMMAND};
+	uint64_t operation = 0;
+	uint64_t generation = 0;
+	g_volume_id volume = 0;
+};
+
+struct g_volume_job_get_request
+{
+	static constexpr g_volume_admin_command COMMAND = G_VOLUME_JOB_GET;
+	g_volume_admin_header header{G_VOLUME_ADMIN_MAGIC, G_VOLUME_ADMIN_VERSION, COMMAND};
+	g_volume_job_id job = 0;
+};
+
+struct g_volume_formatter_register_request
+{
+	static constexpr g_volume_admin_command COMMAND = G_VOLUME_FORMATTER_REGISTER;
+	g_volume_admin_header header{G_VOLUME_ADMIN_MAGIC, G_VOLUME_ADMIN_VERSION, COMMAND};
+	char filesystem[16]{};
+};
+
+struct g_volume_format_work_request
+{
+	static constexpr g_volume_admin_command COMMAND = G_VOLUME_FORMAT_WORK;
+	g_volume_admin_header header{G_VOLUME_ADMIN_MAGIC, G_VOLUME_ADMIN_VERSION, COMMAND};
+	g_volume_job_id job = 0;
+	g_device_id device = 0;
+	g_tid driver = G_TID_NONE;
+	uint64_t firstSector = 0;
+	uint64_t sectorCount = 0;
+	char filesystem[16]{};
+	char label[12]{};
+};
+
+struct g_volume_format_ack_request
+{
+	static constexpr g_volume_admin_command COMMAND = G_VOLUME_FORMAT_ACK;
+	g_volume_admin_header header{G_VOLUME_ADMIN_MAGIC, G_VOLUME_ADMIN_VERSION, COMMAND};
+	g_volume_job_id job = 0;
+};
+
+struct g_disk_boot_get_request
+{
+	static constexpr g_volume_admin_command COMMAND = G_DISK_BOOT_GET;
+	g_volume_admin_header header{G_VOLUME_ADMIN_MAGIC, G_VOLUME_ADMIN_VERSION, COMMAND};
+	g_device_id device = 0;
+	g_volume_id volume = 0;
 	uint64_t claim = 0;
+	uint64_t sectorCount = 0;
 	uint32_t diskIdentity = 0;
+};
+
+struct g_disk_boot_write_request
+{
+	static constexpr g_volume_admin_command COMMAND = G_DISK_BOOT_WRITE;
+	g_volume_admin_header header{G_VOLUME_ADMIN_MAGIC, G_VOLUME_ADMIN_VERSION, COMMAND};
+	uint64_t operation = 0;
+	g_disk_boot_info boot;
+	uint64_t firstSector = 0;
 	uint32_t dataSize = 0;
 	uint8_t data[G_DISK_BOOT_CHUNK_SIZE]{};
 };
+
+struct g_disk_boot_commit_request
+{
+	static constexpr g_volume_admin_command COMMAND = G_DISK_BOOT_COMMIT;
+	g_volume_admin_header header{G_VOLUME_ADMIN_MAGIC, G_VOLUME_ADMIN_VERSION, COMMAND};
+	uint64_t operation = 0;
+	g_disk_boot_info boot;
+	uint32_t flags = 0;
+	uint8_t code[G_DISK_BOOT_CODE_SIZE]{};
+};
+
+constexpr size_t storageManagerAdminRequestSize(g_volume_admin_command command)
+{
+	switch(command)
+	{
+		case G_DISK_GET: return sizeof(g_disk_get_request);
+		case G_DISK_NEXT: return sizeof(g_disk_next_request);
+		case G_DISK_PARTITION_NEXT: return sizeof(g_disk_partition_next_request);
+		case G_DISK_TABLE_CREATE: return sizeof(g_disk_table_create_request);
+		case G_DISK_PARTITION_CREATE: return sizeof(g_disk_partition_create_request);
+		case G_DISK_PARTITION_DELETE: return sizeof(g_disk_partition_delete_request);
+		case G_DISK_WIPE: return sizeof(g_disk_wipe_request);
+		case G_VOLUME_FORMAT: return sizeof(g_volume_format_request);
+		case G_VOLUME_WIPE: return sizeof(g_volume_wipe_request);
+		case G_VOLUME_JOB_GET: return sizeof(g_volume_job_get_request);
+		case G_VOLUME_FORMATTER_REGISTER: return sizeof(g_volume_formatter_register_request);
+		case G_VOLUME_FORMAT_WORK: return sizeof(g_volume_format_work_request);
+		case G_VOLUME_FORMAT_ACK: return sizeof(g_volume_format_ack_request);
+		case G_DISK_BOOT_GET: return sizeof(g_disk_boot_get_request);
+		case G_DISK_BOOT_WRITE: return sizeof(g_disk_boot_write_request);
+		case G_DISK_BOOT_COMMIT: return sizeof(g_disk_boot_commit_request);
+		default: return 0;
+	}
+}
 
 struct g_volume_admin_response
 {
@@ -282,9 +436,28 @@ struct g_volume_admin_response
  * Start a mutation with a stable operation ID, then poll the returned job ID.
  * Client timeout does not cancel I/O or release the target's administrative lock.
  */
-g_volume_status storageManagerAdminRequest(const g_volume_admin_request& request, g_volume_admin_response* response);
+g_volume_status storageManagerAdminRequest(const void* request, size_t size, g_volume_admin_response* response);
+g_volume_status storageManagerAdminStart(const void* request, size_t size, g_volume_job_info* info);
+
+template<typename Request>
+g_volume_status storageManagerAdminRequest(const Request& request, g_volume_admin_response* response)
+{
+	static_assert(std::is_standard_layout<Request>::value && std::is_trivially_copyable<Request>::value,
+				  "administrative requests have a fixed wire layout");
+	static_assert(offsetof(Request, header) == 0, "administrative requests begin with their common header");
+	return storageManagerAdminRequest(&request, sizeof(request), response);
+}
+
+template<typename Request>
+g_volume_status storageManagerAdminStart(const Request& request, g_volume_job_info* info)
+{
+	static_assert(std::is_standard_layout<Request>::value && std::is_trivially_copyable<Request>::value,
+				  "administrative requests have a fixed wire layout");
+	static_assert(offsetof(Request, header) == 0, "administrative requests begin with their common header");
+	return storageManagerAdminStart(&request, sizeof(request), info);
+}
+
 g_volume_status storageManagerJobGet(g_volume_job_id job, g_volume_job_info* info);
-g_volume_status storageManagerAdminStart(g_volume_admin_request request, g_volume_job_info* info);
 g_volume_status storageManagerFormatterRegister(const char* filesystem);
 
 g_volume_status diskGet(g_device_id device, g_disk_info* info);

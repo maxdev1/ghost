@@ -22,6 +22,7 @@
 #define LIBSTORAGE_VOLUME
 
 #include <cstring>
+#include <type_traits>
 #include "interface.hpp"
 
 /**
@@ -32,15 +33,17 @@ inline bool volumeMountNameValid(const char* name)
 {
 	if(!name || !name[0])
 		return false;
+
 	uint32_t length = 0;
-	for(; length < sizeof(g_volume_request{}.name) && name[length]; ++length)
+	for(; length < sizeof(g_volume_mount_request{}.name) && name[length]; ++length)
 	{
 		auto c = name[length];
 		if(!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' ||
 			 c == '.'))
 			return false;
 	}
-	return length < sizeof(g_volume_request{}.name) && strcmp(name, ".") && strcmp(name, "..") &&
+
+	return length < sizeof(g_volume_mount_request{}.name) && strcmp(name, ".") && strcmp(name, "..") &&
 		   strcmp(name, "fat-root");
 }
 
@@ -49,7 +52,16 @@ inline bool volumeMountNameValid(const char* name)
  * operations or release ownership. Retry CLAIM from the same serving thread to
  * recover its token, and GET to reconcile an uncertain mount or unmount.
  */
-g_volume_status storageManagerRequest(const g_volume_request& request, g_volume_response* response);
+g_volume_status storageManagerRequest(const void* request, size_t size, g_volume_response* response);
+
+template<typename Request>
+g_volume_status storageManagerRequest(const Request& request, g_volume_response* response)
+{
+	static_assert(std::is_standard_layout<Request>::value && std::is_trivially_copyable<Request>::value,
+				  "volume requests have a fixed wire layout");
+	static_assert(offsetof(Request, header) == 0, "volume requests begin with their common header");
+	return storageManagerRequest(&request, sizeof(request), response);
+}
 
 g_volume_status volumeGet(g_volume_id volume, g_volume_info* info);
 g_volume_status volumeNext(g_volume_id after, g_device_id device, g_volume_info* info);

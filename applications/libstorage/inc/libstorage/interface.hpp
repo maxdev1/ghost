@@ -21,12 +21,14 @@
 #ifndef LIBSTORAGE_INTERFACE
 #define LIBSTORAGE_INTERFACE
 
+#include <cstddef>
 #include <libdevice/interface.hpp>
 
 constexpr const char* G_STORAGE_MANAGER_NAME = "storagemanager";
 constexpr const char* G_VOLUME_EVENT_TOPIC = "volume";
 constexpr uint32_t G_VOLUME_MAGIC = 0x47564f4c;
-constexpr uint16_t G_VOLUME_VERSION = 3;
+constexpr uint32_t G_VOLUME_RESPONSE_MAGIC = 0x47565250;
+constexpr uint16_t G_VOLUME_VERSION = 5;
 constexpr uint64_t G_VOLUME_TIMEOUT_MS = 30000;
 
 using g_volume_id = uint64_t;
@@ -230,22 +232,135 @@ struct g_volume_info
 	char path[64]{};
 };
 
-struct g_volume_request
+struct g_volume_header
 {
 	uint32_t magic = G_VOLUME_MAGIC;
 	uint16_t version = G_VOLUME_VERSION;
 	g_volume_command command = G_VOLUME_GET;
+};
+
+struct g_volume_get_request
+{
+	static constexpr g_volume_command COMMAND = G_VOLUME_GET;
+	g_volume_header header{G_VOLUME_MAGIC, G_VOLUME_VERSION, COMMAND};
+	g_volume_id volume = 0;
+};
+
+struct g_volume_list_request
+{
+	static constexpr g_volume_command COMMAND = G_VOLUME_LIST;
+	g_volume_header header{G_VOLUME_MAGIC, G_VOLUME_VERSION, COMMAND};
 	g_volume_id volume = 0;
 	g_device_id device = 0;
-	uint16_t reserved = 0;
-	uint64_t claim = 0;
-	int32_t mount = -1;
+};
+
+struct g_volume_claim_request
+{
+	static constexpr g_volume_command COMMAND = G_VOLUME_CLAIM;
+	g_volume_header header{G_VOLUME_MAGIC, G_VOLUME_VERSION, COMMAND};
+	g_volume_id volume = 0;
 	char filesystem[16]{};
-	/**
-	 * CLAIM's mount name, or an optional MOUNT destination under /mount.
-	 */
 	char name[32]{};
 };
+
+struct g_volume_commit_request
+{
+	static constexpr g_volume_command COMMAND = G_VOLUME_COMMIT;
+	g_volume_header header{G_VOLUME_MAGIC, G_VOLUME_VERSION, COMMAND};
+	g_volume_id volume = 0;
+	uint64_t claim = 0;
+	int32_t mount = -1;
+};
+
+struct g_volume_release_request
+{
+	static constexpr g_volume_command COMMAND = G_VOLUME_RELEASE;
+	g_volume_header header{G_VOLUME_MAGIC, G_VOLUME_VERSION, COMMAND};
+	g_volume_id volume = 0;
+	uint64_t claim = 0;
+};
+
+struct g_volume_mount_request
+{
+	static constexpr g_volume_command COMMAND = G_VOLUME_MOUNT;
+	g_volume_header header{G_VOLUME_MAGIC, G_VOLUME_VERSION, COMMAND};
+	g_volume_id volume = 0;
+	char name[32]{};
+};
+
+struct g_volume_unmount_request
+{
+	static constexpr g_volume_command COMMAND = G_VOLUME_UNMOUNT;
+	g_volume_header header{G_VOLUME_MAGIC, G_VOLUME_VERSION, COMMAND};
+	g_volume_id volume = 0;
+	uint64_t claim = 0;
+};
+
+struct g_volume_rescan_request
+{
+	static constexpr g_volume_command COMMAND = G_VOLUME_RESCAN;
+	g_volume_header header{G_VOLUME_MAGIC, G_VOLUME_VERSION, COMMAND};
+	g_device_id device = 0;
+};
+
+struct g_volume_claim_disk_request
+{
+	static constexpr g_volume_command COMMAND = G_VOLUME_CLAIM_DISK;
+	g_volume_header header{G_VOLUME_MAGIC, G_VOLUME_VERSION, COMMAND};
+	g_device_id device = 0;
+	g_volume_id volume = 0;
+};
+
+struct g_volume_release_disk_request
+{
+	static constexpr g_volume_command COMMAND = G_VOLUME_RELEASE_DISK;
+	g_volume_header header{G_VOLUME_MAGIC, G_VOLUME_VERSION, COMMAND};
+	g_device_id device = 0;
+	uint64_t claim = 0;
+};
+
+struct g_volume_flush_request
+{
+	static constexpr g_volume_command COMMAND = G_VOLUME_FLUSH;
+	g_volume_header header{G_VOLUME_MAGIC, G_VOLUME_VERSION, COMMAND};
+	g_volume_id volume = 0;
+};
+
+struct g_volume_offer_request
+{
+	static constexpr g_volume_command COMMAND = G_VOLUME_OFFER;
+	g_volume_header header{G_VOLUME_MAGIC, G_VOLUME_VERSION, COMMAND};
+	g_volume_id volume = 0;
+	char filesystem[16]{};
+};
+
+struct g_volume_stat_request
+{
+	static constexpr g_volume_command COMMAND = G_VOLUME_STAT;
+	g_volume_header header{G_VOLUME_MAGIC, G_VOLUME_VERSION, COMMAND};
+	g_volume_id volume = 0;
+};
+
+constexpr size_t storageManagerRequestSize(g_volume_command command)
+{
+	switch(command)
+	{
+		case G_VOLUME_GET: return sizeof(g_volume_get_request);
+		case G_VOLUME_LIST: return sizeof(g_volume_list_request);
+		case G_VOLUME_CLAIM: return sizeof(g_volume_claim_request);
+		case G_VOLUME_COMMIT: return sizeof(g_volume_commit_request);
+		case G_VOLUME_RELEASE: return sizeof(g_volume_release_request);
+		case G_VOLUME_MOUNT: return sizeof(g_volume_mount_request);
+		case G_VOLUME_UNMOUNT: return sizeof(g_volume_unmount_request);
+		case G_VOLUME_RESCAN: return sizeof(g_volume_rescan_request);
+		case G_VOLUME_CLAIM_DISK: return sizeof(g_volume_claim_disk_request);
+		case G_VOLUME_RELEASE_DISK: return sizeof(g_volume_release_disk_request);
+		case G_VOLUME_FLUSH: return sizeof(g_volume_flush_request);
+		case G_VOLUME_OFFER: return sizeof(g_volume_offer_request);
+		case G_VOLUME_STAT: return sizeof(g_volume_stat_request);
+		default: return 0;
+	}
+}
 
 struct g_volume_filesystem_info
 {
@@ -258,7 +373,7 @@ struct g_volume_filesystem_info
 
 struct g_volume_response
 {
-	uint32_t magic = G_VOLUME_MAGIC;
+	uint32_t magic = G_VOLUME_RESPONSE_MAGIC;
 	uint16_t version = G_VOLUME_VERSION;
 	g_volume_command command = G_VOLUME_GET;
 	g_volume_status status = G_VOLUME_INVALID;

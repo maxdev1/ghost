@@ -33,12 +33,13 @@ struct g_mouse_info
 	bool button2 = false;
 	bool button3 = false;
 	int scroll = 0;
+	uint64_t millis = 0;
 };
 
 class g_mouse
 {
   public:
-	static g_mouse_info readMouse(g_fd in);
+	static bool readMouse(g_fd in, g_mouse_info& info);
 };
 
 #endif

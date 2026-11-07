@@ -18,9 +18,9 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "filesystem/mutation.hpp"
 #include <algorithm>
 #include <cstring>
+#include "filesystem/mutation.hpp"
 
 static const uint8_t* fatTableSector(g_fat_mount* mount, uint32_t sector)
 {
@@ -30,7 +30,8 @@ static const uint8_t* fatTableSector(g_fat_mount* mount, uint32_t sector)
 		current->stamp = ++mount->cacheClock;
 		return current->bytes;
 	}
-	for(auto& cached : mount->sectors)
+
+	for(auto& cached: mount->sectors)
 	{
 		if(cached.stamp && cached.sector == sector)
 		{
@@ -42,29 +43,42 @@ static const uint8_t* fatTableSector(g_fat_mount* mount, uint32_t sector)
 
 	auto& volume = mount->volume;
 	auto first = volume.reservedSectors + uint64_t(volume.activeFat) * volume.sectorsPerFat;
-	if(sector < first || sector >= first + volume.sectorsPerFat) return nullptr;
+	if(sector < first || sector >= first + volume.sectorsPerFat)
+		return nullptr;
+
 	uint8_t bytes[G_BLOCK_DMA_BUFFER_BYTES];
 	auto count = std::min(uint64_t(sizeof(bytes) / G_BLOCK_SECTOR_SIZE), first + volume.sectorsPerFat - sector);
 	count = std::min(count, uint64_t(mount->device.info.maxTransferSectors));
 	count = std::min(count, uint64_t(mount->device.buffer.size / G_BLOCK_SECTOR_SIZE));
-	if(!count || !fatVolumeRead(&mount->device, volume, uint64_t(sector) * G_BLOCK_SECTOR_SIZE, bytes, count * G_BLOCK_SECTOR_SIZE)) return nullptr;
+	if(!count)
+		return nullptr;
+
+	if(!fatVolumeRead(&mount->device, volume, uint64_t(sector) * G_BLOCK_SECTOR_SIZE, bytes,
+					  count * G_BLOCK_SECTOR_SIZE))
+		return nullptr;
+
 	for(uint32_t i = 0; i < count; ++i)
 	{
 		auto oldest = &mount->sectors[0];
-		for(auto& cached : mount->sectors)
+		for(auto& cached: mount->sectors)
 		{
 			if(cached.stamp && cached.sector == sector + i)
 			{
 				oldest = &cached;
 				break;
 			}
-			if(cached.stamp < oldest->stamp) oldest = &cached;
+
+			if(cached.stamp < oldest->stamp)
+				oldest = &cached;
 		}
+
 		oldest->sector = sector + i;
 		oldest->stamp = ++mount->cacheClock;
 		memcpy(oldest->bytes, bytes + i * G_BLOCK_SECTOR_SIZE, G_BLOCK_SECTOR_SIZE);
-		if(!i) mount->tableCacheIndex = oldest - mount->sectors;
+		if(!i)
+			mount->tableCacheIndex = oldest - mount->sectors;
 	}
+
 	return mount->sectors[mount->tableCacheIndex].bytes;
 }
 
@@ -92,19 +106,22 @@ static bool fatTableRead(g_fat_mount* mount, uint64_t offset, uint8_t* target, s
 		offset += count;
 		length -= count;
 	}
+
 	return true;
 }
 
 bool fatTableGet(g_fat_mount* mount, uint32_t cluster, uint32_t* value)
 {
 	auto bits = mount->volume.fatBits;
-	auto offset = bits == 12 ? uint64_t(cluster) + cluster / 2 : uint64_t(cluster) * (bits / 8);
-	uint8_t raw[4]{};
-	if(!fatTableRead(mount, offset, raw, bits == 32 ? 4 : 2))
+	auto offset = bits == G_FAT12_ENTRY_BITS ? uint64_t(cluster) + cluster / G_FAT12_ENTRIES_PER_PAIR :
+				  uint64_t(cluster) * (bits / G_FAT_BITS_PER_BYTE);
+	uint8_t raw[G_FAT32_ENTRY_SIZE]{};
+	if(!fatTableRead(mount, offset, raw, bits == G_FAT32_ENTRY_BITS ? G_FAT32_ENTRY_SIZE : G_FAT16_ENTRY_SIZE))
 		return false;
-	*value = bits == 32 ? fatRead32(raw) & 0x0fffffff : fatRead16(raw);
-	if(bits == 12)
-		*value = cluster & 1 ? *value >> 4 : *value & 0x0fff;
+
+	*value = bits == G_FAT32_ENTRY_BITS ? fatRead32(raw) & G_FAT32_ENTRY_MASK : fatRead16(raw);
+	if(bits == G_FAT12_ENTRY_BITS)
+		*value = cluster & 1 ? *value >> G_FAT_NIBBLE_BITS : *value & G_FAT12_ENTRY_MASK;
 	return true;
 }
 
@@ -113,48 +130,68 @@ bool fatTableSet(g_fat_mount* mount, uint32_t cluster, uint32_t value, bool pres
 	auto& volume = mount->volume;
 	auto free = mount->freeClusters;
 	uint32_t previous = 0;
-	mount->freeClusters = UINT32_MAX;
-	bool counted = cluster >= 2 && cluster < volume.clusterCount + 2;
-	if(free != UINT32_MAX && counted && !fatTableGet(mount, cluster, &previous))
+	mount->freeClusters = G_FAT_ALLOCATION_HINT_UNKNOWN;
+	bool counted = fatClusterValid(volume, cluster);
+	if(free != G_FAT_ALLOCATION_HINT_UNKNOWN && counted)
 	{
-		mount->failed = true;
-		return false;
+		if(!fatTableGet(mount, cluster, &previous))
+		{
+			mount->failed = true;
+			return false;
+		}
 	}
+
 	auto bits = volume.fatBits;
-	auto entryOffset = bits == 12 ? uint64_t(cluster) + cluster / 2 : uint64_t(cluster) * (bits / 8);
+	auto entryOffset = bits == G_FAT12_ENTRY_BITS ? uint64_t(cluster) + cluster / G_FAT12_ENTRIES_PER_PAIR :
+					   uint64_t(cluster) * (bits / G_FAT_BITS_PER_BYTE);
 	unsigned first = volume.mirrored ? 0 : volume.activeFat;
 	unsigned end = volume.mirrored ? volume.fatCount : first + 1;
 	for(unsigned copy = first; copy < end; ++copy)
 	{
-		auto offset = (volume.reservedSectors + uint64_t(copy) * volume.sectorsPerFat) * G_BLOCK_SECTOR_SIZE + entryOffset;
-		uint8_t raw[4];
-		auto length = bits == 32 ? 4 : 2;
+		auto offset =
+				(volume.reservedSectors + uint64_t(copy) * volume.sectorsPerFat) * G_BLOCK_SECTOR_SIZE + entryOffset;
+		uint8_t raw[G_FAT32_ENTRY_SIZE];
+		auto length = bits == G_FAT32_ENTRY_BITS ? G_FAT32_ENTRY_SIZE : G_FAT16_ENTRY_SIZE;
 		if(!fatVolumeRead(&mount->device, volume, offset, raw, length))
 		{
 			mount->failed = true;
 			return false;
 		}
-		if(bits == 12)
+
+		if(bits == G_FAT12_ENTRY_BITS)
 		{
 			auto previous = fatRead16(raw);
-			fatWrite16(raw, cluster & 1 ? (previous & 0x000f) | ((value & 0x0fff) << 4) :
-				(previous & 0xf000) | (value & 0x0fff));
+			uint16_t packed;
+			if(cluster & 1)
+				packed = (previous & G_FAT12_LOW_NIBBLE_MASK) | ((value & G_FAT12_ENTRY_MASK) << G_FAT_NIBBLE_BITS);
+			else
+				packed = (previous & G_FAT12_HIGH_NIBBLE_MASK) | (value & G_FAT12_ENTRY_MASK);
+			fatWrite16(raw, packed);
 		}
-		else if(bits == 16)
+		else if(bits == G_FAT16_ENTRY_BITS)
 			fatWrite16(raw, value);
 		else
-			fatWrite32(raw, (fatRead32(raw) & 0xf0000000) | (value & 0x0fffffff));
+			fatWrite32(raw, (fatRead32(raw) & G_FAT32_RESERVED_BITS_MASK) | (value & G_FAT32_ENTRY_MASK));
 		if(!fatVolumeWrite(mount, offset, raw, length))
 			return false;
 	}
+
 	if(!preserveChains)
-		for(auto& chain : mount->chains) chain.stamp = 0;
-	if(free != UINT32_MAX)
+		for(auto& chain: mount->chains)
+			chain.stamp = 0;
+	if(free != G_FAT_ALLOCATION_HINT_UNKNOWN)
 	{
-		auto mask = bits == 12 ? 0x0fffU : bits == 16 ? 0xffffU : 0x0fffffffU;
-		if(counted && !previous && (value & mask)) --free;
-		if(counted && previous && !(value & mask)) ++free;
+		uint32_t mask = G_FAT32_ENTRY_MASK;
+		if(bits == G_FAT12_ENTRY_BITS)
+			mask = G_FAT12_ENTRY_MASK;
+		else if(bits == G_FAT16_ENTRY_BITS)
+			mask = G_FAT16_ENTRY_MASK;
+		if(counted && !previous && (value & mask))
+			--free;
+		if(counted && previous && !(value & mask))
+			++free;
 		mount->freeClusters = free;
 	}
+
 	return true;
 }

@@ -23,19 +23,29 @@
 
 #include "libinput/mouse/mouse.hpp"
 
-g_mouse_info g_mouse::readMouse(g_fd in)
+bool g_mouse::readMouse(g_fd in, g_mouse_info& info)
 {
 	g_ps2_mouse_packet packet;
-
-	g_mouse_info e;
-	if(g_read(in, &packet, sizeof(g_ps2_mouse_packet)) == sizeof(g_ps2_mouse_packet))
+	size_t offset = 0;
+	while(offset < sizeof(packet))
 	{
-		e.x = packet.x;
-		e.y = packet.y;
-		e.button1 = (packet.flags & (1 << 0));
-		e.button2 = (packet.flags & (1 << 1));
-		e.button3 = (packet.flags & (1 << 2));
-		e.scroll = packet.scroll;
+		g_fs_read_status status;
+		const int32_t count = g_read_s(in, (uint8_t*) &packet + offset, sizeof(packet) - offset, &status);
+		if(status == G_FS_READ_BUSY)
+		{
+			g_sleep(1);
+			continue;
+		}
+		if(count <= 0 || status != G_FS_READ_SUCCESSFUL)
+			return false;
+		offset += count;
 	}
-	return e;
+	info.x = packet.x;
+	info.y = packet.y;
+	info.button1 = (packet.flags & (1 << 0));
+	info.button2 = (packet.flags & (1 << 1));
+	info.button3 = (packet.flags & (1 << 2));
+	info.scroll = packet.scroll;
+	info.millis = packet.millis;
+	return true;
 }
