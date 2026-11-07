@@ -35,8 +35,10 @@ std::vector<g_install_disk> installDiscoverDisks()
 			disks.push_back({info.device, info});
 			after = info.device;
 		}
+
 		if(!disks.empty())
 			break;
+
 		g_sleep(50);
 	} while(g_millis() - started < 10000);
 	return disks;
@@ -56,5 +58,6 @@ std::vector<g_install_destination> installDiscoverDestinations()
 			after = volume.id;
 		}
 	}
+
 	return result;
 }

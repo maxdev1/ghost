@@ -23,6 +23,12 @@
 #include <cerrno>
 #include <cstring>
 #include <fcntl.h>
+#ifndef O_LINKFILE
+#define O_LINKFILE 0
+#endif
+#ifndef O_NOFOLLOW
+#define O_NOFOLLOW 0
+#endif
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -30,6 +36,16 @@ static bool installCopyError(const char** error, const char* text)
 {
 	*error = text;
 	return false;
+}
+
+static bool installCopyFileError(g_install_source_tree* tree, const char** error,
+								 const std::string& path, const char* operation, int code)
+{
+	tree->copyError = std::string(operation) + ": " + path;
+	if(code)
+		tree->copyError += std::string(": ") + strerror(code);
+
+	return installCopyError(error, tree->copyError.c_str());
 }
 
 /**
@@ -42,6 +58,7 @@ size_t installCopyAllocationSize(size_t previous, uint64_t elapsed, bool filled)
 		return std::max(size_t(65536), previous / 2);
 	if(filled && elapsed < 250)
 		return std::min(size_t(1048576), previous * 2);
+
 	return previous;
 }
 
@@ -61,26 +78,44 @@ bool installCopyFiles(g_install_source_tree* tree, const std::string& destinatio
 		auto path = destination + "/" + entry.path;
 		if(entry.directory)
 		{
+			errno = 0;
 			struct stat info;
-			bool valid = verify ? !stat(path.c_str(), &info) && S_ISDIR(info.st_mode) : !mkdir(path.c_str(), 0777);
+			bool valid = verify ? !lstat(path.c_str(), &info) && S_ISDIR(info.st_mode) : !mkdir(path.c_str(), 0777);
 			if(!valid && !verify && overwrite && errno == EEXIST)
-				valid = !stat(path.c_str(), &info) && S_ISDIR(info.st_mode);
+				valid = !lstat(path.c_str(), &info) && S_ISDIR(info.st_mode);
 			if(!valid)
-				return installCopyError(error, "cannot create or verify a target directory");
+				return installCopyFileError(tree, error, path,
+											verify ? "cannot verify directory" : "cannot create directory", errno);
 			continue;
 		}
 
-		auto file = open(path.c_str(), verify ? O_RDONLY : O_WRONLY | O_CREAT | (overwrite ? O_TRUNC : O_EXCL), 0666);
+		auto flags = verify ? O_RDONLY : O_WRONLY | O_CREAT | (overwrite ? O_TRUNC : O_EXCL);
+		auto file = open(path.c_str(), flags | O_LINKFILE | O_NOFOLLOW, 0666);
 		if(file < 0)
-			return installCopyError(error, "cannot open a target file");
+			return installCopyFileError(tree, error, path, "cannot open target file", errno);
 
-		bool success = true;
+		const char* operation = nullptr;
+		int failure = 0;
+		auto fail = [&](const char* action, int code)
+		{
+			if(!operation)
+			{
+				operation = action;
+				failure = code;
+			}
+		};
+
 		struct stat info;
-		if(verify && (fstat(file, &info) || uint64_t(info.st_size) != entry.size))
-			success = false;
+		if(verify)
+		{
+			if(fstat(file, &info))
+				fail("cannot inspect target file", errno);
+			else if(uint64_t(info.st_size) != entry.size)
+				fail("file size verification failed", 0);
+		}
 
 		uint64_t allocated = 0;
-		for(uint64_t offset = 0; success && offset < entry.size;)
+		for(uint64_t offset = 0; !operation && offset < entry.size;)
 		{
 			auto count = size_t(std::min(uint64_t(sizeof(bytes)), entry.size - offset));
 			if(!verify && offset + count > allocated)
@@ -89,9 +124,10 @@ bool installCopyFiles(g_install_source_tree* tree, const std::string& destinatio
 				auto started = tree->clock ? tree->clock() : 0;
 				if(ftruncate(file, allocated))
 				{
-					success = false;
+					fail("cannot allocate target file", errno);
 					break;
 				}
+
 				if(tree->clock)
 				{
 					auto finished = tree->clock();
@@ -101,41 +137,46 @@ bool installCopyFiles(g_install_source_tree* tree, const std::string& destinatio
 				}
 			}
 
+			errno = 0;
 			if(!installSourceRead(tree, i, offset, bytes, count))
 			{
-				success = false;
+				fail("cannot read source for target file", errno ? errno : EIO);
 				break;
 			}
 
 			size_t transferred = 0;
 			while(transferred < count)
 			{
+				errno = 0;
 				auto result = verify ? read(file, actual + transferred, count - transferred)
 									 : write(file, bytes + transferred, count - transferred);
 				if(result < 0 && errno == EINTR)
 					continue;
 				if(result <= 0)
 				{
-					success = false;
+					fail(verify ? "cannot read target file" : "cannot write target file", result < 0 ? errno : EIO);
 					break;
 				}
+
 				transferred += result;
 			}
-			if(verify && success && memcmp(bytes, actual, count))
-				success = false;
+
+			if(verify && !operation && memcmp(bytes, actual, count))
+				fail("file contents verification failed", 0);
 			offset += count;
 			if(progress)
 				progress(verify ? "Verifying" : "Copying", done + offset, tree->plan.bytes);
 		}
-		if(success && !verify && fsync(file))
-			success = false;
+
+		if(!operation && !verify && fsync(file))
+			fail("cannot flush target file", errno);
 		if(close(file))
-			success = false;
-		if(!success)
-			return installCopyError(error, verify ? "file verification failed or source changed"
-												  : "file copy or flush failed");
+			fail("cannot close target file", errno);
+		if(operation)
+			return installCopyFileError(tree, error, path, operation, failure);
 		done += entry.size;
 	}
+
 	return true;
 }
 
@@ -155,11 +196,13 @@ bool installCopyCheck(const g_install_source_tree& tree, const std::string& dest
 		const auto& entry = tree.plan.entries[i];
 
 		struct stat old{};
-		bool exists = !stat((destination + "/" + entry.path).c_str(), &old);
+		bool exists = !lstat((destination + "/" + entry.path).c_str(), &old);
 		if(!exists && errno != ENOENT)
 			return installCopyError(error, "cannot inspect target path");
 
-		if(exists && (entry.directory ? !S_ISDIR(old.st_mode) : !S_ISREG(old.st_mode)))
+		bool compatible = entry.directory ? S_ISDIR(old.st_mode) :
+			S_ISREG(old.st_mode) || (O_LINKFILE && S_ISLNK(old.st_mode));
+		if(exists && !compatible)
 			return installCopyError(error, "a target file conflicts with a source directory or file");
 
 		auto rounded = [&](uint64_t size) { return (size + unit - 1) / unit * unit; };
@@ -173,5 +216,6 @@ bool installCopyCheck(const g_install_source_tree& tree, const std::string& dest
 
 		needed += bytes;
 	}
+
 	return true;
 }

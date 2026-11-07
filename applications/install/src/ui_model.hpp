@@ -48,6 +48,7 @@ public:
 	{
 		if(stage != InstallUiStage::Choose)
 			return false;
+
 		selected = index >= 0 && index < count ? index : -1;
 		return selected >= 0;
 	}
@@ -56,6 +57,7 @@ public:
 	{
 		if(stage != InstallUiStage::Choose || selected < 0)
 			return false;
+
 		stage = InstallUiStage::Confirm;
 		return true;
 	}
@@ -64,6 +66,7 @@ public:
 	{
 		if(stage != InstallUiStage::Confirm)
 			return false;
+
 		stage = InstallUiStage::Installing;
 		progress = 0;
 		return true;
@@ -79,11 +82,13 @@ public:
 	{
 		if(stage != InstallUiStage::Installing)
 			return;
+
 		struct Range
 		{
 			const char* name;
 			unsigned first, span;
 		};
+
 		const Range ranges[] = {{"Scanning the loaded filesystem", 0, 2},
 								{"Unmounting target disk volumes", 2, 3},
 								{"Replacing disk partition table", 5, 3},

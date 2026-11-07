@@ -25,14 +25,19 @@
 
 struct g_install_source_tree
 {
+	g_install_source_tree() = default;
+	g_install_source_tree(const g_install_source_tree&) = delete;
+	g_install_source_tree& operator=(const g_install_source_tree&) = delete;
+	~g_install_source_tree();
+
 	g_install_plan plan;
 	std::string root = "/mount/ramdisk";
+	std::string copyError;
 	int file = -1;
 	size_t current = SIZE_MAX;
 	uint64_t patchOffset = UINT64_MAX;
 	uint64_t partitionPatchOffset = UINT64_MAX;
 	uint64_t (*clock)() = nullptr;
-	~g_install_source_tree();
 };
 
 bool installSourceCollect(std::vector<g_install_entry>* entries, const char** error,

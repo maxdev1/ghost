@@ -53,6 +53,7 @@ public:
 		Component(id), TitledComponent(id), ActionComponent(id), Button(id), FocusableComponent(id)
 	{
 	}
+
 	static InstallUiButton* installUiCreateButton()
 	{
 		return createComponent<InstallUiButton, ComponentType::Button>();
@@ -66,12 +67,14 @@ int installUiRun()
 		fprintf(stderr, "install: could not connect to the window server\n");
 		return 1;
 	}
+
 	InstallUiModel model;
 	std::atomic<unsigned> actions{0};
 	auto post = [&](unsigned action) { actions.fetch_or(action); };
 	auto window = Window::create();
 	if(!window)
 		return 1;
+
 	window->setTitle("Install Ghost");
 	window->setBounds({230, 140, 680, 520});
 	window->setResizable(false);
@@ -84,10 +87,12 @@ int installUiRun()
 		parent->addChild(result);
 		return result;
 	};
+
 	auto root = panel(window, {0, 0, 660, 460});
 	auto chooseView = panel(root, {0, 0, 660, 460});
 	auto installView = panel(root, {0, 0, 660, 460});
 	installView->setVisible(false);
+
 	auto label = [&](Panel* parent, const char* text, Rectangle bounds, int size)
 	{
 		auto result = Label::create();
@@ -98,18 +103,22 @@ int installUiRun()
 		parent->addChild(result);
 		return result;
 	};
+
 	label(chooseView, "Choose a disk or volume", {28, 20, 604, 38}, 24);
 	label(chooseView, "Choose an entire disk or an existing FAT32 volume.", {28, 61, 604, 28}, 14);
+
 	auto drives = List::create();
 	drives->setBounds({28, 104, 604, 192});
 	drives->setEnabled(false);
 	chooseView->addChild(drives);
+
 	auto discovery = label(chooseView, "Looking for available drives...", {28, 310, 604, 28}, 14);
 	auto warning = label(chooseView, "Disk targets are reformatted. Volume targets keep their filesystem.",
 						 {28, 342, 604, 24}, 12);
 
 	auto heading = label(installView, "Confirm installation", {28, 20, 604, 38}, 24);
 	label(installView, "Destination for Ghost and your files.", {28, 61, 604, 28}, 14);
+
 	auto destination = panel(installView, {28, 106, 604, 106});
 	destination->setBackground(_RGB(255, 255, 255));
 	destination->setNumericProperty(ComponentProperty::CornerRadius, 8);
@@ -117,13 +126,16 @@ int installUiRun()
 	label(destination, "DESTINATION", {20, 12, 564, 22}, 11);
 	auto driveName = label(destination, "", {20, 37, 564, 30}, 20);
 	auto driveInfo = label(destination, "", {20, 72, 564, 22}, 13);
+
 	auto status = label(installView, "All existing data on this drive will be lost.", {28, 232, 604, 28}, 14);
 	auto detail = label(installView, "Choose Install to format this drive, or Back to choose another.",
 						{28, 266, 604, 24}, 12);
+
 	auto progress = ProgressBar::create();
 	progress->setBounds({28, 312, 604, 14});
 	installView->addChild(progress);
 	auto phase = label(installView, "Ready to begin.", {28, 342, 604, 24}, 13);
+
 	auto button = [&](Panel* parent, const char* title, Rectangle bounds)
 	{
 		auto result = InstallUiButton::installUiCreateButton();
@@ -132,13 +144,18 @@ int installUiRun()
 		parent->addChild(result);
 		return result;
 	};
+
 	auto refresh = button(chooseView, "Refresh", {28, 396, 110, 36});
 	auto cancel = button(chooseView, "Cancel", {366, 396, 126, 36});
 	auto next = button(chooseView, "Continue", {506, 396, 126, 36});
-	auto confirm = button(installView, "Install", {366, 396, 126, 36});
-	auto back = button(installView, "Back", {506, 396, 126, 36});
+
+	auto back = button(installView, "Back", {366, 396, 126, 36});
+	auto confirm = button(installView, "Install", {506, 396, 126, 36});
+	next->setVariant(ButtonVariant::Primary);
+	confirm->setVariant(ButtonVariant::Primary);
 	next->setEnabled(false);
 	refresh->setEnabled(false);
+
 	drives->setActionListener([&] { post(InstallUiSelect); });
 	next->setActionListener([&] { post(InstallUiNext); });
 	confirm->setActionListener([&] { post(InstallUiConfirmAction); });
@@ -146,16 +163,20 @@ int installUiRun()
 	cancel->setActionListener([&] { post(InstallUiClose); });
 	refresh->setActionListener([&] { post(InstallUiRefresh); });
 	window->onClose([&] { post(InstallUiClose); });
+
 	window->setVisible(true);
 	window->setFocused(true);
+
 	std::vector<g_install_destination> targets;
 	auto discover = [&]
 	{
 		model.stage = InstallUiStage::Discovering;
 		model.selected = -1;
+
 		drives->setEnabled(false);
 		next->setEnabled(false);
 		refresh->setEnabled(false);
+
 		discovery->setTitle("Looking for available drives...");
 		targets = installDiscoverDestinations();
 		std::vector<std::string> rows;
@@ -171,6 +192,7 @@ int installUiRun()
 						 target.disk.info.model, target.disk.info.sectorCount / 2048);
 			rows.emplace_back(row);
 		}
+
 		if(!drives->setItems(rows))
 		{
 			drives->setItems({});
@@ -180,10 +202,12 @@ int installUiRun()
 		else
 			discovery->setTitle(targets.empty() ? "No storage targets found. Attach a disk and refresh."
 												: "Select a disk or volume, then click Continue.");
+
 		model.stage = InstallUiStage::Choose;
 		drives->setEnabled(true);
 		refresh->setEnabled(true);
 	};
+
 	discover();
 	for(;;)
 	{
@@ -194,12 +218,14 @@ int installUiRun()
 		{
 			if(model.stage != InstallUiStage::Confirm)
 				return model.stage == InstallUiStage::Failed ? 1 : 0;
+
 			model.installUiCancel();
 			installView->setVisible(false);
 			chooseView->setVisible(true);
 			drives->setFocused(true);
 			pending &= ~(InstallUiNext | InstallUiConfirmAction);
 		}
+
 		if((pending & InstallUiRefresh) && model.stage == InstallUiStage::Choose)
 			discover();
 		if((pending & InstallUiSelect) && model.stage == InstallUiStage::Choose)
@@ -211,6 +237,7 @@ int installUiRun()
 										  ? "Matching files will be replaced. Other files and partitions are preserved."
 										  : "All partitions and data on this disk will be replaced.");
 		}
+
 		if(pending & InstallUiNext)
 		{
 			if(model.installUiRequestConfirmation())
@@ -235,6 +262,7 @@ int installUiRun()
 				back->setFocused(true);
 			}
 		}
+
 		if(pending & InstallUiConfirmAction)
 		{
 			if(model.installUiConfirm())
@@ -254,6 +282,7 @@ int installUiRun()
 											model.installUiProgress(current, done, total);
 											if(model.progress == previous && previousPhase == current)
 												return;
+
 											previous = model.progress;
 											previousPhase = current;
 											ComponentUpdateBatch batch;
@@ -274,11 +303,14 @@ int installUiRun()
 				phase->setTitle(result == 0 ? "Complete. 100%" : "Installation stopped.");
 				confirm->setVisible(false);
 				back->setTitle("Close");
+				back->setBounds({506, 396, 126, 36});
+				back->setVariant(ButtonVariant::Primary);
 				back->setEnabled(true);
 				back->setFocused(true);
 				actions.store(0);
 			}
 		}
+
 		g_sleep(20);
 	}
 }
