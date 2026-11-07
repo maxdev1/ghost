@@ -37,6 +37,15 @@ static uint64_t lastPacketTime = 0;
 static bool mouseRecoveryNeeded = false;
 static bool mouseResyncNeeded = false;
 static uint64_t nextMouseRecovery = 0;
+struct g_ps2_irq_receiver
+{
+	uint32_t line;
+	g_irq_handle handle;
+	bool attempted;
+};
+
+static g_ps2_irq_receiver keyReceiver{1, G_IRQ_HANDLE_NONE, false};
+static g_ps2_irq_receiver mouseReceiver{12, G_IRQ_HANDLE_NONE, false};
 static bool receiversReady = false;
 static g_user_mutex packetLock = g_mutex_initialize();
 static g_user_mutex eventSignal = g_mutex_initialize();
@@ -50,6 +59,7 @@ struct ps2_pending_event
 	int32_t y;
 	uint8_t flags;
 	uint8_t value; // Keyboard byte or signed wheel delta.
+	uint64_t millis; // Packet intake time, before consumer I/O can block.
 };
 
 static constexpr size_t PS2_EVENT_CAPACITY = 512;
@@ -80,31 +90,34 @@ static bool ps2QueueEvent(ps2_pending_event event)
 			{
 				tail.x = x;
 				tail.y = y;
+				tail.millis = event.millis;
 				return true;
 			}
 		}
 	}
+
 	if(eventCount == PS2_EVENT_CAPACITY)
 	{
 		++eventOverruns;
 		mouseStateLost |= event.mouse;
 		return false;
 	}
+
 	pendingEvents[(eventHead + eventCount++) % PS2_EVENT_CAPACITY] = event;
 	return true;
 }
 
-static void ps2QueueMouse(int16_t x, int16_t y, uint8_t flags, int8_t scroll)
+static void ps2QueueMouse(int16_t x, int16_t y, uint8_t flags, int8_t scroll, uint64_t millis)
 {
-	ps2QueueEvent({true, false, x, y, flags, (uint8_t) scroll});
+	ps2QueueEvent({true, false, x, y, flags, (uint8_t) scroll, millis});
 }
 
 static void ps2QueueKeyboard(uint8_t value)
 {
-	ps2QueueEvent({false, false, 0, 0, 0, value});
+	ps2QueueEvent({false, false, 0, 0, 0, value, 0});
 }
 
-static void (*registeredMouseCallback)(int16_t, int16_t, uint8_t, int8_t);
+static void (*registeredMouseCallback)(int16_t, int16_t, uint8_t, int8_t, uint64_t);
 static void (*registeredKeyboardCallback)(uint8_t);
 
 static void ps2HandlePacket();
@@ -121,6 +134,7 @@ bool ps2WaitForBuffer(ps2_buffer_t buffer)
 			return true;
 		if(g_millis() - start >= PS2_TIMEOUT_MS)
 			return false;
+
 		g_sleep(1);
 	}
 }
@@ -132,6 +146,7 @@ static bool ps2ControllerCommand(uint8_t command)
 		klog("PS/2 controller: timed out before command %x", command);
 		return false;
 	}
+
 	g_io_port_write_byte(G_PS2_STATUS_PORT, command);
 	return true;
 }
@@ -143,6 +158,7 @@ static bool ps2WriteData(uint8_t value)
 		klog("PS/2 controller: timed out before data %x", value);
 		return false;
 	}
+
 	g_io_port_write_byte(G_PS2_DATA_PORT, value);
 	return true;
 }
@@ -169,14 +185,17 @@ static bool ps2ReadByte(bool auxiliary, uint8_t& value, uint64_t timeout = PS2_T
 				return false;
 			continue;
 		}
+
 		if(fromMouse == auxiliary)
 		{
 			value = data;
 			return true;
 		}
+
 		if(!fromMouse && registeredKeyboardCallback)
 			ps2QueueKeyboard(data);
 	}
+
 	return false;
 }
 
@@ -198,6 +217,7 @@ int ps2WriteToMouse(uint8_t value)
 				     g_io_port_read_byte(G_PS2_STATUS_PORT));
 				return 1;
 			}
+
 			if(reply == 0xFA)
 				return 0;
 			if(reply == 0xFE) // RESEND applies to this byte, including command parameters.
@@ -210,6 +230,7 @@ int ps2WriteToMouse(uint8_t value)
 			// Reports already in flight may precede the ACK to disable reporting.
 		}
 	}
+
 	klog("PS/2 mouse: resend limit reached for byte %x", value);
 	return 1;
 }
@@ -222,9 +243,11 @@ static bool ps2SynapticsArgument(uint8_t argument)
 {
 	if(ps2WriteToMouse(0xE6))
 		return false;
+
 	for(int shift = 6; shift >= 0; shift -= 2)
 		if(ps2WriteToMouse(0xE8) || ps2WriteToMouse((argument >> shift) & 3))
 			return false;
+
 	return true;
 }
 
@@ -236,6 +259,7 @@ static bool ps2SynapticsIdentify(uint8_t* identity)
 {
 	if(!ps2SynapticsArgument(0) || ps2WriteToMouse(0xE9))
 		return false;
+
 	for(unsigned i = 0; i < 3; ++i)
 	{
 		if(!ps2ReadByte(true, identity[i]))
@@ -244,6 +268,7 @@ static bool ps2SynapticsIdentify(uint8_t* identity)
 			return false;
 		}
 	}
+
 	klog("PS/2 mouse: identify response %x %x %x", identity[0], identity[1], identity[2]);
 	return identity[1] == 0x47;
 }
@@ -272,6 +297,7 @@ static bool ps2InitializeController()
 		klog("PS/2 controller: could not read configuration");
 		return false;
 	}
+
 	klog("PS/2 controller: configuration %x", configuration);
 	// Preserve translation and other firmware settings; enable both IRQs.
 	if(!ps2ControllerCommand(0x60) || !ps2WriteData(configuration | 0x03))
@@ -303,6 +329,7 @@ ps2_status_t ps2InitializeMouse()
 			klog("PS/2 Synaptics touchpad: failed to set relative mode");
 			return G_PS2_STATUS_FAILED_INITIALIZE;
 		}
+
 		klog("PS/2 Synaptics touchpad: firmware %i.%i, relative mode enabled", identity[2] & 15, identity[0]);
 	}
 	else
@@ -317,19 +344,23 @@ ps2_status_t ps2InitializeMouse()
 		   ps2WriteToMouse(0xF3) || ps2WriteToMouse(80))
 			return G_PS2_STATUS_FAILED_INITIALIZE;
 	}
+
 	if(ps2WriteToMouse(0xF2))
 		return G_PS2_STATUS_FAILED_INITIALIZE;
+
 	uint8_t id;
 	if(!ps2ReadByte(true, id))
 	{
 		klog("PS/2 mouse: missing device id");
 		return G_PS2_STATUS_FAILED_INITIALIZE;
 	}
+
 	if((synaptics && id != 0) || (id != 0 && id != 3 && id != 4))
 	{
 		klog("PS/2 mouse: unsupported device id %i", id);
 		return G_PS2_STATUS_FAILED_INITIALIZE;
 	}
+
 	mouseDeviceId = id;
 
 	// The wheel-detection sequence leaves the rate at 80 Hz. Restore a normal
@@ -341,7 +372,7 @@ ps2_status_t ps2InitializeMouse()
 	return G_PS2_STATUS_SUCCESS;
 }
 
-ps2_status_t ps2Initialize(void (*mouseCallback)(int16_t, int16_t, uint8_t, int8_t),
+ps2_status_t ps2Initialize(void (*mouseCallback)(int16_t, int16_t, uint8_t, int8_t, uint64_t),
                            void (*keyboardCallback)(uint8_t))
 {
 	g_mutex_acquire(packetLock);
@@ -356,30 +387,53 @@ ps2_status_t ps2Initialize(void (*mouseCallback)(int16_t, int16_t, uint8_t, int8
 	eventOverruns = 0;
 	g_mutex_try_acquire(eventSignal);
 
-	g_irq_create_redirect(1, 1);
-	g_irq_create_redirect(12, 12);
+	keyReceiver.handle = mouseReceiver.handle = G_IRQ_HANDLE_NONE;
+	keyReceiver.attempted = mouseReceiver.attempted = false;
+	g_tid keyTask = G_TID_NONE, mouseTask = G_TID_NONE;
+	dispatchTask = G_TID_NONE;
 
 	ps2_status_t status = ps2InitializeController() ? ps2InitializeMouse() : G_PS2_STATUS_FAILED_INITIALIZE;
 	if(status == G_PS2_STATUS_SUCCESS)
 	{
-		// IRQ waits must stay on core 0. Hold the lock until both task creation
-		// results are known, so a partial startup can exit without touching I/O.
-		g_create_task_status keyStatus;
-		g_create_task_status mouseStatus;
-		g_create_task_status dispatchStatus;
-		g_create_task_das((void*) &ps2AwaitKeyIrq, nullptr, 0, &keyStatus);
-		g_create_task_das((void*) &ps2AwaitMouseIrq, nullptr, 0, &mouseStatus);
-		dispatchTask = g_create_task_das((void*) &ps2DispatchEvents, nullptr, 0, &dispatchStatus);
-		if(keyStatus != G_CREATE_TASK_STATUS_SUCCESSFUL || mouseStatus != G_CREATE_TASK_STATUS_SUCCESSFUL ||
-		   dispatchStatus != G_CREATE_TASK_STATUS_SUCCESSFUL)
+		keyTask = g_create_task_das((void*) &ps2AwaitKeyIrq, nullptr, 0, nullptr);
+		mouseTask = g_create_task_das((void*) &ps2AwaitMouseIrq, nullptr, 0, nullptr);
+		dispatchTask = g_create_task_das((void*) &ps2DispatchEvents, nullptr, 0, nullptr);
+		if(keyTask == G_TID_NONE || mouseTask == G_TID_NONE || dispatchTask == G_TID_NONE)
 			status = G_PS2_STATUS_FAILED_INITIALIZE;
 	}
+
+	if(status == G_PS2_STATUS_SUCCESS)
+	{
+		/**
+		 * Both waiters bind masked on core zero. Keep packetLock until both
+		 * routes are armed so neither worker can consume input on partial startup.
+		 */
+		uint64_t started = g_millis();
+		while(!memoryAtomicLoad(&keyReceiver.attempted, G_MEMORY_ORDER_ACQUIRE) ||
+		      !memoryAtomicLoad(&mouseReceiver.attempted, G_MEMORY_ORDER_ACQUIRE))
+		{
+			if(g_millis() - started >= PS2_TIMEOUT_MS)
+			{
+				status = G_PS2_STATUS_FAILED_INITIALIZE;
+				break;
+			}
+			g_sleep(1);
+		}
+		if(status == G_PS2_STATUS_SUCCESS &&
+		   (!keyReceiver.handle || !mouseReceiver.handle ||
+		    g_irq_complete(keyReceiver.handle) != G_IRQ_SUCCESSFUL ||
+		    g_irq_complete(mouseReceiver.handle) != G_IRQ_SUCCESSFUL))
+			status = G_PS2_STATUS_FAILED_INITIALIZE;
+	}
+
 	receiversReady = status == G_PS2_STATUS_SUCCESS;
 	if(!receiversReady)
 	{
+		ps2ControllerCommand(0xAD);
 		ps2ControllerCommand(0xA7);
 		klog("PS/2 input initialization failed");
 	}
+
 	const bool pending = receiversReady && eventCount;
 	g_mutex_release(packetLock);
 	if(pending)
@@ -388,6 +442,17 @@ ps2_status_t ps2Initialize(void (*mouseCallback)(int16_t, int16_t, uint8_t, int8
 		if(dispatchTask != G_TID_NONE)
 			g_yield_t(dispatchTask);
 	}
+
+	if(status != G_PS2_STATUS_SUCCESS)
+	{
+		if(keyTask != G_TID_NONE)
+			g_join(keyTask);
+		if(mouseTask != G_TID_NONE)
+			g_join(mouseTask);
+		if(dispatchTask != G_TID_NONE)
+			g_join(dispatchTask);
+	}
+
 	return status;
 }
 
@@ -399,28 +464,37 @@ static bool ps2ReceiverReady()
 	return ready;
 }
 
+static void ps2AwaitIrq(g_ps2_irq_receiver* receiver, const char* name)
+{
+	g_task_register_name(name);
+	g_irq_status bound = g_irq_bind(G_IRQ_SOURCE_ISA, receiver->line, &receiver->handle);
+	memoryAtomicStore(&receiver->attempted, true, G_MEMORY_ORDER_RELEASE);
+	if(bound != G_IRQ_SUCCESSFUL)
+		return;
+
+	if(ps2ReceiverReady())
+	{
+		for(;;)
+		{
+			auto status = g_irq_wait(receiver->handle, 50);
+			if(status != G_IRQ_DELIVERED && status != G_IRQ_TIMED_OUT)
+				break;
+			ps2CheckForData();
+			if(status == G_IRQ_DELIVERED && g_irq_complete(receiver->handle) != G_IRQ_SUCCESSFUL)
+				break;
+		}
+	}
+	g_irq_release(receiver->handle);
+}
+
 void ps2AwaitKeyIrq()
 {
-	if(!ps2ReceiverReady())
-		return;
-	g_task_register_name("libps2/await-key");
-	for(;;)
-	{
-		g_await_irq_t(1, 50);
-		ps2CheckForData();
-	}
+	ps2AwaitIrq(&keyReceiver, "libps2/await-key");
 }
 
 void ps2AwaitMouseIrq()
 {
-	if(!ps2ReceiverReady())
-		return;
-	g_task_register_name("libps2/await-mouse");
-	for(;;)
-	{
-		g_await_irq_t(12, 50);
-		ps2CheckForData();
-	}
+	ps2AwaitIrq(&mouseReceiver, "libps2/await-mouse");
 }
 
 // One dispatcher preserves event order and may block on consumer I/O. IRQ
@@ -445,6 +519,7 @@ static void ps2DispatchPending()
 				head.x -= event.x;
 				head.y -= event.y;
 			}
+
 			if(!event.mouse || (head.x == 0 && head.y == 0))
 			{
 				eventHead = (eventHead + 1) % PS2_EVENT_CAPACITY;
@@ -455,10 +530,11 @@ static void ps2DispatchPending()
 		{
 			// Finite queues cannot retain unlimited button/scroll/key events.
 			// Report overload and restore the final physical button state.
-			event = {true, false, 0, 0, lastMouseButtons, 0};
+			event = {true, false, 0, 0, lastMouseButtons, 0, g_millis()};
 			mouseStateLost = false;
 			available = true;
 		}
+
 		g_mutex_release(packetLock);
 		if(overruns)
 			klog("PS/2 input queue overloaded: %i events lost", overruns);
@@ -467,7 +543,7 @@ static void ps2DispatchPending()
 		if(event.mouse)
 		{
 			if(registeredMouseCallback)
-				registeredMouseCallback(event.x, event.y, event.flags, (int8_t) event.value);
+				registeredMouseCallback(event.x, event.y, event.flags, (int8_t) event.value, event.millis);
 		}
 		else if(registeredKeyboardCallback)
 			registeredKeyboardCallback(event.value);
@@ -478,6 +554,7 @@ void ps2DispatchEvents()
 {
 	if(!ps2ReceiverReady())
 		return;
+
 	g_task_register_name("libps2/dispatch");
 	for(;;)
 	{
@@ -500,12 +577,14 @@ static bool ps2ResynchronizeMouse()
 	// explicitly framed packet. Do not guess a new offset from payload bits.
 	if(ps2WriteToMouse(0xF5) || ps2WriteToMouse(0xEB))
 		return false;
+
 	const unsigned length = mouseDeviceId == 0 ? 3 : 4;
 	for(unsigned i = 0; i < length; ++i)
 		if(!ps2ReadByte(true, mousePacketBuffer[i]))
 			return false;
 	if(!(mousePacketBuffer[0] & 8) || ps2WriteToMouse(0xF4))
 		return false;
+
 	mousePacketNumber = 0;
 	ps2HandlePacket();
 	return true;
@@ -527,6 +606,7 @@ void ps2CheckForData()
 			}
 			continue;
 		}
+
 		if(!(status & PS2_AUXILIARY))
 			ps2QueueKeyboard(value);
 		else if(!mouseRecoveryNeeded && !mouseResyncNeeded)
@@ -541,7 +621,7 @@ void ps2CheckForData()
 	{
 		const bool reset = mouseRecoveryNeeded;
 		if(reset)
-			ps2QueueMouse(0, 0, 0, 0);
+			ps2QueueMouse(0, 0, 0, 0, g_millis());
 		const bool recovered = reset ?
 			ps2InitializeMouse() == G_PS2_STATUS_SUCCESS : ps2ResynchronizeMouse();
 		mousePacketNumber = 0;
@@ -550,11 +630,12 @@ void ps2CheckForData()
 		if(!recovered)
 		{
 			if(!reset)
-				ps2QueueMouse(0, 0, 0, 0);
+				ps2QueueMouse(0, 0, 0, 0, g_millis());
 			nextMouseRecovery = g_millis() + 1000;
 			klog("PS/2 mouse recovery failed; retrying in one second");
 		}
 	}
+
 	const bool pending = eventCount || eventOverruns || mouseStateLost;
 	g_mutex_release(packetLock);
 	if(pending)
@@ -567,14 +648,10 @@ void ps2CheckForData()
 
 void ps2HandleMouseData(uint8_t value)
 {
-	const uint64_t now = g_millis();
-	if(mousePacketNumber > 0 && now - lastPacketTime > 50)
-	{
-		mousePacketNumber = 0;
-		mouseResyncNeeded = true;
-		return;
-	}
-	lastPacketTime = now;
+	// These timestamps measure when the task drains bytes, not their arrival
+	// at the controller. Preemption between reads is not evidence of a lost
+	// byte; retain the partial packet until framing or hardware errors say so.
+	lastPacketTime = g_millis();
 
 	if(mousePacketNumber == 0)
 	{
@@ -617,5 +694,5 @@ static void ps2HandlePacket()
 	int8_t scroll = mouseDeviceId == 0 ? 0 : (int8_t) mousePacketBuffer[3];
 	if(mouseDeviceId == 4)
 		scroll = (mousePacketBuffer[3] & 0x0F) - ((mousePacketBuffer[3] & 0x08) ? 16 : 0);
-	ps2QueueMouse(x, -y, flags, scroll);
+	ps2QueueMouse(x, -y, flags, scroll, lastPacketTime);
 }

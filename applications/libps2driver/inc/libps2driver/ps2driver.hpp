@@ -76,6 +76,7 @@ struct g_ps2_mouse_packet
     int16_t y;
     uint8_t flags;
     int8_t scroll;
+    uint64_t millis;
 }__attribute__((packed));
 
 /**

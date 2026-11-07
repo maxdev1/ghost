@@ -96,20 +96,22 @@ static bool ps2WriteInput(g_fd fd, const void* packet, size_t length)
 			return false;
 		}
 	}
+
 	return true;
 }
 
-void ps2MouseCallback(int16_t x, int16_t y, uint8_t flags, int8_t scroll)
+void ps2MouseCallback(int16_t x, int16_t y, uint8_t flags, int8_t scroll, uint64_t millis)
 {
 	g_ps2_mouse_packet packet;
 	packet.x = x;
 	packet.y = y;
 	packet.flags = flags;
 	packet.scroll = scroll;
+	packet.millis = millis;
 	if(!ps2WriteInput(mouseWrite, &packet, sizeof(g_ps2_mouse_packet)))
 		return;
 
-	const g_tid partner = __atomic_load_n(&mousePartnerTask, __ATOMIC_ACQUIRE);
+	const g_tid partner = memoryAtomicLoad(&mousePartnerTask, G_MEMORY_ORDER_ACQUIRE);
 	if(partner != G_TID_NONE)
 		g_yield_t(partner);
 }
@@ -124,7 +126,7 @@ void ps2KeyboardCallback(uint8_t c)
 	if(!ps2WriteInput(keyboardWrite, &c, 1))
 		return;
 
-	const g_tid partner = __atomic_load_n(&keyboardPartnerTask, __ATOMIC_ACQUIRE);
+	const g_tid partner = memoryAtomicLoad(&keyboardPartnerTask, G_MEMORY_ORDER_ACQUIRE);
 	if(partner != G_TID_NONE)
 		g_yield_t(partner);
 }
@@ -173,8 +175,8 @@ void ps2HandleCommandInitialize(g_ps2_initialize_request* request, g_tid request
 		response.mouseRead = g_clone_fd(mouseRead, sourcePid, targetPid);
 		if(response.keyboardRead != G_FD_NONE && response.mouseRead != G_FD_NONE)
 		{
-			__atomic_store_n(&keyboardPartnerTask, request->keyboardPartnerTask, __ATOMIC_RELEASE);
-			__atomic_store_n(&mousePartnerTask, request->mousePartnerTask, __ATOMIC_RELEASE);
+			memoryAtomicStore(&keyboardPartnerTask, request->keyboardPartnerTask, G_MEMORY_ORDER_RELEASE);
+			memoryAtomicStore(&mousePartnerTask, request->mousePartnerTask, G_MEMORY_ORDER_RELEASE);
 			response.status = G_PS2_INITIALIZE_SUCCESS;
 		}
 	}
