@@ -36,11 +36,13 @@ int main()
 		service.info = acpiPowerInitialize(ioapic);
 
 	klog("acpi: driver ready; tables %u namespace %u", service.info.tablesReady, service.info.namespaceReady);
+
 	uint8_t bytes[sizeof(g_message_header) + G_MESSAGE_MAXIMUM_MESSAGE_LENGTH];
 	for(;;)
 	{
 		if(g_receive_message(bytes, sizeof(bytes)) != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
 			continue;
+
 		auto header = reinterpret_cast<g_message_header*>(bytes);
 		acpiServiceReceive(&service, header, G_MESSAGE_CONTENT(bytes));
 	}

@@ -26,12 +26,12 @@
 /**
  * PIC constants
  */
-#define PIC1			0x20 // Master
-#define PIC2			0xA0 // Slave
-#define PIC1_COMMAND	PIC1
-#define PIC1_DATA		(PIC1+1)
-#define PIC2_COMMAND	PIC2
-#define PIC2_DATA		(PIC2+1)
+#define PIC1 0x20 // Master
+#define PIC2 0xA0 // Slave
+#define PIC1_COMMAND PIC1
+#define PIC1_DATA (PIC1 + 1)
+#define PIC2_COMMAND PIC2
+#define PIC2_DATA (PIC2 + 1)
 
 /**
  * Reports an end-of-interrupt for the interrupt with the given number
@@ -47,6 +47,20 @@ void picSendEndOfInterrupt(uint8_t intr);
  * @param irq	the IRQ to be masked
  */
 void picMaskIrq(uint8_t irq);
+
+/**
+ * Returns whether the IRQ's mask bit is set in the master or slave PIC.
+ * Requires an IRQ from 0 to 15; slave IRQs do not include the cascade mask.
+ */
+bool picIsMasked(uint8_t irq);
+
+/**
+ * Checks whether the configured trigger mode matches level: true requests
+ * level triggering, false requests edge triggering. Fixed-edge inputs and
+ * PICs without an edge/level control register support only edge triggering.
+ * Rejects invalid IRQs or inconsistent register settings without changing them.
+ */
+bool picSupportsTrigger(uint8_t irq, bool level);
 
 /**
  * Unmasks the IRQ with the given number.

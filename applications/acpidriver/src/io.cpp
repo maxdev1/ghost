@@ -34,8 +34,10 @@ bool acpiPlatformPciInitialize()
 	{
 		if(g_millis() >= deadline)
 			return false;
+
 		g_sleep(1);
 	}
+
 	return true;
 }
 
@@ -43,6 +45,7 @@ extern "C" uacpi_status uacpi_kernel_io_map(uacpi_io_addr base, uacpi_size lengt
 {
 	if(base > 0xffff || !length || length > 0x10000 - base)
 		return UACPI_STATUS_INVALID_ARGUMENT;
+
 	*out = reinterpret_cast<void*>(base);
 	return UACPI_STATUS_OK;
 }
@@ -74,6 +77,7 @@ static bool acpiPlatformPciTransact(void* request, size_t length, void* response
 	{
 		if(g_millis() >= deadline || g_task_get_by_name(G_PCI_DRIVER_NAME) != acpiPciService)
 			return false;
+
 		g_sleep(1);
 	}
 
@@ -96,6 +100,7 @@ static bool acpiPlatformPciTransact(void* request, size_t length, void* response
 
 		g_sleep(1);
 	}
+
 	return false;
 }
 

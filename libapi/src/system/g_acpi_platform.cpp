@@ -19,17 +19,17 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost/syscall.h"
-#include "ghost/system/acpi.h"
+#include "ghost/system.h"
 
 g_acpi_status g_acpi_get_platform_info(uint64_t* rsdp, uint8_t* ioapic)
 {
-	g_syscall_acpi_platform data{};
+	g_syscall_acpi_platform_info data{};
 	data.status = G_ACPI_NOT_SUPPORTED;
-	data.operation = G_ACPI_PLATFORM_INFO;
-	g_syscall(G_SYSCALL_ACPI_PLATFORM, (g_address) &data);
+
+	g_syscall(G_SYSCALL_ACPI_GET_PLATFORM_INFO, (g_address) &data);
 
 	if(rsdp)
-		*rsdp = data.address;
+		*rsdp = data.rsdp;
 	if(ioapic)
 		*ioapic = data.ioapic;
 
@@ -38,23 +38,12 @@ g_acpi_status g_acpi_get_platform_info(uint64_t* rsdp, uint8_t* ioapic)
 
 void* g_acpi_map(uint64_t address, uint32_t size)
 {
-	g_syscall_acpi_platform data{};
-	data.status = G_ACPI_NOT_SUPPORTED;
-	data.operation = G_ACPI_PLATFORM_MAP;
-	data.address = address;
+	g_syscall_acpi_map data{};
+	data.physicalAddress = address;
 	data.size = size;
-	g_syscall(G_SYSCALL_ACPI_PLATFORM, (g_address) &data);
-
-	return data.status == G_ACPI_SUCCESSFUL ? (void*) data.address : nullptr;
-}
-
-g_acpi_status g_acpi_configure_irq(uint32_t irq, uint8_t operation)
-{
-	g_syscall_acpi_platform data{};
 	data.status = G_ACPI_NOT_SUPPORTED;
-	data.operation = operation;
-	data.irq = irq;
-	g_syscall(G_SYSCALL_ACPI_PLATFORM, (g_address) &data);
 
-	return data.status;
+	g_syscall(G_SYSCALL_ACPI_MAP, (g_address) &data);
+
+	return data.status == G_ACPI_SUCCESSFUL ? (void*) data.virtualAddress : nullptr;
 }

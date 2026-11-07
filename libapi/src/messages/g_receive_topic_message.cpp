@@ -22,17 +22,13 @@
 #include "ghost/messages.h"
 #include "ghost/messages/callstructs.h"
 
-// redirect
-g_message_send_status g_receive_topic_message(const char* topic, void* buf, size_t len,
+g_message_receive_status g_receive_topic_message(const char* topic, void* buf, size_t len,
                                               g_message_transaction start_after)
 {
 	return g_receive_topic_message_m(topic, buf, len, start_after, G_MESSAGE_RECEIVE_MODE_BLOCKING);
 }
 
-/**
- *
- */
-g_message_send_status g_receive_topic_message_m(const char* topic, void* buf, size_t len,
+g_message_receive_status g_receive_topic_message_m(const char* topic, void* buf, size_t len,
                                                 g_message_transaction start_after, g_message_receive_mode mode)
 {
 	g_syscall_receive_topic_message data;

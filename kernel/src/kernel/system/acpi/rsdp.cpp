@@ -64,7 +64,7 @@ bool rsdpValidate(g_rsdp_descriptor* rsdp)
 {
 
 	uint8_t baseCheckResult = 0;
-	uint8_t* rsdpBytes = reinterpret_cast<uint8_t*>(rsdp);
+	uint8_t* rsdpBytes = (uint8_t*) rsdp;
 	for(uint16_t i = 0; i < sizeof(g_rsdp_descriptor); i++)
 	{
 		baseCheckResult += rsdpBytes[i];

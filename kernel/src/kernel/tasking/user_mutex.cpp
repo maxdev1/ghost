@@ -69,7 +69,7 @@ g_user_mutex_status userMutexTryAcquire(g_task* task, g_user_mutex mutex)
 g_user_mutex_status userMutexAcquire(g_task* task, g_user_mutex mutex, uint64_t timeout, bool trying)
 {
 	if(timeout)
-		clockWaitForTime(task->id, clockGetLocal()->time + timeout);
+		clockWaitForTime(task->id, clockGetMilliseconds() + timeout);
 	g_user_mutex_status result = G_USER_MUTEX_STATUS_NOT_ACQUIRED;
 	while(true)
 	{

@@ -76,8 +76,11 @@ struct g_tasking_local
         g_task* idleTask;
         g_task* cleanupTask;
         bool cleanupPending;
+        bool cleanupInProgress;
         g_tid preferredTask;
         uint64_t lastAccountingTime;
+        uint32_t apicId;
+        bool reschedulePending;
     } scheduling;
 };
 
@@ -92,6 +95,11 @@ struct g_spawn_result
  * @return the processor-local tasking structure
  */
 g_tasking_local* taskingGetLocal();
+
+/**
+ * Returns the stable scheduling state of a configured processor.
+ */
+g_tasking_local* taskingGetLocalForProcessor(uint32_t processor);
 
 /**
  * @return the task that is on this processor currently running or was

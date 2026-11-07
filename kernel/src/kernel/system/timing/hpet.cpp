@@ -41,7 +41,7 @@ void hpetInitialize()
 	if(!(capabilities & HPET_CAP_COUNTER_64BIT) || !(capabilities & 0xFF) ||
 	   clockPeriod == 0 || clockPeriod > HPET_MAX_PERIOD_FEMTOSECONDS)
 	{
-		logInfo("%! unsupported counter or clock period, using timer ticks", "hpet");
+		logInfo("%! unsupported counter or clock period", "hpet");
 		return;
 	}
 
@@ -67,7 +67,7 @@ void _hpetFindAndMap()
 	auto entry = acpiGetEntryWithSignature("HPET");
 	if(!entry)
 	{
-		logInfo("%! not present, timing will be inaccurate", "hpet");
+		logInfo("%! not present", "hpet");
 		return;
 	}
 

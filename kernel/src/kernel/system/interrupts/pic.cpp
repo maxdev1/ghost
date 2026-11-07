@@ -29,6 +29,35 @@ void picSendEndOfInterrupt(uint8_t irq)
 	ioPortWriteByte(PIC1_COMMAND, 0x20);
 }
 
+bool picIsMasked(uint8_t irq)
+{
+	uint16_t port = irq < 8 ? PIC1_DATA : PIC2_DATA;
+	return (ioPortReadByte(port) & (1u << (irq & 7))) != 0;
+}
+
+/**
+ * Fixed-edge inputs do not have programmable ELCR bits. A floating pair of
+ * ELCR ports reads as all ones on a PC with only the original edge-mode PIC.
+ * Reject inconsistent reserved bits instead of changing firmware settings.
+ */
+bool picSupportsTrigger(uint8_t irq, bool level)
+{
+	constexpr uint16_t programmable = 0xdef8;
+	if(irq >= 16)
+		return false;
+
+	uint16_t bit = 1u << irq;
+	if(!(programmable & bit))
+		return !level;
+
+	uint16_t elcr = ioPortReadByte(0x4d0);
+	elcr |= uint16_t(ioPortReadByte(0x4d1)) << 8;
+	if(elcr == UINT16_MAX)
+		return !level;
+
+	return !(elcr & ~programmable) && bool(elcr & bit) == level;
+}
+
 void picMaskIrq(uint8_t irq)
 {
 	uint16_t port;

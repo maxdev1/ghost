@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-*                                                                           *
+ *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
  *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
@@ -19,6 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/power/power.hpp"
+#include <ghost/syscall/definitions.h>
 #include "kernel/calls/syscall.hpp"
 #include "kernel/filesystem/filesystem_taskdelegate.hpp"
 #include "kernel/ipc/message_queues.hpp"
@@ -28,7 +29,6 @@
 #include "kernel/system/power/acpi_power.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include <ghost/syscall/definitions.h>
 
 static constexpr uint32_t G_POWER_MAX_PARTICIPANTS = 128;
 static constexpr uint64_t G_POWER_PREPARE_TIMEOUT = 30000;
@@ -73,7 +73,7 @@ static void powerSleep(uint64_t milliseconds)
 	g_interrupt_guard interrupts;
 	auto task = taskingGetCurrentTask();
 	taskingPrepareWait(task, __func__);
-	clockWaitForTime(task->id, clockGetLocal()->time + milliseconds);
+	clockWaitForTime(task->id, clockGetMilliseconds() + milliseconds);
 	taskingYield();
 	clockUnwaitForTime(task);
 }
@@ -92,9 +92,11 @@ g_power_status powerRegister(g_task* task, g_power_role role)
 		return G_POWER_INVALID_ARGUMENT;
 	if(role != G_POWER_APPLICATION && task->securityLevel > G_SECURITY_LEVEL_DRIVER)
 		return G_POWER_NOT_PERMITTED;
+
 	g_mutex_guard guard(&powerLock);
 	if(powerPending)
 		return G_POWER_BUSY;
+
 	g_power_participant* available = nullptr;
 	for(auto& entry: powerParticipants)
 	{
@@ -103,11 +105,14 @@ g_power_status powerRegister(g_task* task, g_power_role role)
 			entry.role = role;
 			return G_POWER_SUCCESSFUL;
 		}
+
 		if(entry.task == G_TID_NONE || !powerTaskAlive(entry.task))
 			available = &entry;
 	}
+
 	if(!available)
 		return G_POWER_BUSY;
+
 	*available = {task->id, role, 0, false};
 	return G_POWER_SUCCESSFUL;
 }
@@ -120,10 +125,12 @@ g_power_status powerAcknowledge(g_task* task, uint32_t request, bool ready)
 		mutexRelease(&powerLock);
 		return G_POWER_INVALID_ARGUMENT;
 	}
+
 	for(auto& entry: powerParticipants)
 	{
 		if(entry.task != task->id || !entry.notified || entry.response)
 			continue;
+
 		memoryAtomicStore(&entry.response, ready ? G_POWER_RESPONSE_READY : G_POWER_RESPONSE_REJECTED,
 						  G_MEMORY_ORDER_RELEASE);
 		bool storage = entry.role == G_POWER_STORAGE && ready;
@@ -134,8 +141,10 @@ g_power_status powerAcknowledge(g_task* task, uint32_t request, bool ready)
 				  memoryAtomicLoad(&powerGeneration, G_MEMORY_ORDER_ACQUIRE) == request)
 				powerSleep(1);
 		}
+
 		return G_POWER_SUCCESSFUL;
 	}
+
 	mutexRelease(&powerLock);
 	return G_POWER_NOT_PERMITTED;
 }
@@ -150,9 +159,11 @@ static g_power_status powerNotifyParticipants(g_power_role role, g_power_action 
 		{
 			if(role != G_POWER_APPLICATION)
 				return G_POWER_IO_ERROR;
+
 			entry.task = G_TID_NONE;
 			continue;
 		}
+
 		g_power_event event{G_POWER_EVENT_MAGIC, powerGeneration, action, G_POWER_EVENT_PREPARE,
 							taskingGetCurrentTask()->id};
 		mutexAcquire(&powerLock);
@@ -163,6 +174,7 @@ static g_power_status powerNotifyParticipants(g_power_role role, g_power_action 
 		if(sent != G_MESSAGE_SEND_STATUS_SUCCESSFUL)
 			return G_POWER_BUSY;
 	}
+
 	return G_POWER_SUCCESSFUL;
 }
 
@@ -181,29 +193,33 @@ static g_power_status powerWaitForParticipants(g_power_role role, uint64_t deadl
 					return G_POWER_IO_ERROR;
 				continue;
 			}
+
 			auto response = memoryAtomicLoad(&entry.response, G_MEMORY_ORDER_ACQUIRE);
 			if(response == G_POWER_RESPONSE_REJECTED)
 				return role != G_POWER_APPLICATION ? G_POWER_IO_ERROR : G_POWER_CANCELLED;
 			if(!response)
 				waiting = true;
 		}
+
 		if(!waiting)
 			return G_POWER_SUCCESSFUL;
-		if(clockGetLocal()->time >= deadline)
+		if(clockGetMilliseconds() >= deadline)
 		{
 			logWarn("%! preparation timed out for role %i", "power", role);
 			return G_POWER_TIMED_OUT;
 		}
+
 		powerSleep(5);
 	}
 }
 
 static g_power_status powerPrepareParticipants(g_power_role role, g_power_action action)
 {
-	auto deadline = clockGetLocal()->time + G_POWER_PREPARE_TIMEOUT;
+	auto deadline = clockGetMilliseconds() + G_POWER_PREPARE_TIMEOUT;
 	auto status = powerNotifyParticipants(role, action);
 	if(status != G_POWER_SUCCESSFUL)
 		return status;
+
 	return powerWaitForParticipants(role, deadline);
 }
 
@@ -213,19 +229,23 @@ static void powerCancelParticipants(g_power_action action)
 	{
 		if(!entry.notified || entry.role == G_POWER_STORAGE)
 			continue;
+
 		bool acknowledgeCancel = entry.role == G_POWER_PLATFORM || entry.role == G_POWER_STORAGE_PRODUCER;
 		if(acknowledgeCancel)
 			memoryAtomicStore(&entry.response, G_POWER_RESPONSE_PENDING, G_MEMORY_ORDER_RELEASE);
+
 		g_power_event event{G_POWER_EVENT_MAGIC, powerGeneration, action, G_POWER_EVENT_CANCEL,
 							taskingGetCurrentTask()->id};
-		auto deadline = clockGetLocal()->time + G_POWER_PREPARE_TIMEOUT;
+
+		auto deadline = clockGetMilliseconds() + G_POWER_PREPARE_TIMEOUT;
 		while(messageQueueSend(G_TID_NONE, entry.task, &event, sizeof(event), G_MESSAGE_TRANSACTION_NONE) !=
 					  G_MESSAGE_SEND_STATUS_SUCCESSFUL &&
-			  powerTaskAlive(entry.task) && clockGetLocal()->time < deadline)
+			  powerTaskAlive(entry.task) && clockGetMilliseconds() < deadline)
 			powerSleep(1);
+
 		if(acknowledgeCancel)
 			while(!memoryAtomicLoad(&entry.response, G_MEMORY_ORDER_ACQUIRE) && powerTaskAlive(entry.task) &&
-				  clockGetLocal()->time < deadline)
+				  clockGetMilliseconds() < deadline)
 				powerSleep(1);
 	}
 }
@@ -235,16 +255,19 @@ static g_power_status powerDrainCalls()
 	mutexAcquire(&powerLock);
 	memoryAtomicStore(&powerPhase, G_POWER_PHASE_DRAINING, G_MEMORY_ORDER_RELEASE);
 	mutexRelease(&powerLock);
-	auto deadline = clockGetLocal()->time + G_POWER_PREPARE_TIMEOUT;
+
+	auto deadline = clockGetMilliseconds() + G_POWER_PREPARE_TIMEOUT;
 	while(memoryAtomicLoad(&powerActiveCalls, G_MEMORY_ORDER_ACQUIRE))
 	{
-		if(clockGetLocal()->time >= deadline)
+		if(clockGetMilliseconds() >= deadline)
 		{
 			logWarn("%! timed out draining %i active calls", "power", powerActiveCalls);
 			return G_POWER_TIMED_OUT;
 		}
+
 		powerSleep(5);
 	}
+
 	return G_POWER_SUCCESSFUL;
 }
 
@@ -269,6 +292,7 @@ static g_power_status powerExecute(g_power_action action)
 
 	if(!filesystemDelegateFlushAll(taskingGetCurrentTask()->id))
 		return G_POWER_IO_ERROR;
+
 	logInfo("%! filesystems flushed", "power");
 
 	status = powerPrepareParticipants(G_POWER_STORAGE, action);
@@ -332,10 +356,10 @@ void powerInitialize(g_physical_address rsdp)
 		entry.task = G_TID_NONE;
 	acpiPlatformInitialize(rsdp);
 	auto process = taskingCreateProcess(G_SECURITY_LEVEL_KERNEL);
-	auto worker =
-			taskingCreateTask(reinterpret_cast<g_virtual_address>(powerCoordinator), process, G_SECURITY_LEVEL_KERNEL);
+	auto worker = taskingCreateTask((g_virtual_address) powerCoordinator, process, G_SECURITY_LEVEL_KERNEL);
 	if(!worker)
 		return;
+
 	powerWorker = worker;
 	worker->type = G_TASK_TYPE_VITAL;
 	taskingAssignOnCore(0, worker);
@@ -371,6 +395,7 @@ g_power_status powerRequest(g_power_action action)
 		entry.notified = false;
 		entry.response = G_POWER_RESPONSE_PENDING;
 	}
+
 	powerPending = &request;
 
 	taskingWake(powerWorker);
@@ -398,18 +423,19 @@ bool powerSyscallEnter(uint32_t call)
 	for(;;)
 	{
 		mutexAcquire(&powerLock);
-		bool startsTask = syscallStartsTask(call) &&
-						  (call != G_SYSCALL_CREATE_TASK || taskingGetCurrentTask()->securityLevel > G_SECURITY_LEVEL_DRIVER);
-		bool blocked = powerPhase == G_POWER_PHASE_DRAINING ||
-					   (powerPhase == G_POWER_PHASE_PREPARING && startsTask);
+		bool startsTask = syscallStartsTask(call) && (call != G_SYSCALL_CREATE_TASK ||
+													  taskingGetCurrentTask()->securityLevel > G_SECURITY_LEVEL_DRIVER);
+		bool blocked = powerPhase == G_POWER_PHASE_DRAINING || (powerPhase == G_POWER_PHASE_PREPARING && startsTask);
 		if(!blocked)
 		{
 			++taskingGetCurrentTask()->powerCalls;
 			memoryAtomicAddFetch(&powerActiveCalls, 1, G_MEMORY_ORDER_RELEASE);
 		}
+
 		mutexRelease(&powerLock);
 		if(!blocked)
 			return true;
+
 		powerSleep(1);
 	}
 }
@@ -425,7 +451,6 @@ void powerSyscallLeave(bool tracked)
 
 void powerTaskStopped(g_task* task)
 {
-	acpiPlatformTaskStopped(task);
 	auto calls = task->powerCalls;
 	task->powerCalls = 0;
 	if(calls)

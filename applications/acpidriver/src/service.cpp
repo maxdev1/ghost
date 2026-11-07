@@ -32,7 +32,7 @@
  * A preparation keeps its reservation even on failure. The matching kernel
  * cancellation resumes event handling and rolls back any firmware changes.
  */
-static g_acpi_status acpiServicePrepare(g_acpi_service* service, const g_acpi_request& request, g_tid coordinator,
+static g_acpi_status acpiServicePrepare(g_acpi_service* service, const g_acpi_power_request& request, g_tid coordinator,
 										g_acpi_power_plan* plan)
 {
 	if(service->preparedToken)
@@ -46,7 +46,8 @@ static g_acpi_status acpiServicePrepare(g_acpi_service* service, const g_acpi_re
 	auto status = acpiPowerPrepare(request.action, plan) ? G_ACPI_SUCCESSFUL : G_ACPI_HARDWARE_ERROR;
 	if(status == G_ACPI_SUCCESSFUL)
 	{
-		acpiPlatformPause(true);
+		if(!acpiPlatformPause(true))
+			status = G_ACPI_HARDWARE_ERROR;
 		auto drained = uacpi_kernel_wait_for_work_completion();
 		if(drained != UACPI_STATUS_OK)
 		{
@@ -60,20 +61,21 @@ static g_acpi_status acpiServicePrepare(g_acpi_service* service, const g_acpi_re
 	return status;
 }
 
-static g_acpi_status acpiServiceCancel(g_acpi_service* service, const g_acpi_request& request, g_tid coordinator)
+static g_acpi_status acpiServiceCancel(g_acpi_service* service, const g_acpi_power_request& request, g_tid coordinator)
 {
 	if(service->preparedToken != request.token || service->preparedAction != request.action ||
 	   service->preparedCoordinator != coordinator)
 		return G_ACPI_NOT_PERMITTED;
 
-	acpiPlatformPause(false);
+	bool resumed = acpiPlatformPause(false);
 	acpiPowerCancel(service->preparedAction);
 	service->preparedToken = 0;
 	service->preparedCoordinator = G_TID_NONE;
-	return G_ACPI_SUCCESSFUL;
+	return resumed ? G_ACPI_SUCCESSFUL : G_ACPI_HARDWARE_ERROR;
 }
 
-static void acpiServiceReply(g_tid receiver, g_message_transaction transaction, g_acpi_response response)
+template<typename Response>
+static void acpiServiceReply(g_tid receiver, g_message_transaction transaction, Response response)
 {
 	auto deadline = g_millis() + G_ACPI_TIMEOUT_MS;
 	while(g_send_message_tm(receiver, &response, sizeof(response), transaction, G_MESSAGE_SEND_MODE_NON_BLOCKING) !=
@@ -84,39 +86,56 @@ static void acpiServiceReply(g_tid receiver, g_message_transaction transaction, 
 	}
 }
 
-void acpiServiceReceive(g_acpi_service* service, const g_message_header* header, const void* content)
+void acpiServiceReceive(g_acpi_service* service, const g_message_header* message, const void* content)
 {
-	if(header->length != sizeof(g_acpi_request))
+	if(message->length < sizeof(g_acpi_header))
 		return;
 
-	g_acpi_request request;
+	g_acpi_header header;
+	memcpy(&header, content, sizeof(header));
+	if(header.magic != G_ACPI_MAGIC || header.version != G_ACPI_VERSION)
+		return;
+
+	if(header.command == G_ACPI_GET_INFO)
+	{
+		if(message->length != sizeof(g_acpi_get_info_request) || message->sender == G_TID_NONE)
+			return;
+
+		g_acpi_get_info_response response{{G_ACPI_MAGIC, G_ACPI_VERSION, G_ACPI_GET_INFO, G_ACPI_SUCCESSFUL},
+										  service->info};
+		acpiServiceReply(message->sender, message->transaction, response);
+		return;
+	}
+
+	if((header.command != G_ACPI_PREPARE && header.command != G_ACPI_CANCEL) ||
+	   message->length != sizeof(g_acpi_power_request))
+		return;
+
+	g_acpi_power_request request;
 	memcpy(&request, content, sizeof(request));
-	if(request.magic != G_ACPI_MAGIC || request.version != G_ACPI_VERSION)
-		return;
 
-	auto receiver = header->sender == G_TID_NONE ? request.coordinator : header->sender;
+	auto receiver = message->sender == G_TID_NONE ? request.coordinator : message->sender;
 	if(receiver == G_TID_NONE)
 		return;
 
-	g_acpi_response response{
-			G_ACPI_MAGIC, G_ACPI_VERSION, request.command, request.token, G_ACPI_NOT_PERMITTED, service->info, {}};
-	if(request.command == G_ACPI_GET_INFO)
+	bool permitted = message->sender == G_TID_NONE && request.token && request.action <= G_POWER_REBOOT;
+
+	if(header.command == G_ACPI_PREPARE)
 	{
-		response.status = G_ACPI_SUCCESSFUL;
+		g_acpi_prepare_response response{
+				{G_ACPI_MAGIC, G_ACPI_VERSION, G_ACPI_PREPARE, G_ACPI_NOT_PERMITTED}, request.token, {}};
+		if(permitted)
+			response.header.status = acpiServicePrepare(service, request, receiver, &response.plan);
+
+		acpiServiceReply(receiver, message->transaction, response);
 	}
-	else if(header->sender == G_TID_NONE && request.token && request.action <= G_POWER_REBOOT)
+	else
 	{
-		switch(request.command)
-		{
-			case G_ACPI_PREPARE:
-				response.status = acpiServicePrepare(service, request, receiver, &response.plan);
-				break;
-			case G_ACPI_CANCEL:
-				response.status = acpiServiceCancel(service, request, receiver);
-				break;
-			default:
-				break;
-		}
+		g_acpi_cancel_response response{{G_ACPI_MAGIC, G_ACPI_VERSION, G_ACPI_CANCEL, G_ACPI_NOT_PERMITTED},
+										request.token};
+		if(permitted)
+			response.header.status = acpiServiceCancel(service, request, receiver);
+
+		acpiServiceReply(receiver, message->transaction, response);
 	}
-	acpiServiceReply(receiver, header->transaction, response);
 }

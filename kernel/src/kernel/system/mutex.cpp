@@ -19,10 +19,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/mutex.hpp"
+#include "kernel/memory/paging_shootdown.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/system/system.hpp"
 #include "kernel/tasking/tasking.hpp"
+#include "kernel/tasking/clock.hpp"
 #include "kernel/logger/logger.hpp"
 #include "kernel/panic.hpp"
 
@@ -87,10 +89,12 @@ void mutexAcquire(g_mutex* mutex)
 	bool hadIF = interruptsAreEnabled();
 	interruptsDisable();
 
-	int deadlock = 0;
+	uint32_t waits = 0;
 	uint32_t pauses = 1;
 	while(!_mutexTryAcquire(mutex, owner, hadIF))
 	{
+		pagingPollShootdown();
+
 		// As long as any global mutex is locked, we may never yield
 		if(mutex->type == G_MUTEX_TYPE_GLOBAL || taskingGetLocal()->locking.globalLockCount > 0)
 		{
@@ -102,19 +106,24 @@ void mutexAcquire(g_mutex* mutex)
 		}
 		else
 		{
-			// Interrupts must run while a contended task mutex yields if the caller enabled
-			// them. Otherwise a lone runnable waiter can starve the timer and I/O interrupts
-			// needed by the lock owner. Acquisition still runs with interrupts disabled.
-			if(hadIF) interruptsEnable();
-			taskingYield();
+			auto task = taskingGetCurrentTask();
+			if(waits >= 8 && !task->timeoutWait.active)
+			{
+				taskingPrepareWait(task, __func__);
+				clockWaitForTime(task->id, clockGetMilliseconds() + 1);
+				taskingYield();
+				clockUnwaitForTime(task);
+			}
+			else
+			{
+				if(hadIF) interruptsEnable();
+				taskingYield();
+			}
 			interruptsDisable();
 		}
 
-		// Check for deadlocks
-		++deadlock;
-		if(deadlock % 100000 == 0)
-			logDebug("%! long lock on processor %i initialized at %s, owner is: %i", "mutex", processorGetCurrentId(),
-					 mutex->location, mutex->owner);
+		if(waits < 8)
+			++waits;
 	}
 
 	// Only for task mutexes (and if previously enabled) interrupts are enabled again

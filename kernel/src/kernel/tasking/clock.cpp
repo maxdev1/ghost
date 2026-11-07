@@ -19,16 +19,110 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/tasking/clock.hpp"
-#include "kernel/memory/memory.hpp"
+#include "kernel/logger/logger.hpp"
 #include "kernel/memory/heap.hpp"
+#include "kernel/memory/memory.hpp"
+#include "kernel/memory/constants.hpp"
+#include "kernel/memory/paging.hpp"
+#include "kernel/panic.hpp"
 #include "kernel/system/configuration.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/system/timing/hpet.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "kernel/panic.hpp"
-#include "kernel/logger/logger.hpp"
+#include "kernel/tasking/scheduler/scheduler.hpp"
+#include "kernel/system/interrupts/apic/lapic.hpp"
 
 static g_clock_local* locals = nullptr;
+static bool hypervisorClock;
+static uint32_t vmwareTscKhz;
+static uint64_t vmwareTscOrigin;
+static uint64_t vmwareLastNanos;
+struct g_clock_reference_page
+{
+	uint32_t sequence;
+	uint32_t reserved;
+	uint64_t scale;
+	int64_t offset;
+};
+static g_clock_reference_page* referencePage;
+
+static bool clockReferenceAvailable()
+{
+	return hypervisorClock || vmwareTscKhz || hpetIsAvailable();
+}
+
+static uint64_t clockReadHypervisorCounter()
+{
+	if(referencePage)
+	{
+		for(;;)
+		{
+			const auto sequence = memoryAtomicLoad(&referencePage->sequence, G_MEMORY_ORDER_ACQUIRE);
+			if(!sequence) break;
+			const auto tsc = processorReadTsc();
+			const auto scale = memoryAtomicLoad(&referencePage->scale, G_MEMORY_ORDER_RELAXED);
+			const auto offset = memoryAtomicLoad(&referencePage->offset, G_MEMORY_ORDER_RELAXED);
+			// x86 orders loads; keep the compiler from moving the data reads past
+			// the final sequence check during a hypervisor scale/offset update.
+			asm volatile("" ::: "memory");
+			if(sequence == memoryAtomicLoad(&referencePage->sequence, G_MEMORY_ORDER_ACQUIRE))
+				return (uint64_t) (((unsigned __int128) tsc * scale) >> 64) + offset;
+		}
+	}
+	uint32_t low, high;
+	processorReadMsr(0x40000020, &low, &high);
+	return ((uint64_t) high << 32) | low;
+}
+
+static uint64_t clockReadVmwareNanos()
+{
+	const uint64_t tsc = processorReadTsc();
+	if(tsc <= vmwareTscOrigin) return 0;
+	const uint64_t ticks = tsc - vmwareTscOrigin;
+	// Split before multiplying so even years of TSC ticks convert without
+	// overflowing the intermediate product or requiring a 128-bit division.
+	return (ticks / vmwareTscKhz) * 1000000ULL +
+	       ((ticks % vmwareTscKhz) * 1000000ULL) / vmwareTscKhz;
+}
+
+bool clockReadCalibrationNanos(uint64_t* nanos)
+{
+	// Hv#1's partition-wide reference time has fixed 100 ns units.
+	if(hypervisorClock)
+		*nanos = clockReadHypervisorCounter() * 100ULL;
+	else if(vmwareTscKhz)
+		*nanos = clockReadVmwareNanos();
+	else if(hpetIsAvailable())
+		*nanos = hpetGetNanos();
+	else
+		return false;
+	return true;
+}
+
+static uint64_t clockReadReferenceNanos()
+{
+	uint64_t nanos = 0;
+	clockReadCalibrationNanos(&nanos);
+	if(!vmwareTscKhz) return nanos;
+
+	// The VMware virtual TSCs share a rate but may have small fixed offsets.
+	// Publish a single monotonically increasing clock to migrating readers.
+	auto last = memoryAtomicLoad(&vmwareLastNanos, G_MEMORY_ORDER_RELAXED);
+	while(nanos > last)
+	{
+		if(memoryAtomicCompareExchange(&vmwareLastNanos, &last, nanos, false,
+		                               G_MEMORY_ORDER_RELAXED, G_MEMORY_ORDER_RELAXED))
+			return nanos;
+	}
+	return last;
+}
+
+/**
+ * Tracks the real time, based on Limines provided unix timestamp
+ */
+static int64_t wallClockUnixSeconds = 0;
+static uint32_t wallClockProcessor;
+static uint64_t wallClockStartNanos = 0;
 
 static g_clock_local* _clockGetLocalForProcessor(uint32_t processor)
 {
@@ -77,11 +171,51 @@ static void _clockRemoveWaiter(g_clock_local* local, g_task* task)
 	task->timeoutWait.active = false;
 }
 
-void clockInitialize()
+void clockInitializeReference()
 {
+	hypervisorClock = processorHasHypervFeature(1u << 1);
+	referencePage = nullptr;
+	vmwareTscKhz = !hypervisorClock && !hpetIsAvailable() ? processorGetVmwareTscKhz() : 0;
+	if(vmwareTscKhz)
+	{
+		vmwareTscOrigin = processorReadTsc();
+		vmwareLastNanos = 0;
+		logInfo("%! using VMware TSC at %i kHz", "clock", vmwareTscKhz);
+	}
+	else if(!clockReferenceAvailable())
+		logInfo("%! using periodic bootstrap processor ticks", "clock");
+}
+
+void clockInitialize(int64_t bootSeconds)
+{
+	if(hypervisorClock)
+	{
+		logInfo("%! using Hyper-V reference counter", "clock");
+		if(processorHasHypervFeature(1u << 9))
+		{
+			auto page = memoryAllocateKernel(1);
+			if(page)
+			{
+				memorySetBytes((void*) page, 0, G_PAGE_SIZE);
+				uint32_t low, high;
+				processorReadMsr(0x40000021, &low, &high);
+				const uint64_t control = pagingVirtualToPhysical(page) | (low & 0xffe) | 1;
+				processorWriteMsr(0x40000021, control, control >> 32);
+				referencePage = (g_clock_reference_page*) page;
+				logInfo("%! enabled shared Hyper-V reference TSC page", "clock");
+			}
+		}
+	}
 	uint32_t numProcs = processorGetNumberOfProcessors();
 	locals = (g_clock_local*) heapAllocate(sizeof(g_clock_local) * numProcs);
-	const uint64_t initialNanoTime = hpetGetNanos();
+	const uint64_t initialNanoTime = clockReadReferenceNanos();
+
+	wallClockUnixSeconds = bootSeconds;
+	wallClockProcessor = processorGetCurrentId();
+	wallClockStartNanos = initialNanoTime;
+
+	if(numProcs > 1)
+		logInfo("%! active scheduling %i Hz; idle secondary timers use deadlines", "clock", G_TIMER_FREQUENCY);
 
 	for(uint32_t i = 0; i < numProcs; i++)
 	{
@@ -96,16 +230,25 @@ void clockInitialize()
 	}
 }
 
-g_clock_local* clockGetLocal()
+g_clock_local* clockGetLocal() { return _clockGetLocalForProcessor(processorGetCurrentId()); }
+
+uint64_t clockGetMilliseconds()
 {
-	return _clockGetLocalForProcessor(processorGetCurrentId());
+	if(clockReferenceAvailable())
+	{
+		const auto now = clockReadReferenceNanos();
+		return now >= wallClockStartNanos ? (now - wallClockStartNanos) / 1000000ULL : 0;
+	}
+
+	return memoryAtomicLoad(&_clockGetLocalForProcessor(wallClockProcessor)->time, G_MEMORY_ORDER_ACQUIRE);
 }
 
 uint64_t clockGetNanoseconds(uint32_t processor)
 {
-	if(hpetIsAvailable())
-		return hpetGetNanos();
-	return memoryAtomicLoad(&_clockGetLocalForProcessor(processor)->time, G_MEMORY_ORDER_ACQUIRE) * 1000000ULL;
+	if(clockReferenceAvailable())
+		return clockReadReferenceNanos();
+
+	return clockGetMilliseconds() * 1000000ULL;
 }
 
 void clockWaitForTime(g_tid task, uint64_t wakeTime)
@@ -154,6 +297,8 @@ void clockWaitForTime(g_tid task, uint64_t wakeTime)
 	}
 
 	mutexRelease(&local->lock);
+	if(waiter->assignment)
+		schedulerRequestReschedule(waiter->assignment->processor);
 	taskingReleaseTask(waiter);
 }
 
@@ -172,18 +317,20 @@ void clockWakeWaiters(g_clock_local* local)
 
 void clockUpdateTime(g_clock_local* local)
 {
-	if(hpetIsAvailable())
+	if(clockReferenceAvailable())
 	{
 		// Timer interrupts can coalesce while interrupts are masked. Advance by
 		// elapsed hardware time so sleep deadlines do not stretch under load.
-		uint64_t elapsedNanos = hpetGetNanos() - local->lastNanoTime;
+		const uint64_t now = clockReadReferenceNanos();
+		if(now <= local->lastNanoTime) return;
+		uint64_t elapsedNanos = now - local->lastNanoTime;
 		uint64_t elapsedMillis = elapsedNanos / 1000000ULL;
-		local->time += elapsedMillis;
+		memoryAtomicAddFetch(&local->time, elapsedMillis, G_MEMORY_ORDER_RELEASE);
 		local->lastNanoTime += elapsedMillis * 1000000ULL;
 	}
 	else
 	{
-		local->time += (1000 / G_TIMER_FREQUENCY);
+		memoryAtomicAddFetch(&local->time, 1000 / G_TIMER_FREQUENCY, G_MEMORY_ORDER_RELEASE);
 	}
 }
 
@@ -191,9 +338,47 @@ void clockUpdate()
 {
 	auto local = clockGetLocal();
 	mutexAcquire(&local->lock);
-	clockUpdateTime(local);
+	if(clockReferenceAvailable() || processorGetCurrentId() == wallClockProcessor)
+		clockUpdateTime(local);
+	else
+		memoryAtomicStore(&local->time, clockGetMilliseconds(), G_MEMORY_ORDER_RELEASE);
 	clockWakeWaiters(local);
 	mutexRelease(&local->lock);
+}
+
+void clockRefreshWaiters()
+{
+	auto local = clockGetLocal();
+	mutexAcquire(&local->lock);
+	if(clockReferenceAvailable())
+		clockUpdateTime(local);
+	else if(processorGetCurrentId() != wallClockProcessor)
+		memoryAtomicStore(&local->time, clockGetMilliseconds(), G_MEMORY_ORDER_RELEASE);
+	clockWakeWaiters(local);
+	mutexRelease(&local->lock);
+}
+
+void clockConfigureLocalTimer(bool idle)
+{
+	if(!lapicIsAvailable())
+		return;
+
+	idle = idle && processorGetCurrentId() != wallClockProcessor;
+	uint64_t delay = 0;
+	if(idle)
+	{
+		auto local = clockGetLocal();
+		mutexAcquire(&local->lock);
+		if(local->waiters)
+		{
+			const auto now = clockGetMilliseconds();
+			const auto deadline = local->waiters->timeoutWait.wakeTime;
+			delay = deadline > now ? deadline - now : 1;
+		}
+		mutexRelease(&local->lock);
+	}
+
+	lapicConfigureTimer(idle, delay);
 }
 
 void clockUnwaitForTime(g_task* waiter)
@@ -202,6 +387,8 @@ void clockUnwaitForTime(g_task* waiter)
 	mutexAcquire(&local->lock);
 	_clockRemoveWaiter(local, waiter);
 	mutexRelease(&local->lock);
+	if(waiter->assignment)
+		schedulerRequestReschedule(waiter->assignment->processor);
 }
 
 void clockUnwaitForTime(g_tid task)
@@ -220,8 +407,23 @@ bool clockHasTimedOut(g_tid task)
 
 	auto local = _clockGetLocalForTask(waiter);
 	mutexAcquire(&local->lock);
-	bool timeout = !waiter->timeoutWait.active || local->time >= waiter->timeoutWait.wakeTime;
+	bool timeout = !waiter->timeoutWait.active || clockGetMilliseconds() >= waiter->timeoutWait.wakeTime;
 	mutexRelease(&local->lock);
 	taskingReleaseTask(waiter);
 	return timeout;
+}
+
+int64_t clockGetWallTime()
+{
+	if(wallClockUnixSeconds <= 0)
+		return -1;
+
+	uint64_t now = clockGetNanoseconds(wallClockProcessor);
+	if(now < wallClockStartNanos)
+		return -1;
+
+	uint64_t elapsed = (now - wallClockStartNanos) / 1000000000ULL;
+	if(elapsed > uint64_t(INT64_MAX - wallClockUnixSeconds))
+		return -1;
+	return wallClockUnixSeconds + int64_t(elapsed);
 }

@@ -32,18 +32,4 @@ uint64_t acpiPlatformGetRsdp();
 
 uint64_t acpiPlatformMap(g_task* task, uint64_t address, uint32_t length);
 
-g_acpi_status acpiPlatformWait(g_task* task, uint32_t irq);
-
-g_acpi_status acpiPlatformInstallIrq(g_task* task, uint32_t irq);
-
-g_acpi_status acpiPlatformRearmIrq(g_task* task, uint32_t irq);
-
-g_acpi_status acpiPlatformRemoveIrq(g_task* task, uint32_t irq);
-
-g_acpi_status acpiPlatformMaskIrq(g_task* task, uint32_t irq);
-
-bool acpiPlatformHandleIrq(g_task* task, uint8_t irq);
-
-void acpiPlatformTaskStopped(g_task* task);
-
 #endif

@@ -106,7 +106,7 @@ void acpiPrepareRootSDT(g_rsdp_descriptor* rsdp)
 bool acpiValidateSDT(g_acpi_table_header* header)
 {
 	uint8_t sum = 0;
-	auto tableBytes = reinterpret_cast<uint8_t*>(header);
+	auto tableBytes = (uint8_t*) header;
 
 	for(uint32_t i = 0; i < header->length; i++)
 		sum += tableBytes[i];

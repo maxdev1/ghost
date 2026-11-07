@@ -19,32 +19,30 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/interrupts/interrupts.hpp"
-#include "kernel/system/power/power.hpp"
-#include "kernel/system/acpi/platform.hpp"
+#include "kernel/calls/syscall.hpp"
+#include "kernel/logger/logger.hpp"
 #include "kernel/memory/gdt.hpp"
 #include "kernel/memory/paging_shootdown.hpp"
-#include "kernel/logger/logger.hpp"
-#include "kernel/calls/syscall.hpp"
+#include "kernel/panic.hpp"
 #include "kernel/system/interrupts/apic/ioapic.hpp"
 #include "kernel/system/interrupts/apic/lapic.hpp"
 #include "kernel/system/interrupts/exceptions.hpp"
 #include "kernel/system/interrupts/idt.hpp"
+#include "kernel/system/interrupts/irq.hpp"
 #include "kernel/system/interrupts/pic.hpp"
-#include "kernel/system/interrupts/requests.hpp"
+#include "kernel/system/power/power.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/system/timing/pit.hpp"
 #include "kernel/tasking/clock.hpp"
+#include "kernel/tasking/scheduler/scheduler.hpp"
 #include "kernel/tasking/tasking.hpp"
-#include "kernel/panic.hpp"
-
-void _interruptsSendEndOfInterrupt(uint8_t irq);
 
 void interruptsInitializeBsp()
 {
 	idtInitialize();
 	idtInitializeLocal();
 	interruptsInstallRoutines();
-	requestsInitialize();
+	irqInitialize();
 
 	if(lapicIsAvailable())
 	{
@@ -68,12 +66,23 @@ void interruptsInitializeAp()
 	lapicInitialize();
 }
 
+
 extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_state* state)
 {
-	// A shootdown can interrupt any lock holder or a partially restored task.
-	// Return the interrupted state without touching task, FPU, TLS or scheduler state.
-	if(state->intr == 2 && pagingHandleShootdownNmi())
+	if(state->intr == G_INTR_TLB_SHOOTDOWN)
+	{
+		pagingHandleShootdownIpi();
+		lapicSendEndOfInterrupt();
 		return state;
+	}
+
+	if(state->intr != 2)
+		pagingPollShootdown();
+
+	// Spawn can install TLS and reset this same task's return frame, so we must capture
+	// the vector before that reset; its new TLS/TSS must reach the CPU too:
+	const bool finalizeSpawn = state->intr == 0x82;
+
 	g_task* task = taskingGetCurrentTask();
 	if(task)
 		taskingSaveState(task, (g_processor_state*) state);
@@ -81,6 +90,13 @@ extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_st
 	if(state->intr < 0x20) // Exception
 	{
 		exceptionsHandle(task, state);
+	}
+	else if(state->intr == G_INTR_SCHEDULER_RESCHEDULE)
+	{
+		schedulerAcknowledgeReschedule();
+		clockRefreshWaiters();
+		taskingSchedule();
+		lapicSendEndOfInterrupt();
 	}
 	else if(state->intr == 0x80) // Syscall
 	{
@@ -100,35 +116,33 @@ extern "C" volatile g_processor_state* _interruptHandler(volatile g_processor_st
 		if(irq == 0) // Timer
 		{
 			clockUpdate();
-			taskingSchedule(true);
+			irqReapRetired();
+			taskingSchedule();
+			interruptsSendEndOfInterrupt(irq);
 		}
 		else
 		{
-			if(!acpiPlatformHandleIrq(task, irq))
-				requestsHandle(task, irq);
+			clockRefreshWaiters();
+			irqHandle(task, irq);
+			if(taskingGetCurrentTask() == taskingGetLocal()->scheduling.idleTask)
+				taskingSchedule();
 		}
-		_interruptsSendEndOfInterrupt(irq);
 	}
 
 	auto newTask = taskingGetCurrentTask();
 	if(!newTask || !newTask->state)
 		panic("%! attempted to switch to null task (%x) or state (%x)", "system", newTask, newTask->state);
-	if(newTask != task)
+	if(newTask != task || finalizeSpawn)
 		taskingRestoreState(newTask);
 
 	powerProcessorCheckpoint();
+	clockConfigureLocalTimer(newTask == taskingGetLocal()->scheduling.idleTask);
 	return newTask->state;
 }
 
-void interruptsEnable()
-{
-	asm volatile("sti");
-}
+void interruptsEnable() { asm volatile("sti"); }
 
-void interruptsDisable()
-{
-	asm volatile("cli");
-}
+void interruptsDisable() { asm volatile("cli"); }
 
 bool interruptsAreEnabled()
 {
@@ -136,7 +150,7 @@ bool interruptsAreEnabled()
 	return eflags & (1 << 9);
 }
 
-void _interruptsSendEndOfInterrupt(uint8_t irq)
+void interruptsSendEndOfInterrupt(uint8_t irq)
 {
 	if(lapicIsAvailable())
 		lapicSendEndOfInterrupt();

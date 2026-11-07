@@ -19,9 +19,9 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/interrupts/apic/ioapic.hpp"
+#include "kernel/logger/logger.hpp"
 #include "kernel/memory/memory.hpp"
 #include "kernel/panic.hpp"
-#include "kernel/logger/logger.hpp"
 
 static g_ioapic* ioapicList = 0;
 
@@ -68,8 +68,9 @@ void ioapicInitialize(g_ioapic* io)
 
 	// Get version
 	uint32_t versionValue = ioapicRead(io, IOAPIC_VER);
-	io->redirectEntryCount = (versionValue >> 16) & 0xFF;
-	logDebug("%! id %i: version %i, redirect entries: %i", "ioapic", io->id, versionValue & 0xFF, io->redirectEntryCount);
+	io->redirectEntryCount = ((versionValue >> 16) & 0xFF) + 1;
+	logDebug("%! id %i: version %i, redirect entries: %i", "ioapic", io->id, versionValue & 0xFF,
+			 io->redirectEntryCount);
 }
 
 void ioapicCreateMapping(g_ioapic* io)
@@ -84,8 +85,11 @@ void ioapicCreateMapping(g_ioapic* io)
 
 	// Map the two pages
 	logDebug("%! mapped at %h (phys %h)", "ioapic", io->virtualAddress, io->physicalAddress);
-	pagingMapPage(G_PAGE_ALIGN_DOWN(io->virtualAddress), G_PAGE_ALIGN_DOWN(io->physicalAddress), G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
-	pagingMapPage(G_PAGE_ALIGN_DOWN(io->virtualAddress) + G_PAGE_SIZE, G_PAGE_ALIGN_DOWN(io->physicalAddress) + G_PAGE_SIZE, G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
+	pagingMapPage(G_PAGE_ALIGN_DOWN(io->virtualAddress), G_PAGE_ALIGN_DOWN(io->physicalAddress),
+				  G_PAGE_TABLE_KERNEL_DEFAULT, G_PAGE_KERNEL_DEFAULT);
+	pagingMapPage(G_PAGE_ALIGN_DOWN(io->virtualAddress) + G_PAGE_SIZE,
+				  G_PAGE_ALIGN_DOWN(io->physicalAddress) + G_PAGE_SIZE, G_PAGE_TABLE_KERNEL_DEFAULT,
+				  G_PAGE_KERNEL_DEFAULT);
 }
 
 uint32_t ioapicRead(g_ioapic* io, uint32_t reg)
@@ -113,9 +117,15 @@ uint64_t ioapicGetRedirectionEntry(g_ioapic* io, uint32_t index)
 void ioapicSetRedirectionEntry(g_ioapic* io, uint32_t index, uint64_t value)
 {
 	*((volatile uint32_t*) (io->virtualAddress + IOAPIC_REGSEL)) = IOAPIC_REDTBL_BASE + index * 2;
-	*((volatile uint32_t*) (io->virtualAddress + IOAPIC_REGWIN)) = value & 0xFFFFFFFF;
+	*((volatile uint32_t*) (io->virtualAddress + IOAPIC_REGWIN)) = (value & 0xFFFFFFFF) | IOAPIC_REDTBL_INTMASK_MASKED;
 	*((volatile uint32_t*) (io->virtualAddress + IOAPIC_REGSEL)) = IOAPIC_REDTBL_BASE + index * 2 + 1;
 	*((volatile uint32_t*) (io->virtualAddress + IOAPIC_REGWIN)) = value >> 32;
+
+	if(!(value & IOAPIC_REDTBL_INTMASK_MASKED))
+	{
+		*((volatile uint32_t*) (io->virtualAddress + IOAPIC_REGSEL)) = IOAPIC_REDTBL_BASE + index * 2;
+		*((volatile uint32_t*) (io->virtualAddress + IOAPIC_REGWIN)) = value & 0xFFFFFFFF;
+	}
 }
 
 void ioapicMask(g_ioapic* io, uint32_t source)
@@ -140,10 +150,7 @@ void ioapicUnmask(g_ioapic* io, uint32_t source)
 	ioapicSetRedirectionEntry(io, entryIndex, entry);
 }
 
-bool ioapicAreAvailable()
-{
-	return ioapicList != nullptr;
-}
+bool ioapicAreAvailable() { return ioapicList != nullptr; }
 
 g_ioapic* ioapicGetResponsibleFor(uint32_t source)
 {
@@ -159,28 +166,21 @@ g_ioapic* ioapicGetResponsibleFor(uint32_t source)
 	return io;
 }
 
-bool ioapicCreateRedirectionEntry(uint32_t source, uint32_t irq, uint32_t destinationApic)
+bool ioapicVectorIsBusyElsewhere(uint8_t vector, uint32_t source)
 {
-	g_ioapic* io = ioapicGetResponsibleFor(source);
-	if(!io)
-	{
-		logWarn("%! found no responsible I/O APIC for interrupt %i", "ioapicmgr", source);
-		return false;
-	}
+	for(auto io = ioapicList; io; io = io->next)
+		for(uint32_t index = 0; index < io->redirectEntryCount; ++index)
+		{
+			if(io->globalSystemInterruptBase + index == source)
+				continue;
 
-	uint64_t redirectionTableEntry = 0;
-	redirectionTableEntry |= IOAPIC_REDTBL_INTVEC_MAKE(0x20 + irq);
-	redirectionTableEntry |= IOAPIC_REDTBL_DELMOD_FIXED;
-	redirectionTableEntry |= IOAPIC_REDTBL_DESTMOD_PHYSICAL;
-	redirectionTableEntry |= IOAPIC_REDTBL_INTPOL_HIGH_ACTIVE;
-	redirectionTableEntry |= IOAPIC_REDTBL_TRIGGERMOD_EDGE;
-	redirectionTableEntry |= IOAPIC_REDTBL_INTMASK_UNMASKED;
-	redirectionTableEntry |= IOAPIC_REDTBL_DESTINATION_MAKE(destinationApic, IOAPIC_REDTBL_DESTINATION_FLAG_PHYSICAL);
-
-	ioapicSetRedirectionEntry(io, source, redirectionTableEntry);
-
-	logDebug("%! wrote ISA redirection entry %i -> %i", "ioapicmgr", source, irq);
-	return true;
+			uint64_t entry = ioapicGetRedirectionEntry(io, index);
+			if((entry & 0xff) == vector &&
+			   (!(entry & IOAPIC_REDTBL_INTMASK_MASKED) ||
+				(entry & (IOAPIC_REDTBL_DELIVS_SEND_PENDING | IOAPIC_REDTBL_REMOTEIRR_ACCEPTING))))
+				return true;
+		}
+	return false;
 }
 
 void ioapicMaskIrq(uint32_t irq)

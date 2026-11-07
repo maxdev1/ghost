@@ -113,6 +113,7 @@ static bool acpiPowerAddWrite(g_acpi_power_plan* plan, const acpi_gas& gas, uint
 			 unsigned(width), unsigned(plan->count));
 		return false;
 	}
+
 	plan->writes[plan->count++] = {gas.address, value,
 								   gas.address_space_id == UACPI_ADDRESS_SPACE_SYSTEM_IO ? G_ACPI_IO : G_ACPI_MEMORY,
 								   width};
@@ -129,6 +130,7 @@ static bool acpiPowerAddControlWrites(g_acpi_power_plan* plan, uint64_t a, uint6
 {
 	if(!acpiPowerAddWrite(plan, acpiFadt->x_pm1a_cnt_blk, 2, a))
 		return false;
+
 	return !acpiFadt->x_pm1b_cnt_blk.address || acpiPowerAddWrite(plan, acpiFadt->x_pm1b_cnt_blk, 2, b);
 }
 
@@ -157,6 +159,7 @@ static bool acpiPowerPrepareShutdown(g_acpi_power_plan* plan)
 		if(!acpiPowerCheckStatus("clear hardware-reduced wake status",
 								 uacpi_write_register_field(UACPI_REGISTER_FIELD_HWR_WAK_STS, 1)))
 			return false;
+
 		return acpiPowerAddWrite(plan, acpiFadt->sleep_control_reg, 1,
 								 (acpiInfo.sleep[5].typeA << ACPI_SLP_CNT_SLP_TYP_IDX) | ACPI_SLP_CNT_SLP_EN_MASK);
 	}
@@ -232,5 +235,6 @@ void acpiPowerCancel(g_power_action action)
 		acpiPowerCheckStatus("prepare S5 rollback", uacpi_prepare_for_wake_from_sleep_state(UACPI_SLEEP_STATE_S5));
 		acpiPowerCheckStatus("restore firmware after S5 rollback", uacpi_wake_from_sleep_state(UACPI_SLEEP_STATE_S5));
 	}
+
 	acpiPowerCheckStatus("restore runtime GPEs", uacpi_enable_all_runtime_gpes());
 }

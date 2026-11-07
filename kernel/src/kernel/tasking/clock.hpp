@@ -42,7 +42,7 @@ struct g_clock_local
     g_mutex lock;
 
     /**
-     * Milliseconds that this processor has run.
+     * Cached system milliseconds used while servicing this CPU's waiters.
      */
     uint64_t time;
 
@@ -58,15 +58,42 @@ struct g_clock_local
 };
 
 /**
- * Initializes the clock.
+ * Selects a hardware reference on the bootstrap processor before LAPIC setup.
  */
-void clockInitialize();
+void clockInitializeReference();
 
 /**
- * Reads a processor's monotonic time in nanoseconds. Without HPET, precision is
- * limited to that processor's timer ticks.
+ * Samples the reference in nanoseconds for same-CPU calibration intervals.
+ * Returns false when there is no independent clock.
+ */
+bool clockReadCalibrationNanos(uint64_t* nanos);
+
+/**
+ * Initializes the clock and timed wait queues.
+ */
+void clockInitialize(int64_t bootSeconds);
+
+/**
+ * Reads shared monotonic time in nanoseconds. Without a hardware reference,
+ * precision is limited to the periodic bootstrap-processor tick.
  */
 uint64_t clockGetNanoseconds(uint32_t processor);
+
+/**
+ * Reads shared elapsed milliseconds, including on an idle processor.
+ */
+uint64_t clockGetMilliseconds();
+
+/**
+ * Services due waiters after a wake-up without adding a legacy timer tick.
+ */
+void clockRefreshWaiters();
+
+/**
+ * Configures the owner CPU's timer after scheduling with interrupts disabled.
+ * The bootstrap processor keeps periodic ticks for legacy time and IRQ upkeep.
+ */
+void clockConfigureLocalTimer(bool idle);
 
 /**
  * Returns the processor-local clock structure.
@@ -95,5 +122,10 @@ void clockUnwaitForTime(g_task* task);
  * @returns true when the wake-up time for this task was reached or the queue entry removed.
  */
 bool clockHasTimedOut(g_tid task);
+
+/**
+ * @return the real time as a unix timestamp in seconds
+ */
+int64_t clockGetWallTime();
 
 #endif

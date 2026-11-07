@@ -19,12 +19,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "kernel/system/processor/processor.hpp"
-#include "kernel/memory/memory.hpp"
-#include "kernel/system/interrupts/apic/lapic.hpp"
-#include "kernel/system/system.hpp"
 #include "kernel/logger/logger.hpp"
 #include "kernel/memory/gdt.hpp"
+#include "kernel/memory/memory.hpp"
 #include "kernel/panic.hpp"
+#include "kernel/system/interrupts/apic/lapic.hpp"
+#include "kernel/system/system.hpp"
 
 static g_processor* processors = nullptr;
 static uint32_t processorsAvailable = 0;
@@ -163,7 +163,7 @@ uint32_t processorGetCurrentId()
 	// GS points to valid <g_kernel_threadlocal>
 	// 0x0 is relative address within struct
 	uint32_t processor;
-	asm volatile("mov %%gs:0x0, %0" : "=r" (processor));
+	asm volatile("mov %%gs:0x0, %0" : "=r"(processor));
 	return processor;
 }
 
@@ -174,16 +174,11 @@ uint32_t processorGetCurrentIdFromApic()
 	return apicIdToProcessorMapping[lapicReadId()];
 }
 
-bool processorListAvailable()
-{
-	return processors != nullptr;
-}
+bool processorListAvailable() { return processors != nullptr; }
 
 void processorCpuid(uint32_t code, uint32_t* outA, uint32_t* outB, uint32_t* outC, uint32_t* outD)
 {
-	asm volatile("cpuid"
-		: "=a"(*outA), "=b"(*outB), "=c"(*outC), "=d"(*outD)
-		: "a"(code));
+	asm volatile("cpuid" : "=a"(*outA), "=b"(*outB), "=c"(*outC), "=d"(*outD) : "a"(code));
 }
 
 bool processorHasFeature(g_cpuid_standard_edx_feature feature)
@@ -204,6 +199,68 @@ bool processorHasFeature(g_cpuid_extended_ecx_feature feature)
 	uint32_t edx;
 	processorCpuid(1, &eax, &ebx, &ecx, &edx);
 	return (ecx & (uint64_t) feature);
+}
+
+bool processorHasHypervFeature(uint32_t feature)
+{
+	uint32_t eax, ebx, ecx, edx;
+
+	processorCpuid(1, &eax, &ebx, &ecx, &edx);
+	if(!(ecx & (1u << 31)))
+		return false;
+
+	processorCpuid(0x40000000, &eax, &ebx, &ecx, &edx);
+	if(eax < 0x40000003)
+		return false;
+
+	processorCpuid(0x40000001, &eax, &ebx, &ecx, &edx);
+	if(eax != 0x31237648)
+		return false;
+
+	processorCpuid(0x40000003, &eax, &ebx, &ecx, &edx);
+	return (eax & feature) != 0;
+}
+
+static void processorReadVmwareFrequencies(uint32_t* tscKhz, uint32_t* apicKhz)
+{
+	*tscKhz = *apicKhz = 0;
+	uint32_t eax, ebx, ecx, edx;
+	processorCpuid(1, &eax, &ebx, &ecx, &edx);
+
+	if(!(ecx & (1u << 31)))
+		return;
+
+	processorCpuid(0x40000000, &eax, &ebx, &ecx, &edx);
+	// VMware hardware version 7 exposes the TSC and LAPIC bus rates in kHz.
+	if(eax < 0x40000010 || ebx != 0x61774d56 || ecx != 0x4d566572 || edx != 0x65726177)
+		return;
+	processorCpuid(0x40000010, tscKhz, apicKhz, &ecx, &edx);
+}
+
+uint32_t processorGetVmwareTscKhz()
+{
+	uint32_t tscKhz, apicKhz;
+	processorReadVmwareFrequencies(&tscKhz, &apicKhz);
+	return tscKhz;
+}
+
+uint64_t processorGetApicFrequencyHz()
+{
+	if(processorHasHypervFeature(1u << 11))
+	{
+		uint32_t eax, ebx, ecx, edx;
+		processorCpuid(0x40000003, &eax, &ebx, &ecx, &edx);
+		if(edx & (1u << 8))
+		{
+			uint32_t low, high;
+			processorReadMsr(0x40000023, &low, &high);
+			return ((uint64_t) high << 32) | low;
+		}
+	}
+
+	uint32_t tscKhz, apicKhz;
+	processorReadVmwareFrequencies(&tscKhz, &apicKhz);
+	return (uint64_t) apicKhz * 1000;
 }
 
 void processorGetVendor(char* out)
@@ -253,10 +310,7 @@ void processorPrintInformation()
 	logInfo("");
 }
 
-g_processor* processorGetList()
-{
-	return processors;
-}
+g_processor* processorGetList() { return processors; }
 
 g_processor* processorGetBsp()
 {
@@ -265,65 +319,37 @@ g_processor* processorGetBsp()
 		if(processor->bsp)
 			return processor;
 	}
+
 	return nullptr;
 }
 
 void processorReadMsr(uint32_t msr, uint32_t* lo, uint32_t* hi)
 {
-	asm volatile("rdmsr"
-		: "=a"(*lo), "=d"(*hi)
-		: "c"(msr));
+	asm volatile("rdmsr" : "=a"(*lo), "=d"(*hi) : "c"(msr));
 }
 
-void processorWriteMsr(uint32_t msr, uint32_t lo, uint32_t hi)
-{
-	asm volatile("wrmsr"
-		:
-		: "a"(lo), "d"(hi), "c"(msr));
-}
+void processorWriteMsr(uint32_t msr, uint32_t lo, uint32_t hi) { asm volatile("wrmsr" : : "a"(lo), "d"(hi), "c"(msr)); }
 
 uint64_t processorReadEflags()
 {
 	uint64_t eflags;
 	asm volatile("pushf\n"
-		"pop %0"
-		: "=g"(eflags));
+				 "pop %0"
+				 : "=g"(eflags));
 	return eflags;
 }
 
-void processorSaveFpuState(uint8_t* target)
-{
-	asm volatile (
-		"fxsave (%0)"
-		:
-		: "r" (target)
-		: "memory"
-	);
-}
+void processorSaveFpuState(uint8_t* target) { asm volatile("fxsave (%0)" : : "r"(target) : "memory"); }
 
-void processorRestoreFpuState(uint8_t* source)
-{
-	asm volatile (
-		"fxrstor (%0)"
-		:
-		: "r" (source)
-		: "memory"
-	);
-}
+void processorRestoreFpuState(uint8_t* source) { asm volatile("fxrstor (%0)" : : "r"(source) : "memory"); }
 
-const uint8_t* processorGetInitialFpuState()
-{
-	return _processorGetCurrent()->fpu.initialState;
-}
+const uint8_t* processorGetInitialFpuState() { return _processorGetCurrent()->fpu.initialState; }
 
-bool processorIsBsp()
-{
-	return processorGetCurrentId() == 0;
-}
+bool processorIsBsp() { return processorGetCurrentId() == 0; }
 
 uint64_t processorReadTsc()
 {
 	uint32_t lo, hi;
-	__asm__ volatile("rdtsc" : "=a" (lo), "=d" (hi));
+	__asm__ volatile("lfence\nrdtsc\nlfence" : "=a"(lo), "=d"(hi) : : "memory");
 	return ((uint64_t) hi << 32) | lo;
 }

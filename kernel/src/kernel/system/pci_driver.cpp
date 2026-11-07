@@ -30,7 +30,7 @@ static constexpr uint64_t G_PCI_DRIVER_TIMEOUT = 15000;
 static void pciDriverSleep()
 {
 	auto task = taskingGetCurrentTask();
-	taskingWait(task, __func__, [task]() { clockWaitForTime(task->id, clockGetLocal()->time + 1); });
+	taskingWait(task, __func__, [task]() { clockWaitForTime(task->id, clockGetMilliseconds() + 1); });
 }
 
 static g_tid pciDriverService()
@@ -48,11 +48,12 @@ static bool pciDriverSend(g_tid service, void* request, size_t length, int trans
 	auto current = taskingGetCurrentTask();
 	while(messageQueueSend(current->id, service, request, length, transaction) != G_MESSAGE_SEND_STATUS_SUCCESSFUL)
 	{
-		if(clockGetLocal()->time >= deadline || pciDriverService() != service)
+		if(clockGetMilliseconds() >= deadline || pciDriverService() != service)
 			return false;
 
 		pciDriverSleep();
 	}
+
 	return true;
 }
 
@@ -60,9 +61,9 @@ static bool pciDriverReceive(g_tid service, void* response, size_t responseSize,
 {
 	auto current = taskingGetCurrentTask();
 	uint8_t buffer[sizeof(g_message_header) + sizeof(g_pci_read_config_response)];
-	while(clockGetLocal()->time < deadline)
+	while(clockGetMilliseconds() < deadline)
 	{
-		auto header = reinterpret_cast<g_message_header*>(buffer);
+		auto header = (g_message_header*) buffer;
 		auto status = messageQueueReceive(current->id, header, sizeof(buffer), transaction);
 		if(status == G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL && header->sender == service && header->length == responseSize)
 		{
@@ -72,8 +73,10 @@ static bool pciDriverReceive(g_tid service, void* response, size_t responseSize,
 
 		if(pciDriverService() != service)
 			return false;
+
 		pciDriverSleep();
 	}
+
 	return false;
 }
 
@@ -88,7 +91,7 @@ static bool pciDriverTransact(void* request, size_t length, void* response, size
 		return false;
 
 	auto transaction = messageQueueNextTxId();
-	auto deadline = clockGetLocal()->time + G_PCI_DRIVER_TIMEOUT;
+	auto deadline = clockGetMilliseconds() + G_PCI_DRIVER_TIMEOUT;
 	return pciDriverSend(service, request, length, transaction, deadline) &&
 		   pciDriverReceive(service, response, responseSize, transaction, deadline);
 }
@@ -99,6 +102,7 @@ bool pciDriverRead(uint32_t device, uint8_t offset, uint8_t width, uint32_t* val
 	g_pci_read_config_response response{};
 	if(!pciDriverTransact(&request, sizeof(request), &response, sizeof(response)) || !response.successful)
 		return false;
+
 	*value = response.value;
 	return true;
 }

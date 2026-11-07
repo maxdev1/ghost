@@ -124,13 +124,24 @@ void lapicCreateMapping();
 
 void lapicStartTimer();
 
+/**
+ * Configures the owner processors timer with local interrupts disabled.
+ * Active mode preserves an ongoing quantum. Idle delay zero stops the timer;
+ * a positive delay arms a one-shot, saturated to the hardware counter range.
+ */
+void lapicConfigureTimer(bool idle, uint64_t delayMilliseconds);
+
 uint32_t lapicRead(uint32_t reg);
+
+bool lapicVectorIsBusy(uint8_t vector);
 
 void lapicWrite(uint32_t reg, uint32_t value);
 
 void lapicWaitForIcrSend();
 
-void lapicSendNmi(uint32_t apicId);
+void lapicSendIpi(uint32_t apicId, uint8_t vector);
+
+void lapicSendIpiAllOthers(uint8_t vector);
 
 void lapicSendEndOfInterrupt();
 

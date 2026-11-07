@@ -39,8 +39,8 @@ extern "C" uacpi_status uacpi_kernel_wait_for_semaphore(uacpi_handle handle, uac
 	auto deadline = uacpi_kernel_get_nanoseconds_since_boot() + uint64_t(timeout) * 1000000ULL;
 	for(;;)
 	{
-		auto units = __atomic_load_n(value, __ATOMIC_ACQUIRE);
-		if(units && __atomic_compare_exchange_n(value, &units, units - 1, false, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED))
+		auto units = memoryAtomicLoad(value, G_MEMORY_ORDER_ACQUIRE);
+		if(units && memoryAtomicCompareExchange(value, &units, units - 1, false, G_MEMORY_ORDER_ACQUIRE, G_MEMORY_ORDER_RELAXED))
 			return UACPI_STATUS_OK;
 
 		if(timeout != 0xffff && (!timeout || uacpi_kernel_get_nanoseconds_since_boot() >= deadline))
@@ -55,7 +55,7 @@ extern "C" uacpi_status uacpi_kernel_wait_for_semaphore(uacpi_handle handle, uac
 
 extern "C" void uacpi_kernel_signal_semaphore(uacpi_handle handle)
 {
-	__atomic_add_fetch(static_cast<uint32_t*>(handle), 1, __ATOMIC_RELEASE);
+	memoryAtomicAddFetch(static_cast<uint32_t*>(handle), 1, G_MEMORY_ORDER_RELEASE);
 }
 
 extern "C" uacpi_thread_id uacpi_kernel_get_thread_id() { return reinterpret_cast<void*>(uintptr_t(g_get_tid())); }
@@ -81,7 +81,7 @@ extern "C" uacpi_cpu_flags uacpi_kernel_lock_spinlock(uacpi_handle handle)
 {
 	auto flags = uacpi_kernel_disable_interrupts();
 
-	while(__atomic_exchange_n(static_cast<uint32_t*>(handle), 1, __ATOMIC_ACQUIRE))
+	while(memoryAtomicExchange(static_cast<uint32_t*>(handle), 1, G_MEMORY_ORDER_ACQUIRE))
 		asm volatile("pause");
 
 	return flags;
@@ -89,6 +89,6 @@ extern "C" uacpi_cpu_flags uacpi_kernel_lock_spinlock(uacpi_handle handle)
 
 extern "C" void uacpi_kernel_unlock_spinlock(uacpi_handle handle, uacpi_cpu_flags flags)
 {
-	__atomic_store_n(static_cast<uint32_t*>(handle), 0, __ATOMIC_RELEASE);
+	memoryAtomicStore(static_cast<uint32_t*>(handle), 0, G_MEMORY_ORDER_RELEASE);
 	uacpi_kernel_restore_interrupts(flags);
 }

@@ -26,6 +26,7 @@
 #include "kernel/system/interrupts/apic/apic.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/system/timing/hpet.hpp"
+#include "kernel/tasking/clock.hpp"
 #include "kernel/system/smp.hpp"
 #include "kernel/panic.hpp"
 #include "kernel/logger/logger.hpp"
@@ -41,6 +42,7 @@ void systemInitializeBsp(g_physical_address rsdp)
 	acpiInitialize(rsdp);
 	apicDetect();
 	hpetInitialize();
+	clockInitializeReference();
 
 	if(!processorListAvailable())
 		panic("%! no processors found", "system");
@@ -77,6 +79,7 @@ void systemWaitForApplicationCores()
 void systemWaitForReady()
 {
 	logDebug("%! waiting for system to be ready", processorGetCurrentId() == 0 ? "bsp" : "ap");
+
 	while(!memoryAtomicLoad(&systemReady, G_MEMORY_ORDER_ACQUIRE))
 		asm volatile("pause");
 }

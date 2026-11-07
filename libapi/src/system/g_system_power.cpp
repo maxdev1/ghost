@@ -19,7 +19,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "ghost/syscall.h"
-#include "ghost/system/power.h"
+#include "ghost/system.h"
 
 g_power_status g_system_power(g_power_action action)
 {

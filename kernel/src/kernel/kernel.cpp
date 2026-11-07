@@ -81,6 +81,9 @@ __attribute__((used, section(".limine_requests"))) volatile limine_hhdm_request 
 		.revision = 0,
 };
 
+__attribute__((used, section(".limine_requests"))) static volatile limine_boot_time_request bootTimeRequest = {
+		.id = LIMINE_BOOT_TIME_REQUEST, .revision = 0};
+
 __attribute__((used, section(".limine_requests_start"))) static volatile LIMINE_REQUESTS_START_MARKER;
 
 __attribute__((used, section(".limine_requests_end"))) static volatile LIMINE_REQUESTS_END_MARKER;
@@ -145,7 +148,7 @@ void kernelRunBootstrapCore()
 	mutexAcquire(&bootstrapCoreLock);
 
 	systemInitializeBsp((g_physical_address) rsdpRequest.response->address);
-	clockInitialize();
+	clockInitialize(bootTimeRequest.response ? bootTimeRequest.response->boot_time : 0);
 	filesystemInitialize();
 	pipeInitialize();
 	messageQueuesInitialize();
@@ -222,14 +225,16 @@ static void kernelMountBootRoot()
 {
 	if(!kernelRootArguments[0])
 		return;
-	auto deadline = clockGetLocal()->time + 30000;
+
+	auto deadline = clockGetMilliseconds() + 30000;
 	while(!filesystemDelegateMountRoot("fat-root"))
 	{
-		if(clockGetLocal()->time >= deadline)
+		if(clockGetMilliseconds() >= deadline)
 			panic("%! FAT boot disk did not become ready", "boot");
 		auto task = taskingGetCurrentTask();
-		taskingWait(task, __func__, [task]() { clockWaitForTime(task->id, clockGetLocal()->time + 10); });
+		taskingWait(task, __func__, [task]() { clockWaitForTime(task->id, clockGetMilliseconds() + 10); });
 	}
+
 	logInfo("%! FAT filesystem is now /", "boot");
 }
 

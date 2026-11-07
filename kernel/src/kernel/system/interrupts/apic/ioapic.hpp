@@ -187,7 +187,7 @@ void ioapicCreate(uint32_t id, g_physical_address physicalAddress, uint32_t glob
 /**
  *
  */
-bool ioapicCreateRedirectionEntry(uint32_t source, uint32_t irq, uint32_t destinationApic);
+bool ioapicVectorIsBusyElsewhere(uint8_t vector, uint32_t source);
 
 /**
  *

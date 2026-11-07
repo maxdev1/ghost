@@ -23,6 +23,9 @@
 
 #include "kernel/system/processor/processor_state.hpp"
 
+#define G_INTR_TLB_SHOOTDOWN 0xF0
+#define G_INTR_SCHEDULER_RESCHEDULE 0xF1
+
 /**
  * Sets up interrupts on the bootstrap processor.
  */
@@ -51,29 +54,31 @@ bool interruptsAreEnabled();
 /** Restores the incoming interrupt state when leaving a critical section. */
 class g_interrupt_guard
 {
-    const bool wasEnabled;
+	const bool wasEnabled;
 
 public:
-    g_interrupt_guard() : wasEnabled(interruptsAreEnabled())
-    {
-        if(wasEnabled)
-            interruptsDisable();
-    }
+	g_interrupt_guard() : wasEnabled(interruptsAreEnabled())
+	{
+		if(wasEnabled)
+			interruptsDisable();
+	}
 
-    ~g_interrupt_guard()
-    {
-        if(wasEnabled)
-            interruptsEnable();
-    }
+	~g_interrupt_guard()
+	{
+		if(wasEnabled)
+			interruptsEnable();
+	}
 
-    g_interrupt_guard(const g_interrupt_guard&) = delete;
-    g_interrupt_guard& operator=(const g_interrupt_guard&) = delete;
+	g_interrupt_guard(const g_interrupt_guard&) = delete;
+	g_interrupt_guard& operator=(const g_interrupt_guard&) = delete;
 };
 
 /**
  * Installs all ISRs into the IDT.
  */
 void interruptsInstallRoutines();
+
+void interruptsSendEndOfInterrupt(uint8_t irq);
 
 /**
  * Interrupt handler routine. Stores the current task state and then processes the interrupt.

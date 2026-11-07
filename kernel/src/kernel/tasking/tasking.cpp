@@ -29,7 +29,7 @@
 #include "kernel/memory/page_reference_tracker.hpp"
 #include "kernel/panic.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
-#include "kernel/system/interrupts/requests.hpp"
+#include "kernel/system/interrupts/irq.hpp"
 #include "kernel/system/power/power.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/system/system.hpp"
@@ -55,6 +55,11 @@ g_hashmap<g_tid, g_task*>* taskGlobalMap;
 void _taskingInitializeTask(g_task* task, g_process* process, g_security_level level);
 
 g_tasking_local* taskingGetLocal() { return &taskingLocal[processorGetCurrentId()]; }
+
+g_tasking_local* taskingGetLocalForProcessor(uint32_t processor)
+{
+	return processor < processorGetNumberOfProcessors() ? &taskingLocal[processor] : nullptr;
+}
 
 g_task* taskingGetCurrentTask()
 {
@@ -89,19 +94,35 @@ g_task* taskingAcquireTask(g_tid id)
 	return task;
 }
 
+/**
+ * Drops a lookup pin while excluding retirement and notifies the owner when
+ * the final pin was keeping a dead task from being reclaimed on an idle CPU.
+ */
 void taskingReleaseTask(g_task* task)
 {
-	if(task)
-		memoryAtomicSubFetch(&task->references, 1, G_MEMORY_ORDER_RELEASE);
+	if(!task)
+		return;
+
+	auto lock = &task->lock;
+	mutexAcquire(lock);
+	auto assignment = task->assignment;
+	bool dead = task->status == G_TASK_STATUS_DEAD;
+	bool final = memoryAtomicSubFetch(&task->references, 1, G_MEMORY_ORDER_RELEASE) == 0;
+	mutexRelease(lock);
+
+	if(dead && final && assignment)
+		schedulerRequestReschedule(assignment->processor);
 }
 
 bool taskingTryRetireTask(g_task* task)
 {
+	mutexAcquire(&task->lock);
 	mutexAcquire(&taskGlobalMap->lock);
 	bool retire = task->status == G_TASK_STATUS_DEAD && memoryAtomicLoad(&task->references, G_MEMORY_ORDER_ACQUIRE) == 0;
 	if(retire)
 		hashmapRemove(taskGlobalMap, task->id);
 	mutexRelease(&taskGlobalMap->lock);
+	mutexRelease(&task->lock);
 	return retire;
 }
 
@@ -158,6 +179,7 @@ void taskingIdleThread()
 void taskingExit()
 {
 	auto task = taskingGetCurrentTask();
+	irqTaskStopped(task);
 	powerTaskStopped(task);
 	if(task == task->process->main)
 		taskingTerminateProcess(task->process);
@@ -196,6 +218,7 @@ void taskingInitializeLocal()
 	local->scheduling.idleTask = nullptr;
 	local->scheduling.cleanupTask = nullptr;
 	local->scheduling.cleanupPending = false;
+	local->scheduling.cleanupInProgress = false;
 	local->scheduling.preferredTask = G_TID_NONE;
 
 	mutexInitializeGlobal(&local->lock, __func__);
@@ -360,12 +383,16 @@ void taskingAssign(g_tasking_local* local, g_task* task)
 		local->scheduling.list = newEntry;
 	}
 
+	mutexAcquire(&task->lock);
 	task->assignment = local;
-
-	// Add thread-local information on which processor this task runs now
 	task->threadLocal.kernelThreadLocal->processor = local->processor;
+	bool runnable = task->status == G_TASK_STATUS_RUNNING;
+	mutexRelease(&task->lock);
 
 	mutexRelease(&local->lock);
+
+	if(runnable)
+		schedulerRequestReschedule(local->processor);
 }
 
 void taskingSaveState(g_task* task, g_processor_state* state)
@@ -563,7 +590,7 @@ void taskingDestroyTask(g_task* task)
 	filesystemDelegateTaskRemoved(task);
 	taskingCancelPendingSpawns(task->id);
 	clockUnwaitForTime(task);
-	requestsTaskRemoved(task);
+	irqTaskStopped(task);
 	waitQueueRemoveTask(task->id);
 	waitQueueWake(&task->waitersJoin);
 	taskingDirectoryTaskRemoved(task->id);
@@ -698,10 +725,16 @@ void taskingReleaseSpawn(g_process* process)
 	auto task = process->main;
 	mutexAcquire(&task->lock);
 	memoryAtomicStore(&task->spawnReleased, true, G_MEMORY_ORDER_RELEASE);
+	g_tasking_local* assignment = nullptr;
 	if(task->status == G_TASK_STATUS_WAITING)
+	{
 		task->status = G_TASK_STATUS_RUNNING;
-	// A failed child may exit and be cleaned up as soon as this lock is released.
+		assignment = task->assignment;
+	}
 	mutexRelease(&task->lock);
+
+	if(assignment)
+		schedulerRequestReschedule(assignment->processor);
 }
 
 static void taskingCompleteSpawn(g_task* task)
@@ -718,10 +751,15 @@ static void taskingCompleteSpawn(g_task* task)
 	}
 	mutexAcquire(&parent->lock);
 	memoryAtomicStore(&task->spawnFinished, true, G_MEMORY_ORDER_RELEASE);
+	g_tasking_local* assignment = nullptr;
 	if(parent->status == G_TASK_STATUS_WAITING)
+	{
 		parent->status = G_TASK_STATUS_RUNNING;
-	// Publication lets the parent finish spawning and even exit on another core.
+		assignment = parent->assignment;
+	}
 	mutexRelease(&parent->lock);
+	if(assignment)
+		schedulerRequestReschedule(assignment->processor);
 	taskingReleaseTask(parent);
 
 	while(!memoryAtomicLoad(&task->spawnReleased, G_MEMORY_ORDER_ACQUIRE))
@@ -822,13 +860,20 @@ bool taskingWaitForExit(g_tid joinedTid, g_task* waiter)
 
 void taskingWake(g_task* task)
 {
-	if(task)
+	if(!task)
+		return;
+
+	mutexAcquire(&task->lock);
+	g_tasking_local* assignment = nullptr;
+	if(task->status == G_TASK_STATUS_WAITING)
 	{
-		mutexAcquire(&task->lock);
-		if(task->status == G_TASK_STATUS_WAITING)
-			task->status = G_TASK_STATUS_RUNNING;
-		mutexRelease(&task->lock);
+		task->status = G_TASK_STATUS_RUNNING;
+		assignment = task->assignment;
 	}
+	mutexRelease(&task->lock);
+
+	if(assignment)
+		schedulerRequestReschedule(assignment->processor);
 }
 
 void taskingPrepareWait(g_task* task, const char* debugName)

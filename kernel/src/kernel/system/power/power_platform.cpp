@@ -21,11 +21,13 @@
 
 #include "kernel/logger/logger.hpp"
 #include "kernel/memory/memory.hpp"
+#include "kernel/memory/paging_shootdown.hpp"
 #include "kernel/system/power/acpi_power.hpp"
 #include "kernel/system/power/power.hpp"
 #include "kernel/system/processor/processor.hpp"
 #include "kernel/tasking/clock.hpp"
 #include "kernel/tasking/tasking.hpp"
+#include "kernel/tasking/scheduler/scheduler.hpp"
 
 static bool powerStopRequested;
 static uint32_t powerStoppedProcessors;
@@ -34,7 +36,7 @@ static void powerSleep(uint64_t milliseconds)
 {
 	auto task = taskingGetCurrentTask();
 	taskingWait(task, __func__,
-				[task, milliseconds]() { clockWaitForTime(task->id, clockGetLocal()->time + milliseconds); });
+				[task, milliseconds]() { clockWaitForTime(task->id, clockGetMilliseconds() + milliseconds); });
 }
 
 void powerProcessorCheckpoint()
@@ -45,7 +47,10 @@ void powerProcessorCheckpoint()
 	memoryAtomicAddFetch(&powerStoppedProcessors, 1, G_MEMORY_ORDER_RELEASE);
 
 	while(memoryAtomicLoad(&powerStopRequested, G_MEMORY_ORDER_ACQUIRE))
+	{
+		pagingPollShootdown();
 		asm volatile("pause");
+	}
 
 	memoryAtomicSubFetch(&powerStoppedProcessors, 1, G_MEMORY_ORDER_RELEASE);
 }
@@ -64,17 +69,22 @@ static bool powerStopProcessors()
 	logInfo("%! storage flushed; stopping %i secondary CPU(s)", "power", processorGetNumberOfProcessors() - 1);
 
 	memoryAtomicStore(&powerStopRequested, true, G_MEMORY_ORDER_RELEASE);
-	deadline = clockGetLocal()->time + 2000;
+	for(uint32_t processor = 1; processor < processorGetNumberOfProcessors(); ++processor)
+		schedulerRequestReschedule(processor);
+
+	deadline = clockGetMilliseconds() + 2000;
 
 	while(memoryAtomicLoad(&powerStoppedProcessors, G_MEMORY_ORDER_ACQUIRE) + 1 < processorGetNumberOfProcessors())
 	{
-		if(clockGetLocal()->time >= deadline)
+		if(clockGetMilliseconds() >= deadline)
 		{
 			powerResumeProcessors();
 			return false;
 		}
+
 		powerSleep(1);
 	}
+
 	return true;
 }
 

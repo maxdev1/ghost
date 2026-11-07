@@ -42,7 +42,7 @@ static void powerAcpiSleep(uint64_t milliseconds)
 {
 	auto task = taskingGetCurrentTask();
 	taskingWait(task, __func__,
-				[task, milliseconds]() { clockWaitForTime(task->id, clockGetLocal()->time + milliseconds); });
+				[task, milliseconds]() { clockWaitForTime(task->id, clockGetMilliseconds() + milliseconds); });
 }
 
 static void powerAcpiStall(uint64_t milliseconds)
@@ -54,12 +54,12 @@ static void powerAcpiStall(uint64_t milliseconds)
 
 static void powerAcpiCalibrateStall()
 {
-	auto start = clockGetLocal()->time;
+	auto start = clockGetMilliseconds();
 	auto before = processorReadTsc();
 
 	powerAcpiSleep(10);
 
-	auto elapsed = clockGetLocal()->time - start;
+	auto elapsed = clockGetMilliseconds() - start;
 	powerAcpiTicksPerMs = (processorReadTsc() - before) / (elapsed ? elapsed : 1);
 
 	if(!powerAcpiTicksPerMs)
@@ -104,6 +104,7 @@ static bool powerAcpiValidateWrite(const g_acpi_register_write& write, g_power_a
 		return false;
 	if(write.width < 8 && write.value >> (write.width * 8))
 		return false;
+
 	switch(write.space)
 	{
 		case G_ACPI_PCI:
@@ -122,9 +123,11 @@ static bool powerAcpiValidatePlan(const g_acpi_power_plan& plan, g_power_action 
 	if(plan.count > G_ACPI_MAX_WRITES || (plan.count && plan.retryStart >= plan.count) ||
 	   (action == G_POWER_SHUTDOWN && !plan.count))
 		return false;
+
 	for(unsigned i = 0; i < plan.count; ++i)
 		if(!powerAcpiValidateWrite(plan.writes[i], action, plan.count))
 			return false;
+
 	return true;
 }
 
@@ -138,6 +141,7 @@ static g_virtual_address powerAcpiMapRegister(uint64_t physical)
 		addressRangePoolFree(memoryVirtualRangePool, address);
 		return 0;
 	}
+
 	return address;
 }
 
@@ -183,6 +187,7 @@ bool powerAcpiPrepare(g_power_action action)
 		powerAcpiReleasePlan();
 		return false;
 	}
+
 	return true;
 }
 
@@ -231,16 +236,16 @@ static void powerAcpiWriteMemory(const g_acpi_register_write& write, g_virtual_a
 	switch(write.width)
 	{
 		case 1:
-			*reinterpret_cast<volatile uint8_t*>(address) = write.value;
+			*(volatile uint8_t*) address = write.value;
 			break;
 		case 2:
-			*reinterpret_cast<volatile uint16_t*>(address) = write.value;
+			*(volatile uint16_t*) address = write.value;
 			break;
 		case 4:
-			*reinterpret_cast<volatile uint32_t*>(address) = write.value;
+			*(volatile uint32_t*) address = write.value;
 			break;
 		case 8:
-			*reinterpret_cast<volatile uint64_t*>(address) = write.value;
+			*(volatile uint64_t*) address = write.value;
 			break;
 	}
 }
@@ -272,6 +277,7 @@ static void powerAcpiTryKeyboardReboot()
 			powerAcpiStall(100);
 			return;
 		}
+
 		asm volatile("pause");
 	}
 }
@@ -285,5 +291,6 @@ void powerAcpiPerform(g_power_action action)
 		powerAcpiWriteRegisters(powerAcpiPlan.retryStart);
 		return;
 	}
+
 	powerAcpiTryKeyboardReboot();
 }

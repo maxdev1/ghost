@@ -199,6 +199,17 @@ bool processorHasFeature(g_cpuid_standard_edx_feature feature);
 bool processorHasFeature(g_cpuid_extended_ecx_feature feature);
 
 /**
+ * Checks for an advertised Hv#1 feature bit, returning false on other interfaces.
+ */
+bool processorHasHypervFeature(uint32_t feature);
+
+/**
+ * Advertised clock rates for boot-time timer selection. Zero means unavailable.
+ */
+uint32_t processorGetVmwareTscKhz();
+uint64_t processorGetApicFrequencyHz();
+
+/**
  * Prints information about the processor.
  */
 void processorPrintInformation();

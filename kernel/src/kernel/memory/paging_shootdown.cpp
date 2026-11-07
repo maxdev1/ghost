@@ -37,7 +37,10 @@ struct alignas(64) g_tlb_mailbox
 	g_virtual_address address;
 	uint64_t requested;
 	uint64_t completed;
+	uint32_t pages;
 	uint32_t apicId;
+	bool processing;
+	bool global;
 };
 
 static g_tlb_mailbox mailboxes[256];
@@ -45,6 +48,18 @@ static g_spinlock shootdownLock;
 static uint32_t cpuCount;
 static uint64_t sequence;
 static bool enabled;
+
+static void pagingInvalidatePages(g_virtual_address address, uint32_t pages, bool global)
+{
+	// Ordinary user pages are non-global, reloading CR3 invalidates their translations
+	// and paging-structure caches in one operation, including on the sender
+	if(!global && pages > 1 && address <= G_MEM_LOWER_HALF_END &&
+	   pages <= (G_MEM_LOWER_HALF_END - address) / G_PAGE_SIZE)
+		pagingSwitchToSpace(pagingGetCurrentSpace());
+	else
+		for(uint32_t page = 0; page < pages; ++page)
+			pagingInvalidatePage(address + (g_virtual_address) page * G_PAGE_SIZE);
+}
 
 void pagingInitializeSmp()
 {
@@ -58,41 +73,77 @@ void pagingInitializeSmp()
 			panic("%! invalid xAPIC CPU topology", "paging");
 		mailboxes[cpu->id].apicId = cpu->apicId;
 	}
+
 	memoryAtomicStore(&enabled, cpuCount > 1, G_MEMORY_ORDER_RELEASE);
 }
 
-bool pagingHandleShootdownNmi()
+/**
+ * An IPI can arrive after polling has acknowledged its request. The busy exchange
+ * serializes consumers without blocking interrupt entry. On release, exchange
+ * again before checking for a request received while the consumer was busy.
+ */
+static bool pagingServiceShootdown(bool ipi)
 {
 	if(!memoryAtomicLoad(&enabled, G_MEMORY_ORDER_ACQUIRE))
 		return false;
 
-	// GS can be changing when an NMI arrives during a context switch.
-	auto cpu = processorGetCurrentIdFromApic();
+	g_interrupt_guard interrupts;
+
+	auto cpu = processorGetCurrentId();
 	auto& mailbox = mailboxes[cpu];
-	const auto request = memoryAtomicLoad(&mailbox.requested, G_MEMORY_ORDER_ACQUIRE);
 
-	if(request == memoryAtomicLoad(&mailbox.completed, G_MEMORY_ORDER_RELAXED))
-		return false;
+	auto observed = memoryAtomicLoad(&mailbox.requested, G_MEMORY_ORDER_ACQUIRE);
+	if(observed == memoryAtomicLoad(&mailbox.completed, G_MEMORY_ORDER_ACQUIRE))
+		return ipi && observed != 0;
 
-	if(mailbox.address > G_MEM_LOWER_HALF_END || pagingGetCurrentSpace() == mailbox.space)
-		pagingInvalidatePage(mailbox.address);
+	if(memoryAtomicExchange(&mailbox.processing, true, G_MEMORY_ORDER_ACQ_REL))
+		return observed != 0;
 
-	// No mailbox data is accessed after acknowledgement: the next sender can
-	// reuse it while this CPU is still returning from the previous NMI
-	memoryAtomicStore(&mailbox.completed, request, G_MEMORY_ORDER_RELEASE);
-	return true;
+	bool handled = observed != 0;
+	for(;;)
+	{
+		const auto request = memoryAtomicLoad(&mailbox.requested, G_MEMORY_ORDER_ACQUIRE);
+		if(request != memoryAtomicLoad(&mailbox.completed, G_MEMORY_ORDER_RELAXED))
+		{
+			if(mailbox.global || mailbox.address > G_MEM_LOWER_HALF_END || pagingGetCurrentSpace() == mailbox.space)
+				pagingInvalidatePages(mailbox.address, mailbox.pages, mailbox.global);
+
+			memoryAtomicStore(&mailbox.completed, request, G_MEMORY_ORDER_RELEASE);
+			handled = true;
+		}
+
+		memoryAtomicExchange(&mailbox.processing, false, G_MEMORY_ORDER_ACQ_REL);
+		if(memoryAtomicLoad(&mailbox.requested, G_MEMORY_ORDER_ACQUIRE) ==
+		   memoryAtomicLoad(&mailbox.completed, G_MEMORY_ORDER_ACQUIRE))
+			return handled;
+
+		if(memoryAtomicExchange(&mailbox.processing, true, G_MEMORY_ORDER_ACQ_REL))
+			return true;
+	}
 }
 
-void pagingSynchronizePage(g_virtual_address address)
+bool pagingHandleShootdownIpi() { return pagingServiceShootdown(true); }
+
+void pagingPollShootdown() { pagingServiceShootdown(false); }
+
+void pagingSynchronizePage(g_virtual_address address) { pagingSynchronizePages(address, 1); }
+
+void pagingSynchronizePages(g_virtual_address address, uint32_t pages, bool global)
 {
-	pagingInvalidatePage(address);
+	if(!pages)
+		return;
+	pagingInvalidatePages(address, pages, global);
 	if(!memoryAtomicLoad(&enabled, G_MEMORY_ORDER_ACQUIRE))
 		return;
 
 	g_interrupt_guard interrupts;
 
-	G_SPINLOCK_ACQUIRE(shootdownLock);
-	const auto current = processorGetCurrentIdFromApic();
+	while(!__sync_bool_compare_and_swap(&shootdownLock, 0, 1))
+	{
+		pagingPollShootdown();
+		asm volatile("pause");
+	}
+	const auto current = processorGetCurrentId();
 	const auto space = pagingGetCurrentSpace();
 	const auto request = ++sequence;
 	for(uint32_t cpu = 0; cpu < cpuCount; ++cpu)
@@ -103,15 +154,34 @@ void pagingSynchronizePage(g_virtual_address address)
 		auto& mailbox = mailboxes[cpu];
 		mailbox.space = space;
 		mailbox.address = address;
+		mailbox.pages = pages;
+		mailbox.global = global;
 		memoryAtomicStore(&mailbox.requested, request, G_MEMORY_ORDER_RELEASE);
-
-		lapicSendNmi(mailbox.apicId);
 	}
+
+	// Publish every request before waking the other CPUs. With single broadcast
+	// we avoid serializing one emulated ICR transaction per CPU on each unmap:
+	lapicSendIpiAllOthers(G_INTR_TLB_SHOOTDOWN);
 
 	for(uint32_t cpu = 0; cpu < cpuCount; ++cpu)
 		if(cpu != current)
+		{
+			uint32_t waits = 0;
+			uint32_t retries = 0;
 			while(memoryAtomicLoad(&mailboxes[cpu].completed, G_MEMORY_ORDER_ACQUIRE) != request)
+			{
 				asm volatile("pause");
+				++waits;
+				if(retries < 3 && waits == (retries + 1) * 1000000)
+				{
+					if(memoryAtomicLoad(&mailboxes[cpu].completed, G_MEMORY_ORDER_ACQUIRE) != request)
+					{
+						++retries;
+						lapicSendIpi(mailboxes[cpu].apicId, G_INTR_TLB_SHOOTDOWN);
+					}
+				}
+			}
+		}
 
 	G_SPINLOCK_RELEASE(shootdownLock);
 }

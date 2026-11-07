@@ -21,11 +21,16 @@
 #ifndef __SYSTEM_SPINLOCK__
 #define __SYSTEM_SPINLOCK__
 
+#include "kernel/memory/paging_shootdown.hpp"
+
 typedef int g_spinlock;
 
 #define G_SPINLOCK_ACQUIRE(lock)                          \
       while(!__sync_bool_compare_and_swap(&lock, 0, 1))   \
-      asm volatile("pause");
+      {                                                  \
+          pagingPollShootdown();                         \
+          asm volatile("pause");                         \
+      }
 
 #define G_SPINLOCK_RELEASE(lock)                          \
       do { __sync_synchronize(); lock = 0; } while(0)

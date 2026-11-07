@@ -25,7 +25,7 @@
 
 bool acpiPlatformStart(uint64_t rsdp);
 
-void acpiPlatformPause(bool paused);
+bool acpiPlatformPause(bool paused);
 
 bool acpiPlatformInterruptsEnabled();
 

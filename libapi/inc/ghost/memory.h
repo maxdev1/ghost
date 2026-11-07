@@ -26,6 +26,33 @@
 #include "memory/types.h"
 #include "tasks/types.h"
 
+/**
+ * Atomic operations on integers, booleans and pointers. Order arguments must be
+ * compile-time G_MEMORY_ORDER_* constants. Loads allow relaxed/acquire/seq-cst
+ * ordering, stores allow relaxed/release/seq-cst ordering, and read-modify-write
+ * operations allow all orders below. Compare-exchange updates expected on
+ * failure; its failure order must be relaxed/acquire/seq-cst and no stronger
+ * than its success order. SignalFence orders compiler accesses only.
+ * FetchAdd/FetchSub return the old value; AddFetch/SubFetch return the new value.
+ */
+#define G_MEMORY_ORDER_RELAXED __ATOMIC_RELAXED
+#define G_MEMORY_ORDER_ACQUIRE __ATOMIC_ACQUIRE
+#define G_MEMORY_ORDER_RELEASE __ATOMIC_RELEASE
+#define G_MEMORY_ORDER_ACQ_REL __ATOMIC_ACQ_REL
+#define G_MEMORY_ORDER_SEQ_CST __ATOMIC_SEQ_CST
+
+#define memoryAtomicLoad(pointer, order) __atomic_load_n((pointer), (order))
+#define memoryAtomicStore(pointer, value, order) __atomic_store_n((pointer), (value), (order))
+#define memoryAtomicExchange(pointer, value, order) __atomic_exchange_n((pointer), (value), (order))
+#define memoryAtomicCompareExchange(pointer, expected, value, weak, successOrder, failureOrder) \
+	__atomic_compare_exchange_n((pointer), (expected), (value), (weak), (successOrder), (failureOrder))
+#define memoryAtomicAddFetch(pointer, value, order) __atomic_add_fetch((pointer), (value), (order))
+#define memoryAtomicSubFetch(pointer, value, order) __atomic_sub_fetch((pointer), (value), (order))
+#define memoryAtomicFetchAdd(pointer, value, order) __atomic_fetch_add((pointer), (value), (order))
+#define memoryAtomicFetchSub(pointer, value, order) __atomic_fetch_sub((pointer), (value), (order))
+#define memoryAtomicFence(order) __atomic_thread_fence((order))
+#define memoryAtomicSignalFence(order) __atomic_signal_fence((order))
+
 __BEGIN_C
 
 /**
